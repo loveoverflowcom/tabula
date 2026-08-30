@@ -311,7 +311,7 @@ flowchart LR
     A["AnimationSet<br/>driven by ViewEvents"] --> P
     T["Theme (tokens)"] --> P
     AS["AssetPack handles"] --> P
-    P --> RL["RenderList<br/>(flat, sorted, immutable)"]
+    P --> RL["RenderList<br/>(opaque, ordered, immutable)"]
     RL --> RB["Renderer backend"]
     RB --> GPU["screen"]
     IN["InputEvent"] --> P2["Presenter::on_input"]
@@ -325,14 +325,21 @@ flowchart LR
 board games at a few hundred draw items per frame, rebuilding is cheap and eliminates an entire
 class of stale-UI bugs.
 
+The public list is opaque and can only be produced by a validating builder. The backend receives a
+flat stream, but the builder models every clip, transform, and opacity scope as a tree group before
+flattening it. At each tree level, sibling draws and groups are stably ordered by `(layer, z)`;
+the opening command, descendants, and closing command of a group stay contiguous. Consequently a
+low-layer board group cannot leap over a root HUD draw merely because it contains stateful commands,
+and inner draw layers do not escape their parent group. This replaces the earlier, unsound notion of
+sorting an already-flat stream containing `Push*`/`Pop*` pairs.
+
 ### 5.2 The MVP render command set
 
 ```rust
 // crates/tabula-presentation/src/render.rs
-pub struct RenderList {
-    pub cmds: Vec<RenderCmd>,     // sorted by (layer, z) at build end
-    pub camera: Camera2D,
-}
+pub struct RenderList { /* private validated command stream + camera */ }
+// RenderListBuilder constructs nested scope groups, stably sorts sibling groups
+// by (layer, z), checks balanced Push*/Pop* pairs, then flattens for backends.
 
 pub enum RenderCmd {
     /// Textured quad from an atlas region, with tint, rotation, and pivot.

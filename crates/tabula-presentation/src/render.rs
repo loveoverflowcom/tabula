@@ -16,6 +16,7 @@ impl Rect {
         }
         Ok(Self { origin, size })
     }
+
     #[must_use]
     #[allow(clippy::float_arithmetic)]
     pub fn contains(self, point: Vec2) -> bool {
@@ -24,44 +25,177 @@ impl Rect {
             && point.x <= self.origin.x + self.size.x
             && point.y <= self.origin.y + self.size.y
     }
+
     #[must_use]
     pub const fn origin(self) -> Vec2 {
         self.origin
     }
+
     #[must_use]
     pub const fn size(self) -> Vec2 {
         self.size
     }
 }
 
+/// Validated corner radii for a rounded rectangle.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Corners {
-    pub top_left: f32,
-    pub top_right: f32,
-    pub bottom_right: f32,
-    pub bottom_left: f32,
+    top_left: f32,
+    top_right: f32,
+    bottom_right: f32,
+    bottom_left: f32,
 }
+
 impl Corners {
-    #[must_use]
-    pub const fn uniform(radius: f32) -> Self {
-        Self {
-            top_left: radius,
-            top_right: radius,
-            bottom_right: radius,
-            bottom_left: radius,
+    pub fn new(
+        top_left: f32,
+        top_right: f32,
+        bottom_right: f32,
+        bottom_left: f32,
+    ) -> Result<Self, RenderListError> {
+        let radii = [top_left, top_right, bottom_right, bottom_left];
+        if radii
+            .iter()
+            .any(|radius| !radius.is_finite() || *radius < 0.0)
+        {
+            return Err(RenderListError::InvalidGeometry);
         }
+        Ok(Self {
+            top_left,
+            top_right,
+            bottom_right,
+            bottom_left,
+        })
+    }
+
+    pub fn uniform(radius: f32) -> Result<Self, RenderListError> {
+        Self::new(radius, radius, radius, radius)
+    }
+
+    #[must_use]
+    pub const fn top_left(self) -> f32 {
+        self.top_left
+    }
+
+    #[must_use]
+    pub const fn top_right(self) -> f32 {
+        self.top_right
+    }
+
+    #[must_use]
+    pub const fn bottom_right(self) -> f32 {
+        self.bottom_right
+    }
+
+    #[must_use]
+    pub const fn bottom_left(self) -> f32 {
+        self.bottom_left
     }
 }
 
+/// Validated border width and colour.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Border {
-    pub width: f32,
-    pub color: Color,
+    width: f32,
+    color: Color,
+}
+
+impl Border {
+    pub fn new(width: f32, color: Color) -> Result<Self, RenderListError> {
+        if !width.is_finite() || width < 0.0 {
+            return Err(RenderListError::InvalidGeometry);
+        }
+        Ok(Self { width, color })
+    }
+
+    #[must_use]
+    pub const fn width(self) -> f32 {
+        self.width
+    }
+
+    #[must_use]
+    pub const fn color(self) -> Color {
+        self.color
+    }
+}
+
+/// A validated colour stop in a linear gradient.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GradientStop {
+    offset: f32,
+    color: Color,
+}
+
+impl GradientStop {
+    pub fn new(offset: f32, color: Color) -> Result<Self, RenderListError> {
+        if !offset.is_finite() || !(0.0..=1.0).contains(&offset) {
+            return Err(RenderListError::InvalidGradient);
+        }
+        Ok(Self { offset, color })
+    }
+
+    #[must_use]
+    pub const fn offset(self) -> f32 {
+        self.offset
+    }
+
+    #[must_use]
+    pub const fn color(self) -> Color {
+        self.color
+    }
+}
+
+/// A finite, ordered linear gradient with at least two stops.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LinearGradient {
+    from: Vec2,
+    to: Vec2,
+    stops: SmallVec<[GradientStop; 4]>,
+}
+
+impl LinearGradient {
+    pub fn new(
+        from: Vec2,
+        to: Vec2,
+        stops: impl IntoIterator<Item = GradientStop>,
+    ) -> Result<Self, RenderListError> {
+        if !from.is_finite() || !to.is_finite() {
+            return Err(RenderListError::InvalidGradient);
+        }
+        let stops = stops.into_iter().collect::<SmallVec<[GradientStop; 4]>>();
+        if stops.len() < 2 || stops.windows(2).any(|pair| pair[0].offset > pair[1].offset) {
+            return Err(RenderListError::InvalidGradient);
+        }
+        Ok(Self { from, to, stops })
+    }
+
+    #[must_use]
+    pub const fn from(&self) -> Vec2 {
+        self.from
+    }
+
+    #[must_use]
+    pub const fn to(&self) -> Vec2 {
+        self.to
+    }
+
+    #[must_use]
+    pub fn stops(&self) -> &[GradientStop] {
+        &self.stops
+    }
+}
+
+#[allow(clippy::doc_markdown)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum Paint {
+    Solid(Color),
+    LinearGradient(LinearGradient),
 }
 
 /// Semantic draw layers; higher values appear above lower values.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Layer(pub u8);
+
 impl Layer {
     pub const BOARD: Self = Self(0);
     pub const PIECES: Self = Self(10);
@@ -71,11 +205,13 @@ impl Layer {
     pub const TOAST: Self = Self(50);
 }
 
+/// A finite camera with strictly positive zoom. It belongs to client-local presentation state.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Camera2D {
     center: Vec2,
     zoom: f32,
 }
+
 impl Camera2D {
     pub fn new(center: Vec2, zoom: f32) -> Result<Self, RenderListError> {
         if !center.is_finite() || !zoom.is_finite() || zoom <= 0.0 {
@@ -83,15 +219,18 @@ impl Camera2D {
         }
         Ok(Self { center, zoom })
     }
+
     #[must_use]
     pub const fn center(self) -> Vec2 {
         self.center
     }
+
     #[must_use]
     pub const fn zoom(self) -> f32 {
         self.zoom
     }
 }
+
 impl Default for Camera2D {
     fn default() -> Self {
         Self::new(Vec2::ZERO, 1.0).expect("default camera is valid")
@@ -101,13 +240,16 @@ impl Default for Camera2D {
 /// An opacity proof barrier. Values are always in the inclusive 0..=1 range.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Opacity(f32);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OpacityError {
     NonFinite,
     OutOfRange,
 }
+
 impl TryFrom<f32> for Opacity {
     type Error = OpacityError;
+
     fn try_from(value: f32) -> Result<Self, Self::Error> {
         if !value.is_finite() {
             Err(OpacityError::NonFinite)
@@ -118,6 +260,7 @@ impl TryFrom<f32> for Opacity {
         }
     }
 }
+
 impl Opacity {
     #[must_use]
     pub const fn get(self) -> f32 {
@@ -125,22 +268,13 @@ impl Opacity {
     }
 }
 
-#[allow(clippy::doc_markdown)]
-#[derive(Clone, Debug, PartialEq)]
-pub enum Paint {
-    Solid(Color),
-    LinearGradient {
-        from: Vec2,
-        to: Vec2,
-        stops: SmallVec<[(f32, Color); 4]>,
-    },
-}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Align {
     Start,
     Center,
     End,
 }
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TextStyleToken {
     Display,
@@ -151,7 +285,7 @@ pub enum TextStyleToken {
     Mono,
 }
 
-/// The intentionally small backend-neutral rendering vocabulary.
+/// The intentionally small backend-neutral rendering vocabulary from doc 04 §5.2.
 #[derive(Clone, Debug, PartialEq)]
 pub enum RenderCmd {
     Sprite {
@@ -234,38 +368,114 @@ impl RenderCmd {
             | Self::PopOpacity { layer, z } => (*layer, *z),
         }
     }
+
+    fn scope_kind(&self) -> Option<ScopeKind> {
+        match self {
+            Self::PushClip { .. } | Self::PopClip { .. } => Some(ScopeKind::Clip),
+            Self::PushTransform { .. } | Self::PopTransform { .. } => Some(ScopeKind::Transform),
+            Self::PushOpacity { .. } | Self::PopOpacity { .. } => Some(ScopeKind::Opacity),
+            _ => None,
+        }
+    }
+
+    fn is_scope_open(&self) -> bool {
+        matches!(
+            self,
+            Self::PushClip { .. } | Self::PushTransform { .. } | Self::PushOpacity { .. }
+        )
+    }
 }
 
 /// Immutable, validated command list consumed by every renderer.
 ///
+/// Commands are a flattened backend stream. The builder retains scopes as an internal tree until
+/// `finish`: sibling draws and scope groups are stably ordered by `(layer, z)`, while each scope
+/// remains contiguous. A child draw cannot escape its group's ordering position.
+///
+/// ```compile_fail
+/// use tabula_presentation::{Camera2D, RenderList};
+/// let _ = RenderList { commands: vec![], camera: Camera2D::default() };
+/// ```
+///
 /// @ai.role renderer-contract
 /// @ai.domain presentation.render
 /// @ai.invariant balanced-render-state
-/// @ai.law deterministic-layer-order
-/// @ai.evidence tests::scoped_draws_respect_global_layer_order
+/// @ai.law deterministic-hierarchical-layer-order
+/// @ai.evidence render::tests::scope_groups_preserve_layer_order_without_constraining_children
 #[allow(clippy::doc_markdown)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct RenderList {
     commands: Vec<RenderCmd>,
     camera: Camera2D,
 }
+
 impl RenderList {
     #[must_use]
     pub fn commands(&self) -> &[RenderCmd] {
         &self.commands
     }
+
     #[must_use]
     pub const fn camera(&self) -> Camera2D {
         self.camera
     }
 }
 
-/// Fallible builder that validates geometry and balances state stacks before exposing a list.
+/// Fallible builder that validates geometry and turns state scopes into ordered tree groups.
 #[derive(Debug, Default)]
 pub struct RenderListBuilder {
     camera: Camera2D,
-    commands: Vec<RenderCmd>,
-    scopes: Vec<Scope>,
+    root: Vec<RenderNode>,
+    scopes: Vec<OpenScope>,
+}
+
+#[derive(Debug)]
+enum RenderNode {
+    Draw(RenderCmd),
+    Scope {
+        opening: RenderCmd,
+        closing: RenderCmd,
+        children: Vec<RenderNode>,
+    },
+}
+
+impl RenderNode {
+    fn key(&self) -> (Layer, i16) {
+        match self {
+            Self::Draw(command)
+            | Self::Scope {
+                opening: command, ..
+            } => command.key(),
+        }
+    }
+
+    fn flatten(self, destination: &mut Vec<RenderCmd>) {
+        match self {
+            Self::Draw(command) => destination.push(command),
+            Self::Scope {
+                opening,
+                closing,
+                mut children,
+            } => {
+                destination.push(opening);
+                Self::flatten_children(&mut children, destination);
+                destination.push(closing);
+            }
+        }
+    }
+
+    fn flatten_children(children: &mut Vec<RenderNode>, destination: &mut Vec<RenderCmd>) {
+        children.sort_by_key(Self::key);
+        for child in std::mem::take(children) {
+            child.flatten(destination);
+        }
+    }
+}
+
+#[derive(Debug)]
+struct OpenScope {
+    opening: RenderCmd,
+    children: Vec<RenderNode>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -274,15 +484,11 @@ enum ScopeKind {
     Transform,
     Opacity,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Scope {
-    kind: ScopeKind,
-    key: (Layer, i16),
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RenderListError {
     InvalidGeometry,
+    InvalidGradient,
     InvalidTransform,
     InvalidTextWidth,
     UnbalancedClip,
@@ -300,63 +506,63 @@ impl RenderListBuilder {
             ..Self::default()
         }
     }
+
     pub fn push(&mut self, command: RenderCmd) -> Result<(), RenderListError> {
         Self::validate(&command)?;
-        self.update_scopes(&command)?;
-        self.commands.push(command);
+        if command.is_scope_open() {
+            self.scopes.push(OpenScope {
+                opening: command,
+                children: Vec::new(),
+            });
+        } else if let Some(kind) = command.scope_kind() {
+            self.close_scope(kind, command)?;
+        } else {
+            self.push_node(RenderNode::Draw(command));
+        }
         Ok(())
     }
+
     pub fn finish(mut self) -> Result<RenderList, RenderListError> {
         if let Some(scope) = self.scopes.last() {
-            return Err(Self::unbalanced(scope.kind));
+            return Err(Self::unbalanced(
+                scope.opening.scope_kind().expect("scope opening"),
+            ));
         }
-        // Scope operations carry the same key as their contents. Stable global
-        // sorting therefore preserves each scope as a contiguous group while
-        // making layer/z ordering true for the entire list.
-        self.commands.sort_by_key(RenderCmd::key);
+        let mut commands = Vec::new();
+        RenderNode::flatten_children(&mut self.root, &mut commands);
         Ok(RenderList {
-            commands: self.commands,
+            commands,
             camera: self.camera,
         })
     }
-    fn update_scopes(&mut self, command: &RenderCmd) -> Result<(), RenderListError> {
-        let key = command.key();
-        if self.scopes.last().is_some_and(|scope| scope.key != key) {
-            return Err(RenderListError::ScopeLayerMismatch);
+
+    fn push_node(&mut self, node: RenderNode) {
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.children.push(node);
+        } else {
+            self.root.push(node);
         }
-        match command {
-            RenderCmd::PushClip { .. } => self.scopes.push(Scope {
-                kind: ScopeKind::Clip,
-                key,
-            }),
-            RenderCmd::PushTransform { .. } => self.scopes.push(Scope {
-                kind: ScopeKind::Transform,
-                key,
-            }),
-            RenderCmd::PushOpacity { .. } => self.scopes.push(Scope {
-                kind: ScopeKind::Opacity,
-                key,
-            }),
-            RenderCmd::PopClip { .. } => self.pop_scope(ScopeKind::Clip, key)?,
-            RenderCmd::PopTransform { .. } => self.pop_scope(ScopeKind::Transform, key)?,
-            RenderCmd::PopOpacity { .. } => self.pop_scope(ScopeKind::Opacity, key)?,
-            _ => {}
-        }
-        Ok(())
     }
-    fn pop_scope(&mut self, kind: ScopeKind, key: (Layer, i16)) -> Result<(), RenderListError> {
-        let Some(scope) = self.scopes.last().copied() else {
+
+    fn close_scope(&mut self, kind: ScopeKind, closing: RenderCmd) -> Result<(), RenderListError> {
+        let Some(scope) = self.scopes.last() else {
             return Err(Self::unbalanced(kind));
         };
-        if scope.kind != kind {
+        if scope.opening.scope_kind() != Some(kind) {
             return Err(Self::unbalanced(kind));
         }
-        if scope.key != key {
+        if scope.opening.key() != closing.key() {
             return Err(RenderListError::ScopeLayerMismatch);
         }
-        self.scopes.pop();
+        let scope = self.scopes.pop().expect("scope checked above");
+        self.push_node(RenderNode::Scope {
+            opening: scope.opening,
+            closing,
+            children: scope.children,
+        });
         Ok(())
     }
+
     fn unbalanced(kind: ScopeKind) -> RenderListError {
         match kind {
             ScopeKind::Clip => RenderListError::UnbalancedClip,
@@ -364,8 +570,9 @@ impl RenderListBuilder {
             ScopeKind::Opacity => RenderListError::UnbalancedOpacity,
         }
     }
+
     fn validate(command: &RenderCmd) -> Result<(), RenderListError> {
-        let finite = |v: Vec2| v.is_finite();
+        let finite = |value: Vec2| value.is_finite();
         match command {
             RenderCmd::Sprite {
                 rect,
@@ -382,25 +589,8 @@ impl RenderListBuilder {
                     return Err(RenderListError::InvalidGeometry);
                 }
             }
-            RenderCmd::Rect {
-                rect,
-                radii,
-                border,
-                ..
-            } => {
+            RenderCmd::Rect { rect, .. } | RenderCmd::PushClip { rect, .. } => {
                 Self::valid_rect(*rect)?;
-                if ![
-                    radii.top_left,
-                    radii.top_right,
-                    radii.bottom_right,
-                    radii.bottom_left,
-                ]
-                .iter()
-                .all(|v| v.is_finite() && *v >= 0.0)
-                    || border.is_some_and(|border| !border.width.is_finite() || border.width < 0.0)
-                {
-                    return Err(RenderListError::InvalidGeometry);
-                }
             }
             RenderCmd::Text { at, max_width, .. } => {
                 if !finite(*at) || max_width.is_some_and(|width| !width.is_finite() || width <= 0.0)
@@ -408,15 +598,17 @@ impl RenderListBuilder {
                     return Err(RenderListError::InvalidTextWidth);
                 }
             }
-            RenderCmd::Path { points, stroke, .. } => {
-                if points.iter().any(|point| !finite(*point))
-                    || !stroke.width.is_finite()
-                    || stroke.width < 0.0
-                {
+            RenderCmd::Path {
+                points,
+                closed,
+                fill,
+                ..
+            } => {
+                let minimum_points = if *closed || fill.is_some() { 3 } else { 2 };
+                if points.len() < minimum_points || points.iter().any(|point| !finite(*point)) {
                     return Err(RenderListError::InvalidGeometry);
                 }
             }
-            RenderCmd::PushClip { rect, .. } => Self::valid_rect(*rect)?,
             RenderCmd::PushTransform { matrix, .. } => {
                 if !matrix.matrix2.x_axis.is_finite()
                     || !matrix.matrix2.y_axis.is_finite()
@@ -432,6 +624,7 @@ impl RenderListBuilder {
         }
         Ok(())
     }
+
     fn valid_rect(rect: Rect) -> Result<(), RenderListError> {
         if !rect.origin.is_finite()
             || !rect.size.is_finite()
@@ -448,42 +641,41 @@ impl RenderListBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     fn rect(layer: Layer, z: i16) -> RenderCmd {
         RenderCmd::Rect {
             rect: Rect::new(Vec2::ZERO, Vec2::ONE).unwrap(),
-            radii: Corners::uniform(0.0),
+            radii: Corners::uniform(0.0).unwrap(),
             fill: None,
             border: None,
             layer,
             z,
         }
     }
+
+    fn push_opacity(layer: Layer, z: i16) -> RenderCmd {
+        RenderCmd::PushOpacity {
+            opacity: Opacity::try_from(0.5).unwrap(),
+            layer,
+            z,
+        }
+    }
+
+    fn pop_opacity(layer: Layer, z: i16) -> RenderCmd {
+        RenderCmd::PopOpacity { layer, z }
+    }
+
     #[test]
-    fn scoped_draws_respect_global_layer_order() {
+    fn scope_groups_preserve_layer_order_without_constraining_children() {
         let mut builder = RenderListBuilder::new(Camera2D::default());
         builder.push(rect(Layer::HUD, 0)).unwrap();
-        builder
-            .push(RenderCmd::PushOpacity {
-                opacity: Opacity::try_from(0.5).unwrap(),
-                layer: Layer::BOARD,
-                z: 0,
-            })
-            .unwrap();
+        builder.push(push_opacity(Layer::BOARD, 0)).unwrap();
+        builder.push(rect(Layer::PIECES, 1)).unwrap();
         builder.push(rect(Layer::BOARD, 0)).unwrap();
-        builder
-            .push(RenderCmd::PopOpacity {
-                layer: Layer::BOARD,
-                z: 0,
-            })
-            .unwrap();
+        builder.push(pop_opacity(Layer::BOARD, 0)).unwrap();
         let list = builder.finish().unwrap();
-        assert!(matches!(
-            list.commands()[0],
-            RenderCmd::PushOpacity {
-                layer: Layer::BOARD,
-                ..
-            }
-        ));
+
+        assert!(matches!(list.commands()[0], RenderCmd::PushOpacity { .. }));
         assert!(matches!(
             list.commands()[1],
             RenderCmd::Rect {
@@ -493,11 +685,73 @@ mod tests {
         ));
         assert!(matches!(
             list.commands()[2],
-            RenderCmd::PopOpacity {
+            RenderCmd::Rect {
+                layer: Layer::PIECES,
+                ..
+            }
+        ));
+        assert!(matches!(list.commands()[3], RenderCmd::PopOpacity { .. }));
+        assert!(matches!(
+            list.commands()[4],
+            RenderCmd::Rect {
+                layer: Layer::HUD,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn stable_equal_keys_keep_insertion_order() {
+        let mut builder = RenderListBuilder::new(Camera2D::default());
+        builder.push(rect(Layer::BOARD, 0)).unwrap();
+        builder
+            .push(RenderCmd::Text {
+                text: String::from("second"),
+                at: Vec2::ZERO,
+                style: TextStyleToken::Body,
+                align: Align::Start,
+                max_width: None,
+                color: Color::rgb(0, 0, 0),
+                layer: Layer::BOARD,
+                z: 0,
+            })
+            .unwrap();
+        let list = builder.finish().unwrap();
+        assert!(matches!(list.commands()[0], RenderCmd::Rect { .. }));
+        assert!(matches!(&list.commands()[1], RenderCmd::Text { text, .. } if text == "second"));
+    }
+
+    #[test]
+    fn nested_scope_groups_sort_siblings_but_keep_each_scope_contiguous() {
+        let mut builder = RenderListBuilder::new(Camera2D::default());
+        builder.push(push_opacity(Layer::OVERLAY, 0)).unwrap();
+        builder
+            .push(RenderCmd::PushClip {
+                rect: Rect::new(Vec2::ZERO, Vec2::ONE).unwrap(),
+                layer: Layer::PIECES,
+                z: 0,
+            })
+            .unwrap();
+        builder.push(rect(Layer::HUD, 0)).unwrap();
+        builder
+            .push(RenderCmd::PopClip {
+                layer: Layer::PIECES,
+                z: 0,
+            })
+            .unwrap();
+        builder.push(rect(Layer::BOARD, 0)).unwrap();
+        builder.push(pop_opacity(Layer::OVERLAY, 0)).unwrap();
+        let list = builder.finish().unwrap();
+
+        assert!(matches!(list.commands()[0], RenderCmd::PushOpacity { .. }));
+        assert!(matches!(
+            list.commands()[1],
+            RenderCmd::Rect {
                 layer: Layer::BOARD,
                 ..
             }
         ));
+        assert!(matches!(list.commands()[2], RenderCmd::PushClip { .. }));
         assert!(matches!(
             list.commands()[3],
             RenderCmd::Rect {
@@ -505,9 +759,12 @@ mod tests {
                 ..
             }
         ));
+        assert!(matches!(list.commands()[4], RenderCmd::PopClip { .. }));
+        assert!(matches!(list.commands()[5], RenderCmd::PopOpacity { .. }));
     }
+
     #[test]
-    fn builder_rejects_unbalanced_state() {
+    fn builder_rejects_unbalanced_or_mismatched_scopes() {
         let mut builder = RenderListBuilder::new(Camera2D::default());
         assert_eq!(
             builder.push(RenderCmd::PopClip {
@@ -516,14 +773,19 @@ mod tests {
             }),
             Err(RenderListError::UnbalancedClip)
         );
+        builder.push(push_opacity(Layer::BOARD, 0)).unwrap();
+        assert_eq!(
+            builder.push(RenderCmd::PopOpacity {
+                layer: Layer::HUD,
+                z: 0
+            }),
+            Err(RenderListError::ScopeLayerMismatch)
+        );
+        assert_eq!(builder.finish(), Err(RenderListError::UnbalancedOpacity));
     }
+
     #[test]
-    fn opacity_is_a_proof_barrier() {
-        assert_eq!(Opacity::try_from(1.01), Err(OpacityError::OutOfRange));
-        assert_eq!(Opacity::try_from(f32::NAN), Err(OpacityError::NonFinite));
-    }
-    #[test]
-    fn scoped_draws_cannot_mix_layer_keys() {
+    fn nested_clips_transforms_and_opacity_are_balanced() {
         let mut builder = RenderListBuilder::new(Camera2D::default());
         builder
             .push(RenderCmd::PushClip {
@@ -532,20 +794,85 @@ mod tests {
                 z: 0,
             })
             .unwrap();
-        assert_eq!(
-            builder.push(rect(Layer::HUD, 0)),
-            Err(RenderListError::ScopeLayerMismatch)
-        );
+        builder
+            .push(RenderCmd::PushTransform {
+                matrix: Affine2::IDENTITY,
+                layer: Layer::PIECES,
+                z: 0,
+            })
+            .unwrap();
+        builder.push(push_opacity(Layer::OVERLAY, 0)).unwrap();
+        builder.push(rect(Layer::HUD, 0)).unwrap();
+        builder.push(pop_opacity(Layer::OVERLAY, 0)).unwrap();
+        builder
+            .push(RenderCmd::PopTransform {
+                layer: Layer::PIECES,
+                z: 0,
+            })
+            .unwrap();
+        builder
+            .push(RenderCmd::PopClip {
+                layer: Layer::BOARD,
+                z: 0,
+            })
+            .unwrap();
+        assert_eq!(builder.finish().unwrap().commands().len(), 7);
     }
+
     #[test]
-    fn camera_constructor_rejects_non_finite_and_zero_zoom() {
+    fn proof_barriers_reject_invalid_numerical_values() {
         assert_eq!(
-            Camera2D::new(Vec2::splat(f32::NAN), 1.0),
-            Err(RenderListError::InvalidCamera)
+            Rect::new(Vec2::ZERO, Vec2::new(-1.0, 1.0)),
+            Err(RenderListError::InvalidGeometry)
         );
+        assert_eq!(
+            Corners::uniform(f32::NAN),
+            Err(RenderListError::InvalidGeometry)
+        );
+        assert_eq!(
+            Border::new(-1.0, Color::rgb(0, 0, 0)),
+            Err(RenderListError::InvalidGeometry)
+        );
+        assert_eq!(
+            GradientStop::new(1.1, Color::rgb(0, 0, 0)),
+            Err(RenderListError::InvalidGradient)
+        );
+        assert_eq!(Opacity::try_from(1.01), Err(OpacityError::OutOfRange));
+        assert_eq!(Opacity::try_from(f32::NAN), Err(OpacityError::NonFinite));
         assert_eq!(
             Camera2D::new(Vec2::ZERO, 0.0),
             Err(RenderListError::InvalidCamera)
+        );
+    }
+
+    #[test]
+    fn gradient_requires_finite_endpoints_and_ordered_stops() {
+        let black = Color::rgb(0, 0, 0);
+        let one = GradientStop::new(1.0, black).unwrap();
+        let zero = GradientStop::new(0.0, black).unwrap();
+        assert_eq!(
+            LinearGradient::new(Vec2::ZERO, Vec2::ONE, [one, zero]),
+            Err(RenderListError::InvalidGradient)
+        );
+        assert_eq!(
+            LinearGradient::new(Vec2::splat(f32::INFINITY), Vec2::ONE, [zero, one]),
+            Err(RenderListError::InvalidGradient)
+        );
+    }
+
+    #[test]
+    fn path_requires_enough_finite_points_for_its_geometry() {
+        let mut builder = RenderListBuilder::new(Camera2D::default());
+        assert_eq!(
+            builder.push(RenderCmd::Path {
+                points: smallvec::smallvec![Vec2::ZERO],
+                stroke: Border::new(1.0, Color::rgb(0, 0, 0)).unwrap(),
+                closed: false,
+                fill: None,
+                layer: Layer::BOARD,
+                z: 0,
+            }),
+            Err(RenderListError::InvalidGeometry)
         );
     }
 }
