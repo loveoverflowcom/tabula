@@ -70,7 +70,7 @@ impl NonNegative {
     /// Used only by generated themes after `xtask` has validated the source.
     #[must_use]
     pub(crate) const fn generated(value: f32) -> Self {
-        assert!(value >= 0.0);
+        assert!(value.is_finite() && value >= 0.0);
         Self(value)
     }
     #[must_use]
@@ -93,7 +93,7 @@ impl Positive {
     /// Used only by generated themes after `xtask` has validated the source.
     #[must_use]
     pub(crate) const fn generated(value: f32) -> Self {
-        assert!(value > 0.0);
+        assert!(value.is_finite() && value > 0.0);
         Self(value)
     }
     #[must_use]
@@ -659,6 +659,12 @@ mod tests {
         assert_eq!(NonNegative::new(-0.1), Err(TokenValueError::NonNegative));
         assert_eq!(Positive::new(0.0), Err(TokenValueError::Positive));
         assert_eq!(Positive::new(f32::NAN), Err(TokenValueError::Positive));
+    }
+
+    #[test]
+    fn generated_measurements_reject_non_finite_values() {
+        assert!(std::panic::catch_unwind(|| NonNegative::generated(f32::INFINITY)).is_err());
+        assert!(std::panic::catch_unwind(|| Positive::generated(f32::INFINITY)).is_err());
     }
 
     #[test]

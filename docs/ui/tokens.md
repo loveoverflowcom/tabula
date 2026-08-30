@@ -1,6 +1,6 @@
 # Semantic token contract
 
-`tokens.toml` is the authored source for Tabula's design system. `cargo xtask
+`tokens.toml` is the authored source for Tabula's design system (ADR-027). `cargo xtask
 gen-tokens` parses it into a typed source, validates it, resolves the compact
 renderer-neutral `Theme`, and emits the committed Rust, CSS, and JSON adapters.
 The transformation is deterministic; it reads no system theme, clock, or
@@ -54,7 +54,15 @@ position; contrast tests cover the roles that are actually placed on surfaces.
 | Malformed sources fail before generation | `tokens_cmd::tests::malformed_sources_fail_at_the_typed_boundary` |
 | All token families reach adapters | `tokens_cmd::tests::all_major_token_families_reach_the_intended_artifacts` |
 | Generation is deterministic | `tokens_cmd::tests::generation_is_idempotent`; `cargo xtask gen-tokens` + freshness check |
-| Rust/CSS names correspond | `tokens_cmd::tests::rust_and_css_use_the_same_semantic_motion_name` |
-| Runtime value bounds are preserved | `tabula_design::tests::bounded_token_values_reject_invalid_boundaries` |
+| Generation stays collision-free under parallel workers | OS-unique temporary rustfmt files in `format_rust`; concurrent token-generation tests (CI nextest gate) |
+| Exact motion mapping reaches every adapter | `tokens_cmd::tests::motion_medium_has_an_exact_cross_artifact_oracle` (`system.motion.medium`, scoped Rust, exact CSS var) |
+| Exact typography mapping reaches every adapter | `tokens_cmd::tests::body_medium_weight_has_an_exact_cross_artifact_oracle` (`system.type.body.md.weight`, scoped Rust, exact CSS var) |
+| Runtime value bounds are preserved, including finite proof | `tabula_design::tests::bounded_token_values_reject_invalid_boundaries`; `generated_measurements_reject_non_finite_values` |
 | Accessibility pairs and HC strength hold | named design-crate contrast tests |
 | Presentation uses closed semantic typography | design/presentation crate compilation and `mono_styles_require_tabular_figures` |
+
+## Phase status
+
+This contract and verification hardening does not claim the Phase 2 exit. Phase-1
+Chess rules and the Phase-2 playable chess presentation remain outstanding; this
+change adds no game rules, networking, assets, or unrelated protocol work.

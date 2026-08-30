@@ -1062,6 +1062,7 @@ fn write_if_changed(path: &Path, content: &str) -> Result<(), TokenError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
     fn rendered(source: &str) -> Vec<(&'static str, String)> {
         render_source(
             Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap(),
@@ -1076,6 +1077,20 @@ mod tests {
             .unwrap()
             .1
             .as_str()
+    }
+    fn json_output(outputs: &[(&str, String)]) -> Value {
+        serde_json::from_str(output(outputs, "docs/ui/tokens.json")).unwrap()
+    }
+    fn json_path<'a>(value: &'a Value, path: &[&str]) -> &'a Value {
+        path.iter().fold(value, |current, key| {
+            current
+                .get(*key)
+                .unwrap_or_else(|| panic!("missing JSON path component {key:?}"))
+        })
+    }
+    fn rust_section<'a>(rust: &'a str, start: &str, end: &str) -> &'a str {
+        let section = &rust[rust.find(start).expect("section start")..];
+        &section[..section.find(end).expect("section end")]
     }
     fn source() -> &'static str {
         include_str!("../../tokens.toml")
@@ -1200,12 +1215,15 @@ mod tests {
     fn motion_medium_has_an_exact_cross_artifact_oracle() {
         let changed = source().replacen("medium = 280", "medium = 281", 1);
         let outputs = rendered(&changed);
-        assert!(output(&outputs, "crates/tabula-design/src/generated.rs")
-            .contains("medium: duration(281)"));
+        let rust = output(&outputs, "crates/tabula-design/src/generated.rs");
+        assert!(rust_section(rust, "const MOTION", "const STATE").contains("medium: duration(281)"));
         assert!(
             output(&outputs, "apps/web/style/tokens.css").contains("--sys-motion-medium: 281ms;")
         );
-        assert!(output(&outputs, "docs/ui/tokens.json").contains("\"medium\": 281"));
+        assert_eq!(
+            json_path(&json_output(&outputs), &["system", "motion", "medium"]),
+            &Value::from(281)
+        );
     }
 
     #[test]
@@ -1216,10 +1234,17 @@ mod tests {
             1,
         );
         let outputs = rendered(&changed);
-        assert!(output(&outputs, "crates/tabula-design/src/generated.rs")
+        let rust = output(&outputs, "crates/tabula-design/src/generated.rs");
+        assert!(rust_section(rust, "body: TextSizes", "label: TextSizes")
             .contains("TextStyle::generated(FontFamilyRole::Text, 14.0, 20.0, 500, 0.25, false)"));
         assert!(output(&outputs, "apps/web/style/tokens.css")
             .contains("--sys-type-body-md-weight: 500;"));
-        assert!(output(&outputs, "docs/ui/tokens.json").contains("\"weight\": 500"));
+        assert_eq!(
+            json_path(
+                &json_output(&outputs),
+                &["system", "type", "body", "md", "weight"]
+            ),
+            &Value::from(500)
+        );
     }
 }

@@ -110,7 +110,7 @@ update in the same PR (doc 00 §7.1).
 | Modular monolith, one repo, one workspace | 015 | doc 01 §2, doc 06 §7 | A small team cannot afford distribution |
 | Voice on a separate plane behind a trait | 016 | `tabula-voice` | Media must never share the game socket's semantics |
 | Per-game versioned, hashed asset packs | 017 | `tabula-assets`, manifest | Otherwise app size grows with the catalog |
-| Design tokens defined once in Rust, adapted to CSS and Theme | 018 | `xtask gen-tokens`, no-raw-colors lint | One product feel across DOM and canvas |
+| One semantic design-token authority: authored `tokens.toml`, generated Rust runtime, CSS and JSON adapters | 018 → 027 | `xtask gen-tokens`, freshness gate, no-raw-colors lint | One product feel across DOM and canvas without ambiguous or hand-edited sources |
 | Tauri never required for gameplay | 019 | I-15, dependency matrix | Gameplay must not sit in a WebView |
 | No k8s/Kafka/NATS/mesh/microservices before a measured need | 020 | doc 06 §1.1 triggers | Operational tax paid daily, benefit received rarely |
 | `#![forbid(unsafe_code)]` in rules; canonical hashing | 021 | workspace lints | Determinism and audit integrity |

@@ -704,8 +704,8 @@ flowchart TB
 
 ### 8.1 Generation, not duplication
 
-`tokens.toml` is authored once. `xtask gen-tokens` emits Rust consts, CSS custom properties, and a
-JSON export. CI fails if generated files are stale. There is **no hand-written color literal**
+`tokens.toml` is authored once (ADR-027). `xtask gen-tokens` emits the typed `tabula-design` Rust
+runtime plus CSS custom properties and a JSON export. CI fails if generated files are stale. There is **no hand-written color literal**
 anywhere in `apps/web`, `tabula-presentation`, or any game presenter — enforced by a lint
 (`xtask check-no-raw-colors`) that greps for hex literals and `Color::new(` outside
 `tabula-design`.
