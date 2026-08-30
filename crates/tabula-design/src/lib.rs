@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 /// An sRGB colour used by semantic tokens and render commands.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Color {
-    pub red: u8,
-    pub green: u8,
-    pub blue: u8,
-    pub alpha: u8,
+    red: u8,
+    green: u8,
+    blue: u8,
+    alpha: u8,
 }
 
 impl Color {
@@ -35,6 +35,23 @@ impl Color {
             blue,
             alpha,
         }
+    }
+
+    #[must_use]
+    pub const fn red(self) -> u8 {
+        self.red
+    }
+    #[must_use]
+    pub const fn green(self) -> u8 {
+        self.green
+    }
+    #[must_use]
+    pub const fn blue(self) -> u8 {
+        self.blue
+    }
+    #[must_use]
+    pub const fn alpha(self) -> u8 {
+        self.alpha
     }
 }
 
@@ -122,15 +139,34 @@ pub struct ElevationTokens {
 }
 
 /// Semantic timings; presenters select a named transition rather than milliseconds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MotionTokens {
-    pub piece_move_ms: u16,
-    pub card_deal_ms: u16,
-    pub invalid_ms: u16,
-    pub phase_change_ms: u16,
-    pub win_ms: u16,
-    pub lose_ms: u16,
-    pub reduced_duration_scale_percent: u8,
+    pub instant_ms: u16,
+    pub short_ms: u16,
+    pub medium_ms: u16,
+    pub long_ms: u16,
+    pub xlong_ms: u16,
+    pub stagger_ms: u16,
+    pub spring_snappy: Spring,
+    pub spring_standard: Spring,
+    pub spring_weighty: Spring,
+    pub spring_bouncy: Spring,
+    pub reduced: ReducedMotion,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Spring {
+    pub stiffness: f32,
+    pub damping: f32,
+    pub mass: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReducedMotion {
+    pub duration_scale_percent: u8,
+    pub prefer_fade: bool,
+    pub disable_ambient: bool,
+    pub keep_informative: bool,
 }
 
 /// State-layer opacities, represented as percentages to avoid invalid values.
@@ -169,9 +205,9 @@ mod tests {
             }
         }
         fn luminance(color: Color) -> f32 {
-            0.2126 * channel(color.red)
-                + 0.7152 * channel(color.green)
-                + 0.0722 * channel(color.blue)
+            0.2126 * channel(color.red())
+                + 0.7152 * channel(color.green())
+                + 0.0722 * channel(color.blue())
         }
         let (a, b) = (luminance(a), luminance(b));
         (a.max(b) + 0.05) / (a.min(b) + 0.05)

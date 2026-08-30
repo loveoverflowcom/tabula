@@ -8,11 +8,23 @@
   --sys-color-outline: #79747E;
   --sys-color-primary: #5634BE;
   --sys-color-on-primary: #FFFFFF;
+  --sys-color-success: #106F3D;
+  --sys-color-on-success: #FFFFFF;
   --sys-color-danger: #BA1A1A;
   --sys-color-on-danger: #FFFFFF;
+  --sys-color-turn-active: #006341;
+  --sys-color-turn-waiting: #5E5868;
+  --sys-color-legal-target: #007044;
+  --sys-color-illegal-target: #BA1A1A;
+  --sys-color-selected: #5634BE;
+  --sys-color-last-action: #B07000;
+  --sys-color-threat: #BA1A1A;
+  --sys-color-hidden: #4C4E58;
+  --sys-space-md: 16px;
   --sys-shape-button: 14px;
-  --sys-motion-piece-move: 280ms;
+  --sys-motion-medium: 280ms;
   --sys-state-hover: 0.08;
+  --sys-density-min-target: 44px;
 }
 
 :root[data-theme="dark"] {
@@ -24,11 +36,23 @@
   --sys-color-outline: #938F99;
   --sys-color-primary: #CFBCFF;
   --sys-color-on-primary: #32007E;
+  --sys-color-success: #74F8A6;
+  --sys-color-on-success: #00391A;
   --sys-color-danger: #FFB4AB;
   --sys-color-on-danger: #690005;
+  --sys-color-turn-active: #73E2A3;
+  --sys-color-turn-waiting: #CAC3CE;
+  --sys-color-legal-target: #74F8A6;
+  --sys-color-illegal-target: #FFB4AB;
+  --sys-color-selected: #CFBCFF;
+  --sys-color-last-action: #FFDDB1;
+  --sys-color-threat: #FFB4AB;
+  --sys-color-hidden: #C8C6D0;
+  --sys-space-md: 16px;
   --sys-shape-button: 14px;
-  --sys-motion-piece-move: 280ms;
+  --sys-motion-medium: 280ms;
   --sys-state-hover: 0.08;
+  --sys-density-min-target: 44px;
 }
 
 :root[data-theme="hc-light"] {
@@ -40,11 +64,23 @@
   --sys-color-outline: #000000;
   --sys-color-primary: #2C0078;
   --sys-color-on-primary: #FFFFFF;
+  --sys-color-success: #005A20;
+  --sys-color-on-success: #FFFFFF;
   --sys-color-danger: #910000;
   --sys-color-on-danger: #FFFFFF;
+  --sys-color-turn-active: #005A20;
+  --sys-color-turn-waiting: #000000;
+  --sys-color-legal-target: #005A20;
+  --sys-color-illegal-target: #910000;
+  --sys-color-selected: #2C0078;
+  --sys-color-last-action: #6B4700;
+  --sys-color-threat: #910000;
+  --sys-color-hidden: #333333;
+  --sys-space-md: 16px;
   --sys-shape-button: 14px;
-  --sys-motion-piece-move: 280ms;
+  --sys-motion-medium: 280ms;
   --sys-state-hover: 0.08;
+  --sys-density-min-target: 44px;
 }
 
 :root[data-theme="hc-dark"] {
@@ -56,9 +92,21 @@
   --sys-color-outline: #FFFFFF;
   --sys-color-primary: #E0D3FF;
   --sys-color-on-primary: #190050;
+  --sys-color-success: #86FFA9;
+  --sys-color-on-success: #00391A;
   --sys-color-danger: #FFDAD6;
   --sys-color-on-danger: #690005;
+  --sys-color-turn-active: #86FFA9;
+  --sys-color-turn-waiting: #FFFFFF;
+  --sys-color-legal-target: #86FFA9;
+  --sys-color-illegal-target: #FFDAD6;
+  --sys-color-selected: #E0D3FF;
+  --sys-color-last-action: #FFE0A6;
+  --sys-color-threat: #FFDAD6;
+  --sys-color-hidden: #D0CCD5;
+  --sys-space-md: 16px;
   --sys-shape-button: 14px;
-  --sys-motion-piece-move: 280ms;
+  --sys-motion-medium: 280ms;
   --sys-state-hover: 0.08;
+  --sys-density-min-target: 44px;
 }

@@ -32,11 +32,11 @@ impl HeadlessRenderer {
         width: u32,
         height: u32,
         background: Color,
-    ) -> RasterImage {
+    ) -> Result<RasterImage, RasterError> {
         let mut pixmap =
-            tiny_skia::Pixmap::new(width, height).expect("non-zero checked image dimensions");
+            tiny_skia::Pixmap::new(width, height).ok_or(RasterError::InvalidDimensions)?;
         pixmap.fill(to_skia(background));
-        for command in &list.commands {
+        for command in list.commands() {
             if let RenderCmd::Rect {
                 rect,
                 fill: Some(Paint::Solid(color)),
@@ -50,11 +50,11 @@ impl HeadlessRenderer {
                 }
             }
         }
-        RasterImage {
+        Ok(RasterImage {
             width,
             height,
             rgba: pixmap.data().to_vec(),
-        }
+        })
     }
 }
 
@@ -105,6 +105,10 @@ pub struct RasterImage {
     pub height: u32,
     pub rgba: Vec<u8>,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RasterError {
+    InvalidDimensions,
+}
 impl RasterImage {
     #[must_use]
     pub fn checksum(&self) -> u64 {
@@ -115,12 +119,15 @@ impl RasterImage {
 }
 
 fn to_skia(color: Color) -> tiny_skia::Color {
-    tiny_skia::Color::from_rgba8(color.red, color.green, color.blue, color.alpha)
+    tiny_skia::Color::from_rgba8(color.red(), color.green(), color.blue(), color.alpha())
 }
 fn fill_rect(pixmap: &mut tiny_skia::Pixmap, rect: Rect, color: Color) {
-    let Some(rect) =
-        tiny_skia::Rect::from_xywh(rect.origin.x, rect.origin.y, rect.size.x, rect.size.y)
-    else {
+    let Some(rect) = tiny_skia::Rect::from_xywh(
+        rect.origin().x,
+        rect.origin().y,
+        rect.size().x,
+        rect.size().y,
+    ) else {
         return;
     };
     let mut paint = tiny_skia::Paint::default();
@@ -131,27 +138,28 @@ fn fill_rect(pixmap: &mut tiny_skia::Pixmap, rect: Rect, color: Color) {
 fn stroke_rect(pixmap: &mut tiny_skia::Pixmap, rect: Rect, width: f32, color: Color) {
     // tiny-skia does not expose a rectangle stroke helper. Four filled strips
     // are deterministic and sufficient for the contract's simple border.
-    let horizontal = width.min(rect.size.y / 2.0);
-    let vertical = width.min(rect.size.x / 2.0);
-    for border in [
-        Rect {
-            origin: rect.origin,
-            size: glam::vec2(rect.size.x, horizontal),
-        },
-        Rect {
-            origin: glam::vec2(rect.origin.x, rect.origin.y + rect.size.y - horizontal),
-            size: glam::vec2(rect.size.x, horizontal),
-        },
-        Rect {
-            origin: rect.origin,
-            size: glam::vec2(vertical, rect.size.y),
-        },
-        Rect {
-            origin: glam::vec2(rect.origin.x + rect.size.x - vertical, rect.origin.y),
-            size: glam::vec2(vertical, rect.size.y),
-        },
+    let horizontal = width.min(rect.size().y / 2.0);
+    let vertical = width.min(rect.size().x / 2.0);
+    for (origin, size) in [
+        (rect.origin(), glam::vec2(rect.size().x, horizontal)),
+        (
+            glam::vec2(
+                rect.origin().x,
+                rect.origin().y + rect.size().y - horizontal,
+            ),
+            glam::vec2(rect.size().x, horizontal),
+        ),
+        (rect.origin(), glam::vec2(vertical, rect.size().y)),
+        (
+            glam::vec2(rect.origin().x + rect.size().x - vertical, rect.origin().y),
+            glam::vec2(vertical, rect.size().y),
+        ),
     ] {
-        fill_rect(pixmap, border, color);
+        fill_rect(
+            pixmap,
+            Rect::new(origin, size).expect("derived border is valid"),
+            color,
+        );
     }
 }
 
@@ -198,10 +206,26 @@ mod tests {
         assert_eq!(
             renderer
                 .rasterize(&list, 4, 4, Color::rgb(0, 0, 0))
+                .unwrap()
                 .checksum(),
             renderer
                 .rasterize(&list, 4, 4, Color::rgb(0, 0, 0))
+                .unwrap()
                 .checksum()
         );
+    }
+
+    #[test]
+    fn rasterization_rejects_zero_sized_images() {
+        let list = RenderListBuilder::new(Camera2D::default())
+            .finish()
+            .unwrap();
+        let renderer = HeadlessRenderer::default();
+        for (width, height) in [(0, 1), (1, 0), (0, 0)] {
+            assert_eq!(
+                renderer.rasterize(&list, width, height, Color::rgb(0, 0, 0)),
+                Err(RasterError::InvalidDimensions)
+            );
+        }
     }
 }

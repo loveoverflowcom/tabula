@@ -99,20 +99,46 @@ fn has_raw_color(line: &str) -> bool {
     let compact = line.replace(' ', "");
     compact.contains("Color::rgb(")
         || compact.contains("Color::rgba(")
-        || (line.contains('#')
-            && line
-                .as_bytes()
-                .windows(7)
-                .any(|window| window[0] == b'#' && window[1..].iter().all(u8::is_ascii_hexdigit)))
+        || compact.contains("Color{")
+        || compact.to_ascii_lowercase().contains("rgb(")
+        || contains_hex_literal(line)
+}
+
+fn contains_hex_literal(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    for (index, byte) in bytes.iter().enumerate() {
+        if *byte != b'#' {
+            continue;
+        }
+        let count = bytes[index + 1..]
+            .iter()
+            .take_while(|byte| byte.is_ascii_hexdigit())
+            .count();
+        if matches!(count, 3 | 4 | 6 | 8)
+            && !bytes
+                .get(index + 1 + count)
+                .is_some_and(u8::is_ascii_hexdigit)
+        {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn detects_hex_and_constructor_but_not_commentary() {
+    fn detects_bypass_forms_but_not_commentary() {
         assert!(has_raw_color("let c = #abcdef;"));
+        assert!(has_raw_color("color: #fff;"));
+        assert!(has_raw_color("color: #ff000080;"));
         assert!(has_raw_color("Color::rgb(1, 2, 3)"));
+        assert!(has_raw_color(
+            "Color { red: 255, green: 0, blue: 0, alpha: 255 }"
+        ));
+        assert!(has_raw_color("color: rgb(255 0 0);"));
+        assert!(!has_raw_color("// Color { red: 255 }"));
         assert!(!has_raw_color("use semantic tokens"));
     }
 }

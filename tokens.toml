@@ -33,19 +33,8 @@ danger-source    = "#D0453B"
 # Tier 2 — system (semantic). What code and design actually use.
 # ---------------------------------------------------------------------------
 [sys.color]
-# Surfaces, brand, and feedback follow the usual M3 roles. The GAME-SEMANTIC
-# tokens below are the ones that justify building a design system for a board
-# game platform rather than reusing a web one — they are what makes a board
-# legible at a glance, and they must be colourblind-safe.
-turn-active    = "TODO"   # whose turn it is
-turn-waiting   = "TODO"
-legal-target   = "TODO"   # a legal destination
-illegal-target = "TODO"
-selected       = "TODO"
-last-action    = "TODO"   # "the opponent just did this"
-threat         = "TODO"   # check, danger, being voted
-hidden         = "TODO"   # card backs, fog, unknown role
-# team[0..8] and seat_marker[0..8] are generated as colourblind-safe sets.
+# Every semantic colour is scheme-specific and lives in `[schemes.*]` below.
+# There is intentionally no fallback palette: Rust and CSS must choose a theme.
 
 # Concrete semantic schemes. Reference palette values above remain the only raw
 # palette inputs; these resolved values are emitted into Rust, CSS, and JSON.
@@ -60,6 +49,18 @@ primary = "#5634BE"
 on-primary = "#FFFFFF"
 danger = "#BA1A1A"
 on-danger = "#FFFFFF"
+success = "#106F3D"
+on-success = "#FFFFFF"
+turn-active = "#006341"
+turn-waiting = "#5E5868"
+legal-target = "#007044"
+illegal-target = "#BA1A1A"
+selected = "#5634BE"
+last-action = "#B07000"
+threat = "#BA1A1A"
+hidden = "#4C4E58"
+team = ["#005F73", "#CA6702", "#6D597A", "#127D66", "#B64664", "#385F91", "#79521E", "#5E587E"]
+seat-marker = ["#005F73", "#CA6702", "#6D597A", "#127D66", "#B64664", "#385F91", "#79521E", "#5E587E"]
 
 [schemes.dark]
 surface = "#141217"
@@ -72,6 +73,18 @@ primary = "#CFBCFF"
 on-primary = "#32007E"
 danger = "#FFB4AB"
 on-danger = "#690005"
+success = "#74F8A6"
+on-success = "#00391A"
+turn-active = "#73E2A3"
+turn-waiting = "#CAC3CE"
+legal-target = "#74F8A6"
+illegal-target = "#FFB4AB"
+selected = "#CFBCFF"
+last-action = "#FFDDB1"
+threat = "#FFB4AB"
+hidden = "#C8C6D0"
+team = ["#66D9EF", "#FFB86C", "#D6A5E8", "#74F8A6", "#FF9DB8", "#8AB4F8", "#E8C48A", "#B8B0FF"]
+seat-marker = ["#66D9EF", "#FFB86C", "#D6A5E8", "#74F8A6", "#FF9DB8", "#8AB4F8", "#E8C48A", "#B8B0FF"]
 
 [schemes.hc-light]
 surface = "#FFFFFF"
@@ -84,6 +97,18 @@ primary = "#2C0078"
 on-primary = "#FFFFFF"
 danger = "#910000"
 on-danger = "#FFFFFF"
+success = "#005A20"
+on-success = "#FFFFFF"
+turn-active = "#005A20"
+turn-waiting = "#000000"
+legal-target = "#005A20"
+illegal-target = "#910000"
+selected = "#2C0078"
+last-action = "#6B4700"
+threat = "#910000"
+hidden = "#333333"
+team = ["#004B5C", "#984D00", "#4B3158", "#005A20", "#8F153C", "#003D7A", "#5E3E00", "#42306D"]
+seat-marker = ["#004B5C", "#984D00", "#4B3158", "#005A20", "#8F153C", "#003D7A", "#5E3E00", "#42306D"]
 
 [schemes.hc-dark]
 surface = "#000000"
@@ -96,6 +121,18 @@ primary = "#E0D3FF"
 on-primary = "#190050"
 danger = "#FFDAD6"
 on-danger = "#690005"
+success = "#86FFA9"
+on-success = "#00391A"
+turn-active = "#86FFA9"
+turn-waiting = "#FFFFFF"
+legal-target = "#86FFA9"
+illegal-target = "#FFDAD6"
+selected = "#E0D3FF"
+last-action = "#FFE0A6"
+threat = "#FFDAD6"
+hidden = "#D0CCD5"
+team = ["#7DEBFF", "#FFD39B", "#EFC8FF", "#86FFA9", "#FFB0C7", "#B4C5FF", "#FFE0A6", "#D7C8FF"]
+seat-marker = ["#7DEBFF", "#FFD39B", "#EFC8FF", "#86FFA9", "#FFB0C7", "#B4C5FF", "#FFE0A6", "#D7C8FF"]
 
 [sys.space]
 scale = [0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64]
@@ -103,6 +140,12 @@ scale = [0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64]
 [sys.shape]
 scale    = ["none", "xs", "sm", "md", "lg", "xl", "full"]
 semantic = ["card", "board", "token", "sheet", "button", "chip"]
+
+[sys.shape.values]
+card = 16.0
+board = 12.0
+button = 14.0
+chip = 8.0
 
 [sys.type]
 # roles x sizes; `mono` has only md/sm.
@@ -147,6 +190,15 @@ keep-informative = true    # a piece move CARRIES INFORMATION: shorten, do not r
 [sys.density]
 scale      = 1.0
 min-target = 44.0          # dp. Enforced; a debug overlay flags smaller hit rects.
+
+[sys.elevation]
+low = 1
+medium = 2
+high = 3
+
+[sys.focus]
+ring-width = 3.0
+ring-color = "primary"
 
 # ---------------------------------------------------------------------------
 # Tier 3 — component. Only where a component must deviate, WITH A WRITTEN REASON.

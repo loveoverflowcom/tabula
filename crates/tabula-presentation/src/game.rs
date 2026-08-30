@@ -31,7 +31,7 @@ pub struct Intent<C> {
 /// @ai.pure true
 /// @ai.invariant projection-only-input
 /// @ai.invariant local-state-never-canonical
-/// @ai.evidence render::tests::builder_orders_draws_within_render_scopes
+/// @ai.evidence render::tests::scoped_draws_respect_global_layer_order
 #[allow(clippy::doc_markdown)]
 pub trait GamePresentation: Send + 'static {
     type Rules: GameRules;

@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use glam::{Affine2, Vec2};
 use smallvec::SmallVec;
 use tabula_design::Color;
@@ -7,8 +5,8 @@ use tabula_design::Color;
 /// A screen-space rectangle. Construction rejects non-finite and negative sizes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rect {
-    pub origin: Vec2,
-    pub size: Vec2,
+    origin: Vec2,
+    size: Vec2,
 }
 
 impl Rect {
@@ -25,6 +23,14 @@ impl Rect {
             && point.y >= self.origin.y
             && point.x <= self.origin.x + self.size.x
             && point.y <= self.origin.y + self.size.y
+    }
+    #[must_use]
+    pub const fn origin(self) -> Vec2 {
+        self.origin
+    }
+    #[must_use]
+    pub const fn size(self) -> Vec2 {
+        self.size
     }
 }
 
@@ -67,15 +73,28 @@ impl Layer {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Camera2D {
-    pub center: Vec2,
-    pub zoom: f32,
+    center: Vec2,
+    zoom: f32,
+}
+impl Camera2D {
+    pub fn new(center: Vec2, zoom: f32) -> Result<Self, RenderListError> {
+        if !center.is_finite() || !zoom.is_finite() || zoom <= 0.0 {
+            return Err(RenderListError::InvalidCamera);
+        }
+        Ok(Self { center, zoom })
+    }
+    #[must_use]
+    pub const fn center(self) -> Vec2 {
+        self.center
+    }
+    #[must_use]
+    pub const fn zoom(self) -> f32 {
+        self.zoom
+    }
 }
 impl Default for Camera2D {
     fn default() -> Self {
-        Self {
-            center: Vec2::ZERO,
-            zoom: 1.0,
-        }
+        Self::new(Vec2::ZERO, 1.0).expect("default camera is valid")
     }
 }
 
@@ -173,26 +192,46 @@ pub enum RenderCmd {
     },
     PushClip {
         rect: Rect,
+        layer: Layer,
+        z: i16,
     },
-    PopClip,
+    PopClip {
+        layer: Layer,
+        z: i16,
+    },
     PushTransform {
         matrix: Affine2,
+        layer: Layer,
+        z: i16,
     },
-    PopTransform,
+    PopTransform {
+        layer: Layer,
+        z: i16,
+    },
     PushOpacity {
         opacity: Opacity,
+        layer: Layer,
+        z: i16,
     },
-    PopOpacity,
+    PopOpacity {
+        layer: Layer,
+        z: i16,
+    },
 }
 
 impl RenderCmd {
-    fn draw_key(&self) -> Option<(Layer, i16)> {
+    fn key(&self) -> (Layer, i16) {
         match self {
             Self::Sprite { layer, z, .. }
             | Self::Rect { layer, z, .. }
             | Self::Text { layer, z, .. }
-            | Self::Path { layer, z, .. } => Some((*layer, *z)),
-            _ => None,
+            | Self::Path { layer, z, .. }
+            | Self::PushClip { layer, z, .. }
+            | Self::PopClip { layer, z }
+            | Self::PushTransform { layer, z, .. }
+            | Self::PopTransform { layer, z }
+            | Self::PushOpacity { layer, z, .. }
+            | Self::PopOpacity { layer, z } => (*layer, *z),
         }
     }
 }
@@ -203,12 +242,22 @@ impl RenderCmd {
 /// @ai.domain presentation.render
 /// @ai.invariant balanced-render-state
 /// @ai.law deterministic-layer-order
-/// @ai.evidence tests::builder_orders_draws_within_render_scopes
+/// @ai.evidence tests::scoped_draws_respect_global_layer_order
 #[allow(clippy::doc_markdown)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct RenderList {
-    pub commands: Vec<RenderCmd>,
-    pub camera: Camera2D,
+    commands: Vec<RenderCmd>,
+    camera: Camera2D,
+}
+impl RenderList {
+    #[must_use]
+    pub fn commands(&self) -> &[RenderCmd] {
+        &self.commands
+    }
+    #[must_use]
+    pub const fn camera(&self) -> Camera2D {
+        self.camera
+    }
 }
 
 /// Fallible builder that validates geometry and balances state stacks before exposing a list.
@@ -216,9 +265,19 @@ pub struct RenderList {
 pub struct RenderListBuilder {
     camera: Camera2D,
     commands: Vec<RenderCmd>,
-    clip_depth: usize,
-    transform_depth: usize,
-    opacity_depth: usize,
+    scopes: Vec<Scope>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ScopeKind {
+    Clip,
+    Transform,
+    Opacity,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Scope {
+    kind: ScopeKind,
+    key: (Layer, i16),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -229,6 +288,8 @@ pub enum RenderListError {
     UnbalancedClip,
     UnbalancedTransform,
     UnbalancedOpacity,
+    ScopeLayerMismatch,
+    InvalidCamera,
 }
 
 impl RenderListBuilder {
@@ -241,59 +302,67 @@ impl RenderListBuilder {
     }
     pub fn push(&mut self, command: RenderCmd) -> Result<(), RenderListError> {
         Self::validate(&command)?;
-        match command {
-            RenderCmd::PushClip { .. } => self.clip_depth += 1,
-            RenderCmd::PopClip => {
-                self.clip_depth = self
-                    .clip_depth
-                    .checked_sub(1)
-                    .ok_or(RenderListError::UnbalancedClip)?;
-            }
-            RenderCmd::PushTransform { .. } => self.transform_depth += 1,
-            RenderCmd::PopTransform => {
-                self.transform_depth = self
-                    .transform_depth
-                    .checked_sub(1)
-                    .ok_or(RenderListError::UnbalancedTransform)?;
-            }
-            RenderCmd::PushOpacity { .. } => self.opacity_depth += 1,
-            RenderCmd::PopOpacity => {
-                self.opacity_depth = self
-                    .opacity_depth
-                    .checked_sub(1)
-                    .ok_or(RenderListError::UnbalancedOpacity)?;
-            }
-            _ => {}
-        }
+        self.update_scopes(&command)?;
         self.commands.push(command);
         Ok(())
     }
     pub fn finish(mut self) -> Result<RenderList, RenderListError> {
-        if self.clip_depth != 0 {
-            return Err(RenderListError::UnbalancedClip);
+        if let Some(scope) = self.scopes.last() {
+            return Err(Self::unbalanced(scope.kind));
         }
-        if self.transform_depth != 0 {
-            return Err(RenderListError::UnbalancedTransform);
-        }
-        if self.opacity_depth != 0 {
-            return Err(RenderListError::UnbalancedOpacity);
-        }
-        // State operations delimit scopes. Sorting only inside a scope preserves clipping,
-        // transform, and opacity semantics while still giving deterministic layer/z order.
-        let mut start = 0;
-        for index in 0..=self.commands.len() {
-            if index == self.commands.len() || self.commands[index].draw_key().is_none() {
-                self.commands[start..index].sort_by(|a, b| match (a.draw_key(), b.draw_key()) {
-                    (Some(left), Some(right)) => left.cmp(&right),
-                    _ => Ordering::Equal,
-                });
-                start = index + 1;
-            }
-        }
+        // Scope operations carry the same key as their contents. Stable global
+        // sorting therefore preserves each scope as a contiguous group while
+        // making layer/z ordering true for the entire list.
+        self.commands.sort_by_key(RenderCmd::key);
         Ok(RenderList {
             commands: self.commands,
             camera: self.camera,
         })
+    }
+    fn update_scopes(&mut self, command: &RenderCmd) -> Result<(), RenderListError> {
+        let key = command.key();
+        if self.scopes.last().is_some_and(|scope| scope.key != key) {
+            return Err(RenderListError::ScopeLayerMismatch);
+        }
+        match command {
+            RenderCmd::PushClip { .. } => self.scopes.push(Scope {
+                kind: ScopeKind::Clip,
+                key,
+            }),
+            RenderCmd::PushTransform { .. } => self.scopes.push(Scope {
+                kind: ScopeKind::Transform,
+                key,
+            }),
+            RenderCmd::PushOpacity { .. } => self.scopes.push(Scope {
+                kind: ScopeKind::Opacity,
+                key,
+            }),
+            RenderCmd::PopClip { .. } => self.pop_scope(ScopeKind::Clip, key)?,
+            RenderCmd::PopTransform { .. } => self.pop_scope(ScopeKind::Transform, key)?,
+            RenderCmd::PopOpacity { .. } => self.pop_scope(ScopeKind::Opacity, key)?,
+            _ => {}
+        }
+        Ok(())
+    }
+    fn pop_scope(&mut self, kind: ScopeKind, key: (Layer, i16)) -> Result<(), RenderListError> {
+        let Some(scope) = self.scopes.last().copied() else {
+            return Err(Self::unbalanced(kind));
+        };
+        if scope.kind != kind {
+            return Err(Self::unbalanced(kind));
+        }
+        if scope.key != key {
+            return Err(RenderListError::ScopeLayerMismatch);
+        }
+        self.scopes.pop();
+        Ok(())
+    }
+    fn unbalanced(kind: ScopeKind) -> RenderListError {
+        match kind {
+            ScopeKind::Clip => RenderListError::UnbalancedClip,
+            ScopeKind::Transform => RenderListError::UnbalancedTransform,
+            ScopeKind::Opacity => RenderListError::UnbalancedOpacity,
+        }
     }
     fn validate(command: &RenderCmd) -> Result<(), RenderListError> {
         let finite = |v: Vec2| v.is_finite();
@@ -347,8 +416,8 @@ impl RenderListBuilder {
                     return Err(RenderListError::InvalidGeometry);
                 }
             }
-            RenderCmd::PushClip { rect } => Self::valid_rect(*rect)?,
-            RenderCmd::PushTransform { matrix } => {
+            RenderCmd::PushClip { rect, .. } => Self::valid_rect(*rect)?,
+            RenderCmd::PushTransform { matrix, .. } => {
                 if !matrix.matrix2.x_axis.is_finite()
                     || !matrix.matrix2.y_axis.is_finite()
                     || !finite(matrix.translation)
@@ -357,9 +426,9 @@ impl RenderListBuilder {
                 }
             }
             RenderCmd::PushOpacity { .. }
-            | RenderCmd::PopClip
-            | RenderCmd::PopTransform
-            | RenderCmd::PopOpacity => {}
+            | RenderCmd::PopClip { .. }
+            | RenderCmd::PopTransform { .. }
+            | RenderCmd::PopOpacity { .. } => {}
         }
         Ok(())
     }
@@ -390,39 +459,61 @@ mod tests {
         }
     }
     #[test]
-    fn builder_orders_draws_within_render_scopes() {
+    fn scoped_draws_respect_global_layer_order() {
         let mut builder = RenderListBuilder::new(Camera2D::default());
-        builder.push(rect(Layer::HUD, 1)).unwrap();
-        builder.push(rect(Layer::BOARD, 2)).unwrap();
+        builder.push(rect(Layer::HUD, 0)).unwrap();
         builder
             .push(RenderCmd::PushOpacity {
                 opacity: Opacity::try_from(0.5).unwrap(),
+                layer: Layer::BOARD,
+                z: 0,
             })
             .unwrap();
-        builder.push(rect(Layer::PIECES, 0)).unwrap();
-        builder.push(RenderCmd::PopOpacity).unwrap();
+        builder.push(rect(Layer::BOARD, 0)).unwrap();
+        builder
+            .push(RenderCmd::PopOpacity {
+                layer: Layer::BOARD,
+                z: 0,
+            })
+            .unwrap();
         let list = builder.finish().unwrap();
         assert!(matches!(
-            list.commands[0],
+            list.commands()[0],
+            RenderCmd::PushOpacity {
+                layer: Layer::BOARD,
+                ..
+            }
+        ));
+        assert!(matches!(
+            list.commands()[1],
             RenderCmd::Rect {
                 layer: Layer::BOARD,
                 ..
             }
         ));
         assert!(matches!(
-            list.commands[1],
+            list.commands()[2],
+            RenderCmd::PopOpacity {
+                layer: Layer::BOARD,
+                ..
+            }
+        ));
+        assert!(matches!(
+            list.commands()[3],
             RenderCmd::Rect {
                 layer: Layer::HUD,
                 ..
             }
         ));
-        assert!(matches!(list.commands[2], RenderCmd::PushOpacity { .. }));
     }
     #[test]
     fn builder_rejects_unbalanced_state() {
         let mut builder = RenderListBuilder::new(Camera2D::default());
         assert_eq!(
-            builder.push(RenderCmd::PopClip),
+            builder.push(RenderCmd::PopClip {
+                layer: Layer::BOARD,
+                z: 0
+            }),
             Err(RenderListError::UnbalancedClip)
         );
     }
@@ -430,5 +521,31 @@ mod tests {
     fn opacity_is_a_proof_barrier() {
         assert_eq!(Opacity::try_from(1.01), Err(OpacityError::OutOfRange));
         assert_eq!(Opacity::try_from(f32::NAN), Err(OpacityError::NonFinite));
+    }
+    #[test]
+    fn scoped_draws_cannot_mix_layer_keys() {
+        let mut builder = RenderListBuilder::new(Camera2D::default());
+        builder
+            .push(RenderCmd::PushClip {
+                rect: Rect::new(Vec2::ZERO, Vec2::ONE).unwrap(),
+                layer: Layer::BOARD,
+                z: 0,
+            })
+            .unwrap();
+        assert_eq!(
+            builder.push(rect(Layer::HUD, 0)),
+            Err(RenderListError::ScopeLayerMismatch)
+        );
+    }
+    #[test]
+    fn camera_constructor_rejects_non_finite_and_zero_zoom() {
+        assert_eq!(
+            Camera2D::new(Vec2::splat(f32::NAN), 1.0),
+            Err(RenderListError::InvalidCamera)
+        );
+        assert_eq!(
+            Camera2D::new(Vec2::ZERO, 0.0),
+            Err(RenderListError::InvalidCamera)
+        );
     }
 }

@@ -24,7 +24,7 @@ pub struct RenderError(pub String);
 /// @ai.domain presentation.renderer
 /// @ai.pure false
 /// @ai.invariant backend-types-do-not-leak
-/// @ai.evidence render::tests::builder_orders_draws_within_render_scopes
+/// @ai.evidence render::tests::scoped_draws_respect_global_layer_order
 #[allow(clippy::doc_markdown)]
 pub trait Renderer {
     fn begin_frame(&mut self, viewport: Vec2, dpi: f32, now_ms: u64, theme: Theme) -> FrameCtx;
