@@ -241,13 +241,143 @@ pub enum FontFamilyRole {
 /// One resolved semantic text style in logical units.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextStyle {
-    pub family: FontFamilyRole,
-    pub size: Positive,
-    pub line_height: Positive,
-    pub weight: u16,
-    pub letter_spacing: f32,
-    pub tabular_figures: bool,
+    family: FontFamilyRole,
+    size: Positive,
+    line_height: Positive,
+    weight: FontWeight,
+    letter_spacing: LetterSpacing,
+    tabular_figures: bool,
 }
+
+impl TextStyle {
+    /// Constructs a text style after checking all metrics at the API boundary.
+    ///
+    /// @ai.role proof-constructor
+    /// @ai.domain design.typography
+    /// @ai.invariant valid-text-metrics
+    /// @ai.evidence tests::text_style_constructor_closes_metric_bypass
+    #[allow(clippy::doc_markdown)]
+    pub fn new(
+        family: FontFamilyRole,
+        size: Positive,
+        line_height: Positive,
+        weight: u16,
+        letter_spacing: f32,
+        tabular_figures: bool,
+    ) -> Result<Self, TextStyleError> {
+        Ok(Self {
+            family,
+            size,
+            line_height,
+            weight: FontWeight::new(weight)?,
+            letter_spacing: LetterSpacing::new(letter_spacing)?,
+            tabular_figures,
+        })
+    }
+
+    /// Used only by generated themes after source validation.
+    pub(crate) const fn generated(
+        family: FontFamilyRole,
+        size: f32,
+        line_height: f32,
+        weight: u16,
+        letter_spacing: f32,
+        tabular_figures: bool,
+    ) -> Self {
+        Self {
+            family,
+            size: Positive::generated(size),
+            line_height: Positive::generated(line_height),
+            weight: FontWeight::generated(weight),
+            letter_spacing: LetterSpacing::generated(letter_spacing),
+            tabular_figures,
+        }
+    }
+
+    #[must_use]
+    pub const fn family(self) -> FontFamilyRole {
+        self.family
+    }
+    #[must_use]
+    pub const fn size(self) -> Positive {
+        self.size
+    }
+    #[must_use]
+    pub const fn line_height(self) -> Positive {
+        self.line_height
+    }
+    #[must_use]
+    pub const fn weight(self) -> FontWeight {
+        self.weight
+    }
+    #[must_use]
+    pub const fn letter_spacing(self) -> LetterSpacing {
+        self.letter_spacing
+    }
+    #[must_use]
+    pub const fn tabular_figures(self) -> bool {
+        self.tabular_figures
+    }
+}
+
+/// A positive font weight accepted by a semantic text style.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FontWeight(u16);
+
+impl FontWeight {
+    pub fn new(value: u16) -> Result<Self, TextStyleError> {
+        (value > 0)
+            .then_some(Self(value))
+            .ok_or(TextStyleError::InvalidWeight)
+    }
+    pub(crate) const fn generated(value: u16) -> Self {
+        assert!(value > 0);
+        Self(value)
+    }
+    #[must_use]
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+}
+
+/// A finite tracking value; negative values are valid for display typography.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LetterSpacing(f32);
+
+impl LetterSpacing {
+    pub fn new(value: f32) -> Result<Self, TextStyleError> {
+        value
+            .is_finite()
+            .then_some(Self(value))
+            .ok_or(TextStyleError::NonFiniteLetterSpacing)
+    }
+    pub(crate) const fn generated(value: f32) -> Self {
+        assert!(value.is_finite());
+        Self(value)
+    }
+    #[must_use]
+    pub const fn get(self) -> f32 {
+        self.0
+    }
+}
+
+/// Failure while constructing a semantic text style.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextStyleError {
+    InvalidWeight,
+    NonFiniteLetterSpacing,
+}
+
+impl core::fmt::Display for TextStyleError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidWeight => "font weight must be positive",
+            Self::NonFiniteLetterSpacing => "letter spacing must be finite",
+        })
+    }
+}
+
+impl std::error::Error for TextStyleError {}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextSizes {
@@ -519,8 +649,8 @@ mod tests {
     #[test]
     fn mono_styles_require_tabular_figures() {
         let theme = Theme::by_kind(ThemeKind::Light);
-        assert!(theme.text_style(TextStyleToken::MonoMd).tabular_figures);
-        assert!(theme.text_style(TextStyleToken::MonoSm).tabular_figures);
+        assert!(theme.text_style(TextStyleToken::MonoMd).tabular_figures());
+        assert!(theme.text_style(TextStyleToken::MonoSm).tabular_figures());
     }
 
     #[test]
@@ -529,5 +659,26 @@ mod tests {
         assert_eq!(NonNegative::new(-0.1), Err(TokenValueError::NonNegative));
         assert_eq!(Positive::new(0.0), Err(TokenValueError::Positive));
         assert_eq!(Positive::new(f32::NAN), Err(TokenValueError::Positive));
+    }
+
+    #[test]
+    fn text_style_constructor_closes_metric_bypass() {
+        let size = Positive::new(16.0).unwrap();
+        let line_height = Positive::new(24.0).unwrap();
+        assert_eq!(
+            TextStyle::new(FontFamilyRole::Text, size, line_height, 0, 0.0, false),
+            Err(TextStyleError::InvalidWeight)
+        );
+        assert_eq!(
+            TextStyle::new(
+                FontFamilyRole::Text,
+                size,
+                line_height,
+                400,
+                f32::NAN,
+                false
+            ),
+            Err(TextStyleError::NonFiniteLetterSpacing)
+        );
     }
 }

@@ -8,7 +8,7 @@
 #![forbid(unsafe_code)]
 
 use glam::{Affine2, Vec2};
-use tabula_design::{Color, Theme};
+use tabula_design::{Color, Positive, Theme};
 use tabula_presentation::{
     Camera2D, Corners, Dpi, FrameCtx, InputEvent, Paint, Rect, RenderCmd, RenderCmdKind,
     RenderError, RenderList, Renderer, TextMetrics, TextStyleToken, Viewport,
@@ -144,14 +144,11 @@ impl Renderer for HeadlessRenderer {
         &self,
         text: &str,
         _style: TextStyleToken,
-        max_width: Option<f32>,
-    ) -> TextMetrics {
+        max_width: Option<Positive>,
+    ) -> Result<TextMetrics, RenderError> {
         let natural = text.chars().count() as f32 * 8.0;
-        let width = max_width.map_or(natural, |max| natural.min(max));
-        TextMetrics {
-            size: glam::vec2(width, 16.0),
-            line_count: 1,
-        }
+        let width = max_width.map_or(natural, |max| natural.min(max.get()));
+        TextMetrics::new(glam::vec2(width, 16.0), 1).map_err(|error| RenderError(error.to_string()))
     }
 
     fn drain_input(&mut self) -> Vec<InputEvent> {

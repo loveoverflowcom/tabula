@@ -16,5 +16,7 @@ pub use render::{
     Align, Border, Camera2D, Corners, GradientStop, Layer, LinearGradient, Opacity, OpacityError,
     Paint, Rect, RenderCmd, RenderCmdKind, RenderList, RenderListBuilder, RenderListError,
 };
-pub use renderer::{Dpi, FrameCtx, FrameCtxError, RenderError, Renderer, TextMetrics, Viewport};
+pub use renderer::{
+    Dpi, FrameCtx, FrameCtxError, RenderError, Renderer, TextMetrics, TextMetricsError, Viewport,
+};
 pub use tabula_design::TextStyleToken;

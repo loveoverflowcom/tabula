@@ -387,7 +387,7 @@ pub enum RenderCmd {
            layer: Layer, z: i16 },
     /// Single-line or wrapped text with a semantic style token.
     Text { text: String, at: Vec2, style: TextStyleToken, align: Align,
-           max_width: Option<f32>, color: Color, layer: Layer, z: i16 },
+           max_width: Option<Positive>, color: Color, layer: Layer, z: i16 },
     /// Straight or quadratic polyline; used for arrows, connections, highlights.
     Path { points: SmallVec<[Vec2; 8]>, stroke: Border, closed: bool,
            fill: Option<Paint>, layer: Layer, z: i16 },
@@ -492,7 +492,7 @@ pub trait Renderer {
     fn begin_frame(&mut self, viewport: Viewport, dpi: Dpi, now_ms: u64, theme: Theme) -> FrameCtx;
     fn submit(&mut self, list: &RenderList) -> Result<(), RenderError>;
     fn end_frame(&mut self) -> Result<(), RenderError>;
-    fn measure_text(&self, text: &str, style: TextStyleToken, max_width: Option<f32>) -> TextMetrics;
+    fn measure_text(&self, text: &str, style: TextStyleToken, max_width: Option<Positive>) -> Result<TextMetrics, RenderError>;
     fn drain_input(&mut self) -> Vec<InputEvent>;
 }
 ```

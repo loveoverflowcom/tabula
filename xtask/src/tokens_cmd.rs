@@ -4,13 +4,12 @@
 //! model -> Rust/CSS/JSON artifacts. The core transformation is pure; file I/O
 //! and rustfmt live only at the outer command boundary.
 
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicU64, Ordering};
-
-use serde::{Deserialize, Serialize};
+use tempfile::Builder;
 
 const SCHEMES: [Scheme; 4] = [
     Scheme {
@@ -56,7 +55,6 @@ const COLOR_KEYS: [&str; 20] = [
     "threat",
     "hidden",
 ];
-static FORMAT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Copy)]
 struct Scheme {
@@ -692,7 +690,14 @@ fn text_style_rust(value: &TextStyleSource) -> String {
         FontFamilySource::Text => "FontFamilyRole::Text",
         FontFamilySource::Mono => "FontFamilyRole::Mono",
     };
-    format!("TextStyle {{ family: {family}, size: positive({}), line_height: positive({}), weight: {}, letter_spacing: {}, tabular_figures: {} }}", float(value.size), float(value.line_height), value.weight, float(value.letter_spacing), matches!(value.family, FontFamilySource::Mono))
+    format!(
+        "TextStyle::generated({family}, {}, {}, {}, {}, {})",
+        float(value.size),
+        float(value.line_height),
+        value.weight,
+        float(value.letter_spacing),
+        matches!(value.family, FontFamilySource::Mono)
+    )
 }
 fn shape_rust(shape: &ShapeSource) -> String {
     format!("ShapeTokens {{ none: non_negative({}), xs: non_negative({}), sm: non_negative({}), md: non_negative({}), lg: non_negative({}), xl: non_negative({}), full: non_negative({}), card: non_negative({}), board: non_negative({}), token: non_negative({}), sheet: non_negative({}), button: non_negative({}), chip: non_negative({}) }}", float(shape.none), float(shape.xs), float(shape.sm), float(shape.md), float(shape.lg), float(shape.xl), float(shape.full), float(shape.card), float(shape.board), float(shape.token), float(shape.sheet), float(shape.button), float(shape.chip))
@@ -1015,8 +1020,22 @@ fn parse_hex(scheme: &str, value: &str) -> Result<(u8, u8, u8), TokenError> {
     Ok((parse(0..2)?, parse(2..4)?, parse(4..6)?))
 }
 fn format_rust(root: &Path, source: &str) -> Result<String, TokenError> {
-    let id = FORMAT_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-    let path = root.join(format!("target/token-generation-{id}.rs"));
+    let target = root.join("target");
+    std::fs::create_dir_all(&target).map_err(|source| TokenError::Write {
+        path: target.clone(),
+        source,
+    })?;
+    // NamedTempFile uses OS-level uniqueness, including across nextest worker
+    // processes. A process-local counter is not sufficient for this trust boundary.
+    let temp = Builder::new()
+        .prefix("token-generation-")
+        .suffix(".rs")
+        .tempfile_in(&target)
+        .map_err(|source| TokenError::Write {
+            path: target,
+            source,
+        })?;
+    let path = temp.path().to_path_buf();
     std::fs::write(&path, source).map_err(|source| TokenError::Write {
         path: path.clone(),
         source,
@@ -1175,5 +1194,32 @@ mod tests {
         assert!(output(&outputs, "crates/tabula-design/src/generated.rs").contains("piece_move:"));
         assert!(output(&outputs, "apps/web/style/tokens.css")
             .contains("--sys-motion-piece-move-duration"));
+    }
+
+    #[test]
+    fn motion_medium_has_an_exact_cross_artifact_oracle() {
+        let changed = source().replacen("medium = 280", "medium = 281", 1);
+        let outputs = rendered(&changed);
+        assert!(output(&outputs, "crates/tabula-design/src/generated.rs")
+            .contains("medium: duration(281)"));
+        assert!(
+            output(&outputs, "apps/web/style/tokens.css").contains("--sys-motion-medium: 281ms;")
+        );
+        assert!(output(&outputs, "docs/ui/tokens.json").contains("\"medium\": 281"));
+    }
+
+    #[test]
+    fn body_medium_weight_has_an_exact_cross_artifact_oracle() {
+        let changed = source().replacen(
+            "size = 14.0\nline-height = 20.0\nweight = 400\nletter-spacing = 0.25",
+            "size = 14.0\nline-height = 20.0\nweight = 500\nletter-spacing = 0.25",
+            1,
+        );
+        let outputs = rendered(&changed);
+        assert!(output(&outputs, "crates/tabula-design/src/generated.rs")
+            .contains("TextStyle::generated(FontFamilyRole::Text, 14.0, 20.0, 500, 0.25, false)"));
+        assert!(output(&outputs, "apps/web/style/tokens.css")
+            .contains("--sys-type-body-md-weight: 500;"));
+        assert!(output(&outputs, "docs/ui/tokens.json").contains("\"weight\": 500"));
     }
 }

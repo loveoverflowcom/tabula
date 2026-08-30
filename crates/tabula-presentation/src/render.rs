@@ -1,6 +1,6 @@
 use glam::{Affine2, Vec2};
 use smallvec::SmallVec;
-use tabula_design::{Color, TextStyleToken};
+use tabula_design::{Color, Positive, TextStyleToken};
 
 type Palette = Color;
 
@@ -309,7 +309,7 @@ pub enum RenderCmd {
         at: Vec2,
         style: TextStyleToken,
         align: Align,
-        max_width: Option<f32>,
+        max_width: Option<Positive>,
         color: Color,
         layer: Layer,
         z: i16,
@@ -608,9 +608,8 @@ impl RenderListBuilder {
             RenderCmd::Rect { rect, .. } | RenderCmd::PushClip { rect, .. } => {
                 Self::valid_rect(*rect)?;
             }
-            RenderCmd::Text { at, max_width, .. } => {
-                if !finite(*at) || max_width.is_some_and(|width| !width.is_finite() || width <= 0.0)
-                {
+            RenderCmd::Text { at, .. } => {
+                if !finite(*at) {
                     return Err(RenderListError::InvalidTextWidth);
                 }
             }
