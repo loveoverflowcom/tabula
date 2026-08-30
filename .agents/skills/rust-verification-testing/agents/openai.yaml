@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Verification Testing"
+  short_description: "Turn invariants and edge cases into evidence"
+  default_prompt: "Use $rust-verification-testing to build an invariant-driven test and verification strategy."

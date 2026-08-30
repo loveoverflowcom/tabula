@@ -1,0 +1,116 @@
+# Human-facing task runner. The machine-facing one is `xtask` (pure Rust,
+# cross-platform, testable). Anything CI depends on must live in xtask, not here —
+# `just` is a convenience wrapper, never a source of truth. (doc 01 §1.4)
+
+default:
+    @just --list
+
+# ---------------------------------------------------------------- development
+
+# Start the local dependency stack: postgres, otel-collector + jaeger, minio.
+# (doc 06 §3.1) — Phase 4; the compose file is a stub until then.
+dev-deps:
+    docker compose -f deploy/compose/dev.yml up -d
+
+dev-deps-down:
+    docker compose -f deploy/compose/dev.yml down
+
+# Run the server against the local stack. Phase 4+.
+server:
+    cargo run -p tabula-server
+
+# Leptos application shell on http://localhost:8080. Phase 5+.
+web:
+    cd apps/web && trunk serve
+
+# Native Macroquad client. Phase 2+.
+client *ARGS:
+    cargo run -p tabula-game-client {{ARGS}}
+
+# ------------------------------------------------------------------ the gate
+# Everything CI runs, in the order that fails fastest first.
+
+check: fmt-check lint deps no-game-ids test
+
+fmt:
+    cargo fmt --all
+
+fmt-check:
+    cargo fmt --all -- --check
+
+lint:
+    cargo clippy --workspace --all-targets -- -D warnings
+
+# I-1 / I-15: the deps.toml matrix, walked over resolved cargo metadata.
+deps:
+    cargo xtask check-deps
+
+# I-9: no platform crate may name a game.
+no-game-ids:
+    cargo xtask check-no-game-ids
+
+# game.toml must equal the compiled GameMetadata/GameCapabilities.
+manifests:
+    cargo xtask check-manifests
+
+test:
+    cargo nextest run --workspace
+
+# Every crate must build with no features and with all features. (doc 01 §5.1)
+features:
+    cargo check --workspace --no-default-features
+    cargo check --workspace --all-features
+
+audit:
+    cargo deny check
+
+# ------------------------------------------------------------- determinism
+
+# The highest-value test we have: bots play each other and every match is
+# checked for determinism, projection safety, and termination. (doc 02 §11.3)
+selfplay game matches="10000":
+    cargo xtask selfplay {{game}} --matches {{matches}}
+
+# Replay a golden or production .tbr and print the first divergence. (doc 05 §8.3)
+replay file:
+    cargo xtask replay {{file}}
+
+# I-8 over the whole committed corpus. Nightly in CI, on demand here.
+replay-all:
+    cargo xtask replay --all
+
+# --------------------------------------------------------------- generation
+# All of these are committed outputs. CI fails if they are stale.
+
+tokens:
+    cargo xtask gen-tokens
+
+protocol-vectors bump:
+    cargo xtask gen-protocol-vectors --bump {{bump}}
+
+pack game:
+    cargo xtask pack-assets {{game}}
+
+new-game slug *ARGS:
+    cargo xtask new-game {{slug}} {{ARGS}}
+
+# ---------------------------------------------------------------- database
+# Phase 4+.
+
+db-reset:
+    cargo xtask db reset
+
+db-migrate:
+    cargo xtask db migrate
+
+# Regenerate .sqlx/ so the workspace builds without a live database.
+sqlx-prepare:
+    cargo sqlx prepare --workspace -- --all-targets
+
+# ------------------------------------------------------------------- builds
+
+wasm-game:
+    cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+
+server-release:
+    cargo build -p tabula-server --profile release-server

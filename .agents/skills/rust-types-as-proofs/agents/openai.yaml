@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Types as Proofs"
+  short_description: "Encode domain invariants in Rust types"
+  default_prompt: "Use $rust-types-as-proofs to redesign these Rust types around explicit invariants."

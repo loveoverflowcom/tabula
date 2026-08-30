@@ -1,0 +1,26 @@
+[package]
+name        = "tabula-design"
+version     = "0.0.0"
+description = "Semantic design tokens, defined once in Rust, generated into CSS and a Theme struct."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 2. Consumed by Leptos (web), presentation (canvas), and the admin UI —
+# so it must not drag any of them into the others.
+# Allowed: serde, optional `palette`. Forbidden: macroquad, tokio.
+# leptos ONLY behind the `leptos-adapter` feature, and only for the CSS emitter.
+[dependencies]
+serde = { workspace = true }
+
+[features]
+default = []
+# Emit CSS custom properties for apps/web (doc 04 §8.1).
+css = []
+# Resolved Theme struct for the Macroquad runtime.
+runtime = []
+leptos-adapter = []
+
+[lints]
+workspace = true

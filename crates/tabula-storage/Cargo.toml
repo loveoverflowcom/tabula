@@ -1,0 +1,28 @@
+[package]
+name        = "tabula-storage"
+version     = "0.0.0"
+description = "The only crate that knows SQL exists: sqlx implementations of every port."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 4. Everything above this crate is testable with in-memory fakes, which
+# keeps the test suite fast and the design honest.
+# FORBIDDEN: axum, game crates, renderers, tabula-registry.
+[dependencies]
+tabula-core     = { workspace = true }
+tabula-game-api = { workspace = true }
+tabula-protocol = { workspace = true }
+thiserror       = { workspace = true }
+
+# Phase 4 — sqlx with COMPILE-TIME-CHECKED queries and a committed .sqlx/ so the
+# workspace builds without a live database (doc 01 §1.2).
+# sqlx    = { workspace = true }
+# tokio   = { workspace = true }
+# tracing = { workspace = true }
+# uuid    = { workspace = true }
+# bytes   = { workspace = true }
+
+[lints]
+workspace = true

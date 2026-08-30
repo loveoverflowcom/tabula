@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust AI Doc Contracts"
+  short_description: "Add machine-readable contracts to Rust docs"
+  default_prompt: "Use $rust-ai-doc-contracts to document and index the contracts of this Rust API."

@@ -1,0 +1,77 @@
+# Nightly jobs — doc 01 §6.1.
+#
+# These are the slow, high-value checks that would blow the 10-minute PR budget.
+# The replay job is the one that matters most: it is the ONLY mechanism that
+# detects determinism rot in production (I-8). Determinism rot is silent —
+# replays start failing months after the commit that broke them — so this job is
+# load-bearing, not decorative.
+
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # I-8: replay sampled production matches and assert state hashes at every
+  # recorded checkpoint. A mismatch pages (doc 05 §7.3 divergence procedure:
+  # flag the rules_version, block new matches on it, auto-commit the minimal
+  # reproducing input prefix to tests/replays/<game>/divergence/).
+  replay-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo xtask replay --all --verify
+
+  # 100k bot-vs-bot matches per game. Finds rule bugs, infinite phases, and
+  # projection leaks better than hand-written tests. (doc 02 §11.3)
+  # Any failing seed is auto-committed to tests/replays/<game>/regressions/.
+  self-play:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        game: [tictactoe] # add chess (P1), cards/tiles/werewolf (P3)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo xtask selfplay ${{ matrix.game }} --matches 100000
+
+  # Decoders face hostile input directly. Phase 4+.
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: nightly }
+      - uses: taiki-e/install-action@cargo-fuzz
+      - run: cargo fuzz run protocol_decode -- -max_total_time=600
+      - run: cargo fuzz run command_decode  -- -max_total_time=600
+
+  unused-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: nightly }
+      - uses: taiki-e/install-action@cargo-udeps
+      - run: cargo udeps --workspace --all-targets
+
+  # L1 at the last-known-good target. Results are committed to docs/perf/ with
+  # date + commit; fails on a >20% regression. (doc 06 §10)
+  load:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - run: cargo xtask load --scenario L1 --compare-baseline

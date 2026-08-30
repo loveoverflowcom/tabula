@@ -1,0 +1,59 @@
+# cargo-deny — global bans, licence policy, advisories (doc 01 §1.4, §6.1).
+#
+# This is the coarse net. The fine net is `xtask check-deps`, which enforces the
+# PER-CRATE matrix in deps.toml. cargo-deny cannot express "tokio is fine in the
+# server but forbidden in games", which is exactly the rule that matters most —
+# hence two tools.
+
+[graph]
+targets = [
+  { triple = "x86_64-unknown-linux-gnu" },
+  { triple = "aarch64-unknown-linux-gnu" },
+  { triple = "wasm32-unknown-unknown" },
+  { triple = "aarch64-apple-darwin" },
+  { triple = "x86_64-pc-windows-msvc" },
+]
+all-features = false
+
+[advisories]
+version = 2
+yanked  = "deny"
+# ignore = ["RUSTSEC-0000-0000"]   # only with a dated comment and an owner
+
+[licenses]
+version = 2
+allow = [
+  "MIT", "Apache-2.0", "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause", "BSD-3-Clause", "ISC", "Zlib",
+  "Unicode-3.0", "CC0-1.0", "MPL-2.0",
+]
+confidence-threshold = 0.9
+# We ship an AGPL/commercial dual licence. Anything copyleft-viral beyond MPL-2.0
+# in a linked dependency would constrain the commercial arm — so it is denied,
+# not merely reviewed.
+
+[bans]
+# Duplicate versions cost binary size, which is a hard constraint for the WASM
+# game bundle (< 6 MB gzipped, doc 01 §7). `warn` now; escalate to `deny` once
+# the tree stabilises in Phase 4.
+multiple-versions = "warn"
+wildcards         = "deny"
+
+deny = [
+  # Prefer rustls; openssl is a cross-compilation and mobile-packaging tax.
+  { name = "openssl" },
+  { name = "openssl-sys" },
+  # chrono's default features pull in `time` 0.1 (RUSTSEC-2020-0071 territory)
+  # and localtime handling we do not want. Use `time`, or `LogicalTime` in rules.
+  { name = "chrono", wrappers = [] },
+  # I-4: rules must not reach OS entropy. Listed here as a second net; the real
+  # enforcement is per-crate in deps.toml.
+  { name = "getrandom", wrappers = ["rand_core", "uuid", "blake3", "ring", "rustls"] },
+]
+
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git      = "deny"
+allow-registry   = ["https://github.com/rust-lang/crates.io-index"]

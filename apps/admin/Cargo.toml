@@ -1,0 +1,24 @@
+[package]
+name        = "tabula-admin"
+version     = "0.0.0"
+description = "Operator UI: game rollout, match inspection, moderation. Role-gated, separate bundle."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 5. A SEPARATE BUNDLE from apps/web on purpose: operator tooling should
+# not be shipped to every player, and its authz role is different.
+#
+# Reuses tabula-design so the two products look like one.
+
+[dependencies]
+tabula-core = { workspace = true }
+
+# tabula-protocol = { workspace = true }
+# tabula-design   = { workspace = true }
+# leptos          = { workspace = true }
+# leptos_router   = { workspace = true }
+
+[lints]
+workspace = true

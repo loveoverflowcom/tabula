@@ -1,0 +1,37 @@
+[package]
+name        = "tabula-core"
+version     = "0.1.0"
+description = "Tabula deterministic kernel: ids, DetRng, LogicalTime, Viewer, canonical hashing."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# =============================================================================
+# I-1 APPLIES HERE MOST STRICTLY.
+#
+# This is the one crate the entire product depends on. Keeping it tiny and
+# nearly dependency-free is what makes rules portable to WASM, mobile, tests,
+# and bots. Adding a dependency below requires an ADR (doc 01 §3).
+#
+# Forbidden, transitively, forever: tokio, axum, sqlx, macroquad, leptos,
+# reqwest, getrandom, std::time. Enforced by `xtask check-deps` + clippy.toml.
+# =============================================================================
+[dependencies]
+serde       = { workspace = true }
+postcard    = { workspace = true }   # canonical encoding ONLY — never a wire codec here
+rand_chacha = { workspace = true }
+rand_core   = { workspace = true }
+blake3      = { workspace = true }
+thiserror   = { workspace = true }
+smallvec    = { workspace = true }
+compact_str = { workspace = true }
+
+[features]
+default = ["std"]
+# `no_std` is not required today, but the split is cheap to keep and is what
+# makes a future wasmtime-sandboxed game module (doc 02 §9.3) possible.
+std = ["serde/std", "postcard/use-std", "blake3/std"]
+
+[lints]
+workspace = true

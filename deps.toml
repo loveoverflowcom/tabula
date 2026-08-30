@@ -1,0 +1,152 @@
+# =============================================================================
+# deps.toml — SOURCE OF TRUTH for the dependency matrix.
+#
+# doc 00 §8.1 renders this table in prose; `xtask check-deps` renders it from
+# THIS file and fails if the prose table has drifted. An architecture rule that
+# lives only in prose is a rule that will be broken within two months
+# (doc 00 §8.2).
+#
+# `xtask check-deps` walks the RESOLVED cargo metadata graph per crate — so a
+# transitive violation (crate A pulls B which pulls tokio) fails just as loudly
+# as a direct one. That is what makes I-1 real.
+#
+# Semantics:
+#   allow  = may depend on, directly or transitively
+#   feature = may depend on ONLY behind a named non-default cargo feature
+#   everything not listed is FORBIDDEN
+# =============================================================================
+
+[banned]
+# I-1: nothing in the deterministic core tier may reach these, ever.
+# `xtask check-deps` treats presence in a rules crate's resolved graph as a
+# hard failure regardless of features.
+crates = [
+  "tokio", "axum", "sqlx", "macroquad", "miniquad", "wgpu",
+  "leptos", "tauri", "reqwest", "getrandom",
+]
+# `std::time` is banned by clippy `disallowed_types` instead — see clippy.toml.
+
+# -----------------------------------------------------------------------------
+# Deterministic core tier — I-1 applies. Adding a line here needs an ADR.
+# -----------------------------------------------------------------------------
+[crate."tabula-core"]
+tier  = "deterministic"
+allow = ["serde", "postcard", "rand_chacha", "rand_core", "blake3", "thiserror", "smallvec", "compact_str"]
+
+[crate."tabula-game-api"]
+tier  = "deterministic"
+allow = ["tabula-core", "serde", "thiserror", "smallvec", "compact_str"]
+
+# Game rules halves. The `presentation` feature is the ONLY way a game may see
+# the client stack, and the server always builds with default-features = false.
+[crate."games/*"]
+tier    = "deterministic"
+allow   = ["tabula-core", "tabula-game-api", "serde", "smallvec", "compact_str", "thiserror"]
+feature = { presentation = ["tabula-presentation", "tabula-design", "tabula-assets", "glam"], testkit = ["tabula-testkit"] }
+
+# -----------------------------------------------------------------------------
+# Contract tier — pure, serializable, must compile on wasm32 with no runtime.
+# -----------------------------------------------------------------------------
+[crate."tabula-protocol"]
+tier  = "contract"
+allow = ["tabula-core", "serde", "postcard", "serde_json", "thiserror", "bytes", "smallvec"]
+# NOTE (open question, doc 05 §2 vs doc 01 §3): `MatchUpdateFrame` carries
+# `capabilities: GameCapabilities`, but `GameCapabilities` lives in
+# `tabula-game-api`, which `tabula-protocol` may NOT depend on. Resolve in
+# Phase 4 by either moving the type to `tabula-core` or carrying an encoded
+# mirror type on the frame. Write the ADR before writing the code.
+
+[crate."tabula-registry"]
+tier  = "contract"
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "serde", "toml", "thiserror", "bytes", "smallvec"]
+# Plus every games/* crate — the registry is the ONLY crate allowed to name a
+# game. That containment is what makes I-9 checkable.
+allow_games = true
+
+[crate."tabula-design"]
+tier    = "contract"
+allow   = ["serde"]
+feature = { leptos-adapter = ["leptos"] }
+
+# -----------------------------------------------------------------------------
+# Client tier
+# -----------------------------------------------------------------------------
+[crate."tabula-assets"]
+tier    = "client"
+allow   = ["tabula-core", "serde", "blake3", "toml", "thiserror"]
+feature = { http = ["reqwest"], web = ["web-sys", "wasm-bindgen"] }
+
+[crate."tabula-presentation"]
+tier  = "client"
+allow = ["tabula-core", "tabula-game-api", "tabula-design", "tabula-assets", "glam", "serde", "smallvec"]
+# Forbidden even behind a feature: macroquad, miniquad, wgpu, leptos, tokio, any I/O.
+
+[crate."renderer-macroquad"]
+tier  = "client"
+allow = ["macroquad", "tabula-presentation", "tabula-design", "tabula-assets", "tabula-core", "glam"]
+
+[crate."tabula-net-client"]
+tier    = "client"
+allow   = ["tabula-core", "tabula-protocol", "tabula-registry", "futures", "bytes", "thiserror"]
+feature = { native = ["tokio", "tokio-tungstenite"], web = ["web-sys", "wasm-bindgen", "gloo-timers"] }
+
+# -----------------------------------------------------------------------------
+# Runtime tier — the imperative shell.
+# -----------------------------------------------------------------------------
+[crate."tabula-match"]
+tier  = "runtime"
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tokio", "tracing", "futures", "bytes", "thiserror", "smallvec"]
+# Forbidden: sqlx (ports only), axum, any game crate, any renderer.
+
+[crate."tabula-lobby"]
+tier  = "runtime"
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tokio", "tracing", "thiserror"]
+# Forbidden: sqlx, axum, game crates, AND tabula-game-api — the lobby reasons
+# about GameCapabilities, never about rules (ADR-023).
+
+[crate."tabula-storage"]
+tier  = "runtime"
+allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror"]
+# The ONLY crate allowed to know SQL exists. Forbidden: axum, game crates,
+# renderers, tabula-registry.
+
+[crate."tabula-voice"]
+tier    = "runtime"
+allow   = ["tabula-core", "serde", "thiserror"]
+feature = { livekit = [], managed = [] }
+
+[crate."tabula-testkit"]
+tier  = "test"
+# Everything except axum/sqlx. It is a dev-dependency of every game crate.
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-presentation", "proptest", "insta", "serde", "postcard", "blake3", "thiserror", "smallvec"]
+
+# -----------------------------------------------------------------------------
+# Binaries. Nothing depends on these — services and apps are leaves.
+# -----------------------------------------------------------------------------
+[crate."services/tabula-server"]
+tier  = "binary"
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-lobby", "tabula-storage", "tabula-voice", "tokio", "axum", "tower", "tower-http", "tower-governor", "sqlx", "tracing", "tracing-subscriber", "opentelemetry", "metrics", "figment", "argon2", "jsonwebtoken", "openidconnect", "uuid", "serde", "serde_json", "anyhow"]
+
+[crate."apps/game-client"]
+tier    = "binary"
+allow   = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-presentation", "tabula-assets", "tabula-net-client", "renderer-macroquad", "macroquad"]
+feature = { native = ["tokio"], web = ["web-sys", "wasm-bindgen"] }
+# I-15: `leptos` must NEVER appear in this graph, native or wasm.
+forbid  = ["leptos", "tauri"]
+
+[crate."apps/web"]
+tier  = "binary"
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-assets", "tabula-net-client", "leptos", "leptos_router", "web-sys", "wasm-bindgen", "serde", "serde_json"]
+
+[crate."apps/admin"]
+tier  = "binary"
+allow = ["tabula-core", "tabula-protocol", "tabula-design", "leptos", "leptos_router", "web-sys", "wasm-bindgen", "serde", "serde_json"]
+
+[crate."apps/desktop"]
+tier  = "binary"
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-assets", "tabula-net-client", "tokio", "tauri"]
+
+[crate."xtask"]
+tier  = "tooling"
+# Tooling is unconstrained by design: it is never linked into a shipped binary.
+allow = ["*"]

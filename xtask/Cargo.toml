@@ -1,0 +1,31 @@
+[package]
+name        = "xtask"
+version     = "0.1.0"
+description = "Repository automation: dependency-matrix enforcement, codegen, replay, database lifecycle."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+publish     = false
+
+# PHASE 0 — and doc 09 §7 step 4 says to write the ENFORCEMENT FIRST, before
+# tabula-core:
+#
+#   "Write the enforcement FIRST: deps.toml + xtask check-deps + clippy.toml + CI.
+#    Then deliberately add a forbidden dependency and confirm CI fails. Remove it."
+#
+# Enforcement added later is enforcement never added.
+#
+# Pure Rust, no `make`: cross-platform, typed, and testable. Tooling is exempt
+# from the dependency matrix because it is never linked into a shipped binary.
+
+[dependencies]
+# Phase 0 — uncomment as each command lands.
+# anyhow     = { workspace = true }
+# toml       = { workspace = true }
+# serde      = { workspace = true }
+# serde_json = { workspace = true }
+# `cargo metadata --format-version 1` output, for check-deps.
+# cargo_metadata = "0.18"
+
+[lints]
+workspace = true

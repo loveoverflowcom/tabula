@@ -1,0 +1,34 @@
+[package]
+name        = "tabula-registry"
+version     = "0.0.0"
+description = "The game catalog: register! macro, ErasedGame/ErasedMatch, version resolution."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 4. The ONLY crate allowed to name a game. That containment is what makes
+# I-9 checkable: platform crates depend on this interface, never on games.
+[dependencies]
+tabula-core     = { workspace = true }
+tabula-game-api = { workspace = true }
+tabula-protocol = { workspace = true }
+serde           = { workspace = true }
+thiserror       = { workspace = true }
+
+# Phase 4: `register!` lists the game crates here, each behind a per-game
+# feature so a small mobile bundle or a dedicated tournament server can link a
+# subset (doc 02 §8.1).
+# tabula-game-tictactoe = { workspace = true, optional = true }
+# tabula-game-chess     = { workspace = true, optional = true }
+# tabula-game-cards     = { workspace = true, optional = true }
+# tabula-game-werewolf  = { workspace = true, optional = true }
+# tabula-game-tiles     = { workspace = true, optional = true }
+
+[features]
+default = []
+# game-tictactoe = ["dep:tabula-game-tictactoe"]
+# game-chess     = ["dep:tabula-game-chess"]
+
+[lints]
+workspace = true

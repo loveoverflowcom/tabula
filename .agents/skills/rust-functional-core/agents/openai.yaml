@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Functional Core"
+  short_description: "Separate pure rules from imperative effects"
+  default_prompt: "Use $rust-functional-core to isolate these Rust rules behind a pure, deterministic core."

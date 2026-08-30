@@ -1,0 +1,38 @@
+/target
+**/target
+Cargo.lock.bak
+
+# trunk / wasm build output
+/apps/web/dist
+/apps/admin/dist
+/apps/game-client/dist
+*.wasm
+
+# generated: `cargo xtask gen-tokens` writes these. They ARE committed
+# (CI fails if stale), so they are listed here only as a reminder — do not
+# uncomment unless the generation story changes.
+# /apps/web/style/tokens.css
+# /crates/tabula-design/src/generated.rs
+
+# built asset packs (sources live in assets/packs/<game>/src)
+/assets/packs/**/build
+
+# local env / secrets
+.env
+.env.local
+*.pem
+deploy/**/*.secret.*
+
+# editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Python helpers bundled with agent skills
+__pycache__/
+*.py[cod]
+
+# local perf/profiling output
+perf.data*
+flamegraph.svg

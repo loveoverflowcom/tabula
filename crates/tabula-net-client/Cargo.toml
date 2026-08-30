@@ -1,0 +1,31 @@
+[package]
+name        = "tabula-net-client"
+version     = "0.0.0"
+description = "Client session: connect, resume, sequencing, idempotency. One API, two transports."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 4. The reconnect/idempotency logic is subtle and security-relevant, and
+# is needed by the Leptos shell, the Macroquad client, the load generator, and
+# the integration tests. It must exist exactly once.
+[dependencies]
+tabula-core     = { workspace = true }
+tabula-protocol = { workspace = true }
+tabula-registry = { workspace = true }
+thiserror       = { workspace = true }
+
+# Two backends behind ONE API. Target-determined, so features, not cfg.
+# futures     = { workspace = true }
+# tokio       = { workspace = true, optional = true }
+# web-sys     = { workspace = true, optional = true }
+# gloo-timers = { workspace = true, optional = true }
+
+[features]
+default = []
+# native = ["dep:tokio"]
+# web    = ["dep:web-sys", "dep:gloo-timers"]
+
+[lints]
+workspace = true

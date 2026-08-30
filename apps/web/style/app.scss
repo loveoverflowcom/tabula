@@ -1,0 +1,23 @@
+// Hand-written component CSS. PHASE 5.
+//
+// THE RULE: consume CSS variables from tokens.css, never literal values.
+// `xtask check-no-raw-colors` enforces it.
+//
+// Components are class-based with a `data-state` attribute driving the state
+// layer, so the twelve interaction states in doc 04 §9.4 are expressed once
+// rather than per component:
+//
+//   enabled  hover  focus-visible  press  drag  drop-valid  drop-invalid
+//   selected  disabled  loading  success  invalid
+//
+// Two non-negotiables from doc 04 §9.4:
+//   - the focus ring is 3px, always, and is NEVER removed
+//   - a disabled control must also be EXPLAINED (tooltip / aria), because a
+//     greyed-out button with no reason is a dead end
+
+// .btn--filled {
+//   background: var(--sys-color-primary);
+//   color: var(--sys-color-on-primary);
+//   border-radius: var(--sys-shape-button);
+// }
+// .btn--filled[data-state="hover"]::after { opacity: var(--sys-state-hover); }

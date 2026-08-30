@@ -1,0 +1,31 @@
+[package]
+name        = "tabula-desktop"
+version     = "0.0.0"
+description = "OPTIONAL Tauri shell: launcher, updater, native notifications. Never required for gameplay."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 5, OPTIONAL, AND AN EXPERIMENT.
+#
+# ADR-019: Tauri is optional and NEVER required for gameplay on any platform.
+# Gameplay must not sit inside a WebView — WebView input latency and rendering
+# would become the product's ceiling.
+#
+# This crate earns its place only if the launcher/updater/notification value is
+# real. Decide in Phase 5; the fallback is to ship without it (doc 09 §3.2).
+# Tauri MOBILE is not on the table before Phase 6 exits, and then only for
+# shell screens.
+
+[dependencies]
+tabula-core = { workspace = true }
+
+# tabula-protocol   = { workspace = true }
+# tabula-net-client = { workspace = true, features = ["native"] }
+# tabula-design     = { workspace = true }
+# tokio             = { workspace = true }
+# tauri             = "2"
+
+[lints]
+workspace = true

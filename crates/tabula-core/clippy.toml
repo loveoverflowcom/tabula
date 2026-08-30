@@ -1,0 +1,29 @@
+# Determinism guards for a rules-tier crate. (doc 01 §6.2)
+#
+# Copy this file verbatim into every `games/*` crate. It is the cheapest possible
+# enforcement of I-2, I-3, and I-4: the compiler refuses the hazard instead of a
+# reviewer having to notice it six months later in a replay divergence report.
+
+disallowed-types = [
+  { path = "std::time::SystemTime",     reason = "I-3: rules see time only as ctx.now (LogicalTime)" },
+  { path = "std::time::Instant",        reason = "I-3: rules see time only as ctx.now (LogicalTime)" },
+  { path = "std::collections::HashMap", reason = "I-2: nondeterministic iteration order; use BTreeMap" },
+  { path = "std::collections::HashSet", reason = "I-2: nondeterministic iteration order; use BTreeSet" },
+]
+
+# ⚠ Doc 01 §6.2 also lists `disallowed-methods` for `rand::thread_rng` and
+# `rand::random`. They are commented out because clippy warns
+# ("does not refer to a reachable function") when a listed path is not in the
+# crate's resolved graph — and with `-D warnings` in CI that warning IS a build
+# failure. `rand` is not in the graph precisely BECAUSE deps.toml bans it, so
+# the entries would only ever fire in a world where I-4 is already broken.
+#
+# The real enforcement for I-4 is therefore `deps.toml` + `xtask check-deps`,
+# which fails on the DEPENDENCY rather than on the call site — earlier, and
+# transitively. Uncomment these if `rand` ever legitimately enters a rules
+# crate's graph (it should not).
+#
+# disallowed-methods = [
+#   { path = "rand::thread_rng", reason = "I-4: use the DetRng in ctx" },
+#   { path = "rand::random",     reason = "I-4: use the DetRng in ctx" },
+# ]

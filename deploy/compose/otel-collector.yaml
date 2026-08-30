@@ -1,0 +1,36 @@
+# Minimal collector config for local development. (doc 06 §9)
+#
+# Production adds tail-based sampling: 100% of errors and over-budget spans,
+# 1% of normal commands, and 100% for a match flagged for investigation.
+# Locally we keep everything — the volume is trivial and losing the one span you
+# needed is infuriating.
+
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http: { endpoint: 0.0.0.0:4318 }
+
+processors:
+  batch:
+    timeout: 1s
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls: { insecure: true }
+  prometheus:
+    endpoint: 0.0.0.0:8889
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/jaeger]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]

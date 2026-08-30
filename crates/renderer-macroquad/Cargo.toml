@@ -1,0 +1,25 @@
+[package]
+name        = "renderer-macroquad"
+version     = "0.0.0"
+description = "Macroquad backend: executes a RenderList, maps input to InputEvent, implements AudioSink."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 2. The designated REPLACEABLE component (ADR-010). A future
+# renderer-wgpu slots in with no changes above it.
+# Forbidden: any game crate, tabula-protocol, tokio.
+[dependencies]
+tabula-core         = { workspace = true }
+tabula-design       = { workspace = true }
+tabula-presentation = { workspace = true }
+tabula-assets       = { workspace = true }
+
+# Phase 2 — uncomment together with the Renderer impl. Kept out of the default
+# build so a Phase-0/1 checkout needs no graphics system libraries.
+# macroquad = { workspace = true }
+# glam      = { workspace = true }
+
+[lints]
+workspace = true

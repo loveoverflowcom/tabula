@@ -1,0 +1,50 @@
+[package]
+name        = "tabula-server"
+version     = "0.0.0"
+description = "THE binary at Stage 0: HTTP API, WebSocket gateway, match runtime, lobby."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 4.
+#
+# ONE binary composed of library crates that already have the right seams
+# (ADR-015). The crates are the boundary; the process count is a deployment
+# decision. The split we will actually want later is gateway <-> match-worker,
+# and doc 06 §7 specifies both it and its trigger.
+#
+# Services are LEAVES: nothing depends on this crate.
+#
+# Build for production with `--profile release-server` so it UNWINDS: the match
+# runtime wraps every apply() in catch_unwind, and a panicking game must abort
+# THAT MATCH, not the process (doc 01 §5.2).
+
+[dependencies]
+tabula-core = { workspace = true }
+
+# Phase 4 — uncomment with the first route.
+# tabula-protocol = { workspace = true }
+# tabula-registry = { workspace = true }
+# tabula-match    = { workspace = true }
+# tabula-storage  = { workspace = true }
+# tokio           = { workspace = true }
+# axum            = { workspace = true }
+# tower           = { workspace = true }
+# tower-http      = { workspace = true }
+# tower-governor  = { workspace = true }
+# sqlx            = { workspace = true }
+# tracing         = { workspace = true }
+# tracing-subscriber = { workspace = true }
+# figment         = { workspace = true }
+# argon2          = { workspace = true }
+# jsonwebtoken    = { workspace = true }
+# anyhow          = { workspace = true }
+# Phase 5
+# tabula-lobby    = { workspace = true }
+# openidconnect   = { workspace = true }
+# Phase 8
+# tabula-voice    = { workspace = true }
+
+[lints]
+workspace = true

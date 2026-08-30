@@ -1,0 +1,32 @@
+# Pinned toolchain (doc 01 §1.1 — LOCK NOW).
+#
+# Why pinned at all: determinism is a product guarantee (I-2/I-8). A toolchain
+# change can alter float behaviour, the codegen of `#[derive(Serialize)]`
+# layouts, and sort stability. We want that change to be a reviewed commit, not
+# a surprise on a contributor's machine.
+#
+# ⚠ DEVIATION FROM DOC 01 §5, recorded here rather than silently:
+#   Doc 01 §5 sets `rust-version = "1.82"` as the MSRV. As of 2026 that no
+#   longer resolves: several transitive dependencies (via `cpufeatures`,
+#   `getrandom`, `rand` 0.9) publish `edition2024` manifests, which Cargo cannot
+#   even PARSE before 1.85. The workspace `rust-version` has been raised to 1.85
+#   for that reason. Doc 01 §5 should be amended, or the MSRV promise revisited,
+#   in the same PR that first ships an SDK to an external game author.
+#
+# Note that the pin and the MSRV are DIFFERENT numbers on purpose:
+#   channel      = what we build and test with (recent, moves deliberately)
+#   rust-version = what we promise game authors will compile (conservative)
+#
+# Bump procedure: bump here, run `cargo xtask replay --all` (the I-8 check), then
+# decide separately whether the MSRV should move.
+[toolchain]
+channel    = "1.96"
+components = ["rustfmt", "clippy", "rust-src"]
+targets    = [
+  "wasm32-unknown-unknown", # apps/web (trunk) + apps/game-client (wasm-bindgen)
+  # Uncomment per platform as its phase lands (doc 01 §7):
+  # "aarch64-linux-android",
+  # "aarch64-apple-ios",
+  # "x86_64-pc-windows-msvc",
+]
+profile = "minimal"

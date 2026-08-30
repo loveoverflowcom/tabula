@@ -1,0 +1,29 @@
+[package]
+name        = "tabula-assets"
+version     = "0.0.0"
+description = "Versioned, hashed per-game asset packs: manifests, resolution, cache, loaders."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 3. Shared by the client, the server (manifest validation, CDN URL
+# signing), and the pack build tooling in xtask.
+[dependencies]
+tabula-core = { workspace = true }
+serde       = { workspace = true }
+blake3      = { workspace = true }
+thiserror   = { workspace = true }
+
+# Phase 3+: loader backends are per-target features, never a default.
+# toml         = { workspace = true }
+# reqwest      = { workspace = true, optional = true }
+# web-sys      = { workspace = true, optional = true }
+
+[features]
+default = []
+# http = ["dep:reqwest"]
+# web  = ["dep:web-sys"]
+
+[lints]
+workspace = true

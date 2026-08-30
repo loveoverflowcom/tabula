@@ -1,0 +1,23 @@
+[package]
+name        = "tabula-game-api"
+version     = "0.1.0"
+description = "The Tabula game contract: GameRules, GameModule, Input, Effect, Ctx, capabilities."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# Deliberately does NOT depend on tabula-protocol.
+#
+# If the contract knew the wire format, a protocol change would recompile and
+# re-version every game. `tabula-registry` is the bridge between the two, and it
+# is the only crate that sees both. (doc 01 §3)
+[dependencies]
+tabula-core = { workspace = true }
+serde       = { workspace = true }
+thiserror   = { workspace = true }
+smallvec    = { workspace = true }
+compact_str = { workspace = true }
+
+[lints]
+workspace = true

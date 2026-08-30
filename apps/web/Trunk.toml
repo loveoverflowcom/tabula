@@ -1,0 +1,24 @@
+# PHASE 5. Trunk builds the Leptos shell into static files served behind the CDN.
+#
+# Two independent bundles, two independent caches (ADR-011):
+#   /               app.wasm   — this build,  target ~1.5-2.5 MB gzipped
+#   /play/:match_id game.wasm  — apps/game-client, target ~4-6 MB gzipped
+# A shell deploy must not invalidate the game bundle.
+
+[build]
+target   = "index.html"
+dist     = "dist"
+filehash = true          # content-hashed output, so `immutable` caching is honest
+
+[watch]
+ignore = ["dist", "../../target"]
+
+[serve]
+port = 8080
+# Proxy API and WebSocket to the local server so the dev origin matches
+# production (no CORS special-casing that then behaves differently live).
+[[proxy]]
+backend = "http://127.0.0.1:3000/api"
+[[proxy]]
+backend = "ws://127.0.0.1:3000/ws"
+ws      = true

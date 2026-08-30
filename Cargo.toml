@@ -1,0 +1,164 @@
+# =============================================================================
+# Tabula — workspace root
+#
+# NORMATIVE SOURCE: docs/architecture/01-stack-and-repository-plan.md §5
+#   - What may be added here at all:            doc 01 §1 (stack decision tables)
+#   - What each crate may depend on:            doc 00 §8.1 (the dependency matrix)
+#   - What is deliberately NOT added yet:       doc 01 §8
+#
+# RULE: adding a dependency to `[workspace.dependencies]` is not the decision.
+# The decision is which crate is allowed to *reference* it. `deps.toml` is the
+# machine-readable source of truth for that; `xtask check-deps` enforces it.
+# =============================================================================
+
+[workspace]
+resolver = "2"
+members = ["crates/*", "games/*", "apps/*", "services/*", "xtask"]
+
+# `tests/` holds standalone harnesses (integration, load generator) that are NOT
+# workspace members yet — they are added in Phase 4 when a server exists to test.
+exclude = ["tests/load"]
+
+[workspace.package]
+edition = "2021"
+# MSRV is a compatibility promise to game authors (doc 01 §5). Bump deliberately,
+# in its own PR, never as a side effect of adding a dependency.
+#
+# ⚠ Doc 01 §5 says 1.82. Raised to 1.85 because transitive deps now ship
+# `edition2024` manifests, which Cargo cannot parse before 1.85. See the note in
+# rust-toolchain.toml; doc 01 §5 needs amending.
+rust-version = "1.85"
+license      = "AGPL-3.0-or-later OR LicenseRef-Commercial" # TODO: confirm before first public release
+repository   = "https://github.com/tabula-games/tabula"     # TODO: set real org
+authors      = ["Tabula contributors"]
+
+# =============================================================================
+# Shared dependency versions.
+#
+# Tiering matters more than the versions. A crate in the "deterministic core
+# tier" may ONLY use deps from that tier — see I-1 (doc 00 §7) and the matrix
+# (doc 00 §8.1). Everything below the core tier is forbidden inside
+# `crates/tabula-core`, `crates/tabula-game-api`, and every `games/*` rules half.
+# =============================================================================
+[workspace.dependencies]
+
+# --- internal crates -------------------------------------------------------
+tabula-core         = { path = "crates/tabula-core" }
+tabula-game-api     = { path = "crates/tabula-game-api" }
+tabula-protocol     = { path = "crates/tabula-protocol" }
+tabula-registry     = { path = "crates/tabula-registry" }
+tabula-match        = { path = "crates/tabula-match" }
+tabula-lobby        = { path = "crates/tabula-lobby" }
+tabula-storage      = { path = "crates/tabula-storage" }
+tabula-presentation = { path = "crates/tabula-presentation" }
+tabula-design       = { path = "crates/tabula-design" }
+tabula-assets       = { path = "crates/tabula-assets" }
+tabula-net-client   = { path = "crates/tabula-net-client" }
+tabula-voice        = { path = "crates/tabula-voice" }
+tabula-testkit      = { path = "crates/tabula-testkit" }
+renderer-macroquad  = { path = "crates/renderer-macroquad" }
+
+tabula-game-tictactoe = { path = "games/tictactoe", default-features = false }
+tabula-game-chess     = { path = "games/chess",     default-features = false }
+tabula-game-cards     = { path = "games/cards",     default-features = false }
+tabula-game-werewolf  = { path = "games/werewolf",  default-features = false }
+tabula-game-tiles     = { path = "games/tiles",     default-features = false }
+
+# --- deterministic core tier (the ONLY tier rules crates may use) ----------
+# Every entry here must be replay-stable: same input, same bytes, on every
+# platform and every build profile. Adding one requires an ADR (doc 00 §10).
+serde       = { version = "1", features = ["derive"], default-features = false }
+postcard    = { version = "1", features = ["alloc"], default-features = false }
+rand_chacha = { version = "0.3", default-features = false }
+rand_core   = { version = "0.6", default-features = false }
+blake3      = { version = "1", default-features = false }
+thiserror   = "1"
+smallvec    = { version = "1", features = ["serde", "union", "const_generics"] }
+compact_str = { version = "0.8", features = ["serde"] }
+glam        = { version = "0.29", features = ["serde"] }
+
+# --- shell tier (FORBIDDEN in rules crates — I-1) --------------------------
+# Declared here so versions live in one place. A crate opts in by referencing
+# `{ workspace = true }`; the matrix says which crates may.
+tokio              = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }
+futures            = "0.3"
+axum               = { version = "0.7", features = ["ws", "macros"] }
+tower              = "0.5"
+tower-http         = { version = "0.6", features = ["trace", "cors", "compression-gzip"] }
+tower-governor     = "0.4"
+sqlx               = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "time", "json", "macros", "migrate"] }
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+opentelemetry      = "0.27"
+metrics            = "0.24"
+serde_json         = "1"
+uuid               = { version = "1", features = ["v7", "serde"] }
+figment            = { version = "0.10", features = ["toml", "env"] }
+argon2             = "0.5"
+jsonwebtoken       = "9"
+openidconnect      = "3"
+bytes              = { version = "1", features = ["serde"] }
+toml               = "0.8"
+anyhow             = "1"
+
+# --- client tier -----------------------------------------------------------
+macroquad     = "0.4"
+leptos        = { version = "0.7", features = ["csr"] }
+leptos_router = "0.7"
+web-sys       = "0.3"
+wasm-bindgen  = "0.2"
+gloo-timers   = "0.3"
+directories   = "5"
+
+# --- test / tooling tier ---------------------------------------------------
+proptest         = "1"
+insta            = { version = "1", features = ["json"] }
+wasm-bindgen-test = "0.3"
+
+# =============================================================================
+# Lints — consistency without debate (doc 01 §1.4).
+# Rules crates tighten these further via their own `clippy.toml`
+# (disallowed_types / disallowed_methods) — see doc 01 §6.2.
+# =============================================================================
+[workspace.lints.rust]
+unsafe_code                   = "forbid"   # ADR-021
+missing_debug_implementations = "warn"
+rust_2018_idioms              = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all      = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Determinism guard. Rules crates escalate this to `deny` with a crate-level
+# attribute; float in canonical state breaks I-2 across architectures.
+float_arithmetic = "warn"
+# Noise from pedantic that is not worth the churn in this codebase.
+module_name_repetitions = "allow"
+must_use_candidate      = "allow"
+missing_errors_doc      = "allow"
+missing_panics_doc      = "allow"
+
+# =============================================================================
+# Profiles (doc 01 §5, §5.2)
+# =============================================================================
+[profile.release]
+lto           = "thin"
+codegen-units = 1
+panic         = "abort"
+strip         = "debuginfo"
+
+# The server MUST unwind: `tabula-match` wraps every `apply()` in `catch_unwind`
+# so one panicking game aborts THAT MATCH, not the process (doc 01 §5.2).
+# Build it with: `cargo build --profile release-server -p tabula-server`
+[profile.release-server]
+inherits = "release"
+panic    = "unwind"
+
+# Web bundles optimize for size: doc 01 §7 caps the game bundle at <6 MB gzipped.
+[profile.wasm-release]
+inherits  = "release"
+opt-level = "z"
+lto       = "fat"
+
+# Fast iteration: dependencies are optimized, our code is not.
+[profile.dev.package."*"]
+opt-level = 2

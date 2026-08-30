@@ -1,0 +1,25 @@
+[package]
+name        = "tabula-lobby"
+version     = "0.0.0"
+description = "Rooms, matchmaking, presence — domain plus ports."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 5. Recommended to start life as a module inside tabula-match in
+# Phase 4 and be EXTRACTED here in Phase 5 (doc 01 §3).
+# FORBIDDEN: sqlx, axum, game crates, and tabula-game-api — the lobby reasons
+# about GameCapabilities, never about rules (ADR-023).
+[dependencies]
+tabula-core     = { workspace = true }
+tabula-protocol = { workspace = true }
+tabula-registry = { workspace = true }
+tabula-match    = { workspace = true }
+thiserror       = { workspace = true }
+
+# tokio   = { workspace = true }
+# tracing = { workspace = true }
+
+[lints]
+workspace = true

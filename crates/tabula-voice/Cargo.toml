@@ -1,0 +1,25 @@
+[package]
+name        = "tabula-voice"
+version     = "0.0.0"
+description = "VoiceService trait plus provider adapters. Signaling only — never media."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 8. Separation is LOCKED (ADR-016); the PROVIDER is an experiment
+# decided by measurement in Phase 8.
+# We never write our own SFU for the MVP. Media engineering is a company, not a
+# feature.
+[dependencies]
+tabula-core = { workspace = true }
+serde       = { workspace = true }
+thiserror   = { workspace = true }
+
+[features]
+default = []
+# livekit = []   # self-hosted reference candidate
+# managed = []   # hosted provider
+
+[lints]
+workspace = true

@@ -1,0 +1,44 @@
+[package]
+name        = "tabula-game-client"
+version     = "0.0.0"
+description = "The Macroquad gameplay client: desktop, mobile, and web-at-/play/:match_id."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 2 (hot-seat) → PHASE 4 (online) → PHASE 6 (mobile).
+#
+# I-15: `leptos` must NEVER appear in this crate's dependency graph, native or
+# wasm. Gameplay does not live in a DOM runtime (ADR-011, ADR-019).
+# `xtask check-deps` enforces it.
+
+[lib]
+name       = "tabula_game_client"
+# Phase 6: Android links the cdylib, iOS links the staticlib. Adding them now
+# costs nothing and documents the target shape (doc 01 §7).
+crate-type = ["rlib"]  # ["rlib", "cdylib", "staticlib"] from Phase 6
+
+[dependencies]
+tabula-core     = { workspace = true }
+tabula-game-api = { workspace = true }
+
+# Phase 2+ — uncomment with the first scene.
+# tabula-design       = { workspace = true }
+# tabula-presentation = { workspace = true }
+# tabula-assets       = { workspace = true }
+# renderer-macroquad  = { workspace = true }
+# macroquad           = { workspace = true }
+# Phase 4+
+# tabula-protocol   = { workspace = true }
+# tabula-registry   = { workspace = true }
+# tabula-net-client = { workspace = true }
+
+[features]
+default = []
+# tokio only behind the native feature, for the native transport (doc 00 §8.1).
+native = []
+web    = []
+
+[lints]
+workspace = true

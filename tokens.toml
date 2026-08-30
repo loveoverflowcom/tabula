@@ -1,0 +1,105 @@
+# Design token source of truth. (doc 04 §7, §8.1)
+#
+#   cargo xtask gen-tokens
+#     → crates/tabula-design/src/generated.rs   (const Theme, 4 schemes)
+#     → apps/web/style/tokens.css               (:root { --sys-* })
+#     → docs/ui/tokens.json                     (for design tools)
+#
+# All three outputs are COMMITTED and CI fails if they are stale. Edit this file,
+# never the outputs.
+#
+# PHASE 2. The values below are placeholders that establish the SHAPE; the real
+# palette is a design decision, not an engineering one. What must not change
+# casually is the set of semantic NAMES — doc 09 §4 lists them as "additive;
+# renames require a codemod", because every UI surface references them.
+
+[meta]
+identity = "M3 Expressive-inspired"      # doc 04 §7.1
+schemes  = ["light", "dark", "hc-light", "hc-dark"]
+
+# ---------------------------------------------------------------------------
+# Tier 1 — reference. NOBODY uses these directly. (doc 04 §7.2)
+# ---------------------------------------------------------------------------
+[ref.palette]
+# TODO(phase 2): source colors; tonal ramps are derived at BUILD time so
+# tabula-design stays dependency-free (no runtime HCT math).
+primary-source   = "#7B4DFF"
+neutral-source   = "#8E8E99"
+success-source   = "#2E9E5B"
+warning-source   = "#C88A17"
+danger-source    = "#D0453B"
+
+# ---------------------------------------------------------------------------
+# Tier 2 — system (semantic). What code and design actually use.
+# ---------------------------------------------------------------------------
+[sys.color]
+# Surfaces, brand, and feedback follow the usual M3 roles. The GAME-SEMANTIC
+# tokens below are the ones that justify building a design system for a board
+# game platform rather than reusing a web one — they are what makes a board
+# legible at a glance, and they must be colourblind-safe.
+turn-active    = "TODO"   # whose turn it is
+turn-waiting   = "TODO"
+legal-target   = "TODO"   # a legal destination
+illegal-target = "TODO"
+selected       = "TODO"
+last-action    = "TODO"   # "the opponent just did this"
+threat         = "TODO"   # check, danger, being voted
+hidden         = "TODO"   # card backs, fog, unknown role
+# team[0..8] and seat_marker[0..8] are generated as colourblind-safe sets.
+
+[sys.space]
+scale = [0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64]
+
+[sys.shape]
+scale    = ["none", "xs", "sm", "md", "lg", "xl", "full"]
+semantic = ["card", "board", "token", "sheet", "button", "chip"]
+
+[sys.type]
+# roles x sizes; `mono` has only md/sm.
+# mono REQUIRES tabular figures — a clock whose digits reflow while ticking is
+# unreadable, and clocks are on screen for the entire match.
+roles = ["display", "headline", "title", "body", "label"]
+sizes = ["lg", "md", "sm"]
+mono  = ["md", "sm"]
+
+[sys.state]
+# Opacity of the on-color layer over the container. (doc 04 §9.4)
+hover              = 0.08
+focus              = 0.12
+press              = 0.12
+drag               = 0.16
+disabled-content   = 0.38
+disabled-container = 0.12
+
+[sys.motion]
+# Durations in ms. Semantic tokens (motion.piece-move, motion.card-deal, ...)
+# compose these with a spring; see doc 04 §9.2 for the full table.
+instant = 80    # state layer changes
+short   = 160   # small moves, fades
+medium  = 280   # piece moves, card deals
+long    = 480   # phase changes, reveals
+xlong   = 800   # win/loss sequences
+stagger = 40    # per-item delay in a sequence
+
+[sys.motion.spring]
+snappy   = { stiffness = 380.0, damping = 26.0, mass = 1.0 }   # UI affordances
+standard = { stiffness = 260.0, damping = 24.0, mass = 1.0 }   # most transitions
+weighty  = { stiffness = 180.0, damping = 22.0, mass = 1.4 }   # pieces, tiles — things with mass
+bouncy   = { stiffness = 320.0, damping = 14.0, mass = 1.0 }   # celebratory
+
+[sys.motion.reduced]
+# Reduced motion is a first-class token group, not an afterthought. (doc 04 §9.5)
+duration-scale   = 0.0     # 0.0 strict, 0.5 "less motion"
+prefer-fade      = true
+disable-ambient  = true    # parallax, camera drift, particles
+keep-informative = true    # a piece move CARRIES INFORMATION: shorten, do not remove
+
+[sys.density]
+scale      = 1.0
+min-target = 44.0          # dp. Enforced; a debug overlay flags smaller hit rects.
+
+# ---------------------------------------------------------------------------
+# Tier 3 — component. Only where a component must deviate, WITH A WRITTEN REASON.
+# ---------------------------------------------------------------------------
+[comp]
+# (empty on purpose)

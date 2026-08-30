@@ -1,0 +1,69 @@
+# Stage 0–1 production. (doc 06 §3.2, §4.1)
+#
+#   One VPS (4 vCPU, 8 GB):
+#     caddy          TLS, HTTP/2, static files for apps/web, reverse proxy to /ws
+#     tabula-server  this unit, ONE process
+#     postgres 16    same host at Stage 0, own host at Stage 1
+#   Assets on a CDN in front of an object-storage bucket.
+#   ~$25-50/month.
+#
+# No Kubernetes. No orchestrator. One or two binaries on one or two hosts is what
+# a small team can actually operate (ADR-020). Containers become the deployment
+# mechanism at Stage 2, when there is more than one process to place.
+
+[Unit]
+Description=Tabula game server
+Documentation=https://github.com/tabula-games/tabula/blob/main/docs/architecture/06-scaling-deployment-and-observability.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=tabula
+Group=tabula
+WorkingDirectory=/opt/tabula
+ExecStart=/opt/tabula/bin/tabula-server
+
+# --- the drain sequence is the whole point of this section --------------------
+# SIGTERM starts a 15 s drain (doc 03 §6.4, doc 06 §11.3):
+#   stop accepting attach -> snapshot every live match -> flush event batches
+#   -> Draining{retry_after_ms: 250} -> Close(4411) -> exit
+# Clients reconnect IMMEDIATELY on 4411 (no backoff) and land on the new
+# instance; matches rehydrate lazily on attach.
+#
+# TimeoutStopSec MUST exceed the drain deadline, with margin. Setting it below 15
+# means systemd SIGKILLs mid-drain and matches are lost — which fails the Stage 0
+# exit criterion "a deploy causes zero lost matches".
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+Restart=on-failure
+RestartSec=2
+
+# --- config (doc 06 §3.3) -----------------------------------------------------
+# figment: TOML + env overrides, one typed struct, validated once at boot.
+Environment=TABULA_CONFIG=/etc/tabula/server.toml
+Environment=RUST_LOG=info,tabula=debug
+EnvironmentFile=-/etc/tabula/server.env
+
+# Never set TABULA_ALLOW_JSON_WS in production. The JSON codec is for developers
+# and staff accounts (doc 05 §4.1).
+
+# --- hardening ----------------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tabula
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+# Sockets, not files: one connection per player, four sessions per user.
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

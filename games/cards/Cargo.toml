@@ -1,0 +1,37 @@
+[package]
+name        = "tabula-game-cards"
+version     = "0.0.0"
+description = "Tiến Lên — the hidden-information benchmark (projections, server RNG)"
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 3 — see src/lib.rs for the gate and the contract sketch.
+#
+# Feature shape is identical for every game crate (doc 01 §5.1 rule 3):
+#   server: --no-default-features --features rules,bots
+#   client: --features rules,presentation
+[features]
+default      = ["rules"]
+rules        = []
+presentation = ["dep:tabula-presentation", "dep:tabula-design", "dep:tabula-assets"]
+bots         = []
+testkit      = ["dep:tabula-testkit"]
+
+[dependencies]
+tabula-core     = { workspace = true }
+tabula-game-api = { workspace = true }
+serde           = { workspace = true }
+smallvec        = { workspace = true }
+
+tabula-presentation = { workspace = true, optional = true }
+tabula-design       = { workspace = true, optional = true }
+tabula-assets       = { workspace = true, optional = true }
+tabula-testkit      = { workspace = true, optional = true }
+
+[dev-dependencies]
+tabula-testkit = { workspace = true }
+
+[lints]
+workspace = true

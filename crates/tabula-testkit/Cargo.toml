@@ -1,0 +1,37 @@
+[package]
+name        = "tabula-testkit"
+version     = "0.1.0"
+description = "Conformance harness every Tabula game must pass: determinism, projection safety, replay."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+[dependencies]
+tabula-core     = { workspace = true }
+tabula-game-api = { workspace = true }
+serde           = { workspace = true }
+postcard        = { workspace = true }
+blake3          = { workspace = true }
+thiserror       = { workspace = true }
+smallvec        = { workspace = true }
+proptest        = { workspace = true }
+
+# Phase-gated. The dependency graph in doc 01 §4 has testkit depending on
+# registry/match/presentation, but those crates do not become real until Phases 4
+# and 2. Keeping them optional means a Phase-0 checkout builds and tests in
+# seconds, and turning the feature on later is a one-line change.
+tabula-registry     = { workspace = true, optional = true }
+tabula-match        = { workspace = true, optional = true }
+tabula-presentation = { workspace = true, optional = true }
+insta               = { workspace = true, optional = true }
+
+[features]
+default = []
+# Phase 4: replay against the real registry, fakes for the match runtime ports.
+runtime = ["dep:tabula-registry", "dep:tabula-match"]
+# Phase 2: RenderList golden comparison.
+presentation = ["dep:tabula-presentation", "dep:insta"]
+
+[lints]
+workspace = true

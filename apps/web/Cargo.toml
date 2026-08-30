@@ -1,0 +1,32 @@
+[package]
+name        = "tabula-web"
+version     = "0.0.0"
+description = "The Leptos application shell: auth, catalog, rooms, queue, profile, results."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 5. CSR only — SSR is deferred (doc 04 §3.5): this is an authenticated
+# app, and the SEO need is limited to marketing pages that can be static.
+#
+# Built with `trunk`. Ships as static files behind the CDN.
+
+[dependencies]
+tabula-core = { workspace = true }
+
+# Phase 5 — uncomment with the first route.
+# tabula-protocol   = { workspace = true }
+# tabula-registry   = { workspace = true }
+# tabula-design     = { workspace = true }
+# tabula-assets     = { workspace = true }
+# tabula-net-client = { workspace = true, features = ["web"] }
+# leptos            = { workspace = true }
+# leptos_router     = { workspace = true }
+# web-sys           = { workspace = true }
+# wasm-bindgen      = { workspace = true }
+# serde             = { workspace = true }
+# serde_json        = { workspace = true }
+
+[lints]
+workspace = true

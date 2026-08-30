@@ -1,0 +1,14 @@
+# doc 01 §1.4: rustfmt defaults, so formatting is never a discussion.
+edition = "2021"
+
+# ⚠ Doc 01 §1.4 asks for `imports_granularity = "Crate"`. That option is
+# NIGHTLY-ONLY. On the pinned stable toolchain rustfmt ignores it and prints a
+# warning on every single `cargo fmt` — noise that trains people to ignore
+# rustfmt output, which is worse than the inconsistent imports it would fix.
+#
+# Two ways to actually get it, when someone cares enough:
+#   1. run `cargo +nightly fmt` in a dedicated CI job, or
+#   2. wait for stabilisation and uncomment.
+#
+# imports_granularity = "Crate"
+# group_imports       = "StdExternalCrate"

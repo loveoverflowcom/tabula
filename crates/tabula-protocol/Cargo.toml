@@ -1,0 +1,26 @@
+[package]
+name        = "tabula-protocol"
+version     = "0.0.0"
+description = "Tabula wire protocol: envelopes, versions, dual codec, error codes."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 4. Allowed deps (doc 01 §3): tabula-core, serde, postcard, serde_json,
+# thiserror. FORBIDDEN: tabula-game-api, any game, tokio, axum.
+# Must compile on wasm32 with no runtime — it is shared verbatim by the server,
+# the native client, the WASM client, the load generator, and any future
+# non-Rust client.
+[dependencies]
+tabula-core = { workspace = true }
+serde       = { workspace = true }
+thiserror   = { workspace = true }
+
+# Uncomment in Phase 4 when the envelopes are written (doc 05 §2):
+# postcard   = { workspace = true }   # production codec, binary WS frames
+# serde_json = { workspace = true }   # debug codec, text WS frames
+# bytes      = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,7 @@
+# `cargo xtask <command>` from anywhere in the tree. (doc 01 §1.4)
+[alias]
+xtask = "run --package xtask --"
+
+# Faster linking on Linux. Comment out if `mold` is not installed.
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]

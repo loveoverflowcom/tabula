@@ -1,0 +1,27 @@
+[package]
+name        = "tabula-presentation"
+version     = "0.0.0"
+description = "Renderer-independent presentation: View -> RenderList, input model, animation, a11y."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+# PHASE 2. This is the crate that makes renderer replacement possible (ADR-010).
+# If games drew with Macroquad directly, the renderer decision would be
+# irreversible.
+# FORBIDDEN, even behind a feature: macroquad, miniquad, wgpu, leptos, tokio,
+# anything doing I/O.
+[dependencies]
+tabula-core     = { workspace = true }
+tabula-game-api = { workspace = true }
+tabula-design   = { workspace = true }
+tabula-assets   = { workspace = true }
+serde           = { workspace = true }
+smallvec        = { workspace = true }
+
+# Phase 2: glam for Vec2/Affine2 in the render command set.
+# glam = { workspace = true }
+
+[lints]
+workspace = true

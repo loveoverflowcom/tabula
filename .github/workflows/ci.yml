@@ -1,0 +1,161 @@
+# CI pipeline — doc 01 §6.1.
+#
+# Target PR wall-clock: UNDER 10 MINUTES. If it grows past that, move the wasm and
+# integration jobs into a merge-queue-only stage rather than weakening the checks.
+# Weakening a check is how the invariants rot.
+#
+# Phase note: several jobs below are inert until the crates they check exist.
+# They are wired now on purpose — doc 09 §7 step 4: "Write the enforcement FIRST.
+# Then deliberately add a forbidden dependency and confirm CI fails."
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------- fast gates
+  fmt-clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96"
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  # I-1 and I-15. This is the job that keeps the architecture honest: it walks
+  # the RESOLVED dependency graph per crate and asserts the deps.toml matrix, so
+  # a transitive violation fails as loudly as a direct one.
+  deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo xtask check-deps
+
+  # I-9: no platform crate may branch on, or import, a specific game.
+  no-game-ids:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo xtask check-no-game-ids
+
+  # game.toml is the ops-readable source of truth for the catalog; it must equal
+  # the compiled GameMetadata/GameCapabilities. (doc 02 §4.3)
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo xtask check-manifests
+
+  # Generated files are committed. If they are stale the diff is a silent lie.
+  generated-current:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo xtask gen-tokens
+      - run: git diff --exit-code -- apps/web/style/tokens.css crates/tabula-design/src/generated.rs
+
+  # -------------------------------------------------------------------- tests
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@nextest
+      # Unit + property + replay. Every game crate's conformance! suite runs here.
+      - run: cargo nextest run --workspace
+
+  # doc 01 §5.1 rule 1: every crate builds with no features AND with all features.
+  features:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --no-default-features
+      - run: cargo check --workspace --all-features
+
+  # I-13: a wire type cannot change without a protocol version bump.
+  # Phase 4+ (no-op until tabula-protocol exists).
+  protocol-vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo xtask check-protocol
+
+  # WASM-only breakage (panics, missing features, size regressions) is invisible
+  # to the native build. Phase 2+ for game-client, Phase 5+ for web.
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96"
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check -p tabula-game-client --target wasm32-unknown-unknown --no-default-features --features web
+      - run: cargo check -p tabula-web --target wasm32-unknown-unknown
+      # Bundle size cap: < 6 MB gzipped (doc 01 §7). Fail on a >10% regression.
+      # - run: cargo xtask check-bundle-size
+
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+
+  # Real Postgres, real WebSocket, multiple clients. Phase 4+.
+  integration:
+    runs-on: ubuntu-latest
+    needs: [test]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: tabula
+          POSTGRES_DB: tabula_test
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+        ports: ["5432:5432"]
+    env:
+      DATABASE_URL: postgres://postgres:tabula@localhost:5432/tabula_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@nextest
+      - run: cargo nextest run -p tabula-integration-tests --no-fail-fast
