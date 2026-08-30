@@ -62,7 +62,6 @@ impl<C> Intent<C> {
 ///
 /// @ai.role game-presentation
 /// @ai.domain presentation.game
-/// @ai.pure true
 /// @ai.related tabula_game_api::GameRules
 #[allow(clippy::doc_markdown)]
 pub trait GamePresentation: Send + 'static {

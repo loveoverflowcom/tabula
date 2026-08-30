@@ -333,37 +333,77 @@ low-layer board group cannot leap over a root HUD draw merely because it contain
 and inner draw layers do not escape their parent group. This replaces the earlier, unsound notion of
 sorting an already-flat stream containing `Push*`/`Pop*` pairs.
 
+### 5.1.1 Locked rendering semantics
+
+`RenderListBuilder` is a deterministic, pure presentation-description builder: validated commands
+become a tree of draws and scope groups, which is stably flattened for a backend. A group is a
+**stacking context**. `Layer` and `z` are ordering roles **only among siblings in one stacking
+context**; equal sibling keys preserve insertion order. A scope's own `(layer, z)` positions the
+whole group, and a child layer never escapes that position. This is deliberately not a global
+"higher layer is always on top" rule.
+
+Presenters use finite **local logical units** for every `Rect`, sprite, text point, and path point.
+`Viewport` is the finite, positive logical drawing extent. A backend maps logical units to device
+pixels; `Dpi` affects that mapping only, never values stored in a `RenderList`. `measure_text`
+returns logical-unit metrics for the same reason.
+
+The camera is a local-to-logical mapping applied to draw geometry after active local transforms:
+`logical = (local - camera.origin) * camera.zoom`. The default origin `(0, 0)` and zoom `1` are
+identity. A `PushTransform` composes with its parent (`parent × child`) before the camera. A camera
+origin is the local point mapped to logical origin; it is intentionally named `origin`, rather than
+the previously ambiguous `center`.
+
+`PushClip` is an axis-aligned **logical viewport scissor**. Its rectangle is not affected by the
+camera or any `PushTransform`, regardless of whether the clip is pushed before or after a transform.
+For every draw, the backend transforms local geometry, applies the camera, intersects rasterization
+with the active logical scissor, then converts to device pixels. Rotated or transformed clips are
+not part of this MVP contract.
+
+`PushOpacity` is inherited **primitive opacity**: each descendant primitive multiplies its alpha by
+the active opacity product. It is not render-target-backed composited group opacity, so overlapping
+semi-transparent descendants can differ from a true group composite. A shipped need for the latter
+is the migration trigger for an explicitly different render-target capability; it must not silently
+change this command's semantics.
+
+`renderer-headless` has two roles. Its recorder preserves every valid list verbatim. Its CPU
+rasterizer implements only solid, square rectangles (and their borders), scopes, camera, and the
+semantics above; it returns a structured unsupported-command diagnostic for sprites, text, paths,
+linear gradients, and rounded rectangles rather than producing an incomplete golden image.
+
 ### 5.2 The MVP render command set
 
 ```rust
 // crates/tabula-presentation/src/render.rs
 pub struct RenderList { /* private validated command stream + camera */ }
-// RenderListBuilder constructs nested scope groups, stably sorts sibling groups
-// by (layer, z), checks balanced Push*/Pop* pairs, then flattens for backends.
+// RenderListBuilder constructs nested stacking contexts, stably sorts sibling
+// nodes by (layer, z), checks balanced Push*/Pop* pairs, then flattens for backends.
 
 pub enum RenderCmd {
     /// Textured quad from an atlas region, with tint, rotation, and pivot.
-    Sprite { asset: AssetHandle, rect: Rect, src: Option<Rect>, tint: Color,
-             rot: f32, pivot: Vec2, layer: Layer, z: i16 },
+    Sprite { asset: String, rect: Rect, src: Option<Rect>, tint: Color,
+             rotation: f32, pivot: Vec2, layer: Layer, z: i16 },
     /// Rounded rectangle with optional per-corner radii and border.
     Rect { rect: Rect, radii: Corners, fill: Option<Paint>, border: Option<Border>,
            layer: Layer, z: i16 },
     /// Single-line or wrapped text with a semantic style token.
-    Text { text: TextRef, at: Vec2, style: TextStyleToken, align: Align,
+    Text { text: String, at: Vec2, style: TextStyleToken, align: Align,
            max_width: Option<f32>, color: Color, layer: Layer, z: i16 },
     /// Straight or quadratic polyline; used for arrows, connections, highlights.
     Path { points: SmallVec<[Vec2; 8]>, stroke: Border, closed: bool,
            fill: Option<Paint>, layer: Layer, z: i16 },
-    /// Push/pop a rectangular clip (scissor). Must be balanced.
-    PushClip { rect: Rect }, PopClip,
-    /// Push/pop a 2D affine transform (translate/rotate/scale).
-    PushTransform { mat: Affine2 }, PopTransform,
-    /// Push/pop group opacity. Backends may implement via tint if no render target exists.
-    PushOpacity { alpha: f32 }, PopOpacity,
+    /// A logical-viewport scissor group. `layer`/`z` order the whole group.
+    PushClip { rect: Rect, layer: Layer, z: i16 }, PopClip { layer: Layer, z: i16 },
+    /// A local affine-transform group. `matrix` is finite; singular matrices are legal.
+    PushTransform { matrix: Affine2, layer: Layer, z: i16 },
+    PopTransform { layer: Layer, z: i16 },
+    /// An inherited primitive-opacity group, not true off-screen group compositing.
+    PushOpacity { opacity: Opacity, layer: Layer, z: i16 },
+    PopOpacity { layer: Layer, z: i16 },
 }
 
-pub enum Paint { Solid(Color), LinearGradient { from: Vec2, to: Vec2, stops: SmallVec<[(f32, Color); 4]> } }
-pub struct Layer(pub u8);   // Board=0, Pieces=10, Overlay=20, HUD=30, Modal=40, Toast=50
+pub enum Paint { Solid(Color), LinearGradient(LinearGradient) }
+pub struct LinearGradient { /* finite endpoints; at least two ordered GradientStop values */ }
+pub struct Layer(pub u8);   // a sibling ordering role: Board=0, Pieces=10, …
 ```
 
 That is the whole set. Nine command kinds, one paint type with two variants, one layer scheme.
@@ -449,18 +489,19 @@ justification for the abstraction existing before we need a second real renderer
 
 ```rust
 pub trait Renderer {
-    fn begin_frame(&mut self, size: Vec2, dpi: f32) -> FrameCtx;
-    fn submit(&mut self, list: &RenderList);
-    fn end_frame(&mut self);
+    fn begin_frame(&mut self, viewport: Viewport, dpi: Dpi, now_ms: u64, theme: Theme) -> FrameCtx;
+    fn submit(&mut self, list: &RenderList) -> Result<(), RenderError>;
+    fn end_frame(&mut self) -> Result<(), RenderError>;
     fn measure_text(&self, text: &str, style: TextStyleToken, max_width: Option<f32>) -> TextMetrics;
-    fn load_pack(&mut self, pack: &LoadedPack) -> Result<PackHandles, RenderError>;
-    fn drain_input(&mut self) -> impl Iterator<Item = InputEvent>;
+    fn drain_input(&mut self) -> Vec<InputEvent>;
 }
 ```
 
 `measure_text` is the one place presenters must ask the backend a question mid-layout. It is
 synchronous and cached; a backend swap changes metrics slightly, which is acceptable because
-layouts are token-driven and flexible rather than pixel-pinned.
+layouts are token-driven and flexible rather than pixel-pinned. Its returned extent is in logical
+units, never backend device pixels. Asset mapping remains a Phase-3 concern and does not cross this
+MVP renderer boundary yet.
 
 ### 6.3 Migration triggers
 
