@@ -86,14 +86,14 @@ pub struct GameVersion(pub String);
 pub struct RulesVersion(pub u32);
 
 impl RulesVersion {
-    /// Domain-separation tag for [`crate::hash::canonical_hash`].
+    /// The version as it enters a hash preimage, little-endian.
     ///
-    /// TODO(phase 0): the tag must be stable across builds and must include the
-    /// version number, so that two rules versions of the same game can never
-    /// produce a colliding state hash. Returning a `&'static str` is not possible
-    /// for a runtime value — decide between a `[u8; 8]` or threading the version
-    /// into the hash input directly (the latter is what `hash::canonical_hash`
-    /// already does via its `tag` parameter).
+    /// [`crate::hash::state_hash`] takes a `RulesVersion` directly rather than a
+    /// free-form tag, so domain separation between two rules versions of one game
+    /// is structural: there is no way for a caller to leave the version out.
+    /// (ADR-026 §2 — the earlier `tag() -> &'static str` idea could not be
+    /// written for a runtime value, and the `&str` shape it was papering over is
+    /// what allowed the version-blind default this replaced.)
     #[must_use]
     pub fn as_u32(self) -> u32 {
         self.0

@@ -338,12 +338,22 @@ most insidious failure mode in a deterministic system.
 ### 7.1 Canonical encoding
 
 ```text
-canonical(x) = postcard(x) with:
+canonical(x) = ENCODING_VERSION.to_le_bytes() ‖ postcard(x)
+
+   ENCODING_VERSION: u16 = 1, little-endian (one endianness in the whole kernel)
    - the type's derived Serialize (no custom human-friendly impls on canonical types)
-   - a 2-byte encoding-version prefix
    - all maps as BTreeMap (sorted keys) — HashMap is banned in these types (I-2)
    - no floats in canonical types (doc 00 §5.1)
 ```
+
+The prefix is **checked on read**, not skipped: a blob written under a different
+`ENCODING_VERSION` fails loudly rather than deserializing into a plausible wrong
+state. That is the difference between an honest "unreplayable" (§10.2) and a fake
+replay.
+
+Postcard has no key-ordering or float-formatting freedom of its own, but it does
+serialize a map in *iteration order* — which is why the `HashMap` ban above is
+load-bearing and is enforced by `clippy.toml` rather than by the encoder.
 
 Used for: `match_inputs.payload`, `match_events.payload`, `match_snapshots.payload`, replay files,
 and everything hashed.

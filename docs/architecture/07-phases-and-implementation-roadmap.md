@@ -91,7 +91,7 @@ deserve disproportionate care.
 tabula/ workspace: Cargo.toml, rust-toolchain.toml, deny.toml, deps.toml, justfile, xtask
 crates/tabula-core:      ids, LogicalTime, MatchSeed, DetRng (ChaCha8 + pinned shuffle),
                          Viewer, Audience, SeatRoster, SeatChange, MatchOutcome,
-                         StateHash + canonical_hash, RuleError
+                         StateHash + canonical_encode/decode + state_hash, RuleError
 crates/tabula-game-api:  GameRules, GameModule, Input, Outcome, Effect, Init, Ctx,
                          GameMetadata, GameCapabilities, LegalCommands, A11yDescription
 crates/tabula-testkit:   conformance! macro, determinism harness, proptest strategies,

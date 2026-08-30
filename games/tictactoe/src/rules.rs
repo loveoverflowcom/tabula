@@ -88,6 +88,15 @@ impl GameRules for TicTacToeRules {
         // clock keeps running") rather than a fall-through.
         #[allow(clippy::match_same_arms)]
         match input {
+            // R3: a seat outside the roster must be rejected, not trusted. Without
+            // this guard `other(SeatId(99))` underflows and panics in debug — and
+            // `Input::Player` carries a seat straight off the wire, so a hostile
+            // client reaches it directly. Establish the "seat is 0 or 1" invariant
+            // once, here, and every helper below is total. (doc 02 §3.2)
+            Input::Player { seat, .. } if !is_seated(seat) => {
+                Err(RuleError::code(RuleErrorCode::NoSuchSeat))
+            }
+
             Input::Player {
                 seat,
                 command: Command::Place { cell },
@@ -292,9 +301,22 @@ fn end_aborted(state: &mut State, reason: AbortReason) -> Outcome<TicTacToeRules
     }
 }
 
+/// Tic-tac-toe is always exactly two seats (`SeatSpec { min: 2, max: 2 }`), so
+/// membership is a range check rather than a roster lookup. `apply` uses this as
+/// its single entry guard, which is what makes [`other`] total.
+fn is_seated(seat: SeatId) -> bool {
+    seat.0 < 2
+}
+
 /// Two seats, so "the other one" is well-defined. A game with more seats derives
 /// turn order from its roster instead — and uses `SeatId` throughout rather than
 /// inventing a parallel player index (doc 02 §13).
+///
+/// # Panics
+/// Never, at any call site in this crate: every path reaches it either through
+/// `apply`'s [`is_seated`] guard or from `state.turn`, which `create` sets from
+/// the roster and only [`other`] ever updates.
 fn other(seat: SeatId) -> SeatId {
+    debug_assert!(is_seated(seat), "other() requires a seated SeatId");
     SeatId(1 - seat.0)
 }

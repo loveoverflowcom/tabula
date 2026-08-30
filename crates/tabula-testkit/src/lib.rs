@@ -52,5 +52,6 @@ pub mod replay;
 pub mod selfplay;
 pub mod strategies;
 
+pub use determinism::{RunTrace, Scenario};
 pub use projection::{Secret, SecretModel};
 pub use replay::{ReplayRunner, ReplayVerdict};

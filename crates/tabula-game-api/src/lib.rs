@@ -28,6 +28,49 @@
 //!
 //! Pure. Synchronous. Total. Transactional on error.
 //!
+//! ## The determinism boundary
+//!
+//! This is the whole list. If your rules code needs something that is not on the
+//! left, it belongs to the platform and reaches you as an `Input`. (ADR-026)
+//!
+//! | Rules code MAY depend on | Rules code MUST NOT depend on |
+//! |---|---|
+//! | `State`, `Command`, `Config` | wall clock, `SystemTime`, `Instant` (I-3) |
+//! | `ctx.now` — logical time from the log | OS randomness, `getrandom`, `thread_rng` (I-4) |
+//! | `ctx.index` — this input's log position | the network, the filesystem, a database (I-1) |
+//! | `ctx.rng` — the deterministic RNG (I-4) | thread scheduling, parallelism inside rules |
+//! | `SeatRoster` as passed to `create` | `HashMap`/`HashSet` iteration (I-2) |
+//! | ordered collections: `BTreeMap`, `Vec` | `f32`/`f64` in canonical state (doc 00 §5.1) |
+//! | integers and fixed-point arithmetic | pointer or address-derived values |
+//! | | `Debug` output or `serde_json` for hashing (ADR-021) |
+//!
+//! Enforcement is mechanical, not cultural: `deps.toml` + `xtask check-deps` walk
+//! the resolved dependency graph, `clippy.toml` bans the hazardous types in every
+//! rules-tier crate, and `tabula_testkit::determinism` catches at runtime what
+//! neither can see. All three are proven to fire by
+//! `tabula-testkit/tests/harness_catches_violations.rs`.
+//!
+//! ### The four semantics a game author has to know
+//!
+//! ```text
+//! Transition   State × Input<Command> × Ctx  →  Ok(Outcome { events, effects })
+//!                                            →  Err(RuleError)
+//!              `events` is ORDERED and stored verbatim; the order is contract (R7).
+//!
+//! Rejection    Err ⇒ total no-op: state byte-identical (R2), state_version
+//!              unchanged (I-7), RNG stream unaffected (R8 — nothing to rewind,
+//!              because each input's stream derives from (seed, index) alone).
+//!
+//! Hash         blake3(b"tabula.state.v1" ‖ RULES_VERSION ‖ ENCODING_VERSION ‖ postcard(state)).
+//!              Authoritative semantic state only. Meaningful within ONE
+//!              RulesVersion; comparing across versions is a category error.
+//!
+//! Versioning   ENCODING_VERSION  the encoding framework, platform-wide
+//!              RulesVersion      State/Command/Event encoding AND apply/project
+//!                                behaviour — a match runs one for its whole life
+//!              GameVersion       package semver; never affects a live match
+//! ```
+//!
 //! ## Contract lock status
 //!
 //! Doc 07's contract timeline: `GameRules` / `Input` / `Effect` / `Ctx` are

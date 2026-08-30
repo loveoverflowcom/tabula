@@ -2,7 +2,7 @@
 
 use serde::{de::DeserializeOwned, Serialize};
 use smallvec::SmallVec;
-use tabula_core::{canonical_hash, RuleError, RulesVersion, SeatId, SeatRoster, StateHash, Viewer};
+use tabula_core::{state_hash, RuleError, RulesVersion, SeatId, SeatRoster, StateHash, Viewer};
 
 use crate::{
     a11y::A11yDescription,
@@ -28,18 +28,47 @@ use crate::{
 /// | **R5** | `project` never returns information the viewer is not authorised to know | `projection_hides_secrets` |
 /// | **R6** | `view_event` is the only path from `Event` to a client | `view_event_never_bypasses` |
 /// | **R7** | All iteration that affects output is over ordered collections | I-2, clippy `disallowed_types` |
+/// | **R8** | A rejected input is a **total no-op**: state, `state_version`, and the RNG stream are all unaffected | `error_is_transactional`, `rejection_does_not_disturb_rng` |
 ///
 /// R2 is the one people get wrong. **Validate fully, then mutate.** A rejection
 /// that has already half-applied corrupts the match, and the corruption is
 /// invisible until a replay diverges weeks later.
 ///
+/// # The transition, precisely
+///
+/// ```text
+/// State  ×  Input<Command>  ×  Ctx { now, index, rng }
+///                    ↓
+///     Ok(Outcome { events, effects })   — state mutated in place, events ORDERED
+///     Err(RuleError)                    — state byte-identical to before (R2)
+/// ```
+///
+/// Event order is part of the contract, not an implementation detail: `events` is
+/// a `SmallVec` written to the log verbatim and replayed in that order. Never
+/// build it by iterating an unordered collection (R7).
+///
 /// # Why `&mut State` rather than returning a new state
 ///
-/// Carcassonne-style boards and 20-seat werewolf states are large enough that
-/// clone-per-command is wasteful, and `&mut` lets games keep incremental
-/// structures (union-find feature graphs, zobrist hashes). Purity is preserved
-/// by contract plus tests rather than by types; in debug builds the testkit wraps
-/// `apply` with clone-and-compare so an R2 violation fails loudly. (doc 02 §3.3)
+/// Both shapes were re-evaluated in ADR-026 §1 rather than inherited. The
+/// deciding point: a pure `apply(&State, ..) -> Result<Transition, _>` gives R2
+/// for free, but only in the spelling that rebuilds the whole state per command —
+/// the cheap move-based spelling lets a game mutate the moved-in value before
+/// returning `Err` and so buys nothing. Carcassonne-style boards and 20-seat
+/// werewolf states make that rebuild a permanent per-command cost, and it defeats
+/// the incremental structures (union-find feature graphs, zobrist hashes) that
+/// `&mut` exists to allow.
+///
+/// So purity is preserved by contract plus tests rather than by types — and the
+/// testkit's R2 check is **not opt-in**: `conformance!` wires
+/// `assert_transactional_on_error` into every game, comparing the canonical
+/// encoding before and after every rejected input. (doc 02 §3.3, ADR-026 §1)
+///
+/// # Why there is no `is_terminal`
+///
+/// Terminality is already expressed by [`Effect::EndMatch`]. A second,
+/// independently computed answer to "is this match over" is a divergence source:
+/// a game could report `false` after emitting `EndMatch` and the platform would
+/// have two authorities. Self-play observes the effect. (ADR-026 §1)
 pub trait GameRules: Sized + Send + Sync + 'static {
     /// Canonical, full-information state. **Server-only. Never serialised to a
     /// client** (I-5). The wire has no representation for this type.
@@ -149,13 +178,28 @@ pub trait GameRules: Sized + Send + Sync + 'static {
         LegalCommands::Unknown
     }
 
+    /// The canonical semantic hash of `state`. **The only mechanism that detects
+    /// determinism drift in production.** (doc 05 §7.2)
+    ///
+    /// ```text
+    /// blake3( b"tabula.state.v1" ‖ RULES_VERSION_le ‖ ENCODING_VERSION_le ‖ postcard(state) )
+    /// ```
+    ///
+    /// The rules version is supplied by the default from `Self::RULES_VERSION`,
+    /// not by the author, so it cannot be omitted — two rules versions of one
+    /// game can never collide on a structurally identical state. (ADR-026 §2)
+    ///
+    /// What is hashed is **authoritative semantic state and nothing else**.
+    /// `GameId` and `Config` are deliberately excluded (ADR-026 §2); presentation,
+    /// animation, and camera state are excluded because I-10 keeps them out of
+    /// `State` entirely. A derived cache held *inside* `State` does participate,
+    /// and should: a divergent cache is a divergence.
+    ///
     /// Override only for huge states where an incremental structural hash pays
     /// for itself (tiles' feature graph — doc 02 §12.4). The incremental
     /// structure must be part of the hash so divergence is still caught.
     fn state_hash(state: &Self::State) -> StateHash {
-        // TODO(phase 0): the tag must encode RULES_VERSION so two versions cannot
-        // collide. See `RulesVersion::as_u32` and doc 05 §7.2.
-        canonical_hash("state", state)
+        state_hash(Self::RULES_VERSION, state)
     }
 
     /// Accessibility mirror: a text/tree description for screen readers and the

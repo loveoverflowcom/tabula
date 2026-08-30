@@ -51,7 +51,10 @@ pub mod viewer;
 
 pub use audience::Audience;
 pub use error::{RuleError, RuleErrorCode};
-pub use hash::{canonical_encode, canonical_hash, StateHash, ENCODING_VERSION};
+pub use hash::{
+    canonical_decode, canonical_encode, state_hash, CanonicalError, StateHash, ENCODING_VERSION,
+    STATE_HASH_DOMAIN,
+};
 pub use ids::{
     GameId, GameVersion, InputIndex, MatchId, RulesVersion, SeatId, SessionId, StateVersion,
     TimerId, UserId,

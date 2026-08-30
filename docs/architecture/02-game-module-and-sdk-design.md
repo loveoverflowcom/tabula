@@ -172,9 +172,15 @@ pub enum AbortReason { NotEnoughPlayers, OperatorCancelled, PlatformFailure, Rul
 // crates/tabula-core/src/hash.rs
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct StateHash(pub [u8; 32]);
-/// Canonical encoding = postcard over the type's derived Serialize, with a version tag.
+/// Canonical encoding = postcard over the type's derived Serialize, with a 2-byte
+/// little-endian ENCODING_VERSION prefix.
 /// NEVER serde_json (key order, float formatting) and never Debug. (ADR-021)
-pub fn canonical_hash<T: Serialize>(tag: &str, value: &T) -> StateHash;
+pub const ENCODING_VERSION: u16 = 1;
+pub fn canonical_encode<T: Serialize>(value: &T)  -> Result<Vec<u8>, CanonicalError>;
+pub fn canonical_decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, CanonicalError>;
+/// The rules version is a TYPED parameter, not a free-form &str tag: it is what
+/// separates two rules versions of one game, so it must not be omissible. (ADR-026 §2)
+pub fn state_hash<T: Serialize>(rules_version: RulesVersion, value: &T) -> StateHash;
 ```
 
 ---
@@ -194,6 +200,9 @@ pub fn canonical_hash<T: Serialize>(tag: &str, value: &T) -> StateHash;
 ///  R5. project() never returns information the viewer is not authorized to know.
 ///  R6. view_event() is the only path from Event to a client.
 ///  R7. All iteration that affects output is over ordered collections.
+///  R8. A rejected input is a TOTAL no-op: state, state_version, and the RNG stream
+///      are all unaffected. Free, because DetRng::for_input(seed, index) derives each
+///      input's stream independently — nothing to rewind. (ADR-026 §5)
 pub trait GameRules: Sized + Send + Sync + 'static {
     /// Canonical, full-information state. Server-only. Never serialized to a client. (I-5)
     type State: Clone + Serialize + DeserializeOwned + Send + Sync + 'static;
@@ -244,10 +253,11 @@ pub trait GameRules: Sized + Send + Sync + 'static {
         LegalCommands::Unknown
     }
 
-    /// Default: canonical_hash("state", state). Override only for huge states where a
-    /// structural incremental hash is worth it.
+    /// Default supplies RULES_VERSION itself, so a game cannot forget the version
+    /// separation. Override only for huge states where a structural incremental hash
+    /// is worth it — and then the incremental structure must be in the hash too.
     fn state_hash(state: &Self::State) -> StateHash {
-        canonical_hash(Self::RULES_VERSION.tag(), state)
+        tabula_core::state_hash(Self::RULES_VERSION, state)
     }
 
     /// Accessibility mirror: a text/tree description of the view for screen readers and

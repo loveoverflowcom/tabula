@@ -694,6 +694,7 @@ Longer discussion lives in the linked document.
 | **023** | Matchmaking is a platform service consuming only `GameCapabilities` + seat requirements; it never reads game state. | LOCK NOW | Keeps matchmaking generic across all games. Doc 03 §15. | Game-specific matchmaking hints may be added as declarative capability fields, never as code. |
 | **024** | Ratings are computed by the platform from game-emitted `MatchOutcome` events. Games never compute ratings. | LOCK NOW | Ladder integrity must be uniform across games. | Never. |
 | **025** | `tabula-testkit` is a first-class crate; every game crate must pass its conformance suite. | LOCK NOW | Determinism and projection safety cannot be checked by review alone. Doc 02 §11. | Never. |
+| **026** | The deterministic rules kernel: `&mut State` reducer kept; `state_hash` takes a typed `RulesVersion`, not a `&str` tag; `DetRng` derivation pinned with committed stability vectors; a rejected input is a total no-op (R8). Long form: [`docs/adr/0026-deterministic-rules-kernel.md`](../adr/0026-deterministic-rules-kernel.md). | LOCK NOW | Resolves three places where docs 02 and 05 specified the state hash differently, and pins the algorithms doc 09 §4 freezes forever. | The `&mut` reducer is revisited only if the mechanical R2 check proves insufficient in practice; the frozen algorithms need a superseding ADR plus an `ENCODING_VERSION` bump. |
 
 ---
 
