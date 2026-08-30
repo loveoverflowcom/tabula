@@ -21,17 +21,49 @@ impl AssetPackRef {
 /// A command requested by presentation. It never mutates authoritative state itself.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Intent<C> {
-    pub command: C,
+    command: C,
+}
+
+impl<C> Intent<C> {
+    #[must_use]
+    pub const fn new(command: C) -> Self {
+        Self { command }
+    }
+
+    #[must_use]
+    pub const fn command(&self) -> &C {
+        &self.command
+    }
+
+    #[must_use]
+    pub fn into_command(self) -> C {
+        self.command
+    }
 }
 
 /// Client-only half of a game: projection plus local state becomes a [`RenderList`].
 ///
+/// Its public transition methods deliberately name [`GameRules::View`] and [`GameRules::ViewEvent`]
+/// only. Canonical [`GameRules::State`] is not an input to this boundary, while `Local` is owned by
+/// the client and never returned as a rule outcome.
+///
+/// ```compile_fail
+/// use tabula_game_api::GameRules;
+/// use tabula_presentation::{FrameCtx, GamePresentation, RenderList};
+///
+/// fn state_cannot_be_presented<P: GamePresentation>(
+///     state: &<P::Rules as GameRules>::State,
+///     local: &P::Local,
+///     frame: &FrameCtx,
+/// ) -> RenderList {
+///     P::present(state, local, frame)
+/// }
+/// ```
+///
 /// @ai.role game-presentation
 /// @ai.domain presentation.game
 /// @ai.pure true
-/// @ai.invariant projection-only-input
-/// @ai.invariant local-state-never-canonical
-/// @ai.evidence render::tests::scoped_draws_respect_global_layer_order
+/// @ai.related tabula_game_api::GameRules
 #[allow(clippy::doc_markdown)]
 pub trait GamePresentation: Send + 'static {
     type Rules: GameRules;

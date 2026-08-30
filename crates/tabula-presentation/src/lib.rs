@@ -13,7 +13,7 @@ mod renderer;
 pub use game::{AssetPackRef, GamePresentation, Intent};
 pub use input::{InputEvent, Key, PointerButton, PointerPhase};
 pub use render::{
-    Align, Border, Camera2D, Corners, Layer, Opacity, OpacityError, Paint, Rect, RenderCmd,
-    RenderList, RenderListBuilder, RenderListError, TextStyleToken,
+    Align, Border, Camera2D, Corners, GradientStop, Layer, LinearGradient, Opacity, OpacityError,
+    Paint, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError, TextStyleToken,
 };
-pub use renderer::{FrameCtx, RenderError, Renderer, TextMetrics};
+pub use renderer::{Dpi, FrameCtx, FrameCtxError, RenderError, Renderer, TextMetrics, Viewport};
