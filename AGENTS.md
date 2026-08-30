@@ -131,8 +131,8 @@ cargo deny check
 ```
 
 A change to a game crate additionally needs its conformance suite green
-(`tabula_testkit::conformance!(YourModule)` — doc 02 §11.1) and, if the game has hidden
-information, a `SecretModel` with the projection scan passing.
+(`tabula_testkit::conformance!(YourFixture)` against a `GameTestFixture` impl — doc 02 §11.1)
+and, if the game has hidden information, a `SecretModel` with the projection scan passing.
 
 ---
 

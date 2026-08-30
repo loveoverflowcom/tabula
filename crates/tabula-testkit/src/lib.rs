@@ -11,13 +11,23 @@
 //!
 //! ## Usage
 //!
+//! A game author writes a small [`GameTestFixture`] — the data one real match
+//! needs — and gets the mandatory suite for free:
+//!
 //! ```rust,ignore
 //! // games/<slug>/tests/conformance.rs
-//! tabula_testkit::conformance!(tabula_game_tictactoe::TicTacToeModule);
+//! struct TicTacToeFixture;
+//!
+//! impl GameTestFixture for TicTacToeFixture {
+//!     type Module = tabula_game_tictactoe::TicTacToeModule;
+//!     // ... config(), roster(), seed(), deterministic_script() ...
+//! }
+//!
+//! tabula_testkit::conformance!(TicTacToeFixture);
 //! ```
 //!
-//! That one line expands to the fifteen tests in [`conformance`]. **A game may
-//! not be registered until it passes them.**
+//! That one line expands to the full suite documented in [`conformance`].
+//! **A game may not be registered until it passes them.**
 //!
 //! ## The highest-value test is the cheapest
 //!
@@ -52,6 +62,9 @@ pub mod replay;
 pub mod selfplay;
 pub mod strategies;
 
+pub use conformance::{
+    GameTestFixture, InvalidCommandScenario, RandomnessScenario, TerminalScenario,
+};
 pub use determinism::{RunTrace, Scenario};
 pub use projection::{Secret, SecretModel};
 pub use replay::{ReplayRunner, ReplayVerdict};
