@@ -20,9 +20,7 @@ tabula-design   = { workspace = true }
 tabula-assets   = { workspace = true }
 serde           = { workspace = true }
 smallvec        = { workspace = true }
-
-# Phase 2: glam for Vec2/Affine2 in the render command set.
-# glam = { workspace = true }
+glam            = { workspace = true }
 
 [lints]
 workspace = true

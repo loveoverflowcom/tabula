@@ -1,110 +1,194 @@
-//! # `tabula-design` — semantic design tokens
+//! Semantic, renderer-neutral design tokens. (doc 04 §7–§8)
 //!
-//! > ## PHASE 2
-//!
-//! One semantic language across DOM and canvas is the only way the product feels
-//! like one product (ADR-018). Tokens are defined **once, in Rust**, and adapted
-//! to CSS custom properties (Leptos) and a resolved `Theme` struct (Macroquad).
-//!
-//! ## Generation, not duplication (doc 04 §8.1)
-//!
-//! ```text
-//! tokens.toml  ──xtask gen-tokens──┬─→ crates/tabula-design/src/generated.rs  (const Theme)
-//!  (source of                      ├─→ apps/web/style/tokens.css             (:root --sys-*)
-//!   truth, root)                   └─→ docs/ui/tokens.json                   (design tools)
-//! ```
-//!
-//! All three outputs are **committed**, and CI fails if they are stale.
-//! Four themes are generated: `light`, `dark`, `hc-light`, `hc-dark`.
-//!
-//! **No hex literals anywhere outside this crate.** `xtask check-no-raw-colors`
-//! greps for hex literals and `Color::new(` in `apps/` and `games/`.
-//!
-//! ## Three tiers (doc 04 §7.2)
-//!
-//! ```text
-//! Tier 1 — reference     raw values; NOBODY uses these directly
-//!                        ref.palette.warm.40, ref.type.display.size.3
-//! Tier 2 — system        what code and design use
-//!                        sys.color.surface, sys.color.turn-active, sys.shape.card
-//! Tier 3 — component     only where a component must deviate, with a written reason
-//!                        comp.button.container-color
-//! ```
-//!
-//! ## The token set (doc 04 §7.3)
-//!
-//! ```rust,ignore
-//! pub struct Theme {
-//!     pub color: ColorTokens, pub type_: TypeTokens, pub shape: ShapeTokens,
-//!     pub space: SpaceTokens, pub elevation: ElevationTokens, pub motion: MotionTokens,
-//!     pub state: StateLayerTokens, pub density: Density, pub focus: FocusTokens,
-//! }
-//! ```
-//!
-//! `ColorTokens` has the usual surface/brand/feedback roles **plus the ones that
-//! make a board legible** — these are the tokens that justify building a design
-//! system for a game platform rather than reusing a web one:
-//!
-//! ```rust,ignore
-//! pub turn_active: Color,    // whose turn it is
-//! pub turn_waiting: Color,
-//! pub legal_target: Color,   // a legal destination
-//! pub illegal_target: Color,
-//! pub selected: Color,
-//! pub last_action: Color,    // "the opponent just did this"
-//! pub threat: Color,         // check, danger, being voted
-//! pub hidden: Color,         // card backs, fog, unknown role
-//! pub team: [Color; 8],      // colorblind-safe set
-//! pub seat_marker: [Color; 8],
-//! ```
-//!
-//! Scales: space `0,2,4,8,12,16,20,24,32,40,48,64`; shape
-//! `none/xs/sm/md/lg/xl/full` plus semantic `card/board/token/sheet/button/chip`.
-//! Type roles: `display|headline|title|body|label` × `lg/md/sm`, plus `mono.md/sm`
-//! with **tabular figures required** — clocks that reflow while ticking are
-//! unreadable.
-//!
-//! ## Motion is semantic, not numeric (doc 04 §9.2)
-//!
-//! Presenters ask for `motion.piece-move`, never for `280ms ease-out`. The token
-//! carries a spring, a duration, an easing, and a stagger:
-//!
-//! ```text
-//! motion.piece-move    spring_weighty, slight arc, 0.94→1.0 scale on land
-//! motion.card-deal     spring_standard, dur_medium, 40 ms stagger per card
-//! motion.reveal        dur_long, two-phase lift + flip with a highlight sweep
-//! motion.phase-change  dur_long tonal wash + title card — MUST be skippable
-//! motion.invalid       120 ms 3-cycle shake + danger flash — NEVER a modal
-//! motion.win / .lose   dur_xlong choreographed, always skippable by tap
-//! ```
-//!
-//! `ReducedMotion` is a first-class token group, not an afterthought:
-//! `duration_scale`, `prefer_fade`, `disable_ambient`, and `keep_informative`
-//! (default **true** — a piece move carries information, so it is shortened
-//! rather than removed).
-//!
-//! ## Per-game accent (doc 04 §8.4)
-//!
-//! ```toml
-//! # games/chess/game.toml
-//! [theme]
-//! accent      = "#3E7B5A"   # tonal palette DERIVED AT BUILD TIME
-//! board_light = "sys.surface.container-lowest"
-//! mood        = "calm"      # calm | lively | tense — selects a motion profile
-//! ```
-//!
-//! Precomputing the tonal palette at build time is why this crate stays
-//! dependency-free: no runtime HCT colour maths. A game may supply source
-//! colours; it may **not** override semantic roles.
-//!
-//! ## Module layout when this becomes real
-//!
-//! ```text
-//! src/tokens.rs     Theme + every *Tokens struct  (hand-written, the schema)
-//! src/generated.rs  const Theme values, 4 schemes (GENERATED — do not edit)
-//! src/css.rs        #[cfg(feature = "css")]     CSS custom-property emitter
-//! src/runtime.rs    #[cfg(feature = "runtime")] resolved theme for the canvas
-//! src/color.rs      Color type + the small amount of maths we allow
-//! ```
+//! Values originate in `tokens.toml`; generated schemes live in [`generated`].
+//! Presentation code consumes semantic roles, never palette literals.
 
 #![forbid(unsafe_code)]
+
+use serde::{Deserialize, Serialize};
+
+/// An sRGB colour used by semantic tokens and render commands.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Color {
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+    pub alpha: u8,
+}
+
+impl Color {
+    #[must_use]
+    pub const fn rgb(red: u8, green: u8, blue: u8) -> Self {
+        Self {
+            red,
+            green,
+            blue,
+            alpha: u8::MAX,
+        }
+    }
+
+    #[must_use]
+    pub const fn rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
+        Self {
+            red,
+            green,
+            blue,
+            alpha,
+        }
+    }
+}
+
+/// The four supported accessibility-aware colour schemes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ThemeKind {
+    Light,
+    Dark,
+    HighContrastLight,
+    HighContrastDark,
+}
+
+/// The complete resolved semantic theme. It is data, not a renderer handle.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Theme {
+    pub kind: ThemeKind,
+    pub color: ColorTokens,
+    pub shape: ShapeTokens,
+    pub space: SpaceTokens,
+    pub elevation: ElevationTokens,
+    pub motion: MotionTokens,
+    pub state: StateLayerTokens,
+    pub density: Density,
+    pub focus: FocusTokens,
+}
+
+impl Theme {
+    #[must_use]
+    pub const fn by_kind(kind: ThemeKind) -> Self {
+        match kind {
+            ThemeKind::Light => generated::LIGHT,
+            ThemeKind::Dark => generated::DARK,
+            ThemeKind::HighContrastLight => generated::HIGH_CONTRAST_LIGHT,
+            ThemeKind::HighContrastDark => generated::HIGH_CONTRAST_DARK,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ColorTokens {
+    pub surface: Color,
+    pub surface_container: Color,
+    pub surface_container_high: Color,
+    pub on_surface: Color,
+    pub on_surface_variant: Color,
+    pub outline: Color,
+    pub primary: Color,
+    pub on_primary: Color,
+    pub success: Color,
+    pub on_success: Color,
+    pub danger: Color,
+    pub on_danger: Color,
+    pub turn_active: Color,
+    pub turn_waiting: Color,
+    pub legal_target: Color,
+    pub illegal_target: Color,
+    pub selected: Color,
+    pub last_action: Color,
+    pub threat: Color,
+    pub hidden: Color,
+    pub team: [Color; 8],
+    pub seat_marker: [Color; 8],
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ShapeTokens {
+    pub card: f32,
+    pub board: f32,
+    pub button: f32,
+    pub chip: f32,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpaceTokens {
+    pub xs: u16,
+    pub sm: u16,
+    pub md: u16,
+    pub lg: u16,
+    pub xl: u16,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ElevationTokens {
+    pub low: u8,
+    pub medium: u8,
+    pub high: u8,
+}
+
+/// Semantic timings; presenters select a named transition rather than milliseconds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MotionTokens {
+    pub piece_move_ms: u16,
+    pub card_deal_ms: u16,
+    pub invalid_ms: u16,
+    pub phase_change_ms: u16,
+    pub win_ms: u16,
+    pub lose_ms: u16,
+    pub reduced_duration_scale_percent: u8,
+}
+
+/// State-layer opacities, represented as percentages to avoid invalid values.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StateLayerTokens {
+    pub hover: u8,
+    pub focus: u8,
+    pub press: u8,
+    pub drag: u8,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Density {
+    pub scale: f32,
+    pub min_target: f32,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FocusTokens {
+    pub ring_width: f32,
+    pub ring_color: Color,
+}
+
+pub mod generated;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[allow(clippy::float_arithmetic)]
+    fn ratio(a: Color, b: Color) -> f32 {
+        fn channel(value: u8) -> f32 {
+            let linear = f32::from(value) / 255.0;
+            if linear <= 0.04045 {
+                linear / 12.92
+            } else {
+                ((linear + 0.055) / 1.055).powf(2.4)
+            }
+        }
+        fn luminance(color: Color) -> f32 {
+            0.2126 * channel(color.red)
+                + 0.7152 * channel(color.green)
+                + 0.0722 * channel(color.blue)
+        }
+        let (a, b) = (luminance(a), luminance(b));
+        (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    #[test]
+    fn semantic_text_pairs_meet_wcag_aa() {
+        for theme in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            let color = Theme::by_kind(theme).color;
+            assert!(ratio(color.on_surface, color.surface) >= 4.5, "{theme:?}");
+            assert!(ratio(color.on_primary, color.primary) >= 4.5, "{theme:?}");
+            assert!(ratio(color.on_danger, color.danger) >= 4.5, "{theme:?}");
+        }
+    }
+}

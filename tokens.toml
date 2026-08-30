@@ -47,6 +47,56 @@ threat         = "TODO"   # check, danger, being voted
 hidden         = "TODO"   # card backs, fog, unknown role
 # team[0..8] and seat_marker[0..8] are generated as colourblind-safe sets.
 
+# Concrete semantic schemes. Reference palette values above remain the only raw
+# palette inputs; these resolved values are emitted into Rust, CSS, and JSON.
+[schemes.light]
+surface = "#FFFBFF"
+container = "#F4EDF7"
+container-high = "#EAE3ED"
+on-surface = "#1E1C21"
+on-surface-variant = "#4B4650"
+outline = "#79747E"
+primary = "#5634BE"
+on-primary = "#FFFFFF"
+danger = "#BA1A1A"
+on-danger = "#FFFFFF"
+
+[schemes.dark]
+surface = "#141217"
+container = "#1E1C21"
+container-high = "#2B282F"
+on-surface = "#E7E1E5"
+on-surface-variant = "#CAC3CE"
+outline = "#938F99"
+primary = "#CFBCFF"
+on-primary = "#32007E"
+danger = "#FFB4AB"
+on-danger = "#690005"
+
+[schemes.hc-light]
+surface = "#FFFFFF"
+container = "#FFFFFF"
+container-high = "#F5F5F5"
+on-surface = "#000000"
+on-surface-variant = "#000000"
+outline = "#000000"
+primary = "#2C0078"
+on-primary = "#FFFFFF"
+danger = "#910000"
+on-danger = "#FFFFFF"
+
+[schemes.hc-dark]
+surface = "#000000"
+container = "#000000"
+container-high = "#1C1C1C"
+on-surface = "#FFFFFF"
+on-surface-variant = "#FFFFFF"
+outline = "#FFFFFF"
+primary = "#E0D3FF"
+on-primary = "#190050"
+danger = "#FFDAD6"
+on-danger = "#690005"
+
 [sys.space]
 scale = [0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64]
 
