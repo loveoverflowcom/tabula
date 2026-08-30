@@ -104,8 +104,6 @@ pub struct RenderError(pub String);
 /// @ai.role imperative-renderer-port
 /// @ai.domain presentation.renderer
 /// @ai.pure false
-/// @ai.invariant backend-types-do-not-leak
-/// @ai.evidence renderer::tests::frame_context_rejects_invalid_display_facts
 #[allow(clippy::doc_markdown)]
 pub trait Renderer {
     fn begin_frame(&mut self, viewport: Viewport, dpi: Dpi, now_ms: u64, theme: Theme) -> FrameCtx;
