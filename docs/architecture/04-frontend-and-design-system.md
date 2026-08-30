@@ -616,7 +616,7 @@ pub struct ColorTokens {
     pub last_action: Color,        // "the opponent just did this"
     pub threat: Color,             // check, danger, being voted
     pub hidden: Color,             // card backs, fog, unknown role
-    pub team: [Color; 8],          // team/seat identity, colorblind-safe set
+    pub team: [Color; 8],          // team/seat identity; never the sole differentiator
     pub seat_marker: [Color; 8],
 }
 
@@ -658,6 +658,15 @@ pub struct StateLayerTokens {
 pub struct SpaceTokens { /* 0,2,4,8,12,16,20,24,32,40,48,64 */ }
 pub struct Density { pub scale: f32, pub min_target: f32 }   // min_target ≥ 44 dp touch
 ```
+
+The generated implementation is intentionally more precise than this abridged
+sketch: `Theme` contains all twelve named spacing values; reference and
+semantic shape roles; disabled state layers; renderer-neutral role+size
+typography; and semantic motion profiles. Bounded values such as opacities,
+positive metrics, radii, density, and spring parameters are validated before
+generation and represented by refined runtime values. See
+[`docs/ui/tokens.md`](../ui/tokens.md) for the authored-token audit and the
+executable verification ledger.
 
 ### 7.4 Typography
 
@@ -745,17 +754,20 @@ list.push(RenderCmd::Rect {
 ### 8.4 Per-game accent
 
 ```toml
-# games/chess/game.toml
+# games/chess/game.toml (future contract; not a Phase-2 pipeline)
 [theme]
-accent      = "#3E7B5A"      # source color; tonal palette is derived at build time
+accent      = "#3E7B5A"      # source color for a build-time resolver
 board_light = "sys.surface.container-lowest"
 board_dark  = "sys.surface.container-high"
 mood        = "calm"          # calm | lively | tense — selects a motion profile
 ```
 
-The derived tonal palette is **precomputed at build time** (not runtime HCT math), keeping
-`tabula-design` dependency-free and the client fast. A game may not override semantic *roles*, only
-supply source colors — so contrast guarantees hold.
+`tokens.toml` currently uses **authored resolved schemes**: its reference
+palette is design guidance and its resolved semantic scheme values are the
+authority. A future game accent resolver may be precomputed at build time (not
+runtime) and may accept only a source accent and mood. A game may not override
+semantic *roles* such as `danger`, `legal_target`, focus, or accessibility
+critical on-colors.
 
 ---
 
@@ -839,8 +851,8 @@ across DOM and canvas.
 
 ```rust
 pub struct ReducedMotion {
-    /// Multiply all durations by this (0.0 = instant).
-    pub duration_scale: f32,        // 0.0 in strict mode, 0.5 in "less motion"
+    /// A validated percentage that multiplies durations (0 = instant).
+    pub duration_scale: Percent,    // 0 strict, 50 "less motion"
     /// Replace movement with cross-fade.
     pub prefer_fade: bool,
     /// Disable parallax, camera drift, background motion, particles entirely.
@@ -849,6 +861,11 @@ pub struct ReducedMotion {
     pub keep_informative: bool,     // default true
 }
 ```
+
+Motion profiles carry an `Informative` or `Ambient` category in addition to
+their resolved duration, spring, and optional stagger. Reduced-motion policy
+can therefore preserve/shorten informative movement while disabling ambient
+motion; it is not merely a zero-duration switch.
 
 The `keep_informative` default matters: a strict "no animation" mode that teleports pieces makes
 board games *less* accessible, not more. The right reduced-motion behavior is short, direct,

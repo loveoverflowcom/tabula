@@ -1,6 +1,6 @@
 use glam::{Affine2, Vec2};
 use smallvec::SmallVec;
-use tabula_design::Color;
+use tabula_design::{Color, TextStyleToken};
 
 type Palette = Color;
 
@@ -281,16 +281,6 @@ pub enum Align {
     Start,
     Center,
     End,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TextStyleToken {
-    Display,
-    Headline,
-    Title,
-    Body,
-    Label,
-    Mono,
 }
 
 /// The intentionally small backend-neutral rendering vocabulary from doc 04 §5.2.
@@ -700,7 +690,7 @@ mod tests {
         RenderCmd::Text {
             text: String::from(label),
             at: Vec2::ZERO,
-            style: TextStyleToken::Body,
+            style: TextStyleToken::BodyMd,
             align: Align::Start,
             max_width: None,
             color: semantic_color(),

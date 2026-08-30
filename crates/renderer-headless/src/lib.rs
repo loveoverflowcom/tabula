@@ -743,7 +743,7 @@ mod tests {
                     [RenderCmd::Text {
                         text: String::from("text"),
                         at: Vec2::ZERO,
-                        style: TextStyleToken::Body,
+                        style: TextStyleToken::BodyMd,
                         align: Align::Start,
                         max_width: None,
                         color: black,
