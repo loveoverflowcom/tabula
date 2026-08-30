@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 2. The designated REPLACEABLE component (ADR-010). A future
 # renderer-wgpu slots in with no changes above it.

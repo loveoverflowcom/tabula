@@ -90,7 +90,7 @@
 fn main() {
     eprintln!(
         "tabula-web is a Phase 5 deliverable (docs/architecture/07-phases-and-implementation-roadmap.md).\n\
-         Gate: chess and cards playable between two devices over the internet (Phase 4 exit)."
+         Gate: the Phase 4 exit criteria are met (see doc 07)."
     );
     std::process::exit(1);
 }

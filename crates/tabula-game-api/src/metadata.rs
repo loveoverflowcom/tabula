@@ -55,7 +55,7 @@ pub struct GameMetadata {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Category {
     Abstract,
-    Cards,
+    Cards, // xtask-allow-game-id: a genre, not the games/cards package
     SocialDeduction,
     TilePlacement,
     Party,

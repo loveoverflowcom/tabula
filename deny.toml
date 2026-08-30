@@ -31,6 +31,18 @@ confidence-threshold = 0.9
 # We ship an AGPL/commercial dual licence. Anything copyleft-viral beyond MPL-2.0
 # in a linked dependency would constrain the commercial arm — so it is denied,
 # not merely reviewed.
+#
+# The `allow` list above is a THIRD-PARTY policy. It must not also have to
+# accept our own crates' declared license: every workspace member sets
+# `license = "AGPL-3.0-or-later OR LicenseRef-Commercial"` (via
+# `license.workspace = true`), and `LicenseRef-Commercial` is a private
+# reference, not an SPDX id anything external would recognize. Every crate in
+# this workspace also sets `publish = false` (Cargo.toml, workspace-inherited)
+# because none of it is meant to reach crates.io — so `private.ignore` exempts
+# exactly those crates from this check, rather than adding our own private
+# license notice to a list that is supposed to describe what we accept from
+# others.
+private = { ignore = true }
 
 [bans]
 # Duplicate versions cost binary size, which is a hard constraint for the WASM
@@ -48,7 +60,15 @@ deny = [
   { name = "chrono", wrappers = [] },
   # I-4: rules must not reach OS entropy. Listed here as a second net; the real
   # enforcement is per-crate in deps.toml.
-  { name = "getrandom", wrappers = ["rand_core", "uuid", "blake3", "ring", "rustls"] },
+  #
+  # `tempfile` is a wrapper too: `tabula-testkit`'s optional `presentation`
+  # feature (golden `RenderList` comparison, Phase 2) pulls `insta`, and both
+  # `insta` and `proptest` depend on `tempfile`, which needs OS randomness to
+  # name temp files safely. That whole path is test/dev tooling behind an
+  # unconstrained tier (`tabula-testkit`, tier = "test" in deps.toml) — it
+  # never ships — which is exactly the same shape as `uuid`/`blake3` already
+  # being allowed to wrap `getrandom` for their own, non-rules-code reasons.
+  { name = "getrandom", wrappers = ["rand_core", "uuid", "blake3", "ring", "rustls", "tempfile"] },
 ]
 
 skip-tree = []

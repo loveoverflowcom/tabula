@@ -27,9 +27,10 @@ xtask = "run --package xtask --"
 
 | Command | What it does |
 |---|---|
-| `check-deps` | Walks the **resolved** cargo metadata graph per crate and asserts the `deps.toml` matrix. Also regenerates the doc 00 §8.1 table and fails if the committed docs differ. Enforces I-1 and I-15. |
-| `check-no-game-ids` | Greps `crates/` and `services/` for game id literals and `games::` imports. `tabula-registry` is the only exemption. Enforces I-9. |
-| `check-manifests` | Asserts `game.toml` equals the compiled `GameMetadata`/`GameCapabilities`. |
+| `check` | Runs `fmt`, `clippy`, `test`, `check-deps`, `check-no-game-ids`, `check-manifests`, then `cargo deny check`, in that order, stopping at the first failure. The one command a PR needs to be confident in; see AGENTS.md §5. |
+| `check-deps` | Walks the **resolved** cargo metadata graph per crate and asserts the `deps.toml` matrix: direct dependencies come from the crate's allow-list, banned/forbidden-category crates cannot be reached transitively (with the path printed), and dependency direction respects the tier ordering. Enforces I-1 and I-15. |
+| `check-no-game-ids` | Scans the tree for a game id appearing as a whole word (case-insensitive, `_`/`-` count as separators) outside its own game package, `tabula-registry`, `xtask`, test fixtures, manifests, or docs/comments. Enforces I-9. |
+| `check-manifests` | Validates every workspace `Cargo.toml` (workspace-field inheritance, no wildcard registry versions, internal crates referenced via `{ workspace = true }`, the `rules`/`presentation`/`bots`/`testkit` feature shape for game crates) and, for games that have one, `game.toml`'s schema (required fields, the `com.tabula.<id>` convention, enum-valued capabilities). Does **not** yet cross-check against the compiled `GameMetadata`/`GameCapabilities` statics — that needs the `metadata_from_manifest!` proc macro (doc 02 §10.2), which does not exist yet. |
 | `new-game <slug> [--seats N] [--category C]` | Scaffolds a game crate from the `games/tictactoe` template, including `clippy.toml` and `tests/conformance.rs`. |
 | `selfplay <game> [--matches N]` | Bot-vs-bot matches with determinism, projection, and termination checking. Failing seeds are written to `tests/replays/<game>/regressions/`. |
 | `replay <file> \| --all [--verify]` | Replays a `.tbr` and prints the first divergence with its input index. |

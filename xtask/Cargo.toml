@@ -5,7 +5,7 @@ description = "Repository automation: dependency-matrix enforcement, codegen, re
 edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
-publish     = false
+publish.workspace       = true
 
 # PHASE 0 — and doc 09 §7 step 4 says to write the ENFORCEMENT FIRST, before
 # tabula-core:
@@ -19,13 +19,15 @@ publish     = false
 # from the dependency matrix because it is never linked into a shipped binary.
 
 [dependencies]
-# Phase 0 — uncomment as each command lands.
-# anyhow     = { workspace = true }
-# toml       = { workspace = true }
-# serde      = { workspace = true }
-# serde_json = { workspace = true }
-# `cargo metadata --format-version 1` output, for check-deps.
-# cargo_metadata = "0.18"
+toml           = { workspace = true }
+serde          = { workspace = true }
+thiserror      = { workspace = true }
+# `cargo metadata --format-version 1` output, for check-deps. Tooling-only:
+# xtask is exempt from the dependency matrix (never linked into a shipped binary).
+cargo_metadata = "0.19"
+
+[dev-dependencies]
+tempfile = "3"
 
 [lints]
 workspace = true

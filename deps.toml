@@ -27,15 +27,58 @@ crates = [
 # `std::time` is banned by clippy `disallowed_types` instead — see clippy.toml.
 
 # -----------------------------------------------------------------------------
+# Tiers — dependency direction (doc 00 §7: "arrows point down, always").
+#
+# A crate may depend on another workspace crate at the SAME OR A LOWER rank,
+# never a higher one. `test` and `tooling` are unconstrained by design: a test
+# harness exercises everything below it, and tooling is never shipped.
+# `xtask check-deps` reads this list positionally — index is rank.
+# -----------------------------------------------------------------------------
+[tiers]
+order         = ["deterministic", "contract", "client", "runtime", "binary"]
+unconstrained = ["test", "tooling"]
+
+# -----------------------------------------------------------------------------
+# Categories — named, reusable groups of forbidden dependencies for the
+# architecture-boundary checks in `xtask check-deps` (avoids hard-coded
+# `if crate_name == "foo"` policy logic in Rust).
+#
+# `by_name` lists external or internal crates by their package name.
+# `by_path_prefix` classifies an INTERNAL crate by the directory it lives in
+# (relative to the workspace root), so a newly added `games/*` or `apps/*`
+# crate is covered automatically with no edit here.
+# -----------------------------------------------------------------------------
+[categories.by_name]
+rendering     = ["macroquad", "miniquad", "wgpu", "renderer-macroquad", "tabula-presentation"]
+ui_framework  = ["leptos", "leptos_router", "tauri"]
+web_framework = ["axum", "tower", "tower-http", "tower-governor", "leptos", "tauri"]
+networking    = ["tokio", "tokio-tungstenite", "reqwest", "tabula-net-client"]
+persistence   = ["sqlx", "tabula-storage"]
+
+[categories.by_path_prefix]
+application   = ["apps", "services"]
+game_specific = ["games"]
+
+# -----------------------------------------------------------------------------
 # Deterministic core tier — I-1 applies. Adding a line here needs an ADR.
 # -----------------------------------------------------------------------------
 [crate."tabula-core"]
 tier  = "deterministic"
 allow = ["serde", "postcard", "rand_chacha", "rand_core", "blake3", "thiserror", "smallvec", "compact_str"]
+# The one crate the whole product depends on: reject every layer above it,
+# direct or transitive.
+forbidden_categories = [
+  "rendering", "ui_framework", "web_framework", "networking",
+  "persistence", "application", "game_specific",
+]
 
 [crate."tabula-game-api"]
 tier  = "deterministic"
 allow = ["tabula-core", "serde", "thiserror", "smallvec", "compact_str"]
+# The game contract: renderers, app shells, server implementations, storage,
+# and specific games would all make it recompile/re-version for the wrong
+# reasons.
+forbidden_categories = ["rendering", "web_framework", "application", "persistence", "game_specific"]
 
 # Game rules halves. The `presentation` feature is the ONLY way a game may see
 # the client stack, and the server always builds with default-features = false.

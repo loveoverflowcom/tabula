@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 5. CSR only — SSR is deferred (doc 04 §3.5): this is an authenticated
 # app, and the SEO need is limited to marketing pages that can be static.

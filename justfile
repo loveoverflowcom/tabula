@@ -28,9 +28,14 @@ client *ARGS:
     cargo run -p tabula-game-client {{ARGS}}
 
 # ------------------------------------------------------------------ the gate
-# Everything CI runs, in the order that fails fastest first.
+# Everything CI runs, in the order that fails fastest first. `xtask check` is
+# the source of truth (doc 01 §1.4: `just` is a wrapper, never the source of
+# truth) — this recipe used to hand-list a subset of gates and had drifted to
+# omit `manifests` and `audit`, which is exactly the failure mode a single
+# entrypoint is meant to prevent.
 
-check: fmt-check lint deps no-game-ids test
+check:
+    cargo xtask check
 
 fmt:
     cargo fmt --all

@@ -114,7 +114,8 @@ If you believe a phase gate is wrong, write an ADR — do not quietly cross it.
 ## 5. Before you open a pull request
 
 ```bash
-just check          # fmt + clippy + deps + no-game-ids + nextest, in that order
+just check          # cargo xtask check: fmt, clippy, test, check-deps, check-no-game-ids,
+                    # check-manifests, cargo deny check — in that order, stops at the first failure
 ```
 
 Or individually:

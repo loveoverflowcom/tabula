@@ -31,6 +31,13 @@ rust-version = "1.85"
 license      = "AGPL-3.0-or-later OR LicenseRef-Commercial" # TODO: confirm before first public release
 repository   = "https://github.com/tabula-games/tabula"     # TODO: set real org
 authors      = ["Tabula contributors"]
+# Every crate in this workspace is proprietary product code, not an OSS
+# library — none of it is meant to reach crates.io. `publish = false` makes
+# an accidental `cargo publish` fail loudly, and lets `deny.toml`'s
+# `licenses.private.ignore` exempt these crates from the third-party license
+# allow-list: the dual AGPL/commercial header is a notice to contributors,
+# not a license this repo redistributes under the OSS terms in that list.
+publish      = false
 
 # =============================================================================
 # Shared dependency versions.

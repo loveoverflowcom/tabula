@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 4. The ONLY crate allowed to name a game. That containment is what makes
 # I-9 checkable: platform crates depend on this interface, never on games.

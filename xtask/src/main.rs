@@ -18,9 +18,10 @@
 //!
 //! | Command | Purpose | Phase |
 //! |---|---|---|
-//! | `check-deps` | Resolve cargo metadata, assert the `deps.toml` matrix, regenerate the doc 00 §8.1 table and fail if it differs | 0 |
-//! | `check-no-game-ids` | Grep `crates/` + `services/` for game id literals and `games::` imports outside the registry | 0 |
-//! | `check-manifests` | `game.toml` == compiled `GameMetadata`/`GameCapabilities` | 0 |
+//! | `check` | Run every gate below (plus fmt/clippy/test/cargo-deny) in fail-fast order — the one command a PR needs to be confident in | 0 |
+//! | `check-deps` | Walk the resolved cargo metadata graph, assert the `deps.toml` matrix (I-1, I-15) | 0 |
+//! | `check-no-game-ids` | Scan the tree for game id literals outside their game package, the registry, tests, manifests, and docs (I-9) | 0 |
+//! | `check-manifests` | Validate workspace `Cargo.toml`s (inheritance, no wildcard versions, `{ workspace = true }` over duplicated paths, game feature shape) and `game.toml` schemas | 0 |
 //! | `new-game <slug>` | Scaffold a game crate from the template (doc 02 §10.1) | 0 |
 //! | `selfplay <game>` | Bot-vs-bot matches with full invariant checking | 0 |
 //! | `replay <file>` | Replay a `.tbr` locally and print the first divergence | 0 |
@@ -62,18 +63,48 @@
 //! Print the *path* — "tabula-core → foo → tokio" — not just the violation.
 //! Without the path, the next step is a twenty-minute `cargo tree` session.
 
+mod check_cmd;
+mod deps_cmd;
+mod deps_policy;
+mod game_ids_cmd;
+mod game_ids_policy;
+mod graph;
+mod manifest_cmd;
+mod manifest_policy;
+
 fn main() {
     let cmd = std::env::args().nth(1);
 
     match cmd.as_deref() {
-        // TODO(phase 0): implement in this order, per doc 09 §7 step 4.
-        // check-deps first: it is the one that proves the whole enforcement idea
-        // works, and it is the one that guards every later crate.
-        Some("check-deps") => todo!("doc 00 §8.2 — walk the RESOLVED graph against deps.toml"),
-        Some("check-no-game-ids") => {
-            todo!("I-9 — grep crates/ and services/, exempting tabula-registry")
+        Some("check") => {
+            if !check_cmd::run() {
+                std::process::exit(1);
+            }
         }
-        Some("check-manifests") => todo!("doc 02 §4.3 — game.toml vs compiled metadata"),
+        Some("check-deps") => match deps_cmd::run() {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(1),
+            Err(err) => {
+                eprintln!("check-deps: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("check-no-game-ids") => match game_ids_cmd::run() {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(1),
+            Err(err) => {
+                eprintln!("check-no-game-ids: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("check-manifests") => match manifest_cmd::run() {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(1),
+            Err(err) => {
+                eprintln!("check-manifests: {err}");
+                std::process::exit(2);
+            }
+        },
         Some("new-game") => todo!("doc 02 §10.1 — scaffold from games/tictactoe"),
         Some("selfplay") => todo!("doc 02 §11.3 — the acceptance gate for Phase 0"),
         Some("replay") => todo!("doc 05 §8.3 — ReplayRunner::verify, print first divergence"),
@@ -94,6 +125,8 @@ fn main() {
             }
             eprintln!(
                 "usage: cargo xtask <command>\n\n\
+                 local gate:  check   (fmt, clippy, test, check-deps, check-no-game-ids,\n\
+                                        check-manifests, cargo-deny, in that order)\n\n\
                  phase 0:  check-deps  check-no-game-ids  check-manifests\n\
                            new-game <slug>  selfplay <game>  replay <file>\n\
                  phase 2:  gen-tokens  check-no-raw-colors\n\

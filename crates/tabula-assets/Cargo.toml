@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 3. Shared by the client, the server (manifest validation, CDN URL
 # signing), and the pack build tooling in xtask.

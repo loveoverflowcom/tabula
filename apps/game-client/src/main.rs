@@ -23,7 +23,7 @@
 fn main() {
     eprintln!(
         "tabula-game-client is a Phase 2 deliverable (docs/architecture/07-phases-and-implementation-roadmap.md).\n\
-         Gate: chess rules pass conformance and 100k self-play matches (Phase 1 exit)."
+         Gate: the Phase 1 exit criteria are met (see doc 07)."
     );
     std::process::exit(1);
 }

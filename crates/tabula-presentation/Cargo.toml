@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 2. This is the crate that makes renderer replacement possible (ADR-010).
 # If games drew with Macroquad directly, the renderer decision would be

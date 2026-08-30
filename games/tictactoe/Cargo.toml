@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # =============================================================================
 # THE FEATURE SPLIT IS I-1 IN PRACTICE, NOT COSMETICS. (doc 01 §5.1 rule 3)
