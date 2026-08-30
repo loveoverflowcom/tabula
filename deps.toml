@@ -128,6 +128,10 @@ allow = ["tabula-core", "tabula-game-api", "tabula-design", "tabula-assets", "gl
 tier  = "client"
 allow = ["macroquad", "tabula-presentation", "tabula-design", "tabula-assets", "tabula-core", "glam"]
 
+[crate."renderer-headless"]
+tier  = "client"
+allow = ["tabula-presentation", "tabula-design", "tiny-skia", "glam"]
+
 [crate."tabula-net-client"]
 tier    = "client"
 allow   = ["tabula-core", "tabula-protocol", "tabula-registry", "futures", "bytes", "thiserror"]

@@ -72,6 +72,14 @@ pub fn run() -> bool {
             label: "check-manifests",
             run: || crate::manifest_cmd::run().map_err(|e| e.to_string()),
         },
+        Step::InProcess {
+            label: "generated design tokens are current",
+            run: || crate::tokens_cmd::check_current().map_err(|e| e.to_string()),
+        },
+        Step::InProcess {
+            label: "check-no-raw-colors",
+            run: || crate::colors_cmd::run().map_err(|e| e.to_string()),
+        },
         Step::Shell {
             label: "cargo deny check",
             program: "cargo",

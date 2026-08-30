@@ -64,6 +64,7 @@
 //! Without the path, the next step is a twenty-minute `cargo tree` session.
 
 mod check_cmd;
+mod colors_cmd;
 mod deps_cmd;
 mod deps_policy;
 mod game_ids_cmd;
@@ -71,6 +72,7 @@ mod game_ids_policy;
 mod graph;
 mod manifest_cmd;
 mod manifest_policy;
+mod tokens_cmd;
 
 fn main() {
     let cmd = std::env::args().nth(1);
@@ -110,8 +112,21 @@ fn main() {
         Some("replay") => todo!("doc 05 §8.3 — ReplayRunner::verify, print first divergence"),
 
         // Phase 2+
-        Some("gen-tokens") => todo!("doc 04 §8.1"),
-        Some("check-no-raw-colors") => todo!("doc 04 §8.2"),
+        Some("gen-tokens") => match tokens_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("gen-tokens: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("check-no-raw-colors") => match colors_cmd::run() {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(1),
+            Err(err) => {
+                eprintln!("check-no-raw-colors: {err}");
+                std::process::exit(2);
+            }
+        },
         Some("pack-assets") => todo!("doc 04 §12"),
 
         // Phase 4+

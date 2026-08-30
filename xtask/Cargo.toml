@@ -25,6 +25,7 @@ thiserror      = { workspace = true }
 # `cargo metadata --format-version 1` output, for check-deps. Tooling-only:
 # xtask is exempt from the dependency matrix (never linked into a shipped binary).
 cargo_metadata = "0.19"
+serde_json    = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
