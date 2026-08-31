@@ -13,10 +13,14 @@
 //! @ai.invariant rejected-input-preserves-state
 //! @ai.invariant timer-order-is-logical
 //! @ai.invariant end-match-is-sole-terminal-authority
+//! @ai.invariant projection-output-determinism
+//! @ai.invariant view-event-output-determinism
 //! @ai.law same-setup-and-seed-reproduce-semantic-trace
 //! @ai.evidence selfplay::tests::same_setup_and_seed_is_semantically_stable
 //! @ai.evidence selfplay::tests::timer_queue_rearms_and_cancels
 //! @ai.evidence selfplay::tests::max_inputs_returns_a_structured_failure
+//! @ai.evidence selfplay::tests::projection_outputs_participate_in_semantic_determinism
+//! @ai.evidence selfplay::tests::view_event_outputs_participate_in_semantic_determinism
 //!
 //! # Cadence
 //!
@@ -63,8 +67,10 @@ pub struct SelfPlayConfig {
     /// Base seed. Match `n` derives its own [`MatchSeed`] from this value and
     /// the absolute match index.
     pub base_seed: [u8; 32],
-    /// Fraction of input attempts that receive a generic hostile input.
-    /// Values must be finite and in `0.0..=1.0`.
+    /// Probability of a hostile-injection opportunity at each logical
+    /// progress point. It is not the final fraction of all attempts: after a
+    /// hostile attempt, one scheduled game input is forced so a hostile stream
+    /// cannot starve the match. Values must be finite and in `0.0..=1.0`.
     pub hostile_fraction: f32,
     /// Fail a match that has not terminated after this many attempted inputs.
     pub max_inputs: u32,
@@ -164,16 +170,22 @@ pub enum SelfPlayError {
 ///
 /// The two runs compare input bytes, logical times, accepted/rejected results,
 /// per-input state hashes, events, effects, terminal outcome, and final state
-/// bytes. Timing measurements are collected only from the first run and never
-/// influence the second run or the rules context.
+/// bytes. When `check_projections` is enabled, canonical `View` outputs at
+/// each bot-scheduling checkpoint and canonical `Option<ViewEvent>` outputs
+/// for each viewer/event are compared too. Timing measurements are collected
+/// only from the first run and never influence the second run or rules context.
 ///
 /// @ai.role deterministic-transition
 /// @ai.domain testkit.selfplay.run
 /// @ai.invariant rejected-input-preserves-state
 /// @ai.invariant same-setup-and-seed-reproduce-semantic-trace
+/// @ai.invariant projection-output-determinism
+/// @ai.invariant view-event-output-determinism
 /// @ai.ensures failures-carry-reproduction-coordinates
 /// @ai.evidence selfplay::tests::same_setup_and_seed_is_semantically_stable
 /// @ai.evidence selfplay::tests::hostile_rejections_are_checked_transactionally
+/// @ai.evidence selfplay::tests::projection_outputs_participate_in_semantic_determinism
+/// @ai.evidence selfplay::tests::view_event_outputs_participate_in_semantic_determinism
 pub fn run<M: GameModule>(
     setup: &SelfPlaySetup<M::Rules>,
     cfg: &SelfPlayConfig,
@@ -266,13 +278,18 @@ fn validate_config<M: GameModule>(
     setup: &SelfPlaySetup<M::Rules>,
     cfg: &SelfPlayConfig,
 ) -> Result<u64, SelfPlayError> {
+    if cfg.matches == 0 {
+        return Err(SelfPlayError::InvalidConfig(
+            "matches must be greater than zero".to_owned(),
+        ));
+    }
     if cfg.max_inputs == 0 {
         return Err(SelfPlayError::InvalidConfig(
             "max_inputs must be greater than zero".to_owned(),
         ));
     }
     cfg.start_match_index
-        .checked_add(cfg.matches)
+        .checked_add(cfg.matches - 1)
         .ok_or_else(|| SelfPlayError::InvalidConfig("match index overflow".to_owned()))?;
     let hostile_threshold = fraction_threshold(cfg.hostile_fraction)
         .map_err(|reason| SelfPlayError::InvalidConfig(reason.to_owned()))?;
@@ -298,8 +315,12 @@ struct MatchExecution {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct SemanticTrace {
+    initial_state: Vec<u8>,
+    initial_hash: StateHash,
     initial_events: Vec<Vec<u8>>,
     initial_effects: Vec<Vec<u8>>,
+    initial_view_events: Vec<ViewEventObservation>,
+    projection_checkpoints: Vec<ProjectionCheckpoint>,
     steps: Vec<StepTrace>,
     final_state: Vec<u8>,
     final_hash: StateHash,
@@ -309,8 +330,12 @@ struct SemanticTrace {
 impl Default for SemanticTrace {
     fn default() -> Self {
         Self {
+            initial_state: Vec::new(),
+            initial_hash: StateHash([0; 32]),
             initial_events: Vec::new(),
             initial_effects: Vec::new(),
+            initial_view_events: Vec::new(),
+            projection_checkpoints: Vec::new(),
             steps: Vec::new(),
             final_state: Vec::new(),
             final_hash: StateHash([0; 32]),
@@ -327,6 +352,27 @@ struct StepTrace {
     state_hash: StateHash,
     events: Vec<Vec<u8>>,
     effects: Vec<Vec<u8>>,
+    view_events: Vec<ViewEventObservation>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ProjectionCheckpoint {
+    input_index: u64,
+    outputs: Vec<ProjectionObservation>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ProjectionObservation {
+    viewer: Viewer,
+    view: Vec<u8>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ViewEventObservation {
+    input_index: u64,
+    event_index: u32,
+    viewer: Viewer,
+    view_event: Vec<u8>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -446,6 +492,22 @@ fn simulate<M: GameModule>(
     };
 
     let mut state = init.state;
+    trace.initial_state = match canonical_encode(&state) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            return MatchExecution {
+                trace,
+                failure: Some(InternalFailure::at(
+                    SelfPlayFailureKind::CanonicalEncoding,
+                    0,
+                    format!("initial state encoding failed: {error}"),
+                )),
+                terminated: false,
+                latency,
+            };
+        }
+    };
+    trace.initial_hash = M::Rules::state_hash(&state);
     trace.initial_events = match encoded_values(&init.events) {
         Ok(values) => values,
         Err(failure) => {
@@ -457,7 +519,23 @@ fn simulate<M: GameModule>(
             };
         }
     };
-    exercise_view_events::<M::Rules>(&state, &init.events, &setup.roster, cfg.check_projections);
+    trace.initial_view_events = match view_event_observations::<M::Rules>(
+        &state,
+        &init.events,
+        &setup.roster,
+        cfg.check_projections,
+        0,
+    ) {
+        Ok(observations) => observations,
+        Err(failure) => {
+            return MatchExecution {
+                trace,
+                failure: Some(failure),
+                terminated: false,
+                latency,
+            };
+        }
+    };
     trace.initial_effects = match encoded_values(&init.effects) {
         Ok(values) => values,
         Err(failure) => {
@@ -514,8 +592,30 @@ fn simulate<M: GameModule>(
         }
 
         let next_index = trace.steps.len() as u64 + 1;
-        let bot_action =
-            next_bot_action::<M>(&state, now, &bots, seed, next_index, cfg.check_projections);
+        let schedule = match next_bot_action::<M>(
+            &state,
+            now,
+            &bots,
+            seed,
+            trace.steps.len() as u64,
+            cfg.check_projections,
+        ) {
+            Ok(result) => result,
+            Err(failure) => {
+                return finish_execution::<M::Rules>(
+                    trace,
+                    &state,
+                    Some(failure),
+                    terminal_outcome.as_ref(),
+                    latency,
+                );
+            }
+        };
+        let bot_action = schedule.action;
+        trace.projection_checkpoints.push(ProjectionCheckpoint {
+            input_index: trace.steps.len() as u64,
+            outputs: schedule.projections,
+        });
         let Some(scheduled) = choose_scheduled(bot_action, timers.next()) else {
             return finish_execution::<M::Rules>(
                 trace,
@@ -532,7 +632,7 @@ fn simulate<M: GameModule>(
 
         if !hostile_since_progress && should_inject_hostile(seed, next_index, hostile_threshold) {
             let mut hostile_rng =
-                DetRng::for_input(seed, InputIndex(next_index)).stream(HOSTILE_DOMAIN);
+                DetRng::for_input(seed, InputIndex(next_index)).stream(HOSTILE_KIND_DOMAIN);
             let hostile = hostile_input(
                 &setup.roster,
                 &timers,
@@ -708,6 +808,7 @@ fn apply_one<R: GameRules>(
         state_hash: hash_before,
         events: Vec::new(),
         effects: Vec::new(),
+        view_events: Vec::new(),
     };
 
     match result {
@@ -750,12 +851,16 @@ fn apply_one<R: GameRules>(
                     return Some(failure);
                 }
             };
-            exercise_view_events::<R>(
+            step.view_events = match view_event_observations::<R>(
                 state,
                 &outcome.events,
                 context.roster,
                 context.check_projections,
-            );
+                index.0,
+            ) {
+                Ok(observations) => observations,
+                Err(failure) => return Some(failure),
+            };
             if let Err(failure) = interpret_effects(
                 &outcome.effects,
                 now,
@@ -775,28 +880,63 @@ fn apply_one<R: GameRules>(
     None
 }
 
-fn exercise_view_events<R: GameRules>(
+fn view_event_observations<R: GameRules>(
     state_after: &R::State,
     events: &[R::Event],
     roster: &SeatRoster,
     check_projections: bool,
-) {
-    for event in events {
+    input_index: u64,
+) -> Result<Vec<ViewEventObservation>, InternalFailure> {
+    let mut observations = Vec::new();
+    for (event_index, event) in events.iter().enumerate() {
+        let event_index = u32::try_from(event_index).unwrap_or(u32::MAX);
         for entry in roster {
-            let _ = R::view_event(state_after, event, Viewer::Seat(entry.seat));
+            let viewer = Viewer::Seat(entry.seat);
+            let view_event = R::view_event(state_after, event, viewer);
+            if check_projections {
+                observations.push(ViewEventObservation {
+                    input_index,
+                    event_index,
+                    viewer,
+                    view_event: canonical_encode(&view_event).map_err(|error| {
+                        InternalFailure::at(
+                            SelfPlayFailureKind::CanonicalEncoding,
+                            input_index,
+                            format!(
+                                "view-event encoding failed for {viewer:?}, event {event_index}: {error}"
+                            ),
+                        )
+                    })?,
+                });
+            }
         }
         if check_projections {
-            let _ = R::view_event(state_after, event, Viewer::Spectator(SpectatorTier::Live));
-            let _ = R::view_event(
-                state_after,
-                event,
+            for viewer in [
+                Viewer::Spectator(SpectatorTier::Live),
                 Viewer::Spectator(SpectatorTier::Delayed {
                     by: tabula_core::Millis(30_000),
                 }),
-            );
-            let _ = R::view_event(state_after, event, Viewer::Audit);
+                Viewer::Audit,
+            ] {
+                let view_event = R::view_event(state_after, event, viewer);
+                observations.push(ViewEventObservation {
+                    input_index,
+                    event_index,
+                    viewer,
+                    view_event: canonical_encode(&view_event).map_err(|error| {
+                        InternalFailure::at(
+                            SelfPlayFailureKind::CanonicalEncoding,
+                            input_index,
+                            format!(
+                                "view-event encoding failed for {viewer:?}, event {event_index}: {error}"
+                            ),
+                        )
+                    })?,
+                });
+            }
         }
     }
+    Ok(observations)
 }
 
 fn next_bot_action<M: GameModule>(
@@ -806,23 +946,55 @@ fn next_bot_action<M: GameModule>(
     seed: &MatchSeed,
     input_index: u64,
     check_projections: bool,
-) -> Option<BotAction<<M::Rules as GameRules>::Command>> {
+) -> Result<BotSchedule<<M::Rules as GameRules>::Command>, InternalFailure> {
+    // Test-only policy: production uses RequestBotMove as the bot-runner
+    // trigger, while this fuzzer directly polls each bot projection so every
+    // logical opportunity is exercised without a platform actor.
+    let mut seat_views = Vec::with_capacity(bots.len());
+    let mut projections = Vec::new();
+    for slot in bots {
+        let viewer = Viewer::Seat(slot.seat);
+        let view = M::Rules::project(state, viewer);
+        if check_projections {
+            projections.push(ProjectionObservation {
+                viewer,
+                view: canonical_encode(&view).map_err(|error| {
+                    InternalFailure::at(
+                        SelfPlayFailureKind::CanonicalEncoding,
+                        input_index,
+                        format!("projection encoding failed for {viewer:?}: {error}"),
+                    )
+                })?,
+            });
+        }
+        seat_views.push((slot.seat, view));
+    }
     if check_projections {
-        let _ = M::Rules::project(state, Viewer::Spectator(SpectatorTier::Live));
-        let _ = M::Rules::project(
-            state,
+        for viewer in [
+            Viewer::Spectator(SpectatorTier::Live),
             Viewer::Spectator(SpectatorTier::Delayed {
                 by: tabula_core::Millis(30_000),
             }),
-        );
-        let _ = M::Rules::project(state, Viewer::Audit);
+            Viewer::Audit,
+        ] {
+            let view = M::Rules::project(state, viewer);
+            projections.push(ProjectionObservation {
+                viewer,
+                view: canonical_encode(&view).map_err(|error| {
+                    InternalFailure::at(
+                        SelfPlayFailureKind::CanonicalEncoding,
+                        input_index,
+                        format!("projection encoding failed for {viewer:?}: {error}"),
+                    )
+                })?,
+            });
+        }
     }
 
     let mut selected: Option<BotAction<<M::Rules as GameRules>::Command>> = None;
-    for slot in bots {
+    for (slot, (_seat, view)) in bots.iter().zip(seat_views) {
         // This is the security boundary: `choose` receives the projected View
         // and never receives `state`, even though this function owns the state.
-        let view = M::Rules::project(state, Viewer::Seat(slot.seat));
         let mut bot_rng = DetRng::for_input(seed, InputIndex(input_index))
             .stream(BOT_DOMAIN + u32::from(slot.seat.0));
         let Some(command) = slot.bot.choose(&view, slot.seat, &mut bot_rng) else {
@@ -843,7 +1015,12 @@ fn next_bot_action<M: GameModule>(
             selected = Some(candidate);
         }
     }
-    selected
+    // The caller owns the trace so projections are recorded at the exact
+    // logical checkpoint whose bot views were used for scheduling.
+    Ok(BotSchedule {
+        action: selected,
+        projections,
+    })
 }
 
 fn interpret_effects(
@@ -872,9 +1049,13 @@ fn interpret_effects(
             }
             // These effects are durable/platform concerns. Recording them in the
             // semantic trace is enough for this mini runtime; no external side
-            // effect is allowed to influence the next input. If a future game
-            // requests a bot move, the projection-driven bot scan remains the
-            // only source of its command.
+            // effect is allowed to influence the next input.
+            //
+            // Production scheduling is `RequestBotMove` -> bot runner ->
+            // `Input::Player`. Self-play intentionally uses a test-only direct
+            // projection-driven bot scheduler as its deterministic fuzz-input
+            // producer, so it does not claim equivalence with that production
+            // orchestration. Current Phase 1 games do not emit RequestBotMove.
             _ => {}
         }
     }
@@ -920,14 +1101,21 @@ struct BotAction<C> {
     command: C,
 }
 
+struct BotSchedule<C> {
+    action: Option<BotAction<C>>,
+    projections: Vec<ProjectionObservation>,
+}
+
 struct Scheduled<C> {
     input: Input<C>,
     at: LogicalTime,
     timer: Option<TimerId>,
 }
 
-/// Select the next real input. Timer deadlines win when equal to bot readiness;
-/// Chess's exact-zero clock rule makes that boundary explicit and replay-stable.
+/// Select the next real input. This mini-runtime's deterministic scheduler
+/// policy delivers a timer before a bot action when their logical deadlines
+/// are equal. It is a total ordering for self-play, not a second game's rule
+/// implementation; the game still owns the meaning of `Input::Timer`.
 fn choose_scheduled<C>(
     bot: Option<BotAction<C>>,
     timer: Option<(TimerId, LogicalTime)>,
@@ -965,7 +1153,8 @@ impl<C> Scheduled<C> {
 }
 
 const BOT_DOMAIN: u32 = 1;
-const HOSTILE_DOMAIN: u32 = 2;
+const HOSTILE_DECISION_DOMAIN: u32 = 2;
+const HOSTILE_KIND_DOMAIN: u32 = 3;
 
 fn hostile_input<C: Clone>(
     roster: &SeatRoster,
@@ -1015,7 +1204,7 @@ fn unused_seat(roster: &SeatRoster) -> SeatId {
 }
 
 fn should_inject_hostile(seed: &MatchSeed, input_index: u64, threshold: u64) -> bool {
-    let mut rng = DetRng::for_input(seed, InputIndex(input_index)).stream(HOSTILE_DOMAIN);
+    let mut rng = DetRng::for_input(seed, InputIndex(input_index)).stream(HOSTILE_DECISION_DOMAIN);
     u64::from(rng.next_u32()) < threshold
 }
 
@@ -1071,18 +1260,56 @@ fn encoded_values<T: Serialize>(values: &[T]) -> Result<Vec<Vec<u8>>, InternalFa
 }
 
 fn first_divergence(a: &SemanticTrace, b: &SemanticTrace) -> Option<(Option<u64>, String)> {
+    if a.initial_state != b.initial_state {
+        return Some((Some(0), "initial canonical state differed".to_owned()));
+    }
+    if a.initial_hash != b.initial_hash {
+        return Some((Some(0), "initial state hash differed".to_owned()));
+    }
     if a.initial_events != b.initial_events {
         return Some((Some(0), "initial event stream differed".to_owned()));
     }
     if a.initial_effects != b.initial_effects {
         return Some((Some(0), "initial effect stream differed".to_owned()));
     }
-    for (index, (left, right)) in a.steps.iter().zip(&b.steps).enumerate() {
-        if left != right {
+    if let Some((input_index, reason)) =
+        first_view_event_divergence(&a.initial_view_events, &b.initial_view_events)
+    {
+        return Some((Some(input_index), reason));
+    }
+    if let Some((input_index, reason)) =
+        projection_checkpoint_divergence(&a.projection_checkpoints, &b.projection_checkpoints, 0)
+    {
+        return Some((Some(input_index), reason));
+    }
+
+    let common_steps = a.steps.len().min(b.steps.len());
+    for index in 0..common_steps {
+        let left = &a.steps[index];
+        let right = &b.steps[index];
+        if left.input != right.input
+            || left.logical_time != right.logical_time
+            || left.result != right.result
+            || left.state_hash != right.state_hash
+            || left.events != right.events
+            || left.effects != right.effects
+        {
             return Some((
                 Some(index as u64 + 1),
                 "input, logical time, result, events, effects, or state hash differed".to_owned(),
             ));
+        }
+        if let Some((input_index, reason)) =
+            first_view_event_divergence(&left.view_events, &right.view_events)
+        {
+            return Some((Some(input_index), reason));
+        }
+        if let Some((input_index, reason)) = projection_checkpoint_divergence(
+            &a.projection_checkpoints,
+            &b.projection_checkpoints,
+            index as u64 + 1,
+        ) {
+            return Some((Some(input_index), reason));
         }
     }
     if a.steps.len() != b.steps.len() {
@@ -1101,6 +1328,88 @@ fn first_divergence(a: &SemanticTrace, b: &SemanticTrace) -> Option<(Option<u64>
         return Some((
             Some(a.steps.len() as u64),
             "final canonical state or state hash differed".to_owned(),
+        ));
+    }
+    None
+}
+
+fn projection_checkpoint_divergence(
+    a: &[ProjectionCheckpoint],
+    b: &[ProjectionCheckpoint],
+    input_index: u64,
+) -> Option<(u64, String)> {
+    let Some(left) = a
+        .iter()
+        .find(|checkpoint| checkpoint.input_index == input_index)
+    else {
+        return b
+            .iter()
+            .find(|checkpoint| checkpoint.input_index == input_index)
+            .map(|checkpoint| {
+                (
+                    checkpoint.input_index,
+                    "projection checkpoint was missing from the first run".to_owned(),
+                )
+            });
+    };
+    let Some(right) = b
+        .iter()
+        .find(|checkpoint| checkpoint.input_index == input_index)
+    else {
+        return Some((
+            left.input_index,
+            "projection checkpoint was missing from the second run".to_owned(),
+        ));
+    };
+    if left.outputs.len() != right.outputs.len() {
+        let viewer = left
+            .outputs
+            .get(right.outputs.len())
+            .or_else(|| right.outputs.get(left.outputs.len()))
+            .map(|output| format!(" ({:?})", output.viewer))
+            .unwrap_or_default();
+        return Some((
+            input_index,
+            format!("projection viewer set differed at checkpoint {input_index}{viewer}"),
+        ));
+    }
+    for (left_output, right_output) in left.outputs.iter().zip(&right.outputs) {
+        if left_output != right_output {
+            return Some((
+                input_index,
+                format!(
+                    "projection output differed for {:?} at checkpoint {input_index}",
+                    left_output.viewer
+                ),
+            ));
+        }
+    }
+    None
+}
+
+fn first_view_event_divergence(
+    a: &[ViewEventObservation],
+    b: &[ViewEventObservation],
+) -> Option<(u64, String)> {
+    for (left, right) in a.iter().zip(b) {
+        if left != right {
+            return Some((
+                left.input_index,
+                format!(
+                    "view-event output differed for {:?}, event {}",
+                    left.viewer, left.event_index
+                ),
+            ));
+        }
+    }
+    if a.len() != b.len() {
+        let missing = a.get(b.len()).or_else(|| b.get(a.len()))?;
+        return Some((
+            missing.input_index,
+            format!(
+                "view-event viewer set differed for {:?}, event {}",
+                missing.viewer, missing.event_index
+            ),
         ));
     }
     None
@@ -1165,10 +1474,25 @@ mod tests {
     use super::*;
     use serde::Deserialize;
     use smallvec::smallvec;
+    use std::sync::atomic::{AtomicU8, Ordering};
     use tabula_core::{BotLevel, MatchOutcome, OutcomeKind, Standing};
     use tabula_game_api::{
         GameCapabilities, GameMetadata, Init, InitError, LegalCommands, Outcome,
     };
+
+    fn fixture_outcome(seat: SeatId) -> MatchOutcome {
+        MatchOutcome::new_for_seats(
+            OutcomeKind::Draw,
+            smallvec![Standing {
+                seat,
+                rank: 0,
+                score: 0,
+            }],
+            "test".into(),
+            &[seat],
+        )
+        .expect("fixture outcome is valid")
+    }
 
     #[derive(Clone, Debug, Default, Serialize, Deserialize)]
     struct Config;
@@ -1308,17 +1632,376 @@ mod tests {
         }
     }
 
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    struct InitialState {
+        marker: u8,
+        steps: u8,
+    }
+
+    #[derive(Debug)]
+    struct InitialRules;
+
+    struct InitialModule;
+
+    #[derive(Debug)]
+    struct InitialBot;
+
+    static INITIAL_CREATE_RUN: AtomicU8 = AtomicU8::new(0);
+
+    impl GameBot<InitialRules> for InitialBot {
+        fn level(&self) -> BotLevel {
+            BotLevel::Trivial
+        }
+
+        fn choose(&self, view: &View, _seat: SeatId, _rng: &mut DetRng) -> Option<Command> {
+            (view.steps == 0).then_some(Command::Step)
+        }
+    }
+
+    impl GameRules for InitialRules {
+        type State = InitialState;
+        type Command = Command;
+        type Event = Event;
+        type View = View;
+        type ViewEvent = Event;
+        type Config = Config;
+
+        const RULES_VERSION: tabula_core::RulesVersion = tabula_core::RulesVersion(1);
+
+        fn create(_: &Config, _: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: InitialState {
+                    marker: INITIAL_CREATE_RUN.fetch_add(1, Ordering::SeqCst),
+                    steps: 0,
+                },
+                events: smallvec![],
+                effects: smallvec![],
+            })
+        }
+
+        fn apply(
+            state: &mut InitialState,
+            input: Input<Command>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, tabula_core::RuleError> {
+            match input {
+                Input::Player {
+                    command: Command::Step,
+                    ..
+                } => {
+                    state.marker = 0;
+                    state.steps = state.steps.saturating_add(1);
+                    Ok(Outcome {
+                        events: smallvec![],
+                        effects: smallvec![Effect::EndMatch {
+                            outcome: fixture_outcome(SeatId(0)),
+                        }],
+                    })
+                }
+                Input::Timer { .. } | Input::Seat { .. } | Input::Admin(_) => {
+                    Err(tabula_core::RuleError::code(RuleErrorCode::Unsupported))
+                }
+            }
+        }
+
+        fn project(state: &InitialState, _: Viewer) -> View {
+            View { steps: state.steps }
+        }
+
+        fn view_event(_: &InitialState, event: &Event, _: Viewer) -> Option<Event> {
+            Some(event.clone())
+        }
+
+        fn legal_commands(_: &InitialState, _: SeatId) -> LegalCommands<Command> {
+            LegalCommands::Unknown
+        }
+    }
+
+    impl GameModule for InitialModule {
+        type Rules = InitialRules;
+
+        fn metadata() -> &'static GameMetadata {
+            static METADATA: std::sync::LazyLock<GameMetadata> =
+                std::sync::LazyLock::new(|| panic!("metadata is not used by self-play fixture"));
+            &METADATA
+        }
+
+        fn capabilities() -> &'static GameCapabilities {
+            static CAPABILITIES: std::sync::LazyLock<GameCapabilities> =
+                std::sync::LazyLock::new(|| {
+                    panic!("capabilities are not used by self-play fixture")
+                });
+            &CAPABILITIES
+        }
+
+        fn bot(_: BotLevel) -> Option<Box<dyn GameBot<InitialRules>>> {
+            Some(Box::new(InitialBot))
+        }
+
+        fn validate_config(_: &Config, _: &SeatRoster) -> Result<(), tabula_game_api::ConfigError> {
+            Ok(())
+        }
+    }
+
+    #[derive(Clone, Debug, Serialize)]
+    struct ProjectionView {
+        steps: u8,
+        controlled: u8,
+    }
+
+    #[derive(Debug)]
+    struct ProjectionRules;
+
+    struct ProjectionModule;
+
+    #[derive(Debug)]
+    struct ProjectionBot;
+
+    static PROJECTION_OUTPUT: AtomicU8 = AtomicU8::new(0);
+
+    impl GameBot<ProjectionRules> for ProjectionBot {
+        fn level(&self) -> BotLevel {
+            BotLevel::Trivial
+        }
+
+        fn choose(
+            &self,
+            view: &ProjectionView,
+            _seat: SeatId,
+            _rng: &mut DetRng,
+        ) -> Option<Command> {
+            (view.steps == 0).then_some(Command::Step)
+        }
+    }
+
+    impl GameRules for ProjectionRules {
+        type State = State;
+        type Command = Command;
+        type Event = Event;
+        type View = ProjectionView;
+        type ViewEvent = Event;
+        type Config = Config;
+
+        const RULES_VERSION: tabula_core::RulesVersion = tabula_core::RulesVersion(1);
+
+        fn create(_: &Config, _: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: State { steps: 0 },
+                events: smallvec![],
+                effects: smallvec![],
+            })
+        }
+
+        fn apply(
+            state: &mut State,
+            input: Input<Command>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, tabula_core::RuleError> {
+            match input {
+                Input::Player {
+                    command: Command::Step,
+                    ..
+                } => {
+                    state.steps = 1;
+                    Ok(Outcome {
+                        events: smallvec![],
+                        effects: smallvec![Effect::EndMatch {
+                            outcome: fixture_outcome(SeatId(0)),
+                        }],
+                    })
+                }
+                Input::Timer { .. } | Input::Seat { .. } | Input::Admin(_) => {
+                    Err(tabula_core::RuleError::code(RuleErrorCode::Unsupported))
+                }
+            }
+        }
+
+        fn project(state: &State, _: Viewer) -> ProjectionView {
+            ProjectionView {
+                steps: state.steps,
+                controlled: PROJECTION_OUTPUT.fetch_add(1, Ordering::SeqCst),
+            }
+        }
+
+        fn view_event(_: &State, event: &Event, _: Viewer) -> Option<Event> {
+            Some(event.clone())
+        }
+
+        fn legal_commands(_: &State, _: SeatId) -> LegalCommands<Command> {
+            LegalCommands::Unknown
+        }
+    }
+
+    impl GameModule for ProjectionModule {
+        type Rules = ProjectionRules;
+
+        fn metadata() -> &'static GameMetadata {
+            static METADATA: std::sync::LazyLock<GameMetadata> =
+                std::sync::LazyLock::new(|| panic!("metadata is not used by self-play fixture"));
+            &METADATA
+        }
+
+        fn capabilities() -> &'static GameCapabilities {
+            static CAPABILITIES: std::sync::LazyLock<GameCapabilities> =
+                std::sync::LazyLock::new(|| {
+                    panic!("capabilities are not used by self-play fixture")
+                });
+            &CAPABILITIES
+        }
+
+        fn bot(_: BotLevel) -> Option<Box<dyn GameBot<ProjectionRules>>> {
+            Some(Box::new(ProjectionBot))
+        }
+
+        fn validate_config(_: &Config, _: &SeatRoster) -> Result<(), tabula_game_api::ConfigError> {
+            Ok(())
+        }
+    }
+
+    #[derive(Clone, Debug, Serialize)]
+    struct DivergentViewEvent {
+        controlled: u8,
+    }
+
+    #[derive(Debug)]
+    struct ViewEventRules;
+
+    struct ViewEventModule;
+
+    #[derive(Debug)]
+    struct ViewEventBot;
+
+    static VIEW_EVENT_OUTPUT: AtomicU8 = AtomicU8::new(0);
+
+    impl GameBot<ViewEventRules> for ViewEventBot {
+        fn level(&self) -> BotLevel {
+            BotLevel::Trivial
+        }
+
+        fn choose(&self, view: &View, _seat: SeatId, _rng: &mut DetRng) -> Option<Command> {
+            (view.steps == 0).then_some(Command::Step)
+        }
+    }
+
+    impl GameRules for ViewEventRules {
+        type State = State;
+        type Command = Command;
+        type Event = Event;
+        type View = View;
+        type ViewEvent = DivergentViewEvent;
+        type Config = Config;
+
+        const RULES_VERSION: tabula_core::RulesVersion = tabula_core::RulesVersion(1);
+
+        fn create(_: &Config, _: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: State { steps: 0 },
+                events: smallvec![],
+                effects: smallvec![],
+            })
+        }
+
+        fn apply(
+            state: &mut State,
+            input: Input<Command>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, tabula_core::RuleError> {
+            match input {
+                Input::Player {
+                    command: Command::Step,
+                    ..
+                } => {
+                    state.steps = 1;
+                    Ok(Outcome {
+                        events: smallvec![Event],
+                        effects: smallvec![Effect::EndMatch {
+                            outcome: fixture_outcome(SeatId(0)),
+                        }],
+                    })
+                }
+                Input::Timer { .. } | Input::Seat { .. } | Input::Admin(_) => {
+                    Err(tabula_core::RuleError::code(RuleErrorCode::Unsupported))
+                }
+            }
+        }
+
+        fn project(state: &State, _viewer: Viewer) -> View {
+            View { steps: state.steps }
+        }
+
+        fn view_event(_: &State, _: &Event, _: Viewer) -> Option<DivergentViewEvent> {
+            Some(DivergentViewEvent {
+                controlled: VIEW_EVENT_OUTPUT.fetch_add(1, Ordering::SeqCst),
+            })
+        }
+
+        fn legal_commands(_: &State, _: SeatId) -> LegalCommands<Command> {
+            LegalCommands::Unknown
+        }
+    }
+
+    impl GameModule for ViewEventModule {
+        type Rules = ViewEventRules;
+
+        fn metadata() -> &'static GameMetadata {
+            static METADATA: std::sync::LazyLock<GameMetadata> =
+                std::sync::LazyLock::new(|| panic!("metadata is not used by self-play fixture"));
+            &METADATA
+        }
+
+        fn capabilities() -> &'static GameCapabilities {
+            static CAPABILITIES: std::sync::LazyLock<GameCapabilities> =
+                std::sync::LazyLock::new(|| {
+                    panic!("capabilities are not used by self-play fixture")
+                });
+            &CAPABILITIES
+        }
+
+        fn bot(_: BotLevel) -> Option<Box<dyn GameBot<ViewEventRules>>> {
+            Some(Box::new(ViewEventBot))
+        }
+
+        fn validate_config(_: &Config, _: &SeatRoster) -> Result<(), tabula_game_api::ConfigError> {
+            Ok(())
+        }
+    }
+
     fn setup() -> SelfPlaySetup<Rules> {
         SelfPlaySetup {
             config: Config,
-            roster: SeatRoster::new(smallvec![tabula_core::SeatEntry {
-                seat: SeatId(0),
-                occupant: Occupant::Bot {
-                    level: BotLevel::Trivial,
-                },
-                team: None,
-            }])
-            .expect("fixture roster is valid"),
+            roster: single_bot_roster(),
+        }
+    }
+
+    fn single_bot_roster() -> SeatRoster {
+        SeatRoster::new(smallvec![tabula_core::SeatEntry {
+            seat: SeatId(0),
+            occupant: Occupant::Bot {
+                level: BotLevel::Trivial,
+            },
+            team: None,
+        }])
+        .expect("fixture roster is valid")
+    }
+
+    fn initial_setup() -> SelfPlaySetup<InitialRules> {
+        SelfPlaySetup {
+            config: Config,
+            roster: single_bot_roster(),
+        }
+    }
+
+    fn projection_setup() -> SelfPlaySetup<ProjectionRules> {
+        SelfPlaySetup {
+            config: Config,
+            roster: single_bot_roster(),
+        }
+    }
+
+    fn view_event_setup() -> SelfPlaySetup<ViewEventRules> {
+        SelfPlaySetup {
+            config: Config,
+            roster: single_bot_roster(),
         }
     }
 
@@ -1343,6 +2026,56 @@ mod tests {
         assert_eq!(report.matches_run, 2);
         assert_eq!(report.terminated, 2);
         assert_eq!(report.inputs_total, 2 * 2);
+    }
+
+    #[test]
+    fn initial_state_divergence_is_reported_at_index_zero() {
+        INITIAL_CREATE_RUN.store(0, Ordering::SeqCst);
+        let mut config = cfg();
+        config.matches = 1;
+        let report = run::<InitialModule>(&initial_setup(), &config)
+            .expect("initial-state fixture configuration is valid");
+        let failure = report
+            .failures
+            .first()
+            .expect("the initial state must diverge");
+        assert_eq!(failure.kind, SelfPlayFailureKind::Diverged);
+        assert_eq!(failure.input_index, Some(0));
+        assert_eq!(failure.reason, "initial canonical state differed");
+    }
+
+    #[test]
+    fn projection_outputs_participate_in_semantic_determinism() {
+        PROJECTION_OUTPUT.store(0, Ordering::SeqCst);
+        let mut config = cfg();
+        config.matches = 1;
+        let report = run::<ProjectionModule>(&projection_setup(), &config)
+            .expect("projection fixture configuration is valid");
+        let failure = report
+            .failures
+            .first()
+            .expect("the projection must diverge");
+        assert_eq!(failure.kind, SelfPlayFailureKind::Diverged);
+        assert_eq!(failure.input_index, Some(0));
+        assert!(failure.reason.contains("projection output differed"));
+        assert!(failure.reason.contains("Seat"));
+    }
+
+    #[test]
+    fn view_event_outputs_participate_in_semantic_determinism() {
+        VIEW_EVENT_OUTPUT.store(0, Ordering::SeqCst);
+        let mut config = cfg();
+        config.matches = 1;
+        let report = run::<ViewEventModule>(&view_event_setup(), &config)
+            .expect("view-event fixture configuration is valid");
+        let failure = report
+            .failures
+            .first()
+            .expect("the view event must diverge");
+        assert_eq!(failure.kind, SelfPlayFailureKind::Diverged);
+        assert_eq!(failure.input_index, Some(1));
+        assert!(failure.reason.contains("view-event output differed"));
+        assert!(failure.reason.contains("Seat"));
     }
 
     #[test]
@@ -1413,6 +2146,73 @@ mod tests {
             "unexpected self-play failures: {report:?}"
         );
         assert_eq!(report.transactional_failures, 0);
+        assert!(report.inputs_total > 2 * 2);
+    }
+
+    #[test]
+    fn zero_match_batches_are_rejected_at_the_library_boundary() {
+        let mut config = cfg();
+        config.matches = 0;
+        let error = run::<Module>(&setup(), &config).expect_err("zero work must not pass");
+        assert!(
+            matches!(error, SelfPlayError::InvalidConfig(reason) if reason == "matches must be greater than zero")
+        );
+    }
+
+    #[test]
+    fn match_index_range_uses_the_last_index_that_will_run() {
+        let mut config = cfg();
+        config.matches = 1;
+        config.start_match_index = u32::MAX;
+        let report = run::<Module>(&setup(), &config).expect("the maximum index is valid");
+        assert!(report.is_success());
+
+        config.matches = 2;
+        config.start_match_index = u32::MAX - 1;
+        let report = run::<Module>(&setup(), &config).expect("the last two indices are valid");
+        assert!(report.is_success());
+
+        config.start_match_index = u32::MAX;
+        let error = run::<Module>(&setup(), &config).expect_err("the range must overflow");
+        assert!(
+            matches!(error, SelfPlayError::InvalidConfig(reason) if reason == "match index overflow")
+        );
+    }
+
+    #[test]
+    fn hostile_fraction_boundaries_are_explicit_and_deterministic() {
+        assert_eq!(fraction_threshold(0.0), Ok(0));
+        assert_eq!(fraction_threshold(1.0), Ok(1_u64 << 32));
+        assert!(fraction_threshold(-f32::EPSILON).is_err());
+        assert!(fraction_threshold(f32::NAN).is_err());
+        assert!(fraction_threshold(f32::INFINITY).is_err());
+        assert!(fraction_threshold(1.000_001).is_err());
+    }
+
+    #[test]
+    fn hostile_decision_and_kind_streams_are_separate_and_reproducible() {
+        assert_ne!(HOSTILE_DECISION_DOMAIN, HOSTILE_KIND_DOMAIN);
+        let seed = MatchSeed::from_bytes([7; 32]);
+        let decision = DetRng::for_input(&seed, InputIndex(3))
+            .stream(HOSTILE_DECISION_DOMAIN)
+            .next_u32();
+        let repeated_decision = DetRng::for_input(&seed, InputIndex(3))
+            .stream(HOSTILE_DECISION_DOMAIN)
+            .next_u32();
+        let kind = DetRng::for_input(&seed, InputIndex(3))
+            .stream(HOSTILE_KIND_DOMAIN)
+            .next_u32();
+        let repeated_kind = DetRng::for_input(&seed, InputIndex(3))
+            .stream(HOSTILE_KIND_DOMAIN)
+            .next_u32();
+        assert_eq!(decision, repeated_decision);
+        assert_eq!(kind, repeated_kind);
+    }
+
+    #[test]
+    fn direct_bot_driver_is_a_test_only_policy_not_a_request_effect_gate() {
+        let report = run::<Module>(&setup(), &cfg()).expect("direct bot driving is supported");
+        assert!(report.is_success());
     }
 
     #[test]

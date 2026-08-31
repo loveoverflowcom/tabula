@@ -5,9 +5,9 @@
 //! and it doubles as a proof that the projection contains enough information to
 //! play the game.
 //!
-//! Tic-tac-toe is solved, so `Hard` can be perfect. Do not read that as a
-//! template — chess gets a shallow alpha-beta as an *optional crate feature*,
-//! and no game gets ML in the MVP (doc 01 §8).
+//! The module advertises only `Trivial` and `Easy`; the small heuristic below
+//! implements those levels. A stronger solver can be added when the game
+//! capability contract is deliberately expanded (doc 01 §8).
 
 use tabula_core::{BotLevel, DetRng, Millis, SeatId};
 use tabula_game_api::GameBot;
@@ -15,18 +15,18 @@ use tabula_game_api::GameBot;
 use crate::{rules::TicTacToeRules, state::Command, state::Mark, state::Status, state::View};
 
 #[derive(Debug)]
-pub struct Perfect {
+pub struct Heuristic {
     level: BotLevel,
 }
 
-impl Perfect {
+impl Heuristic {
     #[must_use]
     pub fn new(level: BotLevel) -> Self {
         Self { level }
     }
 }
 
-impl GameBot<TicTacToeRules> for Perfect {
+impl GameBot<TicTacToeRules> for Heuristic {
     fn level(&self) -> BotLevel {
         self.level
     }
@@ -59,13 +59,6 @@ impl GameBot<TicTacToeRules> for Perfect {
             }
         }
 
-        if matches!(self.level, BotLevel::Medium | BotLevel::Hard) && cells.len() > 1 {
-            const PREFERRED: [u8; 9] = [4, 0, 2, 6, 8, 1, 3, 5, 7];
-            if let Some(cell) = PREFERRED.into_iter().find(|cell| cells.contains(cell)) {
-                cells = vec![cell];
-            }
-        }
-
         let index = usize::try_from(rng.below(u32::try_from(cells.len()).ok()?)).ok()?;
         cells
             .get(index)
@@ -78,7 +71,7 @@ impl GameBot<TicTacToeRules> for Perfect {
         // delay, never as a rule — a late bot is late, not illegal.
         match self.level {
             BotLevel::Trivial => Millis(200),
-            _ => Millis(700),
+            BotLevel::Easy | BotLevel::Medium | BotLevel::Hard => Millis(700),
         }
     }
 }
