@@ -9,33 +9,145 @@ use tabula_testkit::{ReplayIdentity, ReplayRunner, ValidatedReplay};
 use tabula_game_tictactoe::{TicTacToeModule, TicTacToeRules};
 
 #[test]
-fn rules_hash_covers_all_rules_sources() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let mut sources = Vec::new();
-    collect_rust_sources(&root, &root, &mut sources);
-    sources.sort_by(|left, right| left.0.cmp(&right.0));
+fn rules_hash_matches_independent_rules_subtree_oracle() {
+    let sources = independent_rules_sources();
+    assert!(!sources.is_empty());
+    assert_eq!(TicTacToeRules::RULES_HASH, independent_rules_hash(&sources));
+}
 
+#[test]
+fn all_rules_subtree_files_are_discovered_recursively() {
+    let root = rules_root();
+    let sources = independent_rules_sources();
+    let source_paths: Vec<_> = sources.iter().map(|(path, _)| path.clone()).collect();
+    let mut filesystem_paths = Vec::new();
+    collect_rust_paths(&root, &root, &mut filesystem_paths);
+
+    assert_eq!(filesystem_paths.len(), source_paths.len());
+    assert!(filesystem_paths
+        .iter()
+        .all(|path| source_paths.contains(path)));
+    assert!(source_paths.windows(2).all(|paths| paths[0] < paths[1]));
+    assert!(source_paths
+        .iter()
+        .all(|path| !path.is_absolute() && !path.starts_with("..")));
+}
+
+#[test]
+fn canonical_source_mutation_changes_oracle_hash() {
+    let sources = independent_rules_sources();
+    let before = independent_rules_hash(&sources);
+    let mut mutated = sources.clone();
+    mutated[0].1[0] ^= 1;
+
+    assert_ne!(before, independent_rules_hash(&mutated));
+}
+
+#[test]
+fn canonical_tree_rejects_noncanonical_feature_sources() {
+    let canonical_root = rules_root();
+    let manifest_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    assert_noncanonical_feature_source(&canonical_root, &manifest_root.join("src/lib.rs"));
+    assert_noncanonical_feature_source(&canonical_root, &manifest_root.join("src/bot.rs"));
+    assert_noncanonical_feature_source(&canonical_root, &manifest_root.join("src/ui.rs"));
+
+    let misplaced_bot = canonical_root.join("bot.rs");
+    assert!(
+        !is_outside_canonical_tree(&canonical_root, &misplaced_bot),
+        "a bot source under src/rules must be rejected by the source-boundary policy"
+    );
+    let misplaced_ui = canonical_root.join("ui.rs");
+    assert!(
+        !is_outside_canonical_tree(&canonical_root, &misplaced_ui),
+        "a presentation source under src/rules must be rejected by the source-boundary policy"
+    );
+}
+
+#[test]
+fn canonical_rules_do_not_depend_on_crate_root_sources() {
+    for (relative, bytes) in independent_rules_sources() {
+        let source = std::str::from_utf8(&bytes).expect("Rust source must be UTF-8");
+        for forbidden in ["crate::", "super::super::", "#[path", "include!"] {
+            assert!(
+                !source.contains(forbidden),
+                "canonical rules source {} must not use {forbidden}",
+                relative.display()
+            );
+        }
+    }
+}
+
+fn rules_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("src/rules")
+}
+
+fn assert_noncanonical_feature_source(canonical_root: &Path, source: &Path) {
+    assert!(
+        source.is_file(),
+        "noncanonical feature source {} must remain outside src/rules",
+        source.display()
+    );
+    assert!(
+        is_outside_canonical_tree(canonical_root, source),
+        "noncanonical feature source {} must not be under {}",
+        source.display(),
+        canonical_root.display()
+    );
+    assert!(
+        !independent_rules_sources()
+            .iter()
+            .any(|(relative, _)| { relative.file_name() == source.file_name() }),
+        "noncanonical feature source {} must not be duplicated in src/rules",
+        source.display()
+    );
+}
+
+fn is_outside_canonical_tree(canonical_root: &Path, source: &Path) -> bool {
+    source.strip_prefix(canonical_root).is_err()
+}
+
+fn independent_rules_sources() -> Vec<(PathBuf, Vec<u8>)> {
+    let root = rules_root();
+    let mut paths = Vec::new();
+    collect_rust_paths(&root, &root, &mut paths);
+    paths.sort();
+    paths
+        .into_iter()
+        .map(|relative| {
+            let bytes = fs::read(root.join(&relative)).expect("rules source must be readable");
+            (relative, bytes)
+        })
+        .collect()
+}
+
+fn independent_rules_hash(sources: &[(PathBuf, Vec<u8>)]) -> [u8; 32] {
     let mut hasher = blake3::Hasher::new();
-    hasher.update(b"tabula.rules.v1");
+    hasher.update(b"tabula.rules.source.v2");
     hasher.update(&TicTacToeRules::RULES_VERSION.0.to_le_bytes());
-    for (relative, path) in sources {
-        let bytes = fs::read(path).unwrap();
+    for (relative, bytes) in sources {
         let relative = relative.to_string_lossy().replace('\\', "/");
         hasher.update(&(relative.len() as u64).to_le_bytes());
         hasher.update(relative.as_bytes());
         hasher.update(&(bytes.len() as u64).to_le_bytes());
-        hasher.update(&bytes);
+        hasher.update(bytes);
     }
-    assert_eq!(TicTacToeRules::RULES_HASH, *hasher.finalize().as_bytes());
+    *hasher.finalize().as_bytes()
 }
 
-fn collect_rust_sources(root: &Path, directory: &Path, files: &mut Vec<(PathBuf, PathBuf)>) {
-    for entry in fs::read_dir(directory).unwrap() {
-        let path = entry.unwrap().path();
+fn collect_rust_paths(root: &Path, directory: &Path, files: &mut Vec<PathBuf>) {
+    for entry in fs::read_dir(directory).expect("rules directory must be readable") {
+        let path = entry
+            .expect("rules directory entry must be readable")
+            .path();
         if path.is_dir() {
-            collect_rust_sources(root, &path, files);
+            collect_rust_paths(root, &path, files);
         } else if path.extension().is_some_and(|extension| extension == "rs") {
-            files.push((path.strip_prefix(root).unwrap().to_owned(), path));
+            files.push(
+                path.strip_prefix(root)
+                    .expect("rules source must remain under rules directory")
+                    .to_owned(),
+            );
         }
     }
 }

@@ -284,7 +284,7 @@ pub type ViewEvent = Event;
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Config {
     /// Per-move deadline. `0` means the documented default; every nonzero
-    /// value must meet [`super::rules::MIN_MOVE_TIMEOUT`].
+    /// value must meet [`super::MIN_MOVE_TIMEOUT`].
     pub move_timeout_ms: u64,
 }
 

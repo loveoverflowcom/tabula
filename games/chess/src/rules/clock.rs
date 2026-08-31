@@ -19,7 +19,7 @@
 use tabula_core::{LogicalTime, Millis, TimerId};
 use tabula_game_api::Effect;
 
-use crate::{ClockConfig, ClockControl, ClockState, Color};
+use super::state::{ClockConfig, ClockControl, ClockState, Color};
 
 /// The one timer owned by the Chess rules.
 pub(crate) const TIMER_CLOCK: TimerId = TimerId(1);

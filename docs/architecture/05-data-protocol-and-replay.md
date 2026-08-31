@@ -320,9 +320,37 @@ rules_version      the game's State/Command/Event encoding and behavior (game-ow
 
 ### 6.2 `rules_hash` as the safety net
 
-`rules_hash = blake3(RULES_VERSION tag ‖ hash of the rules-half source files)`, computed by
-`xtask` at build time and stored on every match. If someone changes `apply` without bumping
-`rules_version`:
+Each game crate's `build.rs` computes `rules_hash` at compile time and the rules implementation
+exposes it through `GameRules::RULES_HASH`. The source boundary is both physical and a Rust module
+ownership boundary: every `.rs` file recursively under `games/<game>/src/rules/` is canonical
+rules source, and that module tree may not depend on crate-root package, bot, or presentation
+source. Those noncanonical sources may depend on rules, but are not part of the identity. The
+build script is the owner of this compile-time identity; `xtask` and game tests may verify it
+independently, including the no-upward-dependency policy.
+
+The Phase 1 source-identity preimage is:
+
+```text
+blake3(
+    b"tabula.rules.source.v2"
+    ‖ rules_version.to_le_bytes()
+    ‖ sorted(
+        u64_le(relative_path_utf8_with_forward_slashes.len())
+        ‖ relative_path_utf8_with_forward_slashes
+        ‖ u64_le(file_bytes.len())
+        ‖ file_bytes
+      for every `.rs` file under `src/rules/`,
+      with paths relative to that directory
+    )
+)
+```
+
+Filesystem iteration is sorted before hashing. Absolute paths, timestamps, `target/`, `OUT_DIR`,
+compiler artifacts, and unordered iteration do not participate. `v2` deliberately replaces the
+old `tabula.rules.v1` all-`src/**/*.rs` preimage with the mechanically owned rules subtree; this
+source-identity correction does not by itself bump `rules_version`.
+
+If someone changes `apply` without bumping `rules_version`:
 
 - New matches record a different `rules_hash` for the same `rules_version`.
 - The nightly replay job detects that stored replays with the old hash no longer reproduce, and

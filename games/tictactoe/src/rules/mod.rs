@@ -1,8 +1,25 @@
+#![allow(clippy::doc_markdown)] // `@ai.*` schema values must remain bare machine-readable paths.
+
 //! `impl GameRules for TicTacToeRules`. (doc 02 §10.2)
 //!
 //! This is the reference implementation of the contract. Read it before writing
 //! any game; the structure — **validate fully, then mutate** — is the part to
 //! copy, not the tic-tac-toe logic.
+//!
+//! @ai.role functional-core
+//! @ai.domain tictactoe.rules
+//! @ai.pure true
+//! @ai.invariant rules-hash-excludes-noncanonical-feature-source
+//! @ai.invariant canonical-rules-depend-only-on-rules-tree
+//! @ai.law canonical-rules-source-change-changes-rules-hash
+//! @ai.evidence tests::rules_hash_matches_independent_rules_subtree_oracle
+//! @ai.evidence tests::canonical_source_mutation_changes_oracle_hash
+//! @ai.evidence tests::canonical_tree_rejects_noncanonical_feature_sources
+//! @ai.evidence tests::canonical_rules_do_not_depend_on_crate_root_sources
+
+pub mod state;
+
+pub use state::{Command, Config, Event, Mark, State, Status, View, ViewEvent};
 
 use smallvec::smallvec;
 use tabula_core::{
@@ -13,8 +30,6 @@ use tabula_game_api::{
     A11yDescription, AdminInput, Ctx, Effect, GameRules, Init, InitError, Input, LegalCommands,
     Outcome,
 };
-
-use crate::state::{Command, Config, Event, State, Status, View};
 
 #[derive(Debug)]
 pub struct TicTacToeRules;

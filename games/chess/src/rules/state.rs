@@ -217,22 +217,10 @@ impl State {
         state.repetition.push(state.position_key());
         state
     }
-
-    /// Builds a standard FEN position for local perft fixtures.
-    pub fn from_fen(fen: &str) -> Result<Self, crate::movegen::FenError> {
-        crate::movegen::from_fen(fen)
-    }
-
-    /// Position identity for repetition claims; its en-passant cell is kept
-    /// only when a legal en-passant capture exists.
-    #[must_use]
-    pub fn position_key(&self) -> PositionKey {
-        crate::movegen::position_key(self)
-    }
 }
 
 /// Player intent. `u8` source/target fields deliberately permit hostile wire
-/// values; [`crate::ChessRules`] validates them before changing state (R2/R3).
+/// values; [`super::ChessRules`] validates them before changing state (R2/R3).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Command {
     Move {

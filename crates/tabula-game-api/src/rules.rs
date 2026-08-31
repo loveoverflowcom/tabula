@@ -111,7 +111,8 @@ pub trait GameRules: Sized + Send + Sync + 'static {
     /// A zero value means that this game has not supplied an authoritative
     /// identity yet; replay tooling must not call that an exact match. Real
     /// game crates override this with the hash produced by their build script
-    /// over the rules source files and [`Self::RULES_VERSION`]. (doc 05 §6.2)
+    /// over their canonical rules-source subtree and [`Self::RULES_VERSION`].
+    /// (doc 05 §6.2)
     const RULES_HASH: [u8; 32] = [0; 32];
 
     /// Build the initial state. May draw randomness (shuffle, role assignment)
