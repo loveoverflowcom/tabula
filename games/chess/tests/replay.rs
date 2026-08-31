@@ -1,9 +1,44 @@
-use std::path::Path;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use tabula_core::{canonical_decode, LogicalTime};
-use tabula_game_api::Input;
+use tabula_game_api::{GameRules, Input};
 use tabula_game_chess::{ChessModule, ChessRules, Command, Config};
 use tabula_testkit::{ReplayIdentity, ReplayRunner, ValidatedReplay};
+
+#[test]
+fn rules_hash_covers_all_rules_sources() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut sources = Vec::new();
+    collect_rust_sources(&root, &root, &mut sources);
+    sources.sort_by(|left, right| left.0.cmp(&right.0));
+
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(b"tabula.rules.v1");
+    hasher.update(&ChessRules::RULES_VERSION.0.to_le_bytes());
+    for (relative, path) in sources {
+        let bytes = fs::read(path).unwrap();
+        let relative = relative.to_string_lossy().replace('\\', "/");
+        hasher.update(&(relative.len() as u64).to_le_bytes());
+        hasher.update(relative.as_bytes());
+        hasher.update(&(bytes.len() as u64).to_le_bytes());
+        hasher.update(&bytes);
+    }
+    assert_eq!(ChessRules::RULES_HASH, *hasher.finalize().as_bytes());
+}
+
+fn collect_rust_sources(root: &Path, directory: &Path, files: &mut Vec<(PathBuf, PathBuf)>) {
+    for entry in fs::read_dir(directory).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            collect_rust_sources(root, &path, files);
+        } else if path.extension().is_some_and(|extension| extension == "rs") {
+            files.push((path.strip_prefix(root).unwrap().to_owned(), path));
+        }
+    }
+}
 
 fn replay_path(name: &str) -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../tests/replays/{name}"))
@@ -20,6 +55,8 @@ fn committed_chess_replay_reproduces_its_independent_final_hash() {
             .expect("committed replay must match the typed runner");
     let report = runner.verify().expect("replay execution must succeed");
     assert!(report.is_verified(), "{report:?}");
+    assert_eq!(report.expected_outcome, report.actual_outcome);
+    assert!(report.expected_outcome.is_some());
     assert_eq!(
         report.actual_final_state_hash.0,
         [
@@ -52,6 +89,8 @@ fn committed_chess_clock_replay_contains_a_recorded_timer_input() {
         .verify()
         .expect("clock replay execution must succeed");
     assert!(report.is_verified(), "{report:?}");
+    assert_eq!(report.expected_outcome, report.actual_outcome);
+    assert!(report.expected_outcome.is_some());
     assert_eq!(
         report.actual_final_state_hash.0,
         [

@@ -7,8 +7,10 @@
 
 use std::{fs, path::Path};
 
-use tabula_core::{canonical_encode, InputIndex, LogicalTime, MatchId, MatchSeed, SeatRoster};
-use tabula_game_api::{Budget, Ctx, GameModule, GameRules, Input};
+use tabula_core::{
+    canonical_encode, InputIndex, LogicalTime, MatchId, MatchOutcome, MatchSeed, SeatRoster,
+};
+use tabula_game_api::{Budget, Ctx, Effect, GameModule, GameRules, Input, Outcome};
 use tabula_testkit::{ReplayDraft, ReplayFrame, ReplayHeader, ReplayKind};
 
 pub(crate) fn run() -> Result<(), String> {
@@ -156,13 +158,21 @@ fn write_replay<M: GameModule>(
         .map_err(|error| format!("golden create failed: {error:?}"))?;
     let mut state = init.state;
     let mut frames = Vec::with_capacity(inputs.len());
+    let mut derived_outcome = None;
     for (position, (input, time)) in inputs.into_iter().zip(times).enumerate() {
+        if derived_outcome.is_some() {
+            return Err(format!(
+                "golden input {} follows a terminal EndMatch effect",
+                position as u64 + 1
+            ));
+        }
         let index = InputIndex(position as u64 + 1);
         let logical_time = LogicalTime(time);
         let mut rng = tabula_core::DetRng::for_input(&seed, index);
         let mut ctx = context(&mut rng, index, logical_time);
-        M::Rules::apply(&mut state, input.clone(), &mut ctx)
+        let outcome = M::Rules::apply(&mut state, input.clone(), &mut ctx)
             .map_err(|error| format!("golden input {} rejected: {error:?}", index.0))?;
+        derived_outcome = terminal_outcome(&outcome, index.0)?;
         frames.push(ReplayFrame {
             input_index: index,
             logical_time,
@@ -184,7 +194,7 @@ fn write_replay<M: GameModule>(
             initial_snapshot: None,
             started_at: 0,
             duration_ms: frames.last().map_or(0, |frame| frame.logical_time.0),
-            outcome: None,
+            outcome: derived_outcome,
             kind: ReplayKind::Canonical,
         },
         frames,
@@ -193,6 +203,24 @@ fn write_replay<M: GameModule>(
     draft
         .write(path)
         .map_err(|error| format!("{}: {error}", path.display()))
+}
+
+fn terminal_outcome<R: GameRules>(
+    outcome: &Outcome<R>,
+    input_index: u64,
+) -> Result<Option<MatchOutcome>, String> {
+    let mut terminal = None;
+    for effect in &outcome.effects {
+        if let Effect::EndMatch { outcome } = effect {
+            if terminal.is_some() {
+                return Err(format!(
+                    "golden input {input_index} emitted EndMatch more than once"
+                ));
+            }
+            terminal = Some(outcome.clone());
+        }
+    }
+    Ok(terminal)
 }
 
 fn context(rng: &mut tabula_core::DetRng, index: InputIndex, now: LogicalTime) -> Ctx<'_> {

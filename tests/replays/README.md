@@ -16,4 +16,5 @@ binary diff and the reported hashes before committing an update.
 
 The corpus contains one complete Tic-Tac-Toe match, one short Chess checkmate,
 and one Chess Fischer-clock timeout containing an `Input::Timer` at a recorded
-`LogicalTime`.
+`LogicalTime`. Complete fixtures also store the terminal `MatchOutcome`, which
+the typed verifier compares with the observed `Effect::EndMatch` outcome.

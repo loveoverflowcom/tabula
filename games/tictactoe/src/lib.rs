@@ -52,8 +52,8 @@ use tabula_game_api::metadata::AssetRef;
 use tabula_game_api::{
     AsyncTurnPolicy, BotLevels, Budget, Category, ChatPolicy, Complexity, ConfigError,
     ContentRating, Durability, DurationRange, GameCapabilities, GameId, GameMetadata, GameModule,
-    GameVersion, RankedSupport, ReconnectPolicy, RulesVersion, SeatCounts, SeatSpec,
-    SpectatorPolicy, StateSizeClass, SubstitutionPolicy, TurnModel, VoiceRequirement,
+    GameRules, GameVersion, RankedSupport, ReconnectPolicy, SeatCounts, SeatSpec, SpectatorPolicy,
+    StateSizeClass, SubstitutionPolicy, TurnModel, VoiceRequirement,
 };
 
 pub use rules::TicTacToeRules;
@@ -105,7 +105,7 @@ impl GameModule for TicTacToeModule {
 static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| GameMetadata {
     id: GameId::new("com.tabula.tictactoe").expect("literal is a valid game id"),
     version: GameVersion::new("0.2.0").expect("literal is valid SemVer"),
-    rules_version: RulesVersion(2),
+    rules_version: TicTacToeRules::RULES_VERSION,
     name_key: "game.tictactoe.name".to_owned(),
     tagline_key: "game.tictactoe.tagline".to_owned(),
     description_key: "game.tictactoe.description".to_owned(),

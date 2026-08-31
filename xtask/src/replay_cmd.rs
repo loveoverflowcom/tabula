@@ -7,7 +7,10 @@
 use std::path::Path;
 
 use tabula_core::StateVersion;
-use tabula_testkit::{ReplayIdentity, ReplayRunner, ReplayVerdict, ValidatedReplay, VerifyReport};
+use tabula_testkit::{
+    PrefixPosition, ReplayError, ReplayIdentity, ReplayRunner, ReplayVerdict, ValidatedReplay,
+    VerifyReport,
+};
 
 pub(crate) fn run() -> Result<(), String> {
     let mut args = std::env::args().skip(2);
@@ -56,16 +59,35 @@ fn verify<M: tabula_game_api::GameModule>(
         .map_err(|error| format!("{}: {error}", path.display()))?;
 
     if let Some(target) = at {
-        runner
-            .seek(target)
-            .map_err(|error| format!("{}: {error}", path.display()))?;
-        println!(
-            "game: {}\nrules version: {}\nstate version: {}\nstatus: POSITION",
-            runner.header().game_id,
-            runner.header().rules_version.0,
-            target.0,
-        );
-        return Ok(());
+        return match runner.seek(target) {
+            Ok(position) => {
+                let (status, evidence) = match position {
+                    PrefixPosition::Verified(evidence) => ("PREFIX_VERIFIED", evidence),
+                    PrefixPosition::Reconstructed(evidence) => ("POSITION_RECONSTRUCTED", evidence),
+                };
+                println!(
+                    "game: {}\nrules version: {}\nstate version: {}\nstate hash: {}\ncheckpoints checked: {}\nfinal hash checked: {}\nterminal outcome checked: {}\nstatus: {}",
+                    runner.header().game_id,
+                    runner.header().rules_version.0,
+                    evidence.state_version.0,
+                    hex32(evidence.state_hash.0),
+                    evidence.checkpoints_checked,
+                    evidence.final_hash_checked,
+                    evidence.outcome_checked,
+                    status,
+                );
+                Ok(())
+            }
+            Err(ReplayError::PrefixDivergence { divergence }) => {
+                println!("file: {}\nstatus: PREFIX_DIVERGED", path.display());
+                print_divergence(&divergence);
+                Err(format!(
+                    "{}: replay prefix verification failed",
+                    path.display()
+                ))
+            }
+            Err(error) => Err(format!("{}: {error}", path.display())),
+        };
     }
 
     let report = runner
@@ -87,11 +109,15 @@ fn print_report(path: &Path, report: &VerifyReport) {
         ReplayVerdict::Unreplayable { .. } => "UNREPLAYABLE",
     };
     println!(
-        "file: {}\ninputs: {}\ncheckpoints checked: {}\nfinal state hash: {}\nverdict: {}",
+        "file: {}\ninputs: {}\ncheckpoints checked: {}\nfinal state hash: {}\nfinal hash checked: {}\nterminal outcome expected: {:?}\nterminal outcome actual: {:?}\nterminal outcome checked: {}\nevidence: state checkpoints, final state hash, terminal outcome\nverdict: {}",
         path.display(),
         report.inputs_replayed,
         report.checkpoints_checked,
         hex32(report.actual_final_state_hash.0),
+        report.final_hash_checked,
+        report.expected_outcome,
+        report.actual_outcome,
+        report.outcome_checked,
         verdict,
     );
     if report.divergences.is_empty() {
@@ -99,23 +125,29 @@ fn print_report(path: &Path, report: &VerifyReport) {
     } else {
         println!("status: DIVERGED");
         if let Some(divergence) = report.divergences.first() {
-            let logical_time = divergence
-                .logical_time
-                .map_or_else(|| "<unknown>".to_owned(), |time| time.0.to_string());
-            println!(
-                "first divergence: kind={:?} input_index={} logical_ms={} expected={} actual={} previous_checkpoint={} next_checkpoint={} rules_version={} rules_hash={}",
-                divergence.kind,
-                divergence.input_index,
-                logical_time,
-                hex32(divergence.expected),
-                hex32(divergence.actual),
-                format_option(divergence.previous_checkpoint),
-                format_option(divergence.next_checkpoint),
-                divergence.rules_version.0,
-                hex32(divergence.rules_hash),
-            );
+            print_divergence(divergence);
         }
     }
+}
+
+fn print_divergence(divergence: &tabula_testkit::Divergence) {
+    let logical_time = divergence
+        .logical_time
+        .map_or_else(|| "<unknown>".to_owned(), |time| time.0.to_string());
+    println!(
+        "first divergence: kind={:?} input_index={} logical_ms={} expected={} actual={} previous_checkpoint={} next_checkpoint={} rules_version={} rules_hash={} expected_outcome={:?} actual_outcome={:?}",
+        divergence.kind,
+        divergence.input_index,
+        logical_time,
+        hex32(divergence.expected),
+        hex32(divergence.actual),
+        format_option(divergence.previous_checkpoint),
+        format_option(divergence.next_checkpoint),
+        divergence.rules_version.0,
+        hex32(divergence.rules_hash),
+        divergence.expected_outcome,
+        divergence.actual_outcome,
+    );
 }
 
 fn hex32(bytes: [u8; 32]) -> String {

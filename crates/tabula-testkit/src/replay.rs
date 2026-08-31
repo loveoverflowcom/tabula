@@ -55,7 +55,7 @@ use tabula_core::{
     canonical_decode, GameId, GameVersion, InputIndex, LogicalTime, MatchId, MatchOutcome,
     MatchSeed, RulesVersion, SeatRoster, StateHash, StateVersion, ENCODING_VERSION,
 };
-use tabula_game_api::{Budget, Ctx, GameModule, GameRules, Input};
+use tabula_game_api::{Budget, Ctx, Effect, GameModule, GameRules, Input, Outcome};
 
 /// The only currently readable replay format version.
 pub const REPLAY_FORMAT_VERSION: u16 = 1;
@@ -218,9 +218,11 @@ impl ValidatedReplay {
             ));
         }
 
-        validate_zstd_frame_header(bytes)?;
-        let mut decoder = ruzstd::decoding::StreamingDecoder::new(Cursor::new(bytes))
-            .map_err(|_| ReplayError::Corrupt("invalid zstd frame".to_owned()))?;
+        let mut decoder = ruzstd::decoding::StreamingDecoder::new_with_max_window_size(
+            Cursor::new(bytes),
+            MAX_ZSTD_WINDOW_SIZE,
+        )
+        .map_err(|_| ReplayError::Corrupt("invalid zstd frame".to_owned()))?;
         let mut limited = (&mut decoder).take((MAX_DECOMPRESSED_REPLAY_BYTES as u64) + 1);
         let mut payload = Vec::new();
         limited
@@ -290,9 +292,9 @@ impl ValidatedReplay {
             payload.extend_from_slice(&encoded);
         }
 
-        let checksum = crc32(&payload);
         payload.extend_from_slice(&(self.frames.len() as u64).to_le_bytes());
         payload.extend_from_slice(&self.final_state_hash.0);
+        let checksum = crc32(&payload);
         payload.extend_from_slice(&checksum.to_le_bytes());
 
         if payload.len() > MAX_DECOMPRESSED_REPLAY_BYTES {
@@ -344,6 +346,11 @@ impl ReplayIdentity {
     /// Build the identity from a real game module, including its build-derived
     /// rules-half hash. A zero hash is left visible to [`ReplayRunner::check`]
     /// as unreplayable rather than being promoted to an exact verdict.
+    ///
+    /// @ai.role trust-boundary
+    /// @ai.domain replay.identity
+    /// @ai.invariant rules-identity-is-source-covered
+    /// @ai.evidence tests::rules_hash_covers_all_rules_sources
     #[must_use]
     pub fn from_module<M: GameModule>() -> Self {
         Self {
@@ -367,6 +374,8 @@ pub struct ReplayRunner<R: GameRules> {
     state: R::State,
     state_version: StateVersion,
     next_frame: usize,
+    derived_outcome: Option<MatchOutcome>,
+    terminal_input_index: Option<u64>,
 }
 
 impl<R: GameRules> fmt::Debug for ReplayRunner<R> {
@@ -438,6 +447,8 @@ impl<R: GameRules> ReplayRunner<R> {
             state,
             state_version: StateVersion(0),
             next_frame: 0,
+            derived_outcome: None,
+            terminal_input_index: None,
         })
     }
 
@@ -465,6 +476,12 @@ impl<R: GameRules> ReplayRunner<R> {
         let Some(frame) = self.replay.frames.get(self.next_frame) else {
             return Ok(None);
         };
+        if let Some(terminal_input_index) = self.terminal_input_index {
+            return Err(ReplayError::InputAfterEndMatch {
+                input_index: frame.input_index.0,
+                terminal_input_index,
+            });
+        }
         let input = self
             .inputs
             .get(self.next_frame)
@@ -485,12 +502,13 @@ impl<R: GameRules> ReplayRunner<R> {
                 max_events_per_input: u16::MAX,
             },
         };
-        R::apply(&mut self.state, input.clone(), &mut ctx).map_err(|error| {
+        let outcome = R::apply(&mut self.state, input.clone(), &mut ctx).map_err(|error| {
             ReplayError::UnexpectedRejection {
                 input_index: frame.input_index.0,
                 code: error.code,
             }
         })?;
+        let terminal = terminal_outcome(&outcome, frame.input_index.0)?;
 
         self.state_version = StateVersion(
             self.state_version
@@ -499,6 +517,10 @@ impl<R: GameRules> ReplayRunner<R> {
                 .ok_or_else(|| ReplayError::Corrupt("state version overflow".to_owned()))?,
         );
         self.next_frame += 1;
+        if let Some(outcome) = terminal {
+            self.terminal_input_index = Some(frame.input_index.0);
+            self.derived_outcome = Some(outcome);
+        }
         let actual = R::state_hash(&self.state);
         let checkpoint_matched = frame.checkpoint.map(|expected| expected == actual);
         Ok(Some(StepResult {
@@ -514,17 +536,56 @@ impl<R: GameRules> ReplayRunner<R> {
     /// Re-run from the initial state through the requested accepted-input
     /// state version. State versions count replay frames, because rejected
     /// inputs are not part of a canonical replay.
-    pub fn seek(&mut self, to: StateVersion) -> Result<(), ReplayError> {
+    ///
+    /// @ai.role verifier
+    /// @ai.domain replay.seek
+    /// @ai.invariant verified-seek-never-hides-divergence
+    /// @ai.evidence crate::replay::tests::seek_never_hides_checkpoint_divergence
+    pub fn seek(&mut self, to: StateVersion) -> Result<PrefixPosition, ReplayError> {
         if to.0 > self.replay.frames.len() as u64 {
             return Err(ReplayError::SeekOutOfRange(to));
         }
         self.reset()?;
         while self.state_version < to {
-            self.step()?.ok_or_else(|| {
+            let result = self.step()?.ok_or_else(|| {
                 ReplayError::Corrupt("replay ended before the requested state version".to_owned())
             })?;
+            if result.checkpoint_matched == Some(false) {
+                return Err(ReplayError::PrefixDivergence {
+                    divergence: Box::new(self.checkpoint_divergence(&result)),
+                });
+            }
         }
-        Ok(())
+        let replay_end = StateVersion(self.replay.frames.len() as u64);
+        let final_hash_checked = self.state_version == replay_end;
+        let state_hash = R::state_hash(&self.state);
+        if final_hash_checked && state_hash != self.replay.final_state_hash {
+            return Err(ReplayError::PrefixDivergence {
+                divergence: Box::new(self.final_hash_divergence(state_hash)),
+            });
+        }
+        if self.state_version == replay_end && self.derived_outcome != self.replay.header.outcome {
+            return Err(ReplayError::PrefixDivergence {
+                divergence: Box::new(self.terminal_divergence()),
+            });
+        }
+        let checkpoints_checked = self.replay.frames[..self.next_frame]
+            .iter()
+            .filter(|frame| frame.checkpoint.is_some())
+            .count() as u64;
+        let position = PositionEvidence {
+            state_version: self.state_version,
+            state_hash,
+            checkpoints_checked,
+            terminal_outcome: self.derived_outcome.clone(),
+            outcome_checked: self.state_version == replay_end,
+            final_hash_checked,
+        };
+        if checkpoints_checked == 0 {
+            Ok(PrefixPosition::Reconstructed(position))
+        } else {
+            Ok(PrefixPosition::Verified(position))
+        }
     }
 
     /// Re-run every frame, compare every claimed checkpoint and compare the
@@ -536,9 +597,11 @@ impl<R: GameRules> ReplayRunner<R> {
     /// @ai.domain replay.verify
     /// @ai.pure false
     /// @ai.invariant replay-reproduces-checkpoint-hashes
+    /// @ai.invariant replay-terminal-outcome-matches
     /// @ai.invariant first-divergence-is-diagnosable
     /// @ai.evidence crate::replay::tests::checkpoint_mismatch_reports_context
     /// @ai.evidence crate::replay::tests::final_hash_mismatch_fails_verification
+    /// @ai.evidence crate::replay::tests::replay_terminal_outcome_matches_effect
     pub fn verify(&mut self) -> Result<VerifyReport, ReplayError> {
         self.reset()?;
         let verdict = self.check();
@@ -551,6 +614,9 @@ impl<R: GameRules> ReplayRunner<R> {
             expected_final_state_hash: self.replay.final_state_hash,
             actual_final_state_hash: StateHash([0; 32]),
             final_hash_checked: false,
+            expected_outcome: self.replay.header.outcome.clone(),
+            actual_outcome: None,
+            outcome_checked: false,
             inputs_replayed: 0,
             checkpoints_checked: 0,
             divergences: Vec::new(),
@@ -574,6 +640,8 @@ impl<R: GameRules> ReplayRunner<R> {
                             self.next_frame.saturating_sub(1),
                         ),
                         next_checkpoint: next_checkpoint(&self.replay.frames, self.next_frame),
+                        expected_outcome: None,
+                        actual_outcome: None,
                     });
                 }
             }
@@ -582,23 +650,15 @@ impl<R: GameRules> ReplayRunner<R> {
         report.actual_final_state_hash = R::state_hash(&self.state);
         report.final_hash_checked = true;
         if report.actual_final_state_hash != report.expected_final_state_hash {
-            let final_frame = self.replay.frames.last();
-            report.divergences.push(Divergence {
-                kind: DivergenceKind::FinalStateHash,
-                input_index: final_frame.map_or(0, |frame| frame.input_index.0),
-                logical_time: final_frame.map(|frame| frame.logical_time),
-                expected: report.expected_final_state_hash.0,
-                actual: report.actual_final_state_hash.0,
-                rules_version: self.replay.header.rules_version,
-                rules_hash: self.replay.header.rules_hash,
-                previous_checkpoint: self
-                    .replay
-                    .frames
-                    .iter()
-                    .rev()
-                    .find_map(|frame| frame.checkpoint.map(|_| frame.input_index.0)),
-                next_checkpoint: None,
-            });
+            report
+                .divergences
+                .push(self.final_hash_divergence(report.actual_final_state_hash));
+        }
+
+        report.actual_outcome.clone_from(&self.derived_outcome);
+        report.outcome_checked = true;
+        if report.actual_outcome != report.expected_outcome {
+            report.divergences.push(self.terminal_divergence());
         }
 
         Ok(report)
@@ -612,8 +672,121 @@ impl<R: GameRules> ReplayRunner<R> {
         )?;
         self.state_version = StateVersion(0);
         self.next_frame = 0;
+        self.derived_outcome = None;
+        self.terminal_input_index = None;
         Ok(())
     }
+
+    fn checkpoint_divergence(&self, result: &StepResult) -> Divergence {
+        let expected = result.checkpoint.unwrap_or(StateHash([0; 32]));
+        Divergence {
+            kind: DivergenceKind::Checkpoint,
+            input_index: result.input_index,
+            logical_time: Some(result.logical_time),
+            expected: expected.0,
+            actual: result.state_hash.0,
+            rules_version: self.replay.header.rules_version,
+            rules_hash: self.replay.header.rules_hash,
+            previous_checkpoint: previous_checkpoint(
+                &self.replay.frames,
+                self.next_frame.saturating_sub(1),
+            ),
+            next_checkpoint: next_checkpoint(&self.replay.frames, self.next_frame),
+            expected_outcome: None,
+            actual_outcome: None,
+        }
+    }
+
+    fn terminal_divergence(&self) -> Divergence {
+        let final_frame = self.replay.frames.last();
+        Divergence {
+            kind: DivergenceKind::TerminalOutcome,
+            input_index: final_frame.map_or(0, |frame| frame.input_index.0),
+            logical_time: final_frame.map(|frame| frame.logical_time),
+            expected: outcome_fingerprint(self.replay.header.outcome.as_ref()),
+            actual: outcome_fingerprint(self.derived_outcome.as_ref()),
+            rules_version: self.replay.header.rules_version,
+            rules_hash: self.replay.header.rules_hash,
+            previous_checkpoint: self
+                .replay
+                .frames
+                .iter()
+                .rev()
+                .find_map(|frame| frame.checkpoint.map(|_| frame.input_index.0)),
+            next_checkpoint: None,
+            expected_outcome: self.replay.header.outcome.clone(),
+            actual_outcome: self.derived_outcome.clone(),
+        }
+    }
+
+    fn final_hash_divergence(&self, actual: StateHash) -> Divergence {
+        let final_frame = self.replay.frames.last();
+        Divergence {
+            kind: DivergenceKind::FinalStateHash,
+            input_index: final_frame.map_or(0, |frame| frame.input_index.0),
+            logical_time: final_frame.map(|frame| frame.logical_time),
+            expected: self.replay.final_state_hash.0,
+            actual: actual.0,
+            rules_version: self.replay.header.rules_version,
+            rules_hash: self.replay.header.rules_hash,
+            previous_checkpoint: self
+                .replay
+                .frames
+                .iter()
+                .rev()
+                .find_map(|frame| frame.checkpoint.map(|_| frame.input_index.0)),
+            next_checkpoint: None,
+            expected_outcome: None,
+            actual_outcome: None,
+        }
+    }
+}
+
+/// Evidence returned by a prefix replay. Checkpoint-bearing prefixes are
+/// verified against the claims they contain; prefixes without such claims are
+/// explicitly reconstructed rather than promoted to verified positions.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PrefixPosition {
+    Verified(PositionEvidence),
+    Reconstructed(PositionEvidence),
+}
+
+/// State and evidence at a requested replay prefix.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PositionEvidence {
+    pub state_version: StateVersion,
+    pub state_hash: StateHash,
+    pub checkpoints_checked: u64,
+    pub terminal_outcome: Option<MatchOutcome>,
+    pub outcome_checked: bool,
+    pub final_hash_checked: bool,
+}
+
+fn terminal_outcome<R: GameRules>(
+    outcome: &Outcome<R>,
+    input_index: u64,
+) -> Result<Option<MatchOutcome>, ReplayError> {
+    let mut terminal = None;
+    for effect in &outcome.effects {
+        if let Effect::EndMatch { outcome } = effect {
+            if terminal.is_some() {
+                return Err(ReplayError::MultipleEndMatch { input_index });
+            }
+            terminal = Some(outcome.clone());
+        }
+    }
+    Ok(terminal)
+}
+
+fn outcome_fingerprint(outcome: Option<&MatchOutcome>) -> [u8; 32] {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(b"tabula.replay.outcome.v1");
+    if let Some(outcome) = outcome {
+        if let Ok(bytes) = tabula_core::canonical_encode(outcome) {
+            hasher.update(&bytes);
+        }
+    }
+    *hasher.finalize().as_bytes()
 }
 
 fn create_state<R: GameRules>(
@@ -767,10 +940,57 @@ fn parse_payload(payload: &[u8]) -> Result<ValidatedReplay, ReplayError> {
     if header_end > body_end {
         return Err(ReplayError::Corrupt("truncated replay header".to_owned()));
     }
+    // Scan only fixed-width framing before the CRC. Header/frame Postcard bytes
+    // and all trailer metadata remain untrusted until the complete logical
+    // payload has passed the integrity check.
+    let frame_ranges = scan_frame_ranges(payload, header_end, body_end)?;
+    let checksum_start = payload.len() - 4;
+    let expected_checksum = u32::from_le_bytes(
+        payload[checksum_start..checksum_start + 4]
+            .try_into()
+            .map_err(|_| ReplayError::Corrupt("truncated checksum".to_owned()))?,
+    );
+    let actual_checksum = crc32(&payload[..checksum_start]);
+    if actual_checksum != expected_checksum {
+        return Err(ReplayError::ChecksumMismatch);
+    }
+
     let header = postcard::from_bytes::<ReplayHeader>(&payload[header_start..header_end])
         .map_err(|_| ReplayError::Corrupt("header is not valid Postcard".to_owned()))?;
+    let frames = frame_ranges
+        .into_iter()
+        .map(|range| {
+            postcard::from_bytes::<ReplayFrame>(&payload[range])
+                .map_err(|_| ReplayError::Corrupt("frame is not valid Postcard".to_owned()))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let input_count_start = body_end;
+    let input_count = u64::from_le_bytes(
+        payload[input_count_start..input_count_start + 8]
+            .try_into()
+            .map_err(|_| ReplayError::Corrupt("truncated input count".to_owned()))?,
+    );
+    let final_hash_start = input_count_start + 8;
+    let final_hash = StateHash(
+        payload[final_hash_start..final_hash_start + 32]
+            .try_into()
+            .map_err(|_| ReplayError::Corrupt("truncated final hash".to_owned()))?,
+    );
+    if input_count != frames.len() as u64 {
+        return Err(ReplayError::InputCountMismatch {
+            declared: input_count,
+            actual: frames.len(),
+        });
+    }
+    validate_parts(header, frames, final_hash)
+}
 
-    let mut frames = Vec::new();
+fn scan_frame_ranges(
+    payload: &[u8],
+    header_end: usize,
+    body_end: usize,
+) -> Result<Vec<std::ops::Range<usize>>, ReplayError> {
+    let mut ranges = Vec::new();
     let mut cursor = header_end;
     while cursor < body_end {
         if body_end - cursor < 4 {
@@ -794,149 +1014,21 @@ fn parse_payload(payload: &[u8]) -> Result<ValidatedReplay, ReplayError> {
         if frame_end > body_end {
             return Err(ReplayError::Corrupt("truncated frame".to_owned()));
         }
-        let frame = postcard::from_bytes::<ReplayFrame>(&payload[cursor..frame_end])
-            .map_err(|_| ReplayError::Corrupt("frame is not valid Postcard".to_owned()))?;
-        frames.push(frame);
-        if frames.len() > MAX_FRAME_COUNT {
+        ranges.push(cursor..frame_end);
+        if ranges.len() > MAX_FRAME_COUNT {
             return Err(ReplayError::Corrupt(
                 "frame count exceeds the configured limit".to_owned(),
             ));
         }
         cursor = frame_end;
     }
-
-    if body_end - cursor != 0 {
-        return Err(ReplayError::Corrupt(
-            "unexpected structural data before trailer".to_owned(),
-        ));
-    }
-    let input_count_start = body_end;
-    let input_count = u64::from_le_bytes(
-        payload[input_count_start..input_count_start + 8]
-            .try_into()
-            .map_err(|_| ReplayError::Corrupt("truncated input count".to_owned()))?,
-    );
-    let final_hash_start = input_count_start + 8;
-    let final_hash = StateHash(
-        payload[final_hash_start..final_hash_start + 32]
-            .try_into()
-            .map_err(|_| ReplayError::Corrupt("truncated final hash".to_owned()))?,
-    );
-    let checksum_start = final_hash_start + 32;
-    let expected_checksum = u32::from_le_bytes(
-        payload[checksum_start..checksum_start + 4]
-            .try_into()
-            .map_err(|_| ReplayError::Corrupt("truncated checksum".to_owned()))?,
-    );
-    if input_count != frames.len() as u64 {
-        return Err(ReplayError::InputCountMismatch {
-            declared: input_count,
-            actual: frames.len(),
-        });
-    }
-    let actual_checksum = crc32(&payload[..body_end]);
-    if actual_checksum != expected_checksum {
-        return Err(ReplayError::ChecksumMismatch);
-    }
-
-    validate_parts(header, frames, final_hash)
+    Ok(ranges)
 }
 
 fn crc32(bytes: &[u8]) -> u32 {
     let mut hasher = Crc32Hasher::new();
     hasher.update(bytes);
     hasher.finalize()
-}
-
-fn validate_zstd_frame_header(bytes: &[u8]) -> Result<(), ReplayError> {
-    if bytes.len() < 5 || bytes[..4] != [0x28, 0xb5, 0x2f, 0xfd] {
-        return Err(ReplayError::Corrupt("invalid zstd frame".to_owned()));
-    }
-
-    let descriptor = bytes[4];
-    if descriptor & 0x08 != 0 {
-        return Err(ReplayError::Corrupt(
-            "zstd frame has a reserved descriptor bit".to_owned(),
-        ));
-    }
-
-    let single_segment = descriptor & 0x20 != 0;
-    let fcs_flag = descriptor >> 6;
-    let dictionary_bytes = match descriptor & 0x03 {
-        0 => 0,
-        1 => 1,
-        2 => 2,
-        3 => 4,
-        _ => unreachable!("masked zstd dictionary flag has four values"),
-    };
-    let fcs_bytes = match fcs_flag {
-        0 if single_segment => 1,
-        0 => 0,
-        1 => 2,
-        2 => 4,
-        3 => 8,
-        _ => unreachable!("zstd frame content size flag has four values"),
-    };
-
-    let mut cursor = 5;
-    let window_size = if single_segment {
-        None
-    } else {
-        let descriptor = *bytes
-            .get(cursor)
-            .ok_or_else(|| ReplayError::Corrupt("truncated zstd window descriptor".to_owned()))?;
-        cursor += 1;
-        let exponent = u32::from(descriptor >> 3);
-        let base = 1_u64
-            .checked_shl(10 + exponent)
-            .ok_or_else(|| ReplayError::Corrupt("invalid zstd window descriptor".to_owned()))?;
-        Some(base + (base / 8) * u64::from(descriptor & 0x07))
-    };
-
-    let header_end = cursor
-        .checked_add(dictionary_bytes + fcs_bytes)
-        .ok_or_else(|| ReplayError::Corrupt("zstd header length overflow".to_owned()))?;
-    if header_end > bytes.len() {
-        return Err(ReplayError::Corrupt(
-            "truncated zstd frame header".to_owned(),
-        ));
-    }
-
-    let frame_content_size = match fcs_bytes {
-        0 => None,
-        1 => Some(u64::from(bytes[cursor])),
-        2 => Some(u64::from(u16::from_le_bytes([bytes[cursor], bytes[cursor + 1]])) + 256),
-        4 => Some(u64::from(u32::from_le_bytes([
-            bytes[cursor],
-            bytes[cursor + 1],
-            bytes[cursor + 2],
-            bytes[cursor + 3],
-        ]))),
-        8 => Some(u64::from_le_bytes([
-            bytes[cursor],
-            bytes[cursor + 1],
-            bytes[cursor + 2],
-            bytes[cursor + 3],
-            bytes[cursor + 4],
-            bytes[cursor + 5],
-            bytes[cursor + 6],
-            bytes[cursor + 7],
-        ])),
-        _ => unreachable!("zstd frame content size has only four encodings"),
-    };
-
-    let required_window = window_size.or(frame_content_size).unwrap_or(0);
-    if required_window > MAX_ZSTD_WINDOW_SIZE {
-        return Err(ReplayError::Corrupt(
-            "zstd window exceeds the configured limit".to_owned(),
-        ));
-    }
-    if frame_content_size.is_some_and(|size| size > MAX_DECOMPRESSED_REPLAY_BYTES as u64) {
-        return Err(ReplayError::Corrupt(
-            "decompressed replay exceeds the configured limit".to_owned(),
-        ));
-    }
-    Ok(())
 }
 
 fn previous_checkpoint(frames: &[ReplayFrame], before: usize) -> Option<u64> {
@@ -958,7 +1050,8 @@ pub enum ReplayVerdict {
     /// The authoritative game rules hash is linked and equal.
     Exact,
     /// The rules version is linked but the identity differs; hashes must still
-    /// be compared and a mismatch is a divergence.
+    /// be compared, alongside state checkpoints and terminal outcome; a
+    /// mismatch is a divergence.
     CompatibleVersion,
     /// Reserved for future snapshot migration support. Phase 1 does not fake it.
     NeedsMigration { from: RulesVersion },
@@ -982,6 +1075,7 @@ pub struct StepResult {
 pub enum DivergenceKind {
     Checkpoint,
     FinalStateHash,
+    TerminalOutcome,
 }
 
 /// A localized verification discrepancy.
@@ -998,17 +1092,24 @@ pub struct Divergence {
     pub previous_checkpoint: Option<u64>,
     /// The nearest later claimed checkpoint, if any.
     pub next_checkpoint: Option<u64>,
+    /// The expected terminal effect, when this is a terminal-outcome divergence.
+    pub expected_outcome: Option<MatchOutcome>,
+    /// The terminal effect derived by replay, when this is a terminal-outcome divergence.
+    pub actual_outcome: Option<MatchOutcome>,
 }
 
 /// Complete verification evidence. `is_verified()` is intentionally stricter
-/// than "the file parsed": every checkpoint and the final trailer hash must
-/// have been compared, with no divergence.
+/// than "the file parsed": every checkpoint, final trailer hash, and terminal
+/// outcome must have been compared, with no divergence.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifyReport {
     pub verdict: ReplayVerdict,
     pub expected_final_state_hash: StateHash,
     pub actual_final_state_hash: StateHash,
     pub final_hash_checked: bool,
+    pub expected_outcome: Option<MatchOutcome>,
+    pub actual_outcome: Option<MatchOutcome>,
+    pub outcome_checked: bool,
     pub inputs_replayed: u64,
     pub checkpoints_checked: u64,
     pub divergences: Vec<Divergence>,
@@ -1017,7 +1118,7 @@ pub struct VerifyReport {
 impl VerifyReport {
     #[must_use]
     pub fn is_verified(&self) -> bool {
-        self.final_hash_checked && self.divergences.is_empty()
+        self.final_hash_checked && self.outcome_checked && self.divergences.is_empty()
     }
 }
 
@@ -1050,6 +1151,15 @@ pub enum ReplayError {
     InputCountMismatch { declared: u64, actual: usize },
     #[error("replay checksum mismatch")]
     ChecksumMismatch,
+    #[error("replay prefix diverged: {divergence:?}")]
+    PrefixDivergence { divergence: Box<Divergence> },
+    #[error("replay input {input_index} emitted EndMatch more than once")]
+    MultipleEndMatch { input_index: u64 },
+    #[error("replay input {input_index} follows terminal input {terminal_input_index}")]
+    InputAfterEndMatch {
+        input_index: u64,
+        terminal_input_index: u64,
+    },
     #[error("replay seek target {0:?} is outside the replay")]
     SeekOutOfRange(StateVersion),
     #[error("io: {0}")]
@@ -1060,7 +1170,9 @@ pub enum ReplayError {
 mod tests {
     use super::*;
     use smallvec::smallvec;
-    use tabula_core::{canonical_encode, Occupant, SeatEntry, SeatId, UserId, Viewer};
+    use tabula_core::{
+        canonical_encode, Occupant, OutcomeKind, SeatEntry, SeatId, Standing, UserId, Viewer,
+    };
     use tabula_game_api::{Init, InitError, Outcome};
 
     fn header(kind: ReplayKind, seed: Option<MatchSeed>) -> ReplayHeader {
@@ -1204,6 +1316,94 @@ mod tests {
         assert!(ValidatedReplay::from_bytes(&bytes).is_err());
     }
 
+    #[test]
+    fn trailer_metadata_is_crc_protected() {
+        let replay = draft(ReplayKind::Canonical, Some(MatchSeed::from_bytes([3; 32])))
+            .to_bytes()
+            .unwrap();
+        let logical = decode_for_test(&replay);
+        let header_len = u32::from_le_bytes(logical[6..10].try_into().unwrap()) as usize;
+        let frame_payload = 10 + header_len + 4;
+        let body_end = logical.len() - TRAILER_LEN;
+        for offset in [10, frame_payload, body_end, body_end + 8] {
+            let mut mutated = logical.clone();
+            mutated[offset] ^= 1;
+            let error = ValidatedReplay::from_bytes(&encode_for_test(&mutated)).unwrap_err();
+            assert!(
+                matches!(error, ReplayError::ChecksumMismatch),
+                "offset {offset}"
+            );
+        }
+    }
+
+    #[test]
+    fn recomputed_trailer_metadata_reaches_semantic_validation() {
+        let replay = draft(ReplayKind::Canonical, Some(MatchSeed::from_bytes([3; 32])))
+            .to_bytes()
+            .unwrap();
+        let mut count = decode_for_test(&replay);
+        let body_end = count.len() - TRAILER_LEN;
+        count[body_end..body_end + 8].copy_from_slice(&99u64.to_le_bytes());
+        rewrite_checksum(&mut count);
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&encode_for_test(&count)),
+            Err(ReplayError::InputCountMismatch {
+                declared: 99,
+                actual: 1
+            })
+        ));
+
+        let mut final_hash = decode_for_test(&replay);
+        final_hash[body_end + 8] ^= 1;
+        rewrite_checksum(&mut final_hash);
+        let decoded = ValidatedReplay::from_bytes(&encode_for_test(&final_hash)).unwrap();
+        assert_ne!(decoded.final_state_hash(), StateHash([5; 32]));
+    }
+
+    #[test]
+    fn zstd_limits_and_exact_frame_boundary_are_enforced() {
+        let (draft, _) = counter_draft(&[CounterCommand::Add(1)]);
+        let valid = draft.to_bytes().unwrap();
+
+        let oversized_window = vec![0x28, 0xb5, 0x2f, 0xfd, 13 << 3];
+        assert!(ValidatedReplay::from_bytes(&oversized_window).is_err());
+
+        let large_logical = vec![0u8; MAX_DECOMPRESSED_REPLAY_BYTES + 1];
+        let large_output = encode_for_test(&large_logical);
+        assert!(ValidatedReplay::from_bytes(&large_output).is_err());
+
+        let mut second_frame = valid.clone();
+        second_frame.extend_from_slice(&encode_for_test(b"trailing"));
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&second_frame),
+            Err(ReplayError::Corrupt(message)) if message.contains("exactly one")
+        ));
+
+        let mut random_trailing = valid;
+        random_trailing.extend_from_slice(&[1, 2, 3, 4]);
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&random_trailing),
+            Err(ReplayError::Corrupt(message)) if message.contains("exactly one")
+        ));
+    }
+
+    #[test]
+    fn truncated_zstd_stream_is_rejected() {
+        let (draft, _) = counter_draft(&[CounterCommand::Add(1)]);
+        let mut truncated = draft.to_bytes().unwrap();
+        truncated.truncate(truncated.len().saturating_sub(1));
+        assert!(ValidatedReplay::from_bytes(&truncated).is_err());
+    }
+
+    #[test]
+    fn dictionary_id_frame_cannot_bypass_window_guard() {
+        let (draft, _) = counter_draft(&[CounterCommand::Add(1)]);
+        let mut dictionary = draft.to_bytes().unwrap();
+        dictionary[4] |= 1;
+        dictionary.insert(5, 1);
+        assert!(ValidatedReplay::from_bytes(&dictionary).is_err());
+    }
+
     #[derive(Clone, Debug, Serialize, Deserialize)]
     struct CounterState {
         value: u32,
@@ -1213,6 +1413,8 @@ mod tests {
     enum CounterCommand {
         Add(u8),
         Reject,
+        End,
+        DoubleEnd,
     }
 
     #[derive(Clone, Debug, Serialize)]
@@ -1263,6 +1465,30 @@ mod tests {
                 } => Err(tabula_core::RuleError::code(
                     tabula_core::RuleErrorCode::IllegalMove,
                 )),
+                Input::Player {
+                    command: CounterCommand::End,
+                    ..
+                } => Ok(Outcome {
+                    events: smallvec::SmallVec::new(),
+                    effects: smallvec![Effect::EndMatch {
+                        outcome: counter_outcome("counter ended"),
+                    }],
+                }),
+                Input::Player {
+                    command: CounterCommand::DoubleEnd,
+                    ..
+                } => {
+                    let outcome = counter_outcome("counter ended");
+                    Ok(Outcome {
+                        events: smallvec::SmallVec::new(),
+                        effects: smallvec![
+                            Effect::EndMatch {
+                                outcome: outcome.clone(),
+                            },
+                            Effect::EndMatch { outcome },
+                        ],
+                    })
+                }
                 Input::Timer { .. } | Input::Seat { .. } | Input::Admin(_) => Ok(Outcome::empty()),
             }
         }
@@ -1285,6 +1511,20 @@ mod tests {
         .unwrap()
     }
 
+    fn counter_outcome(summary: &str) -> MatchOutcome {
+        MatchOutcome::new_for_seats(
+            OutcomeKind::Decisive,
+            smallvec![Standing {
+                seat: SeatId(0),
+                rank: 0,
+                score: 1,
+            }],
+            summary.into(),
+            &[SeatId(0)],
+        )
+        .unwrap()
+    }
+
     fn counter_draft(commands: &[CounterCommand]) -> (ReplayDraft, StateHash) {
         let seed = MatchSeed::from_bytes([42; 32]);
         let config = 7u8;
@@ -1302,6 +1542,7 @@ mod tests {
         let init = CounterRules::create(&config, &roster, &mut create_ctx).unwrap();
         let mut state = init.state;
         let mut frames = Vec::new();
+        let mut derived_outcome = None;
         for (position, command) in commands.iter().cloned().enumerate() {
             let input = Input::Player {
                 seat: SeatId(0),
@@ -1319,7 +1560,16 @@ mod tests {
                     max_events_per_input: u16::MAX,
                 },
             };
-            CounterRules::apply(&mut state, input.clone(), &mut ctx).unwrap();
+            let outcome = CounterRules::apply(&mut state, input.clone(), &mut ctx).unwrap();
+            if derived_outcome.is_none() {
+                derived_outcome = outcome.effects.iter().find_map(|effect| {
+                    if let Effect::EndMatch { outcome } = effect {
+                        Some(outcome.clone())
+                    } else {
+                        None
+                    }
+                });
+            }
             frames.push(ReplayFrame {
                 input_index: index,
                 logical_time,
@@ -1342,7 +1592,7 @@ mod tests {
                     initial_snapshot: None,
                     started_at: 0,
                     duration_ms: commands.len() as u64 * 100,
-                    outcome: None,
+                    outcome: derived_outcome,
                     kind: ReplayKind::Canonical,
                 },
                 frames,
@@ -1375,8 +1625,12 @@ mod tests {
         assert!(report.is_verified());
         assert_eq!(report.checkpoints_checked, 3);
         assert_eq!(report.actual_final_state_hash, live_final_hash);
+        assert!(report.outcome_checked);
+        assert_eq!(report.expected_outcome, None);
+        assert_eq!(report.actual_outcome, None);
 
-        runner.seek(StateVersion(1)).unwrap();
+        let position = runner.seek(StateVersion(1)).unwrap();
+        assert!(matches!(position, PrefixPosition::Verified(_)));
         let next = runner.step().unwrap().unwrap();
         assert_eq!(next.input_index, 2);
         assert_eq!(next.state_version, StateVersion(2));
@@ -1414,6 +1668,43 @@ mod tests {
     }
 
     #[test]
+    fn seek_never_hides_checkpoint_divergence() {
+        let (mut draft, _) = counter_draft(&[
+            CounterCommand::Add(2),
+            CounterCommand::Add(3),
+            CounterCommand::Add(5),
+        ]);
+        draft.frames[1].checkpoint = Some(StateHash([77; 32]));
+        let bytes = draft.to_bytes().unwrap();
+        let error = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .seek(StateVersion(2))
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ReplayError::PrefixDivergence { divergence }
+                if divergence.kind == DivergenceKind::Checkpoint
+                    && divergence.input_index == 2
+        ));
+    }
+
+    #[test]
+    fn seek_never_hides_final_hash_divergence() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::Add(1)]);
+        draft.final_state_hash = StateHash([88; 32]);
+        let bytes = draft.to_bytes().unwrap();
+        let error = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .seek(StateVersion(1))
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ReplayError::PrefixDivergence { divergence }
+                if divergence.kind == DivergenceKind::FinalStateHash
+        ));
+    }
+
+    #[test]
     fn final_hash_mismatch_fails_verification() {
         let (mut draft, _) = counter_draft(&[CounterCommand::Add(2)]);
         draft.final_state_hash = StateHash([88; 32]);
@@ -1426,6 +1717,84 @@ mod tests {
             DivergenceKind::FinalStateHash
         );
         assert!(!report.is_verified());
+    }
+
+    #[test]
+    fn replay_terminal_outcome_matches_effect() {
+        let (draft, _) = counter_draft(&[CounterCommand::End]);
+        let expected = draft.header.outcome.clone();
+        assert!(expected.is_some());
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        assert!(report.outcome_checked);
+        assert_eq!(report.expected_outcome, expected);
+        assert_eq!(report.actual_outcome, report.expected_outcome);
+        assert!(report.is_verified());
+    }
+
+    #[test]
+    fn missing_terminal_outcome_is_divergence() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::End]);
+        draft.header.outcome = None;
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        assert_eq!(
+            report.divergences.last().unwrap().kind,
+            DivergenceKind::TerminalOutcome
+        );
+        assert!(report.actual_outcome.is_some());
+        assert!(!report.is_verified());
+    }
+
+    #[test]
+    fn wrong_terminal_outcome_is_divergence() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::End]);
+        draft.header.outcome = Some(counter_outcome("wrong outcome"));
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        assert_eq!(
+            report.divergences.last().unwrap().kind,
+            DivergenceKind::TerminalOutcome
+        );
+        assert_ne!(report.expected_outcome, report.actual_outcome);
+        assert!(!report.is_verified());
+    }
+
+    #[test]
+    fn multiple_end_match_effects_are_rejected() {
+        let (draft, _) = counter_draft(&[CounterCommand::DoubleEnd]);
+        let bytes = draft.to_bytes().unwrap();
+        let error = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .verify()
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ReplayError::MultipleEndMatch { input_index: 1 }
+        ));
+    }
+
+    #[test]
+    fn canonical_log_cannot_continue_after_end_match() {
+        let (draft, _) = counter_draft(&[CounterCommand::End, CounterCommand::Add(1)]);
+        let bytes = draft.to_bytes().unwrap();
+        let error = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .verify()
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ReplayError::InputAfterEndMatch {
+                input_index: 2,
+                terminal_input_index: 1
+            }
+        ));
     }
 
     #[test]
@@ -1468,6 +1837,7 @@ mod tests {
         let mut count = decode_for_test(&bytes);
         let body_end = count.len() - TRAILER_LEN;
         count[body_end..body_end + 8].copy_from_slice(&99u64.to_le_bytes());
+        rewrite_checksum(&mut count);
         let count = encode_for_test(&count);
         assert!(matches!(
             ValidatedReplay::from_bytes(&count),
@@ -1530,8 +1900,8 @@ mod tests {
     }
 
     fn rewrite_checksum(logical: &mut [u8]) {
-        let body_end = logical.len() - TRAILER_LEN;
-        let checksum = crc32(&logical[..body_end]);
-        logical[body_end + 8 + 32..].copy_from_slice(&checksum.to_le_bytes());
+        let checksum_start = logical.len() - 4;
+        let checksum = crc32(&logical[..checksum_start]);
+        logical[checksum_start..].copy_from_slice(&checksum.to_le_bytes());
     }
 }
