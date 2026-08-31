@@ -36,13 +36,10 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::float_arithmetic)]
 
-// The source files remain available at their existing public module paths,
-// while their ownership is mechanically kept inside `src/rules/` for rules
-// identity hashing.
-#[path = "rules/mod.rs"]
+// `rules` is the complete canonical module tree. Package, bot, and
+// presentation code may depend on it, but canonical rules never reach back
+// into those noncanonical sources.
 pub mod rules;
-#[path = "rules/state.rs"]
-pub mod state;
 
 #[cfg(feature = "bots")]
 pub mod bot;
@@ -61,8 +58,9 @@ use tabula_game_api::{
     StateSizeClass, SubstitutionPolicy, TurnModel, VoiceRequirement,
 };
 
-pub use rules::TicTacToeRules;
-pub use state::{Command, Config, Event, Mark, State, Status, View, ViewEvent};
+pub use rules::{
+    state, Command, Config, Event, Mark, State, Status, TicTacToeRules, View, ViewEvent,
+};
 
 #[derive(Debug)]
 pub struct TicTacToeModule;

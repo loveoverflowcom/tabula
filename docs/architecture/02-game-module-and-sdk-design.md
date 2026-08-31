@@ -870,9 +870,11 @@ rules_version  — monotonic integer, bumped on ANY change to State/Command/Even
   once no live matches and no replay-support window (default 180 days) reference them.
 - `rules_hash` = the build-time identity exposed by `GameRules::RULES_HASH`. Each game crate's
   `build.rs` recursively hashes its canonical `src/rules/` subtree using the versioned source
-  preimage in doc 05 §6.2; bot, presentation, and other package source are outside that
-  boundary. It catches the failure where someone changes behavior *without* bumping
-  `rules_version` — replay of an affected match then fails loudly instead of silently diverging.
+  preimage in doc 05 §6.2. That subtree is also the rules module tree: canonical code may not
+  depend on crate-root package, bot, presentation, or other noncanonical source. Those sources
+  may depend on rules, but remain outside the boundary. It catches the failure where someone
+  changes behavior *without* bumping `rules_version` — replay of an affected match then fails
+  loudly instead of silently diverging.
 
 ```mermaid
 flowchart LR

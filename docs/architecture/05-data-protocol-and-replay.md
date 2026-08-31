@@ -321,10 +321,12 @@ rules_version      the game's State/Command/Event encoding and behavior (game-ow
 ### 6.2 `rules_hash` as the safety net
 
 Each game crate's `build.rs` computes `rules_hash` at compile time and the rules implementation
-exposes it through `GameRules::RULES_HASH`. The source boundary is structural: every `.rs` file
-recursively under `games/<game>/src/rules/` is canonical rules source; bot, presentation, and
-package source outside that subtree are not part of the identity. The build script is the owner
-of this compile-time identity; `xtask` and game tests may verify it independently.
+exposes it through `GameRules::RULES_HASH`. The source boundary is both physical and a Rust module
+ownership boundary: every `.rs` file recursively under `games/<game>/src/rules/` is canonical
+rules source, and that module tree may not depend on crate-root package, bot, or presentation
+source. Those noncanonical sources may depend on rules, but are not part of the identity. The
+build script is the owner of this compile-time identity; `xtask` and game tests may verify it
+independently, including the no-upward-dependency policy.
 
 The Phase 1 source-identity preimage is:
 

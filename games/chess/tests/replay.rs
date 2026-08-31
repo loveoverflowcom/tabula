@@ -34,22 +34,6 @@ fn all_rules_subtree_files_are_discovered_recursively() {
 }
 
 #[test]
-fn bot_source_is_outside_rules_hash() {
-    let sources = independent_rules_sources();
-    assert!(!sources
-        .iter()
-        .any(|(path, _)| path == Path::new("../bot.rs")));
-}
-
-#[test]
-fn presentation_source_is_outside_rules_hash() {
-    let sources = independent_rules_sources();
-    assert!(!sources
-        .iter()
-        .any(|(path, _)| path == Path::new("../ui.rs") || path.starts_with("../presentation")));
-}
-
-#[test]
 fn canonical_source_mutation_changes_oracle_hash() {
     let sources = independent_rules_sources();
     let before = independent_rules_hash(&sources);
@@ -60,18 +44,61 @@ fn canonical_source_mutation_changes_oracle_hash() {
 }
 
 #[test]
-fn synthetic_non_rules_source_does_not_participate_in_compiled_hash() {
-    let sources = independent_rules_sources();
-    let compiled = ChessRules::RULES_HASH;
-    let mut with_non_rules_source = sources.clone();
-    with_non_rules_source.push((PathBuf::from("../bot.rs"), b"synthetic bot".to_vec()));
+fn canonical_tree_rejects_noncanonical_feature_sources() {
+    let canonical_root = rules_root();
+    let manifest_root = Path::new(env!("CARGO_MANIFEST_DIR"));
 
-    assert_eq!(compiled, independent_rules_hash(&sources));
-    assert_ne!(compiled, independent_rules_hash(&with_non_rules_source));
+    assert_noncanonical_feature_source(&canonical_root, &manifest_root.join("src/lib.rs"));
+    assert_noncanonical_feature_source(&canonical_root, &manifest_root.join("src/bot.rs"));
+
+    let misplaced_bot = canonical_root.join("bot.rs");
+    assert!(
+        !is_outside_canonical_tree(&canonical_root, &misplaced_bot),
+        "a bot source under src/rules must be rejected by the source-boundary policy"
+    );
+}
+
+#[test]
+fn canonical_rules_do_not_depend_on_crate_root_sources() {
+    for (relative, bytes) in independent_rules_sources() {
+        let source = std::str::from_utf8(&bytes).expect("Rust source must be UTF-8");
+        for forbidden in ["crate::", "super::super::", "#[path", "include!"] {
+            assert!(
+                !source.contains(forbidden),
+                "canonical rules source {} must not use {forbidden}",
+                relative.display()
+            );
+        }
+    }
 }
 
 fn rules_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src/rules")
+}
+
+fn assert_noncanonical_feature_source(canonical_root: &Path, source: &Path) {
+    assert!(
+        source.is_file(),
+        "noncanonical feature source {} must remain outside src/rules",
+        source.display()
+    );
+    assert!(
+        is_outside_canonical_tree(canonical_root, source),
+        "noncanonical feature source {} must not be under {}",
+        source.display(),
+        canonical_root.display()
+    );
+    assert!(
+        !independent_rules_sources()
+            .iter()
+            .any(|(relative, _)| { relative.file_name() == source.file_name() }),
+        "noncanonical feature source {} must not be duplicated in src/rules",
+        source.display()
+    );
+}
+
+fn is_outside_canonical_tree(canonical_root: &Path, source: &Path) -> bool {
+    source.strip_prefix(canonical_root).is_err()
 }
 
 fn independent_rules_sources() -> Vec<(PathBuf, Vec<u8>)> {

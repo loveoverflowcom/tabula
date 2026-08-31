@@ -10,6 +10,7 @@
 //! @ai.invariant timeout-requires-mating-capability
 //! @ai.invariant valid-player-action-cannot-bypass-deadline
 //! @ai.invariant rules-hash-excludes-noncanonical-feature-source
+//! @ai.invariant canonical-rules-depend-only-on-rules-tree
 //! @ai.law deterministic-legal-command-order
 //! @ai.law canonical-rules-source-change-changes-rules-hash
 //! @ai.evidence tests::rules::illegal_moves_are_byte_identical_noops
@@ -18,7 +19,20 @@
 //! @ai.evidence tests::clocks::expired_clock_preempts_valid_non_move_commands
 //! @ai.evidence tests::rules_hash_matches_independent_rules_subtree_oracle
 //! @ai.evidence tests::canonical_source_mutation_changes_oracle_hash
-//! @ai.evidence tests::synthetic_non_rules_source_does_not_participate_in_compiled_hash
+//! @ai.evidence tests::canonical_tree_rejects_noncanonical_feature_sources
+//! @ai.evidence tests::canonical_rules_do_not_depend_on_crate_root_sources
+
+mod clock;
+mod movegen;
+mod state;
+
+pub use movegen::{perft, FenError};
+pub use state::{
+    CastlingRights, ClockConfig, ClockControl, ClockState, Color, Command, Config, Event, Piece,
+    PieceKind, PositionKey, Square, State, Status, View, ViewEvent,
+};
+
+pub(crate) use clock::config_is_valid;
 
 use smallvec::{smallvec, SmallVec};
 use tabula_core::{
@@ -29,10 +43,9 @@ use tabula_game_api::{
     AdminInput, Ctx, Effect, GameRules, Init, InitError, Input, LegalCommands, Outcome,
 };
 
-use crate::{
-    clock::{self, MoveCharge, TimerCheck},
+use self::{
+    clock::{MoveCharge, TimerCheck},
     movegen::{apply_move, in_check, legal_moves},
-    Color, Command, Config, Event, PieceKind, State, Status, View, ViewEvent,
 };
 
 /// The complete standard-chess rule implementation.

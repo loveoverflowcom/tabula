@@ -12,27 +12,17 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::float_arithmetic)]
 
-// Keep the public crate API stable while making the rules half a recursive
-// source subtree. The `#[path]` declarations are intentionally crate-level:
-// downstream code continues to use the existing re-exports, while build.rs can
-// identify every canonical rules source mechanically under `src/rules/`.
-#[path = "rules/clock.rs"]
-mod clock;
-#[path = "rules/movegen.rs"]
-mod movegen;
-#[path = "rules/mod.rs"]
+// `rules` is the complete canonical module tree. Package, bot, and
+// presentation code may depend on it, but canonical rules never reach back
+// into those noncanonical sources.
 mod rules;
-#[path = "rules/state.rs"]
-mod state;
 
 #[cfg(feature = "bots")]
 pub mod bot;
 
-pub use movegen::{perft, FenError};
-pub use rules::ChessRules;
-pub use state::{
-    CastlingRights, ClockConfig, ClockControl, ClockState, Color, Command, Config, Event, Piece,
-    PieceKind, PositionKey, Square, State, Status, View, ViewEvent,
+pub use rules::{
+    perft, CastlingRights, ChessRules, ClockConfig, ClockControl, ClockState, Color, Command,
+    Config, Event, FenError, Piece, PieceKind, PositionKey, Square, State, Status, View, ViewEvent,
 };
 
 use std::sync::LazyLock;
@@ -76,7 +66,7 @@ impl GameModule for ChessModule {
             return Err(ConfigError::SeatCount);
         }
         if let Some(clock) = &cfg.clock {
-            if !clock::config_is_valid(clock) {
+            if !rules::config_is_valid(clock) {
                 return Err(ConfigError::field("clock"));
             }
         }

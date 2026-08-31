@@ -2,7 +2,7 @@
 
 use std::{error::Error, fmt};
 
-use crate::state::{CastlingRights, Color, Piece, PieceKind, PositionKey, Square, State, Status};
+use super::state::{CastlingRights, Color, Piece, PieceKind, PositionKey, Square, State, Status};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Move {
@@ -25,6 +25,20 @@ impl fmt::Display for FenError {
 }
 
 impl Error for FenError {}
+
+impl State {
+    /// Builds a standard FEN position for local perft fixtures.
+    pub fn from_fen(fen: &str) -> Result<Self, FenError> {
+        from_fen(fen)
+    }
+
+    /// Position identity for repetition claims; its en-passant cell is kept
+    /// only when a legal en-passant capture exists.
+    #[must_use]
+    pub fn position_key(&self) -> PositionKey {
+        position_key(self)
+    }
+}
 
 /// Parses a six-field standard FEN into canonical chess state.
 pub fn from_fen(fen: &str) -> Result<State, FenError> {
