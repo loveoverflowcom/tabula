@@ -2,12 +2,12 @@
 #
 # Two representations exist on purpose: ops needs to read and diff capabilities
 # without compiling, and Phase B/C packages ship a manifest without our source.
-# `xtask check-manifests` asserts this file equals the compiled
-# GameMetadata/GameCapabilities, so they cannot drift.
+# `xtask check-manifests` validates this schema independently. The compiled
+# metadata cross-check is deferred; see xtask/README.md.
 
 id            = "com.tabula.tictactoe"
-version       = "0.1.0"
-rules_version = 1
+version       = "0.2.0"
+rules_version = 2
 
 # i18n keys, never literals — the catalog is localized by the shell.
 name_key        = "game.tictactoe.name"
@@ -58,7 +58,7 @@ max_apply_micros     = 200
 max_events_per_input = 4
 
 [assets]
-pack    = "tictactoe@0.1.0"
+pack    = "tictactoe@0.2.0"
 size_kb = 40
 
 [rollout]

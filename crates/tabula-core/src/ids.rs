@@ -9,6 +9,7 @@
 //! and iterate deterministically (I-2).
 
 use alloc::string::String;
+use core::fmt;
 
 use serde::{Deserialize, Serialize};
 
@@ -68,14 +69,201 @@ pub struct SessionId(pub u64);
 /// be looked up in `tabula-registry`, never to be branched on.
 /// `xtask check-no-game-ids` greps for exactly that mistake.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
-pub struct GameId(pub String);
+#[serde(try_from = "String", into = "String")]
+pub struct GameId(String);
+
+/// Why a [`GameId`] could not cross the identity trust boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum GameIdError {
+    #[error("game id must not be empty")]
+    Empty,
+    #[error("game id must contain at least two dot-separated segments")]
+    TooFewSegments,
+    #[error("game id segment {segment} must not be empty")]
+    EmptySegment { segment: usize },
+    #[error("game id segment {segment} must start with a lowercase ASCII letter")]
+    InvalidSegmentStart { segment: usize },
+    #[error("game id segment {segment} contains a non-canonical character")]
+    InvalidSegmentCharacter { segment: usize },
+}
+
+impl GameId {
+    /// Validates a canonical reverse-DNS identity such as `com.tabula.chess`.
+    ///
+    /// @ai.role trust-boundary
+    /// @ai.domain game.identity
+    /// @ai.invariant canonical-reverse-dns-game-id
+    /// @ai.evidence crate::ids::tests::game_id_constructor_partitions
+    /// @ai.evidence crate::ids::tests::game_id_deserialization_cannot_bypass_validation
+    #[allow(clippy::doc_markdown)]
+    pub fn new(value: impl Into<String>) -> Result<Self, GameIdError> {
+        let value = value.into();
+        if value.is_empty() {
+            return Err(GameIdError::Empty);
+        }
+
+        let mut segments = value.split('.').enumerate();
+        let mut count = 0;
+        for (segment, part) in &mut segments {
+            count += 1;
+            if part.is_empty() {
+                return Err(GameIdError::EmptySegment { segment });
+            }
+            let mut chars = part.bytes();
+            if !chars.next().is_some_and(|byte| byte.is_ascii_lowercase()) {
+                return Err(GameIdError::InvalidSegmentStart { segment });
+            }
+            if !chars.all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit()) {
+                return Err(GameIdError::InvalidSegmentCharacter { segment });
+            }
+        }
+        if count < 2 {
+            return Err(GameIdError::TooFewSegments);
+        }
+        Ok(Self(value))
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl TryFrom<String> for GameId {
+    type Error = GameIdError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for GameId {
+    type Error = GameIdError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<GameId> for String {
+    fn from(value: GameId) -> Self {
+        value.0
+    }
+}
+
+impl fmt::Display for GameId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
 
 /// Semver of the game *package*: presentation, bots, assets, docs, fixes.
 ///
 /// Distinct from [`RulesVersion`] on purpose — see doc 02 §9.2. A presentation
 /// bug fix bumps this and nothing else, and live matches are unaffected.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
-pub struct GameVersion(pub String);
+#[serde(try_from = "String", into = "String")]
+pub struct GameVersion(String);
+
+/// Why a [`GameVersion`] is not valid Semantic Versioning 2.0.0.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("game version must be a Semantic Versioning 2.0.0 value")]
+pub struct GameVersionError;
+
+impl GameVersion {
+    /// Validates the `SemVer` package version recorded in game metadata.
+    pub fn new(value: impl Into<String>) -> Result<Self, GameVersionError> {
+        let value = value.into();
+        is_semver(&value)
+            .then_some(Self(value))
+            .ok_or(GameVersionError)
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl TryFrom<String> for GameVersion {
+    type Error = GameVersionError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for GameVersion {
+    type Error = GameVersionError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<GameVersion> for String {
+    fn from(value: GameVersion) -> Self {
+        value.0
+    }
+}
+
+impl fmt::Display for GameVersion {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+fn is_semver(value: &str) -> bool {
+    let (without_build, build) = match value.split_once('+') {
+        Some((version, build)) if !build.contains('+') => (version, Some(build)),
+        Some(_) => return false,
+        None => (value, None),
+    };
+    let (core, prerelease) = match without_build.split_once('-') {
+        Some((version, prerelease)) => (version, Some(prerelease)),
+        None => (without_build, None),
+    };
+
+    let mut core_parts = core.split('.');
+    let Some(major) = core_parts.next() else {
+        return false;
+    };
+    let Some(minor) = core_parts.next() else {
+        return false;
+    };
+    let Some(patch) = core_parts.next() else {
+        return false;
+    };
+    if core_parts.next().is_some()
+        || !is_numeric_identifier(major, true)
+        || !is_numeric_identifier(minor, true)
+        || !is_numeric_identifier(patch, true)
+    {
+        return false;
+    }
+
+    prerelease.is_none_or(|identifiers| valid_identifiers(identifiers, true))
+        && build.is_none_or(|identifiers| valid_identifiers(identifiers, false))
+}
+
+fn valid_identifiers(value: &str, reject_numeric_leading_zeroes: bool) -> bool {
+    !value.is_empty()
+        && value.split('.').all(|identifier| {
+            !identifier.is_empty()
+                && identifier
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+                && (!reject_numeric_leading_zeroes
+                    || !identifier.bytes().all(|byte| byte.is_ascii_digit())
+                    || is_numeric_identifier(identifier, true))
+        })
+}
+
+fn is_numeric_identifier(value: &str, reject_leading_zeroes: bool) -> bool {
+    !value.is_empty()
+        && value.bytes().all(|byte| byte.is_ascii_digit())
+        && (!reject_leading_zeroes || value.len() == 1 || !value.starts_with('0'))
+}
 
 /// Monotonic integer, bumped on **any** change to `State`/`Command`/`Event`
 /// encoding or to `apply`/`project` behaviour. (doc 02 §9.2)
@@ -97,5 +285,71 @@ impl RulesVersion {
     #[must_use]
     pub fn as_u32(self) -> u32 {
         self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{canonical_decode, canonical_encode};
+
+    #[test]
+    fn game_id_constructor_partitions() {
+        for valid in ["a.b", "com.example.game", "x1.y2"] {
+            assert!(GameId::new(valid).is_ok(), "{valid} should be valid");
+        }
+        assert_eq!(GameId::new(""), Err(GameIdError::Empty));
+        assert_eq!(GameId::new("one"), Err(GameIdError::TooFewSegments));
+        assert_eq!(
+            GameId::new("a..b"),
+            Err(GameIdError::EmptySegment { segment: 1 })
+        );
+        assert_eq!(
+            GameId::new("1.a"),
+            Err(GameIdError::InvalidSegmentStart { segment: 0 })
+        );
+        assert_eq!(
+            GameId::new("a.B"),
+            Err(GameIdError::InvalidSegmentStart { segment: 1 })
+        );
+        assert_eq!(
+            GameId::new("a.b-c"),
+            Err(GameIdError::InvalidSegmentCharacter { segment: 1 })
+        );
+    }
+
+    #[test]
+    fn game_id_deserialization_cannot_bypass_validation() {
+        let valid = GameId::new("com.example.game").unwrap();
+        let encoded = canonical_encode(&valid).unwrap();
+        assert_eq!(canonical_decode::<GameId>(&encoded).unwrap(), valid);
+
+        let invalid = canonical_encode("Com.Example.Game").unwrap();
+        assert!(canonical_decode::<GameId>(&invalid).is_err());
+    }
+
+    #[test]
+    fn game_version_accepts_semver_and_rejects_near_misses() {
+        for valid in ["0.0.0", "1.2.3", "1.2.3-alpha.1", "1.2.3+build.01"] {
+            assert!(
+                GameVersion::new(valid).is_ok(),
+                "{valid} should be valid SemVer"
+            );
+        }
+        for invalid in [
+            "1", "1.2", "01.2.3", "1.2.3-01", "1.2.3+", "1.2.3-", "v1.2.3",
+        ] {
+            assert_eq!(
+                GameVersion::new(invalid),
+                Err(GameVersionError),
+                "{invalid}"
+            );
+        }
+    }
+
+    #[test]
+    fn game_version_deserialization_cannot_bypass_validation() {
+        let invalid = canonical_encode("1.2").unwrap();
+        assert!(canonical_decode::<GameVersion>(&invalid).is_err());
     }
 }

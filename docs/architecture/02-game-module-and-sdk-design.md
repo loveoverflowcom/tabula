@@ -535,10 +535,12 @@ pub struct Budget { pub max_apply_micros: u32, pub max_events_per_input: u16 }
 
 ### 4.3 Manifest file
 
-Every game crate carries `game.toml`, which is the **source of truth for the catalog** and is
-validated against the compiled `GameMetadata`/`GameCapabilities` at build time by
-`xtask check-manifests`. Two representations exist because ops needs to read and diff capabilities
-without compiling, and because Phase B/C packages ship a manifest without our source.
+Every game crate carries `game.toml`, which is the catalog manifest. Today
+`xtask check-manifests` validates its schema independently from compiled
+`GameMetadata`/`GameCapabilities`; it does **not** cross-check the two forms yet. Two
+representations exist because ops needs to read and diff capabilities without compiling, and
+because Phase B/C packages ship a manifest without our source. A generated manifest boundary is
+the deferred mechanism for making the manifest the single source of truth.
 
 ```toml
 # games/chess/game.toml
@@ -1177,7 +1179,7 @@ until it passes.** This is the single mechanism that keeps determinism from rott
 | `view_event_consistency` | Folding `ViewEvent`s onto a `View` equals `project` at the new version (opt-in) | — |
 | `bot_self_play_terminates` | 1000 bot-vs-bot matches all reach a terminal state within `max_match_duration` | — |
 | `outcome_wellformed` | Standings cover all seats exactly once; ranks are contiguous from 0 | — |
-| `manifest_matches_code` | `game.toml` == compiled metadata/capabilities | — |
+| `manifest_schema_valid` | `game.toml` has the required, internally coherent schema; compiled cross-check is deferred | — |
 | `golden_replays` | Committed replays in `tests/replays/<game>/*.tbr` still reproduce their recorded hashes | I-8, I-16 |
 | `no_forbidden_deps` | The rules feature set builds with no banned crate in the tree | I-1 |
 | `apply_within_budget` | p99 `apply` time under `capabilities.apply_budget` on the CI machine class | — |

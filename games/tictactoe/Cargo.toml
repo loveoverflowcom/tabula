@@ -1,6 +1,6 @@
 [package]
 name        = "tabula-game-tictactoe"
-version     = "0.1.0"
+version     = "0.2.0"
 description = "Tic-tac-toe — the Tabula SDK smoke test and game template."
 edition.workspace      = true
 rust-version.workspace = true
@@ -29,6 +29,7 @@ tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
 serde           = { workspace = true }
 smallvec        = { workspace = true }
+thiserror       = { workspace = true }
 
 tabula-presentation = { workspace = true, optional = true }
 tabula-design       = { workspace = true, optional = true }

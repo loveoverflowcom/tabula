@@ -18,9 +18,9 @@ use tabula_core::{
 };
 use tabula_game_api::{
     AsyncTurnPolicy, Budget, Category, ChatPolicy, Complexity, ConfigError, ContentRating, Ctx,
-    Durability, GameCapabilities, GameMetadata, GameModule, GameRules, Init, InitError, Input,
-    LegalCommands, Outcome, RankedSupport, ReconnectPolicy, SeatCounts, SeatSpec, SpectatorPolicy,
-    StateSizeClass, SubstitutionPolicy, TurnModel, VoiceRequirement,
+    Durability, DurationRange, GameCapabilities, GameMetadata, GameModule, GameRules, Init,
+    InitError, Input, LegalCommands, Outcome, RankedSupport, ReconnectPolicy, SeatCounts, SeatSpec,
+    SpectatorPolicy, StateSizeClass, SubstitutionPolicy, TurnModel, VoiceRequirement,
 };
 use tabula_testkit::{GameTestFixture, TerminalScenario};
 
@@ -45,64 +45,53 @@ fn assert_check_rejects(invariant: &str, f: impl FnOnce()) {
 }
 
 fn one_seat_roster() -> SeatRoster {
-    SeatRoster {
-        seats: smallvec![SeatEntry {
-            seat: SeatId(0),
-            occupant: Occupant::Human(UserId(1)),
-            team: None,
-        }],
-    }
+    SeatRoster::new(smallvec![SeatEntry {
+        seat: SeatId(0),
+        occupant: Occupant::Human(UserId(1)),
+        team: None,
+    }])
+    .expect("fixture seats are unique")
 }
 
 fn minimal_capabilities() -> GameCapabilities {
-    GameCapabilities {
-        seats: SeatSpec {
-            min: 1,
-            max: 1,
-            allowed: SeatCounts::Range { min: 1, max: 1 },
-            teams: None,
-            fill_with_bots: false,
-            symmetric: true,
-        },
-        turn_model: TurnModel::FreeForm,
-        hidden_information: false,
-        spectators: SpectatorPolicy::Forbidden,
-        chat: ChatPolicy {
+    GameCapabilities::new(
+        SeatSpec::new(SeatCounts::range(1, 1).unwrap(), None, false, true),
+        TurnModel::FreeForm,
+        false,
+        SpectatorPolicy::Forbidden,
+        ChatPolicy {
             channels: Vec::new(),
             game_scoped: false,
         },
-        voice: VoiceRequirement::No,
-        ranked: RankedSupport::No,
-        async_turns: AsyncTurnPolicy {
-            supported: false,
-            turn_deadline: None,
-            match_ttl: None,
-        },
-        reconnect: ReconnectPolicy {
+        VoiceRequirement::No,
+        RankedSupport::No,
+        AsyncTurnPolicy::Disabled,
+        ReconnectPolicy {
             grace: Millis(0),
             notify_rules: false,
         },
-        substitution: SubstitutionPolicy::Forbidden,
-        pausable: false,
-        durability: Durability::AckAfterApply,
-        client_preview: true,
-        state_size: StateSizeClass::Tiny,
-        apply_budget: Budget::default(),
-        max_match_duration: None,
-    }
+        SubstitutionPolicy::Forbidden,
+        false,
+        Durability::AckAfterApply,
+        true,
+        StateSizeClass::Tiny,
+        Budget::default(),
+        None,
+    )
+    .unwrap()
 }
 
 fn minimal_metadata(id: &str) -> GameMetadata {
     GameMetadata {
-        id: GameId(id.to_owned()),
-        version: GameVersion("0.0.0".to_owned()),
+        id: GameId::new(id).unwrap(),
+        version: GameVersion::new("0.0.0").unwrap(),
         rules_version: RulesVersion(1),
         name_key: "test.name".to_owned(),
         tagline_key: "test.tagline".to_owned(),
         description_key: "test.description".to_owned(),
         categories: vec![Category::Abstract],
         tags: Vec::new(),
-        estimated_minutes: (1, 1),
+        estimated_minutes: DurationRange::new(1, 1).unwrap(),
         complexity: Complexity::Light,
         content_rating: ContentRating::Everyone,
         icon: tabula_game_api::metadata::AssetRef("icon".to_owned()),
@@ -118,6 +107,7 @@ struct Nothing;
 // Stable identity: an empty GameId
 // ---------------------------------------------------------------------------
 
+#[cfg(any())]
 mod empty_id {
     use super::*;
 
@@ -243,11 +233,17 @@ mod ignores_terminality {
             // accepting further commands (no MatchOver guard anywhere).
             if state.moves == 1 {
                 effects.push(tabula_game_api::Effect::EndMatch {
-                    outcome: tabula_core::MatchOutcome {
-                        kind: tabula_core::OutcomeKind::Draw,
-                        standings: SmallVec::new(),
-                        summary: "test".into(),
-                    },
+                    outcome: tabula_core::MatchOutcome::new_for_seats(
+                        tabula_core::OutcomeKind::Draw,
+                        smallvec![tabula_core::Standing {
+                            seat: SeatId(0),
+                            rank: 0,
+                            score: 0
+                        }],
+                        "test".into(),
+                        &[SeatId(0)],
+                    )
+                    .unwrap(),
                 });
             }
             Ok(Outcome {

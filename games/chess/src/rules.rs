@@ -317,9 +317,9 @@ fn end(state: &mut State, outcome: MatchOutcome) -> Outcome<ChessRules> {
 }
 
 fn decisive(winner: Color, summary: &str) -> MatchOutcome {
-    MatchOutcome {
-        kind: OutcomeKind::Decisive,
-        standings: smallvec![
+    MatchOutcome::new_for_seats(
+        OutcomeKind::Decisive,
+        smallvec![
             Standing {
                 seat: winner.seat(),
                 rank: 0,
@@ -331,14 +331,16 @@ fn decisive(winner: Color, summary: &str) -> MatchOutcome {
                 score: 0
             }
         ],
-        summary: summary.into(),
-    }
+        summary.into(),
+        &[SeatId(0), SeatId(1)],
+    )
+    .expect("standard chess seats form a valid decisive outcome")
 }
 
 fn draw(summary: &str) -> MatchOutcome {
-    MatchOutcome {
-        kind: OutcomeKind::Draw,
-        standings: smallvec![
+    MatchOutcome::new_for_seats(
+        OutcomeKind::Draw,
+        smallvec![
             Standing {
                 seat: SeatId(0),
                 rank: 0,
@@ -350,14 +352,18 @@ fn draw(summary: &str) -> MatchOutcome {
                 score: 0
             }
         ],
-        summary: summary.into(),
-    }
+        summary.into(),
+        &[SeatId(0), SeatId(1)],
+    )
+    .expect("standard chess seats form a valid drawn outcome")
 }
 
 fn aborted(reason: AbortReason) -> MatchOutcome {
-    MatchOutcome {
-        kind: OutcomeKind::Aborted { reason },
-        standings: SmallVec::new(),
-        summary: "cancelled".into(),
-    }
+    MatchOutcome::new_for_seats(
+        OutcomeKind::Aborted { reason },
+        SmallVec::new(),
+        "cancelled".into(),
+        &[SeatId(0), SeatId(1)],
+    )
+    .expect("empty aborted outcome is structurally valid")
 }

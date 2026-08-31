@@ -39,8 +39,8 @@ pub struct GameMetadata {
     pub categories: Vec<Category>,
     pub tags: Vec<String>,
 
-    /// `(min, max)` — drives catalog filtering and matchmaking expectations.
-    pub estimated_minutes: (u16, u16),
+    /// Drives catalog filtering and matchmaking expectations.
+    pub estimated_minutes: DurationRange,
 
     pub complexity: Complexity,
 
@@ -50,6 +50,66 @@ pub struct GameMetadata {
     pub icon: AssetRef,
     pub hero: AssetRef,
     pub rules_url_key: Option<String>,
+}
+
+/// A non-inverted catalog duration estimate.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "(u16, u16)", into = "(u16, u16)")]
+pub struct DurationRange {
+    min: u16,
+    max: u16,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("estimated duration minimum must not exceed maximum")]
+pub struct DurationRangeError;
+
+impl DurationRange {
+    pub fn new(min: u16, max: u16) -> Result<Self, DurationRangeError> {
+        (min <= max)
+            .then_some(Self { min, max })
+            .ok_or(DurationRangeError)
+    }
+
+    #[must_use]
+    pub const fn min(self) -> u16 {
+        self.min
+    }
+
+    #[must_use]
+    pub const fn max(self) -> u16 {
+        self.max
+    }
+}
+
+impl TryFrom<(u16, u16)> for DurationRange {
+    type Error = DurationRangeError;
+
+    fn try_from(value: (u16, u16)) -> Result<Self, Self::Error> {
+        Self::new(value.0, value.1)
+    }
+}
+
+impl From<DurationRange> for (u16, u16) {
+    fn from(value: DurationRange) -> Self {
+        (value.min, value.max)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tabula_core::{canonical_decode, canonical_encode};
+
+    #[test]
+    fn duration_range_constructor_and_deserialization_reject_inversion() {
+        assert!(DurationRange::new(0, 0).is_ok());
+        assert!(DurationRange::new(1, 90).is_ok());
+        assert_eq!(DurationRange::new(90, 10), Err(DurationRangeError));
+
+        let invalid = canonical_encode(&(90u16, 10u16)).unwrap();
+        assert!(canonical_decode::<DurationRange>(&invalid).is_err());
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -23,20 +23,19 @@ use tabula_testkit::determinism::{
 const SEED: MatchSeed = MatchSeed::from_bytes([42u8; 32]);
 
 fn roster() -> SeatRoster {
-    SeatRoster {
-        seats: smallvec![
-            SeatEntry {
-                seat: SeatId(0),
-                occupant: Occupant::Human(UserId(1)),
-                team: None,
-            },
-            SeatEntry {
-                seat: SeatId(1),
-                occupant: Occupant::Human(UserId(2)),
-                team: None,
-            },
-        ],
-    }
+    SeatRoster::new(smallvec![
+        SeatEntry {
+            seat: SeatId(0),
+            occupant: Occupant::Human(UserId(1)),
+            team: None,
+        },
+        SeatEntry {
+            seat: SeatId(1),
+            occupant: Occupant::Human(UserId(2)),
+            team: None,
+        },
+    ])
+    .expect("fixture seats are unique")
 }
 
 fn place(seat: u8, cell: u8) -> Input<Command> {

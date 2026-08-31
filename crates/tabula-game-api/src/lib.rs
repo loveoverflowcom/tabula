@@ -104,15 +104,18 @@ pub mod rules;
 pub use a11y::{A11yAction, A11yDescription, A11yItem, A11yRegion, ActionId};
 pub use bot::GameBot;
 pub use capabilities::{
-    AsyncTurnPolicy, Budget, ChatChannelSpec, ChatPolicy, Durability, GameCapabilities,
-    RankedSupport, RatingKind, ReconnectPolicy, SeatCounts, SeatSpec, SpectatorPolicy,
-    StateSizeClass, SubstitutionPolicy, TeamSpec, TurnModel, VoiceRequirement,
+    AsyncTurnPolicy, BotLevels, BotLevelsError, Budget, ChatChannelSpec, ChatPolicy, Durability,
+    GameCapabilities, GameCapabilitiesError, RankedSupport, RatingKind, ReconnectPolicy,
+    SeatCounts, SeatCountsError, SeatSpec, SpectatorPolicy, StateSizeClass, SubstitutionPolicy,
+    TeamSpec, TeamSpecError, TurnModel, VoiceRequirement,
 };
 pub use ctx::Ctx;
 pub use effect::{ChatScopes, CheckpointLabel, Effect, Notice, VoiceScopes};
 pub use error::{ConfigError, InitError, MigrateError};
 pub use input::{AdminInput, Input};
-pub use metadata::{Category, Complexity, ContentRating, GameMetadata};
+pub use metadata::{
+    Category, Complexity, ContentRating, DurationRange, DurationRangeError, GameMetadata,
+};
 pub use module::GameModule;
 pub use rules::{GameRules, Init, LegalCommands, Outcome};
 

@@ -46,7 +46,7 @@ pub(crate) fn hash_hex(hash: StateHash) -> String {
 /// cache would be one more place for a "which build did this run against"
 /// bug to hide.
 pub(crate) fn game_id<F: GameTestFixture>() -> String {
-    F::Module::metadata().id.0.clone()
+    F::Module::metadata().id.as_str().to_owned()
 }
 
 /// Compose a conformance failure message in the shape the mission specifies:

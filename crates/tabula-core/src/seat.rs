@@ -19,8 +19,21 @@ use crate::ids::{SeatId, UserId};
 
 /// The seats of one match and who is in them.
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(try_from = "RawSeatRoster")]
 pub struct SeatRoster {
-    pub seats: SmallVec<[SeatEntry; 8]>,
+    seats: SmallVec<[SeatEntry; 8]>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct RawSeatRoster {
+    seats: SmallVec<[SeatEntry; 8]>,
+}
+
+/// Why a [`SeatRoster`] cannot establish unique addressable seats.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum SeatRosterError {
+    #[error("seat {seat:?} occurs more than once in a roster")]
+    DuplicateSeat { seat: SeatId },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -87,6 +100,28 @@ pub enum SeatChange {
 }
 
 impl SeatRoster {
+    /// Creates a roster whose addressable seat identities are unique.
+    ///
+    /// Seat identifiers are deliberately *not* required to be contiguous or to
+    /// start at zero: no architecture contract grants games that assumption.
+    pub fn new(seats: SmallVec<[SeatEntry; 8]>) -> Result<Self, SeatRosterError> {
+        for (index, entry) in seats.iter().enumerate() {
+            if seats[..index].iter().any(|prior| prior.seat == entry.seat) {
+                return Err(SeatRosterError::DuplicateSeat { seat: entry.seat });
+            }
+        }
+        Ok(Self { seats })
+    }
+
+    pub fn iter(&self) -> core::slice::Iter<'_, SeatEntry> {
+        self.seats.iter()
+    }
+
+    #[must_use]
+    pub fn as_slice(&self) -> &[SeatEntry] {
+        &self.seats
+    }
+
     #[must_use]
     pub fn len(&self) -> usize {
         self.seats.len()
@@ -100,5 +135,56 @@ impl SeatRoster {
     #[must_use]
     pub fn get(&self, seat: SeatId) -> Option<&SeatEntry> {
         self.seats.iter().find(|e| e.seat == seat)
+    }
+}
+
+impl<'a> IntoIterator for &'a SeatRoster {
+    type Item = &'a SeatEntry;
+    type IntoIter = core::slice::Iter<'a, SeatEntry>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl TryFrom<RawSeatRoster> for SeatRoster {
+    type Error = SeatRosterError;
+
+    fn try_from(raw: RawSeatRoster) -> Result<Self, Self::Error> {
+        Self::new(raw.seats)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use smallvec::smallvec;
+
+    use super::*;
+    use crate::{canonical_decode, canonical_encode};
+
+    fn entry(seat: u8) -> SeatEntry {
+        SeatEntry {
+            seat: SeatId(seat),
+            occupant: Occupant::Empty,
+            team: None,
+        }
+    }
+
+    #[test]
+    fn roster_rejects_duplicate_addressable_seats() {
+        assert!(SeatRoster::new(smallvec![entry(7), entry(42)]).is_ok());
+        assert!(matches!(
+            SeatRoster::new(smallvec![entry(7), entry(7)]),
+            Err(SeatRosterError::DuplicateSeat { seat: SeatId(7) })
+        ));
+    }
+
+    #[test]
+    fn roster_deserialization_cannot_bypass_unique_seats() {
+        let bytes = canonical_encode(&RawSeatRoster {
+            seats: smallvec![entry(7), entry(7)],
+        })
+        .unwrap();
+        assert!(canonical_decode::<SeatRoster>(&bytes).is_err());
     }
 }

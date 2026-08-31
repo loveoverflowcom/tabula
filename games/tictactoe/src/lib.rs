@@ -50,10 +50,10 @@ use std::sync::LazyLock;
 use tabula_core::{BotLevel, SeatRoster};
 use tabula_game_api::metadata::AssetRef;
 use tabula_game_api::{
-    AsyncTurnPolicy, Budget, Category, ChatPolicy, Complexity, ConfigError, ContentRating,
-    Durability, GameCapabilities, GameId, GameMetadata, GameModule, GameVersion, RankedSupport,
-    ReconnectPolicy, RulesVersion, SeatCounts, SeatSpec, SpectatorPolicy, StateSizeClass,
-    SubstitutionPolicy, TurnModel, VoiceRequirement,
+    AsyncTurnPolicy, BotLevels, Budget, Category, ChatPolicy, Complexity, ConfigError,
+    ContentRating, Durability, DurationRange, GameCapabilities, GameId, GameMetadata, GameModule,
+    GameVersion, RankedSupport, ReconnectPolicy, RulesVersion, SeatCounts, SeatSpec,
+    SpectatorPolicy, StateSizeClass, SubstitutionPolicy, TurnModel, VoiceRequirement,
 };
 
 pub use rules::TicTacToeRules;
@@ -84,7 +84,7 @@ impl GameModule for TicTacToeModule {
         if roster.len() != 2 {
             return Err(ConfigError::SeatCount);
         }
-        if cfg.move_timeout_ms != 0 && cfg.move_timeout_ms < 5_000 {
+        if rules::move_timeout(cfg).is_err() {
             return Err(ConfigError::field("move_timeout_ms"));
         }
         Ok(())
@@ -96,20 +96,19 @@ impl GameModule for TicTacToeModule {
 //     static METADATA:     GameMetadata     = metadata_from_manifest!("game.toml");
 //     static CAPABILITIES: GameCapabilities = capabilities_from_manifest!("game.toml");
 //
-// Until those proc macros exist, these hand-written values are checked against
-// `game.toml` by `xtask check-manifests` — so they cannot drift, they are just
-// duplicated. Writing the macro is a Phase 0 deliverable precisely because every
-// future game would otherwise copy this duplication.
+// Until those proc macros exist, these hand-written values and `game.toml` are
+// deliberately independent. `xtask check-manifests` validates each form, but
+// does not yet compare them; see xtask/README.md for the deferred cross-check.
 static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| GameMetadata {
-    id: GameId("com.tabula.tictactoe".to_owned()),
-    version: GameVersion("0.1.0".to_owned()),
-    rules_version: RulesVersion(1),
+    id: GameId::new("com.tabula.tictactoe").expect("literal is a valid game id"),
+    version: GameVersion::new("0.2.0").expect("literal is valid SemVer"),
+    rules_version: RulesVersion(2),
     name_key: "game.tictactoe.name".to_owned(),
     tagline_key: "game.tictactoe.tagline".to_owned(),
     description_key: "game.tictactoe.description".to_owned(),
     categories: vec![Category::Abstract],
     tags: vec!["template".to_owned(), "tutorial".to_owned()],
-    estimated_minutes: (1, 3),
+    estimated_minutes: DurationRange::new(1, 3).expect("literal range is ordered"),
     complexity: Complexity::Light,
     content_rating: ContentRating::Everyone,
     icon: AssetRef("tictactoe/icon".to_owned()),
@@ -117,43 +116,41 @@ static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| GameMetadata {
     rules_url_key: None,
 });
 
-static CAPABILITIES: LazyLock<GameCapabilities> = LazyLock::new(|| GameCapabilities {
-    seats: SeatSpec {
-        min: 2,
-        max: 2,
-        allowed: SeatCounts::Range { min: 2, max: 2 },
-        teams: None,
-        fill_with_bots: true,
-        symmetric: false,
-    },
-    turn_model: TurnModel::StrictSequential,
-    hidden_information: false,
-    spectators: SpectatorPolicy::Live,
-    chat: ChatPolicy {
-        channels: Vec::new(),
-        game_scoped: false,
-    },
-    voice: VoiceRequirement::No,
-    ranked: RankedSupport::No,
-    async_turns: AsyncTurnPolicy {
-        supported: false,
-        turn_deadline: None,
-        match_ttl: None,
-    },
-    reconnect: ReconnectPolicy {
-        grace: tabula_core::Millis(60_000),
-        notify_rules: false,
-    },
-    substitution: SubstitutionPolicy::BotOnly {
-        levels: vec![BotLevel::Trivial, BotLevel::Easy],
-    },
-    pausable: false,
-    durability: Durability::AckAfterApply,
-    client_preview: true,
-    state_size: StateSizeClass::Tiny,
-    apply_budget: Budget {
-        max_apply_micros: 200,
-        max_events_per_input: 4,
-    },
-    max_match_duration: Some(tabula_core::Millis(600_000)),
+static CAPABILITIES: LazyLock<GameCapabilities> = LazyLock::new(|| {
+    GameCapabilities::new(
+        SeatSpec::new(
+            SeatCounts::range(2, 2).expect("literal range is valid"),
+            None,
+            true,
+            false,
+        ),
+        TurnModel::StrictSequential,
+        false,
+        SpectatorPolicy::Live,
+        ChatPolicy {
+            channels: Vec::new(),
+            game_scoped: false,
+        },
+        VoiceRequirement::No,
+        RankedSupport::No,
+        AsyncTurnPolicy::Disabled,
+        ReconnectPolicy {
+            grace: tabula_core::Millis(60_000),
+            notify_rules: false,
+        },
+        SubstitutionPolicy::BotOnly {
+            levels: BotLevels::new(vec![BotLevel::Trivial, BotLevel::Easy])
+                .expect("literal levels are non-empty and unique"),
+        },
+        false,
+        Durability::AckAfterApply,
+        true,
+        StateSizeClass::Tiny,
+        Budget {
+            max_apply_micros: 200,
+            max_events_per_input: 4,
+        },
+        Some(tabula_core::Millis(600_000)),
+    )
+    .expect("tic-tac-toe capabilities are coherent")
 });
