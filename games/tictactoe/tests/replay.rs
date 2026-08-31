@@ -56,10 +56,10 @@ fn committed_tictactoe_replay_reproduces_its_independent_final_hash() {
     .expect("committed replay must match the typed runner");
     let report = runner.verify().expect("replay execution must succeed");
     assert!(report.is_verified(), "{report:?}");
-    assert_eq!(report.expected_outcome, report.actual_outcome);
-    assert!(report.expected_outcome.is_some());
+    assert_eq!(report.expected_outcome(), report.actual_outcome());
+    assert!(report.expected_outcome().is_some());
     assert_eq!(
-        report.actual_final_state_hash.0,
+        report.actual_final_state_hash().0,
         [
             0xee, 0xd9, 0x71, 0x6c, 0x09, 0xa0, 0xb5, 0x11, 0x81, 0x86, 0xf2, 0xd2, 0x29, 0x17,
             0xa2, 0x0f, 0xed, 0xdf, 0xe0, 0x77, 0x6d, 0x7d, 0x0e, 0x19, 0x32, 0x32, 0x32, 0xd5,
