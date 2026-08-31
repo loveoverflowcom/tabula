@@ -15,6 +15,7 @@
 //! @ai.law exact-score-ties-use-deterministic-rng
 //! @ai.evidence tests::bot::easy_bot_always_returns_a_legal_projected_command
 //! @ai.evidence tests::bot::easy_bot_is_deterministic_for_identical_view_and_rng
+//! @ai.evidence tests::bot::easy_equal_score_ties_use_rng_but_stay_with_the_best_moves
 
 #![allow(clippy::doc_markdown)] // `@ai.*` schema values must remain bare machine-readable paths.
 
@@ -172,6 +173,13 @@ fn apply_search_move(state: &mut State, seat: SeatId, command: Command) -> bool 
 
 /// Static integer evaluation from one explicit bot perspective.
 fn evaluate(state: &State, perspective: Color) -> i32 {
+    if let Status::Ended { outcome } = &state.status {
+        // Terminal utility dominates every material or positional heuristic.
+        // In particular, a drawn position is exactly neutral even when its
+        // board would otherwise look winning or losing.
+        return terminal_score(outcome, perspective);
+    }
+
     let board_score: i32 = state
         .board
         .iter()
@@ -183,13 +191,10 @@ fn evaluate(state: &State, perspective: Color) -> i32 {
         })
         .sum();
 
-    board_score + terminal_score(state, perspective)
+    board_score
 }
 
-fn terminal_score(state: &State, perspective: Color) -> i32 {
-    let Status::Ended { outcome } = &state.status else {
-        return 0;
-    };
+fn terminal_score(outcome: &tabula_core::MatchOutcome, perspective: Color) -> i32 {
     if !matches!(outcome.kind(), OutcomeKind::Decisive) {
         return 0;
     }

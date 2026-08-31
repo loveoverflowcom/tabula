@@ -1,9 +1,11 @@
 #![cfg(feature = "bots")]
 
 use smallvec::smallvec;
-use tabula_core::{BotLevel, DetRng, InputIndex, SeatId, Viewer};
-use tabula_game_api::{GameBot, GameRules};
-use tabula_game_chess::{bot::ChessBot, ChessModule, ChessRules, Command, Config, State, View};
+use tabula_core::{BotLevel, DetRng, InputIndex, LogicalTime, MatchSeed, SeatId, Viewer};
+use tabula_game_api::{Budget, Ctx, GameBot, GameRules, Input};
+use tabula_game_chess::{
+    bot::ChessBot, ChessModule, ChessRules, Command, Config, State, Status, View,
+};
 use tabula_testkit::selfplay::{SelfPlayConfig, SelfPlaySetup};
 
 fn view(fen: &str) -> View {
@@ -18,8 +20,27 @@ fn choose(fen: &str, level: BotLevel, seed: [u8; 32]) -> Option<Command> {
 }
 
 fn easy_choice(view: &View, seed: [u8; 32]) -> Option<Command> {
-    let mut rng = DetRng::for_input(&tabula_core::MatchSeed::from_bytes(seed), InputIndex(7));
+    let mut rng = DetRng::for_input(&MatchSeed::from_bytes(seed), InputIndex(7));
     ChessBot::new(BotLevel::Easy).choose(view, SeatId(0), &mut rng)
+}
+
+fn apply_projected_move(state: &mut State, command: Command) {
+    let mut rng = DetRng::for_input(&MatchSeed::from_bytes([73; 32]), InputIndex(8));
+    let mut ctx = Ctx {
+        now: LogicalTime(8_000),
+        index: InputIndex(8),
+        rng: &mut rng,
+        budget: Budget::default(),
+    };
+    ChessRules::apply(
+        state,
+        Input::Player {
+            seat: SeatId(0),
+            command,
+        },
+        &mut ctx,
+    )
+    .expect("the projected move must be accepted by canonical rules");
 }
 
 #[test]
@@ -54,10 +75,27 @@ fn easy_searches_the_opponent_reply_before_taking_poisoned_material() {
 }
 
 #[test]
+fn easy_treats_a_terminal_draw_as_neutral_utility() {
+    // At halfmove 149, a quiet king move reaches the automatic seventy-five
+    // move draw. The pawn move remains live while White is down a queen. The
+    // draw must score exactly 0, regardless of the losing board material/PST.
+    let fen = "6qk/7p/8/8/8/8/P7/1K6 w - - 149 1";
+    let projected = view(fen);
+    let chosen = easy_choice(&projected, [1; 32]).expect("a legal move should be available");
+    let mut after = State::from_fen(fen).expect("bot fixture FEN must parse");
+
+    apply_projected_move(&mut after, chosen);
+
+    assert!(
+        matches!(after.status, Status::Ended { ref outcome } if outcome.kind() == tabula_core::OutcomeKind::Draw)
+    );
+}
+
+#[test]
 fn easy_uses_piece_square_positioning_when_material_is_equal() {
     // The bishop's central e4 square is materially equal to its other quiet
     // destinations, but is substantially better under the Easy PST heuristic.
-    let fen = "7k/8/8/8/8/8/8/KB6 w - - 0 1";
+    let fen = "7k/7p/8/8/8/8/P7/KB6 w - - 0 1";
     let central_bishop_move = Command::Move {
         from: 1,
         to: 28,
@@ -81,10 +119,10 @@ fn easy_bot_is_deterministic_for_identical_view_and_rng() {
 
 #[test]
 fn easy_equal_score_ties_use_rng_but_stay_with_the_best_moves() {
-    // From b1, Nc3 and Nd2 are equal centralization choices for this sparse
-    // position. Different deterministic streams may select either, never an
-    // edge/king move.
-    let projected = view("7k/8/8/8/8/8/8/KN6 w - - 0 1");
+    // From b1, Nc3 and Nd2 are equal centralization choices for this live
+    // K+N+P vs K+P position. Different deterministic streams may select
+    // either, never an edge/king move or the pawn move.
+    let projected = view("7k/7p/8/8/8/8/P7/KN6 w - - 0 1");
     let best_moves = [
         Command::Move {
             from: 1,
@@ -114,8 +152,8 @@ fn easy_bot_always_returns_a_legal_projected_command() {
     for fen in [
         "k7/8/8/3q4/8/8/8/3RK3 w - - 0 1",
         "8/8/8/4k3/3r4/2Q5/8/K7 w - - 0 1",
-        "7k/8/8/8/8/8/8/KB6 w - - 0 1",
-        "7k/8/8/8/8/8/8/KN6 w - - 0 1",
+        "7k/7p/8/8/8/8/P7/KB6 w - - 0 1",
+        "7k/7p/8/8/8/8/P7/KN6 w - - 0 1",
     ] {
         let projected = view(fen);
         let chosen = easy_choice(&projected, [19; 32]).expect("fixture should have a move");
@@ -125,14 +163,14 @@ fn easy_bot_always_returns_a_legal_projected_command() {
 
 #[test]
 fn easy_returns_none_for_the_wrong_seat_or_when_no_moves_are_projected() {
-    let projected = view("7k/8/8/8/8/8/8/KN6 w - - 0 1");
+    let projected = view("7k/7p/8/8/8/8/P7/KN6 w - - 0 1");
     let mut rng = DetRng::for_input(&tabula_core::MatchSeed::from_bytes([41; 32]), InputIndex(7));
     assert_eq!(
         ChessBot::new(BotLevel::Easy).choose(&projected, SeatId(1), &mut rng),
         None
     );
 
-    let no_moves = view("7k/8/8/8/8/8/8/K7 b - - 0 1");
+    let no_moves = view("7k/7p/8/8/8/8/P7/K7 b - - 0 1");
     assert!(no_moves.legal_moves.is_empty());
     assert_eq!(easy_choice(&no_moves, [41; 32]), None);
 }
