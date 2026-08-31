@@ -647,12 +647,12 @@ pub struct ShapeTokens {
 }
 
 pub struct StateLayerTokens {
-    pub hover: f32,     // 0.08 opacity of on-color over the container
-    pub focus: f32,     // 0.12
-    pub press: f32,     // 0.12
-    pub drag: f32,      // 0.16
-    pub disabled_content: f32,   // 0.38
-    pub disabled_container: f32, // 0.12
+    pub hover: Percent,     // 0.08 opacity of on-color over the container
+    pub focus: Percent,     // 0.12
+    pub press: Percent,     // 0.12
+    pub drag: Percent,      // 0.16
+    pub disabled_content: Percent,   // 0.38
+    pub disabled_container: Percent, // 0.12
 }
 
 pub struct SpaceTokens { /* 0,2,4,8,12,16,20,24,32,40,48,64 */ }
@@ -662,7 +662,7 @@ pub struct Density { pub scale: f32, pub min_target: f32 }   // min_target ≥ 4
 The generated implementation is intentionally more precise than this abridged
 sketch: `Theme` contains all twelve named spacing values; reference and
 semantic shape roles; disabled state layers; renderer-neutral role+size
-typography; and semantic motion profiles. Bounded values such as opacities,
+typography; and semantic motion profiles. Bounded values such as exact-whole-percentage opacities,
 positive metrics, radii, density, and spring parameters are validated before
 generation and represented by refined runtime values. See
 [`docs/ui/tokens.md`](../ui/tokens.md) for the authored-token audit and the

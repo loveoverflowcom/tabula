@@ -506,7 +506,7 @@ pub enum RenderListError {
     InvalidGeometry,
     InvalidGradient,
     InvalidTransform,
-    InvalidTextWidth,
+    InvalidTextPosition,
     UnbalancedClip,
     UnbalancedTransform,
     UnbalancedOpacity,
@@ -610,7 +610,7 @@ impl RenderListBuilder {
             }
             RenderCmd::Text { at, .. } => {
                 if !finite(*at) {
-                    return Err(RenderListError::InvalidTextWidth);
+                    return Err(RenderListError::InvalidTextPosition);
                 }
             }
             RenderCmd::Path {
@@ -910,6 +910,24 @@ mod tests {
                 z: 0,
             })
             .is_ok());
+    }
+
+    #[test]
+    fn non_finite_text_position_reports_a_precise_error() {
+        let mut builder = RenderListBuilder::new(Camera2D::default());
+        assert_eq!(
+            builder.push(RenderCmd::Text {
+                text: String::from("invalid position"),
+                at: Vec2::new(f32::NAN, 0.0),
+                style: TextStyleToken::BodyMd,
+                align: Align::Start,
+                max_width: None,
+                color: semantic_color(),
+                layer: Layer::BOARD,
+                z: 0,
+            }),
+            Err(RenderListError::InvalidTextPosition)
+        );
     }
 
     #[test]

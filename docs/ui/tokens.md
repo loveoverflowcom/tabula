@@ -15,7 +15,7 @@ renderer state.
 | Typography and font-stack identity | Typed role/size metrics | `type_` | Yes | Yes |
 | Spacing | Named typed scale | `space` | Yes | Yes |
 | Reference and semantic shape | Typed non-negative radii | `shape` | Yes | Yes |
-| State layers | Typed fractions | `state` | Yes | Yes |
+| State layers | Typed exact whole percentages | `state` | Yes | Yes |
 | Base motion, springs, profiles, reduced-motion policy | Typed and finite/positive | `motion` | Yes | Yes |
 | Density, focus, elevation | Typed and bounded | `density`, `focus`, `elevation` | Yes | Yes |
 | Component tier | Deliberately open additive metadata | No, until a reusable component needs it | No | Yes |
@@ -57,6 +57,8 @@ position; contrast tests cover the roles that are actually placed on surfaces.
 | Generation stays collision-free under parallel workers | OS-unique temporary rustfmt files in `format_rust`; concurrent token-generation tests (CI nextest gate) |
 | Exact motion mapping reaches every adapter | `tokens_cmd::tests::motion_medium_has_an_exact_cross_artifact_oracle` (`system.motion.medium`, scoped Rust, exact CSS var) |
 | Exact typography mapping reaches every adapter | `tokens_cmd::tests::body_medium_weight_has_an_exact_cross_artifact_oracle` (`system.type.body.md.weight`, scoped Rust, exact CSS var) |
+| Fractions are representable without rounding | `tokens_cmd::tests::fractions_require_exact_whole_percentages`; `exact_fractions_have_identical_cross_artifact_semantics` |
+| Reference palette values are validated | `tokens_cmd::tests::malformed_sources_fail_at_the_typed_boundary` (`ref.palette.primary-source`) |
 | Runtime value bounds are preserved, including finite proof | `tabula_design::tests::bounded_token_values_reject_invalid_boundaries`; `generated_measurements_reject_non_finite_values` |
 | Accessibility pairs and HC strength hold | named design-crate contrast tests |
 | Presentation uses closed semantic typography | design/presentation crate compilation and `mono_styles_require_tabular_figures` |

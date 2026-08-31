@@ -96,6 +96,8 @@ pub enum TokenError {
     Color { scheme: String, value: String },
     #[error("token `{key}` must be a finite fraction in 0..=1")]
     Fraction { key: &'static str },
+    #[error("token `{key}` must be an exact whole percentage (a multiple of 0.01)")]
+    FractionPrecision { key: &'static str },
     #[error("token `{key}` must be finite and non-negative")]
     NonNegative { key: &'static str },
     #[error("token `{key}` must be finite and positive")]
@@ -486,6 +488,10 @@ fn validate(source: &TokenSource) -> Result<(), TokenError> {
     for scheme in &SCHEMES {
         validate_scheme(scheme.name, &source.schemes[scheme.name])?;
     }
+    for (key, value) in &source.reference.palette {
+        let key = format!("ref.palette.{key}");
+        parse_hex(&key, value)?;
+    }
     for (key, value) in [
         ("sys.state.hover", source.sys.state.hover),
         ("sys.state.focus", source.sys.state.focus),
@@ -573,10 +579,18 @@ fn validate_text(key: &'static str, style: &TextStyleSource) -> Result<(), Token
     }
     Ok(())
 }
+// The exact round-trip is intentional: a tolerance would admit values that the
+// `Percent(u8)` runtime cannot represent without changing their semantics.
+#[allow(clippy::float_arithmetic, clippy::float_cmp)]
 fn fraction(key: &'static str, value: f64) -> Result<(), TokenError> {
-    (value.is_finite() && (0.0..=1.0).contains(&value))
-        .then_some(())
-        .ok_or(TokenError::Fraction { key })
+    if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+        return Err(TokenError::Fraction { key });
+    }
+    let percentage = (value * 100.0).round();
+    if percentage / 100.0 != value {
+        return Err(TokenError::FractionPrecision { key });
+    }
+    Ok(())
 }
 fn non_negative(key: &'static str, value: f32) -> Result<(), TokenError> {
     (value.is_finite() && value >= 0.0)
@@ -986,10 +1000,17 @@ fn fraction_text(value: f64) -> String {
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    clippy::float_arithmetic
+    clippy::float_arithmetic,
+    clippy::float_cmp
 )]
 fn percent(value: f64) -> u8 {
-    (value * 100.0).round() as u8
+    let percentage = (value * 100.0).round();
+    assert_eq!(
+        percentage / 100.0,
+        value,
+        "validated fraction must be exact"
+    );
+    percentage as u8
 }
 fn float(value: f32) -> String {
     format!("{value:?}")
@@ -1152,6 +1173,23 @@ mod tests {
         assert!(matches!(
             render_source(
                 Path::new("."),
+                &source().replacen("hover = 0.08", "hover = 0.085", 1)
+            ),
+            Err(TokenError::FractionPrecision {
+                key: "sys.state.hover"
+            })
+        ));
+        assert!(matches!(
+            render_source(
+                Path::new("."),
+                &source().replacen("primary-source = \"#7B4DFF\"", "primary-source = \"#7B4DGG\"", 1)
+            ),
+            Err(TokenError::Color { scheme, value })
+                if scheme == "ref.palette.primary-source" && value == "#7B4DGG"
+        ));
+        assert!(matches!(
+            render_source(
+                Path::new("."),
                 &source().replacen("card = 16.0", "card = -1.0", 1)
             ),
             Err(TokenError::NonNegative { .. })
@@ -1209,6 +1247,32 @@ mod tests {
         assert!(output(&outputs, "crates/tabula-design/src/generated.rs").contains("piece_move:"));
         assert!(output(&outputs, "apps/web/style/tokens.css")
             .contains("--sys-motion-piece-move-duration"));
+    }
+
+    #[test]
+    fn exact_fractions_have_identical_cross_artifact_semantics() {
+        let outputs = rendered(source());
+        let json = json_output(&outputs);
+        assert_eq!(
+            json_path(&json, &["system", "state", "hover"]),
+            &Value::from(0.08)
+        );
+        assert!(
+            output(&outputs, "crates/tabula-design/src/generated.rs").contains("hover: percent(8)")
+        );
+        assert!(output(&outputs, "apps/web/style/tokens.css").contains("--sys-state-hover: 0.08;"));
+    }
+
+    #[test]
+    fn fractions_require_exact_whole_percentages() {
+        assert!(fraction("test", 0.0).is_ok());
+        assert!(fraction("test", 0.08).is_ok());
+        assert!(fraction("test", 0.12).is_ok());
+        assert!(fraction("test", 1.0).is_ok());
+        assert!(matches!(
+            fraction("test", 0.085),
+            Err(TokenError::FractionPrecision { key: "test" })
+        ));
     }
 
     #[test]

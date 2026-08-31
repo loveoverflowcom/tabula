@@ -179,6 +179,9 @@ impl RasterImage {
 
     #[must_use]
     pub fn pixel(&self, x: u32, y: u32) -> Option<[u8; 4]> {
+        if x >= self.width || y >= self.height {
+            return None;
+        }
         let offset = usize::try_from(y.checked_mul(self.width)?.checked_add(x)?)
             .ok()?
             .checked_mul(4)?;
@@ -463,6 +466,25 @@ mod tests {
         let mut renderer = HeadlessRenderer::default();
         renderer.submit(&list).unwrap();
         assert_eq!(renderer.submitted(), &[list]);
+    }
+
+    #[test]
+    fn pixel_rejects_coordinates_outside_both_dimensions() {
+        let image = RasterImage {
+            width: 2,
+            height: 2,
+            rgba: (0..16).collect(),
+        };
+        assert_eq!(image.pixel(0, 0), Some([0, 1, 2, 3]));
+        assert_eq!(image.pixel(image.width - 1, 0), Some([4, 5, 6, 7]));
+        assert_eq!(image.pixel(0, image.height - 1), Some([8, 9, 10, 11]));
+        assert_eq!(
+            image.pixel(image.width - 1, image.height - 1),
+            Some([12, 13, 14, 15])
+        );
+        assert_eq!(image.pixel(image.width, 0), None);
+        assert_eq!(image.pixel(0, image.height), None);
+        assert_eq!(image.pixel(image.width, image.height), None);
     }
 
     #[test]
