@@ -200,9 +200,10 @@ fn write_replay<M: GameModule>(
         frames,
         final_state_hash: M::Rules::state_hash(&state),
     };
-    draft
-        .write(path)
-        .map_err(|error| format!("{}: {error}", path.display()))
+    let bytes = draft
+        .to_bytes()
+        .map_err(|error| format!("{}: {error}", path.display()))?;
+    fs::write(path, bytes).map_err(|error| format!("{}: {error}", path.display()))
 }
 
 fn terminal_outcome(effects: &[Effect], input_index: u64) -> Result<Option<MatchOutcome>, String> {

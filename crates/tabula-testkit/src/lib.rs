@@ -48,7 +48,7 @@
 //! | [`conformance`] | The `conformance!` macro and the mandatory test list |
 //! | [`determinism`] | Re-run harness, clone-and-compare R2 checker, snapshot round-trip |
 //! | [`projection`] | `SecretModel` scanning — the security test category |
-//! | [`replay`] | `.tbr` reader/writer and `ReplayRunner` |
+//! | [`replay`] | `.tbr` reader/encoder, evidence diagnosis, and `ReplayRunner` |
 //! | [`selfplay`] | Bot-vs-bot driver, the primary fuzzer |
 //! | [`strategies`] | `proptest` generators for inputs, rosters, configs |
 //! | [`fakes`] | In-memory `EventLog` / `SnapshotStore` / `Clock` |
@@ -69,7 +69,9 @@ pub use conformance::{
 pub use determinism::{RunTrace, Scenario};
 pub use projection::{Secret, SecretModel};
 pub use replay::{
-    Divergence, DivergenceKind, PositionEvidence, PrefixPosition, ReplayDraft, ReplayError,
-    ReplayFrame, ReplayHeader, ReplayIdentity, ReplayKind, ReplayRunner, ReplayVerdict, StepResult,
+    CheckpointEvidence, Divergence, DivergenceKind, DivergenceLocation, DivergenceWindow,
+    ExactDivergence, FinalEvidenceOnly, PositionEvidence, PrefixPosition, ReplayDiagnosis,
+    ReplayDiagnosisKind, ReplayDraft, ReplayError, ReplayFrame, ReplayHeader, ReplayIdentity,
+    ReplayKind, ReplayRunner, ReplayVerdict, ReproducerAvailability, ReproducerReason, StepResult,
     ValidatedReplay, VerifyReport,
 };

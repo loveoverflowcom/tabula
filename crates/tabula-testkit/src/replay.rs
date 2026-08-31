@@ -5,7 +5,8 @@
 //! integrity, and canonical byte payloads) separate from the game's typed
 //! `Config`, `Input`, and `State`. `ReplayRunner<R>` then reconstructs the
 //! ordinary `GameRules::create`/`apply` path with the recorded logical times and
-//! input indices.
+//! input indices. Its diagnostic API reports only the location strength justified
+//! by the stored checkpoint evidence (doc 05 §7.3).
 //!
 //! @ai.role trust-boundary
 //! @ai.domain replay.container
@@ -56,6 +57,13 @@ use tabula_core::{
     MatchSeed, RulesVersion, SeatRoster, StateHash, StateVersion, ENCODING_VERSION,
 };
 use tabula_game_api::{Budget, Ctx, Effect, GameModule, GameRules, Input};
+
+mod diagnostics;
+
+pub use diagnostics::{
+    DivergenceLocation, DivergenceWindow, ExactDivergence, FinalEvidenceOnly, ReplayDiagnosis,
+    ReplayDiagnosisKind, ReproducerAvailability, ReproducerReason,
+};
 
 /// The only currently readable replay format version.
 pub const REPLAY_FORMAT_VERSION: u16 = 1;
@@ -194,11 +202,6 @@ impl ReplayDraft {
     /// Encode a validated v1 replay deterministically.
     pub fn to_bytes(&self) -> Result<Vec<u8>, ReplayError> {
         self.clone().validate()?.to_bytes()
-    }
-
-    /// Write a validated v1 replay through the filesystem shell.
-    pub fn write(&self, path: &Path) -> Result<(), ReplayError> {
-        fs::write(path, self.to_bytes()?).map_err(ReplayError::Io)
     }
 }
 
@@ -622,6 +625,7 @@ impl<R: GameRules> ReplayRunner<R> {
             outcome_checked: false,
             inputs_replayed: 0,
             checkpoints_checked: 0,
+            checkpoint_evidence: Vec::new(),
             divergences: Vec::new(),
         };
 
@@ -629,6 +633,12 @@ impl<R: GameRules> ReplayRunner<R> {
             report.inputs_replayed += 1;
             if let Some(expected) = result.checkpoint {
                 report.checkpoints_checked += 1;
+                report.checkpoint_evidence.push(CheckpointEvidence {
+                    input_index: InputIndex(result.input_index),
+                    expected,
+                    actual: result.state_hash,
+                    matched: result.checkpoint_matched == Some(true),
+                });
                 if result.checkpoint_matched != Some(true) {
                     report.divergences.push(Divergence {
                         kind: DivergenceKind::Checkpoint,
@@ -1111,9 +1121,22 @@ pub struct Divergence {
     pub actual_outcome: Option<MatchOutcome>,
 }
 
+/// One stored checkpoint claim and the state hash produced at that input.
+/// This is raw verification evidence; callers should use [`VerifyReport::diagnoses`]
+/// for a proof-strength classification.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CheckpointEvidence {
+    pub input_index: InputIndex,
+    pub expected: StateHash,
+    pub actual: StateHash,
+    pub matched: bool,
+}
+
 /// Complete verification evidence. `is_verified()` is intentionally stricter
 /// than "the file parsed": every checkpoint, final trailer hash, and terminal
-/// outcome must have been compared, with no divergence.
+/// outcome must have been compared, with no divergence. Checkpoint claims are
+/// retained in execution order so diagnostics can distinguish a first failing
+/// claim from a later reconvergence.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifyReport {
     pub verdict: ReplayVerdict,
@@ -1125,6 +1148,7 @@ pub struct VerifyReport {
     pub outcome_checked: bool,
     pub inputs_replayed: u64,
     pub checkpoints_checked: u64,
+    pub checkpoint_evidence: Vec<CheckpointEvidence>,
     pub divergences: Vec<Divergence>,
 }
 
@@ -1781,6 +1805,245 @@ mod tests {
         assert_eq!(divergence.previous_checkpoint, Some(1));
         assert_eq!(divergence.next_checkpoint, Some(3));
         assert!(!report.is_verified());
+    }
+
+    #[test]
+    fn exact_checkpoint_diagnosis_is_adjacent() {
+        let (mut draft, _) = counter_draft(&[
+            CounterCommand::Add(2),
+            CounterCommand::Add(3),
+            CounterCommand::Add(5),
+        ]);
+        draft.frames[1].checkpoint = Some(StateHash([77; 32]));
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let diagnosis = report.diagnosis().unwrap();
+
+        assert_eq!(diagnosis.kind(), ReplayDiagnosisKind::CheckpointState);
+        assert_eq!(diagnosis.evidence().input_index, 2);
+        assert!(matches!(
+            diagnosis.location(),
+            DivergenceLocation::Exact(exact)
+                if exact.input_index() == InputIndex(2)
+                    && exact.previous_verified() == InputIndex(1)
+        ));
+    }
+
+    #[test]
+    fn sparse_checkpoint_diagnosis_is_a_window() {
+        let (mut draft, _) = counter_draft(&[
+            CounterCommand::Add(1),
+            CounterCommand::Add(1),
+            CounterCommand::Add(1),
+            CounterCommand::Add(1),
+        ]);
+        draft.frames[1].checkpoint = None;
+        draft.frames[2].checkpoint = None;
+        draft.frames[3].checkpoint = Some(StateHash([77; 32]));
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let diagnosis = report.diagnosis().unwrap();
+
+        assert_eq!(diagnosis.kind(), ReplayDiagnosisKind::CheckpointState);
+        assert!(matches!(
+            diagnosis.location(),
+            DivergenceLocation::Window(window)
+                if window.after_verified() == Some(InputIndex(1))
+                    && window.at_or_before() == InputIndex(4)
+                    && window.first_failing_evidence() == InputIndex(4)
+        ));
+    }
+
+    #[test]
+    fn first_checkpoint_without_previous_evidence_is_a_window() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::Add(1), CounterCommand::Add(1)]);
+        draft.frames[0].checkpoint = Some(StateHash([77; 32]));
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let diagnosis = report.diagnosis().unwrap();
+
+        assert!(matches!(
+            diagnosis.location(),
+            DivergenceLocation::Window(window)
+                if window.after_verified().is_none()
+                    && window.at_or_before() == InputIndex(1)
+        ));
+    }
+
+    #[test]
+    fn checkpoint_reconvergence_does_not_restore_monotonicity() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::Add(1), CounterCommand::Add(1)]);
+        draft.frames[0].checkpoint = Some(StateHash([77; 32]));
+        let expected_second = draft.frames[1].checkpoint;
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+
+        assert_eq!(
+            report
+                .checkpoint_evidence
+                .iter()
+                .map(|claim| claim.matched)
+                .collect::<Vec<_>>(),
+            vec![false, true]
+        );
+        assert_eq!(
+            report.checkpoint_evidence[1].expected,
+            expected_second.unwrap()
+        );
+        let diagnosis = report.diagnosis().unwrap();
+        assert!(matches!(
+            diagnosis.location(),
+            DivergenceLocation::Window(window)
+                if window.after_verified().is_none()
+                    && window.at_or_before() == InputIndex(1)
+        ));
+    }
+
+    #[test]
+    fn final_hash_only_diagnosis_is_final_evidence() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::Add(1), CounterCommand::Add(1)]);
+        draft.final_state_hash = StateHash([88; 32]);
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let diagnoses = report.diagnoses();
+
+        assert_eq!(diagnoses.len(), 1);
+        assert_eq!(diagnoses[0].kind(), ReplayDiagnosisKind::FinalStateHashOnly);
+        assert!(matches!(
+            diagnoses[0].location(),
+            DivergenceLocation::FinalEvidenceOnly(final_only)
+                if final_only.after_verified() == Some(InputIndex(2))
+                    && final_only.final_input() == Some(InputIndex(2))
+        ));
+    }
+
+    #[test]
+    fn terminal_outcome_diagnosis_is_structured() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::End]);
+        draft.header.outcome = Some(counter_outcome("wrong outcome"));
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let diagnosis = report.diagnoses().pop().unwrap();
+
+        assert_eq!(diagnosis.kind(), ReplayDiagnosisKind::TerminalOutcome);
+        assert!(diagnosis.evidence().expected_outcome.is_some());
+        assert!(diagnosis.evidence().actual_outcome.is_some());
+        assert!(matches!(
+            diagnosis.location(),
+            DivergenceLocation::FinalEvidenceOnly(final_only)
+                if final_only.after_verified() == Some(InputIndex(1))
+                    && final_only.final_input() == Some(InputIndex(1))
+        ));
+    }
+
+    #[test]
+    fn diagnosis_is_deterministic_for_identical_evidence() {
+        let (mut draft, _) = counter_draft(&[
+            CounterCommand::Add(2),
+            CounterCommand::Add(3),
+            CounterCommand::Add(5),
+        ]);
+        draft.frames[1].checkpoint = Some(StateHash([77; 32]));
+        let bytes = draft.to_bytes().unwrap();
+        let first = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .verify()
+            .unwrap()
+            .diagnoses();
+        let second = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .verify()
+            .unwrap()
+            .diagnoses();
+
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn checkpoint_reproducer_validates_and_reproduces() {
+        let (mut draft, _) = counter_draft(&[
+            CounterCommand::Add(2),
+            CounterCommand::Add(3),
+            CounterCommand::Add(5),
+        ]);
+        draft.frames[1].checkpoint = Some(StateHash([77; 32]));
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let diagnosis = report.diagnosis().unwrap();
+        let ReproducerAvailability::Available(reproducer) = runner.reproducer(&diagnosis) else {
+            panic!("checkpoint evidence should derive a prefix");
+        };
+
+        assert_eq!(reproducer.frames().len(), 2);
+        assert_eq!(reproducer.final_state_hash(), StateHash([77; 32]));
+        assert_eq!(reproducer.header().match_id, draft.header.match_id);
+        assert_eq!(reproducer.header().game_id, draft.header.game_id);
+        assert_eq!(reproducer.header().config, draft.header.config);
+        assert_eq!(
+            reproducer.header().rules_version,
+            draft.header.rules_version
+        );
+        assert_eq!(reproducer.header().rules_hash, draft.header.rules_hash);
+        assert_eq!(reproducer.header().seed, draft.header.seed);
+        assert_eq!(reproducer.header().outcome, None);
+
+        let mut reproducer_runner = ReplayRunner::<CounterRules>::from_bytes(
+            &reproducer.to_bytes().unwrap(),
+            counter_identity(),
+        )
+        .unwrap();
+        let reproducer_report = reproducer_runner.verify().unwrap();
+        assert!(reproducer_report.divergences.iter().any(|divergence| {
+            divergence.kind == DivergenceKind::Checkpoint && divergence.input_index == 2
+        }));
+    }
+
+    #[test]
+    fn non_checkpoint_reproducer_is_not_derived() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::Add(1)]);
+        draft.final_state_hash = StateHash([88; 32]);
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let diagnosis = report.diagnosis().unwrap();
+
+        assert!(matches!(
+            runner.reproducer(&diagnosis),
+            ReproducerAvailability::InsufficientEvidence {
+                reason: ReproducerReason::CheckpointEvidenceRequired
+            }
+        ));
+    }
+
+    #[test]
+    fn final_checkpoint_reproducer_reports_original_as_minimal() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::Add(1)]);
+        draft.frames[0].checkpoint = Some(StateHash([77; 32]));
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let diagnosis = report.diagnosis().unwrap();
+
+        assert!(matches!(
+            runner.reproducer(&diagnosis),
+            ReproducerAvailability::OriginalReplayIsMinimal
+        ));
     }
 
     #[test]

@@ -640,7 +640,7 @@ disallowed-methods = [
 | `xtask gen-protocol-vectors` | Regenerate golden wire vectors (requires an explicit `--bump` with a version) |
 | `xtask pack-assets <game>` | Build, hash, and manifest a game's asset pack |
 | `xtask new-game <slug>` | Scaffold a game crate from the template (doc 02 §10) |
-| `xtask replay <file>` | Replay a golden or production replay locally and print divergence |
+| `xtask replay <file> [--diagnose]` | Replay a golden or production replay locally; optionally print evidence-strength diagnostics |
 | `xtask db reset` / `db migrate` | Local Postgres lifecycle |
 
 ---

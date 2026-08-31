@@ -63,9 +63,10 @@ replays/<game>/divergence/*.tbr      auto-committed from nightly replay verifica
 ```
 
 **Committing these is what makes determinism rot visible.** A rules change that
-alters historical behaviour fails CI with a precise diff and a specific input
-index, forcing an explicit `rules_version` bump and a migration decision — rather
-than surfacing months later as an unexplainable replay failure.
+alters historical behaviour fails CI with a precise evidence report and a failing
+checkpoint coordinate (or a bounded interval when checkpoints are sparse), forcing
+an explicit `rules_version` bump and a migration decision — rather than surfacing
+months later as an unexplainable replay failure.
 
 Every game needs **at least three** before it ships (doc 02 §14): a normal game,
 an edge case, and a timeout.

@@ -372,16 +372,21 @@ StateHash = blake3( b"tabula.state.v1" ‖ rules_version_le ‖ canonical(state)
 
 When a replay's recomputed hash differs from the stored hash:
 
-```text
-1. The replay job records (match_id, input_index, expected, actual, rules_hash, build).
-2. The affected rules_version is flagged: no NEW matches may be created on it (feature flag),
-   existing ones continue.
-3. Sev-2 alert with the minimal reproducing input prefix, auto-committed to
-   tests/replays/<game>/divergence/.
-4. The fix is either a rules_version bump (behavior legitimately changed) or a real determinism
-   bug (HashMap, float, unordered iteration) — both are found quickly because the failing input
-   index is known.
-```
+1. The replay job records `(match_id, input_index, expected, actual, rules_hash, build)`.
+2. The Phase 1 diagnostic scans stored checkpoint claims in execution order. It reports the
+   first failing stored claim, not automatically the first divergent transition.
+3. If the failing claim immediately follows a matching checkpoint, the transition is localized
+   exactly. Otherwise the diagnostic reports a window: `after_verified < first divergent
+   transition <= at_or_before`, where `at_or_before` is the failing checkpoint's input index.
+   A later checkpoint matching again does not invalidate the earlier failure; checkpoint
+   divergence is not assumed to be monotonic.
+4. When a checkpoint failure has enough evidence, the verifier can produce an in-memory,
+   validated replay prefix through that claim. `xtask` may write it to an explicitly different
+   path. Final-hash-only and terminal-outcome failures remain final evidence and are not shrunk
+   into a misleading transition reproducer.
+5. The affected `rules_version` is flagged: no NEW matches may be created on it (feature flag),
+   existing ones continue. The fix is either a `rules_version` bump (behavior legitimately
+   changed) or a real determinism bug (HashMap, float, unordered iteration).
 
 ---
 
@@ -462,6 +467,15 @@ impl<R: GameRules> ReplayRunner<R> {
     pub fn seek(&mut self, to: StateVersion) -> Result<PrefixPosition, ReplayError>;
     /// Re-runs everything, comparing checkpoints, final state hash, and terminal outcome.
     pub fn verify(&mut self) -> Result<VerifyReport, ReplayError>;
+}
+impl VerifyReport {
+    /// Classifies the strongest location supported by the stored evidence.
+    pub fn diagnoses(&self) -> Vec<ReplayDiagnosis>;
+}
+impl<R: GameRules> ReplayRunner<R> {
+    /// Produces a validated in-memory prefix for a checkpoint diagnosis when
+    /// the failure can be reproduced without inventing evidence.
+    pub fn reproducer(&self, diagnosis: &ReplayDiagnosis) -> ReproducerAvailability;
 }
 pub enum PrefixPosition {
     Verified(PositionEvidence),
@@ -594,7 +608,7 @@ costs more than it saves.
 | `xtask ws` | A CLI client: authenticates, attaches to a match, pretty-prints frames with color, sends commands from a JSON file or interactively. Speaks both codecs. |
 | `xtask decode <hex\|file>` | Decodes any captured Postcard frame given its type name; used for reading production logs and crash dumps. |
 | `xtask trace <match_id>` | Reconstructs a match's full timeline from the log: inputs, events, effects, timings, and per-viewer frames. The primary support tool. |
-| `xtask replay <file> [--verify] [--at N]` | Replays locally, prints divergence with the exact input index. |
+| `xtask replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]` | Replays locally and, in diagnostic mode, prints exact/window/final-only/terminal evidence classification. A checkpoint diagnosis may be written as a validated smaller prefix to an explicitly different path. |
 | Browser devtools | Text frames for JSON mode; binary frames show length and hex (paste into `xtask decode`). |
 | `websocat` recipe | Documented in `docs/dev/protocol-debugging.md`, including how to mint a dev session token. |
 | OpenTelemetry | Every command is a span carrying `corr`, `match_id`, `game_id`, `seat`, `state_version`, apply duration, persist duration, fan-out size (doc 06 §9). |

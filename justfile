@@ -76,7 +76,7 @@ audit:
 selfplay game matches="10000":
     cargo xtask selfplay {{game}} --matches {{matches}}
 
-# Replay a golden or production .tbr and print the first divergence. (doc 05 §8.3)
+# Replay a golden or production .tbr; diagnostic mode reports evidence strength. (doc 05 §8.3)
 replay file:
     cargo xtask replay {{file}}
 
