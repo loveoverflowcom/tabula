@@ -787,7 +787,7 @@ dependencies = [
 
 [[package]]
 name = "tabula-game-chess"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "serde",
  "smallvec",
@@ -1153,6 +1153,7 @@ dependencies = [
  "cargo_metadata",
  "serde",
  "serde_json",
+ "tabula-game-chess",
  "tempfile",
  "thiserror 1.0.69",
  "toml",

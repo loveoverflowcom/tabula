@@ -27,6 +27,7 @@ thiserror      = { workspace = true }
 cargo_metadata = "0.19"
 serde_json    = { workspace = true }
 tempfile      = "3"
+tabula-game-chess = { workspace = true }
 
 [lints]
 workspace = true

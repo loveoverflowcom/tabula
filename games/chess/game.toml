@@ -1,0 +1,61 @@
+# Source-of-truth catalog manifest. (doc 02 §4.3)
+id            = "com.tabula.chess"
+version       = "0.1.0"
+rules_version = 2
+name_key        = "game.chess.name"
+tagline_key     = "game.chess.tagline"
+description_key = "game.chess.description"
+categories        = ["abstract"]
+complexity        = "heavy"
+content_rating    = "everyone"
+estimated_minutes = [10, 90]
+tags              = ["classic", "strategy"]
+
+[seats]
+min = 2
+max = 2
+symmetric = false
+fill_with_bots = true
+
+[capabilities]
+turn_model = "strict_sequential"
+hidden_information = false
+spectators = "live"
+voice = "no"
+ranked = "elo"
+pausable = false
+client_preview = true
+durability = "ack_after_persist"
+state_size = "small"
+max_match_duration = 14400000
+
+[capabilities.chat]
+channels = [{ key = "table", kind = "table" }]
+game_scoped = false
+
+[capabilities.async_turns]
+supported = false
+
+[capabilities.reconnect]
+grace = 60000
+notify_rules = true
+
+[capabilities.substitution]
+kind = "bot_only"
+levels = ["trivial", "easy"]
+
+[capabilities.apply_budget]
+max_apply_micros = 2000
+max_events_per_input = 4
+
+[assets]
+pack = "chess@0.1.0"
+size_kb = 80
+
+[rollout]
+enabled = true
+audience = "staff"
+
+[theme]
+accent = "#345995"
+mood = "focused"

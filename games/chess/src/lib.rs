@@ -1,101 +1,139 @@
-//! # `tabula-game-chess` — the correctness benchmark
+//! # `tabula-game-chess` — deterministic standard chess rules.
 //!
-//! > ## PHASE 1 — DO NOT IMPLEMENT BEFORE PHASE 0 EXITS
-//! >
-//! > Gate: `cargo xtask selfplay tictactoe --matches 10000` passes, the
-//! > conformance suite is green, and CI demonstrably rejects a deliberately
-//! > added forbidden dependency. (doc 09 §7 steps 4–9)
+//! The crate owns chess legality and match transitions; it has no renderer,
+//! transport, clock, filesystem, or random-number dependency.  Legal moves are
+//! generated from pseudo-legal candidates and accepted only when the candidate
+//! position leaves its mover's king safe (doc 02 §3, §12.1).
 //!
-//! Chess is Phase 1 because it is the **simple case that must be perfect**. It
-//! has no hidden information and no randomness, so any determinism failure here
-//! is a bug in the harness, not in a shuffle. That makes it the control group
-//! for everything that follows.
-//!
-//! It also validates: complex legality, clocks and timers, ranked ratings,
-//! spectators, and async (correspondence) turns. (doc 08 §5.A)
-//!
-//! ## Scope (doc 08 §5.A)
-//!
-//! ```text
-//! IN:  standard rules, all special moves (castling, en passant, promotion),
-//!      check/checkmate/stalemate, threefold repetition, 50-move rule,
-//!      insufficient material, resign, draw offer/accept/decline, claim draw,
-//!      Fischer and Bronstein increments, flag fall, correspondence mode (24h)
-//! OUT: variants (Chess960, three-check, atomic) — Phase 9+
-//! OUT: opening book, analysis engine, cloud eval — separate optional crate,
-//!      NEVER in the rules half
-//! OUT: FIDE tournament arbitration rules
-//! ```
-//!
-//! ## Contract sketch (doc 02 §12.1)
-//!
-//! ```rust,ignore
-//! struct State {
-//!     board: [Option<Piece>; 64],      // fixed-size, tiny
-//!     side: Color,
-//!     castling: CastlingRights,
-//!     ep: Option<Square>,
-//!     halfmove: u8, fullmove: u16,
-//!     clocks: [Millis; 2],
-//!     last_move_at: LogicalTime,
-//!     repetition: SmallVec<[u64; 16]>, // zobrist history for threefold
-//!     status: Status,
-//!     draw_offer: Option<SeatId>,
-//! }
-//! enum Command { Move { from: Square, to: Square, promo: Option<PieceKind> },
-//!                Resign, OfferDraw, AcceptDraw, DeclineDraw, ClaimDraw(DrawClaim) }
-//! enum Event   { Moved { .. }, Captured { .. }, Castled { .. }, Promoted { .. },
-//!                ClockUpdated { seat, remaining }, DrawOffered { seat }, Ended { outcome } }
-//! ```
-//!
-//! ## The four contract lessons
-//!
-//! 1. **`View` ≈ `State`, and is still a separate type.** It omits `repetition`
-//!    (an implementation detail) and adds `legal_moves` for the seat on turn.
-//! 2. **Clocks are the interesting part.** `apply` decrements the mover's clock
-//!    by `ctx.now - state.last_move_at`. It never reads a real clock.
-//!    `Effect::SetTimer` is re-armed on every move for the remaining time of the
-//!    player now on turn. Restart-safety falls out of the log: on recovery,
-//!    timers are re-derived **from state**, not from memory.
-//! 3. **Disconnect keeps the clock running.** `notify_rules = true`, and `apply`
-//!    for `Input::Seat { Disconnected }` returns `Outcome::empty()` — the clock
-//!    burns via the existing timer. That is a rules decision expressed by doing
-//!    nothing.
-//! 4. **`legal_commands` fully enumerates** (~30 moves), which powers move
-//!    highlighting, drag-drop legality, and a free `Trivial` bot.
-//!
-//! ## The claim this game must prove
-//!
-//! > The platform contains **zero** lines of clock code. Verified by grep and by
-//! > review. — doc 08 §5.A
-//!
-//! Failure signals: clock code appearing in `tabula-match`; `legal_commands`
-//! being called from `apply`; drag state in `State`.
-//!
-//! ## Acceptance (doc 08 §5.A)
-//!
-//! ```text
-//! [ ] perft depth 1–5 exact for the standard position + 5 published edge cases
-//! [ ] all draw conditions reachable in tests
-//! [ ] clock invariants hold under property testing
-//! [ ] 100k bot self-play: zero determinism failures, zero panics, all terminate
-//! [ ] hot-seat playable (Phase 2) and online playable (Phase 4)
-//! [ ] replay of 1,000 sampled games byte-exact
-//! [ ] keyboard-only game completion
-//! [ ] Elo updates correct for win/loss/draw and NEVER on Aborted
-//! ```
-//!
-//! ## File layout when this becomes real
-//!
-//! ```text
-//! src/state.rs   State, Command, Event, View, ViewEvent, Config
-//! src/rules.rs   impl GameRules — dispatch to sub-functions per concern
-//! src/movegen.rs legal move generation (the bulk of the work; perft tests it)
-//! src/clock.rs   Fischer/Bronstein increment arithmetic
-//! src/draw.rs    threefold, 50-move, insufficient material
-//! src/bot.rs     #[cfg(feature = "bots")]
-//! src/ui.rs      #[cfg(feature = "presentation")]  — Phase 2
-//! ```
+//! Full clock arithmetic is intentionally deferred to the next Phase 1 slice.
+//! [`Config::clock`] and [`State::clock`] reserve the typed state seam: that
+//! work will consume only `Ctx::now`, `Input::Timer`, and `Effect::SetTimer`.
 
 #![forbid(unsafe_code)]
 #![deny(clippy::float_arithmetic)]
+
+mod movegen;
+mod rules;
+mod state;
+
+#[cfg(feature = "bots")]
+pub mod bot;
+
+pub use movegen::{perft, FenError};
+pub use rules::ChessRules;
+pub use state::{
+    CastlingRights, ClockConfig, ClockState, Color, Command, Config, Event, Piece, PieceKind,
+    PositionKey, Square, State, Status, View, ViewEvent,
+};
+
+use std::sync::LazyLock;
+
+use tabula_core::{BotLevel, Millis, SeatRoster};
+use tabula_game_api::{
+    capabilities::ChatKind, metadata::AssetRef, AsyncTurnPolicy, Budget, Category, ChatChannelSpec,
+    ChatPolicy, Complexity, ConfigError, ContentRating, Durability, GameCapabilities, GameId,
+    GameMetadata, GameModule, GameVersion, RankedSupport, RatingKind, ReconnectPolicy,
+    RulesVersion, SeatCounts, SeatSpec, SpectatorPolicy, StateSizeClass, SubstitutionPolicy,
+    TurnModel, VoiceRequirement,
+};
+
+/// The game package around [`ChessRules`].
+#[derive(Debug)]
+pub struct ChessModule;
+
+impl GameModule for ChessModule {
+    type Rules = ChessRules;
+
+    fn metadata() -> &'static GameMetadata {
+        &METADATA
+    }
+
+    fn capabilities() -> &'static GameCapabilities {
+        &CAPABILITIES
+    }
+
+    #[cfg(feature = "bots")]
+    fn bot(level: BotLevel) -> Option<Box<dyn tabula_game_api::GameBot<ChessRules>>> {
+        matches!(level, BotLevel::Trivial | BotLevel::Easy).then(|| {
+            Box::new(bot::ChessBot::new(level)) as Box<dyn tabula_game_api::GameBot<ChessRules>>
+        })
+    }
+
+    fn validate_config(cfg: &Config, roster: &SeatRoster) -> Result<(), ConfigError> {
+        if roster.len() != 2
+            || roster.get(tabula_core::SeatId(0)).is_none()
+            || roster.get(tabula_core::SeatId(1)).is_none()
+        {
+            return Err(ConfigError::SeatCount);
+        }
+        if cfg.clock.is_some() {
+            return Err(ConfigError::Unsupported(
+                "clock controls are not implemented yet".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| GameMetadata {
+    id: GameId("com.tabula.chess".to_owned()),
+    version: GameVersion("0.1.0".to_owned()),
+    rules_version: RulesVersion(2),
+    name_key: "game.chess.name".to_owned(),
+    tagline_key: "game.chess.tagline".to_owned(),
+    description_key: "game.chess.description".to_owned(),
+    categories: vec![Category::Abstract],
+    tags: vec!["classic".to_owned(), "strategy".to_owned()],
+    estimated_minutes: (10, 90),
+    complexity: Complexity::Heavy,
+    content_rating: ContentRating::Everyone,
+    icon: AssetRef("chess/icon".to_owned()),
+    hero: AssetRef("chess/hero".to_owned()),
+    rules_url_key: None,
+});
+
+static CAPABILITIES: LazyLock<GameCapabilities> = LazyLock::new(|| GameCapabilities {
+    seats: SeatSpec {
+        min: 2,
+        max: 2,
+        allowed: SeatCounts::Range { min: 2, max: 2 },
+        teams: None,
+        fill_with_bots: true,
+        symmetric: false,
+    },
+    turn_model: TurnModel::StrictSequential,
+    hidden_information: false,
+    spectators: SpectatorPolicy::Live,
+    chat: ChatPolicy {
+        channels: vec![ChatChannelSpec {
+            key: "table".to_owned(),
+            kind: ChatKind::Table,
+        }],
+        game_scoped: false,
+    },
+    voice: VoiceRequirement::No,
+    ranked: RankedSupport::Yes {
+        rating: RatingKind::Elo,
+    },
+    async_turns: AsyncTurnPolicy {
+        supported: false,
+        turn_deadline: None,
+        match_ttl: None,
+    },
+    reconnect: ReconnectPolicy {
+        grace: Millis(60_000),
+        notify_rules: true,
+    },
+    substitution: SubstitutionPolicy::BotOnly {
+        levels: vec![BotLevel::Trivial, BotLevel::Easy],
+    },
+    pausable: false,
+    durability: Durability::AckAfterPersist,
+    client_preview: true,
+    state_size: StateSizeClass::Small,
+    apply_budget: Budget {
+        max_apply_micros: 2_000,
+        max_events_per_input: 4,
+    },
+    max_match_duration: Some(Millis(14_400_000)),
+});
