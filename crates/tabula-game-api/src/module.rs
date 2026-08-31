@@ -18,6 +18,16 @@ use crate::{
 pub trait GameModule: Send + Sync + 'static {
     type Rules: GameRules;
 
+    /// The authoritative rules-half identity used by canonical replay headers.
+    ///
+    /// The default is deliberately unusable for an `Exact` replay verdict. A
+    /// real game supplies [`GameRules::RULES_HASH`] from a stable build-time
+    /// source hash rather than having the testkit guess from debug output or a
+    /// binary path. (doc 05 §6.2)
+    fn rules_hash() -> [u8; 32] {
+        <Self::Rules as GameRules>::RULES_HASH
+    }
+
     /// `&'static` because metadata is generated from `game.toml` at build time
     /// and never varies at runtime. (doc 02 §10.2)
     fn metadata() -> &'static GameMetadata;

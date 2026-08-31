@@ -33,7 +33,8 @@ xtask = "run --package xtask --"
 | `check-manifests` | Validates every workspace `Cargo.toml` (workspace-field inheritance, no wildcard registry versions, internal crates referenced via `{ workspace = true }`, the `rules`/`presentation`/`bots`/`testkit` feature shape for game crates) and, for games that have one, `game.toml`'s schema (required fields, the `com.tabula.<id>` convention, enum-valued capabilities). Does **not** yet cross-check against the compiled `GameMetadata`/`GameCapabilities` statics — that needs the `metadata_from_manifest!` proc macro (doc 02 §10.2), which does not exist yet. |
 | `new-game <slug> [--seats N] [--category C]` | Scaffolds a game crate from the `games/tictactoe` template, including `clippy.toml` and `tests/conformance.rs`. |
 | `selfplay <game> [--matches N] [--seed N\|HEX] [--match-index N] [--max-inputs N] [--clock fischer\|bronstein\|none]` | Deterministic bot-vs-bot matches with projection, timer, transactional, and termination checks. Failures print reproducible seed/match/input coordinates; the command does not mutate the repository. |
-| `replay <file> \| --all [--verify]` | Replays a `.tbr` and prints the first divergence with its input index. |
+| `replay <file> [--verify] [--at N]` | Verifies a canonical `.tbr`, compares every checkpoint and the final hash, and prints the first divergence with its input index. `--at N` seeks to an accepted-input state version. |
+| `replay-goldens` | Intentionally regenerates the committed Phase 1 corpus under `tests/replays/`; ordinary tests never rewrite it. |
 
 ### Phase 1+
 

@@ -33,8 +33,8 @@ use tabula_core::{BotLevel, Millis, SeatRoster};
 use tabula_game_api::{
     capabilities::ChatKind, metadata::AssetRef, AsyncTurnPolicy, BotLevels, Budget, Category,
     ChatChannelSpec, ChatPolicy, Complexity, ConfigError, ContentRating, Durability, DurationRange,
-    GameCapabilities, GameId, GameMetadata, GameModule, GameVersion, RankedSupport, RatingKind,
-    ReconnectPolicy, RulesVersion, SeatCounts, SeatSpec, SpectatorPolicy, StateSizeClass,
+    GameCapabilities, GameId, GameMetadata, GameModule, GameRules, GameVersion, RankedSupport,
+    RatingKind, ReconnectPolicy, SeatCounts, SeatSpec, SpectatorPolicy, StateSizeClass,
     SubstitutionPolicy, TurnModel, VoiceRequirement,
 };
 
@@ -79,7 +79,7 @@ impl GameModule for ChessModule {
 static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| GameMetadata {
     id: GameId::new("com.tabula.chess").expect("literal is a valid game id"),
     version: GameVersion::new("0.1.0").expect("literal is valid SemVer"),
-    rules_version: RulesVersion(3),
+    rules_version: ChessRules::RULES_VERSION,
     name_key: "game.chess.name".to_owned(),
     tagline_key: "game.chess.tagline".to_owned(),
     description_key: "game.chess.description".to_owned(),

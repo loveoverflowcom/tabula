@@ -73,6 +73,8 @@ mod graph;
 mod manifest_cmd;
 mod manifest_policy;
 mod perft_cmd;
+mod replay_cmd;
+mod replay_goldens_cmd;
 mod selfplay_cmd;
 mod tokens_cmd;
 
@@ -117,7 +119,20 @@ fn main() {
                 std::process::exit(2);
             }
         },
-        Some("replay") => todo!("doc 05 §8.3 — ReplayRunner::verify, print first divergence"),
+        Some("replay") => match replay_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("replay: {err}");
+                std::process::exit(1);
+            }
+        },
+        Some("replay-goldens") => match replay_goldens_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("replay-goldens: {err}");
+                std::process::exit(1);
+            }
+        },
 
         // Phase 1
         Some("perft") => match perft_cmd::run() {
@@ -160,7 +175,8 @@ fn main() {
                  local gate:  check   (fmt, clippy, test, check-deps, check-no-game-ids,\n\
                                         check-manifests, cargo-deny, in that order)\n\n\
                  phase 0:  check-deps  check-no-game-ids  check-manifests\n\
-                           new-game <slug>  selfplay <game>  replay <file>\n\
+                           new-game <slug>  selfplay <game>  replay <file> [--verify] [--at N]\n\
+                           replay-goldens (intentional fixture regeneration)\n\
                  phase 1:  perft chess [depth]\n\
                  phase 2:  gen-tokens  check-no-raw-colors\n\
                  phase 3:  pack-assets <game>\n\
