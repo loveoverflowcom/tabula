@@ -7,9 +7,13 @@
 //! @ai.pure true
 //! @ai.invariant rejected-input-preserves-state
 //! @ai.invariant legal-move-never-leaves-own-king-attacked
+//! @ai.invariant timeout-requires-mating-capability
+//! @ai.invariant valid-player-action-cannot-bypass-deadline
 //! @ai.law deterministic-legal-command-order
 //! @ai.evidence tests::rules::illegal_moves_are_byte_identical_noops
 //! @ai.evidence tests::perft::published_positions_match
+//! @ai.evidence tests::clocks::timeout_ignores_flagged_side_material_when_survivor_is_bare_king
+//! @ai.evidence tests::clocks::expired_clock_preempts_valid_non_move_commands
 
 use smallvec::{smallvec, SmallVec};
 use tabula_core::{
@@ -21,6 +25,7 @@ use tabula_game_api::{
 };
 
 use crate::{
+    clock::{self, MoveCharge, TimerCheck},
     movegen::{apply_move, in_check, legal_moves},
     Color, Command, Config, Event, PieceKind, State, Status, View, ViewEvent,
 };
@@ -37,14 +42,14 @@ impl GameRules for ChessRules {
     type ViewEvent = ViewEvent;
     type Config = Config;
 
-    // PositionKey is compact Zobrist state rather than a serialized board.
-    // That changes canonical State encoding, so the match version advances.
-    const RULES_VERSION: RulesVersion = RulesVersion(2);
+    // PositionKey is compact Zobrist state rather than a serialized board, and
+    // clock state/events now participate in the canonical contract.
+    const RULES_VERSION: RulesVersion = RulesVersion(3);
 
     fn create(
         config: &Config,
         roster: &SeatRoster,
-        _ctx: &mut Ctx<'_>,
+        ctx: &mut Ctx<'_>,
     ) -> Result<Init<Self>, InitError> {
         if !has_standard_roster(roster) {
             return Err(InitError::SeatCount {
@@ -52,29 +57,39 @@ impl GameRules for ChessRules {
                 allowed: "seats 0 and 1".into(),
             });
         }
-        if config.clock.is_some() {
-            return Err(InitError::Config("clock".into()));
+        if let Some(clock) = config.clock {
+            if !clock::config_is_valid(&clock) {
+                return Err(InitError::Config("clock".into()));
+            }
+        }
+        let mut state = State::initial();
+        let mut effects = SmallVec::new();
+        if let Some(clock_config) = config.clock {
+            let clock = clock::initial_state(clock_config, ctx.now);
+            effects.push(clock::arm_effect(&clock, Color::White, ctx.now));
+            state.clock = Some(clock);
         }
         Ok(Init {
-            state: State::initial(),
+            state,
             events: smallvec![],
-            effects: smallvec![],
+            effects,
         })
     }
 
     fn apply(
         state: &mut State,
         input: Input<Command>,
-        _ctx: &mut Ctx<'_>,
+        ctx: &mut Ctx<'_>,
     ) -> Result<Outcome<Self>, RuleError> {
         if !matches!(state.status, Status::Playing) {
             return Err(RuleError::code(RuleErrorCode::MatchOver));
         }
         match input {
-            Input::Player { seat, command } => apply_player(state, seat, command),
-            // Clock handling is intentionally deferred, but a stale/no-clock timer
-            // is a deterministic harmless input, not a reason to panic.
-            Input::Timer { .. } | Input::Seat { .. } => Ok(Outcome::empty()),
+            Input::Player { seat, command } => apply_player(state, seat, command, ctx.now),
+            Input::Timer { timer } => Ok(apply_timer(state, timer, ctx.now)),
+            // Disconnects do not pause Chess clocks; the already requested timer
+            // continues to burn (doc 02 §12.1).
+            Input::Seat { .. } => Ok(Outcome::empty()),
             Input::Admin(AdminInput::Cancel { reason }) => Ok(end(state, aborted(reason))),
             Input::Admin(AdminInput::ForceEnd { outcome }) => Ok(end(state, outcome)),
             Input::Admin(_) => Err(RuleError::code(RuleErrorCode::Unsupported)),
@@ -121,6 +136,10 @@ impl GameRules for ChessRules {
                 promotion: *promotion,
                 captured: *captured,
             },
+            Event::ClockUpdated { seat, remaining } => ViewEvent::ClockUpdated {
+                seat: *seat,
+                remaining: *remaining,
+            },
             Event::DrawOffered { seat } => ViewEvent::DrawOffered { seat: *seat },
             Event::DrawDeclined { seat } => ViewEvent::DrawDeclined { seat: *seat },
             Event::Ended { outcome } => ViewEvent::Ended {
@@ -141,6 +160,7 @@ fn apply_player(
     state: &mut State,
     seat: SeatId,
     command: Command,
+    now: tabula_core::LogicalTime,
 ) -> Result<Outcome<ChessRules>, RuleError> {
     let color = Color::from_seat(seat).ok_or_else(|| RuleError::code(RuleErrorCode::NoSuchSeat))?;
     let turn_bound = matches!(command, Command::Move { .. } | Command::ClaimDraw);
@@ -163,6 +183,13 @@ fn apply_player(
                         && candidate.promotion == promotion
                 })
                 .ok_or_else(|| RuleError::code(RuleErrorCode::IllegalMove))?;
+
+            // Evaluate time only after legality is established and before the
+            // first state mutation, preserving R2 for rejected commands.
+            let charge = clock::charge_completed_move(state.clock.as_ref(), color, now);
+            if matches!(charge, MoveCharge::Flagged) {
+                return Ok(timeout(state, color, now));
+            }
             let captured = apply_move(state, candidate, true);
             let mut events = smallvec![Event::Moved {
                 seat,
@@ -172,18 +199,41 @@ fn apply_player(
                 captured
             }];
             let mut effects = SmallVec::new();
+            if let MoveCharge::Ready(remaining) = charge {
+                if let Some(clock) = state.clock.as_mut() {
+                    clock.remaining[color_index(color)] = remaining;
+                    clock.last_move_at = now;
+                    events.push(Event::ClockUpdated { seat, remaining });
+                }
+            }
             if let Some(outcome) = terminal_outcome(state) {
-                state.status = Status::Ended {
-                    outcome: outcome.clone(),
-                };
-                events.push(Event::Ended {
-                    outcome: outcome.clone(),
-                });
-                effects.push(Effect::EndMatch { outcome });
+                let ended = end(state, outcome);
+                events.extend(ended.events);
+                effects.extend(ended.effects);
+            } else if let Some(clock) = state.clock.as_ref() {
+                effects.push(clock::arm_effect(clock, state.turn, now));
             }
             Ok(Outcome { events, effects })
         }
+        command => apply_non_move(state, seat, color, command, now),
+    }
+}
+
+fn apply_non_move(
+    state: &mut State,
+    seat: SeatId,
+    color: Color,
+    command: Command,
+    now: tabula_core::LogicalTime,
+) -> Result<Outcome<ChessRules>, RuleError> {
+    // Resolve command validity before the deadline. Once a non-move command
+    // is valid, the current turn's expiry preempts it even if its timer effect
+    // has not yet been delivered by the platform.
+    match command {
         Command::Resign => {
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
+            }
             let outcome = if insufficient_material(state) {
                 draw("dead position")
             } else {
@@ -198,6 +248,9 @@ fn apply_player(
             if color == state.turn || state.fullmove_number == 1 || state.draw_offer.is_some() {
                 return Err(RuleError::code(RuleErrorCode::WrongPhase));
             }
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
+            }
             state.draw_offer = Some(color);
             Ok(Outcome {
                 events: smallvec![Event::DrawOffered { seat }],
@@ -208,11 +261,17 @@ fn apply_player(
             if state.draw_offer != Some(color.other()) {
                 return Err(RuleError::code(RuleErrorCode::WrongPhase));
             }
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
+            }
             Ok(end(state, draw("draw agreed")))
         }
         Command::DeclineDraw => {
             if state.draw_offer != Some(color.other()) {
                 return Err(RuleError::code(RuleErrorCode::WrongPhase));
+            }
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
             }
             state.draw_offer = None;
             Ok(Outcome {
@@ -224,8 +283,135 @@ fn apply_player(
             if !can_claim_draw(state) {
                 return Err(RuleError::code(RuleErrorCode::WrongPhase));
             }
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
+            }
             Ok(end(state, draw("draw claimed")))
         }
+        Command::Move { .. } => Err(RuleError::code(RuleErrorCode::IllegalMove)),
+    }
+}
+
+fn apply_timer(
+    state: &mut State,
+    timer: tabula_core::TimerId,
+    now: tabula_core::LogicalTime,
+) -> Outcome<ChessRules> {
+    if timer != clock::TIMER_CLOCK {
+        return Outcome::empty();
+    }
+
+    let Some(clock_state) = state.clock.as_ref() else {
+        return Outcome::empty();
+    };
+    match clock::check_timer(clock_state, state.turn, now) {
+        TimerCheck::Active(_) => Outcome {
+            events: smallvec![],
+            effects: smallvec![clock::arm_effect(clock_state, state.turn, now)],
+        },
+        TimerCheck::Flagged => timeout(state, state.turn, now),
+    }
+}
+
+fn timeout(
+    state: &mut State,
+    flagged: Color,
+    now: tabula_core::LogicalTime,
+) -> Outcome<ChessRules> {
+    let clock_updated = state.clock.as_mut().map(|clock| {
+        clock::flag(clock, flagged, now);
+        Event::ClockUpdated {
+            seat: flagged.seat(),
+            remaining: tabula_core::Millis::ZERO,
+        }
+    });
+    let mut outcome = end(state, timeout_outcome(state, flagged));
+    if let Some(event) = clock_updated {
+        outcome.events.insert(0, event);
+    }
+    outcome
+}
+
+/// Returns the timeout result after checking whether the surviving side has a
+/// possible mating construction. A bare king cannot mate, even when the side
+/// that flagged still owns a queen or other substantial material; that
+/// material cannot be assumed to cooperate with the winner.
+fn timeout_outcome(state: &State, flagged: Color) -> MatchOutcome {
+    let winner = flagged.other();
+    if can_checkmate(state, winner, flagged) {
+        decisive(winner, "timeout")
+    } else {
+        draw("timeout")
+    }
+}
+
+/// Checks the finite material cases that can mate a bare king, plus helpmate
+/// material on the flagged side. The latter matters because timeout is about
+/// whether *any* future legal series can contain mate, not whether the winner
+/// can force mate against a cooperating bare king.
+fn can_checkmate(state: &State, winner: Color, flagged: Color) -> bool {
+    let mut non_king = 0_u8;
+    let mut has_pawn_or_major = false;
+    let mut has_bishop = false;
+    let mut has_knight = false;
+    let mut bishop_colors = [false; 2];
+    let mut flagged_has_material = false;
+
+    for (square, piece) in state
+        .board
+        .iter()
+        .enumerate()
+        .filter_map(|(square, piece)| piece.map(|piece| (square, piece)))
+    {
+        if piece.kind == PieceKind::King {
+            continue;
+        }
+        if piece.color == flagged {
+            flagged_has_material = true;
+            continue;
+        }
+        if piece.color != winner {
+            continue;
+        }
+
+        non_king = non_king.saturating_add(1);
+        match piece.kind {
+            PieceKind::Pawn | PieceKind::Rook | PieceKind::Queen => {
+                has_pawn_or_major = true;
+            }
+            PieceKind::Bishop => {
+                has_bishop = true;
+                let square_color = (square % 8 + square / 8) % 2;
+                bishop_colors[square_color] = true;
+            }
+            PieceKind::Knight => has_knight = true,
+            PieceKind::King => unreachable!(),
+        }
+    }
+
+    if has_pawn_or_major || (has_bishop && has_knight) || bishop_colors == [true, true] {
+        return true;
+    }
+
+    // A non-king piece belonging to the flagged side can provide the blocker
+    // needed by a minor-only helpmate. With no such piece, K+B/K+N and the
+    // other known bare-king dead positions cannot ever reach checkmate.
+    flagged_has_material && non_king > 0
+}
+
+fn turn_is_expired(state: &State, now: tabula_core::LogicalTime) -> bool {
+    state.clock.as_ref().is_some_and(|clock| {
+        matches!(
+            clock::check_timer(clock, state.turn, now),
+            TimerCheck::Flagged
+        )
+    })
+}
+
+fn color_index(color: Color) -> usize {
+    match color {
+        Color::White => 0,
+        Color::Black => 1,
     }
 }
 
@@ -308,12 +494,17 @@ fn end(state: &mut State, outcome: MatchOutcome) -> Outcome<ChessRules> {
         outcome: outcome.clone(),
     };
     state.draw_offer = None;
-    Outcome {
-        events: smallvec![Event::Ended {
-            outcome: outcome.clone()
-        }],
-        effects: smallvec![Effect::EndMatch { outcome }],
+    let mut effects = SmallVec::new();
+    if state.clock.is_some() {
+        effects.push(Effect::CancelTimer {
+            id: clock::TIMER_CLOCK,
+        });
     }
+    let events = smallvec![Event::Ended {
+        outcome: outcome.clone(),
+    }];
+    effects.push(Effect::EndMatch { outcome });
+    Outcome { events, effects }
 }
 
 fn decisive(winner: Color, summary: &str) -> MatchOutcome {

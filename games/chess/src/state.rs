@@ -103,21 +103,34 @@ impl CastlingRights {
     }
 }
 
-/// A clock configuration reserved for the next Phase 1 clock slice.
+/// The mutually exclusive time-control semantics for a Chess clock.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClockControl {
+    /// Add the increment after every move that reaches the rules in time.
+    ///
+    /// Remaining time is a finite millisecond value: a later increment that
+    /// exceeds its representable maximum is explicitly capped there.
+    Fischer { increment: Millis },
+    /// Refund at most the delay from each completed move's elapsed time.
+    Bronstein { delay: Millis },
+}
+
+/// A clock configuration selected before a match is created.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClockConfig {
     pub initial: Millis,
-    pub increment: Millis,
+    pub control: ClockControl,
 }
 
-/// Canonical clock state. It remains `None` until clock rules are implemented.
+/// Canonical clock state for the side currently spending time.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClockState {
     pub remaining: [Millis; 2],
     pub last_move_at: LogicalTime,
+    pub control: ClockControl,
 }
 
-/// Lobby configuration. Standard chess is the default and only accepted mode now.
+/// Lobby configuration for standard Chess; `None` selects untimed play.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Config {
     pub clock: Option<ClockConfig>,
@@ -244,6 +257,10 @@ pub enum Event {
         promotion: Option<PieceKind>,
         captured: Option<Piece>,
     },
+    ClockUpdated {
+        seat: SeatId,
+        remaining: Millis,
+    },
     DrawOffered {
         seat: SeatId,
     },
@@ -281,6 +298,10 @@ pub enum ViewEvent {
         to: Square,
         promotion: Option<PieceKind>,
         captured: Option<Piece>,
+    },
+    ClockUpdated {
+        seat: SeatId,
+        remaining: Millis,
     },
     DrawOffered {
         seat: SeatId,
