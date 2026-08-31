@@ -32,13 +32,12 @@ use tabula_testkit::determinism::{assert_deterministic, assert_transactional_on_
 struct Nothing;
 
 fn roster() -> SeatRoster {
-    SeatRoster {
-        seats: smallvec![SeatEntry {
-            seat: SeatId(0),
-            occupant: Occupant::Human(UserId(1)),
-            team: None,
-        }],
-    }
+    SeatRoster::new(smallvec![SeatEntry {
+        seat: SeatId(0),
+        occupant: Occupant::Human(UserId(1)),
+        team: None,
+    }])
+    .expect("fixture seats are unique")
 }
 
 fn inputs<C: Clone>(command: C, n: usize) -> Vec<Input<C>> {

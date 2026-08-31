@@ -55,9 +55,9 @@ pub fn input_sequence(_cfg: SeqCfg) -> impl Strategy<Value = Vec<()>> {
 /// werewolf's role sets are only balanced at particular counts, so an arbitrary
 /// count would fail `validate_config` and test nothing.
 pub fn roster(_min: u8, _max: u8) -> impl Strategy<Value = SeatRoster> {
-    proptest::strategy::Just(SeatRoster {
-        seats: smallvec::SmallVec::new(),
-    })
+    proptest::strategy::Just(
+        SeatRoster::new(smallvec::SmallVec::new()).expect("an empty roster has no duplicates"),
+    )
 }
 
 /// Random but valid `Config` values.

@@ -71,7 +71,7 @@ pub struct Scenario<R: GameRules> {
 impl<R: GameRules> core::fmt::Debug for Scenario<R> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Scenario")
-            .field("seats", &self.roster.seats.len())
+            .field("seats", &self.roster.len())
             .field("inputs", &self.inputs.len())
             .finish_non_exhaustive()
     }

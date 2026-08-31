@@ -14,7 +14,7 @@ use tabula_game_api::{
     Outcome,
 };
 
-use crate::state::{Command, Config, Event, Mark, State, Status, View};
+use crate::state::{Command, Config, Event, State, Status, View};
 
 #[derive(Debug)]
 pub struct TicTacToeRules;
@@ -23,9 +23,9 @@ pub struct TicTacToeRules;
 /// share a match.
 const TIMER_MOVE: TimerId = TimerId(1);
 
-/// Floor on the configurable move timeout. A 0 ms timeout would fire before the
-/// client could render, so `create` clamps rather than trusting the lobby.
-const MIN_MOVE_TIMEOUT: u64 = 5_000;
+/// Floor on the configurable move timeout. A zero value selects this documented
+/// default; every other value below it is rejected at both creation boundaries.
+pub(crate) const MIN_MOVE_TIMEOUT: u64 = 5_000;
 
 const LINES: [[usize; 3]; 8] = [
     [0, 1, 2],
@@ -46,29 +46,29 @@ impl GameRules for TicTacToeRules {
     type ViewEvent = Event;
     type Config = Config;
 
-    const RULES_VERSION: RulesVersion = RulesVersion(1);
+    const RULES_VERSION: RulesVersion = RulesVersion(2);
 
     fn create(
         cfg: &Config,
         roster: &SeatRoster,
         _ctx: &mut Ctx<'_>,
     ) -> Result<Init<Self>, InitError> {
-        // No RNG: tic-tac-toe has no randomness at all. That makes it a useful
-        // control group for determinism testing — any divergence here is a bug
-        // in the harness, not in a shuffle.
-        let first = roster.seats.first().ok_or(InitError::NoSeats)?.seat;
+        let [first, second] = roster.as_slice() else {
+            return Err(InitError::SeatCount {
+                got: u8::try_from(roster.len()).unwrap_or(u8::MAX),
+                allowed: "2".into(),
+            });
+        };
+        let timeout =
+            move_timeout(cfg).map_err(|()| InitError::Config("move_timeout_ms".into()))?;
 
         Ok(Init {
-            state: State {
-                board: [None; 9],
-                turn: first,
-                status: Status::Playing,
-                moves: 0,
-            },
+            state: State::new([first.seat, second.seat], timeout)
+                .map_err(|_| InitError::Config("roster".into()))?,
             events: smallvec![],
             effects: smallvec![Effect::SetTimer {
                 id: TIMER_MOVE,
-                delay: Millis(cfg.move_timeout_ms.max(MIN_MOVE_TIMEOUT)),
+                delay: Millis(timeout),
             }],
         })
     }
@@ -88,12 +88,7 @@ impl GameRules for TicTacToeRules {
         // clock keeps running") rather than a fall-through.
         #[allow(clippy::match_same_arms)]
         match input {
-            // R3: a seat outside the roster must be rejected, not trusted. Without
-            // this guard `other(SeatId(99))` underflows and panics in debug — and
-            // `Input::Player` carries a seat straight off the wire, so a hostile
-            // client reaches it directly. Establish the "seat is 0 or 1" invariant
-            // once, here, and every helper below is total. (doc 02 §3.2)
-            Input::Player { seat, .. } if !is_seated(seat) => {
+            Input::Player { seat, .. } if !state.is_seated(seat) => {
                 Err(RuleError::code(RuleErrorCode::NoSuchSeat))
             }
 
@@ -129,9 +124,9 @@ impl GameRules for TicTacToeRules {
 
     fn project(state: &State, viewer: Viewer) -> View {
         View {
-            board: state.board,
-            turn: state.turn,
-            status: state.status,
+            board: *state.board(),
+            turn: state.turn(),
+            status: state.status(),
             you: viewer.seat(),
         }
     }
@@ -178,15 +173,14 @@ fn place(state: &mut State, seat: SeatId, cell: u8) -> Result<Outcome<TicTacToeR
     }
 
     // ---- mutate ----
-    let mark = if seat.0 % 2 == 0 { Mark::X } else { Mark::O };
+    let mark = state.mark_for(seat);
     state.board[idx] = Some(mark);
-    state.moves += 1;
 
     let mut events = smallvec![Event::Placed { seat, cell, mark }];
     let mut effects = smallvec![];
 
     if let Some(outcome) = check_end(state, seat) {
-        state.status = match outcome.kind {
+        state.status = match outcome.kind() {
             OutcomeKind::Decisive => Status::Won(seat),
             _ => Status::Drawn,
         };
@@ -197,10 +191,10 @@ fn place(state: &mut State, seat: SeatId, cell: u8) -> Result<Outcome<TicTacToeR
         effects.push(Effect::CancelTimer { id: TIMER_MOVE });
         effects.push(Effect::EndMatch { outcome });
     } else {
-        state.turn = other(state.turn);
+        state.turn = state.other(state.turn);
         effects.push(Effect::SetTimer {
             id: TIMER_MOVE,
-            delay: Millis(MIN_MOVE_TIMEOUT),
+            delay: Millis(state.move_timeout_ms),
         });
     }
 
@@ -216,10 +210,10 @@ fn check_end(state: &State, mover: SeatId) -> Option<MatchOutcome> {
     });
 
     if won {
-        return Some(decisive(mover));
+        return Some(decisive(state, mover));
     }
-    if state.moves >= 9 {
-        return Some(drawn(state.turn));
+    if state.moves() >= 9 {
+        return Some(drawn(state));
     }
     None
 }
@@ -227,49 +221,53 @@ fn check_end(state: &State, mover: SeatId) -> Option<MatchOutcome> {
 /// Standings must cover every seat exactly once, with contiguous ranks from 0.
 /// The testkit asserts it (`outcome_wellformed`) because malformed standings
 /// corrupt ratings silently.
-fn decisive(winner: SeatId) -> MatchOutcome {
-    MatchOutcome {
-        kind: OutcomeKind::Decisive,
-        standings: smallvec![
+fn decisive(state: &State, winner: SeatId) -> MatchOutcome {
+    MatchOutcome::new_for_seats(
+        OutcomeKind::Decisive,
+        smallvec![
             Standing {
                 seat: winner,
                 rank: 0,
                 score: 1
             },
             Standing {
-                seat: other(winner),
+                seat: state.other(winner),
                 rank: 1,
                 score: 0
             },
         ],
-        summary: "three in a row".into(),
-    }
+        "three in a row".into(),
+        &state.seats,
+    )
+    .expect("two distinct state seats always form a valid decisive outcome")
 }
 
-fn drawn(any_seat: SeatId) -> MatchOutcome {
-    MatchOutcome {
-        kind: OutcomeKind::Draw,
+fn drawn(state: &State) -> MatchOutcome {
+    MatchOutcome::new_for_seats(
+        OutcomeKind::Draw,
         // Ties share a rank.
-        standings: smallvec![
+        smallvec![
             Standing {
-                seat: any_seat,
+                seat: state.seats[0],
                 rank: 0,
                 score: 0
             },
             Standing {
-                seat: other(any_seat),
+                seat: state.seats[1],
                 rank: 0,
                 score: 0
             },
         ],
-        summary: "board full".into(),
-    }
+        "board full".into(),
+        &state.seats,
+    )
+    .expect("two distinct state seats always form a valid drawn outcome")
 }
 
 fn end_by_resign(state: &mut State, resigning: SeatId) -> Outcome<TicTacToeRules> {
-    let winner = other(resigning);
-    state.status = Status::Won(winner);
-    let outcome = decisive(winner);
+    let winner = state.other(resigning);
+    state.status = Status::Forfeited(winner);
+    let outcome = decisive(state, winner);
     Outcome {
         events: smallvec![Event::Ended {
             outcome: outcome.clone()
@@ -282,14 +280,14 @@ fn end_by_resign(state: &mut State, resigning: SeatId) -> Outcome<TicTacToeRules
 }
 
 fn end_aborted(state: &mut State, reason: AbortReason) -> Outcome<TicTacToeRules> {
-    state.status = Status::Drawn;
-    let outcome = MatchOutcome {
-        // Aborted never counts for ratings — the rating job checks the variant,
-        // not the reason.
-        kind: OutcomeKind::Aborted { reason },
-        standings: smallvec![],
-        summary: "cancelled".into(),
-    };
+    state.status = Status::Aborted;
+    let outcome = MatchOutcome::new_for_seats(
+        OutcomeKind::Aborted { reason },
+        smallvec![],
+        "cancelled".into(),
+        &state.seats,
+    )
+    .expect("empty aborted outcome is structurally valid");
     Outcome {
         events: smallvec![Event::Ended {
             outcome: outcome.clone()
@@ -301,22 +299,10 @@ fn end_aborted(state: &mut State, reason: AbortReason) -> Outcome<TicTacToeRules
     }
 }
 
-/// Tic-tac-toe is always exactly two seats (`SeatSpec { min: 2, max: 2 }`), so
-/// membership is a range check rather than a roster lookup. `apply` uses this as
-/// its single entry guard, which is what makes [`other`] total.
-fn is_seated(seat: SeatId) -> bool {
-    seat.0 < 2
-}
-
-/// Two seats, so "the other one" is well-defined. A game with more seats derives
-/// turn order from its roster instead — and uses `SeatId` throughout rather than
-/// inventing a parallel player index (doc 02 §13).
-///
-/// # Panics
-/// Never, at any call site in this crate: every path reaches it either through
-/// `apply`'s [`is_seated`] guard or from `state.turn`, which `create` sets from
-/// the roster and only [`other`] ever updates.
-fn other(seat: SeatId) -> SeatId {
-    debug_assert!(is_seated(seat), "other() requires a seated SeatId");
-    SeatId(1 - seat.0)
+pub(crate) fn move_timeout(cfg: &Config) -> Result<u64, ()> {
+    match cfg.move_timeout_ms {
+        0 => Ok(MIN_MOVE_TIMEOUT),
+        value if value >= MIN_MOVE_TIMEOUT => Ok(value),
+        _ => Err(()),
+    }
 }

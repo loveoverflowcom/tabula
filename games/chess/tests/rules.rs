@@ -169,7 +169,7 @@ fn fivefold_repetition_is_automatic() {
     let Status::Ended { outcome } = state.status else {
         panic!("fivefold repetition must end the match");
     };
-    assert_eq!(outcome.summary.as_str(), "fivefold repetition");
+    assert_eq!(outcome.summary(), "fivefold repetition");
 }
 
 #[test]
@@ -237,7 +237,7 @@ fn resigning_from_a_dead_position_is_a_draw_and_can_happen_off_turn() {
     let Status::Ended { outcome } = state.status else {
         panic!("resignation must end the match");
     };
-    assert_eq!(outcome.kind, OutcomeKind::Draw);
+    assert_eq!(outcome.kind(), OutcomeKind::Draw);
 }
 
 #[test]

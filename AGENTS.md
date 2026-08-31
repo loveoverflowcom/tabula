@@ -125,7 +125,7 @@ cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask check-deps            # the deps.toml matrix (I-1, I-15)
 cargo xtask check-no-game-ids     # I-9
-cargo xtask check-manifests       # game.toml == compiled metadata
+cargo xtask check-manifests       # game.toml/Cargo.toml schema and feature-shape validation
 cargo nextest run --workspace
 cargo deny check
 ```

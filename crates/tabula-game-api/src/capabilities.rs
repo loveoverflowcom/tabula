@@ -1,115 +1,423 @@
 //! `GameCapabilities` — declarative facts the platform needs to run a game safely.
 //! (doc 02 §4.2, §5)
 //!
-//! # The anti-bloat contract
-//!
-//! > This is the most over-designable type in the platform.
-//!
-//! **Every field must be consumed by a named platform subsystem, today or in a
-//! named phase. A field with no consumer is deleted at review.** The table below
-//! is that contract; keep it current or the discipline evaporates.
-//!
-//! | Field | Consumed by | Used for |
-//! |---|---|---|
-//! | `seats.min/max/allowed` | lobby, matchmaking, room UI | Room validation, queue bucketing |
-//! | `seats.teams` | lobby, ratings | Team formation, `TeamElo` |
-//! | `seats.symmetric` | matchmaking | Side alternation / fairness |
-//! | `seats.fill_with_bots` | lobby, match runtime | Auto-fill on queue timeout |
-//! | `turn_model` | client shell, presence, idle detection | "Your turn" badges, notification policy, AFK thresholds |
-//! | `hidden_information` | match runtime, ops tooling | Enables strict projection auditing; forbids naive send-state-to-all debug paths |
-//! | `spectators` | gateway, match runtime | Attach authorisation + delay buffering |
-//! | `chat` | chat service | Which channels to create; whether to await `SetChatScopes` |
-//! | `voice` | voice service, client UI | Whether to provision a room; whether to prompt for mic |
-//! | `ranked` | rating service, matchmaking | Whether outcomes affect the ladder; which algorithm |
-//! | `async_turns` | match runtime, notifications | Whether to hibernate the actor and push instead |
-//! | `reconnect` | gateway, match runtime | Grace timers; whether to inject `Input::Seat` |
-//! | `substitution` | lobby, bot runner | Whether bot takeover is offered |
-//! | `pausable` | match runtime, admin | Whether `Admin(Pause)` is accepted |
-//! | `durability` | match runtime | Ack point relative to log commit |
-//! | `client_preview` | client | Whether to render optimistic previews |
-//! | `state_size` | snapshot policy | Snapshot cadence and storage target |
-//! | `apply_budget` | match runtime observability | Warn when a game's apply is slow |
-//! | `max_match_duration` | match runtime | Hard stop for runaway matches |
-//!
-//! # Why this type exists at all
-//!
-//! It is how the platform absorbs the difference between 2-seat chess and 20-seat
-//! werewolf **without branching on `game_id`** (I-9). Every variation in doc 02
-//! §12.5 is either a field here or a behaviour behind the same five functions.
+//! The types in this module deliberately validate only capability facts. They
+//! do not encode game rules or introduce a platform branch on `GameId` (I-9).
+
+use core::num::NonZeroU8;
 
 use serde::{Deserialize, Serialize};
 use tabula_core::{BotLevel, Millis};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(try_from = "RawGameCapabilities")]
 pub struct GameCapabilities {
-    pub seats: SeatSpec,
-    pub turn_model: TurnModel,
-
-    /// Turns on strict projection auditing and forbids debug paths that would
-    /// send canonical state anywhere. Games with this set **must** provide a
-    /// `SecretModel` (doc 02 §7.3).
-    pub hidden_information: bool,
-
-    pub spectators: SpectatorPolicy,
-    pub chat: ChatPolicy,
-    pub voice: VoiceRequirement,
-    pub ranked: RankedSupport,
-    pub async_turns: AsyncTurnPolicy,
-    pub reconnect: ReconnectPolicy,
-    pub substitution: SubstitutionPolicy,
-    pub pausable: bool,
-    pub durability: Durability,
-
-    /// False means the client shows a spinner instead of an optimistic preview.
-    /// Set it false when hidden information affects legality, so the client
-    /// cannot honestly predict the answer. (doc 00 §4.1)
-    pub client_preview: bool,
-
-    pub state_size: StateSizeClass,
-    pub apply_budget: Budget,
-    pub max_match_duration: Option<Millis>,
+    seats: SeatSpec,
+    turn_model: TurnModel,
+    hidden_information: bool,
+    spectators: SpectatorPolicy,
+    chat: ChatPolicy,
+    voice: VoiceRequirement,
+    ranked: RankedSupport,
+    async_turns: AsyncTurnPolicy,
+    reconnect: ReconnectPolicy,
+    substitution: SubstitutionPolicy,
+    pausable: bool,
+    durability: Durability,
+    client_preview: bool,
+    state_size: StateSizeClass,
+    apply_budget: Budget,
+    max_match_duration: Option<Millis>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SeatSpec {
-    pub min: u8,
-    pub max: u8,
-    /// Some counts may be illegal in between — werewolf role sets are only
-    /// balanced at particular player counts.
-    pub allowed: SeatCounts,
-    pub teams: Option<TeamSpec>,
-    pub fill_with_bots: bool,
-    /// `false` for chess (white has an advantage), so matchmaking alternates
-    /// colours across a series.
-    pub symmetric: bool,
+#[derive(Serialize, Deserialize)]
+struct RawGameCapabilities {
+    seats: SeatSpec,
+    turn_model: TurnModel,
+    hidden_information: bool,
+    spectators: SpectatorPolicy,
+    chat: ChatPolicy,
+    voice: VoiceRequirement,
+    ranked: RankedSupport,
+    async_turns: AsyncTurnPolicy,
+    reconnect: ReconnectPolicy,
+    substitution: SubstitutionPolicy,
+    pausable: bool,
+    durability: Durability,
+    client_preview: bool,
+    state_size: StateSizeClass,
+    apply_budget: Budget,
+    max_match_duration: Option<Millis>,
 }
 
+/// Why a complete capability declaration is self-contradictory.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum GameCapabilitiesError {
+    #[error("ranked games must acknowledge only after persistence")]
+    RankedNeedsDurability,
+}
+
+impl GameCapabilities {
+    /// Establishes the cross-field capability laws consumed by platform policy.
+    ///
+    /// @ai.role trust-boundary
+    /// @ai.domain game.capabilities
+    /// @ai.invariant ranked-games-ack-after-persist
+    /// @ai.evidence crate::capabilities::tests::ranked_capabilities_require_durable_acknowledgement
+    /// @ai.evidence crate::capabilities::tests::capability_deserialization_cannot_bypass_cross_field_validation
+    #[allow(clippy::doc_markdown)]
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        seats: SeatSpec,
+        turn_model: TurnModel,
+        hidden_information: bool,
+        spectators: SpectatorPolicy,
+        chat: ChatPolicy,
+        voice: VoiceRequirement,
+        ranked: RankedSupport,
+        async_turns: AsyncTurnPolicy,
+        reconnect: ReconnectPolicy,
+        substitution: SubstitutionPolicy,
+        pausable: bool,
+        durability: Durability,
+        client_preview: bool,
+        state_size: StateSizeClass,
+        apply_budget: Budget,
+        max_match_duration: Option<Millis>,
+    ) -> Result<Self, GameCapabilitiesError> {
+        if matches!(ranked, RankedSupport::Yes { .. }) && durability != Durability::AckAfterPersist
+        {
+            return Err(GameCapabilitiesError::RankedNeedsDurability);
+        }
+        Ok(Self {
+            seats,
+            turn_model,
+            hidden_information,
+            spectators,
+            chat,
+            voice,
+            ranked,
+            async_turns,
+            reconnect,
+            substitution,
+            pausable,
+            durability,
+            client_preview,
+            state_size,
+            apply_budget,
+            max_match_duration,
+        })
+    }
+
+    #[must_use]
+    pub const fn seats(&self) -> &SeatSpec {
+        &self.seats
+    }
+
+    #[must_use]
+    pub const fn turn_model(&self) -> TurnModel {
+        self.turn_model
+    }
+
+    #[must_use]
+    pub const fn hidden_information(&self) -> bool {
+        self.hidden_information
+    }
+
+    #[must_use]
+    pub const fn spectators(&self) -> SpectatorPolicy {
+        self.spectators
+    }
+
+    #[must_use]
+    pub const fn chat(&self) -> &ChatPolicy {
+        &self.chat
+    }
+
+    #[must_use]
+    pub const fn voice(&self) -> VoiceRequirement {
+        self.voice
+    }
+
+    #[must_use]
+    pub const fn ranked(&self) -> RankedSupport {
+        self.ranked
+    }
+
+    #[must_use]
+    pub const fn async_turns(&self) -> AsyncTurnPolicy {
+        self.async_turns
+    }
+
+    #[must_use]
+    pub const fn reconnect(&self) -> ReconnectPolicy {
+        self.reconnect
+    }
+
+    #[must_use]
+    pub const fn substitution(&self) -> &SubstitutionPolicy {
+        &self.substitution
+    }
+
+    #[must_use]
+    pub const fn pausable(&self) -> bool {
+        self.pausable
+    }
+
+    #[must_use]
+    pub const fn durability(&self) -> Durability {
+        self.durability
+    }
+
+    #[must_use]
+    pub const fn client_preview(&self) -> bool {
+        self.client_preview
+    }
+
+    #[must_use]
+    pub const fn state_size(&self) -> StateSizeClass {
+        self.state_size
+    }
+
+    #[must_use]
+    pub const fn apply_budget(&self) -> Budget {
+        self.apply_budget
+    }
+
+    #[must_use]
+    pub const fn max_match_duration(&self) -> Option<Millis> {
+        self.max_match_duration
+    }
+}
+
+impl TryFrom<RawGameCapabilities> for GameCapabilities {
+    type Error = GameCapabilitiesError;
+
+    fn try_from(raw: RawGameCapabilities) -> Result<Self, Self::Error> {
+        Self::new(
+            raw.seats,
+            raw.turn_model,
+            raw.hidden_information,
+            raw.spectators,
+            raw.chat,
+            raw.voice,
+            raw.ranked,
+            raw.async_turns,
+            raw.reconnect,
+            raw.substitution,
+            raw.pausable,
+            raw.durability,
+            raw.client_preview,
+            raw.state_size,
+            raw.apply_budget,
+            raw.max_match_duration,
+        )
+    }
+}
+
+/// The supported player counts for one game. A range and an exact set are
+/// mutually exclusive representations, so no second `min`/`max` authority is
+/// exposed by [`SeatSpec`].
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum SeatCounts {
+#[serde(try_from = "RawSeatCounts", into = "RawSeatCounts")]
+pub struct SeatCounts(SeatCountsRepr);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SeatCountsRepr {
     Range { min: u8, max: u8 },
     Exact(Vec<u8>),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TeamSpec {
-    pub teams: u8,
-    pub seats_per_team: u8,
+enum RawSeatCounts {
+    Range { min: u8, max: u8 },
+    Exact(Vec<u8>),
 }
 
-/// How the platform should present and police turn-taking.
-///
-/// The platform reads this **only** for UI affordances, idle thresholds, and
-/// notification policy. Actual turn order lives in the game's own state.
+/// Why a supported-seat-count declaration cannot be canonical.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum SeatCountsError {
+    #[error("seat counts must start at one")]
+    Zero,
+    #[error("seat count minimum must not exceed maximum")]
+    InvertedRange,
+    #[error("exact seat counts must not be empty")]
+    EmptyExact,
+    #[error("exact seat count {count} occurs more than once")]
+    DuplicateExact { count: u8 },
+}
+
+impl SeatCounts {
+    pub fn range(min: u8, max: u8) -> Result<Self, SeatCountsError> {
+        if min == 0 || max == 0 {
+            return Err(SeatCountsError::Zero);
+        }
+        if min > max {
+            return Err(SeatCountsError::InvertedRange);
+        }
+        Ok(Self(SeatCountsRepr::Range { min, max }))
+    }
+
+    pub fn exact(mut counts: Vec<u8>) -> Result<Self, SeatCountsError> {
+        if counts.is_empty() {
+            return Err(SeatCountsError::EmptyExact);
+        }
+        if counts.contains(&0) {
+            return Err(SeatCountsError::Zero);
+        }
+        counts.sort_unstable();
+        if let Some(duplicate) = counts
+            .windows(2)
+            .find_map(|pair| (pair[0] == pair[1]).then_some(pair[0]))
+        {
+            return Err(SeatCountsError::DuplicateExact { count: duplicate });
+        }
+        Ok(Self(SeatCountsRepr::Exact(counts)))
+    }
+
+    #[must_use]
+    pub fn contains(&self, count: u8) -> bool {
+        match &self.0 {
+            SeatCountsRepr::Range { min, max } => (*min..=*max).contains(&count),
+            SeatCountsRepr::Exact(counts) => counts.binary_search(&count).is_ok(),
+        }
+    }
+
+    #[must_use]
+    pub fn min(&self) -> u8 {
+        match &self.0 {
+            SeatCountsRepr::Range { min, .. } => *min,
+            SeatCountsRepr::Exact(counts) => counts[0],
+        }
+    }
+
+    #[must_use]
+    pub fn max(&self) -> u8 {
+        match &self.0 {
+            SeatCountsRepr::Range { max, .. } => *max,
+            SeatCountsRepr::Exact(counts) => {
+                *counts.last().expect("validated exact counts are non-empty")
+            }
+        }
+    }
+}
+
+impl TryFrom<RawSeatCounts> for SeatCounts {
+    type Error = SeatCountsError;
+
+    fn try_from(raw: RawSeatCounts) -> Result<Self, Self::Error> {
+        match raw {
+            RawSeatCounts::Range { min, max } => Self::range(min, max),
+            RawSeatCounts::Exact(counts) => Self::exact(counts),
+        }
+    }
+}
+
+impl From<SeatCounts> for RawSeatCounts {
+    fn from(value: SeatCounts) -> Self {
+        match value.0 {
+            SeatCountsRepr::Range { min, max } => Self::Range { min, max },
+            SeatCountsRepr::Exact(counts) => Self::Exact(counts),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SeatSpec {
+    allowed: SeatCounts,
+    teams: Option<TeamSpec>,
+    fill_with_bots: bool,
+    symmetric: bool,
+}
+
+impl SeatSpec {
+    /// Builds the one authoritative seat-policy representation.
+    ///
+    /// @ai.role proof-boundary
+    /// @ai.domain game.capabilities
+    /// @ai.invariant canonical-allowed-seat-counts
+    /// @ai.evidence crate::capabilities::tests::seat_count_constructor_partitions
+    #[allow(clippy::doc_markdown)]
+    #[must_use]
+    pub fn new(
+        allowed: SeatCounts,
+        teams: Option<TeamSpec>,
+        fill_with_bots: bool,
+        symmetric: bool,
+    ) -> Self {
+        Self {
+            allowed,
+            teams,
+            fill_with_bots,
+            symmetric,
+        }
+    }
+
+    #[must_use]
+    pub const fn allowed(&self) -> &SeatCounts {
+        &self.allowed
+    }
+
+    #[must_use]
+    pub const fn teams(&self) -> Option<&TeamSpec> {
+        self.teams.as_ref()
+    }
+
+    #[must_use]
+    pub const fn fill_with_bots(&self) -> bool {
+        self.fill_with_bots
+    }
+
+    #[must_use]
+    pub const fn symmetric(&self) -> bool {
+        self.symmetric
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TeamSpec {
+    teams: NonZeroU8,
+    seats_per_team: NonZeroU8,
+}
+
+/// Why team cardinality cannot describe a real team game.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum TeamSpecError {
+    #[error("team count must be non-zero")]
+    ZeroTeams,
+    #[error("seats per team must be non-zero")]
+    ZeroSeatsPerTeam,
+}
+
+impl TeamSpec {
+    pub fn new(teams: u8, seats_per_team: u8) -> Result<Self, TeamSpecError> {
+        let teams = NonZeroU8::new(teams).ok_or(TeamSpecError::ZeroTeams)?;
+        let seats_per_team =
+            NonZeroU8::new(seats_per_team).ok_or(TeamSpecError::ZeroSeatsPerTeam)?;
+        Ok(Self {
+            teams,
+            seats_per_team,
+        })
+    }
+
+    #[must_use]
+    pub const fn teams(&self) -> u8 {
+        self.teams.get()
+    }
+
+    #[must_use]
+    pub const fn seats_per_team(&self) -> u8 {
+        self.seats_per_team.get()
+    }
+}
+
+/// How the platform should present and police turn-taking. Actual turn order
+/// remains game-owned state.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TurnModel {
-    /// Exactly one seat may act at a time — a clear "your turn" affordance is
-    /// possible. Chess, cards, tiles.
     StrictSequential,
-    /// Many seats act in the same window: werewolf night, simultaneous bidding.
     Simultaneous,
-    /// Who may act depends on the phase. Werewolf overall.
     Phased,
-    /// Anyone, any time. Party games.
     FreeForm,
 }
 
@@ -117,22 +425,13 @@ pub enum TurnModel {
 pub enum SpectatorPolicy {
     Forbidden,
     Live,
-    /// Platform buffers by this much so a spectator cannot relay information to
-    /// a player in real time. Ranked cards uses 30 s. (doc 02 §12.2)
-    Delayed {
-        by: Millis,
-    },
-    /// The game's `project(Spectator)` decides; the platform allows attach.
-    /// Werewolf uses this: dead players see everything, outsiders see nothing.
+    Delayed { by: Millis },
     GameControlled,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ChatPolicy {
-    /// Channels the game knows about. The platform creates transport for these.
     pub channels: Vec<ChatChannelSpec>,
-    /// If true, the game will send `Effect::SetChatScopes` and the platform must
-    /// wait for it and enforce it. (ADR-022)
     pub game_scoped: bool,
 }
 
@@ -154,7 +453,6 @@ pub enum ChatKind {
 pub enum VoiceRequirement {
     No,
     Optional,
-    /// Werewolf. The social game *is* the voice channel.
     Recommended,
 }
 
@@ -164,68 +462,91 @@ pub enum RankedSupport {
     Yes { rating: RatingKind },
 }
 
-/// Platform-implemented, game-selected. Games never compute ratings (ADR-024).
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum RatingKind {
     Elo,
     Glicko2,
     TeamElo,
-    /// Multi-seat finishing order — cards, tiles.
     Placement,
 }
 
+/// Closed async configuration: disabled games carry no latent deadlines.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub struct AsyncTurnPolicy {
-    pub supported: bool,
-    /// How long a seat may sit on a turn before the platform emits `WentIdle`.
-    pub turn_deadline: Option<Millis>,
-    /// Total match TTL for async matches.
-    pub match_ttl: Option<Millis>,
+pub enum AsyncTurnPolicy {
+    Disabled,
+    Enabled {
+        turn_deadline: Option<Millis>,
+        match_ttl: Option<Millis>,
+    },
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct ReconnectPolicy {
-    /// How long the platform holds the seat before emitting `Abandoned`.
     pub grace: Millis,
-    /// Whether the game wants `Disconnected`/`Reconnected` inputs at all.
-    /// Chess says yes (and then does nothing, so the clock keeps burning).
     pub notify_rules: bool,
+}
+
+/// A deterministic non-empty bot-level list.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(try_from = "Vec<BotLevel>", into = "Vec<BotLevel>")]
+pub struct BotLevels(Vec<BotLevel>);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum BotLevelsError {
+    #[error("bot substitution requires at least one level")]
+    Empty,
+    #[error("bot level {level:?} occurs more than once")]
+    Duplicate { level: BotLevel },
+}
+
+impl BotLevels {
+    pub fn new(mut levels: Vec<BotLevel>) -> Result<Self, BotLevelsError> {
+        if levels.is_empty() {
+            return Err(BotLevelsError::Empty);
+        }
+        levels.sort_unstable();
+        if let Some(level) = levels
+            .windows(2)
+            .find_map(|pair| (pair[0] == pair[1]).then_some(pair[0]))
+        {
+            return Err(BotLevelsError::Duplicate { level });
+        }
+        Ok(Self(levels))
+    }
+
+    #[must_use]
+    pub fn as_slice(&self) -> &[BotLevel] {
+        &self.0
+    }
+}
+
+impl TryFrom<Vec<BotLevel>> for BotLevels {
+    type Error = BotLevelsError;
+
+    fn try_from(levels: Vec<BotLevel>) -> Result<Self, Self::Error> {
+        Self::new(levels)
+    }
+}
+
+impl From<BotLevels> for Vec<BotLevel> {
+    fn from(levels: BotLevels) -> Self {
+        levels.0
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SubstitutionPolicy {
-    /// Werewolf. The seat carries secret knowledge; handing it over would leak
-    /// or destroy the social game. (doc 02 §12.3)
     Forbidden,
-    BotOnly {
-        levels: Vec<BotLevel>,
-    },
+    BotOnly { levels: BotLevels },
     HumanOrBot,
 }
 
-/// When does the server ack the player's command? (doc 03 §8.3)
-///
-/// **A capability, not a global setting.** Ranked chess wants durability; casual
-/// werewolf wants snappy voting.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Durability {
-    /// `apply → Ack + broadcast → append (batched)`. p95 ~5 ms.
-    /// Loss window: up to 50 ms of events on a hard kill; recovery replays from
-    /// the last committed input and attached clients get a `Resync`.
     AckAfterApply,
-    /// `apply → append → commit → Ack → broadcast`. p95 ~25 ms same-region.
-    /// No loss window. **Required for ranked and anything with stakes.**
     AckAfterPersist,
 }
 
-/// Drives snapshot cadence and storage target. (doc 03 §9.2)
-///
-/// | Class | Interval | Storage |
-/// |---|---|---|
-/// | `Tiny` (< 1 KiB) | every 200 inputs + on end | Postgres `BYTEA` |
-/// | `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` |
-/// | `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | `BYTEA`, zstd |
-/// | `Large` (≥ 256 KiB) | every 25 inputs + on hibernate | Object storage + pointer row |
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StateSizeClass {
     Tiny,
@@ -234,9 +555,221 @@ pub enum StateSizeClass {
     Large,
 }
 
-/// A soft observability budget, never an enforcement limit. (doc 02 §9.3)
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Budget {
     pub max_apply_micros: u32,
     pub max_events_per_input: u16,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tabula_core::canonical_encode;
+
+    #[test]
+    fn seat_count_constructor_partitions() {
+        assert!(SeatCounts::range(1, 1).is_ok());
+        assert!(SeatCounts::range(2, 8).is_ok());
+        assert!(matches!(
+            SeatCounts::range(0, 1),
+            Err(SeatCountsError::Zero)
+        ));
+        assert!(matches!(
+            SeatCounts::range(3, 2),
+            Err(SeatCountsError::InvertedRange)
+        ));
+        assert!(matches!(
+            SeatCounts::exact(Vec::new()),
+            Err(SeatCountsError::EmptyExact)
+        ));
+        assert!(matches!(
+            SeatCounts::exact(vec![1, 0]),
+            Err(SeatCountsError::Zero)
+        ));
+        assert!(matches!(
+            SeatCounts::exact(vec![2, 2]),
+            Err(SeatCountsError::DuplicateExact { count: 2 })
+        ));
+        assert_eq!(SeatCounts::exact(vec![4, 2]).unwrap().min(), 2);
+    }
+
+    #[test]
+    fn bot_levels_and_team_sizes_reject_degenerate_values() {
+        assert!(matches!(
+            BotLevels::new(Vec::new()),
+            Err(BotLevelsError::Empty)
+        ));
+        assert!(matches!(
+            BotLevels::new(vec![BotLevel::Easy, BotLevel::Easy]),
+            Err(BotLevelsError::Duplicate {
+                level: BotLevel::Easy
+            })
+        ));
+        assert!(matches!(TeamSpec::new(0, 1), Err(TeamSpecError::ZeroTeams)));
+        assert!(matches!(
+            TeamSpec::new(1, 0),
+            Err(TeamSpecError::ZeroSeatsPerTeam)
+        ));
+        assert_eq!(TeamSpec::new(2, 3).unwrap().seats_per_team(), 3);
+    }
+
+    #[test]
+    fn ranked_capabilities_require_durable_acknowledgement() {
+        let seats = SeatSpec::new(SeatCounts::range(2, 2).unwrap(), None, false, true);
+        let result = GameCapabilities::new(
+            seats,
+            TurnModel::StrictSequential,
+            false,
+            SpectatorPolicy::Live,
+            ChatPolicy {
+                channels: Vec::new(),
+                game_scoped: false,
+            },
+            VoiceRequirement::No,
+            RankedSupport::Yes {
+                rating: RatingKind::Elo,
+            },
+            AsyncTurnPolicy::Disabled,
+            ReconnectPolicy {
+                grace: Millis(1),
+                notify_rules: false,
+            },
+            SubstitutionPolicy::Forbidden,
+            false,
+            Durability::AckAfterApply,
+            true,
+            StateSizeClass::Tiny,
+            Budget::default(),
+            None,
+        );
+        assert!(matches!(
+            result,
+            Err(GameCapabilitiesError::RankedNeedsDurability)
+        ));
+    }
+
+    #[test]
+    fn capability_deserialization_cannot_bypass_cross_field_validation() {
+        let raw = RawGameCapabilities {
+            seats: SeatSpec::new(SeatCounts::range(2, 2).unwrap(), None, false, true),
+            turn_model: TurnModel::StrictSequential,
+            hidden_information: false,
+            spectators: SpectatorPolicy::Live,
+            chat: ChatPolicy {
+                channels: Vec::new(),
+                game_scoped: false,
+            },
+            voice: VoiceRequirement::No,
+            ranked: RankedSupport::Yes {
+                rating: RatingKind::Elo,
+            },
+            async_turns: AsyncTurnPolicy::Disabled,
+            reconnect: ReconnectPolicy {
+                grace: Millis(1),
+                notify_rules: false,
+            },
+            substitution: SubstitutionPolicy::Forbidden,
+            pausable: false,
+            durability: Durability::AckAfterApply,
+            client_preview: true,
+            state_size: StateSizeClass::Tiny,
+            apply_budget: Budget::default(),
+            max_match_duration: None,
+        };
+        let bytes = canonical_encode(&raw).unwrap();
+        assert!(tabula_core::canonical_decode::<GameCapabilities>(&bytes).is_err());
+    }
+
+    #[test]
+    fn capability_readers_expose_declarative_facts_without_mutation() {
+        let seats = SeatSpec::new(
+            SeatCounts::exact(vec![2]).unwrap(),
+            Some(TeamSpec::new(2, 1).unwrap()),
+            true,
+            false,
+        );
+        let capabilities = GameCapabilities::new(
+            seats,
+            TurnModel::Phased,
+            true,
+            SpectatorPolicy::Delayed { by: Millis(30) },
+            ChatPolicy {
+                channels: vec![ChatChannelSpec {
+                    key: "table".into(),
+                    kind: ChatKind::Table,
+                }],
+                game_scoped: true,
+            },
+            VoiceRequirement::Recommended,
+            RankedSupport::Yes {
+                rating: RatingKind::Glicko2,
+            },
+            AsyncTurnPolicy::Enabled {
+                turn_deadline: Some(Millis(60)),
+                match_ttl: None,
+            },
+            ReconnectPolicy {
+                grace: Millis(10),
+                notify_rules: true,
+            },
+            SubstitutionPolicy::BotOnly {
+                levels: BotLevels::new(vec![BotLevel::Easy]).unwrap(),
+            },
+            true,
+            Durability::AckAfterPersist,
+            true,
+            StateSizeClass::Medium,
+            Budget {
+                max_apply_micros: 1_000,
+                max_events_per_input: 2,
+            },
+            Some(Millis(600)),
+        )
+        .unwrap();
+
+        assert!(capabilities.seats().allowed().contains(2));
+        assert_eq!(capabilities.seats().teams().unwrap().teams(), 2);
+        assert!(capabilities.seats().fill_with_bots());
+        assert!(!capabilities.seats().symmetric());
+        assert!(matches!(capabilities.turn_model(), TurnModel::Phased));
+        assert!(capabilities.hidden_information());
+        assert!(matches!(
+            capabilities.spectators(),
+            SpectatorPolicy::Delayed { .. }
+        ));
+        assert_eq!(capabilities.chat().channels.len(), 1);
+        assert!(matches!(
+            capabilities.voice(),
+            VoiceRequirement::Recommended
+        ));
+        assert!(matches!(capabilities.ranked(), RankedSupport::Yes { .. }));
+        assert!(matches!(
+            capabilities.async_turns(),
+            AsyncTurnPolicy::Enabled { .. }
+        ));
+        assert!(capabilities.reconnect().notify_rules);
+        assert!(matches!(
+            capabilities.substitution(),
+            SubstitutionPolicy::BotOnly { .. }
+        ));
+        assert!(capabilities.pausable());
+        assert_eq!(capabilities.durability(), Durability::AckAfterPersist);
+        assert!(capabilities.client_preview());
+        assert_eq!(capabilities.state_size(), StateSizeClass::Medium);
+        assert_eq!(capabilities.apply_budget().max_events_per_input, 2);
+        assert_eq!(capabilities.max_match_duration(), Some(Millis(600)));
+    }
+
+    #[test]
+    fn refined_capability_deserialization_rejects_invalid_parts() {
+        let zero_range =
+            tabula_core::canonical_encode(&RawSeatCounts::Range { min: 0, max: 2 }).unwrap();
+        assert!(tabula_core::canonical_decode::<SeatCounts>(&zero_range).is_err());
+
+        let empty_bot_levels = tabula_core::canonical_encode(&Vec::<BotLevel>::new()).unwrap();
+        assert!(tabula_core::canonical_decode::<BotLevels>(&empty_bot_levels).is_err());
+
+        let zero_team = tabula_core::canonical_encode(&(0u8, 1u8)).unwrap();
+        assert!(tabula_core::canonical_decode::<TeamSpec>(&zero_team).is_err());
+    }
 }

@@ -59,7 +59,7 @@ pub use ids::{
     GameId, GameVersion, InputIndex, MatchId, RulesVersion, SeatId, SessionId, StateVersion,
     TimerId, UserId,
 };
-pub use outcome::{AbortReason, MatchOutcome, OutcomeKind, Standing};
+pub use outcome::{AbortReason, MatchOutcome, OutcomeKind, RosterValidatedOutcome, Standing};
 pub use rng::{DetRng, MatchSeed};
 pub use seat::{BotLevel, Occupant, SeatChange, SeatEntry, SeatRoster};
 pub use time::{LogicalTime, Millis};

@@ -809,7 +809,7 @@ dependencies = [
 
 [[package]]
 name = "tabula-game-tictactoe"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "smallvec",
@@ -819,6 +819,7 @@ dependencies = [
  "tabula-game-api",
  "tabula-presentation",
  "tabula-testkit",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

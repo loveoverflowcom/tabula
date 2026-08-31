@@ -71,7 +71,7 @@ pub fn check_legal<F: GameTestFixture>() {
         .expect("canonical round trip of a state this crate just encoded");
 
     let seed = F::seed();
-    for seat in F::roster().seats.iter().map(|entry| entry.seat) {
+    for seat in F::roster().iter().map(|entry| entry.seat) {
         check_one::<F>("initial state", &initial_state, seat, &seed, 0, &game);
         check_one::<F>(
             "post-script state",

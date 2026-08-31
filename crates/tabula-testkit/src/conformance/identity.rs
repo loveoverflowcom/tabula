@@ -20,7 +20,7 @@ pub fn check<F: GameTestFixture>() {
     let id_b = F::Module::metadata().id.clone();
 
     assert!(
-        !id_a.0.is_empty(),
+        !id_a.as_str().is_empty(),
         "{}",
         support::failure(
             "stable game identity",
@@ -30,16 +30,16 @@ pub fn check<F: GameTestFixture>() {
     );
 
     assert!(
-        is_reverse_dns(&id_a.0),
+        is_reverse_dns(id_a.as_str()),
         "{}",
         support::failure(
             "stable game identity",
-            &id_a.0,
+            id_a.as_str(),
             &format!(
                 "GameId must be a reverse-DNS identifier of lowercase alphanumeric \
                  segments separated by '.', e.g. \"com.tabula.example\" (doc 02 §4.1). \
                  Got: {:?}",
-                id_a.0
+                id_a.as_str()
             )
         )
     );
@@ -50,7 +50,7 @@ pub fn check<F: GameTestFixture>() {
         "{}",
         support::failure(
             "stable game identity",
-            &id_a.0,
+            id_a.as_str(),
             "GameMetadata::id returned two different values across calls; a game's \
              identity must be a compile-time constant, not something computed anew."
         )
