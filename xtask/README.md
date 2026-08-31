@@ -32,7 +32,7 @@ xtask = "run --package xtask --"
 | `check-no-game-ids` | Scans the tree for a game id appearing as a whole word (case-insensitive, `_`/`-` count as separators) outside its own game package, `tabula-registry`, `xtask`, test fixtures, manifests, or docs/comments. Enforces I-9. |
 | `check-manifests` | Validates every workspace `Cargo.toml` (workspace-field inheritance, no wildcard registry versions, internal crates referenced via `{ workspace = true }`, the `rules`/`presentation`/`bots`/`testkit` feature shape for game crates) and, for games that have one, `game.toml`'s schema (required fields, the `com.tabula.<id>` convention, enum-valued capabilities). Does **not** yet cross-check against the compiled `GameMetadata`/`GameCapabilities` statics — that needs the `metadata_from_manifest!` proc macro (doc 02 §10.2), which does not exist yet. |
 | `new-game <slug> [--seats N] [--category C]` | Scaffolds a game crate from the `games/tictactoe` template, including `clippy.toml` and `tests/conformance.rs`. |
-| `selfplay <game> [--matches N]` | Bot-vs-bot matches with determinism, projection, and termination checking. Failing seeds are written to `tests/replays/<game>/regressions/`. |
+| `selfplay <game> [--matches N] [--seed N\|HEX] [--match-index N] [--max-inputs N] [--clock fischer\|bronstein\|none]` | Deterministic bot-vs-bot matches with projection, timer, transactional, and termination checks. Failures print reproducible seed/match/input coordinates; the command does not mutate the repository. |
 | `replay <file> \| --all [--verify]` | Replays a `.tbr` and prints the first divergence with its input index. |
 
 ### Phase 1+

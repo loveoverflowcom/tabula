@@ -73,6 +73,7 @@ mod graph;
 mod manifest_cmd;
 mod manifest_policy;
 mod perft_cmd;
+mod selfplay_cmd;
 mod tokens_cmd;
 
 fn main() {
@@ -109,7 +110,13 @@ fn main() {
             }
         },
         Some("new-game") => todo!("doc 02 §10.1 — scaffold from games/tictactoe"),
-        Some("selfplay") => todo!("doc 02 §11.3 — the acceptance gate for Phase 0"),
+        Some("selfplay") => match selfplay_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("selfplay: {err}");
+                std::process::exit(2);
+            }
+        },
         Some("replay") => todo!("doc 05 §8.3 — ReplayRunner::verify, print first divergence"),
 
         // Phase 1
