@@ -1,5 +1,5 @@
 use glam::Vec2;
-use tabula_design::Theme;
+use tabula_design::{Positive, Theme};
 
 use crate::{InputEvent, RenderList, TextStyleToken};
 
@@ -88,9 +88,55 @@ pub enum FrameCtxError {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextMetrics {
-    pub size: Vec2,
-    pub line_count: u16,
+    size: Vec2,
+    line_count: u16,
 }
+
+impl TextMetrics {
+    /// Constructs metrics only for finite non-negative extents and at least one line.
+    ///
+    /// @ai.role proof-constructor
+    /// @ai.domain presentation.text-measurement
+    /// @ai.invariant valid-text-metrics
+    /// @ai.evidence tests::text_metrics_reject_invalid_output_facts
+    #[allow(clippy::doc_markdown)]
+    pub fn new(size: Vec2, line_count: u16) -> Result<Self, TextMetricsError> {
+        if !size.is_finite() || size.x < 0.0 || size.y < 0.0 {
+            return Err(TextMetricsError::InvalidSize);
+        }
+        if line_count == 0 {
+            return Err(TextMetricsError::InvalidLineCount);
+        }
+        Ok(Self { size, line_count })
+    }
+
+    #[must_use]
+    pub const fn size(self) -> Vec2 {
+        self.size
+    }
+
+    #[must_use]
+    pub const fn line_count(self) -> u16 {
+        self.line_count
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextMetricsError {
+    InvalidSize,
+    InvalidLineCount,
+}
+
+impl core::fmt::Display for TextMetricsError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidSize => "text metrics size must be finite and non-negative",
+            Self::InvalidLineCount => "text metrics must contain at least one line",
+        })
+    }
+}
+
+impl std::error::Error for TextMetricsError {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RenderError(pub String);
@@ -104,8 +150,6 @@ pub struct RenderError(pub String);
 /// @ai.role imperative-renderer-port
 /// @ai.domain presentation.renderer
 /// @ai.pure false
-/// @ai.invariant backend-types-do-not-leak
-/// @ai.evidence renderer::tests::frame_context_rejects_invalid_display_facts
 #[allow(clippy::doc_markdown)]
 pub trait Renderer {
     fn begin_frame(&mut self, viewport: Viewport, dpi: Dpi, now_ms: u64, theme: Theme) -> FrameCtx;
@@ -115,8 +159,8 @@ pub trait Renderer {
         &self,
         text: &str,
         style: TextStyleToken,
-        max_width: Option<f32>,
-    ) -> TextMetrics;
+        max_width: Option<Positive>,
+    ) -> Result<TextMetrics, RenderError>;
     fn drain_input(&mut self) -> Vec<InputEvent>;
 }
 
@@ -136,5 +180,22 @@ mod tests {
         );
         assert_eq!(Dpi::new(0.0), Err(FrameCtxError::InvalidDpi));
         assert_eq!(Dpi::new(f32::INFINITY), Err(FrameCtxError::InvalidDpi));
+    }
+
+    #[test]
+    fn text_metrics_reject_invalid_output_facts() {
+        assert_eq!(
+            TextMetrics::new(Vec2::new(-1.0, 1.0), 1),
+            Err(TextMetricsError::InvalidSize)
+        );
+        assert_eq!(
+            TextMetrics::new(Vec2::new(f32::NAN, 1.0), 1),
+            Err(TextMetricsError::InvalidSize)
+        );
+        assert_eq!(
+            TextMetrics::new(Vec2::ONE, 0),
+            Err(TextMetricsError::InvalidLineCount)
+        );
+        assert!(TextMetrics::new(Vec2::ZERO, 1).is_ok());
     }
 }

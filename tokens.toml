@@ -1,43 +1,26 @@
-# Design token source of truth. (doc 04 §7, §8.1)
+# Tabula's authored semantic design-system source. (doc 04 §7–§8)
 #
-#   cargo xtask gen-tokens
-#     → crates/tabula-design/src/generated.rs   (const Theme, 4 schemes)
-#     → apps/web/style/tokens.css               (:root { --sys-* })
-#     → docs/ui/tokens.json                     (for design tools)
-#
-# All three outputs are COMMITTED and CI fails if they are stale. Edit this file,
-# never the outputs.
-#
-# PHASE 2. The values below are placeholders that establish the SHAPE; the real
-# palette is a design decision, not an engineering one. What must not change
-# casually is the set of semantic NAMES — doc 09 §4 lists them as "additive;
-# renames require a codemod", because every UI surface references them.
+# `cargo xtask gen-tokens` validates this document and deterministically emits
+# the renderer-neutral Rust themes, web CSS custom properties, and the design
+# tooling JSON export. Resolved scheme values are authored here; `[ref.palette]`
+# is design guidance and provenance, not an implicit runtime derivation.
 
 [meta]
-identity = "M3 Expressive-inspired"      # doc 04 §7.1
-schemes  = ["light", "dark", "hc-light", "hc-dark"]
+identity = "M3 Expressive-inspired"
+schemes = ["light", "dark", "hc-light", "hc-dark"]
 
-# ---------------------------------------------------------------------------
-# Tier 1 — reference. NOBODY uses these directly. (doc 04 §7.2)
-# ---------------------------------------------------------------------------
+# Tier 1 — reference only. Consumers use Tier 2 semantic roles instead.
 [ref.palette]
-# TODO(phase 2): source colors; tonal ramps are derived at BUILD time so
-# tabula-design stays dependency-free (no runtime HCT math).
-primary-source   = "#7B4DFF"
-neutral-source   = "#8E8E99"
-success-source   = "#2E9E5B"
-warning-source   = "#C88A17"
-danger-source    = "#D0453B"
+primary-source = "#7B4DFF"
+neutral-source = "#8E8E99"
+success-source = "#2E9E5B"
+warning-source = "#C88A17"
+danger-source = "#D0453B"
 
-# ---------------------------------------------------------------------------
-# Tier 2 — system (semantic). What code and design actually use.
-# ---------------------------------------------------------------------------
+# Tier 2 — system semantic tokens.
 [sys.color]
-# Every semantic colour is scheme-specific and lives in `[schemes.*]` below.
-# There is intentionally no fallback palette: Rust and CSS must choose a theme.
+# Scheme-specific values are fully authored below. There is no fallback palette.
 
-# Concrete semantic schemes. Reference palette values above remain the only raw
-# palette inputs; these resolved values are emitted into Rust, CSS, and JSON.
 [schemes.light]
 surface = "#FFFBFF"
 container = "#F4EDF7"
@@ -135,63 +118,200 @@ team = ["#7DEBFF", "#FFD39B", "#EFC8FF", "#86FFA9", "#FFB0C7", "#B4C5FF", "#FFE0
 seat-marker = ["#7DEBFF", "#FFD39B", "#EFC8FF", "#86FFA9", "#FFB0C7", "#B4C5FF", "#FFE0A6", "#D7C8FF"]
 
 [sys.space]
-scale = [0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64]
+# Logical dp-like units: semantic names intentionally avoid consumer indexing.
+none = 0
+xxs = 2
+xs = 4
+sm = 8
+md = 12
+lg = 16
+xl = 20
+xxl = 24
+xxxl = 32
+xxxxl = 40
+xxxxxl = 48
+xxxxxxl = 64
 
 [sys.shape]
-scale    = ["none", "xs", "sm", "md", "lg", "xl", "full"]
-semantic = ["card", "board", "token", "sheet", "button", "chip"]
-
-[sys.shape.values]
+# `full` is the renderer convention for a fully rounded capsule/circle.
+none = 0.0
+xs = 4.0
+sm = 8.0
+md = 12.0
+lg = 16.0
+xl = 24.0
+full = 9999.0
 card = 16.0
 board = 12.0
+token = 9999.0
+sheet = 24.0
 button = 14.0
 chip = 8.0
 
 [sys.type]
-# roles x sizes; `mono` has only md/sm.
-# mono REQUIRES tabular figures — a clock whose digits reflow while ticking is
-# unreadable, and clocks are on screen for the entire match.
-roles = ["display", "headline", "title", "body", "label"]
-sizes = ["lg", "md", "sm"]
-mono  = ["md", "sm"]
+# All metrics are logical units. `family` is a renderer-neutral family role.
+[sys.type.family]
+display = "ui-serif, Georgia, serif"
+text = "ui-sans-serif, system-ui, sans-serif"
+mono = "ui-monospace, SFMono-Regular, monospace"
+[sys.type.display.lg]
+family = "display"
+size = 57.0
+line-height = 64.0
+weight = 700
+letter-spacing = -0.5
+[sys.type.display.md]
+family = "display"
+size = 45.0
+line-height = 52.0
+weight = 700
+letter-spacing = -0.25
+[sys.type.display.sm]
+family = "display"
+size = 36.0
+line-height = 44.0
+weight = 700
+letter-spacing = 0.0
+[sys.type.headline.lg]
+family = "text"
+size = 32.0
+line-height = 40.0
+weight = 700
+letter-spacing = 0.0
+[sys.type.headline.md]
+family = "text"
+size = 28.0
+line-height = 36.0
+weight = 700
+letter-spacing = 0.0
+[sys.type.headline.sm]
+family = "text"
+size = 24.0
+line-height = 32.0
+weight = 700
+letter-spacing = 0.0
+[sys.type.title.lg]
+family = "text"
+size = 22.0
+line-height = 28.0
+weight = 700
+letter-spacing = 0.0
+[sys.type.title.md]
+family = "text"
+size = 16.0
+line-height = 24.0
+weight = 700
+letter-spacing = 0.15
+[sys.type.title.sm]
+family = "text"
+size = 14.0
+line-height = 20.0
+weight = 700
+letter-spacing = 0.1
+[sys.type.body.lg]
+family = "text"
+size = 16.0
+line-height = 24.0
+weight = 400
+letter-spacing = 0.5
+[sys.type.body.md]
+family = "text"
+size = 14.0
+line-height = 20.0
+weight = 400
+letter-spacing = 0.25
+[sys.type.body.sm]
+family = "text"
+size = 12.0
+line-height = 16.0
+weight = 400
+letter-spacing = 0.4
+[sys.type.label.lg]
+family = "text"
+size = 14.0
+line-height = 20.0
+weight = 700
+letter-spacing = 0.5
+[sys.type.label.md]
+family = "text"
+size = 12.0
+line-height = 16.0
+weight = 700
+letter-spacing = 0.5
+[sys.type.label.sm]
+family = "text"
+size = 11.0
+line-height = 16.0
+weight = 700
+letter-spacing = 0.5
+[sys.type.mono.md]
+family = "mono"
+size = 16.0
+line-height = 20.0
+weight = 600
+letter-spacing = 0.0
+[sys.type.mono.sm]
+family = "mono"
+size = 12.0
+line-height = 16.0
+weight = 600
+letter-spacing = 0.0
 
 [sys.state]
-# Opacity of the on-color layer over the container. (doc 04 §9.4)
-hover              = 0.08
-focus              = 0.12
-press              = 0.12
-drag               = 0.16
-disabled-content   = 0.38
+hover = 0.08
+focus = 0.12
+press = 0.12
+drag = 0.16
+disabled-content = 0.38
 disabled-container = 0.12
 
 [sys.motion]
-# Durations in ms. Semantic tokens (motion.piece-move, motion.card-deal, ...)
-# compose these with a spring; see doc 04 §9.2 for the full table.
-instant = 80    # state layer changes
-short   = 160   # small moves, fades
-medium  = 280   # piece moves, card deals
-long    = 480   # phase changes, reveals
-xlong   = 800   # win/loss sequences
-stagger = 40    # per-item delay in a sequence
+instant = 80
+short = 160
+medium = 280
+long = 480
+xlong = 800
+stagger = 40
 
 [sys.motion.spring]
-snappy   = { stiffness = 380.0, damping = 26.0, mass = 1.0 }   # UI affordances
-standard = { stiffness = 260.0, damping = 24.0, mass = 1.0 }   # most transitions
-weighty  = { stiffness = 180.0, damping = 22.0, mass = 1.4 }   # pieces, tiles — things with mass
-bouncy   = { stiffness = 320.0, damping = 14.0, mass = 1.0 }   # celebratory
+snappy = { stiffness = 380.0, damping = 26.0, mass = 1.0 }
+standard = { stiffness = 260.0, damping = 24.0, mass = 1.0 }
+weighty = { stiffness = 180.0, damping = 22.0, mass = 1.4 }
+bouncy = { stiffness = 320.0, damping = 14.0, mass = 1.0 }
 
 [sys.motion.reduced]
-# Reduced motion is a first-class token group, not an afterthought. (doc 04 §9.5)
-duration-scale   = 0.0     # 0.0 strict, 0.5 "less motion"
-prefer-fade      = true
-disable-ambient  = true    # parallax, camera drift, particles
-keep-informative = true    # a piece move CARRIES INFORMATION: shorten, do not remove
+duration-scale = 0.0
+prefer-fade = true
+disable-ambient = true
+keep-informative = true
+
+# Profiles are compact semantic requests, not animation timelines.
+[sys.motion.profile]
+piece-move = { duration = "medium", spring = "weighty", category = "informative" }
+card-deal = { duration = "medium", spring = "standard", stagger = "stagger", category = "informative" }
+card-play = { duration = "medium", spring = "snappy", category = "informative" }
+tile-place = { duration = "medium", spring = "weighty", category = "informative" }
+token-drop = { duration = "short", spring = "bouncy", category = "informative" }
+reveal = { duration = "long", spring = "standard", category = "informative" }
+phase-change = { duration = "long", spring = "standard", category = "ambient" }
+turn-change = { duration = "short", spring = "standard", category = "informative" }
+vote = { duration = "short", spring = "snappy", category = "informative" }
+score-update = { duration = "medium", spring = "standard", category = "informative" }
+win = { duration = "xlong", spring = "bouncy", category = "ambient" }
+lose = { duration = "xlong", spring = "standard", category = "ambient" }
+invalid = { duration = "instant", spring = "snappy", category = "informative" }
+enter = { duration = "medium", spring = "standard", category = "informative" }
+exit = { duration = "short", spring = "standard", category = "informative" }
+drag-lift = { duration = "short", spring = "snappy", category = "informative" }
+drag-drop = { duration = "short", spring = "bouncy", category = "informative" }
 
 [sys.density]
-scale      = 1.0
-min-target = 44.0          # dp. Enforced; a debug overlay flags smaller hit rects.
+# Logical accessibility units/dp, never physical pixels.
+scale = 1.0
+min-target = 44.0
 
 [sys.elevation]
+# Abstract levels; renderers select their own shadow/asset treatment.
 low = 1
 medium = 2
 high = 3
@@ -200,8 +320,6 @@ high = 3
 ring-width = 3.0
 ring-color = "primary"
 
-# ---------------------------------------------------------------------------
-# Tier 3 — component. Only where a component must deviate, WITH A WRITTEN REASON.
-# ---------------------------------------------------------------------------
+# Tier 3 remains deliberately empty. Add a component token only when a reusable
+# component has a written reason to deviate from a system semantic role.
 [comp]
-# (empty on purpose)

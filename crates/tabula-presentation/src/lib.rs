@@ -14,6 +14,9 @@ pub use game::{AssetPackRef, GamePresentation, Intent};
 pub use input::{InputEvent, Key, PointerButton, PointerPhase};
 pub use render::{
     Align, Border, Camera2D, Corners, GradientStop, Layer, LinearGradient, Opacity, OpacityError,
-    Paint, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError, TextStyleToken,
+    Paint, Rect, RenderCmd, RenderCmdKind, RenderList, RenderListBuilder, RenderListError,
 };
-pub use renderer::{Dpi, FrameCtx, FrameCtxError, RenderError, Renderer, TextMetrics, Viewport};
+pub use renderer::{
+    Dpi, FrameCtx, FrameCtxError, RenderError, Renderer, TextMetrics, TextMetricsError, Viewport,
+};
+pub use tabula_design::TextStyleToken;

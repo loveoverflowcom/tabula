@@ -101,6 +101,9 @@ fn has_raw_color(line: &str) -> bool {
         || compact.contains("Color::rgba(")
         || compact.contains("Color{")
         || compact.to_ascii_lowercase().contains("rgb(")
+        || compact.to_ascii_lowercase().contains("rgba(")
+        || compact.to_ascii_lowercase().contains("hsl(")
+        || compact.to_ascii_lowercase().contains("hsla(")
         || contains_hex_literal(line)
 }
 
@@ -138,6 +141,9 @@ mod tests {
             "Color { red: 255, green: 0, blue: 0, alpha: 255 }"
         ));
         assert!(has_raw_color("color: rgb(255 0 0);"));
+        assert!(has_raw_color("color: rgba(255 0 0 / 50%);"));
+        assert!(has_raw_color("color: hsl(0 100% 50%);"));
+        assert!(has_raw_color("color: hsla(0 100% 50% / 50%);"));
         assert!(!has_raw_color("// Color { red: 255 }"));
         assert!(!has_raw_color("use semantic tokens"));
     }

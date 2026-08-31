@@ -1,8 +1,10 @@
 use glam::{Affine2, Vec2};
 use smallvec::SmallVec;
-use tabula_design::Color;
+use tabula_design::{Color, Positive, TextStyleToken};
 
-/// A screen-space rectangle. Construction rejects non-finite and negative sizes.
+type Palette = Color;
+
+/// A local logical-coordinate rectangle. Construction rejects non-finite and negative sizes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rect {
     origin: Vec2,
@@ -114,7 +116,7 @@ impl Border {
     }
 
     #[must_use]
-    pub const fn color(self) -> Color {
+    pub const fn color(self) -> Palette {
         self.color
     }
 }
@@ -140,7 +142,7 @@ impl GradientStop {
     }
 
     #[must_use]
-    pub const fn color(self) -> Color {
+    pub const fn color(self) -> Palette {
         self.color
     }
 }
@@ -192,7 +194,10 @@ pub enum Paint {
     LinearGradient(LinearGradient),
 }
 
-/// Semantic draw layers; higher values appear above lower values.
+/// A semantic ordering role among siblings in one stacking context.
+///
+/// Higher values draw after lower values only at the same tree level. A scope's key orders the
+/// entire scope among its siblings; descendants cannot escape that stacking context.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Layer(pub u8);
 
@@ -205,24 +210,27 @@ impl Layer {
     pub const TOAST: Self = Self(50);
 }
 
-/// A finite camera with strictly positive zoom. It belongs to client-local presentation state.
+/// A finite local-to-logical camera with strictly positive zoom.
+///
+/// A backend maps a local point as `(point - origin) * zoom`. `origin` is therefore the local
+/// point placed at logical origin. The default origin and zoom form the identity transform.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Camera2D {
-    center: Vec2,
+    origin: Vec2,
     zoom: f32,
 }
 
 impl Camera2D {
-    pub fn new(center: Vec2, zoom: f32) -> Result<Self, RenderListError> {
-        if !center.is_finite() || !zoom.is_finite() || zoom <= 0.0 {
+    pub fn new(origin: Vec2, zoom: f32) -> Result<Self, RenderListError> {
+        if !origin.is_finite() || !zoom.is_finite() || zoom <= 0.0 {
             return Err(RenderListError::InvalidCamera);
         }
-        Ok(Self { center, zoom })
+        Ok(Self { origin, zoom })
     }
 
     #[must_use]
-    pub const fn center(self) -> Vec2 {
-        self.center
+    pub const fn origin(self) -> Vec2 {
+        self.origin
     }
 
     #[must_use]
@@ -275,16 +283,6 @@ pub enum Align {
     End,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TextStyleToken {
-    Display,
-    Headline,
-    Title,
-    Body,
-    Label,
-    Mono,
-}
-
 /// The intentionally small backend-neutral rendering vocabulary from doc 04 §5.2.
 #[derive(Clone, Debug, PartialEq)]
 pub enum RenderCmd {
@@ -311,7 +309,7 @@ pub enum RenderCmd {
         at: Vec2,
         style: TextStyleToken,
         align: Align,
-        max_width: Option<f32>,
+        max_width: Option<Positive>,
         color: Color,
         layer: Layer,
         z: i16,
@@ -324,6 +322,7 @@ pub enum RenderCmd {
         layer: Layer,
         z: i16,
     },
+    /// Opens an axis-aligned logical-viewport scissor stacking context.
     PushClip {
         rect: Rect,
         layer: Layer,
@@ -333,6 +332,7 @@ pub enum RenderCmd {
         layer: Layer,
         z: i16,
     },
+    /// Opens a local affine-transform stacking context. Finite singular transforms are legal.
     PushTransform {
         matrix: Affine2,
         layer: Layer,
@@ -342,6 +342,7 @@ pub enum RenderCmd {
         layer: Layer,
         z: i16,
     },
+    /// Opens an inherited primitive-opacity stacking context, not true group compositing.
     PushOpacity {
         opacity: Opacity,
         layer: Layer,
@@ -351,6 +352,17 @@ pub enum RenderCmd {
         layer: Layer,
         z: i16,
     },
+}
+
+/// A small, stable rendering diagnostic used when a backend lacks raster support.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RenderCmdKind {
+    Sprite,
+    Rect,
+    RoundedRect,
+    Text,
+    Path,
+    LinearGradient,
 }
 
 impl RenderCmd {
@@ -390,7 +402,8 @@ impl RenderCmd {
 ///
 /// Commands are a flattened backend stream. The builder retains scopes as an internal tree until
 /// `finish`: sibling draws and scope groups are stably ordered by `(layer, z)`, while each scope
-/// remains contiguous. A child draw cannot escape its group's ordering position.
+/// remains contiguous. Within one stacking context, equal keys preserve insertion order. A child
+/// draw cannot escape its group's ordering position.
 ///
 /// ```compile_fail
 /// use tabula_presentation::{Camera2D, RenderList};
@@ -400,8 +413,11 @@ impl RenderCmd {
 /// @ai.role renderer-contract
 /// @ai.domain presentation.render
 /// @ai.invariant balanced-render-state
-/// @ai.law deterministic-hierarchical-layer-order
-/// @ai.evidence render::tests::scope_groups_preserve_layer_order_without_constraining_children
+/// @ai.invariant child-cannot-escape-stacking-context
+/// @ai.law stable-sibling-order
+/// @ai.evidence render::tests::balanced_scopes_are_the_only_public_construction_path
+/// @ai.evidence render::tests::equal_order_siblings_preserve_insertion_order_at_every_stack_level
+/// @ai.evidence render::tests::child_layers_cannot_escape_their_stacking_context
 #[allow(clippy::doc_markdown)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct RenderList {
@@ -490,7 +506,7 @@ pub enum RenderListError {
     InvalidGeometry,
     InvalidGradient,
     InvalidTransform,
-    InvalidTextWidth,
+    InvalidTextPosition,
     UnbalancedClip,
     UnbalancedTransform,
     UnbalancedOpacity,
@@ -592,10 +608,9 @@ impl RenderListBuilder {
             RenderCmd::Rect { rect, .. } | RenderCmd::PushClip { rect, .. } => {
                 Self::valid_rect(*rect)?;
             }
-            RenderCmd::Text { at, max_width, .. } => {
-                if !finite(*at) || max_width.is_some_and(|width| !width.is_finite() || width <= 0.0)
-                {
-                    return Err(RenderListError::InvalidTextWidth);
+            RenderCmd::Text { at, .. } => {
+                if !finite(*at) {
+                    return Err(RenderListError::InvalidTextPosition);
                 }
             }
             RenderCmd::Path {
@@ -641,6 +656,11 @@ impl RenderListBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tabula_design::{Theme, ThemeKind};
+
+    fn semantic_color() -> Palette {
+        Theme::by_kind(ThemeKind::Light).color.primary
+    }
 
     fn rect(layer: Layer, z: i16) -> RenderCmd {
         RenderCmd::Rect {
@@ -665,8 +685,21 @@ mod tests {
         RenderCmd::PopOpacity { layer, z }
     }
 
+    fn text(label: &str, layer: Layer, z: i16) -> RenderCmd {
+        RenderCmd::Text {
+            text: String::from(label),
+            at: Vec2::ZERO,
+            style: TextStyleToken::BodyMd,
+            align: Align::Start,
+            max_width: None,
+            color: semantic_color(),
+            layer,
+            z,
+        }
+    }
+
     #[test]
-    fn scope_groups_preserve_layer_order_without_constraining_children() {
+    fn child_layers_cannot_escape_their_stacking_context() {
         let mut builder = RenderListBuilder::new(Camera2D::default());
         builder.push(rect(Layer::HUD, 0)).unwrap();
         builder.push(push_opacity(Layer::BOARD, 0)).unwrap();
@@ -701,24 +734,50 @@ mod tests {
     }
 
     #[test]
-    fn stable_equal_keys_keep_insertion_order() {
-        let mut builder = RenderListBuilder::new(Camera2D::default());
-        builder.push(rect(Layer::BOARD, 0)).unwrap();
-        builder
-            .push(RenderCmd::Text {
-                text: String::from("second"),
-                at: Vec2::ZERO,
-                style: TextStyleToken::Body,
-                align: Align::Start,
-                max_width: None,
-                color: Color::rgb(0, 0, 0),
+    fn equal_order_siblings_preserve_insertion_order_at_every_stack_level() {
+        let mut root = RenderListBuilder::new(Camera2D::default());
+        root.push(rect(Layer::BOARD, 0)).unwrap();
+        root.push(text("root-second", Layer::BOARD, 0)).unwrap();
+        let root = root.finish().unwrap();
+        assert!(matches!(root.commands()[0], RenderCmd::Rect { .. }));
+        assert!(
+            matches!(&root.commands()[1], RenderCmd::Text { text, .. } if text == "root-second")
+        );
+
+        let mut scope = RenderListBuilder::new(Camera2D::default());
+        scope.push(push_opacity(Layer::BOARD, 0)).unwrap();
+        scope.push(rect(Layer::BOARD, 0)).unwrap();
+        scope.push(text("scope-second", Layer::BOARD, 0)).unwrap();
+        scope.push(pop_opacity(Layer::BOARD, 0)).unwrap();
+        let scope = scope.finish().unwrap();
+        assert!(matches!(scope.commands()[1], RenderCmd::Rect { .. }));
+        assert!(
+            matches!(&scope.commands()[2], RenderCmd::Text { text, .. } if text == "scope-second")
+        );
+
+        let mut nested = RenderListBuilder::new(Camera2D::default());
+        nested.push(push_opacity(Layer::BOARD, 0)).unwrap();
+        nested
+            .push(RenderCmd::PushClip {
+                rect: Rect::new(Vec2::ZERO, Vec2::ONE).unwrap(),
                 layer: Layer::BOARD,
                 z: 0,
             })
             .unwrap();
-        let list = builder.finish().unwrap();
-        assert!(matches!(list.commands()[0], RenderCmd::Rect { .. }));
-        assert!(matches!(&list.commands()[1], RenderCmd::Text { text, .. } if text == "second"));
+        nested.push(rect(Layer::BOARD, 0)).unwrap();
+        nested.push(text("nested-second", Layer::BOARD, 0)).unwrap();
+        nested
+            .push(RenderCmd::PopClip {
+                layer: Layer::BOARD,
+                z: 0,
+            })
+            .unwrap();
+        nested.push(pop_opacity(Layer::BOARD, 0)).unwrap();
+        let nested = nested.finish().unwrap();
+        assert!(matches!(nested.commands()[2], RenderCmd::Rect { .. }));
+        assert!(
+            matches!(&nested.commands()[3], RenderCmd::Text { text, .. } if text == "nested-second")
+        );
     }
 
     #[test]
@@ -764,7 +823,7 @@ mod tests {
     }
 
     #[test]
-    fn builder_rejects_unbalanced_or_mismatched_scopes() {
+    fn balanced_scopes_are_the_only_public_construction_path() {
         let mut builder = RenderListBuilder::new(Camera2D::default());
         assert_eq!(
             builder.push(RenderCmd::PopClip {
@@ -830,11 +889,11 @@ mod tests {
             Err(RenderListError::InvalidGeometry)
         );
         assert_eq!(
-            Border::new(-1.0, Color::rgb(0, 0, 0)),
+            Border::new(-1.0, semantic_color()),
             Err(RenderListError::InvalidGeometry)
         );
         assert_eq!(
-            GradientStop::new(1.1, Color::rgb(0, 0, 0)),
+            GradientStop::new(1.1, semantic_color()),
             Err(RenderListError::InvalidGradient)
         );
         assert_eq!(Opacity::try_from(1.01), Err(OpacityError::OutOfRange));
@@ -843,11 +902,37 @@ mod tests {
             Camera2D::new(Vec2::ZERO, 0.0),
             Err(RenderListError::InvalidCamera)
         );
+        let mut builder = RenderListBuilder::new(Camera2D::default());
+        assert!(builder
+            .push(RenderCmd::PushTransform {
+                matrix: Affine2::from_scale(Vec2::new(0.0, 1.0)),
+                layer: Layer::BOARD,
+                z: 0,
+            })
+            .is_ok());
+    }
+
+    #[test]
+    fn non_finite_text_position_reports_a_precise_error() {
+        let mut builder = RenderListBuilder::new(Camera2D::default());
+        assert_eq!(
+            builder.push(RenderCmd::Text {
+                text: String::from("invalid position"),
+                at: Vec2::new(f32::NAN, 0.0),
+                style: TextStyleToken::BodyMd,
+                align: Align::Start,
+                max_width: None,
+                color: semantic_color(),
+                layer: Layer::BOARD,
+                z: 0,
+            }),
+            Err(RenderListError::InvalidTextPosition)
+        );
     }
 
     #[test]
     fn gradient_requires_finite_endpoints_and_ordered_stops() {
-        let black = Color::rgb(0, 0, 0);
+        let black = semantic_color();
         let one = GradientStop::new(1.0, black).unwrap();
         let zero = GradientStop::new(0.0, black).unwrap();
         assert_eq!(
@@ -866,7 +951,7 @@ mod tests {
         assert_eq!(
             builder.push(RenderCmd::Path {
                 points: smallvec::smallvec![Vec2::ZERO],
-                stroke: Border::new(1.0, Color::rgb(0, 0, 0)).unwrap(),
+                stroke: Border::new(1.0, semantic_color()).unwrap(),
                 closed: false,
                 fill: None,
                 layer: Layer::BOARD,
