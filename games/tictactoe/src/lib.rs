@@ -75,7 +75,10 @@ impl GameModule for TicTacToeModule {
 
     #[cfg(feature = "bots")]
     fn bot(level: BotLevel) -> Option<Box<dyn tabula_game_api::GameBot<TicTacToeRules>>> {
-        Some(Box::new(bot::Perfect::new(level)))
+        match level {
+            BotLevel::Trivial | BotLevel::Easy => Some(Box::new(bot::Heuristic::new(level))),
+            BotLevel::Medium | BotLevel::Hard => None,
+        }
     }
 
     fn validate_config(cfg: &Config, roster: &SeatRoster) -> Result<(), ConfigError> {

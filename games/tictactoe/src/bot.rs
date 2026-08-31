@@ -5,46 +5,65 @@
 //! and it doubles as a proof that the projection contains enough information to
 //! play the game.
 //!
-//! Tic-tac-toe is solved, so `Hard` can be perfect. Do not read that as a
-//! template — chess gets a shallow alpha-beta as an *optional crate feature*,
-//! and no game gets ML in the MVP (doc 01 §8).
+//! The module advertises only `Trivial` and `Easy`; the small heuristic below
+//! implements those levels. A stronger solver can be added when the game
+//! capability contract is deliberately expanded (doc 01 §8).
 
 use tabula_core::{BotLevel, DetRng, Millis, SeatId};
 use tabula_game_api::GameBot;
 
-use crate::{rules::TicTacToeRules, state::Command, state::View};
+use crate::{rules::TicTacToeRules, state::Command, state::Mark, state::Status, state::View};
 
 #[derive(Debug)]
-pub struct Perfect {
+pub struct Heuristic {
     level: BotLevel,
 }
 
-impl Perfect {
+impl Heuristic {
     #[must_use]
     pub fn new(level: BotLevel) -> Self {
         Self { level }
     }
 }
 
-impl GameBot<TicTacToeRules> for Perfect {
+impl GameBot<TicTacToeRules> for Heuristic {
     fn level(&self) -> BotLevel {
         self.level
     }
 
-    fn choose(&self, _view: &View, _seat: SeatId, _rng: &mut DetRng) -> Option<Command> {
-        // TODO(phase 0): implement per level.
-        //
-        //   Trivial — uniform random legal cell. Free for any game that
-        //             implements `legal_commands`; this is the one to write
-        //             first because self-play (the primary fuzzer) only needs it.
-        //   Easy    — random, but take an immediate win and block an immediate loss.
-        //   Medium  — the above plus centre/corner preference.
-        //   Hard    — full minimax. The board is 9 cells; it is instant.
-        //
-        // MUST be deterministic given `(view, rng)`. That is what makes
-        // bot-vs-bot self-play reproducible, and reproducibility is the entire
-        // reason self-play works as a fuzzer (doc 02 §11.3).
-        todo!("doc 02 §6")
+    fn choose(&self, view: &View, seat: SeatId, rng: &mut DetRng) -> Option<Command> {
+        if view.you != Some(seat) || view.turn != seat || !matches!(view.status, Status::Playing) {
+            return None;
+        }
+
+        let mut cells: Vec<u8> = view
+            .board
+            .iter()
+            .enumerate()
+            .filter(|(_, mark)| mark.is_none())
+            .filter_map(|(cell, _)| u8::try_from(cell).ok())
+            .collect();
+        if cells.is_empty() {
+            return None;
+        }
+
+        let mark = mark_for_turn(view);
+        match self.level {
+            BotLevel::Trivial => {}
+            BotLevel::Easy | BotLevel::Medium | BotLevel::Hard => {
+                if let Some(cell) = completion(view.board, mark) {
+                    cells = vec![cell];
+                } else if let Some(cell) = completion(view.board, other(mark)) {
+                    cells = vec![cell];
+                }
+            }
+        }
+
+        let index = usize::try_from(rng.below(u32::try_from(cells.len()).ok()?)).ok()?;
+        cells
+            .get(index)
+            .copied()
+            .map(|cell| Command::Place { cell })
     }
 
     fn think_time(&self, _view: &View) -> Millis {
@@ -52,7 +71,56 @@ impl GameBot<TicTacToeRules> for Perfect {
         // delay, never as a rule — a late bot is late, not illegal.
         match self.level {
             BotLevel::Trivial => Millis(200),
-            _ => Millis(700),
+            BotLevel::Easy | BotLevel::Medium | BotLevel::Hard => Millis(700),
         }
     }
+}
+
+const LINES: [[usize; 3]; 8] = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+];
+
+fn mark_for_turn(view: &View) -> Mark {
+    let x_count = view
+        .board
+        .iter()
+        .filter(|mark| **mark == Some(Mark::X))
+        .count();
+    let o_count = view
+        .board
+        .iter()
+        .filter(|mark| **mark == Some(Mark::O))
+        .count();
+    if x_count == o_count {
+        Mark::X
+    } else {
+        Mark::O
+    }
+}
+
+fn other(mark: Mark) -> Mark {
+    match mark {
+        Mark::X => Mark::O,
+        Mark::O => Mark::X,
+    }
+}
+
+fn completion(board: [Option<Mark>; 9], mark: Mark) -> Option<u8> {
+    LINES.iter().find_map(|line| {
+        let empty = line.iter().find(|cell| board[**cell].is_none());
+        let marks = line
+            .iter()
+            .filter(|cell| board[**cell] == Some(mark))
+            .count();
+        (marks == 2 && empty.is_some())
+            .then(|| u8::try_from(*empty?).ok())
+            .flatten()
+    })
 }

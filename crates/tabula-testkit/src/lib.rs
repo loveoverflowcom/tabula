@@ -37,8 +37,9 @@
 //! better than hand-written tests, and it costs a game author nothing beyond
 //! implementing `legal_commands`.
 //!
-//! Nightly it runs at 100k matches per game, and any failing seed is
-//! auto-committed to `tests/replays/<game>/regressions/`.
+//! Nightly it can run at 100k matches per game. Failures carry the base seed,
+//! match index, and input index needed to reproduce them; the harness does not
+//! mutate the repository or create replay files.
 //!
 //! ## Module map
 //!

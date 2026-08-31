@@ -27,7 +27,10 @@ thiserror      = { workspace = true }
 cargo_metadata = "0.19"
 serde_json    = { workspace = true }
 tempfile      = "3"
-tabula-game-chess = { workspace = true }
+tabula-core   = { workspace = true }
+tabula-testkit = { workspace = true }
+tabula-game-chess = { workspace = true, features = ["rules", "bots"] }
+tabula-game-tictactoe = { workspace = true, features = ["rules", "bots"] }
 
 [lints]
 workspace = true
