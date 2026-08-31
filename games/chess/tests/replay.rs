@@ -55,10 +55,10 @@ fn committed_chess_replay_reproduces_its_independent_final_hash() {
             .expect("committed replay must match the typed runner");
     let report = runner.verify().expect("replay execution must succeed");
     assert!(report.is_verified(), "{report:?}");
-    assert_eq!(report.expected_outcome, report.actual_outcome);
-    assert!(report.expected_outcome.is_some());
+    assert_eq!(report.expected_outcome(), report.actual_outcome());
+    assert!(report.expected_outcome().is_some());
     assert_eq!(
-        report.actual_final_state_hash.0,
+        report.actual_final_state_hash().0,
         [
             0x73, 0x0e, 0xc3, 0xdc, 0x4d, 0xb8, 0xfc, 0x3b, 0xda, 0x3f, 0x2c, 0x8f, 0xc8, 0x7a,
             0xa7, 0x4d, 0x55, 0x2d, 0x88, 0xbc, 0x63, 0xe5, 0x0b, 0x10, 0xf3, 0xf4, 0x7d, 0x4a,
@@ -89,10 +89,10 @@ fn committed_chess_clock_replay_contains_a_recorded_timer_input() {
         .verify()
         .expect("clock replay execution must succeed");
     assert!(report.is_verified(), "{report:?}");
-    assert_eq!(report.expected_outcome, report.actual_outcome);
-    assert!(report.expected_outcome.is_some());
+    assert_eq!(report.expected_outcome(), report.actual_outcome());
+    assert!(report.expected_outcome().is_some());
     assert_eq!(
-        report.actual_final_state_hash.0,
+        report.actual_final_state_hash().0,
         [
             0xbd, 0x61, 0x0f, 0x6d, 0x0a, 0xb8, 0x4f, 0x3b, 0xb0, 0x25, 0xa1, 0x4b, 0xcf, 0x1d,
             0xde, 0xd1, 0x10, 0x7e, 0x13, 0x85, 0x83, 0x9a, 0x8d, 0x59, 0x0b, 0x11, 0xf0, 0xb8,

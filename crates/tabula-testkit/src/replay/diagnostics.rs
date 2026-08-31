@@ -4,7 +4,8 @@ use tabula_core::InputIndex;
 use tabula_game_api::GameRules;
 
 use super::{
-    CheckpointEvidence, Divergence, DivergenceKind, ReplayDraft, ReplayRunner, VerifyReport,
+    CheckpointEvidence, Divergence, DivergenceKind, ReplayDraft, ReplayRunner, ReplayScope,
+    VerifyReport,
 };
 
 /// The strongest localization claim supported by replay evidence.
@@ -135,6 +136,7 @@ impl core::fmt::Display for ReplayDiagnosisKind {
 /// stored checkpoint evidence (doc 05 §7.3).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReplayDiagnosis {
+    replay_scope: ReplayScope,
     kind: ReplayDiagnosisKind,
     location: DivergenceLocation,
     evidence: Divergence,
@@ -222,7 +224,10 @@ impl VerifyReport {
     /// @ai.evidence crate::replay::tests::checkpoint_reconvergence_does_not_restore_monotonicity
     /// @ai.evidence crate::replay::tests::final_hash_only_diagnosis_is_final_evidence
     pub fn diagnoses(&self) -> Vec<ReplayDiagnosis> {
-        let first_checkpoint = self.checkpoint_evidence.iter().find(|claim| !claim.matched);
+        let first_checkpoint = self
+            .checkpoint_evidence
+            .iter()
+            .find(|claim| !claim.matched());
         let mut diagnoses = Vec::new();
 
         if let Some(claim) = first_checkpoint {
@@ -232,6 +237,7 @@ impl VerifyReport {
             }) {
                 let location = checkpoint_location(&self.checkpoint_evidence, claim);
                 diagnoses.push(ReplayDiagnosis {
+                    replay_scope: self.replay_scope.clone(),
                     kind: ReplayDiagnosisKind::CheckpointState,
                     location,
                     evidence: evidence.clone(),
@@ -243,6 +249,7 @@ impl VerifyReport {
             .find(|divergence| divergence.kind == DivergenceKind::FinalStateHash)
         {
             diagnoses.push(ReplayDiagnosis {
+                replay_scope: self.replay_scope.clone(),
                 kind: ReplayDiagnosisKind::FinalStateHashOnly,
                 location: final_evidence_location(self),
                 evidence: evidence.clone(),
@@ -255,6 +262,7 @@ impl VerifyReport {
             .find(|divergence| divergence.kind == DivergenceKind::TerminalOutcome)
         {
             diagnoses.push(ReplayDiagnosis {
+                replay_scope: self.replay_scope.clone(),
                 kind: ReplayDiagnosisKind::TerminalOutcome,
                 location: final_evidence_location(self),
                 evidence: evidence.clone(),
@@ -299,6 +307,16 @@ impl<R: GameRules> ReplayRunner<R> {
                 reason: ReproducerReason::CheckpointClaimUnavailable,
             };
         }
+        let Ok(replay_scope) = self.replay.diagnosis_scope() else {
+            return ReproducerAvailability::InsufficientEvidence {
+                reason: ReproducerReason::CheckpointClaimUnavailable,
+            };
+        };
+        if diagnosis.replay_scope != replay_scope {
+            return ReproducerAvailability::InsufficientEvidence {
+                reason: ReproducerReason::CheckpointClaimUnavailable,
+            };
+        }
 
         let target = match &diagnosis.location {
             DivergenceLocation::Exact(exact) => exact.input_index,
@@ -330,10 +348,6 @@ impl<R: GameRules> ReplayRunner<R> {
                 reason: ReproducerReason::CheckpointClaimUnavailable,
             };
         }
-        if position + 1 == self.replay.frames.len() {
-            return ReproducerAvailability::OriginalReplayIsMinimal;
-        }
-
         let Ok(mut prefix_runner) =
             Self::from_validated(self.replay.clone(), self.identity.clone())
         else {
@@ -356,6 +370,9 @@ impl<R: GameRules> ReplayRunner<R> {
             return ReproducerAvailability::InsufficientEvidence {
                 reason: ReproducerReason::CheckpointClaimUnavailable,
             };
+        }
+        if position + 1 == self.replay.frames.len() {
+            return ReproducerAvailability::OriginalReplayIsMinimal;
         }
 
         let mut header = self.replay.header.clone();
@@ -381,27 +398,27 @@ fn checkpoint_location(
 ) -> DivergenceLocation {
     let previous_verified = checkpoints
         .iter()
-        .filter(|claim| claim.input_index < failing.input_index)
+        .filter(|claim| claim.input_index() < failing.input_index())
         .rev()
-        .find(|claim| claim.matched)
-        .map(|claim| claim.input_index);
+        .find(|claim| claim.matched())
+        .map(CheckpointEvidence::input_index);
     let adjacent = previous_verified.is_some_and(|previous| {
         previous
             .0
             .checked_add(1)
-            .is_some_and(|next| next == failing.input_index.0)
+            .is_some_and(|next| next == failing.input_index().0)
     });
 
     if let Some(previous_verified) = previous_verified.filter(|_| adjacent) {
         DivergenceLocation::Exact(ExactDivergence {
-            input_index: failing.input_index,
+            input_index: failing.input_index(),
             previous_verified,
         })
     } else {
         DivergenceLocation::Window(DivergenceWindow {
             after_verified: previous_verified,
-            at_or_before: failing.input_index,
-            first_failing_evidence: failing.input_index,
+            at_or_before: failing.input_index(),
+            first_failing_evidence: failing.input_index(),
         })
     }
 }
@@ -411,9 +428,10 @@ fn final_evidence_location(report: &VerifyReport) -> DivergenceLocation {
         .checkpoint_evidence
         .iter()
         .rev()
-        .find(|claim| claim.matched)
-        .map(|claim| claim.input_index);
-    let final_input = (report.inputs_replayed > 0).then_some(InputIndex(report.inputs_replayed));
+        .find(|claim| claim.matched())
+        .map(CheckpointEvidence::input_index);
+    let final_input =
+        (report.inputs_replayed() > 0).then_some(InputIndex(report.inputs_replayed()));
     DivergenceLocation::FinalEvidenceOnly(FinalEvidenceOnly {
         after_verified,
         final_input,

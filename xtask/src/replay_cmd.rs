@@ -150,7 +150,7 @@ fn verify<M: tabula_game_api::GameModule>(
 }
 
 fn print_report(path: &Path, report: &VerifyReport) {
-    let verdict = match &report.verdict {
+    let verdict = match report.verdict() {
         ReplayVerdict::Exact => "EXACT",
         ReplayVerdict::CompatibleVersion => "COMPATIBLE_VERSION",
         ReplayVerdict::NeedsMigration { .. } => "NEEDS_MIGRATION",
@@ -159,20 +159,20 @@ fn print_report(path: &Path, report: &VerifyReport) {
     println!(
         "file: {}\ninputs: {}\ncheckpoints checked: {}\nfinal state hash: {}\nfinal hash checked: {}\nterminal outcome expected: {:?}\nterminal outcome actual: {:?}\nterminal outcome checked: {}\nevidence: state checkpoints, final state hash, terminal outcome\nverdict: {}",
         path.display(),
-        report.inputs_replayed,
-        report.checkpoints_checked,
-        hex32(report.actual_final_state_hash.0),
-        report.final_hash_checked,
-        report.expected_outcome,
-        report.actual_outcome,
-        report.outcome_checked,
+        report.inputs_replayed(),
+        report.checkpoints_checked(),
+        hex32(report.actual_final_state_hash().0),
+        report.final_hash_checked(),
+        report.expected_outcome(),
+        report.actual_outcome(),
+        report.outcome_checked(),
         verdict,
     );
-    if report.divergences.is_empty() {
+    if report.divergences().is_empty() {
         println!("status: VERIFIED");
     } else {
         println!("status: DIVERGED");
-        if let Some(divergence) = report.divergences.first() {
+        if let Some(divergence) = report.divergences().first() {
             print_first_failing_evidence(divergence);
         }
     }

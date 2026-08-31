@@ -166,6 +166,12 @@ pub struct ValidatedReplay {
     final_state_hash: StateHash,
 }
 
+/// An internal fingerprint that scopes diagnostic evidence to one validated
+/// replay. It is intentionally not exposed: its only purpose is to prevent a
+/// diagnosis from authorizing work on a different replay with the same rules.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct ReplayScope([u8; 32]);
+
 impl Clone for ValidatedReplay {
     fn clone(&self) -> Self {
         Self {
@@ -309,6 +315,14 @@ impl ValidatedReplay {
             payload.as_slice(),
             ruzstd::encoding::CompressionLevel::Uncompressed,
         ))
+    }
+
+    fn diagnosis_scope(&self) -> Result<ReplayScope, ReplayError> {
+        let bytes = self.to_bytes()?;
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(b"tabula.replay.diagnosis.scope.v1");
+        hasher.update(&bytes);
+        Ok(ReplayScope(*hasher.finalize().as_bytes()))
     }
 
     #[must_use]
@@ -616,6 +630,7 @@ impl<R: GameRules> ReplayRunner<R> {
         }
 
         let mut report = VerifyReport {
+            replay_scope: self.replay.diagnosis_scope()?,
             verdict,
             expected_final_state_hash: self.replay.final_state_hash,
             actual_final_state_hash: StateHash([0; 32]),
@@ -637,7 +652,6 @@ impl<R: GameRules> ReplayRunner<R> {
                     input_index: InputIndex(result.input_index),
                     expected,
                     actual: result.state_hash,
-                    matched: result.checkpoint_matched == Some(true),
                 });
                 if result.checkpoint_matched != Some(true) {
                     report.divergences.push(Divergence {
@@ -1126,10 +1140,35 @@ pub struct Divergence {
 /// for a proof-strength classification.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckpointEvidence {
-    pub input_index: InputIndex,
-    pub expected: StateHash,
-    pub actual: StateHash,
-    pub matched: bool,
+    input_index: InputIndex,
+    expected: StateHash,
+    actual: StateHash,
+}
+
+impl CheckpointEvidence {
+    /// The stored checkpoint's input index.
+    #[must_use]
+    pub const fn input_index(&self) -> InputIndex {
+        self.input_index
+    }
+
+    /// The state hash stored in the replay at this checkpoint.
+    #[must_use]
+    pub const fn expected(&self) -> StateHash {
+        self.expected
+    }
+
+    /// The state hash recomputed by verification at this checkpoint.
+    #[must_use]
+    pub const fn actual(&self) -> StateHash {
+        self.actual
+    }
+
+    /// Whether the stored and recomputed hashes agree.
+    #[must_use]
+    pub fn matched(&self) -> bool {
+        self.expected == self.actual
+    }
 }
 
 /// Complete verification evidence. `is_verified()` is intentionally stricter
@@ -1139,20 +1178,87 @@ pub struct CheckpointEvidence {
 /// claim from a later reconvergence.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifyReport {
-    pub verdict: ReplayVerdict,
-    pub expected_final_state_hash: StateHash,
-    pub actual_final_state_hash: StateHash,
-    pub final_hash_checked: bool,
-    pub expected_outcome: Option<MatchOutcome>,
-    pub actual_outcome: Option<MatchOutcome>,
-    pub outcome_checked: bool,
-    pub inputs_replayed: u64,
-    pub checkpoints_checked: u64,
-    pub checkpoint_evidence: Vec<CheckpointEvidence>,
-    pub divergences: Vec<Divergence>,
+    replay_scope: ReplayScope,
+    verdict: ReplayVerdict,
+    expected_final_state_hash: StateHash,
+    actual_final_state_hash: StateHash,
+    final_hash_checked: bool,
+    expected_outcome: Option<MatchOutcome>,
+    actual_outcome: Option<MatchOutcome>,
+    outcome_checked: bool,
+    inputs_replayed: u64,
+    checkpoints_checked: u64,
+    checkpoint_evidence: Vec<CheckpointEvidence>,
+    divergences: Vec<Divergence>,
 }
 
 impl VerifyReport {
+    /// The rules compatibility verdict established before replay execution.
+    #[must_use]
+    pub const fn verdict(&self) -> &ReplayVerdict {
+        &self.verdict
+    }
+
+    /// The final hash stored in the replay trailer.
+    #[must_use]
+    pub const fn expected_final_state_hash(&self) -> StateHash {
+        self.expected_final_state_hash
+    }
+
+    /// The final hash recomputed during verification.
+    #[must_use]
+    pub const fn actual_final_state_hash(&self) -> StateHash {
+        self.actual_final_state_hash
+    }
+
+    /// Whether the replay's final hash was compared.
+    #[must_use]
+    pub const fn final_hash_checked(&self) -> bool {
+        self.final_hash_checked
+    }
+
+    /// The terminal outcome claimed by the replay.
+    #[must_use]
+    pub fn expected_outcome(&self) -> Option<&MatchOutcome> {
+        self.expected_outcome.as_ref()
+    }
+
+    /// The terminal outcome derived during verification.
+    #[must_use]
+    pub fn actual_outcome(&self) -> Option<&MatchOutcome> {
+        self.actual_outcome.as_ref()
+    }
+
+    /// Whether the terminal outcome was compared.
+    #[must_use]
+    pub const fn outcome_checked(&self) -> bool {
+        self.outcome_checked
+    }
+
+    /// Number of canonical inputs executed during verification.
+    #[must_use]
+    pub const fn inputs_replayed(&self) -> u64 {
+        self.inputs_replayed
+    }
+
+    /// Number of stored checkpoints compared during verification.
+    #[must_use]
+    pub const fn checkpoints_checked(&self) -> u64 {
+        self.checkpoints_checked
+    }
+
+    /// Read-only stored checkpoint evidence in execution order.
+    #[must_use]
+    pub fn checkpoint_evidence(&self) -> &[CheckpointEvidence] {
+        &self.checkpoint_evidence
+    }
+
+    /// Read-only discrepancies found during verification.
+    #[must_use]
+    pub fn divergences(&self) -> &[Divergence] {
+        &self.divergences
+    }
+
     #[must_use]
     pub fn is_verified(&self) -> bool {
         self.final_hash_checked && self.outcome_checked && self.divergences.is_empty()
@@ -1763,11 +1869,11 @@ mod tests {
         assert_eq!(runner.check(), ReplayVerdict::Exact);
         let report = runner.verify().unwrap();
         assert!(report.is_verified());
-        assert_eq!(report.checkpoints_checked, 3);
-        assert_eq!(report.actual_final_state_hash, live_final_hash);
-        assert!(report.outcome_checked);
-        assert_eq!(report.expected_outcome, None);
-        assert_eq!(report.actual_outcome, None);
+        assert_eq!(report.checkpoints_checked(), 3);
+        assert_eq!(report.actual_final_state_hash(), live_final_hash);
+        assert!(report.outcome_checked());
+        assert_eq!(report.expected_outcome(), None);
+        assert_eq!(report.actual_outcome(), None);
 
         let position = runner.seek(StateVersion(1)).unwrap();
         assert!(matches!(position, PrefixPosition::Verified(_)));
@@ -1798,7 +1904,7 @@ mod tests {
         let mut runner =
             ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
         let report = runner.verify().unwrap();
-        let divergence = report.divergences.first().unwrap();
+        let divergence = report.divergences().first().unwrap();
         assert_eq!(divergence.kind, DivergenceKind::Checkpoint);
         assert_eq!(divergence.input_index, 2);
         assert_eq!(divergence.logical_time, Some(LogicalTime(200)));
@@ -1888,14 +1994,14 @@ mod tests {
 
         assert_eq!(
             report
-                .checkpoint_evidence
+                .checkpoint_evidence()
                 .iter()
-                .map(|claim| claim.matched)
+                .map(CheckpointEvidence::matched)
                 .collect::<Vec<_>>(),
             vec![false, true]
         );
         assert_eq!(
-            report.checkpoint_evidence[1].expected,
+            report.checkpoint_evidence()[1].expected(),
             expected_second.unwrap()
         );
         let diagnosis = report.diagnosis().unwrap();
@@ -2007,7 +2113,7 @@ mod tests {
         )
         .unwrap();
         let reproducer_report = reproducer_runner.verify().unwrap();
-        assert!(reproducer_report.divergences.iter().any(|divergence| {
+        assert!(reproducer_report.divergences().iter().any(|divergence| {
             divergence.kind == DivergenceKind::Checkpoint && divergence.input_index == 2
         }));
     }
@@ -2043,6 +2149,34 @@ mod tests {
         assert!(matches!(
             runner.reproducer(&diagnosis),
             ReproducerAvailability::OriginalReplayIsMinimal
+        ));
+    }
+
+    #[test]
+    fn diagnosis_cannot_authorize_another_replay_even_on_final_frame() {
+        let (mut first_draft, _) = counter_draft(&[CounterCommand::Add(1)]);
+        first_draft.frames[0].checkpoint = Some(StateHash([77; 32]));
+        let first_bytes = first_draft.to_bytes().unwrap();
+        let mut first_runner =
+            ReplayRunner::<CounterRules>::from_bytes(&first_bytes, counter_identity()).unwrap();
+        let diagnosis = first_runner.verify().unwrap().diagnosis().unwrap();
+
+        let (mut second_draft, _) = counter_draft(&[CounterCommand::Add(2)]);
+        second_draft.frames[0].checkpoint = Some(StateHash([77; 32]));
+        let second_bytes = second_draft.to_bytes().unwrap();
+        let mut second_runner =
+            ReplayRunner::<CounterRules>::from_bytes(&second_bytes, counter_identity()).unwrap();
+        let second_diagnosis = second_runner.verify().unwrap().diagnosis().unwrap();
+        assert_ne!(
+            diagnosis.evidence().actual,
+            second_diagnosis.evidence().actual
+        );
+
+        assert!(matches!(
+            second_runner.reproducer(&diagnosis),
+            ReproducerAvailability::InsufficientEvidence {
+                reason: ReproducerReason::CheckpointClaimUnavailable
+            }
         ));
     }
 
@@ -2092,7 +2226,7 @@ mod tests {
             ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
         let report = runner.verify().unwrap();
         assert_eq!(
-            report.divergences.last().unwrap().kind,
+            report.divergences().last().unwrap().kind,
             DivergenceKind::FinalStateHash
         );
         assert!(!report.is_verified());
@@ -2107,9 +2241,9 @@ mod tests {
         let mut runner =
             ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
         let report = runner.verify().unwrap();
-        assert!(report.outcome_checked);
-        assert_eq!(report.expected_outcome, expected);
-        assert_eq!(report.actual_outcome, report.expected_outcome);
+        assert!(report.outcome_checked());
+        assert_eq!(report.expected_outcome(), expected.as_ref());
+        assert_eq!(report.actual_outcome(), report.expected_outcome());
         assert!(report.is_verified());
     }
 
@@ -2122,10 +2256,10 @@ mod tests {
         let mut runner =
             ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
         let report = runner.verify().unwrap();
-        assert_eq!(report.inputs_replayed, 0);
-        assert_eq!(report.expected_outcome, Some(expected.clone()));
-        assert_eq!(report.actual_outcome, Some(expected));
-        assert!(report.outcome_checked);
+        assert_eq!(report.inputs_replayed(), 0);
+        assert_eq!(report.expected_outcome(), Some(&expected));
+        assert_eq!(report.actual_outcome(), Some(&expected));
+        assert!(report.outcome_checked());
         assert!(report.is_verified());
     }
 
@@ -2179,10 +2313,10 @@ mod tests {
             ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
         let report = runner.verify().unwrap();
         assert_eq!(
-            report.divergences.last().unwrap().kind,
+            report.divergences().last().unwrap().kind,
             DivergenceKind::TerminalOutcome
         );
-        assert!(report.actual_outcome.is_some());
+        assert!(report.actual_outcome().is_some());
         assert!(!report.is_verified());
     }
 
@@ -2195,10 +2329,10 @@ mod tests {
             ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
         let report = runner.verify().unwrap();
         assert_eq!(
-            report.divergences.last().unwrap().kind,
+            report.divergences().last().unwrap().kind,
             DivergenceKind::TerminalOutcome
         );
-        assert_ne!(report.expected_outcome, report.actual_outcome);
+        assert_ne!(report.expected_outcome(), report.actual_outcome());
         assert!(!report.is_verified());
     }
 
