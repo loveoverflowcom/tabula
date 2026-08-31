@@ -7,9 +7,13 @@
 //! @ai.pure true
 //! @ai.invariant rejected-input-preserves-state
 //! @ai.invariant legal-move-never-leaves-own-king-attacked
+//! @ai.invariant timeout-requires-mating-capability
+//! @ai.invariant valid-player-action-cannot-bypass-deadline
 //! @ai.law deterministic-legal-command-order
 //! @ai.evidence tests::rules::illegal_moves_are_byte_identical_noops
 //! @ai.evidence tests::perft::published_positions_match
+//! @ai.evidence tests::clocks::timeout_ignores_flagged_side_material_when_survivor_is_bare_king
+//! @ai.evidence tests::clocks::expired_clock_preempts_valid_non_move_commands
 
 use smallvec::{smallvec, SmallVec};
 use tabula_core::{
@@ -211,7 +215,25 @@ fn apply_player(
             }
             Ok(Outcome { events, effects })
         }
+        command => apply_non_move(state, seat, color, command, now),
+    }
+}
+
+fn apply_non_move(
+    state: &mut State,
+    seat: SeatId,
+    color: Color,
+    command: Command,
+    now: tabula_core::LogicalTime,
+) -> Result<Outcome<ChessRules>, RuleError> {
+    // Resolve command validity before the deadline. Once a non-move command
+    // is valid, the current turn's expiry preempts it even if its timer effect
+    // has not yet been delivered by the platform.
+    match command {
         Command::Resign => {
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
+            }
             let outcome = if insufficient_material(state) {
                 draw("dead position")
             } else {
@@ -226,6 +248,9 @@ fn apply_player(
             if color == state.turn || state.fullmove_number == 1 || state.draw_offer.is_some() {
                 return Err(RuleError::code(RuleErrorCode::WrongPhase));
             }
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
+            }
             state.draw_offer = Some(color);
             Ok(Outcome {
                 events: smallvec![Event::DrawOffered { seat }],
@@ -236,11 +261,17 @@ fn apply_player(
             if state.draw_offer != Some(color.other()) {
                 return Err(RuleError::code(RuleErrorCode::WrongPhase));
             }
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
+            }
             Ok(end(state, draw("draw agreed")))
         }
         Command::DeclineDraw => {
             if state.draw_offer != Some(color.other()) {
                 return Err(RuleError::code(RuleErrorCode::WrongPhase));
+            }
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
             }
             state.draw_offer = None;
             Ok(Outcome {
@@ -252,8 +283,12 @@ fn apply_player(
             if !can_claim_draw(state) {
                 return Err(RuleError::code(RuleErrorCode::WrongPhase));
             }
+            if turn_is_expired(state, now) {
+                return Ok(timeout(state, state.turn, now));
+            }
             Ok(end(state, draw("draw claimed")))
         }
+        Command::Move { .. } => Err(RuleError::code(RuleErrorCode::IllegalMove)),
     }
 }
 
@@ -290,11 +325,87 @@ fn timeout(
             remaining: tabula_core::Millis::ZERO,
         }
     });
-    let mut outcome = end(state, decisive(flagged.other(), "timeout"));
+    let mut outcome = end(state, timeout_outcome(state, flagged));
     if let Some(event) = clock_updated {
         outcome.events.insert(0, event);
     }
     outcome
+}
+
+/// Returns the timeout result after checking whether the surviving side has a
+/// possible mating construction. A bare king cannot mate, even when the side
+/// that flagged still owns a queen or other substantial material; that
+/// material cannot be assumed to cooperate with the winner.
+fn timeout_outcome(state: &State, flagged: Color) -> MatchOutcome {
+    let winner = flagged.other();
+    if can_checkmate(state, winner, flagged) {
+        decisive(winner, "timeout")
+    } else {
+        draw("timeout")
+    }
+}
+
+/// Checks the finite material cases that can mate a bare king, plus helpmate
+/// material on the flagged side. The latter matters because timeout is about
+/// whether *any* future legal series can contain mate, not whether the winner
+/// can force mate against a cooperating bare king.
+fn can_checkmate(state: &State, winner: Color, flagged: Color) -> bool {
+    let mut non_king = 0_u8;
+    let mut has_pawn_or_major = false;
+    let mut has_bishop = false;
+    let mut has_knight = false;
+    let mut bishop_colors = [false; 2];
+    let mut flagged_has_material = false;
+
+    for (square, piece) in state
+        .board
+        .iter()
+        .enumerate()
+        .filter_map(|(square, piece)| piece.map(|piece| (square, piece)))
+    {
+        if piece.kind == PieceKind::King {
+            continue;
+        }
+        if piece.color == flagged {
+            flagged_has_material = true;
+            continue;
+        }
+        if piece.color != winner {
+            continue;
+        }
+
+        non_king = non_king.saturating_add(1);
+        match piece.kind {
+            PieceKind::Pawn | PieceKind::Rook | PieceKind::Queen => {
+                has_pawn_or_major = true;
+            }
+            PieceKind::Bishop => {
+                has_bishop = true;
+                let square_color = (square % 8 + square / 8) % 2;
+                bishop_colors[square_color] = true;
+            }
+            PieceKind::Knight => has_knight = true,
+            PieceKind::King => unreachable!(),
+        }
+    }
+
+    if has_pawn_or_major || (has_bishop && has_knight) || bishop_colors == [true, true] {
+        return true;
+    }
+
+    // A non-king piece belonging to the flagged side can provide the blocker
+    // needed by a minor-only helpmate. With no such piece, K+B/K+N and the
+    // other known bare-king dead positions cannot ever reach checkmate.
+    flagged_has_material && non_king > 0
+}
+
+fn turn_is_expired(state: &State, now: tabula_core::LogicalTime) -> bool {
+    state.clock.as_ref().is_some_and(|clock| {
+        matches!(
+            clock::check_timer(clock, state.turn, now),
+            TimerCheck::Flagged
+        )
+    })
 }
 
 fn color_index(color: Color) -> usize {

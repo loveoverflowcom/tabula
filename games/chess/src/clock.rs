@@ -10,9 +10,11 @@
 //! @ai.pure true
 //! @ai.invariant clock-never-underflows
 //! @ai.invariant exact-zero-flags
+//! @ai.invariant fischer-overflow-is-explicitly-capped
 //! @ai.law deterministic-clock-charge
 //! @ai.evidence tests::clocks::fischer_exact_zero_flags_before_move
 //! @ai.evidence tests::clocks::bronstein_exact_timeout_boundary_flags
+//! @ai.evidence tests::clocks::fischer_near_limit_repeated_zero_elapsed_moves_never_wrap
 
 use tabula_core::{LogicalTime, Millis, TimerId};
 use tabula_game_api::Effect;
@@ -21,6 +23,12 @@ use crate::{ClockConfig, ClockControl, ClockState, Color};
 
 /// The one timer owned by the Chess rules.
 pub(crate) const TIMER_CLOCK: TimerId = TimerId(1);
+
+// `Millis` is a finite wire value. Fischer time is therefore deliberately
+// capped at the largest representable value when a legal move's increment
+// would exceed it; this keeps every accepted configuration total and makes
+// the boundary explicit rather than relying on an accidental integer wrap.
+const MAX_CLOCK_MILLIS: u64 = u64::MAX;
 
 /// The result of charging the side that submitted a legal move.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -38,6 +46,11 @@ pub(crate) enum TimerCheck {
 }
 
 /// Returns whether a raw lobby clock config can enter a match.
+///
+/// A Fischer config must represent the initial remaining time plus its first
+/// increment. Later increments use the explicit finite-domain cap in
+/// [`charge_completed_move`], so an accepted config cannot produce a panic,
+/// wraparound, or rejected move solely because a clock became large.
 pub(crate) fn config_is_valid(config: &ClockConfig) -> bool {
     if config.initial.0 == 0 {
         return false;
@@ -59,6 +72,10 @@ pub(crate) fn initial_state(config: ClockConfig, now: LogicalTime) -> ClockState
 }
 
 /// Charges elapsed time from a legal move without mutating the state.
+///
+/// Fischer increments use the explicit finite-domain policy documented by
+/// [`MAX_CLOCK_MILLIS`]: a surviving move can cap the remaining time at the
+/// maximum representable millisecond value, but it can never wrap below it.
 pub(crate) fn charge_completed_move(
     clock: Option<&ClockState>,
     mover: Color,
@@ -81,7 +98,9 @@ pub(crate) fn charge_completed_move(
 
     let after_charge = remaining - charged;
     let after_move = match clock.control {
-        ClockControl::Fischer { increment } => after_charge.saturating_add(increment.0),
+        ClockControl::Fischer { increment } => after_charge
+            .checked_add(increment.0)
+            .unwrap_or(MAX_CLOCK_MILLIS),
         ClockControl::Bronstein { .. } => after_charge,
     };
     MoveCharge::Ready(Millis(after_move))
@@ -231,6 +250,53 @@ mod tests {
                     TimerCheck::Flagged
                 );
             }
+        }
+    }
+
+    #[test]
+    fn fischer_increment_caps_at_the_explicit_finite_domain_limit() {
+        let increment = 1;
+        let near_limit = state(
+            u64::MAX - increment,
+            ClockControl::Fischer {
+                increment: Millis(increment),
+            },
+            0,
+        );
+        assert_eq!(
+            charge_completed_move(Some(&near_limit), Color::White, LogicalTime::ZERO),
+            MoveCharge::Ready(Millis(u64::MAX))
+        );
+
+        let at_limit = state(
+            u64::MAX,
+            ClockControl::Fischer {
+                increment: Millis(increment),
+            },
+            0,
+        );
+        assert_eq!(
+            charge_completed_move(Some(&at_limit), Color::White, LogicalTime::ZERO),
+            MoveCharge::Ready(Millis(u64::MAX))
+        );
+    }
+
+    #[test]
+    fn fischer_near_limit_repeated_zero_elapsed_moves_are_deterministic() {
+        let mut clock = state(
+            u64::MAX - 1,
+            ClockControl::Fischer {
+                increment: Millis(1),
+            },
+            0,
+        );
+        for expected in [u64::MAX, u64::MAX] {
+            let actual = charge_completed_move(Some(&clock), Color::White, LogicalTime::ZERO);
+            assert_eq!(actual, MoveCharge::Ready(Millis(expected)));
+            clock.remaining[0] = match actual {
+                MoveCharge::Ready(remaining) => remaining,
+                MoveCharge::Disabled | MoveCharge::Flagged => unreachable!(),
+            };
         }
     }
 }

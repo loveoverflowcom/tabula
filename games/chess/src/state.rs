@@ -107,6 +107,9 @@ impl CastlingRights {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClockControl {
     /// Add the increment after every move that reaches the rules in time.
+    ///
+    /// Remaining time is a finite millisecond value: a later increment that
+    /// exceeds its representable maximum is explicitly capped there.
     Fischer { increment: Millis },
     /// Refund at most the delay from each completed move's elapsed time.
     Bronstein { delay: Millis },

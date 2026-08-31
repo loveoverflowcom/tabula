@@ -3,7 +3,7 @@
 use smallvec::smallvec;
 use tabula_core::{
     canonical_encode, AbortReason, DetRng, InputIndex, LogicalTime, MatchSeed, Millis, Occupant,
-    SeatChange, SeatEntry, SeatId, SeatRoster, UserId,
+    OutcomeKind, SeatChange, SeatEntry, SeatId, SeatRoster, UserId,
 };
 use tabula_game_api::{AdminInput, Budget, Ctx, Effect, GameModule, GameRules, Input, Outcome};
 use tabula_game_chess::{
@@ -113,12 +113,69 @@ fn assert_timeout(state: &State, flagged: Color) {
     );
 }
 
+fn clocked_fen(fen: &str) -> State {
+    let mut state = State::from_fen(fen).expect("clock fixture FEN is valid");
+    state.clock = Some(ClockState {
+        remaining: [Millis(10_000); 2],
+        last_move_at: LogicalTime::ZERO,
+        control: ClockControl::Fischer {
+            increment: Millis(1_000),
+        },
+    });
+    state
+}
+
+fn timeout_at_deadline(state: &mut State) -> Outcome<ChessRules> {
+    apply_at(
+        state,
+        Input::Timer {
+            timer: tabula_core::TimerId(1),
+        },
+        10_000,
+        1,
+    )
+    .expect("deadline timer is an accepted input")
+}
+
+fn assert_timeout_command(state: &mut State, input: Input<Command>, now: u64, index: u64) {
+    let outcome = apply_at(state, input, now, index).expect("valid command reaches timeout");
+    let Status::Ended { outcome: result } = &state.status else {
+        panic!("expired command must end the match");
+    };
+    assert_eq!(result.summary(), "timeout");
+    assert_eq!(
+        state.clock.unwrap().remaining[usize::from(state.turn.seat().0)],
+        Millis::ZERO
+    );
+    assert_terminal_effects(&outcome);
+}
+
 #[test]
 fn clock_config_is_validated_before_match_creation() {
     let valid = config(ClockControl::Fischer {
         increment: Millis(1_000),
     });
     assert!(ChessModule::validate_config(&valid, &roster()).is_ok());
+
+    let exact_fischer_limit = Config {
+        clock: Some(ClockConfig {
+            initial: Millis(1),
+            control: ClockControl::Fischer {
+                increment: Millis(u64::MAX - 1),
+            },
+        }),
+    };
+    assert!(ChessModule::validate_config(&exact_fischer_limit, &roster()).is_ok());
+
+    let above_fischer_limit = Config {
+        clock: Some(ClockConfig {
+            initial: Millis(1),
+            control: ClockControl::Fischer {
+                increment: Millis(u64::MAX),
+            },
+        }),
+    };
+    assert!(ChessModule::validate_config(&above_fischer_limit, &roster()).is_err());
 
     for invalid in [
         Config {
@@ -252,6 +309,28 @@ fn fischer_increment_is_not_granted_to_flagged_player() {
 }
 
 #[test]
+fn fischer_near_limit_repeated_zero_elapsed_moves_never_wrap() {
+    let mut state = create(
+        Config {
+            clock: Some(ClockConfig {
+                initial: Millis(1),
+                control: ClockControl::Fischer {
+                    increment: Millis(u64::MAX - 1),
+                },
+            }),
+        },
+        0,
+    );
+
+    apply_at(&mut state, move_input(0, 12, 28), 0, 1).unwrap();
+    assert_eq!(state.clock.unwrap().remaining[0], Millis(u64::MAX));
+    apply_at(&mut state, move_input(1, 52, 36), 0, 2).unwrap();
+    assert_eq!(state.clock.unwrap().remaining[1], Millis(u64::MAX));
+    apply_at(&mut state, move_input(0, 6, 21), 0, 3).unwrap();
+    assert_eq!(state.clock.unwrap().remaining[0], Millis(u64::MAX));
+}
+
+#[test]
 fn fischer_exact_zero_flags_before_move() {
     let mut state = create(
         Config {
@@ -370,6 +449,72 @@ fn timer_at_exact_deadline_flags_side_to_move() {
 
     assert_timeout(&state, Color::White);
     assert_terminal_effects(&outcome);
+}
+
+#[test]
+fn timeout_with_mating_material_is_decisive_and_does_not_mutate_board() {
+    let mut state = clocked_fen("7k/8/8/8/8/8/6q1/7K w - - 0 1");
+    let board_before = state.board;
+    let outcome = timeout_at_deadline(&mut state);
+
+    assert_timeout(&state, Color::White);
+    let Status::Ended { outcome: result } = &state.status else {
+        panic!("timeout must end the match");
+    };
+    assert_eq!(result.kind(), OutcomeKind::Decisive);
+    assert_eq!(state.board, board_before);
+    assert_terminal_effects(&outcome);
+}
+
+#[test]
+fn timeout_is_a_draw_when_the_surviving_side_has_only_a_king() {
+    let mut state = clocked_fen("7k/8/8/8/8/8/8/7K w - - 0 1");
+    let board_before = state.board;
+    let outcome = timeout_at_deadline(&mut state);
+
+    let Status::Ended { outcome: result } = &state.status else {
+        panic!("timeout must end the match");
+    };
+    assert_eq!(result.kind(), OutcomeKind::Draw);
+    assert_eq!(result.summary(), "timeout");
+    assert_eq!(state.board, board_before);
+    assert_eq!(state.clock.unwrap().remaining[0], Millis::ZERO);
+    assert_terminal_effects(&outcome);
+}
+
+#[test]
+fn timeout_ignores_flagged_side_material_when_survivor_is_bare_king() {
+    let mut state = clocked_fen("7k/8/8/8/8/8/6Q1/7K w - - 0 1");
+    let board_before = state.board;
+    let outcome = timeout_at_deadline(&mut state);
+
+    let Status::Ended { outcome: result } = &state.status else {
+        panic!("timeout must end the match");
+    };
+    assert_eq!(result.kind(), OutcomeKind::Draw);
+    assert_eq!(state.board, board_before);
+    assert_terminal_effects(&outcome);
+}
+
+#[test]
+fn timeout_material_edges_distinguish_minor_and_mating_combinations() {
+    for (fen, expected_kind) in [
+        ("7k/8/8/8/8/8/8/b6K w - - 0 1", OutcomeKind::Draw),
+        ("7k/8/8/8/8/8/8/n6K w - - 0 1", OutcomeKind::Draw),
+        ("7k/8/2n5/8/8/8/8/b6K w - - 0 1", OutcomeKind::Decisive),
+        ("7k/8/8/8/5b2/8/8/2b4K w - - 0 1", OutcomeKind::Draw),
+        ("7k/8/8/8/4b3/8/8/2b4K w - - 0 1", OutcomeKind::Decisive),
+    ] {
+        let mut state = clocked_fen(fen);
+        let board_before = state.board;
+        let outcome = timeout_at_deadline(&mut state);
+        let Status::Ended { outcome: result } = &state.status else {
+            panic!("timeout must end the match");
+        };
+        assert_eq!(result.kind(), expected_kind, "unexpected result for {fen}");
+        assert_eq!(state.board, board_before);
+        assert_terminal_effects(&outcome);
+    }
 }
 
 #[test]
@@ -498,6 +643,95 @@ fn rejected_draw_command_does_not_consume_clock() {
 
     assert_eq!(error.code, tabula_core::RuleErrorCode::WrongPhase);
     assert_eq!(canonical_encode(&state).unwrap(), before);
+}
+
+#[test]
+fn expired_clock_preempts_valid_non_move_commands() {
+    let mut resign = create(
+        config(ClockControl::Fischer {
+            increment: Millis(1_000),
+        }),
+        0,
+    );
+    assert_timeout_command(
+        &mut resign,
+        Input::Player {
+            seat: SeatId(0),
+            command: Command::Resign,
+        },
+        10_000,
+        1,
+    );
+
+    let mut claim = clocked_fen("4k3/8/8/8/8/8/8/4K3 w - - 100 1");
+    assert_timeout_command(
+        &mut claim,
+        Input::Player {
+            seat: SeatId(0),
+            command: Command::ClaimDraw,
+        },
+        10_000,
+        1,
+    );
+
+    let mut offer = create(
+        config(ClockControl::Fischer {
+            increment: Millis(1_000),
+        }),
+        0,
+    );
+    apply_at(&mut offer, move_input(0, 12, 28), 0, 1).unwrap();
+    apply_at(&mut offer, move_input(1, 52, 36), 0, 2).unwrap();
+    assert_timeout_command(
+        &mut offer,
+        Input::Player {
+            seat: SeatId(1),
+            command: Command::OfferDraw,
+        },
+        11_000,
+        3,
+    );
+
+    let mut offered = create(
+        config(ClockControl::Fischer {
+            increment: Millis(1_000),
+        }),
+        0,
+    );
+    apply_at(&mut offered, move_input(0, 12, 28), 0, 1).unwrap();
+    apply_at(&mut offered, move_input(1, 52, 36), 0, 2).unwrap();
+    apply_at(
+        &mut offered,
+        Input::Player {
+            seat: SeatId(1),
+            command: Command::OfferDraw,
+        },
+        0,
+        3,
+    )
+    .unwrap();
+
+    let mut accept = offered.clone();
+    assert_timeout_command(
+        &mut accept,
+        Input::Player {
+            seat: SeatId(0),
+            command: Command::AcceptDraw,
+        },
+        11_000,
+        4,
+    );
+
+    let mut decline = offered;
+    assert_timeout_command(
+        &mut decline,
+        Input::Player {
+            seat: SeatId(0),
+            command: Command::DeclineDraw,
+        },
+        11_000,
+        4,
+    );
 }
 
 #[test]
