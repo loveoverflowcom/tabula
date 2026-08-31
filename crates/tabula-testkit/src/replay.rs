@@ -1,146 +1,1024 @@
-//! The `.tbr` replay format and runner. (doc 05 §8)
+//! Canonical `.tbr` replay format and typed verifier. (doc 05 §8)
 //!
-//! # Replay is a product feature, not a debugging tool
+//! A replay is evidence, not merely a file that decoded successfully. The
+//! validated container below keeps format concerns (framing, lengths, order,
+//! integrity, and canonical byte payloads) separate from the game's typed
+//! `Config`, `Input`, and `State`. `ReplayRunner<R>` then reconstructs the
+//! ordinary `GameRules::create`/`apply` path with the recorded logical times and
+//! input indices.
 //!
-//! It powers spectator catch-up, reconnect, anti-cheat audit, bug reproduction,
-//! balance analytics, "watch your last match", and migration validation. It is
-//! load-bearing and therefore tested continuously. (doc 00 §5.3)
+//! @ai.role trust-boundary
+//! @ai.domain replay.container
+//! @ai.invariant replay-container-integrity
+//! @ai.invariant projected-replay-never-carries-seed
+//! @ai.invariant canonical-replay-roundtrips
+//! @ai.evidence crate::replay::tests::corruption_is_rejected
+//! @ai.evidence crate::replay::tests::projected_seed_is_rejected_by_writer_and_reader
+//! @ai.evidence crate::replay::tests::round_trip_preserves_validated_structure
 //!
-//! # The model
+//! # Logical v1 payload
 //!
-//! A replay is **the input stream plus enough metadata to re-run it**. Events are
-//! not stored — they are derivable — but a checkpoint hash list is included so
-//! verification can pinpoint the exact input where a divergence began.
-//!
-//! # File layout (doc 05 §8.1)
+//! The complete logical payload is compressed as one zstd frame:
 //!
 //! ```text
-//! ┌ header (postcard, versioned) ─────────────────────────────────────────┐
-//! │ magic: b"TBR1"                                                        │
-//! │ format_version: u16                                                   │
-//! │ match_id, game_id, game_version                                       │
-//! │ rules_version, rules_hash: [u8;32]                                    │
-//! │ config: canonical bytes                                               │
-//! │ roster (occupants pseudonymized unless owner-authorized)              │
-//! │ seed: Option<MatchSeed>       ← present ONLY in canonical replays      │
-//! │ initial_snapshot: Option<bytes>  ← for partial/projected replays       │
-//! │ started_at, duration_ms, outcome                                      │
-//! │ kind: Canonical | Projected(Viewer)                                   │
-//! ├ input frames (repeated, length-prefixed) ─────────────────────────────┤
-//! │ input_index, logical_ms, canonical(Input<Command>)                    │
-//! │ checkpoint: Option<[u8;32]>   ← every N inputs                        │
-//! ├ trailer ──────────────────────────────────────────────────────────────┤
-//! │ input_count, final_state_hash, crc32 of the body                      │
-//! └───────────────────────────────────────────────────────────────────────┘
-//! zstd-framed. Chess ≈ 3 KB. Werewolf ≈ 15 KB.
+//! TBR1 magic
+//! format version: u16 little-endian
+//! header length: u32 little-endian
+//! header: Postcard(ReplayHeader)
+//! repeated frames:
+//!     frame length: u32 little-endian
+//!     frame: Postcard(ReplayFrame)
+//! trailer:
+//!     input count: u64 little-endian
+//!     final state hash: [u8; 32]
+//!     CRC32 (IEEE) of every preceding logical byte
 //! ```
 //!
-//! # Two kinds, and why the distinction is a security control
-//!
-//! | Kind | Contains | Who may hold it |
-//! |---|---|---|
-//! | **Canonical** | Seed + full inputs; reproduces all secrets | Server-side only, `Viewer::Audit` tooling |
-//! | **Projected** | One viewer's `View` + that viewer's `ViewEvent` stream, **no seed** | Downloadable by users |
-//!
-//! Handing a user a canonical replay of a card game hands them the deck order.
-//! The seed field is `Option` for exactly this reason, and the writer must refuse
-//! to emit `Projected` with a seed present.
+//! Canonical config and input payloads retain the kernel's
+//! `ENCODING_VERSION.to_le_bytes() || postcard(value)` representation. The
+//! outer framing is deliberately fixed-width and length-prefixed so the reader
+//! can reject truncation and oversized declarations before allocating for a
+//! frame. Replays contain only inputs that were accepted into the canonical log;
+//! a replay-time rejection is therefore a divergence/corruption error.
 
-use std::path::Path;
+#![allow(clippy::doc_markdown)]
 
-use tabula_core::{RulesVersion, StateVersion};
+use std::{
+    fmt, fs,
+    io::{Cursor, Read},
+    path::Path,
+};
 
-/// Replays a `.tbr` and verifies it. Used by the nightly job (I-8), by
-/// `xtask replay`, by ops tooling, and by the client's replay viewer.
-#[derive(Debug)]
-pub struct ReplayRunner {
-    // TODO(phase 0): header, decoded input frames, a live ErasedMatch (Phase 4)
-    // or a directly-typed GameRules run (Phase 0, before the registry exists).
-    _private: (),
+use crc32fast::Hasher as Crc32Hasher;
+use serde::{Deserialize, Serialize};
+use tabula_core::{
+    canonical_decode, GameId, GameVersion, InputIndex, LogicalTime, MatchId, MatchOutcome,
+    MatchSeed, RulesVersion, SeatRoster, StateHash, StateVersion, ENCODING_VERSION,
+};
+use tabula_game_api::{Budget, Ctx, GameModule, GameRules, Input};
+
+/// The only currently readable replay format version.
+pub const REPLAY_FORMAT_VERSION: u16 = 1;
+const MAGIC: &[u8; 4] = b"TBR1";
+const TRAILER_LEN: usize = 8 + 32 + 4;
+
+/// Maximum logical bytes held after decompression.
+pub const MAX_DECOMPRESSED_REPLAY_BYTES: usize = 4 * 1024 * 1024;
+/// Maximum compressed bytes accepted by the shell-facing reader.
+pub const MAX_COMPRESSED_REPLAY_BYTES: usize = 4 * 1024 * 1024;
+/// Maximum encoded header. This includes all header fields, not the framing prefix.
+pub const MAX_HEADER_BYTES: usize = 128 * 1024;
+/// Maximum canonical payload in one frame.
+pub const MAX_FRAME_BYTES: usize = 64 * 1024;
+/// Maximum number of input frames in one offline replay.
+pub const MAX_FRAME_COUNT: usize = 100_000;
+/// Maximum canonical configuration payload.
+pub const MAX_CONFIG_BYTES: usize = 64 * 1024;
+/// Maximum zstd back-reference window accepted by the decoder (4 MiB).
+const MAX_ZSTD_WINDOW_SIZE: u64 = 1 << 22;
+
+/// Whether a replay carries canonical authority or a viewer's redacted stream.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReplayKind {
+    /// Seed plus accepted canonical inputs. Never distribute to players.
+    Canonical,
+    /// A viewer's projected initial data and opaque view-event frames.
+    Projected { viewer: tabula_core::Viewer },
 }
 
-impl ReplayRunner {
-    /// # Errors
-    /// Bad magic, unsupported format version, or a corrupt trailer CRC.
-    pub fn open(_path: &Path) -> Result<Self, ReplayError> {
-        todo!("doc 05 §8.1: read header, validate magic + crc32, decode frames")
+/// The metadata portion of the locked v1 replay model.
+///
+/// This is a raw draft value. Callers must pass it through [`ReplayDraft::validate`]
+/// before it becomes a [`ValidatedReplay`]. Public fields are intentional here:
+/// this is the construction-side DTO, not a proof-bearing domain value.
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ReplayHeader {
+    pub match_id: MatchId,
+    pub game_id: GameId,
+    pub game_version: GameVersion,
+    pub rules_version: RulesVersion,
+    pub rules_hash: [u8; 32],
+    pub config: Vec<u8>,
+    pub roster: SeatRoster,
+    pub seed: Option<MatchSeed>,
+    pub initial_snapshot: Option<Vec<u8>>,
+    pub started_at: u64,
+    pub duration_ms: u64,
+    pub outcome: Option<MatchOutcome>,
+    pub kind: ReplayKind,
+}
+
+impl fmt::Debug for ReplayHeader {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ReplayHeader")
+            .field("match_id", &self.match_id)
+            .field("game_id", &self.game_id)
+            .field("game_version", &self.game_version)
+            .field("rules_version", &self.rules_version)
+            .field("rules_hash", &self.rules_hash)
+            .field("config_bytes", &self.config.len())
+            .field("roster_seats", &self.roster.len())
+            .field("seed", &self.seed.as_ref().map(|_| "<present>"))
+            .field(
+                "initial_snapshot_bytes",
+                &self.initial_snapshot.as_ref().map(Vec::len),
+            )
+            .field("started_at", &self.started_at)
+            .field("duration_ms", &self.duration_ms)
+            .field("outcome", &self.outcome)
+            .field("kind", &self.kind)
+            .finish()
+    }
+}
+
+/// One raw v1 frame. In a canonical replay, `input` is canonical
+/// `Input<Command>` bytes. In a projected replay it is opaque projected event
+/// bytes; projected playback is intentionally deferred to the client phase.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ReplayFrame {
+    pub input_index: InputIndex,
+    pub logical_time: LogicalTime,
+    pub input: Vec<u8>,
+    pub checkpoint: Option<StateHash>,
+}
+
+/// Unvalidated replay construction DTO.
+#[derive(Clone, Debug)]
+pub struct ReplayDraft {
+    pub header: ReplayHeader,
+    pub frames: Vec<ReplayFrame>,
+    pub final_state_hash: StateHash,
+}
+
+/// A replay whose framing, limits, ordering, canonical payload markers, and
+/// canonical/projected invariants have all been checked.
+pub struct ValidatedReplay {
+    header: ReplayHeader,
+    frames: Vec<ReplayFrame>,
+    final_state_hash: StateHash,
+}
+
+impl Clone for ValidatedReplay {
+    fn clone(&self) -> Self {
+        Self {
+            header: self.header.clone(),
+            frames: self.frames.clone(),
+            final_state_hash: self.final_state_hash,
+        }
+    }
+}
+
+impl fmt::Debug for ValidatedReplay {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ValidatedReplay")
+            .field("header", &self.header)
+            .field("frames", &self.frames.len())
+            .field("final_state_hash", &self.final_state_hash)
+            .finish()
+    }
+}
+
+impl ReplayDraft {
+    /// Validate a raw construction value without serializing it.
+    ///
+    /// @ai.role proof-boundary
+    /// @ai.domain replay.validate
+    /// @ai.invariant projected-replay-never-carries-seed
+    /// @ai.invariant canonical-replay-has-reconstruction-data
+    /// @ai.evidence crate::replay::tests::projected_seed_is_rejected_by_writer_and_reader
+    /// @ai.evidence crate::replay::tests::canonical_replay_requires_seed
+    pub fn validate(self) -> Result<ValidatedReplay, ReplayError> {
+        validate_parts(self.header, self.frames, self.final_state_hash)
     }
 
-    /// Decide whether this replay can be trusted before spending time on it.
+    /// Encode a validated v1 replay deterministically.
+    pub fn to_bytes(&self) -> Result<Vec<u8>, ReplayError> {
+        self.clone().validate()?.to_bytes()
+    }
+
+    /// Write a validated v1 replay through the filesystem shell.
+    pub fn write(&self, path: &Path) -> Result<(), ReplayError> {
+        fs::write(path, self.to_bytes()?).map_err(ReplayError::Io)
+    }
+}
+
+impl ValidatedReplay {
+    /// Read and validate a hostile `.tbr` byte stream.
+    ///
+    /// @ai.role trust-boundary
+    /// @ai.domain replay.decode
+    /// @ai.invariant replay-container-integrity
+    /// @ai.law canonical-replay-roundtrips
+    /// @ai.evidence crate::replay::tests::corruption_is_rejected
+    /// @ai.evidence crate::replay::tests::round_trip_preserves_validated_structure
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, ReplayError> {
+        if bytes.len() > MAX_COMPRESSED_REPLAY_BYTES {
+            return Err(ReplayError::Corrupt(
+                "compressed replay exceeds the configured limit".to_owned(),
+            ));
+        }
+
+        validate_zstd_frame_header(bytes)?;
+        let mut decoder = ruzstd::decoding::StreamingDecoder::new(Cursor::new(bytes))
+            .map_err(|_| ReplayError::Corrupt("invalid zstd frame".to_owned()))?;
+        let mut limited = (&mut decoder).take((MAX_DECOMPRESSED_REPLAY_BYTES as u64) + 1);
+        let mut payload = Vec::new();
+        limited
+            .read_to_end(&mut payload)
+            .map_err(|_| ReplayError::Corrupt("truncated compressed stream".to_owned()))?;
+        let cursor = decoder.into_inner();
+        if cursor.position() != bytes.len() as u64 {
+            return Err(ReplayError::Corrupt(
+                "replay must contain exactly one zstd frame".to_owned(),
+            ));
+        }
+        if payload.len() > MAX_DECOMPRESSED_REPLAY_BYTES {
+            return Err(ReplayError::Corrupt(
+                "decompressed replay exceeds the configured limit".to_owned(),
+            ));
+        }
+
+        parse_payload(&payload)
+    }
+
+    /// Read a replay through the filesystem shell.
+    pub fn read(path: &Path) -> Result<Self, ReplayError> {
+        let file = fs::File::open(path).map_err(ReplayError::Io)?;
+        let mut bytes = Vec::new();
+        file.take((MAX_COMPRESSED_REPLAY_BYTES as u64) + 1)
+            .read_to_end(&mut bytes)
+            .map_err(ReplayError::Io)?;
+        if bytes.len() > MAX_COMPRESSED_REPLAY_BYTES {
+            return Err(ReplayError::Corrupt(
+                "compressed replay exceeds the configured limit".to_owned(),
+            ));
+        }
+        Self::from_bytes(&bytes)
+    }
+
+    /// Re-encode the validated value. The output is deterministic for the same
+    /// validated structure and pinned compression settings.
+    pub fn to_bytes(&self) -> Result<Vec<u8>, ReplayError> {
+        let header = postcard::to_allocvec(&self.header)
+            .map_err(|_| ReplayError::Corrupt("header is not encodable".to_owned()))?;
+        if header.len() > MAX_HEADER_BYTES {
+            return Err(ReplayError::Corrupt(
+                "header exceeds the configured limit".to_owned(),
+            ));
+        }
+
+        let mut payload = Vec::with_capacity(16 + header.len() + self.frames.len() * 16);
+        payload.extend_from_slice(MAGIC);
+        payload.extend_from_slice(&REPLAY_FORMAT_VERSION.to_le_bytes());
+        let header_len = u32::try_from(header.len())
+            .map_err(|_| ReplayError::Corrupt("header length does not fit framing".to_owned()))?;
+        payload.extend_from_slice(&header_len.to_le_bytes());
+        payload.extend_from_slice(&header);
+
+        for frame in &self.frames {
+            let encoded = postcard::to_allocvec(frame)
+                .map_err(|_| ReplayError::Corrupt("frame is not encodable".to_owned()))?;
+            if encoded.len() > MAX_FRAME_BYTES {
+                return Err(ReplayError::Corrupt(
+                    "frame exceeds the configured limit".to_owned(),
+                ));
+            }
+            let frame_len = u32::try_from(encoded.len()).map_err(|_| {
+                ReplayError::Corrupt("frame length does not fit framing".to_owned())
+            })?;
+            payload.extend_from_slice(&frame_len.to_le_bytes());
+            payload.extend_from_slice(&encoded);
+        }
+
+        let checksum = crc32(&payload);
+        payload.extend_from_slice(&(self.frames.len() as u64).to_le_bytes());
+        payload.extend_from_slice(&self.final_state_hash.0);
+        payload.extend_from_slice(&checksum.to_le_bytes());
+
+        if payload.len() > MAX_DECOMPRESSED_REPLAY_BYTES {
+            return Err(ReplayError::Corrupt(
+                "replay exceeds the configured decompressed limit".to_owned(),
+            ));
+        }
+        Ok(ruzstd::encoding::compress_to_vec(
+            payload.as_slice(),
+            ruzstd::encoding::CompressionLevel::Uncompressed,
+        ))
+    }
+
+    #[must_use]
+    pub fn header(&self) -> &ReplayHeader {
+        &self.header
+    }
+
+    #[must_use]
+    pub fn frames(&self) -> &[ReplayFrame] {
+        &self.frames
+    }
+
+    #[must_use]
+    pub fn final_state_hash(&self) -> StateHash {
+        self.final_state_hash
+    }
+}
+
+/// The rules identity supplied by a game-specific boundary.
+#[derive(Clone, PartialEq, Eq)]
+pub struct ReplayIdentity {
+    pub game_id: GameId,
+    pub rules_version: RulesVersion,
+    pub rules_hash: [u8; 32],
+}
+
+impl fmt::Debug for ReplayIdentity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ReplayIdentity")
+            .field("game_id", &self.game_id)
+            .field("rules_version", &self.rules_version)
+            .field("rules_hash", &self.rules_hash)
+            .finish()
+    }
+}
+
+impl ReplayIdentity {
+    /// Build the identity from a real game module, including its build-derived
+    /// rules-half hash. A zero hash is left visible to [`ReplayRunner::check`]
+    /// as unreplayable rather than being promoted to an exact verdict.
+    #[must_use]
+    pub fn from_module<M: GameModule>() -> Self {
+        Self {
+            game_id: M::metadata().id.clone(),
+            rules_version: M::Rules::RULES_VERSION,
+            rules_hash: M::rules_hash(),
+        }
+    }
+}
+
+/// Replays a canonical `.tbr` through an ordinary `GameRules` implementation.
+///
+/// The type is generic over rules rather than over the file format. The format
+/// stores opaque canonical bytes; only this typed boundary decodes `Config` and
+/// `Input<R::Command>`. This keeps game-specific types out of the container.
+pub struct ReplayRunner<R: GameRules> {
+    replay: ValidatedReplay,
+    identity: ReplayIdentity,
+    config: R::Config,
+    inputs: Vec<Input<R::Command>>,
+    state: R::State,
+    state_version: StateVersion,
+    next_frame: usize,
+}
+
+impl<R: GameRules> fmt::Debug for ReplayRunner<R> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ReplayRunner")
+            .field("game_id", &self.replay.header.game_id)
+            .field("rules_version", &self.replay.header.rules_version)
+            .field("frames", &self.replay.frames.len())
+            .field("next_frame", &self.next_frame)
+            .field("state_version", &self.state_version)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<R: GameRules> ReplayRunner<R> {
+    /// Open a canonical replay and create its initial state through
+    /// `GameRules::create`.
+    pub fn open(path: &Path, identity: ReplayIdentity) -> Result<Self, ReplayError> {
+        Self::from_validated(ValidatedReplay::read(path)?, identity)
+    }
+
+    /// Open a canonical replay from bytes without filesystem access.
+    pub fn from_bytes(bytes: &[u8], identity: ReplayIdentity) -> Result<Self, ReplayError> {
+        Self::from_validated(ValidatedReplay::from_bytes(bytes)?, identity)
+    }
+
+    #[must_use]
+    pub fn header(&self) -> &ReplayHeader {
+        self.replay.header()
+    }
+
+    fn from_validated(
+        replay: ValidatedReplay,
+        identity: ReplayIdentity,
+    ) -> Result<Self, ReplayError> {
+        if replay.header.kind != ReplayKind::Canonical {
+            return Err(ReplayError::UnsupportedReplayKind);
+        }
+        if replay.header.game_id != identity.game_id {
+            return Err(ReplayError::Unreplayable(
+                "replay game identity does not match the selected typed runner".to_owned(),
+            ));
+        }
+        if replay.header.rules_version != identity.rules_version {
+            return Err(ReplayError::Unreplayable(format!(
+                "replay rules version {} is not linked to the selected implementation {}",
+                replay.header.rules_version.0, identity.rules_version.0
+            )));
+        }
+
+        let config = canonical_decode::<R::Config>(&replay.header.config)
+            .map_err(|_| ReplayError::Corrupt("canonical config cannot be decoded".to_owned()))?;
+        let inputs = replay
+            .frames
+            .iter()
+            .map(|frame| {
+                canonical_decode::<Input<R::Command>>(&frame.input).map_err(|_| {
+                    ReplayError::Corrupt("canonical input cannot be decoded".to_owned())
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let state = create_state::<R>(&config, &replay.header.roster, replay.header.seed.as_ref())?;
+        Ok(Self {
+            replay,
+            identity,
+            config,
+            inputs,
+            state,
+            state_version: StateVersion(0),
+            next_frame: 0,
+        })
+    }
+
+    /// Decide whether the selected implementation is an exact linked rules
+    /// build before spending time executing the replay.
     #[must_use]
     pub fn check(&self) -> ReplayVerdict {
-        todo!("doc 05 §10.2 compatibility matrix")
+        if self.replay.header.rules_hash == [0; 32] || self.identity.rules_hash == [0; 32] {
+            return ReplayVerdict::Unreplayable {
+                reason: "no authoritative rules hash is available".to_owned(),
+            };
+        }
+        if self.replay.header.rules_hash == self.identity.rules_hash {
+            ReplayVerdict::Exact
+        } else {
+            ReplayVerdict::CompatibleVersion
+        }
     }
 
-    /// # Errors
-    /// A decode failure, or a rules rejection where the log recorded acceptance
-    /// (which is itself a divergence).
-    pub fn step(&mut self) -> Result<Option<StepResult>, ReplayError> {
-        todo!()
-    }
-
-    /// # Errors
-    /// As `step`.
-    pub fn seek(&mut self, _to: StateVersion) -> Result<(), ReplayError> {
-        todo!("restore nearest snapshot <= target, then step forward")
-    }
-
-    /// Re-run everything, comparing every checkpoint. The nightly job's entry
-    /// point.
+    /// Apply the next accepted input and compare its optional checkpoint.
     ///
-    /// # Errors
-    /// As `step`. A checkpoint mismatch is reported in [`VerifyReport`], not as
-    /// an `Err` — the caller wants the full divergence picture, not the first
-    /// failure.
+    /// An unexpected rejection is an error, never a successful step: canonical
+    /// replay frames represent inputs that the live log accepted.
+    pub fn step(&mut self) -> Result<Option<StepResult>, ReplayError> {
+        let Some(frame) = self.replay.frames.get(self.next_frame) else {
+            return Ok(None);
+        };
+        let input = self
+            .inputs
+            .get(self.next_frame)
+            .ok_or_else(|| ReplayError::Corrupt("frame/input count mismatch".to_owned()))?;
+        let seed = self
+            .replay
+            .header
+            .seed
+            .as_ref()
+            .ok_or(ReplayError::CanonicalSeedMissing)?;
+        let mut rng = tabula_core::DetRng::for_input(seed, frame.input_index);
+        let mut ctx = Ctx {
+            now: frame.logical_time,
+            index: frame.input_index,
+            rng: &mut rng,
+            budget: Budget {
+                max_apply_micros: u32::MAX,
+                max_events_per_input: u16::MAX,
+            },
+        };
+        R::apply(&mut self.state, input.clone(), &mut ctx).map_err(|error| {
+            ReplayError::UnexpectedRejection {
+                input_index: frame.input_index.0,
+                code: error.code,
+            }
+        })?;
+
+        self.state_version = StateVersion(
+            self.state_version
+                .0
+                .checked_add(1)
+                .ok_or_else(|| ReplayError::Corrupt("state version overflow".to_owned()))?,
+        );
+        self.next_frame += 1;
+        let actual = R::state_hash(&self.state);
+        let checkpoint_matched = frame.checkpoint.map(|expected| expected == actual);
+        Ok(Some(StepResult {
+            input_index: frame.input_index.0,
+            logical_time: frame.logical_time,
+            state_version: self.state_version,
+            state_hash: actual,
+            checkpoint: frame.checkpoint,
+            checkpoint_matched,
+        }))
+    }
+
+    /// Re-run from the initial state through the requested accepted-input
+    /// state version. State versions count replay frames, because rejected
+    /// inputs are not part of a canonical replay.
+    pub fn seek(&mut self, to: StateVersion) -> Result<(), ReplayError> {
+        if to.0 > self.replay.frames.len() as u64 {
+            return Err(ReplayError::SeekOutOfRange(to));
+        }
+        self.reset()?;
+        while self.state_version < to {
+            self.step()?.ok_or_else(|| {
+                ReplayError::Corrupt("replay ended before the requested state version".to_owned())
+            })?;
+        }
+        Ok(())
+    }
+
+    /// Re-run every frame, compare every claimed checkpoint and compare the
+    /// trailer's final hash. A divergence is data, not an early `Err`, so the
+    /// caller receives the full report. Decode, framing, and unexpected
+    /// rejection failures remain errors.
+    ///
+    /// @ai.role verifier
+    /// @ai.domain replay.verify
+    /// @ai.pure false
+    /// @ai.invariant replay-reproduces-checkpoint-hashes
+    /// @ai.invariant first-divergence-is-diagnosable
+    /// @ai.evidence crate::replay::tests::checkpoint_mismatch_reports_context
+    /// @ai.evidence crate::replay::tests::final_hash_mismatch_fails_verification
     pub fn verify(&mut self) -> Result<VerifyReport, ReplayError> {
-        todo!("doc 05 §7.3: on mismatch, record (match_id, input_index, expected, actual, rules_hash, build)")
+        self.reset()?;
+        let verdict = self.check();
+        if matches!(verdict, ReplayVerdict::Unreplayable { .. }) {
+            return Err(ReplayError::Unreplayable(format!("{verdict:?}")));
+        }
+
+        let mut report = VerifyReport {
+            verdict,
+            expected_final_state_hash: self.replay.final_state_hash,
+            actual_final_state_hash: StateHash([0; 32]),
+            final_hash_checked: false,
+            inputs_replayed: 0,
+            checkpoints_checked: 0,
+            divergences: Vec::new(),
+        };
+
+        while let Some(result) = self.step()? {
+            report.inputs_replayed += 1;
+            if let Some(expected) = result.checkpoint {
+                report.checkpoints_checked += 1;
+                if result.checkpoint_matched != Some(true) {
+                    report.divergences.push(Divergence {
+                        kind: DivergenceKind::Checkpoint,
+                        input_index: result.input_index,
+                        logical_time: Some(result.logical_time),
+                        expected: expected.0,
+                        actual: result.state_hash.0,
+                        rules_version: self.replay.header.rules_version,
+                        rules_hash: self.replay.header.rules_hash,
+                        previous_checkpoint: previous_checkpoint(
+                            &self.replay.frames,
+                            self.next_frame.saturating_sub(1),
+                        ),
+                        next_checkpoint: next_checkpoint(&self.replay.frames, self.next_frame),
+                    });
+                }
+            }
+        }
+
+        report.actual_final_state_hash = R::state_hash(&self.state);
+        report.final_hash_checked = true;
+        if report.actual_final_state_hash != report.expected_final_state_hash {
+            let final_frame = self.replay.frames.last();
+            report.divergences.push(Divergence {
+                kind: DivergenceKind::FinalStateHash,
+                input_index: final_frame.map_or(0, |frame| frame.input_index.0),
+                logical_time: final_frame.map(|frame| frame.logical_time),
+                expected: report.expected_final_state_hash.0,
+                actual: report.actual_final_state_hash.0,
+                rules_version: self.replay.header.rules_version,
+                rules_hash: self.replay.header.rules_hash,
+                previous_checkpoint: self
+                    .replay
+                    .frames
+                    .iter()
+                    .rev()
+                    .find_map(|frame| frame.checkpoint.map(|_| frame.input_index.0)),
+                next_checkpoint: None,
+            });
+        }
+
+        Ok(report)
+    }
+
+    fn reset(&mut self) -> Result<(), ReplayError> {
+        self.state = create_state::<R>(
+            &self.config,
+            &self.replay.header.roster,
+            self.replay.header.seed.as_ref(),
+        )?;
+        self.state_version = StateVersion(0);
+        self.next_frame = 0;
+        Ok(())
     }
 }
 
-/// Can this replay be trusted? (doc 05 §10.2)
-///
-/// **We never fake a replay.** `Unreplayable` shows the stored outcome and event
-/// summary rather than a plausible reconstruction — a wrong replay presented as
-/// right destroys the audit value of every replay we hold.
-#[derive(Clone, Debug)]
-pub enum ReplayVerdict {
-    /// `rules_hash` matches a linked build. Replay normally.
-    Exact,
-    /// `rules_version` is linked but the hash differs — someone changed behaviour
-    /// without bumping the version, or the build differs. Replay *with*
-    /// verification; a checkpoint mismatch becomes a divergence report.
-    CompatibleVersion,
-    /// Migrate the initial snapshot, replay from there, mark the result "migrated".
-    NeedsMigration {
-        from: RulesVersion,
-    },
-    Unreplayable {
-        reason: String,
-    },
+fn create_state<R: GameRules>(
+    config: &R::Config,
+    roster: &SeatRoster,
+    seed: Option<&MatchSeed>,
+) -> Result<R::State, ReplayError> {
+    let seed = seed.ok_or(ReplayError::CanonicalSeedMissing)?;
+    let mut rng = tabula_core::DetRng::for_input(seed, InputIndex(0));
+    let mut ctx = Ctx {
+        now: LogicalTime::ZERO,
+        index: InputIndex(0),
+        rng: &mut rng,
+        budget: Budget {
+            max_apply_micros: u32::MAX,
+            max_events_per_input: u16::MAX,
+        },
+    };
+    R::create(config, roster, &mut ctx)
+        .map(|init| init.state)
+        .map_err(|error| ReplayError::CreateRejected(format!("{error:?}")))
 }
 
-#[derive(Clone, Debug)]
+fn validate_parts(
+    header: ReplayHeader,
+    frames: Vec<ReplayFrame>,
+    final_state_hash: StateHash,
+) -> Result<ValidatedReplay, ReplayError> {
+    if header.config.is_empty() || header.config.len() > MAX_CONFIG_BYTES {
+        return Err(ReplayError::Corrupt(
+            "config is empty or exceeds the configured limit".to_owned(),
+        ));
+    }
+    validate_canonical_marker(&header.config, "config")?;
+    if header.rules_hash == [0; 32] {
+        return Err(ReplayError::Corrupt(
+            "rules hash must be an authoritative non-zero identity".to_owned(),
+        ));
+    }
+
+    match &header.kind {
+        ReplayKind::Canonical => {
+            if header.seed.is_none() {
+                return Err(ReplayError::CanonicalSeedMissing);
+            }
+            if header.initial_snapshot.is_some() {
+                return Err(ReplayError::Corrupt(
+                    "canonical replay must not carry an initial snapshot".to_owned(),
+                ));
+            }
+        }
+        ReplayKind::Projected { .. } => {
+            if header.seed.is_some() {
+                return Err(ReplayError::ProjectedContainsSeed);
+            }
+            if header.initial_snapshot.as_ref().is_none_or(Vec::is_empty) {
+                return Err(ReplayError::Corrupt(
+                    "projected replay requires initial projected data".to_owned(),
+                ));
+            }
+        }
+    }
+    if header
+        .initial_snapshot
+        .as_ref()
+        .is_some_and(|bytes| bytes.len() > MAX_FRAME_BYTES)
+    {
+        return Err(ReplayError::Corrupt(
+            "initial snapshot exceeds the configured limit".to_owned(),
+        ));
+    }
+    if frames.len() > MAX_FRAME_COUNT {
+        return Err(ReplayError::Corrupt(
+            "frame count exceeds the configured limit".to_owned(),
+        ));
+    }
+
+    let mut previous_time = LogicalTime::ZERO;
+    for (position, frame) in frames.iter().enumerate() {
+        let expected_index = InputIndex(
+            u64::try_from(position + 1)
+                .map_err(|_| ReplayError::Corrupt("frame index overflow".to_owned()))?,
+        );
+        if frame.input_index != expected_index {
+            return Err(ReplayError::Corrupt(
+                "frame input indices must be contiguous starting at one".to_owned(),
+            ));
+        }
+        if frame.logical_time < previous_time {
+            return Err(ReplayError::Corrupt(
+                "frame logical times must be monotonic".to_owned(),
+            ));
+        }
+        if frame.input.is_empty() || frame.input.len() > MAX_FRAME_BYTES {
+            return Err(ReplayError::Corrupt(
+                "frame payload is empty or exceeds the configured limit".to_owned(),
+            ));
+        }
+        if matches!(header.kind, ReplayKind::Canonical) {
+            validate_canonical_marker(&frame.input, "input")?;
+        }
+        previous_time = frame.logical_time;
+    }
+
+    Ok(ValidatedReplay {
+        header,
+        frames,
+        final_state_hash,
+    })
+}
+
+fn validate_canonical_marker(bytes: &[u8], name: &'static str) -> Result<(), ReplayError> {
+    if bytes.len() < 2 || bytes[..2] != ENCODING_VERSION.to_le_bytes() {
+        return Err(ReplayError::Corrupt(format!(
+            "{name} is not encoded with canonical encoding version {ENCODING_VERSION}"
+        )));
+    }
+    Ok(())
+}
+
+fn parse_payload(payload: &[u8]) -> Result<ValidatedReplay, ReplayError> {
+    if payload.len() < MAGIC.len() || &payload[..MAGIC.len()] != MAGIC {
+        return Err(ReplayError::BadMagic);
+    }
+    if payload.len() < MAGIC.len() + 2 + 4 + TRAILER_LEN {
+        return Err(ReplayError::Corrupt("truncated replay payload".to_owned()));
+    }
+
+    let version = u16::from_le_bytes([payload[4], payload[5]]);
+    if version > REPLAY_FORMAT_VERSION {
+        return Err(ReplayError::FormatTooNew(version));
+    }
+    if version < REPLAY_FORMAT_VERSION {
+        return Err(ReplayError::FormatTooOld(version));
+    }
+
+    let header_len = u32::from_le_bytes([payload[6], payload[7], payload[8], payload[9]]) as usize;
+    if header_len > MAX_HEADER_BYTES {
+        return Err(ReplayError::Corrupt(
+            "declared header exceeds the configured limit".to_owned(),
+        ));
+    }
+    let header_start: usize = 10;
+    let header_end = header_start
+        .checked_add(header_len)
+        .ok_or_else(|| ReplayError::Corrupt("header length overflows".to_owned()))?;
+    let body_end = payload
+        .len()
+        .checked_sub(TRAILER_LEN)
+        .ok_or_else(|| ReplayError::Corrupt("truncated replay trailer".to_owned()))?;
+    if header_end > body_end {
+        return Err(ReplayError::Corrupt("truncated replay header".to_owned()));
+    }
+    let header = postcard::from_bytes::<ReplayHeader>(&payload[header_start..header_end])
+        .map_err(|_| ReplayError::Corrupt("header is not valid Postcard".to_owned()))?;
+
+    let mut frames = Vec::new();
+    let mut cursor = header_end;
+    while cursor < body_end {
+        if body_end - cursor < 4 {
+            return Err(ReplayError::Corrupt("truncated frame length".to_owned()));
+        }
+        let frame_len = u32::from_le_bytes([
+            payload[cursor],
+            payload[cursor + 1],
+            payload[cursor + 2],
+            payload[cursor + 3],
+        ]) as usize;
+        cursor += 4;
+        if frame_len > MAX_FRAME_BYTES {
+            return Err(ReplayError::Corrupt(
+                "declared frame exceeds the configured limit".to_owned(),
+            ));
+        }
+        let frame_end = cursor
+            .checked_add(frame_len)
+            .ok_or_else(|| ReplayError::Corrupt("frame length overflows".to_owned()))?;
+        if frame_end > body_end {
+            return Err(ReplayError::Corrupt("truncated frame".to_owned()));
+        }
+        let frame = postcard::from_bytes::<ReplayFrame>(&payload[cursor..frame_end])
+            .map_err(|_| ReplayError::Corrupt("frame is not valid Postcard".to_owned()))?;
+        frames.push(frame);
+        if frames.len() > MAX_FRAME_COUNT {
+            return Err(ReplayError::Corrupt(
+                "frame count exceeds the configured limit".to_owned(),
+            ));
+        }
+        cursor = frame_end;
+    }
+
+    if body_end - cursor != 0 {
+        return Err(ReplayError::Corrupt(
+            "unexpected structural data before trailer".to_owned(),
+        ));
+    }
+    let input_count_start = body_end;
+    let input_count = u64::from_le_bytes(
+        payload[input_count_start..input_count_start + 8]
+            .try_into()
+            .map_err(|_| ReplayError::Corrupt("truncated input count".to_owned()))?,
+    );
+    let final_hash_start = input_count_start + 8;
+    let final_hash = StateHash(
+        payload[final_hash_start..final_hash_start + 32]
+            .try_into()
+            .map_err(|_| ReplayError::Corrupt("truncated final hash".to_owned()))?,
+    );
+    let checksum_start = final_hash_start + 32;
+    let expected_checksum = u32::from_le_bytes(
+        payload[checksum_start..checksum_start + 4]
+            .try_into()
+            .map_err(|_| ReplayError::Corrupt("truncated checksum".to_owned()))?,
+    );
+    if input_count != frames.len() as u64 {
+        return Err(ReplayError::InputCountMismatch {
+            declared: input_count,
+            actual: frames.len(),
+        });
+    }
+    let actual_checksum = crc32(&payload[..body_end]);
+    if actual_checksum != expected_checksum {
+        return Err(ReplayError::ChecksumMismatch);
+    }
+
+    validate_parts(header, frames, final_hash)
+}
+
+fn crc32(bytes: &[u8]) -> u32 {
+    let mut hasher = Crc32Hasher::new();
+    hasher.update(bytes);
+    hasher.finalize()
+}
+
+fn validate_zstd_frame_header(bytes: &[u8]) -> Result<(), ReplayError> {
+    if bytes.len() < 5 || bytes[..4] != [0x28, 0xb5, 0x2f, 0xfd] {
+        return Err(ReplayError::Corrupt("invalid zstd frame".to_owned()));
+    }
+
+    let descriptor = bytes[4];
+    if descriptor & 0x08 != 0 {
+        return Err(ReplayError::Corrupt(
+            "zstd frame has a reserved descriptor bit".to_owned(),
+        ));
+    }
+
+    let single_segment = descriptor & 0x20 != 0;
+    let fcs_flag = descriptor >> 6;
+    let dictionary_bytes = match descriptor & 0x03 {
+        0 => 0,
+        1 => 1,
+        2 => 2,
+        3 => 4,
+        _ => unreachable!("masked zstd dictionary flag has four values"),
+    };
+    let fcs_bytes = match fcs_flag {
+        0 if single_segment => 1,
+        0 => 0,
+        1 => 2,
+        2 => 4,
+        3 => 8,
+        _ => unreachable!("zstd frame content size flag has four values"),
+    };
+
+    let mut cursor = 5;
+    let window_size = if single_segment {
+        None
+    } else {
+        let descriptor = *bytes
+            .get(cursor)
+            .ok_or_else(|| ReplayError::Corrupt("truncated zstd window descriptor".to_owned()))?;
+        cursor += 1;
+        let exponent = u32::from(descriptor >> 3);
+        let base = 1_u64
+            .checked_shl(10 + exponent)
+            .ok_or_else(|| ReplayError::Corrupt("invalid zstd window descriptor".to_owned()))?;
+        Some(base + (base / 8) * u64::from(descriptor & 0x07))
+    };
+
+    let header_end = cursor
+        .checked_add(dictionary_bytes + fcs_bytes)
+        .ok_or_else(|| ReplayError::Corrupt("zstd header length overflow".to_owned()))?;
+    if header_end > bytes.len() {
+        return Err(ReplayError::Corrupt(
+            "truncated zstd frame header".to_owned(),
+        ));
+    }
+
+    let frame_content_size = match fcs_bytes {
+        0 => None,
+        1 => Some(u64::from(bytes[cursor])),
+        2 => Some(u64::from(u16::from_le_bytes([bytes[cursor], bytes[cursor + 1]])) + 256),
+        4 => Some(u64::from(u32::from_le_bytes([
+            bytes[cursor],
+            bytes[cursor + 1],
+            bytes[cursor + 2],
+            bytes[cursor + 3],
+        ]))),
+        8 => Some(u64::from_le_bytes([
+            bytes[cursor],
+            bytes[cursor + 1],
+            bytes[cursor + 2],
+            bytes[cursor + 3],
+            bytes[cursor + 4],
+            bytes[cursor + 5],
+            bytes[cursor + 6],
+            bytes[cursor + 7],
+        ])),
+        _ => unreachable!("zstd frame content size has only four encodings"),
+    };
+
+    let required_window = window_size.or(frame_content_size).unwrap_or(0);
+    if required_window > MAX_ZSTD_WINDOW_SIZE {
+        return Err(ReplayError::Corrupt(
+            "zstd window exceeds the configured limit".to_owned(),
+        ));
+    }
+    if frame_content_size.is_some_and(|size| size > MAX_DECOMPRESSED_REPLAY_BYTES as u64) {
+        return Err(ReplayError::Corrupt(
+            "decompressed replay exceeds the configured limit".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+fn previous_checkpoint(frames: &[ReplayFrame], before: usize) -> Option<u64> {
+    frames[..before]
+        .iter()
+        .rev()
+        .find_map(|frame| frame.checkpoint.map(|_| frame.input_index.0))
+}
+
+fn next_checkpoint(frames: &[ReplayFrame], after: usize) -> Option<u64> {
+    frames[after..]
+        .iter()
+        .find_map(|frame| frame.checkpoint.map(|_| frame.input_index.0))
+}
+
+/// Can this replay be trusted against the selected rules implementation?
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReplayVerdict {
+    /// The authoritative game rules hash is linked and equal.
+    Exact,
+    /// The rules version is linked but the identity differs; hashes must still
+    /// be compared and a mismatch is a divergence.
+    CompatibleVersion,
+    /// Reserved for future snapshot migration support. Phase 1 does not fake it.
+    NeedsMigration { from: RulesVersion },
+    /// No honest typed reconstruction is available.
+    Unreplayable { reason: String },
+}
+
+/// Result of one accepted replay input.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StepResult {
     pub input_index: u64,
+    pub logical_time: LogicalTime,
     pub state_version: StateVersion,
-    /// `Some` at checkpoint intervals.
+    pub state_hash: StateHash,
+    pub checkpoint: Option<StateHash>,
     pub checkpoint_matched: Option<bool>,
 }
 
-#[derive(Clone, Debug, Default)]
+/// What kind of evidence diverged.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DivergenceKind {
+    Checkpoint,
+    FinalStateHash,
+}
+
+/// A localized verification discrepancy.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Divergence {
+    pub kind: DivergenceKind,
+    pub input_index: u64,
+    pub logical_time: Option<LogicalTime>,
+    pub expected: [u8; 32],
+    pub actual: [u8; 32],
+    pub rules_version: RulesVersion,
+    pub rules_hash: [u8; 32],
+    /// The nearest earlier claimed checkpoint, if any.
+    pub previous_checkpoint: Option<u64>,
+    /// The nearest later claimed checkpoint, if any.
+    pub next_checkpoint: Option<u64>,
+}
+
+/// Complete verification evidence. `is_verified()` is intentionally stricter
+/// than "the file parsed": every checkpoint and the final trailer hash must
+/// have been compared, with no divergence.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifyReport {
+    pub verdict: ReplayVerdict,
+    pub expected_final_state_hash: StateHash,
+    pub actual_final_state_hash: StateHash,
+    pub final_hash_checked: bool,
     pub inputs_replayed: u64,
     pub checkpoints_checked: u64,
-    /// Empty means clean. Non-empty pages: `tabula_state_hash_mismatch_total`
-    /// must always be 0 (doc 06 §9.2).
     pub divergences: Vec<Divergence>,
 }
 
-#[derive(Clone, Debug)]
-pub struct Divergence {
-    pub input_index: u64,
-    pub expected: [u8; 32],
-    pub actual: [u8; 32],
+impl VerifyReport {
+    #[must_use]
+    pub fn is_verified(&self) -> bool {
+        self.final_hash_checked && self.divergences.is_empty()
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -149,8 +1027,511 @@ pub enum ReplayError {
     BadMagic,
     #[error("format version {0} is newer than this reader supports")]
     FormatTooNew(u16),
+    #[error("format version {0} is older than this reader supports")]
+    FormatTooOld(u16),
     #[error("corrupt replay: {0}")]
-    Corrupt(&'static str),
+    Corrupt(String),
+    #[error("canonical replay is missing its MatchSeed")]
+    CanonicalSeedMissing,
+    #[error("projected replay must not contain a MatchSeed")]
+    ProjectedContainsSeed,
+    #[error("projected replay execution is not supported by the canonical runner")]
+    UnsupportedReplayKind,
+    #[error("replay is unreplayable: {0}")]
+    Unreplayable(String),
+    #[error("replay input {input_index} was rejected during verification: {code:?}")]
+    UnexpectedRejection {
+        input_index: u64,
+        code: tabula_core::RuleErrorCode,
+    },
+    #[error("game create rejected the replay header: {0}")]
+    CreateRejected(String),
+    #[error("replay input count mismatch: declared {declared}, decoded {actual}")]
+    InputCountMismatch { declared: u64, actual: usize },
+    #[error("replay checksum mismatch")]
+    ChecksumMismatch,
+    #[error("replay seek target {0:?} is outside the replay")]
+    SeekOutOfRange(StateVersion),
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use smallvec::smallvec;
+    use tabula_core::{canonical_encode, Occupant, SeatEntry, SeatId, UserId, Viewer};
+    use tabula_game_api::{Init, InitError, Outcome};
+
+    fn header(kind: ReplayKind, seed: Option<MatchSeed>) -> ReplayHeader {
+        ReplayHeader {
+            match_id: MatchId(7),
+            game_id: GameId::new("com.example.test").unwrap(),
+            game_version: GameVersion::new("1.2.3").unwrap(),
+            rules_version: RulesVersion(1),
+            rules_hash: [9; 32],
+            config: canonical_encode(&7u8).unwrap(),
+            roster: SeatRoster::new(smallvec![SeatEntry {
+                seat: SeatId(0),
+                occupant: Occupant::Human(UserId(1)),
+                team: None,
+            }])
+            .unwrap(),
+            seed,
+            initial_snapshot: match kind {
+                ReplayKind::Canonical => None,
+                ReplayKind::Projected { .. } => Some(vec![1, 2, 3]),
+            },
+            started_at: 0,
+            duration_ms: 0,
+            outcome: None,
+            kind,
+        }
+    }
+
+    fn draft(kind: ReplayKind, seed: Option<MatchSeed>) -> ReplayDraft {
+        ReplayDraft {
+            header: header(kind, seed),
+            frames: vec![ReplayFrame {
+                input_index: InputIndex(1),
+                logical_time: LogicalTime(1_000),
+                input: canonical_encode(&7u8).unwrap(),
+                checkpoint: Some(StateHash([4; 32])),
+            }],
+            final_state_hash: StateHash([5; 32]),
+        }
+    }
+
+    #[test]
+    fn projected_seed_is_rejected_by_writer_and_reader() {
+        let seed = MatchSeed::from_bytes([3; 32]);
+        let invalid = draft(
+            ReplayKind::Projected {
+                viewer: Viewer::Spectator(tabula_core::SpectatorTier::Live),
+            },
+            Some(seed),
+        );
+        assert!(matches!(
+            invalid.validate(),
+            Err(ReplayError::ProjectedContainsSeed)
+        ));
+
+        let valid = draft(
+            ReplayKind::Projected {
+                viewer: Viewer::Spectator(tabula_core::SpectatorTier::Live),
+            },
+            None,
+        );
+        let bytes = valid.to_bytes().unwrap();
+        let mut logical = decode_for_test(&bytes);
+        // The reader must enforce the same invariant even when the bytes were
+        // assembled by a malicious producer rather than this writer.
+        let header_start = 10;
+        let header_len = u32::from_le_bytes(logical[6..10].try_into().unwrap()) as usize;
+        let mut parsed: ReplayHeader =
+            postcard::from_bytes(&logical[header_start..header_start + header_len]).unwrap();
+        parsed.seed = Some(MatchSeed::from_bytes([8; 32]));
+        let encoded = postcard::to_allocvec(&parsed).unwrap();
+        logical.splice(
+            header_start..header_start + header_len,
+            encoded.iter().copied(),
+        );
+        logical[6..10].copy_from_slice(&u32::try_from(encoded.len()).unwrap().to_le_bytes());
+        rewrite_checksum(&mut logical);
+        let malicious = encode_for_test(&logical);
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&malicious),
+            Err(ReplayError::ProjectedContainsSeed)
+        ));
+    }
+
+    #[test]
+    fn canonical_replay_requires_seed() {
+        let error = draft(ReplayKind::Canonical, None).validate().unwrap_err();
+        assert!(matches!(error, ReplayError::CanonicalSeedMissing));
+
+        let valid = draft(ReplayKind::Canonical, Some(MatchSeed::from_bytes([3; 32])))
+            .to_bytes()
+            .unwrap();
+        let mut logical = decode_for_test(&valid);
+        let header_len = u32::from_le_bytes(logical[6..10].try_into().unwrap()) as usize;
+        let mut parsed: ReplayHeader = postcard::from_bytes(&logical[10..10 + header_len]).unwrap();
+        parsed.seed = None;
+        let encoded = postcard::to_allocvec(&parsed).unwrap();
+        logical.splice(10..10 + header_len, encoded.iter().copied());
+        logical[6..10].copy_from_slice(&u32::try_from(encoded.len()).unwrap().to_le_bytes());
+        rewrite_checksum(&mut logical);
+        let malicious = encode_for_test(&logical);
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&malicious),
+            Err(ReplayError::CanonicalSeedMissing)
+        ));
+    }
+
+    #[test]
+    fn round_trip_preserves_validated_structure() {
+        let replay = draft(ReplayKind::Canonical, Some(MatchSeed::from_bytes([3; 32])))
+            .validate()
+            .unwrap();
+        let bytes = replay.to_bytes().unwrap();
+        let decoded = ValidatedReplay::from_bytes(&bytes).unwrap();
+        assert_eq!(decoded.header().match_id, replay.header().match_id);
+        assert_eq!(decoded.frames().len(), replay.frames().len());
+        assert_eq!(decoded.final_state_hash(), replay.final_state_hash());
+        assert_eq!(decoded.to_bytes().unwrap(), bytes);
+    }
+
+    #[test]
+    fn corruption_is_rejected() {
+        let replay = draft(ReplayKind::Canonical, Some(MatchSeed::from_bytes([3; 32])))
+            .to_bytes()
+            .unwrap();
+        let mut logical = decode_for_test(&replay);
+        logical[0] = b'X';
+        let corrupted_magic = encode_for_test(&logical);
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&corrupted_magic),
+            Err(ReplayError::BadMagic)
+        ));
+
+        let mut truncated = replay.clone();
+        truncated.truncate(truncated.len() - 1);
+        assert!(ValidatedReplay::from_bytes(&truncated).is_err());
+
+        let mut body_corrupt = decode_for_test(&replay);
+        body_corrupt[10] ^= 1;
+        let bytes = encode_for_test(&body_corrupt);
+        assert!(ValidatedReplay::from_bytes(&bytes).is_err());
+    }
+
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    struct CounterState {
+        value: u32,
+    }
+
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    enum CounterCommand {
+        Add(u8),
+        Reject,
+    }
+
+    #[derive(Clone, Debug, Serialize)]
+    struct CounterView {
+        value: u32,
+    }
+
+    struct CounterRules;
+
+    impl GameRules for CounterRules {
+        type State = CounterState;
+        type Command = CounterCommand;
+        type Event = u32;
+        type View = CounterView;
+        type ViewEvent = u32;
+        type Config = u8;
+
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+        const RULES_HASH: [u8; 32] = [9; 32];
+
+        fn create(_: &u8, _: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: CounterState { value: 0 },
+                events: smallvec::SmallVec::new(),
+                effects: smallvec::SmallVec::new(),
+            })
+        }
+
+        fn apply(
+            state: &mut CounterState,
+            input: Input<CounterCommand>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, tabula_core::RuleError> {
+            match input {
+                Input::Player {
+                    command: CounterCommand::Add(amount),
+                    ..
+                } => {
+                    state.value += u32::from(amount);
+                    Ok(Outcome {
+                        events: smallvec::smallvec![u32::from(amount)],
+                        effects: smallvec::SmallVec::new(),
+                    })
+                }
+                Input::Player {
+                    command: CounterCommand::Reject,
+                    ..
+                } => Err(tabula_core::RuleError::code(
+                    tabula_core::RuleErrorCode::IllegalMove,
+                )),
+                Input::Timer { .. } | Input::Seat { .. } | Input::Admin(_) => Ok(Outcome::empty()),
+            }
+        }
+
+        fn project(state: &CounterState, _: Viewer) -> CounterView {
+            CounterView { value: state.value }
+        }
+
+        fn view_event(_: &CounterState, event: &u32, _: Viewer) -> Option<u32> {
+            Some(*event)
+        }
+    }
+
+    fn counter_roster() -> SeatRoster {
+        SeatRoster::new(smallvec![SeatEntry {
+            seat: SeatId(0),
+            occupant: Occupant::Human(UserId(11)),
+            team: None,
+        }])
+        .unwrap()
+    }
+
+    fn counter_draft(commands: &[CounterCommand]) -> (ReplayDraft, StateHash) {
+        let seed = MatchSeed::from_bytes([42; 32]);
+        let config = 7u8;
+        let roster = counter_roster();
+        let mut create_rng = tabula_core::DetRng::for_input(&seed, InputIndex(0));
+        let mut create_ctx = Ctx {
+            now: LogicalTime::ZERO,
+            index: InputIndex(0),
+            rng: &mut create_rng,
+            budget: Budget {
+                max_apply_micros: u32::MAX,
+                max_events_per_input: u16::MAX,
+            },
+        };
+        let init = CounterRules::create(&config, &roster, &mut create_ctx).unwrap();
+        let mut state = init.state;
+        let mut frames = Vec::new();
+        for (position, command) in commands.iter().cloned().enumerate() {
+            let input = Input::Player {
+                seat: SeatId(0),
+                command,
+            };
+            let index = InputIndex(position as u64 + 1);
+            let logical_time = LogicalTime((position as u64 + 1) * 100);
+            let mut rng = tabula_core::DetRng::for_input(&seed, index);
+            let mut ctx = Ctx {
+                now: logical_time,
+                index,
+                rng: &mut rng,
+                budget: Budget {
+                    max_apply_micros: u32::MAX,
+                    max_events_per_input: u16::MAX,
+                },
+            };
+            CounterRules::apply(&mut state, input.clone(), &mut ctx).unwrap();
+            frames.push(ReplayFrame {
+                input_index: index,
+                logical_time,
+                input: canonical_encode(&input).unwrap(),
+                checkpoint: Some(CounterRules::state_hash(&state)),
+            });
+        }
+        let final_hash = CounterRules::state_hash(&state);
+        (
+            ReplayDraft {
+                header: ReplayHeader {
+                    match_id: MatchId(99),
+                    game_id: GameId::new("com.example.counter").unwrap(),
+                    game_version: GameVersion::new("1.0.0").unwrap(),
+                    rules_version: RulesVersion(1),
+                    rules_hash: [9; 32],
+                    config: canonical_encode(&config).unwrap(),
+                    roster,
+                    seed: Some(seed),
+                    initial_snapshot: None,
+                    started_at: 0,
+                    duration_ms: commands.len() as u64 * 100,
+                    outcome: None,
+                    kind: ReplayKind::Canonical,
+                },
+                frames,
+                final_state_hash: final_hash,
+            },
+            final_hash,
+        )
+    }
+
+    fn counter_identity() -> ReplayIdentity {
+        ReplayIdentity {
+            game_id: GameId::new("com.example.counter").unwrap(),
+            rules_version: RulesVersion(1),
+            rules_hash: [9; 32],
+        }
+    }
+
+    #[test]
+    fn runner_replays_independent_live_execution_and_supports_seek() {
+        let (draft, live_final_hash) = counter_draft(&[
+            CounterCommand::Add(2),
+            CounterCommand::Add(3),
+            CounterCommand::Add(5),
+        ]);
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        assert_eq!(runner.check(), ReplayVerdict::Exact);
+        let report = runner.verify().unwrap();
+        assert!(report.is_verified());
+        assert_eq!(report.checkpoints_checked, 3);
+        assert_eq!(report.actual_final_state_hash, live_final_hash);
+
+        runner.seek(StateVersion(1)).unwrap();
+        let next = runner.step().unwrap().unwrap();
+        assert_eq!(next.input_index, 2);
+        assert_eq!(next.state_version, StateVersion(2));
+
+        let first = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .verify()
+            .unwrap();
+        let second = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .verify()
+            .unwrap();
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn checkpoint_mismatch_reports_context() {
+        let (mut draft, _) = counter_draft(&[
+            CounterCommand::Add(2),
+            CounterCommand::Add(3),
+            CounterCommand::Add(5),
+        ]);
+        draft.frames[1].checkpoint = Some(StateHash([77; 32]));
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let divergence = report.divergences.first().unwrap();
+        assert_eq!(divergence.kind, DivergenceKind::Checkpoint);
+        assert_eq!(divergence.input_index, 2);
+        assert_eq!(divergence.logical_time, Some(LogicalTime(200)));
+        assert_eq!(divergence.previous_checkpoint, Some(1));
+        assert_eq!(divergence.next_checkpoint, Some(3));
+        assert!(!report.is_verified());
+    }
+
+    #[test]
+    fn final_hash_mismatch_fails_verification() {
+        let (mut draft, _) = counter_draft(&[CounterCommand::Add(2)]);
+        draft.final_state_hash = StateHash([88; 32]);
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        assert_eq!(
+            report.divergences.last().unwrap().kind,
+            DivergenceKind::FinalStateHash
+        );
+        assert!(!report.is_verified());
+    }
+
+    #[test]
+    fn replay_rejection_is_not_reported_as_success() {
+        let (mut draft, _) = counter_draft(&[]);
+        let input = Input::Player {
+            seat: SeatId(0),
+            command: CounterCommand::Reject,
+        };
+        draft.frames.push(ReplayFrame {
+            input_index: InputIndex(1),
+            logical_time: LogicalTime(100),
+            input: canonical_encode(&input).unwrap(),
+            checkpoint: None,
+        });
+        let bytes = draft.to_bytes().unwrap();
+        let error = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .verify()
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ReplayError::UnexpectedRejection { input_index: 1, .. }
+        ));
+    }
+
+    #[test]
+    fn hostile_structural_metadata_is_rejected_before_frame_decode() {
+        let (draft, _) = counter_draft(&[CounterCommand::Add(1)]);
+        let bytes = draft.to_bytes().unwrap();
+
+        let mut future = decode_for_test(&bytes);
+        future[4..6].copy_from_slice(&(REPLAY_FORMAT_VERSION + 1).to_le_bytes());
+        let future = encode_for_test(&future);
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&future),
+            Err(ReplayError::FormatTooNew(2))
+        ));
+
+        let mut count = decode_for_test(&bytes);
+        let body_end = count.len() - TRAILER_LEN;
+        count[body_end..body_end + 8].copy_from_slice(&99u64.to_le_bytes());
+        let count = encode_for_test(&count);
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&count),
+            Err(ReplayError::InputCountMismatch {
+                declared: 99,
+                actual: 1
+            })
+        ));
+
+        let mut oversized = decode_for_test(&bytes);
+        let body_end = oversized.len() - TRAILER_LEN;
+        oversized.splice(
+            body_end..body_end,
+            (u32::try_from(MAX_FRAME_BYTES + 1).unwrap()).to_le_bytes(),
+        );
+        rewrite_checksum(&mut oversized);
+        let oversized = encode_for_test(&oversized);
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&oversized),
+            Err(ReplayError::Corrupt(message)) if message.contains("declared frame")
+        ));
+    }
+
+    #[test]
+    fn non_monotonic_reader_frames_are_rejected() {
+        let (draft, _) = counter_draft(&[CounterCommand::Add(1), CounterCommand::Add(1)]);
+        let bytes = draft.to_bytes().unwrap();
+        let mut logical = decode_for_test(&bytes);
+        let header_len = u32::from_le_bytes(logical[6..10].try_into().unwrap()) as usize;
+        let mut cursor = 10 + header_len;
+        let first_len =
+            u32::from_le_bytes(logical[cursor..cursor + 4].try_into().unwrap()) as usize;
+        cursor += 4 + first_len;
+        let second_len =
+            u32::from_le_bytes(logical[cursor..cursor + 4].try_into().unwrap()) as usize;
+        cursor += 4;
+        let mut second: ReplayFrame =
+            postcard::from_bytes(&logical[cursor..cursor + second_len]).unwrap();
+        second.input_index = InputIndex(1);
+        let replacement = postcard::to_allocvec(&second).unwrap();
+        assert_eq!(replacement.len(), second_len);
+        logical[cursor..cursor + second_len].copy_from_slice(&replacement);
+        rewrite_checksum(&mut logical);
+        let bytes = encode_for_test(&logical);
+        assert!(matches!(
+            ValidatedReplay::from_bytes(&bytes),
+            Err(ReplayError::Corrupt(message)) if message.contains("contiguous")
+        ));
+    }
+
+    fn decode_for_test(bytes: &[u8]) -> Vec<u8> {
+        let mut stream = ruzstd::decoding::StreamingDecoder::new(Cursor::new(bytes)).unwrap();
+        let mut output = Vec::new();
+        stream.read_to_end(&mut output).unwrap();
+        output
+    }
+
+    fn encode_for_test(logical: &[u8]) -> Vec<u8> {
+        ruzstd::encoding::compress_to_vec(logical, ruzstd::encoding::CompressionLevel::Uncompressed)
+    }
+
+    fn rewrite_checksum(logical: &mut [u8]) {
+        let body_end = logical.len() - TRAILER_LEN;
+        let checksum = crc32(&logical[..body_end]);
+        logical[body_end + 8 + 32..].copy_from_slice(&checksum.to_le_bytes());
+    }
 }

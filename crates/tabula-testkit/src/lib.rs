@@ -68,4 +68,8 @@ pub use conformance::{
 };
 pub use determinism::{RunTrace, Scenario};
 pub use projection::{Secret, SecretModel};
-pub use replay::{ReplayRunner, ReplayVerdict};
+pub use replay::{
+    Divergence, DivergenceKind, ReplayDraft, ReplayError, ReplayFrame, ReplayHeader,
+    ReplayIdentity, ReplayKind, ReplayRunner, ReplayVerdict, StepResult, ValidatedReplay,
+    VerifyReport,
+};

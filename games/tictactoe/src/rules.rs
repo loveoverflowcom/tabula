@@ -47,6 +47,7 @@ impl GameRules for TicTacToeRules {
     type Config = Config;
 
     const RULES_VERSION: RulesVersion = RulesVersion(2);
+    const RULES_HASH: [u8; 32] = *include_bytes!(concat!(env!("OUT_DIR"), "/rules_hash.bin"));
 
     fn create(
         cfg: &Config,

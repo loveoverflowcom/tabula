@@ -39,5 +39,8 @@ tabula-testkit      = { workspace = true, optional = true }
 [dev-dependencies]
 tabula-testkit = { workspace = true }
 
+[build-dependencies]
+blake3 = { workspace = true }
+
 [lints]
 workspace = true

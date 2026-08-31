@@ -28,7 +28,9 @@ cargo_metadata = "0.19"
 serde_json    = { workspace = true }
 tempfile      = "3"
 tabula-core   = { workspace = true }
+tabula-game-api = { workspace = true }
 tabula-testkit = { workspace = true }
+smallvec     = { workspace = true }
 tabula-game-chess = { workspace = true, features = ["rules", "bots"] }
 tabula-game-tictactoe = { workspace = true, features = ["rules", "bots"] }
 

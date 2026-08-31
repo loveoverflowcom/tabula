@@ -587,6 +587,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruzstd"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -789,6 +798,7 @@ dependencies = [
 name = "tabula-game-chess"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "serde",
  "smallvec",
  "tabula-assets",
@@ -811,6 +821,7 @@ dependencies = [
 name = "tabula-game-tictactoe"
 version = "0.2.0"
 dependencies = [
+ "blake3",
  "serde",
  "smallvec",
  "tabula-assets",
@@ -938,9 +949,11 @@ name = "tabula-testkit"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "crc32fast",
  "insta",
  "postcard",
  "proptest",
+ "ruzstd",
  "serde",
  "smallvec",
  "tabula-core",
@@ -1088,6 +1101,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
+name = "twox-hash"
+version = "2.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5283634e518fe9e82c7b20520bb4bc209009fd16c82077c802f8111ecbb0117a"
+
+[[package]]
 name = "unarray"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1154,7 +1173,9 @@ dependencies = [
  "cargo_metadata",
  "serde",
  "serde_json",
+ "smallvec",
  "tabula-core",
+ "tabula-game-api",
  "tabula-game-chess",
  "tabula-game-tictactoe",
  "tabula-testkit",

@@ -392,6 +392,13 @@ When a replay's recomputed hash differs from the stored hash:
 A replay is **the input stream plus enough metadata to re-run it**. Events are *not* required
 (they are derivable) but a checkpoint hash list is included for verification.
 
+For the Phase 1 canonical artifact, the input stream is the ordered set of inputs
+that the live runtime accepted into its canonical log. Rejected hostile inputs are
+not replay frames: a rejection while replaying a stored frame is therefore a
+divergence/corruption error, never a successful no-op. The runtime may choose a
+different audit log policy later, but the live and replay input-index assignment
+must remain identical (ADR-026 §5).
+
 ```text
 .tbr file layout (Tabula Binary Replay)
 

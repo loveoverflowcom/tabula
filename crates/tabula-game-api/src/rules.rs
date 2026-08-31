@@ -106,6 +106,14 @@ pub trait GameRules: Sized + Send + Sync + 'static {
     /// Stored per match; a match runs one version for its whole life. (doc 02 §9.2)
     const RULES_VERSION: RulesVersion;
 
+    /// Build-derived identity of the rules-half source for replay compatibility.
+    ///
+    /// A zero value means that this game has not supplied an authoritative
+    /// identity yet; replay tooling must not call that an exact match. Real
+    /// game crates override this with the hash produced by their build script
+    /// over the rules source files and [`Self::RULES_VERSION`]. (doc 05 §6.2)
+    const RULES_HASH: [u8; 32] = [0; 32];
+
     /// Build the initial state. May draw randomness (shuffle, role assignment)
     /// from `ctx.rng` — this is the one place most games use RNG at all.
     ///

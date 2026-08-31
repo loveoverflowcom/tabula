@@ -123,6 +123,8 @@ directories   = "5"
 proptest         = "1"
 insta            = { version = "1", features = ["json"] }
 wasm-bindgen-test = "0.3"
+crc32fast        = "1"
+ruzstd           = "0.8"
 
 # =============================================================================
 # Lints — consistency without debate (doc 01 §1.4).

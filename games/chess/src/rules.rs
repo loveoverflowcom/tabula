@@ -45,6 +45,7 @@ impl GameRules for ChessRules {
     // PositionKey is compact Zobrist state rather than a serialized board, and
     // clock state/events now participate in the canonical contract.
     const RULES_VERSION: RulesVersion = RulesVersion(3);
+    const RULES_HASH: [u8; 32] = *include_bytes!(concat!(env!("OUT_DIR"), "/rules_hash.bin"));
 
     fn create(
         config: &Config,
