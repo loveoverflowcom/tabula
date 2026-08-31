@@ -131,7 +131,8 @@ games/chess:  State/Command/Event/View, full legal move generation (incl. castli
               50-move rule, insufficient material, clocks (Fischer + Bronstein increments),
               resign/draw offers, timeout handling via Input::Timer
 games/chess bots:  Trivial (random legal) + Easy (material + piece-square, depth 2)
-tabula-testkit additions:  perft harness, golden replay corpus, divergence bisector
+tabula-testkit additions:  perft harness, golden replay corpus, evidence-aware divergence
+                            diagnosis and validated-prefix reproducer
 xtask:  selfplay, replay, perft
 ```
 

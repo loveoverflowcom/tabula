@@ -24,7 +24,7 @@
 //! | `check-manifests` | Validate workspace `Cargo.toml`s (inheritance, no wildcard versions, `{ workspace = true }` over duplicated paths, game feature shape) and `game.toml` schemas | 0 |
 //! | `new-game <slug>` | Scaffold a game crate from the template (doc 02 §10.1) | 0 |
 //! | `selfplay <game>` | Bot-vs-bot matches with full invariant checking | 0 |
-//! | `replay <file>` | Replay a `.tbr` locally and print the first divergence | 0 |
+//! | `replay <file>` | Replay a `.tbr` locally; `--diagnose` prints evidence strength | 0 |
 //! | `perft <depth>` | Chess move-generation counts | 1 |
 //! | `gen-tokens` | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json` | 2 |
 //! | `check-no-raw-colors` | No hex literals or `Color::new(` outside `tabula-design` | 2 |
@@ -175,7 +175,7 @@ fn main() {
                  local gate:  check   (fmt, clippy, test, check-deps, check-no-game-ids,\n\
                                         check-manifests, cargo-deny, in that order)\n\n\
                  phase 0:  check-deps  check-no-game-ids  check-manifests\n\
-                           new-game <slug>  selfplay <game>  replay <file> [--verify] [--at N]\n\
+                           new-game <slug>  selfplay <game>  replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]\n\
                            replay-goldens (intentional fixture regeneration)\n\
                  phase 1:  perft chess [depth]\n\
                  phase 2:  gen-tokens  check-no-raw-colors\n\
