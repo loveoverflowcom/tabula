@@ -1,6 +1,6 @@
 [package]
 name        = "tabula-game-chess"
-version     = "0.0.0"
+version     = "0.1.0"
 description = "Chess — the correctness benchmark (perft, clocks, ratings)"
 edition.workspace      = true
 rust-version.workspace = true

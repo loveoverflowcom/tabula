@@ -47,10 +47,64 @@ pub fn from_fen(fen: &str) -> Result<State, FenError> {
         .ok_or(FenError("missing fullmove number"))?
         .parse()
         .map_err(|_| FenError("invalid fullmove number"))?;
+    if fullmove_number == 0 {
+        return Err(FenError("fullmove number must be at least one"));
+    }
     if fields.next().is_some() {
         return Err(FenError("too many FEN fields"));
     }
 
+    let board = parse_board(placement)?;
+    let castling = CastlingRights {
+        white_king: castling_field.contains('K'),
+        white_queen: castling_field.contains('Q'),
+        black_king: castling_field.contains('k'),
+        black_queen: castling_field.contains('q'),
+    };
+    if !valid_castling_field(castling_field) {
+        return Err(FenError("invalid castling rights"));
+    }
+    let en_passant = if ep_field == "-" {
+        None
+    } else {
+        parse_square(ep_field)?
+    };
+    let mut state = State {
+        board,
+        turn,
+        castling,
+        en_passant,
+        halfmove_clock,
+        fullmove_number,
+        repetition: Vec::new(),
+        status: Status::Playing,
+        draw_offer: None,
+        clock: None,
+    };
+    if king_count(&state, Color::White) != 1 || king_count(&state, Color::Black) != 1 {
+        return Err(FenError("position must contain one king of each color"));
+    }
+    if state.board.iter().enumerate().any(|(square, piece)| {
+        piece.is_some_and(|piece| {
+            piece.kind == PieceKind::Pawn && (square / 8 == 0 || square / 8 == 7)
+        })
+    }) {
+        return Err(FenError("pawns cannot occupy a promotion rank"));
+    }
+    if kings_are_adjacent(&state) || in_check(&state, turn.other()) {
+        return Err(FenError("position has an invalid king placement"));
+    }
+    if !castling_rights_match_board(&state, castling_field) {
+        return Err(FenError("castling rights do not match the board"));
+    }
+    if !en_passant_matches_board(&state) {
+        return Err(FenError("en-passant target does not match the board"));
+    }
+    state.repetition.push(position_key(&state));
+    Ok(state)
+}
+
+fn parse_board(placement: &str) -> Result<[Option<Piece>; 64], FenError> {
     let mut board = [None; 64];
     let ranks: Vec<_> = placement.split('/').collect();
     if ranks.len() != 8 {
@@ -78,41 +132,7 @@ pub fn from_fen(fen: &str) -> Result<State, FenError> {
             return Err(FenError("rank does not contain eight squares"));
         }
     }
-    let castling = CastlingRights {
-        white_king: castling_field.contains('K'),
-        white_queen: castling_field.contains('Q'),
-        black_king: castling_field.contains('k'),
-        black_queen: castling_field.contains('q'),
-    };
-    if castling_field != "-"
-        && !castling_field
-            .chars()
-            .all(|ch| matches!(ch, 'K' | 'Q' | 'k' | 'q'))
-    {
-        return Err(FenError("invalid castling rights"));
-    }
-    let en_passant = if ep_field == "-" {
-        None
-    } else {
-        parse_square(ep_field)?
-    };
-    let mut state = State {
-        board,
-        turn,
-        castling,
-        en_passant,
-        halfmove_clock,
-        fullmove_number,
-        repetition: Vec::new(),
-        status: Status::Playing,
-        draw_offer: None,
-        clock: None,
-    };
-    if king_count(&state, Color::White) != 1 || king_count(&state, Color::Black) != 1 {
-        return Err(FenError("position must contain one king of each color"));
-    }
-    state.repetition.push(position_key(&state));
-    Ok(state)
+    Ok(board)
 }
 
 fn fen_piece(ch: char) -> Option<Piece> {
@@ -131,6 +151,22 @@ fn fen_piece(ch: char) -> Option<Piece> {
         _ => return None,
     };
     Some(Piece { color, kind })
+}
+
+fn valid_castling_field(field: &str) -> bool {
+    if field == "-" {
+        return true;
+    }
+    let mut seen = 0u8;
+    for (flag, bit) in [('K', 1), ('Q', 2), ('k', 4), ('q', 8)] {
+        if field.matches(flag).count() > 1 {
+            return false;
+        }
+        if field.contains(flag) {
+            seen |= bit;
+        }
+    }
+    seen != 0 && field.chars().all(|ch| matches!(ch, 'K' | 'Q' | 'k' | 'q'))
 }
 
 fn parse_square(value: &str) -> Result<Option<Square>, FenError> {
@@ -221,7 +257,9 @@ fn pawn_moves(state: &State, from: Square, color: Color, moves: &mut Vec<Move>) 
         let Some(to) = offset(from, file_delta, direction) else {
             continue;
         };
-        if state.board[usize::from(to.0)].is_some_and(|piece| piece.color != color) {
+        if state.board[usize::from(to.0)]
+            .is_some_and(|piece| piece.color != color && piece.kind != PieceKind::King)
+        {
             push_pawn_move(moves, from, to, promotion_rank, None);
         } else if state.en_passant == Some(to) {
             let captured = offset(to, 0, -direction);
@@ -288,7 +326,9 @@ fn jump_moves(
         let Some(to) = offset(from, file, rank) else {
             continue;
         };
-        if state.board[usize::from(to.0)].is_none_or(|piece| piece.color != color) {
+        if state.board[usize::from(to.0)]
+            .is_none_or(|piece| piece.color != color && piece.kind != PieceKind::King)
+        {
             moves.push(basic_move(from, to));
         }
     }
@@ -306,7 +346,7 @@ fn ray_moves(
         while let Some(to) = offset(cursor, file, rank) {
             match state.board[usize::from(to.0)] {
                 None => moves.push(basic_move(from, to)),
-                Some(piece) if piece.color != color => {
+                Some(piece) if piece.color != color && piece.kind != PieceKind::King => {
                     moves.push(basic_move(from, to));
                     break;
                 }
@@ -567,6 +607,12 @@ pub(crate) fn apply_move(
     state.turn = state.turn.other();
     state.draw_offer = None;
     if record_position {
+        // A pawn move or capture makes every earlier position unreachable, so
+        // those keys need not remain in the canonical history. This keeps the
+        // repetition vector bounded by the no-progress window.
+        if moving.kind == PieceKind::Pawn || captured.is_some() {
+            state.repetition.clear();
+        }
         state.repetition.push(position_key(state));
     }
     captured.or_else(|| {
@@ -622,12 +668,31 @@ pub fn position_key(state: &State) -> PositionKey {
             .iter()
             .any(|candidate| candidate.en_passant_capture.is_some())
     });
-    PositionKey {
-        board: state.board,
-        turn: state.turn,
-        castling: state.castling,
-        en_passant,
+    let mut key = 0;
+    for (square, piece) in state.board.iter().enumerate() {
+        if let Some(piece) = piece {
+            key ^= zobrist_piece(square, *piece);
+        }
     }
+    key ^= if state.turn == Color::White {
+        zobrist_component(0x0f0f_0f0f_0f0f_0f0f)
+    } else {
+        zobrist_component(0xf0f0_f0f0_f0f0_f0f0)
+    };
+    for (enabled, salt) in [
+        (state.castling.white_king, 0x1000),
+        (state.castling.white_queen, 0x1001),
+        (state.castling.black_king, 0x1002),
+        (state.castling.black_queen, 0x1003),
+    ] {
+        if enabled {
+            key ^= zobrist_component(salt);
+        }
+    }
+    if let Some(square) = en_passant {
+        key ^= zobrist_component(0x2000 + u64::from(square.0));
+    }
+    PositionKey(key)
 }
 
 /// Counts leaf nodes using the same legal generation as rule application.
@@ -658,4 +723,152 @@ fn king_count(state: &State, color: Color) -> usize {
                 })
         })
         .count()
+}
+
+const ZOBRIST_SEED: u64 = 0x9e37_79b9_7f4a_7c15;
+
+fn zobrist_piece(square: usize, piece: Piece) -> u64 {
+    let color = match piece.color {
+        Color::White => 0,
+        Color::Black => 1,
+    };
+    let kind = match piece.kind {
+        PieceKind::Pawn => 0,
+        PieceKind::Knight => 1,
+        PieceKind::Bishop => 2,
+        PieceKind::Rook => 3,
+        PieceKind::Queen => 4,
+        PieceKind::King => 5,
+    };
+    zobrist_component(0x3000 + (square as u64 * 12) + color * 6 + kind)
+}
+
+fn zobrist_component(value: u64) -> u64 {
+    splitmix64(ZOBRIST_SEED.wrapping_add(value))
+}
+
+fn splitmix64(mut value: u64) -> u64 {
+    value = value.wrapping_add(0x9e37_79b9_7f4a_7c15);
+    value = (value ^ (value >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    value = (value ^ (value >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    value ^ (value >> 31)
+}
+
+fn kings_are_adjacent(state: &State) -> bool {
+    let Some(white) = state.board.iter().position(|piece| {
+        *piece
+            == Some(Piece {
+                color: Color::White,
+                kind: PieceKind::King,
+            })
+    }) else {
+        return true;
+    };
+    let Some(black) = state.board.iter().position(|piece| {
+        *piece
+            == Some(Piece {
+                color: Color::Black,
+                kind: PieceKind::King,
+            })
+    }) else {
+        return true;
+    };
+    let white = Square(u8::try_from(white).unwrap_or(0));
+    let black = Square(u8::try_from(black).unwrap_or(0));
+    white.file().abs_diff(black.file()) <= 1 && white.rank().abs_diff(black.rank()) <= 1
+}
+
+fn castling_rights_match_board(state: &State, field: &str) -> bool {
+    let expected = [
+        (
+            'K',
+            state.castling.white_king,
+            Some(Piece {
+                color: Color::White,
+                kind: PieceKind::King,
+            }),
+            Some(Piece {
+                color: Color::White,
+                kind: PieceKind::Rook,
+            }),
+            4,
+            7,
+        ),
+        (
+            'Q',
+            state.castling.white_queen,
+            Some(Piece {
+                color: Color::White,
+                kind: PieceKind::King,
+            }),
+            Some(Piece {
+                color: Color::White,
+                kind: PieceKind::Rook,
+            }),
+            4,
+            0,
+        ),
+        (
+            'k',
+            state.castling.black_king,
+            Some(Piece {
+                color: Color::Black,
+                kind: PieceKind::King,
+            }),
+            Some(Piece {
+                color: Color::Black,
+                kind: PieceKind::Rook,
+            }),
+            60,
+            63,
+        ),
+        (
+            'q',
+            state.castling.black_queen,
+            Some(Piece {
+                color: Color::Black,
+                kind: PieceKind::King,
+            }),
+            Some(Piece {
+                color: Color::Black,
+                kind: PieceKind::Rook,
+            }),
+            60,
+            56,
+        ),
+    ];
+    expected
+        .into_iter()
+        .all(|(flag, enabled, king, rook, king_square, rook_square)| {
+            !enabled
+                || (field.contains(flag)
+                    && state.board[king_square] == king
+                    && state.board[rook_square] == rook)
+        })
+}
+
+fn en_passant_matches_board(state: &State) -> bool {
+    let Some(target) = state.en_passant else {
+        return true;
+    };
+    let expected_rank = if state.turn == Color::White { 5 } else { 2 };
+    if target.rank() != expected_rank || state.board[usize::from(target.0)].is_some() {
+        return false;
+    }
+    let pawn_square = if state.turn == Color::White {
+        target.0.saturating_sub(8)
+    } else {
+        target.0.saturating_add(8)
+    };
+    let origin_square = if state.turn == Color::White {
+        target.0.saturating_add(8)
+    } else {
+        target.0.saturating_sub(8)
+    };
+    state.board.get(usize::from(pawn_square))
+        == Some(&Some(Piece {
+            color: state.turn.other(),
+            kind: PieceKind::Pawn,
+        }))
+        && state.board.get(usize::from(origin_square)) == Some(&None)
 }

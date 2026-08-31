@@ -37,17 +37,19 @@ impl GameRules for ChessRules {
     type ViewEvent = ViewEvent;
     type Config = Config;
 
-    const RULES_VERSION: RulesVersion = RulesVersion(1);
+    // PositionKey is compact Zobrist state rather than a serialized board.
+    // That changes canonical State encoding, so the match version advances.
+    const RULES_VERSION: RulesVersion = RulesVersion(2);
 
     fn create(
         config: &Config,
         roster: &SeatRoster,
         _ctx: &mut Ctx<'_>,
     ) -> Result<Init<Self>, InitError> {
-        if roster.len() != 2 {
+        if !has_standard_roster(roster) {
             return Err(InitError::SeatCount {
                 got: roster.len().try_into().unwrap_or(u8::MAX),
-                allowed: "2".into(),
+                allowed: "seats 0 and 1".into(),
             });
         }
         if config.clock.is_some() {
@@ -74,6 +76,7 @@ impl GameRules for ChessRules {
             // is a deterministic harmless input, not a reason to panic.
             Input::Timer { .. } | Input::Seat { .. } => Ok(Outcome::empty()),
             Input::Admin(AdminInput::Cancel { reason }) => Ok(end(state, aborted(reason))),
+            Input::Admin(AdminInput::ForceEnd { outcome }) => Ok(end(state, outcome)),
             Input::Admin(_) => Err(RuleError::code(RuleErrorCode::Unsupported)),
         }
     }
@@ -140,8 +143,8 @@ fn apply_player(
     command: Command,
 ) -> Result<Outcome<ChessRules>, RuleError> {
     let color = Color::from_seat(seat).ok_or_else(|| RuleError::code(RuleErrorCode::NoSuchSeat))?;
-    let is_draw_response = matches!(command, Command::AcceptDraw | Command::DeclineDraw);
-    if color != state.turn && !is_draw_response {
+    let turn_bound = matches!(command, Command::Move { .. } | Command::ClaimDraw);
+    if turn_bound && color != state.turn {
         return Err(RuleError::code(RuleErrorCode::NotYourTurn));
     }
     match command {
@@ -180,8 +183,21 @@ fn apply_player(
             }
             Ok(Outcome { events, effects })
         }
-        Command::Resign => Ok(end(state, decisive(color.other(), "resignation"))),
+        Command::Resign => {
+            let outcome = if insufficient_material(state) {
+                draw("dead position")
+            } else {
+                decisive(color.other(), "resignation")
+            };
+            Ok(end(state, outcome))
+        }
         Command::OfferDraw => {
+            // Offers are made after the offerer's move, while the opponent is
+            // on turn. This keeps a pending offer alive until that opponent
+            // responds or makes the next move.
+            if color == state.turn || state.fullmove_number == 1 || state.draw_offer.is_some() {
+                return Err(RuleError::code(RuleErrorCode::WrongPhase));
+            }
             state.draw_offer = Some(color);
             Ok(Outcome {
                 events: smallvec![Event::DrawOffered { seat }],
@@ -233,11 +249,11 @@ fn terminal_outcome(state: &State) -> Option<MatchOutcome> {
             draw("stalemate")
         });
     }
-    if state.halfmove_clock >= 100 {
-        return Some(draw("fifty-move rule"));
+    if state.halfmove_clock >= 150 {
+        return Some(draw("seventy-five-move rule"));
     }
-    if repetition_count(state) >= 3 {
-        return Some(draw("threefold repetition"));
+    if repetition_count(state) >= 5 {
+        return Some(draw("fivefold repetition"));
     }
     if insufficient_material(state) {
         return Some(draw("insufficient material"));
@@ -247,6 +263,10 @@ fn terminal_outcome(state: &State) -> Option<MatchOutcome> {
 
 fn can_claim_draw(state: &State) -> bool {
     state.halfmove_clock >= 100 || repetition_count(state) >= 3
+}
+
+fn has_standard_roster(roster: &SeatRoster) -> bool {
+    roster.len() == 2 && roster.get(SeatId(0)).is_some() && roster.get(SeatId(1)).is_some()
 }
 
 fn repetition_count(state: &State) -> usize {

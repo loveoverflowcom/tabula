@@ -16,6 +16,9 @@ mod movegen;
 mod rules;
 mod state;
 
+#[cfg(feature = "bots")]
+pub mod bot;
+
 pub use movegen::{perft, FenError};
 pub use rules::ChessRules;
 pub use state::{
@@ -49,8 +52,18 @@ impl GameModule for ChessModule {
         &CAPABILITIES
     }
 
+    #[cfg(feature = "bots")]
+    fn bot(level: BotLevel) -> Option<Box<dyn tabula_game_api::GameBot<ChessRules>>> {
+        matches!(level, BotLevel::Trivial | BotLevel::Easy).then(|| {
+            Box::new(bot::ChessBot::new(level)) as Box<dyn tabula_game_api::GameBot<ChessRules>>
+        })
+    }
+
     fn validate_config(cfg: &Config, roster: &SeatRoster) -> Result<(), ConfigError> {
-        if roster.len() != 2 {
+        if roster.len() != 2
+            || roster.get(tabula_core::SeatId(0)).is_none()
+            || roster.get(tabula_core::SeatId(1)).is_none()
+        {
             return Err(ConfigError::SeatCount);
         }
         if cfg.clock.is_some() {
@@ -65,7 +78,7 @@ impl GameModule for ChessModule {
 static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| GameMetadata {
     id: GameId("com.tabula.chess".to_owned()),
     version: GameVersion("0.1.0".to_owned()),
-    rules_version: RulesVersion(1),
+    rules_version: RulesVersion(2),
     name_key: "game.chess.name".to_owned(),
     tagline_key: "game.chess.tagline".to_owned(),
     description_key: "game.chess.description".to_owned(),
@@ -117,7 +130,7 @@ static CAPABILITIES: LazyLock<GameCapabilities> = LazyLock::new(|| GameCapabilit
     pausable: false,
     durability: Durability::AckAfterPersist,
     client_preview: true,
-    state_size: StateSizeClass::Tiny,
+    state_size: StateSizeClass::Small,
     apply_budget: Budget {
         max_apply_micros: 2_000,
         max_events_per_input: 4,

@@ -1,7 +1,8 @@
 //! Chess-specific transition and edge-partition evidence.
 
 use tabula_core::{
-    canonical_encode, DetRng, InputIndex, LogicalTime, MatchSeed, RuleErrorCode, SeatId,
+    canonical_encode, DetRng, InputIndex, LogicalTime, MatchSeed, OutcomeKind, RuleErrorCode,
+    SeatId,
 };
 use tabula_game_api::{Budget, Ctx, Effect, GameRules, Input, LegalCommands};
 use tabula_game_chess::{ChessRules, Color, Command, PieceKind, State, Status};
@@ -113,7 +114,7 @@ fn legal_commands_are_stably_ordered_and_all_authoritative() {
 }
 
 #[test]
-fn threefold_repetition_ends_the_match() {
+fn threefold_repetition_is_claimable_but_not_automatic() {
     let mut state = State::initial();
     let script = [
         (0, move_to(6, 21)),
@@ -129,33 +130,73 @@ fn threefold_repetition_ends_the_match() {
     for (index, (seat, command)) in script.into_iter().enumerate() {
         final_outcome = Some(apply(&mut state, index as u64 + 1, seat, command).unwrap());
     }
-    assert!(matches!(state.status, Status::Ended { .. }));
-    assert!(final_outcome
+    assert!(matches!(state.status, Status::Playing));
+    assert!(!final_outcome
         .unwrap()
         .effects
         .iter()
         .any(|effect| matches!(effect, Effect::EndMatch { .. })));
-}
 
-#[test]
-fn fifty_move_rule_and_insufficient_material_are_terminal_draws() {
-    let mut fifty = State::from_fen("k7/8/8/8/8/8/1R6/4K3 w - - 99 1").unwrap();
-    let outcome = apply(&mut fifty, 1, 0, move_to(9, 17)).unwrap();
-    assert!(matches!(fifty.status, Status::Ended { .. }));
+    let outcome = apply(&mut state, 9, 0, Command::ClaimDraw).unwrap();
+    assert!(matches!(state.status, Status::Ended { .. }));
+    assert_eq!(outcome.events.len(), 1);
     assert!(outcome
         .effects
         .iter()
         .any(|effect| matches!(effect, Effect::EndMatch { .. })));
+}
 
-    let mut material = State::from_fen("k7/8/8/8/8/8/8/2B1K3 w - - 0 1").unwrap();
-    apply(&mut material, 1, 0, move_to(2, 11)).unwrap();
-    assert!(matches!(material.status, Status::Ended { .. }));
+#[test]
+fn fivefold_repetition_is_automatic() {
+    let mut state = State::initial();
+    let cycle = [
+        (0, move_to(6, 21)),
+        (1, move_to(62, 45)),
+        (0, move_to(21, 6)),
+        (1, move_to(45, 62)),
+    ];
+    for (index, (seat, command)) in cycle.into_iter().cycle().take(16).enumerate() {
+        let outcome = apply(&mut state, index as u64 + 1, seat, command).unwrap();
+        if index < 15 {
+            assert!(outcome.effects.is_empty());
+        } else {
+            assert!(outcome
+                .effects
+                .iter()
+                .any(|effect| matches!(effect, Effect::EndMatch { .. })));
+        }
+    }
+    let Status::Ended { outcome } = state.status else {
+        panic!("fivefold repetition must end the match");
+    };
+    assert_eq!(outcome.summary.as_str(), "fivefold repetition");
+}
+
+#[test]
+fn fifty_move_rule_is_claimable_and_seventy_five_move_rule_is_automatic() {
+    let mut fifty = State::from_fen("k7/8/8/8/8/8/1R6/4K3 w - - 99 1").unwrap();
+    let outcome = apply(&mut fifty, 1, 0, move_to(9, 17)).unwrap();
+    assert!(matches!(fifty.status, Status::Playing));
+    assert!(!outcome
+        .effects
+        .iter()
+        .any(|effect| matches!(effect, Effect::EndMatch { .. })));
+    apply(&mut fifty, 2, 1, Command::ClaimDraw).unwrap();
+    assert!(matches!(fifty.status, Status::Ended { .. }));
+
+    let mut seventy_five = State::from_fen("k7/8/8/8/8/8/1R6/4K3 w - - 149 1").unwrap();
+    let outcome = apply(&mut seventy_five, 1, 0, move_to(9, 17)).unwrap();
+    assert!(matches!(seventy_five.status, Status::Ended { .. }));
+    assert!(outcome
+        .effects
+        .iter()
+        .any(|effect| matches!(effect, Effect::EndMatch { .. })));
 }
 
 #[test]
 fn repetition_key_omits_an_unavailable_en_passant_target() {
-    let with_irrelevant_ep = State::from_fen("4k3/8/8/8/8/8/8/4K3 w - e3 0 1").unwrap();
-    let without_ep = State::from_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+    let with_irrelevant_ep = State::from_fen("4k3/8/8/4p3/8/8/8/4K3 w - e6 0 1").unwrap();
+    let without_ep = State::from_fen("4k3/8/8/4p3/8/8/8/4K3 w - - 0 1").unwrap();
     assert_eq!(with_irrelevant_ep.position_key(), without_ep.position_key());
     assert_eq!(with_irrelevant_ep.turn, Color::White);
 }
@@ -163,8 +204,51 @@ fn repetition_key_omits_an_unavailable_en_passant_target() {
 #[test]
 fn a_draw_offer_is_answered_by_the_other_seat_without_changing_turn() {
     let mut state = State::initial();
-    apply(&mut state, 1, 0, Command::OfferDraw).unwrap();
-    assert_eq!(state.draw_offer, Some(Color::White));
-    apply(&mut state, 2, 1, Command::AcceptDraw).unwrap();
+    apply(&mut state, 1, 0, move_to(12, 28)).unwrap();
+    apply(&mut state, 2, 1, move_to(52, 36)).unwrap();
+    apply(&mut state, 2, 1, Command::OfferDraw).unwrap();
+    assert_eq!(state.draw_offer, Some(Color::Black));
+    assert_eq!(state.turn, Color::White);
+    let rejected = apply(&mut state, 3, 1, Command::OfferDraw).unwrap_err();
+    assert_eq!(rejected.code, RuleErrorCode::WrongPhase);
+    apply(&mut state, 4, 0, Command::AcceptDraw).unwrap();
     assert!(matches!(state.status, Status::Ended { .. }));
+}
+
+#[test]
+fn draw_offer_before_both_players_move_is_rejected() {
+    let mut state = State::initial();
+    let before = canonical_encode(&state).unwrap();
+    let result = apply(&mut state, 1, 0, Command::OfferDraw);
+    assert_eq!(result.unwrap_err().code, RuleErrorCode::WrongPhase);
+    assert_eq!(canonical_encode(&state).unwrap(), before);
+
+    apply(&mut state, 2, 0, move_to(12, 28)).unwrap();
+    let before = canonical_encode(&state).unwrap();
+    let result = apply(&mut state, 3, 0, Command::OfferDraw);
+    assert_eq!(result.unwrap_err().code, RuleErrorCode::WrongPhase);
+    assert_eq!(canonical_encode(&state).unwrap(), before);
+}
+
+#[test]
+fn resigning_from_a_dead_position_is_a_draw_and_can_happen_off_turn() {
+    let mut state = State::from_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+    apply(&mut state, 1, 1, Command::Resign).unwrap();
+    let Status::Ended { outcome } = state.status else {
+        panic!("resignation must end the match");
+    };
+    assert_eq!(outcome.kind, OutcomeKind::Draw);
+}
+
+#[test]
+fn fen_rejects_unrepresentable_positions() {
+    for fen in [
+        "4k3/8/8/8/8/8/8/4K3 w - - 0 0",
+        "4k3/8/8/8/8/8/8/4K3 w K - 0 1",
+        "4k3/8/8/8/8/8/8/4K3 w - e3 0 1",
+        "4k3/8/8/8/8/8/8/P3K3 w - - 0 1",
+        "4k3/8/8/8/8/8/8/3Kk3 w - - 0 1",
+    ] {
+        assert!(State::from_fen(fen).is_err(), "accepted invalid FEN: {fen}");
+    }
 }

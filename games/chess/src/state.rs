@@ -123,15 +123,15 @@ pub struct Config {
     pub clock: Option<ClockConfig>,
 }
 
-/// A repetition identity: exactly position-defining fields, never counters/offers.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PositionKey {
-    #[serde(with = "board_serde")]
-    pub board: [Option<Piece>; 64],
-    pub turn: Color,
-    pub castling: CastlingRights,
-    pub en_passant: Option<Square>,
-}
+/// A compact deterministic identity for one position.
+///
+/// The value is a fixed Zobrist-style key over the board, side to move,
+/// castling rights, and legally available en-passant target. Counters and draw
+/// offers are deliberately excluded. Keeping only the key in repetition
+/// history bounds snapshots to the actual no-progress window instead of
+/// copying a full board for every half-move.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PositionKey(pub(crate) u64);
 
 /// Terminal/non-terminal game status. `Ended` is authoritative terminality.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -210,7 +210,7 @@ impl State {
         crate::movegen::from_fen(fen)
     }
 
-    /// Position identity for threefold repetition; its en-passant cell is kept
+    /// Position identity for repetition claims; its en-passant cell is kept
     /// only when a legal en-passant capture exists.
     #[must_use]
     pub fn position_key(&self) -> PositionKey {
