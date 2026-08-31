@@ -9,11 +9,16 @@
 //! @ai.invariant legal-move-never-leaves-own-king-attacked
 //! @ai.invariant timeout-requires-mating-capability
 //! @ai.invariant valid-player-action-cannot-bypass-deadline
+//! @ai.invariant rules-hash-excludes-noncanonical-feature-source
 //! @ai.law deterministic-legal-command-order
+//! @ai.law canonical-rules-source-change-changes-rules-hash
 //! @ai.evidence tests::rules::illegal_moves_are_byte_identical_noops
 //! @ai.evidence tests::perft::published_positions_match
 //! @ai.evidence tests::clocks::timeout_ignores_flagged_side_material_when_survivor_is_bare_king
 //! @ai.evidence tests::clocks::expired_clock_preempts_valid_non_move_commands
+//! @ai.evidence tests::rules_hash_matches_independent_rules_subtree_oracle
+//! @ai.evidence tests::canonical_source_mutation_changes_oracle_hash
+//! @ai.evidence tests::synthetic_non_rules_source_does_not_participate_in_compiled_hash
 
 use smallvec::{smallvec, SmallVec};
 use tabula_core::{

@@ -1,8 +1,19 @@
+#![allow(clippy::doc_markdown)] // `@ai.*` schema values must remain bare machine-readable paths.
+
 //! `impl GameRules for TicTacToeRules`. (doc 02 §10.2)
 //!
 //! This is the reference implementation of the contract. Read it before writing
 //! any game; the structure — **validate fully, then mutate** — is the part to
 //! copy, not the tic-tac-toe logic.
+//!
+//! @ai.role functional-core
+//! @ai.domain tictactoe.rules
+//! @ai.pure true
+//! @ai.invariant rules-hash-excludes-noncanonical-feature-source
+//! @ai.law canonical-rules-source-change-changes-rules-hash
+//! @ai.evidence tests::rules_hash_matches_independent_rules_subtree_oracle
+//! @ai.evidence tests::canonical_source_mutation_changes_oracle_hash
+//! @ai.evidence tests::synthetic_non_rules_source_does_not_participate_in_compiled_hash
 
 use smallvec::smallvec;
 use tabula_core::{

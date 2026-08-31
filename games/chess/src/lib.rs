@@ -12,9 +12,17 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::float_arithmetic)]
 
+// Keep the public crate API stable while making the rules half a recursive
+// source subtree. The `#[path]` declarations are intentionally crate-level:
+// downstream code continues to use the existing re-exports, while build.rs can
+// identify every canonical rules source mechanically under `src/rules/`.
+#[path = "rules/clock.rs"]
 mod clock;
+#[path = "rules/movegen.rs"]
 mod movegen;
+#[path = "rules/mod.rs"]
 mod rules;
+#[path = "rules/state.rs"]
 mod state;
 
 #[cfg(feature = "bots")]

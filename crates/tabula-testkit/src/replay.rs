@@ -366,8 +366,6 @@ impl ReplayIdentity {
     ///
     /// @ai.role trust-boundary
     /// @ai.domain replay.identity
-    /// @ai.invariant rules-identity-is-source-covered
-    /// @ai.evidence tests::rules_hash_covers_all_rules_sources
     #[must_use]
     pub fn from_module<M: GameModule>() -> Self {
         Self {
@@ -473,6 +471,11 @@ impl<R: GameRules> ReplayRunner<R> {
 
     /// Decide whether the selected implementation is an exact linked rules
     /// build before spending time executing the replay.
+    ///
+    /// @ai.role compatibility-check
+    /// @ai.domain replay.identity
+    /// @ai.invariant differing-rules-hash-is-compatible-version
+    /// @ai.evidence tests::same_rules_version_with_different_hash_is_compatible_version
     #[must_use]
     pub fn check(&self) -> ReplayVerdict {
         if self.replay.header.rules_hash == [0; 32] || self.identity.rules_hash == [0; 32] {
@@ -1890,6 +1893,18 @@ mod tests {
             .verify()
             .unwrap();
         assert_eq!(first, second);
+    }
+
+    #[test]
+    fn same_rules_version_with_different_hash_is_compatible_version() {
+        let (draft, _) = counter_draft(&[]);
+        let bytes = draft.to_bytes().unwrap();
+        let mut identity = counter_identity();
+        identity.rules_hash[0] ^= 1;
+
+        let runner = ReplayRunner::<CounterRules>::from_bytes(&bytes, identity).unwrap();
+
+        assert_eq!(runner.check(), ReplayVerdict::CompatibleVersion);
     }
 
     #[test]

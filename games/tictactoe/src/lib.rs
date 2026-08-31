@@ -36,7 +36,12 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::float_arithmetic)]
 
+// The source files remain available at their existing public module paths,
+// while their ownership is mechanically kept inside `src/rules/` for rules
+// identity hashing.
+#[path = "rules/mod.rs"]
 pub mod rules;
+#[path = "rules/state.rs"]
 pub mod state;
 
 #[cfg(feature = "bots")]

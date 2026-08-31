@@ -868,10 +868,11 @@ rules_version  — monotonic integer, bumped on ANY change to State/Command/Even
   `ChessModuleV1`, `ChessModuleV2`, both registered under the same `GameId` with different
   `rules_version`; the registry resolves by the match's recorded version. Old versions are dropped
   once no live matches and no replay-support window (default 180 days) reference them.
-- `rules_hash` = blake3 over the canonical `RULES_VERSION` tag plus a build-time hash of the rules
-  source (computed by `xtask`). It catches the failure where someone changes behavior *without*
-  bumping `rules_version` — replay of an affected match then fails loudly instead of silently
-  diverging.
+- `rules_hash` = the build-time identity exposed by `GameRules::RULES_HASH`. Each game crate's
+  `build.rs` recursively hashes its canonical `src/rules/` subtree using the versioned source
+  preimage in doc 05 §6.2; bot, presentation, and other package source are outside that
+  boundary. It catches the failure where someone changes behavior *without* bumping
+  `rules_version` — replay of an affected match then fails loudly instead of silently diverging.
 
 ```mermaid
 flowchart LR
@@ -960,7 +961,7 @@ games/tictactoe/
 ### 10.2 The rules (complete, real code shape)
 
 ```rust
-// games/tictactoe/src/state.rs
+// games/tictactoe/src/rules/state.rs
 use tabula_core::*;
 use serde::{Serialize, Deserialize};
 
@@ -1000,7 +1001,7 @@ pub struct Config { pub move_timeout_ms: u64 }
 ```
 
 ```rust
-// games/tictactoe/src/rules.rs
+// games/tictactoe/src/rules/mod.rs
 use tabula_game_api::*;
 use crate::state::*;
 
