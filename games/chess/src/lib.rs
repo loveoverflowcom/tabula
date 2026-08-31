@@ -1,17 +1,18 @@
 //! # `tabula-game-chess` — deterministic standard chess rules.
 //!
 //! The crate owns chess legality and match transitions; it has no renderer,
-//! transport, clock, filesystem, or random-number dependency.  Legal moves are
+//! transport, wall-clock, filesystem, or random-number dependency.  Legal moves are
 //! generated from pseudo-legal candidates and accepted only when the candidate
 //! position leaves its mover's king safe (doc 02 §3, §12.1).
 //!
-//! Full clock arithmetic is intentionally deferred to the next Phase 1 slice.
-//! [`Config::clock`] and [`State::clock`] reserve the typed state seam: that
-//! work will consume only `Ctx::now`, `Input::Timer`, and `Effect::SetTimer`.
+//! Clock arithmetic is owned by the rules and consumes only `Ctx::now`,
+//! `Input::Timer`, and timer effects. The shell schedules timer effects; it does
+//! not know the meaning of Fischer or Bronstein controls.
 
 #![forbid(unsafe_code)]
 #![deny(clippy::float_arithmetic)]
 
+mod clock;
 mod movegen;
 mod rules;
 mod state;
@@ -22,8 +23,8 @@ pub mod bot;
 pub use movegen::{perft, FenError};
 pub use rules::ChessRules;
 pub use state::{
-    CastlingRights, ClockConfig, ClockState, Color, Command, Config, Event, Piece, PieceKind,
-    PositionKey, Square, State, Status, View, ViewEvent,
+    CastlingRights, ClockConfig, ClockControl, ClockState, Color, Command, Config, Event, Piece,
+    PieceKind, PositionKey, Square, State, Status, View, ViewEvent,
 };
 
 use std::sync::LazyLock;
@@ -66,10 +67,10 @@ impl GameModule for ChessModule {
         {
             return Err(ConfigError::SeatCount);
         }
-        if cfg.clock.is_some() {
-            return Err(ConfigError::Unsupported(
-                "clock controls are not implemented yet".into(),
-            ));
+        if let Some(clock) = &cfg.clock {
+            if !clock::config_is_valid(clock) {
+                return Err(ConfigError::field("clock"));
+            }
         }
         Ok(())
     }
@@ -78,7 +79,7 @@ impl GameModule for ChessModule {
 static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| GameMetadata {
     id: GameId::new("com.tabula.chess").expect("literal is a valid game id"),
     version: GameVersion::new("0.1.0").expect("literal is valid SemVer"),
-    rules_version: RulesVersion(2),
+    rules_version: RulesVersion(3),
     name_key: "game.chess.name".to_owned(),
     tagline_key: "game.chess.tagline".to_owned(),
     description_key: "game.chess.description".to_owned(),

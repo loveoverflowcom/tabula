@@ -21,6 +21,7 @@ use tabula_game_api::{
 };
 
 use crate::{
+    clock::{self, MoveCharge, TimerCheck},
     movegen::{apply_move, in_check, legal_moves},
     Color, Command, Config, Event, PieceKind, State, Status, View, ViewEvent,
 };
@@ -37,14 +38,14 @@ impl GameRules for ChessRules {
     type ViewEvent = ViewEvent;
     type Config = Config;
 
-    // PositionKey is compact Zobrist state rather than a serialized board.
-    // That changes canonical State encoding, so the match version advances.
-    const RULES_VERSION: RulesVersion = RulesVersion(2);
+    // PositionKey is compact Zobrist state rather than a serialized board, and
+    // clock state/events now participate in the canonical contract.
+    const RULES_VERSION: RulesVersion = RulesVersion(3);
 
     fn create(
         config: &Config,
         roster: &SeatRoster,
-        _ctx: &mut Ctx<'_>,
+        ctx: &mut Ctx<'_>,
     ) -> Result<Init<Self>, InitError> {
         if !has_standard_roster(roster) {
             return Err(InitError::SeatCount {
@@ -52,29 +53,39 @@ impl GameRules for ChessRules {
                 allowed: "seats 0 and 1".into(),
             });
         }
-        if config.clock.is_some() {
-            return Err(InitError::Config("clock".into()));
+        if let Some(clock) = config.clock {
+            if !clock::config_is_valid(&clock) {
+                return Err(InitError::Config("clock".into()));
+            }
+        }
+        let mut state = State::initial();
+        let mut effects = SmallVec::new();
+        if let Some(clock_config) = config.clock {
+            let clock = clock::initial_state(clock_config, ctx.now);
+            effects.push(clock::arm_effect(&clock, Color::White, ctx.now));
+            state.clock = Some(clock);
         }
         Ok(Init {
-            state: State::initial(),
+            state,
             events: smallvec![],
-            effects: smallvec![],
+            effects,
         })
     }
 
     fn apply(
         state: &mut State,
         input: Input<Command>,
-        _ctx: &mut Ctx<'_>,
+        ctx: &mut Ctx<'_>,
     ) -> Result<Outcome<Self>, RuleError> {
         if !matches!(state.status, Status::Playing) {
             return Err(RuleError::code(RuleErrorCode::MatchOver));
         }
         match input {
-            Input::Player { seat, command } => apply_player(state, seat, command),
-            // Clock handling is intentionally deferred, but a stale/no-clock timer
-            // is a deterministic harmless input, not a reason to panic.
-            Input::Timer { .. } | Input::Seat { .. } => Ok(Outcome::empty()),
+            Input::Player { seat, command } => apply_player(state, seat, command, ctx.now),
+            Input::Timer { timer } => Ok(apply_timer(state, timer, ctx.now)),
+            // Disconnects do not pause Chess clocks; the already requested timer
+            // continues to burn (doc 02 §12.1).
+            Input::Seat { .. } => Ok(Outcome::empty()),
             Input::Admin(AdminInput::Cancel { reason }) => Ok(end(state, aborted(reason))),
             Input::Admin(AdminInput::ForceEnd { outcome }) => Ok(end(state, outcome)),
             Input::Admin(_) => Err(RuleError::code(RuleErrorCode::Unsupported)),
@@ -121,6 +132,10 @@ impl GameRules for ChessRules {
                 promotion: *promotion,
                 captured: *captured,
             },
+            Event::ClockUpdated { seat, remaining } => ViewEvent::ClockUpdated {
+                seat: *seat,
+                remaining: *remaining,
+            },
             Event::DrawOffered { seat } => ViewEvent::DrawOffered { seat: *seat },
             Event::DrawDeclined { seat } => ViewEvent::DrawDeclined { seat: *seat },
             Event::Ended { outcome } => ViewEvent::Ended {
@@ -141,6 +156,7 @@ fn apply_player(
     state: &mut State,
     seat: SeatId,
     command: Command,
+    now: tabula_core::LogicalTime,
 ) -> Result<Outcome<ChessRules>, RuleError> {
     let color = Color::from_seat(seat).ok_or_else(|| RuleError::code(RuleErrorCode::NoSuchSeat))?;
     let turn_bound = matches!(command, Command::Move { .. } | Command::ClaimDraw);
@@ -163,6 +179,13 @@ fn apply_player(
                         && candidate.promotion == promotion
                 })
                 .ok_or_else(|| RuleError::code(RuleErrorCode::IllegalMove))?;
+
+            // Evaluate time only after legality is established and before the
+            // first state mutation, preserving R2 for rejected commands.
+            let charge = clock::charge_completed_move(state.clock.as_ref(), color, now);
+            if matches!(charge, MoveCharge::Flagged) {
+                return Ok(timeout(state, color, now));
+            }
             let captured = apply_move(state, candidate, true);
             let mut events = smallvec![Event::Moved {
                 seat,
@@ -172,14 +195,19 @@ fn apply_player(
                 captured
             }];
             let mut effects = SmallVec::new();
+            if let MoveCharge::Ready(remaining) = charge {
+                if let Some(clock) = state.clock.as_mut() {
+                    clock.remaining[color_index(color)] = remaining;
+                    clock.last_move_at = now;
+                    events.push(Event::ClockUpdated { seat, remaining });
+                }
+            }
             if let Some(outcome) = terminal_outcome(state) {
-                state.status = Status::Ended {
-                    outcome: outcome.clone(),
-                };
-                events.push(Event::Ended {
-                    outcome: outcome.clone(),
-                });
-                effects.push(Effect::EndMatch { outcome });
+                let ended = end(state, outcome);
+                events.extend(ended.events);
+                effects.extend(ended.effects);
+            } else if let Some(clock) = state.clock.as_ref() {
+                effects.push(clock::arm_effect(clock, state.turn, now));
             }
             Ok(Outcome { events, effects })
         }
@@ -226,6 +254,53 @@ fn apply_player(
             }
             Ok(end(state, draw("draw claimed")))
         }
+    }
+}
+
+fn apply_timer(
+    state: &mut State,
+    timer: tabula_core::TimerId,
+    now: tabula_core::LogicalTime,
+) -> Outcome<ChessRules> {
+    if timer != clock::TIMER_CLOCK {
+        return Outcome::empty();
+    }
+
+    let Some(clock_state) = state.clock.as_ref() else {
+        return Outcome::empty();
+    };
+    match clock::check_timer(clock_state, state.turn, now) {
+        TimerCheck::Active(_) => Outcome {
+            events: smallvec![],
+            effects: smallvec![clock::arm_effect(clock_state, state.turn, now)],
+        },
+        TimerCheck::Flagged => timeout(state, state.turn, now),
+    }
+}
+
+fn timeout(
+    state: &mut State,
+    flagged: Color,
+    now: tabula_core::LogicalTime,
+) -> Outcome<ChessRules> {
+    let clock_updated = state.clock.as_mut().map(|clock| {
+        clock::flag(clock, flagged, now);
+        Event::ClockUpdated {
+            seat: flagged.seat(),
+            remaining: tabula_core::Millis::ZERO,
+        }
+    });
+    let mut outcome = end(state, decisive(flagged.other(), "timeout"));
+    if let Some(event) = clock_updated {
+        outcome.events.insert(0, event);
+    }
+    outcome
+}
+
+fn color_index(color: Color) -> usize {
+    match color {
+        Color::White => 0,
+        Color::Black => 1,
     }
 }
 
@@ -308,12 +383,17 @@ fn end(state: &mut State, outcome: MatchOutcome) -> Outcome<ChessRules> {
         outcome: outcome.clone(),
     };
     state.draw_offer = None;
-    Outcome {
-        events: smallvec![Event::Ended {
-            outcome: outcome.clone()
-        }],
-        effects: smallvec![Effect::EndMatch { outcome }],
+    let mut effects = SmallVec::new();
+    if state.clock.is_some() {
+        effects.push(Effect::CancelTimer {
+            id: clock::TIMER_CLOCK,
+        });
     }
+    let events = smallvec![Event::Ended {
+        outcome: outcome.clone(),
+    }];
+    effects.push(Effect::EndMatch { outcome });
+    Outcome { events, effects }
 }
 
 fn decisive(winner: Color, summary: &str) -> MatchOutcome {
