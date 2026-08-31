@@ -1153,6 +1153,7 @@ dependencies = [
  "cargo_metadata",
  "serde",
  "serde_json",
+ "tabula-game-chess",
  "tempfile",
  "thiserror 1.0.69",
  "toml",

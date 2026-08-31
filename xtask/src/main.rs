@@ -72,6 +72,7 @@ mod game_ids_policy;
 mod graph;
 mod manifest_cmd;
 mod manifest_policy;
+mod perft_cmd;
 mod tokens_cmd;
 
 fn main() {
@@ -111,6 +112,15 @@ fn main() {
         Some("selfplay") => todo!("doc 02 §11.3 — the acceptance gate for Phase 0"),
         Some("replay") => todo!("doc 05 §8.3 — ReplayRunner::verify, print first divergence"),
 
+        // Phase 1
+        Some("perft") => match perft_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("perft: {err}");
+                std::process::exit(2);
+            }
+        },
+
         // Phase 2+
         Some("gen-tokens") => match tokens_cmd::run() {
             Ok(()) => {}
@@ -144,6 +154,7 @@ fn main() {
                                         check-manifests, cargo-deny, in that order)\n\n\
                  phase 0:  check-deps  check-no-game-ids  check-manifests\n\
                            new-game <slug>  selfplay <game>  replay <file>\n\
+                 phase 1:  perft chess [depth]\n\
                  phase 2:  gen-tokens  check-no-raw-colors\n\
                  phase 3:  pack-assets <game>\n\
                  phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\
