@@ -446,17 +446,26 @@ seed, so nothing is lost.
 ### 8.3 Replay playback
 
 ```rust
-// crates/tabula-testkit/src/replay.rs  (also used by ops tooling and the client)
-pub struct ReplayRunner { /* ... */ }
+// crates/tabula-testkit/src/replay.rs  (also used by ops tooling)
+// Phase 1 keeps the replay boundary typed. It never links the registry or erases
+// the selected game's rules implementation.
+pub struct ReplayRunner<R: GameRules> { /* ... */ }
 
-impl ReplayRunner {
-    pub fn open(path: &Path, registry: &Registry) -> Result<Self, ReplayError>;
-    /// Verifies rules_hash availability; returns Unreplayable if no linked version matches.
+impl<R: GameRules> ReplayRunner<R> {
+    pub fn open(path: &Path, identity: ReplayIdentity) -> Result<Self, ReplayError>;
+    pub fn from_bytes(bytes: &[u8], identity: ReplayIdentity) -> Result<Self, ReplayError>;
+    /// Verifies rules_hash availability; returns Unreplayable if no authoritative identity exists.
     pub fn check(&self) -> ReplayVerdict;
     pub fn step(&mut self) -> Result<Option<StepResult>, ReplayError>;
-    pub fn seek(&mut self, to: StateVersion) -> Result<(), ReplayError>;
-    /// Re-runs everything, comparing every checkpoint. The nightly job's entry point.
+    /// Replays through `to` and returns stored checkpoint evidence, or an explicit
+    /// reconstructed position when no checkpoint was encountered.
+    pub fn seek(&mut self, to: StateVersion) -> Result<PrefixPosition, ReplayError>;
+    /// Re-runs everything, comparing checkpoints, final state hash, and terminal outcome.
     pub fn verify(&mut self) -> Result<VerifyReport, ReplayError>;
+}
+pub enum PrefixPosition {
+    Verified(PositionEvidence),
+    Reconstructed(PositionEvidence),
 }
 pub enum ReplayVerdict {
     Exact,                                  // rules_hash matches a linked build
@@ -465,6 +474,11 @@ pub enum ReplayVerdict {
     Unreplayable { reason: String },
 }
 ```
+
+Phase 4 may use the registry at the tooling or runtime edge to select and erase the concrete
+`GameRules` implementation. That selection does not change the Phase 1 evidence contract: a
+position is only `Verified` when the traversed stored checkpoints agree, and a complete
+verification also checks the final state hash and the terminal outcome.
 
 Client-side playback (the replay viewer, Phase 9) uses **projected** replays and drives the normal
 presenter with the recorded `ViewEvent` stream and `logical_ms` timings — so replay looks exactly

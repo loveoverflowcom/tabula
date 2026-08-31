@@ -55,7 +55,7 @@ use tabula_core::{
     canonical_decode, GameId, GameVersion, InputIndex, LogicalTime, MatchId, MatchOutcome,
     MatchSeed, RulesVersion, SeatRoster, StateHash, StateVersion, ENCODING_VERSION,
 };
-use tabula_game_api::{Budget, Ctx, Effect, GameModule, GameRules, Input, Outcome};
+use tabula_game_api::{Budget, Ctx, Effect, GameModule, GameRules, Input};
 
 /// The only currently readable replay format version.
 pub const REPLAY_FORMAT_VERSION: u16 = 1;
@@ -438,17 +438,19 @@ impl<R: GameRules> ReplayRunner<R> {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let state = create_state::<R>(&config, &replay.header.roster, replay.header.seed.as_ref())?;
+        let created =
+            create_state::<R>(&config, &replay.header.roster, replay.header.seed.as_ref())?;
+        let terminal_input_index = created.terminal_outcome.as_ref().map(|_| 0);
         Ok(Self {
             replay,
             identity,
             config,
             inputs,
-            state,
+            state: created.state,
             state_version: StateVersion(0),
             next_frame: 0,
-            derived_outcome: None,
-            terminal_input_index: None,
+            derived_outcome: created.terminal_outcome,
+            terminal_input_index,
         })
     }
 
@@ -508,7 +510,7 @@ impl<R: GameRules> ReplayRunner<R> {
                 code: error.code,
             }
         })?;
-        let terminal = terminal_outcome(&outcome, frame.input_index.0)?;
+        let terminal = terminal_outcome(&outcome.effects, frame.input_index.0)?;
 
         self.state_version = StateVersion(
             self.state_version
@@ -602,6 +604,7 @@ impl<R: GameRules> ReplayRunner<R> {
     /// @ai.evidence crate::replay::tests::checkpoint_mismatch_reports_context
     /// @ai.evidence crate::replay::tests::final_hash_mismatch_fails_verification
     /// @ai.evidence crate::replay::tests::replay_terminal_outcome_matches_effect
+    /// @ai.evidence crate::replay::tests::end_match_from_create_is_verified
     pub fn verify(&mut self) -> Result<VerifyReport, ReplayError> {
         self.reset()?;
         let verdict = self.check();
@@ -665,15 +668,16 @@ impl<R: GameRules> ReplayRunner<R> {
     }
 
     fn reset(&mut self) -> Result<(), ReplayError> {
-        self.state = create_state::<R>(
+        let created = create_state::<R>(
             &self.config,
             &self.replay.header.roster,
             self.replay.header.seed.as_ref(),
         )?;
+        self.state = created.state;
         self.state_version = StateVersion(0);
         self.next_frame = 0;
-        self.derived_outcome = None;
-        self.terminal_input_index = None;
+        self.derived_outcome = created.terminal_outcome;
+        self.terminal_input_index = self.derived_outcome.as_ref().map(|_| 0);
         Ok(())
     }
 
@@ -762,12 +766,12 @@ pub struct PositionEvidence {
     pub final_hash_checked: bool,
 }
 
-fn terminal_outcome<R: GameRules>(
-    outcome: &Outcome<R>,
+fn terminal_outcome(
+    effects: &[Effect],
     input_index: u64,
 ) -> Result<Option<MatchOutcome>, ReplayError> {
     let mut terminal = None;
-    for effect in &outcome.effects {
+    for effect in effects {
         if let Effect::EndMatch { outcome } = effect {
             if terminal.is_some() {
                 return Err(ReplayError::MultipleEndMatch { input_index });
@@ -789,11 +793,16 @@ fn outcome_fingerprint(outcome: Option<&MatchOutcome>) -> [u8; 32] {
     *hasher.finalize().as_bytes()
 }
 
+struct CreatedState<R: GameRules> {
+    state: R::State,
+    terminal_outcome: Option<MatchOutcome>,
+}
+
 fn create_state<R: GameRules>(
     config: &R::Config,
     roster: &SeatRoster,
     seed: Option<&MatchSeed>,
-) -> Result<R::State, ReplayError> {
+) -> Result<CreatedState<R>, ReplayError> {
     let seed = seed.ok_or(ReplayError::CanonicalSeedMissing)?;
     let mut rng = tabula_core::DetRng::for_input(seed, InputIndex(0));
     let mut ctx = Ctx {
@@ -805,9 +814,13 @@ fn create_state<R: GameRules>(
             max_events_per_input: u16::MAX,
         },
     };
-    R::create(config, roster, &mut ctx)
-        .map(|init| init.state)
-        .map_err(|error| ReplayError::CreateRejected(format!("{error:?}")))
+    let init = R::create(config, roster, &mut ctx)
+        .map_err(|error| ReplayError::CreateRejected(format!("{error:?}")))?;
+    let terminal_outcome = terminal_outcome(&init.effects, 0)?;
+    Ok(CreatedState {
+        state: init.state,
+        terminal_outcome,
+    })
 }
 
 fn validate_parts(
@@ -1175,6 +1188,26 @@ mod tests {
     };
     use tabula_game_api::{Init, InitError, Outcome};
 
+    // Generated independently with `zstd --long=27` from the test payload in
+    // ruzstd's own large-window fixture. The frame declares a 128 MiB window,
+    // while its decompressed content remains small enough for this test.
+    const ZSTD_128_MIB_WINDOW_FRAME: &[u8] = &[
+        0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x88, 0xbc, 0x01, 0x00, 0xd4, 0x02, 0x54, 0x68, 0x65, 0x20,
+        0x71, 0x75, 0x69, 0x63, 0x6b, 0x20, 0x62, 0x72, 0x6f, 0x77, 0x6e, 0x20, 0x66, 0x6f, 0x78,
+        0x20, 0x6a, 0x75, 0x6d, 0x70, 0x73, 0x20, 0x6f, 0x76, 0x65, 0x72, 0x20, 0x74, 0x68, 0x65,
+        0x20, 0x6c, 0x61, 0x7a, 0x79, 0x20, 0x64, 0x6f, 0x67, 0x2e, 0x0a, 0x01, 0x00, 0x85, 0xfe,
+        0x87, 0xb9, 0x2a, 0x03, 0x4d, 0x00, 0x00, 0x08, 0x68, 0x01, 0x00, 0xfc, 0x4f, 0x1d, 0x08,
+        0x01, 0xba, 0xb8, 0xd5, 0xc8,
+    ];
+
+    fn zstd_128_mib_window_with_dictionary_id() -> Vec<u8> {
+        let mut frame = Vec::with_capacity(ZSTD_128_MIB_WINDOW_FRAME.len() + 4);
+        // FHD 0x07: non-single-segment, content checksum present, 4-byte DID.
+        frame.extend_from_slice(&[0x28, 0xb5, 0x2f, 0xfd, 0x07, 0x88, 1, 0, 0, 0]);
+        frame.extend_from_slice(&ZSTD_128_MIB_WINDOW_FRAME[6..]);
+        frame
+    }
+
     fn header(kind: ReplayKind, seed: Option<MatchSeed>) -> ReplayHeader {
         ReplayHeader {
             match_id: MatchId(7),
@@ -1365,8 +1398,19 @@ mod tests {
         let (draft, _) = counter_draft(&[CounterCommand::Add(1)]);
         let valid = draft.to_bytes().unwrap();
 
-        let oversized_window = vec![0x28, 0xb5, 0x2f, 0xfd, 13 << 3];
-        assert!(ValidatedReplay::from_bytes(&oversized_window).is_err());
+        let oversized_window = ruzstd::decoding::StreamingDecoder::new_with_max_window_size(
+            Cursor::new(ZSTD_128_MIB_WINDOW_FRAME),
+            MAX_ZSTD_WINDOW_SIZE,
+        );
+        assert!(matches!(
+            oversized_window,
+            Err(
+                ruzstd::decoding::errors::FrameDecoderError::WindowSizeTooBig {
+                    requested,
+                    max,
+                }
+            ) if requested == 128 * 1024 * 1024 && max == MAX_ZSTD_WINDOW_SIZE
+        ));
 
         let large_logical = vec![0u8; MAX_DECOMPRESSED_REPLAY_BYTES + 1];
         let large_output = encode_for_test(&large_logical);
@@ -1397,11 +1441,20 @@ mod tests {
 
     #[test]
     fn dictionary_id_frame_cannot_bypass_window_guard() {
-        let (draft, _) = counter_draft(&[CounterCommand::Add(1)]);
-        let mut dictionary = draft.to_bytes().unwrap();
-        dictionary[4] |= 1;
-        dictionary.insert(5, 1);
-        assert!(ValidatedReplay::from_bytes(&dictionary).is_err());
+        let dictionary = zstd_128_mib_window_with_dictionary_id();
+        let decoder = ruzstd::decoding::StreamingDecoder::new_with_max_window_size(
+            Cursor::new(&dictionary),
+            MAX_ZSTD_WINDOW_SIZE,
+        );
+        assert!(matches!(
+            decoder,
+            Err(
+                ruzstd::decoding::errors::FrameDecoderError::WindowSizeTooBig {
+                    requested,
+                    max,
+                }
+            ) if requested == 128 * 1024 * 1024 && max == MAX_ZSTD_WINDOW_SIZE
+        ));
     }
 
     #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1435,11 +1488,26 @@ mod tests {
         const RULES_VERSION: RulesVersion = RulesVersion(1);
         const RULES_HASH: [u8; 32] = [9; 32];
 
-        fn create(_: &u8, _: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+        fn create(config: &u8, _: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            let effects = match config {
+                0 => smallvec![Effect::EndMatch {
+                    outcome: counter_outcome("counter created terminal"),
+                }],
+                1 => {
+                    let outcome = counter_outcome("counter created terminal");
+                    smallvec![
+                        Effect::EndMatch {
+                            outcome: outcome.clone(),
+                        },
+                        Effect::EndMatch { outcome },
+                    ]
+                }
+                _ => smallvec::SmallVec::new(),
+            };
             Ok(Init {
                 state: CounterState { value: 0 },
                 events: smallvec::SmallVec::new(),
-                effects: smallvec::SmallVec::new(),
+                effects,
             })
         }
 
@@ -1525,6 +1593,18 @@ mod tests {
         .unwrap()
     }
 
+    // This fixture helper intentionally keeps the first EndMatch when building
+    // malformed artifacts; the runner's scanner must reject the duplicate.
+    fn first_terminal_outcome(effects: &[Effect]) -> Option<MatchOutcome> {
+        effects.iter().find_map(|effect| {
+            if let Effect::EndMatch { outcome } = effect {
+                Some(outcome.clone())
+            } else {
+                None
+            }
+        })
+    }
+
     fn counter_draft(commands: &[CounterCommand]) -> (ReplayDraft, StateHash) {
         let seed = MatchSeed::from_bytes([42; 32]);
         let config = 7u8;
@@ -1540,9 +1620,9 @@ mod tests {
             },
         };
         let init = CounterRules::create(&config, &roster, &mut create_ctx).unwrap();
+        let mut derived_outcome = first_terminal_outcome(&init.effects);
         let mut state = init.state;
         let mut frames = Vec::new();
-        let mut derived_outcome = None;
         for (position, command) in commands.iter().cloned().enumerate() {
             let input = Input::Player {
                 seat: SeatId(0),
@@ -1562,13 +1642,7 @@ mod tests {
             };
             let outcome = CounterRules::apply(&mut state, input.clone(), &mut ctx).unwrap();
             if derived_outcome.is_none() {
-                derived_outcome = outcome.effects.iter().find_map(|effect| {
-                    if let Effect::EndMatch { outcome } = effect {
-                        Some(outcome.clone())
-                    } else {
-                        None
-                    }
-                });
+                derived_outcome = first_terminal_outcome(&outcome.effects);
             }
             frames.push(ReplayFrame {
                 input_index: index,
@@ -1596,6 +1670,48 @@ mod tests {
                     kind: ReplayKind::Canonical,
                 },
                 frames,
+                final_state_hash: final_hash,
+            },
+            final_hash,
+        )
+    }
+
+    fn counter_initial_draft(
+        config: u8,
+        outcome: Option<MatchOutcome>,
+    ) -> (ReplayDraft, StateHash) {
+        let seed = MatchSeed::from_bytes([42; 32]);
+        let roster = counter_roster();
+        let mut create_rng = tabula_core::DetRng::for_input(&seed, InputIndex(0));
+        let mut create_ctx = Ctx {
+            now: LogicalTime::ZERO,
+            index: InputIndex(0),
+            rng: &mut create_rng,
+            budget: Budget {
+                max_apply_micros: u32::MAX,
+                max_events_per_input: u16::MAX,
+            },
+        };
+        let init = CounterRules::create(&config, &roster, &mut create_ctx).unwrap();
+        let final_hash = CounterRules::state_hash(&init.state);
+        (
+            ReplayDraft {
+                header: ReplayHeader {
+                    match_id: MatchId(100),
+                    game_id: GameId::new("com.example.counter").unwrap(),
+                    game_version: GameVersion::new("1.0.0").unwrap(),
+                    rules_version: RulesVersion(1),
+                    rules_hash: [9; 32],
+                    config: canonical_encode(&config).unwrap(),
+                    roster,
+                    seed: Some(seed),
+                    initial_snapshot: None,
+                    started_at: 0,
+                    duration_ms: 0,
+                    outcome,
+                    kind: ReplayKind::Canonical,
+                },
+                frames: Vec::new(),
                 final_state_hash: final_hash,
             },
             final_hash,
@@ -1732,6 +1848,63 @@ mod tests {
         assert_eq!(report.expected_outcome, expected);
         assert_eq!(report.actual_outcome, report.expected_outcome);
         assert!(report.is_verified());
+    }
+
+    #[test]
+    fn end_match_from_create_is_verified() {
+        let expected = counter_outcome("counter created terminal");
+        let (draft, initial_hash) = counter_initial_draft(0, Some(expected.clone()));
+        assert_eq!(draft.final_state_hash, initial_hash);
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        assert_eq!(report.inputs_replayed, 0);
+        assert_eq!(report.expected_outcome, Some(expected.clone()));
+        assert_eq!(report.actual_outcome, Some(expected));
+        assert!(report.outcome_checked);
+        assert!(report.is_verified());
+    }
+
+    #[test]
+    fn multiple_end_match_from_create_is_rejected() {
+        let (draft, _) =
+            counter_initial_draft(1, Some(counter_outcome("counter created terminal")));
+        let bytes = draft.to_bytes().unwrap();
+        let error =
+            ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity()).unwrap_err();
+        assert!(matches!(
+            error,
+            ReplayError::MultipleEndMatch { input_index: 0 }
+        ));
+    }
+
+    #[test]
+    fn canonical_input_cannot_follow_create_end_match() {
+        let (mut draft, _) =
+            counter_initial_draft(0, Some(counter_outcome("counter created terminal")));
+        let input = Input::Player {
+            seat: SeatId(0),
+            command: CounterCommand::Add(1),
+        };
+        draft.frames.push(ReplayFrame {
+            input_index: InputIndex(1),
+            logical_time: LogicalTime(100),
+            input: canonical_encode(&input).unwrap(),
+            checkpoint: None,
+        });
+        let bytes = draft.to_bytes().unwrap();
+        let error = ReplayRunner::<CounterRules>::from_bytes(&bytes, counter_identity())
+            .unwrap()
+            .verify()
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ReplayError::InputAfterEndMatch {
+                input_index: 1,
+                terminal_input_index: 0
+            }
+        ));
     }
 
     #[test]

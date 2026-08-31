@@ -10,7 +10,7 @@ use std::{fs, path::Path};
 use tabula_core::{
     canonical_encode, InputIndex, LogicalTime, MatchId, MatchOutcome, MatchSeed, SeatRoster,
 };
-use tabula_game_api::{Budget, Ctx, Effect, GameModule, GameRules, Input, Outcome};
+use tabula_game_api::{Budget, Ctx, Effect, GameModule, GameRules, Input};
 use tabula_testkit::{ReplayDraft, ReplayFrame, ReplayHeader, ReplayKind};
 
 pub(crate) fn run() -> Result<(), String> {
@@ -158,7 +158,7 @@ fn write_replay<M: GameModule>(
         .map_err(|error| format!("golden create failed: {error:?}"))?;
     let mut state = init.state;
     let mut frames = Vec::with_capacity(inputs.len());
-    let mut derived_outcome = None;
+    let mut derived_outcome = terminal_outcome(&init.effects, 0)?;
     for (position, (input, time)) in inputs.into_iter().zip(times).enumerate() {
         if derived_outcome.is_some() {
             return Err(format!(
@@ -172,7 +172,7 @@ fn write_replay<M: GameModule>(
         let mut ctx = context(&mut rng, index, logical_time);
         let outcome = M::Rules::apply(&mut state, input.clone(), &mut ctx)
             .map_err(|error| format!("golden input {} rejected: {error:?}", index.0))?;
-        derived_outcome = terminal_outcome(&outcome, index.0)?;
+        derived_outcome = terminal_outcome(&outcome.effects, index.0)?;
         frames.push(ReplayFrame {
             input_index: index,
             logical_time,
@@ -205,12 +205,9 @@ fn write_replay<M: GameModule>(
         .map_err(|error| format!("{}: {error}", path.display()))
 }
 
-fn terminal_outcome<R: GameRules>(
-    outcome: &Outcome<R>,
-    input_index: u64,
-) -> Result<Option<MatchOutcome>, String> {
+fn terminal_outcome(effects: &[Effect], input_index: u64) -> Result<Option<MatchOutcome>, String> {
     let mut terminal = None;
-    for effect in &outcome.effects {
+    for effect in effects {
         if let Effect::EndMatch { outcome } = effect {
             if terminal.is_some() {
                 return Err(format!(
