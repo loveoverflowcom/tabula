@@ -11,11 +11,14 @@
 //! @ai.pure true
 //! @ai.invariant rules-hash-excludes-noncanonical-feature-source
 //! @ai.invariant canonical-rules-depend-only-on-rules-tree
+//! @ai.invariant rejected-input-preserves-canonical-fields
 //! @ai.law canonical-rules-source-change-changes-rules-hash
 //! @ai.evidence tests::rules_hash_matches_independent_rules_subtree_oracle
 //! @ai.evidence tests::canonical_source_mutation_changes_oracle_hash
 //! @ai.evidence tests::canonical_tree_rejects_noncanonical_feature_sources
 //! @ai.evidence tests::canonical_rules_do_not_depend_on_crate_root_sources
+//! @ai.evidence verification::rejected_initial_place_preserves_state
+//! @ai.evidence verification::rejected_second_place_preserves_state
 
 pub mod state;
 
@@ -178,8 +181,23 @@ impl GameRules for TicTacToeRules {
 ///
 /// Everything that can reject happens above the first assignment to `state`. That
 /// is contract R2 made structural rather than remembered.
+///
+/// @ai.role domain-transition
+/// @ai.domain tictactoe.rules.place
+/// @ai.pure true
+/// @ai.invariant rejected-input-preserves-canonical-fields
+/// @ai.law validate-then-mutate
+/// @ai.evidence verification::rejected_initial_place_preserves_state
+/// @ai.evidence verification::rejected_second_place_preserves_state
 fn place(state: &mut State, seat: SeatId, cell: u8) -> Result<Outcome<TicTacToeRules>, RuleError> {
-    // ---- validate fully BEFORE mutating (contract R2) ----
+    let idx = validate_place(state, seat, cell)?;
+
+    Ok(commit_place(state, seat, cell, idx))
+}
+
+/// The pure validation half of [`place`]. Keeping this separate makes the R2
+/// boundary visible to both readers and the proof harness.
+fn validate_place(state: &State, seat: SeatId, cell: u8) -> Result<usize, RuleError> {
     if seat != state.turn {
         return Err(RuleError::code(RuleErrorCode::NotYourTurn));
     }
@@ -187,8 +205,12 @@ fn place(state: &mut State, seat: SeatId, cell: u8) -> Result<Outcome<TicTacToeR
     if idx >= 9 || state.board[idx].is_some() {
         return Err(RuleError::code(RuleErrorCode::IllegalMove));
     }
+    Ok(idx)
+}
 
-    // ---- mutate ----
+/// The mutation half of [`place`], called only after [`validate_place`] succeeds.
+#[cfg_attr(kani, inline(never))]
+fn commit_place(state: &mut State, seat: SeatId, cell: u8, idx: usize) -> Outcome<TicTacToeRules> {
     let mark = state.mark_for(seat);
     state.board[idx] = Some(mark);
 
@@ -214,7 +236,7 @@ fn place(state: &mut State, seat: SeatId, cell: u8) -> Result<Outcome<TicTacToeR
         });
     }
 
-    Ok(Outcome { events, effects })
+    Outcome { events, effects }
 }
 
 fn check_end(state: &State, mover: SeatId) -> Option<MatchOutcome> {
@@ -320,5 +342,122 @@ pub(crate) fn move_timeout(cfg: &Config) -> Result<u64, ()> {
         0 => Ok(MIN_MOVE_TIMEOUT),
         value if value >= MIN_MOVE_TIMEOUT => Ok(value),
         _ => Err(()),
+    }
+}
+
+#[cfg(kani)]
+mod verification {
+    use super::{place, Mark, State, TicTacToeRules};
+    use tabula_core::SeatId;
+    use tabula_game_api::Outcome;
+
+    /// Compare every field that participates in the canonical TicTacToe state.
+    /// The exhaustive destructuring is intentional: adding a state field makes
+    /// this proof fail to compile until its R2 comparison is reviewed. This is
+    /// field-level R2 evidence, not a serialized-byte proof; byte-level R2
+    /// evidence remains in the testkit.
+    fn canonical_state_fields_equal(before: &State, after: &State) -> bool {
+        let State {
+            board: before_board,
+            seats: before_seats,
+            turn: before_turn,
+            status: before_status,
+            move_timeout_ms: before_move_timeout_ms,
+        } = before;
+        let State {
+            board: after_board,
+            seats: after_seats,
+            turn: after_turn,
+            status: after_status,
+            move_timeout_ms: after_move_timeout_ms,
+        } = after;
+
+        before_board == after_board
+            && before_seats == after_seats
+            && before_turn == after_turn
+            && before_status == after_status
+            && before_move_timeout_ms == after_move_timeout_ms
+    }
+
+    fn initial_state() -> State {
+        State::new([SeatId(7), SeatId(42)], 5_000)
+            .expect("the proof fixture is a valid initial state")
+    }
+
+    /// The transactional proofs execute the production `place` function across
+    /// all symbolic inputs. This total verifier-only replacement models the
+    /// accepted state transition while avoiding CBMC's unrelated `SmallVec`
+    /// outcome/drop work; rejected calls return before reaching it. The
+    /// concrete harness above separately exercises the real outcome builder.
+    #[allow(dead_code)]
+    fn commit_place_verification_stub(
+        state: &mut State,
+        seat: SeatId,
+        _cell: u8,
+        idx: usize,
+    ) -> Outcome<TicTacToeRules> {
+        let mark = state.mark_for(seat);
+        state.board[idx] = Some(mark);
+        state.turn = state.other(state.turn);
+        Outcome::empty()
+    }
+
+    #[kani::proof]
+    fn concrete_opening_place_is_accepted() {
+        let mut state = initial_state();
+        let opening = place(&mut state, SeatId(7), 0);
+        assert!(opening.is_ok());
+        assert!(state.board[0] == Some(Mark::X));
+        assert!(state.turn == SeatId(42));
+        core::mem::forget(opening);
+    }
+
+    /// For every raw seat and cell, a rejected placement against the canonical
+    /// initial state leaves all canonical fields unchanged. Symbolic execution
+    /// naturally covers wrong-player, unknown-seat, and out-of-range-cell
+    /// rejections without assuming any failure class away.
+    #[kani::proof]
+    #[kani::stub(super::commit_place, commit_place_verification_stub)]
+    fn rejected_initial_place_preserves_state() {
+        let mut state = initial_state();
+        let before = state.clone();
+        let seat = SeatId(kani::any());
+        let cell: u8 = kani::any();
+        let result = place(&mut state, seat, cell);
+        if result.is_err() {
+            let unchanged = canonical_state_fields_equal(&before, &state);
+            assert!(unchanged);
+        }
+        // The proof concerns state mutation, not `Outcome` destruction. Avoid
+        // making CBMC unwind SmallVec's unrelated drop implementation.
+        core::mem::forget(result);
+    }
+
+    /// After the known-valid opening move at cell zero, every raw second
+    /// placement that is rejected leaves all canonical fields unchanged. The
+    /// model covers the occupied cell, wrong turn, unknown seat, and out-of-range
+    /// cell classes reachable after this one-move prefix; it does not claim R2
+    /// for every arbitrary reachable TicTacToe position.
+    #[kani::proof]
+    #[kani::stub(super::commit_place, commit_place_verification_stub)]
+    fn rejected_second_place_preserves_state() {
+        let mut state = initial_state();
+        let opening = place(&mut state, SeatId(7), 0);
+        let opening_was_accepted = opening.is_ok();
+        core::mem::forget(opening);
+        assert!(opening_was_accepted);
+        assert!(state.board[0] == Some(Mark::X));
+        assert!(state.turn == SeatId(42));
+        let before = state.clone();
+        let seat = SeatId(kani::any());
+        let cell: u8 = kani::any();
+        let result = place(&mut state, seat, cell);
+        if result.is_err() {
+            let unchanged = canonical_state_fields_equal(&before, &state);
+            assert!(unchanged);
+        }
+        // The proof concerns state mutation, not `Outcome` destruction. Avoid
+        // making CBMC unwind SmallVec's unrelated drop implementation.
+        core::mem::forget(result);
     }
 }
