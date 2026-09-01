@@ -21,8 +21,9 @@ pub use input::{
     InputEvent, Key, PointerButton, PointerPhase, PointerPosition, PointerPositionError,
 };
 pub use motion::{
-    lerp_f32, lerp_vec2, resolve_duration, resolve_spring, staggered_start, MotionSample,
-    MotionTimeline, STALE_ANIMATION_THRESHOLD_MS,
+    is_stale_on_arrival, lerp_f32, lerp_vec2, resolve_duration, resolve_motion_start,
+    resolve_spring, staggered_start, MotionMode, MotionSample, MotionStart, MotionTimeline,
+    STALE_ANIMATION_THRESHOLD_MS,
 };
 pub use render::{
     Align, Border, Camera2D, Corners, GradientStop, Layer, LinearGradient, Opacity, OpacityError,

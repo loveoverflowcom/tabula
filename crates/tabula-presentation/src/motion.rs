@@ -18,12 +18,32 @@
 #![allow(clippy::doc_markdown)]
 
 use glam::Vec2;
-use tabula_design::{
-    MotionCategory, MotionDuration, MotionProfile, ReducedMotion, Spring, SpringKind, Theme,
-};
+use tabula_design::{MotionCategory, MotionDuration, MotionProfile, Spring, SpringKind, Theme};
 
-/// The maximum duration in milliseconds before an uncompleted animation snaps to its end state. (doc 04 §9.1)
+/// The elapsed-time boundary used when deciding whether a newly observed animation is stale.
+///
+/// This is a late-arrival policy, not a maximum animation lifetime. A timeline may legitimately
+/// use a longer semantic duration such as the 800 ms `xlong` token. (doc 04 §9.1)
 pub const STALE_ANIMATION_THRESHOLD_MS: u64 = 600;
+
+/// Selects whether a semantic motion profile is played at full speed or resolved through the
+/// theme's reduced-motion policy.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MotionMode {
+    /// Play the profile's normal semantic duration.
+    Full,
+    /// Apply the theme's reduced-motion policy.
+    Reduced,
+}
+
+/// The result of deciding whether an animation can be played when it arrives.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MotionStart {
+    /// The animation arrived in time and may be sampled from its original start timestamp.
+    Animate(MotionTimeline),
+    /// The animation arrived too late and should render its terminal state immediately.
+    Snap,
+}
 
 /// The evaluated progress and completion status of a motion at a specific timestamp.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -69,6 +89,7 @@ impl MotionSample {
 pub struct MotionTimeline {
     started_at_ms: u64,
     duration_ms: u64,
+    curve_duration_ms: u64,
     spring: Spring,
 }
 
@@ -79,20 +100,28 @@ impl MotionTimeline {
         Self {
             started_at_ms,
             duration_ms,
+            curve_duration_ms: duration_ms,
             spring,
         }
     }
 
-    /// Constructs a motion timeline from a semantic profile and active theme.
+    /// Constructs a motion timeline from a semantic profile, active theme, and explicit mode.
     ///
-    /// Resolves the spring family and reduced-motion policy from the theme.
+    /// `MotionMode::Full` is the normal execution mode; the theme's reduced policy is never
+    /// implicitly applied.
     #[must_use]
-    pub fn from_profile(started_at_ms: u64, profile: MotionProfile, theme: &Theme) -> Self {
+    pub fn from_profile(
+        started_at_ms: u64,
+        profile: MotionProfile,
+        theme: &Theme,
+        mode: MotionMode,
+    ) -> Self {
         let spring = resolve_spring(theme, profile.spring);
-        let duration_ms = resolve_duration(profile, theme.motion.reduced);
+        let duration_ms = resolve_duration(profile, theme, mode);
         Self {
             started_at_ms,
             duration_ms,
+            curve_duration_ms: u64::from(profile.duration.milliseconds()),
             spring,
         }
     }
@@ -133,14 +162,15 @@ impl MotionTimeline {
             return MotionSample::initial();
         }
         let elapsed = now_ms.saturating_sub(self.started_at_ms);
-        if self.duration_ms == 0
-            || elapsed >= self.duration_ms
-            || elapsed > STALE_ANIMATION_THRESHOLD_MS
-        {
+        if self.duration_ms == 0 || elapsed >= self.duration_ms {
             return MotionSample::finished();
         }
 
-        let factor = evaluate_spring(self.spring, elapsed);
+        // Duration scaling changes playback speed while preserving the profile's curve. For
+        // example, a 280 ms profile resolved to 80 ms still evaluates its spring over the full
+        // 280 ms shape before the effective timeline reaches its terminal sample.
+        let curve_elapsed = elapsed.saturating_mul(self.curve_duration_ms) / self.duration_ms;
+        let factor = evaluate_spring(self.spring, curve_elapsed);
         MotionSample {
             factor,
             done: false,
@@ -159,20 +189,71 @@ pub const fn resolve_spring(theme: &Theme, kind: SpringKind) -> Spring {
     }
 }
 
-/// Resolves effective motion duration under the active reduced-motion policy.
+/// Resolves effective motion duration under an explicit motion mode.
 ///
-/// Ambient motions are disabled if requested; informative motions are scaled
-/// by the duration percentage scale.
+/// Full motion uses the profile duration exactly. Reduced motion disables ambient profiles when
+/// requested and otherwise scales durations. Strict reduced motion keeps informative state
+/// changes alive at the semantic `instant` floor when `keep_informative` is enabled.
 #[must_use]
-pub const fn resolve_duration(profile: MotionProfile, reduced: ReducedMotion) -> u64 {
+pub const fn resolve_duration(profile: MotionProfile, theme: &Theme, mode: MotionMode) -> u64 {
+    let original = profile.duration.milliseconds() as u64;
+    if matches!(mode, MotionMode::Full) {
+        return original;
+    }
+
+    let reduced = theme.motion.reduced;
     if matches!(profile.category, MotionCategory::Ambient) && reduced.disable_ambient {
         return 0;
     }
     let scale = reduced.duration_scale.get() as u64;
     if scale == 0 {
-        return 0;
+        return if matches!(profile.category, MotionCategory::Informative)
+            && reduced.keep_informative
+        {
+            let instant = theme.motion.instant.milliseconds() as u64;
+            if original < instant {
+                original
+            } else {
+                instant
+            }
+        } else {
+            0
+        };
     }
-    (profile.duration.milliseconds() as u64) * scale / 100
+    original * scale / 100
+}
+
+/// Returns whether an animation is stale when it is first observed.
+///
+/// The exact threshold remains playable; only an age strictly greater than the threshold snaps.
+/// Saturating subtraction treats an observation before the start as not stale.
+#[must_use]
+pub const fn is_stale_on_arrival(started_at_ms: u64, observed_at_ms: u64) -> bool {
+    observed_at_ms.saturating_sub(started_at_ms) > STALE_ANIMATION_THRESHOLD_MS
+}
+
+/// Resolves a motion profile into an animation or an immediate terminal state.
+///
+/// Callers with an event timestamp should use this boundary once, when the event is observed.
+/// [`MotionTimeline::sample`] intentionally does not apply this late-arrival rule.
+#[must_use]
+pub fn resolve_motion_start(
+    started_at_ms: u64,
+    observed_at_ms: u64,
+    profile: MotionProfile,
+    theme: &Theme,
+    mode: MotionMode,
+) -> MotionStart {
+    if is_stale_on_arrival(started_at_ms, observed_at_ms) {
+        MotionStart::Snap
+    } else {
+        MotionStart::Animate(MotionTimeline::from_profile(
+            started_at_ms,
+            profile,
+            theme,
+            mode,
+        ))
+    }
 }
 
 /// Computes the absolute start time for an item in a staggered sequence.
@@ -322,38 +403,92 @@ mod tests {
     }
 
     #[test]
-    fn stale_motion_snaps_to_terminal_state() {
+    fn normal_800ms_motion_is_not_stale_at_601ms() {
         let timeline = MotionTimeline::new(1000, 800, test_spring());
-        // At 1600 ms (elapsed 600 ms <= threshold), still active
-        let active = timeline.sample(1600);
-        assert!(!active.done);
-
-        // At 1601 ms (elapsed 601 ms > threshold), snaps to terminal
-        let stale = timeline.sample(1601);
-        assert_eq!(stale, MotionSample::finished());
+        for now in [1600, 1601, 1799] {
+            assert!(
+                !timeline.sample(now).done,
+                "sample at {now} should remain active"
+            );
+        }
+        assert_eq!(timeline.sample(1800), MotionSample::finished());
     }
 
     #[test]
-    fn reduced_motion_duration_resolution_handles_all_categories() {
+    fn full_motion_does_not_apply_reduced_policy_implicitly() {
         let theme = Theme::by_kind(ThemeKind::Light);
+        assert_eq!(
+            resolve_duration(theme.motion.piece_move, &theme, MotionMode::Full),
+            280
+        );
+        let timeline =
+            MotionTimeline::from_profile(1000, theme.motion.piece_move, &theme, MotionMode::Full);
+        assert_eq!(timeline.duration_ms(), 280);
+    }
+
+    #[test]
+    fn reduced_motion_duration_resolution_honors_categories_and_floor() {
+        let mut theme = Theme::by_kind(ThemeKind::Light);
         let mut reduced = theme.motion.reduced;
 
-        // duration_scale = 0 -> 0 duration
+        // Strict reduced motion keeps informative motion at the semantic instant floor.
         reduced.duration_scale = Percent::new(0).unwrap();
-        assert_eq!(resolve_duration(theme.motion.piece_move, reduced), 0);
+        assert_eq!(
+            resolve_duration(theme.motion.piece_move, &theme, MotionMode::Reduced),
+            u64::from(theme.motion.instant.milliseconds())
+        );
 
-        // ambient with disable_ambient -> 0 duration
+        // Ambient motion is disabled by policy.
         reduced.duration_scale = Percent::new(100).unwrap();
         reduced.disable_ambient = true;
-        assert_eq!(resolve_duration(theme.motion.phase_change, reduced), 0);
+        theme.motion.reduced = reduced;
+        assert_eq!(
+            resolve_duration(theme.motion.phase_change, &theme, MotionMode::Reduced),
+            0
+        );
 
-        // informative with scale 50%
+        // Informative motion with a non-zero scale uses the scaled semantic duration.
         reduced.duration_scale = Percent::new(50).unwrap();
+        theme.motion.reduced = reduced;
         let piece_move_duration = theme.motion.piece_move.duration.milliseconds();
         assert_eq!(
-            resolve_duration(theme.motion.piece_move, reduced),
+            resolve_duration(theme.motion.piece_move, &theme, MotionMode::Reduced),
             u64::from(piece_move_duration) * 50 / 100
         );
+    }
+
+    #[test]
+    fn late_arriving_motion_snaps_but_exact_boundary_animates() {
+        let theme = Theme::by_kind(ThemeKind::Light);
+        let profile = theme.motion.win;
+        assert!(!is_stale_on_arrival(1000, 1600));
+        assert!(is_stale_on_arrival(1000, 1601));
+        assert!(matches!(
+            resolve_motion_start(1000, 1600, profile, &theme, MotionMode::Full),
+            MotionStart::Animate(_)
+        ));
+        assert_eq!(
+            resolve_motion_start(1000, 1601, profile, &theme, MotionMode::Full),
+            MotionStart::Snap
+        );
+    }
+
+    #[test]
+    fn reduced_duration_preserves_the_profile_curve_until_terminal_sample() {
+        let mut theme = Theme::by_kind(ThemeKind::Light);
+        let mut reduced = theme.motion.reduced;
+        reduced.duration_scale = Percent::new(50).unwrap();
+        theme.motion.reduced = reduced;
+        let timeline = MotionTimeline::from_profile(
+            1000,
+            theme.motion.piece_move,
+            &theme,
+            MotionMode::Reduced,
+        );
+        assert_eq!(timeline.duration_ms(), 140);
+        assert!(!timeline.sample(1139).done);
+        assert_eq!(timeline.sample(1140), MotionSample::finished());
+        assert!(timeline.sample(1139).factor > 0.9);
     }
 
     #[test]

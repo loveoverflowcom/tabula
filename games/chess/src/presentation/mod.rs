@@ -12,8 +12,9 @@ use tabula_game_api::{A11yAction, A11yDescription, A11yItem, A11yRegion, ActionI
 use tabula_presentation::{
     handle_navigation, lerp_vec2, Align, AssetPackRef, Border, Camera2D, Corners, FocusGraph,
     FocusId, FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation, InputEvent, Intent,
-    Layer, MotionTimeline, NavigationAction, Paint, PointerButton, PointerPhase, PointerPosition,
-    Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError, TextStyleToken, Viewport,
+    Layer, MotionMode, MotionTimeline, NavigationAction, Paint, PointerButton, PointerPhase,
+    PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError,
+    TextStyleToken, Viewport,
 };
 
 use crate::{ChessRules, Color as ChessColor, Command, Piece, PieceKind, Square, Status, View};
@@ -27,6 +28,7 @@ const PROMOTION_CHOICES: [PromotionChoice; 4] = [
 const PROMOTION_BASE_FOCUS_ID: u32 = 100;
 const STATUS_HEIGHT_FRACTION: f32 = 0.12;
 const STATUS_MAX_HEIGHT: f32 = 48.0;
+const IN_TRANSIT_PIECE_Z: i16 = 100;
 
 /// The closed set of pieces a pawn may become at the end of a Chess move.
 ///
@@ -245,6 +247,10 @@ pub enum Interaction {
 pub struct ChessMoveAnimation {
     pub from: Square,
     pub to: Square,
+    /// The mover's color is needed to preserve pawn identity during promotion playback.
+    pub color: ChessColor,
+    /// The canonical promotion choice, if this focal move promotes a pawn.
+    pub promotion: Option<PieceKind>,
     pub timeline: MotionTimeline,
 }
 
@@ -359,19 +365,32 @@ impl GamePresentation for ChessPresentation {
         frame: &FrameCtx,
     ) {
         match event {
-            crate::ViewEvent::Moved { from, to, .. } => {
+            crate::ViewEvent::Moved {
+                seat,
+                from,
+                to,
+                promotion,
+                ..
+            } => {
                 local.last_move = Some((*from, *to));
                 local.clear_interaction();
                 let timeline = MotionTimeline::from_profile(
                     frame.now_ms(),
                     frame.theme().motion.piece_move,
                     &frame.theme(),
+                    MotionMode::Full,
                 );
-                local.move_animation = Some(ChessMoveAnimation {
-                    from: *from,
-                    to: *to,
-                    timeline,
-                });
+                if let Some(color) = ChessColor::from_seat(*seat) {
+                    local.move_animation = Some(ChessMoveAnimation {
+                        from: *from,
+                        to: *to,
+                        color,
+                        promotion: *promotion,
+                        timeline,
+                    });
+                } else {
+                    local.move_animation = None;
+                }
             }
             crate::ViewEvent::Ended { .. } => local.clear_interaction(),
             crate::ViewEvent::ClockUpdated { .. }
@@ -545,9 +564,12 @@ fn click_square(
                     to: square,
                     selected: PromotionChoice::Queen,
                 };
+                // Select the logical default without changing modality. Pointer activation must
+                // remain pointer-modality; keyboard activation has already selected keyboard
+                // modality in `handle_navigation`.
                 local
                     .focus
-                    .set_keyboard_focus(Some(promotion_choice_focus_id(PromotionChoice::Queen)));
+                    .set_current(Some(promotion_choice_focus_id(PromotionChoice::Queen)));
                 return None;
             }
             local.clear_interaction();
@@ -760,7 +782,14 @@ fn build_render_list(
 
     if let Some((anim, sample)) = move_sample {
         if !sample.done {
-            if let Some(piece) = view.board[usize::from(anim.to.0)] {
+            let piece = anim
+                .promotion
+                .map(|_| Piece {
+                    color: anim.color,
+                    kind: PieceKind::Pawn,
+                })
+                .or_else(|| view.board.get(usize::from(anim.to.0)).copied().flatten());
+            if let Some(piece) = piece {
                 let from_rect = layout
                     .square_rect(anim.from)
                     .ok_or(RenderListError::InvalidGeometry)?;
@@ -782,7 +811,7 @@ fn build_render_list(
                     max_width: None,
                     color: piece_color(piece, &theme),
                     layer: Layer::PIECES,
-                    z: 100,
+                    z: IN_TRANSIT_PIECE_Z,
                 })?;
             }
         }
@@ -1075,11 +1104,20 @@ mod tests {
     }
 
     fn frame_at(width: f32, height: f32, now_ms: u64) -> FrameCtx {
+        frame_with_theme(
+            width,
+            height,
+            now_ms,
+            &Theme::by_kind(tabula_design::ThemeKind::Light),
+        )
+    }
+
+    fn frame_with_theme(width: f32, height: f32, now_ms: u64, theme: &Theme) -> FrameCtx {
         FrameCtx::new(
             viewport(width, height),
             tabula_presentation::Dpi::new(1.0).expect("test DPI is valid"),
             now_ms,
-            Theme::by_kind(tabula_design::ThemeKind::Light),
+            *theme,
         )
     }
 
@@ -1089,6 +1127,16 @@ mod tests {
 
     fn pointer(layout: BoardLayout, square: Square) -> PointerPosition {
         clicked_center(layout.square_rect(square).expect("test square is valid"))
+    }
+
+    #[allow(clippy::float_arithmetic)]
+    fn piece_position(layout: BoardLayout, square: Square) -> Vec2 {
+        let rect = layout.square_rect(square).expect("test square is valid");
+        let line_height = Theme::by_kind(tabula_design::ThemeKind::Light)
+            .text_style(TextStyleToken::DisplaySm)
+            .line_height()
+            .get();
+        rect.origin() + Vec2::new(rect.size().x * 0.5, rect.size().y * 0.5 - line_height * 0.5)
     }
 
     fn key(key: Key) -> InputEvent {
@@ -1352,6 +1400,72 @@ mod tests {
         );
     }
 
+    #[test]
+    fn pointer_opened_promotion_keeps_pointer_modality_and_hides_focus_ring() {
+        let (view, _layout, local) = promotion_fixture();
+        assert_eq!(local.focus().modality(), FocusModality::Pointer);
+        assert!(!local.focus().is_focus_visible());
+
+        let mut theme = Theme::by_kind(tabula_design::ThemeKind::Light);
+        theme.focus.ring_color = theme.color.danger;
+        let rendered =
+            ChessPresentation::present(&view, &local, &frame_with_theme(640.0, 640.0, 0, &theme));
+        assert!(!rendered.commands().iter().any(|command| {
+            matches!(
+                command,
+                RenderCmd::Rect {
+                    layer: Layer::MODAL,
+                    border: Some(border),
+                    ..
+                } if border.color() == theme.focus.ring_color
+            )
+        }));
+    }
+
+    #[test]
+    fn keyboard_opened_promotion_uses_keyboard_modality_and_shows_focus_ring() {
+        let state = crate::State::from_fen("k7/4P3/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let view = view(&state);
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+        local.focus_mut().set_keyboard_focus(Some(FocusId::new(52)));
+
+        assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).is_none());
+        local.focus_mut().set_keyboard_focus(Some(FocusId::new(60)));
+        assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).is_none());
+
+        assert_eq!(
+            local.interaction(),
+            Interaction::Promotion {
+                from: Square(52),
+                to: Square(60),
+                selected: PromotionChoice::Queen,
+            }
+        );
+        assert_eq!(local.focus().modality(), FocusModality::Keyboard);
+        assert!(local.focus().is_focus_visible());
+        assert_eq!(
+            local.focus().current(),
+            Some(promotion_choice_focus_id(PromotionChoice::Queen))
+        );
+
+        let mut theme = Theme::by_kind(tabula_design::ThemeKind::Light);
+        theme.focus.ring_color = theme.color.danger;
+        let rendered =
+            ChessPresentation::present(&view, &local, &frame_with_theme(640.0, 640.0, 0, &theme));
+        assert!(rendered.commands().iter().any(|command| {
+            matches!(
+                command,
+                RenderCmd::Rect {
+                    layer: Layer::MODAL,
+                    border: Some(border),
+                    z: 1,
+                    ..
+                } if border.color() == theme.focus.ring_color
+            )
+        }));
+    }
+
     fn promotion_fixture() -> (View, BoardLayout, ChessLocal) {
         let state = crate::State::from_fen("k7/4P3/8/8/8/8/8/4K3 w - - 0 1").unwrap();
         let view = view(&state);
@@ -1483,6 +1597,78 @@ mod tests {
                 .into_command();
 
         assert_eq!(pointer_command, keyboard_command);
+    }
+
+    #[test]
+    fn promotion_animation_moves_a_pawn_and_finishes_as_the_promoted_piece() {
+        let mut state = crate::State::from_fen("k7/4P3/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let mut local = ChessLocal::default();
+        let start_frame = frame_at(640.0, 640.0, 1000);
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            0,
+            Command::Move {
+                from: 52,
+                to: 60,
+                promotion: Some(PieceKind::Queen),
+            },
+        );
+        for event in outcome.events {
+            if let Some(view_event) =
+                ChessRules::view_event(&state, &event, Viewer::Seat(SeatId(0)))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut local, &start_frame);
+            }
+        }
+
+        let animation = local
+            .move_animation()
+            .expect("promotion event creates a focal animation");
+        assert_eq!(animation.promotion, Some(PieceKind::Queen));
+        assert_eq!(animation.color, ChessColor::White);
+
+        let current_view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let intermediate =
+            ChessPresentation::present(&current_view, &local, &frame_at(640.0, 640.0, 1100));
+        assert!(intermediate.commands().iter().any(|command| {
+            matches!(
+                command,
+                RenderCmd::Text {
+                    text,
+                    layer: Layer::PIECES,
+                    z: IN_TRANSIT_PIECE_Z,
+                    ..
+                } if text == "P"
+            )
+        }));
+        assert!(!intermediate.commands().iter().any(|command| {
+            matches!(
+                command,
+                RenderCmd::Text {
+                    text,
+                    layer: Layer::PIECES,
+                    z: IN_TRANSIT_PIECE_Z,
+                    ..
+                } if text == "Q"
+            )
+        }));
+
+        let terminal =
+            ChessPresentation::present(&current_view, &local, &frame_at(640.0, 640.0, 1280));
+        let destination_position = piece_position(layout, Square(60));
+        assert!(terminal.commands().iter().any(|command| {
+            matches!(
+                command,
+                RenderCmd::Text {
+                    text,
+                    at,
+                    layer: Layer::PIECES,
+                    ..
+                } if text == "Q" && *at == destination_position
+            )
+        }));
     }
 
     #[test]
@@ -1700,6 +1886,42 @@ mod tests {
     }
 
     #[test]
+    fn chess_move_animation_has_a_real_in_flight_sample() {
+        let mut state = crate::State::initial();
+        let mut local = ChessLocal::default();
+        let frame = frame_at(640.0, 640.0, 1000);
+
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            0,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+        for event in outcome.events {
+            if let Some(view_event) =
+                ChessRules::view_event(&state, &event, Viewer::Seat(SeatId(0)))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut local, &frame);
+            }
+        }
+
+        let animation = local
+            .move_animation()
+            .expect("a real move creates a focal animation");
+        let sample = animation.timeline.sample(1100);
+        assert!(!sample.done);
+        assert!(sample.factor.is_finite());
+        assert_eq!(
+            animation.timeline.duration_ms(),
+            u64::from(frame.theme().motion.piece_move.duration.milliseconds())
+        );
+    }
+
+    #[test]
     fn chess_animation_never_mutates_authoritative_state() {
         let mut state = crate::State::initial();
         let mut local = ChessLocal::default();
@@ -1791,15 +2013,29 @@ mod tests {
                 ChessPresentation::on_view_event(&view_event, &mut local, &frame);
             }
         }
-        let current_view = view(&state);
+        let current_view = ChessRules::project(&state, Viewer::Seat(SeatId(1)));
+        assert!(
+            !local
+                .move_animation()
+                .expect("the first move is animating")
+                .timeline
+                .sample(1100)
+                .done
+        );
 
-        // Animation is in flight (midpoint t = 1100)
-        let mid_frame = frame_at(640.0, 640.0, 1100);
-        local.set_viewport(mid_frame.viewport());
-
-        // Input works normally
-        let layout = BoardLayout::from_viewport(mid_frame.viewport());
-        assert!(click(&current_view, &mut local, layout, Square(6)).is_none());
+        // Black can form a valid intent while White's focal animation is in flight.
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        assert!(click(&current_view, &mut local, layout, Square(52)).is_none());
+        let intent = click(&current_view, &mut local, layout, Square(36))
+            .expect("active animation must not gate a valid second intent");
+        assert_eq!(
+            intent.into_command(),
+            Command::Move {
+                from: 52,
+                to: 36,
+                promotion: None,
+            }
+        );
         assert_eq!(local.interaction(), Interaction::Idle);
     }
 
@@ -1845,8 +2081,40 @@ mod tests {
             })
             .count();
 
-        // Exactly 32 pieces are rendered (31 stationary + 1 in transit)
+        // Exactly 32 pieces are rendered (31 stationary + 1 in transit).
         assert_eq!(piece_texts, 32);
+
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let start_position = piece_position(layout, Square(12));
+        let destination_position = piece_position(layout, Square(28));
+        let focal_position = mid_render
+            .commands()
+            .iter()
+            .find_map(|command| match command {
+                RenderCmd::Text {
+                    text,
+                    at,
+                    layer: Layer::PIECES,
+                    z: IN_TRANSIT_PIECE_Z,
+                    ..
+                } if text == "P" => Some(*at),
+                _ => None,
+            });
+        let focal_position = focal_position.expect("one focal pawn is rendered in transit");
+        assert_ne!(focal_position, start_position);
+        assert_ne!(focal_position, destination_position);
+        assert!(!mid_render.commands().iter().any(|command| {
+            matches!(
+                command,
+                RenderCmd::Text {
+                    text,
+                    at,
+                    layer: Layer::PIECES,
+                    z: 28,
+                    ..
+                } if text == "P" && *at == destination_position
+            )
+        }));
     }
 
     #[test]
