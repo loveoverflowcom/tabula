@@ -1,29 +1,62 @@
-//! Desktop entry point.
-//!
-//! Phase 2 makes this open a Macroquad window and run a hot-seat chess match.
-//! Until then it exists so the binary target is real and CI has something to
-//! build.
-//!
-//! ```rust,ignore
-//! #[macroquad::main(window_conf)]
-//! async fn main() {
-//!     let mut renderer = renderer_macroquad::MacroquadRenderer::new();
-//!     let mut scenes   = tabula_game_client::scene::Stack::new(Scene::Loader);
-//!     loop {
-//!         let frame = renderer.begin_frame(screen_size(), dpi());
-//!         for ev in renderer.drain_input() { scenes.on_input(&ev); }
-//!         scenes.update(&frame);
-//!         renderer.submit(&scenes.present(&frame));
-//!         renderer.end_frame();
-//!         macroquad::window::next_frame().await;
-//!     }
-//! }
-//! ```
+//! Macroquad platform entry point for the renderer smoke scene, not Chess UI.
 
-fn main() {
-    eprintln!(
-        "tabula-game-client is a Phase 2 deliverable (docs/architecture/07-phases-and-implementation-roadmap.md).\n\
-         Gate: the Phase 1 exit criteria are met (see doc 07)."
-    );
-    std::process::exit(1);
+use glam::Vec2;
+use macroquad::prelude as mq;
+use renderer_macroquad::MacroquadRenderer;
+use tabula_design::{Theme, ThemeKind};
+use tabula_presentation::{Dpi, InputEvent, PointerPhase, Renderer, Viewport};
+
+fn window_conf() -> mq::Conf {
+    mq::Conf {
+        window_title: String::from("Tabula renderer smoke"),
+        window_width: 720,
+        window_height: 460,
+        ..mq::Conf::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
+async fn main() {
+    let mut renderer = MacroquadRenderer::new();
+    let theme = Theme::by_kind(ThemeKind::Light);
+    let mut pointer = None;
+
+    loop {
+        let viewport = Viewport::new(Vec2::new(mq::screen_width(), mq::screen_height()))
+            .expect("Macroquad supplies a finite non-empty viewport");
+        let dpi =
+            Dpi::new(mq::screen_dpi_scale()).expect("Macroquad supplies a positive DPI scale");
+        let now_ms = presentation_now_ms();
+        let _frame = renderer.begin_frame(viewport, dpi, now_ms, theme);
+        for event in renderer.drain_input() {
+            if let InputEvent::Pointer {
+                position,
+                phase: PointerPhase::Down | PointerPhase::Move | PointerPhase::Up,
+                ..
+            } = event
+            {
+                pointer = Some(position);
+            }
+        }
+        let scene = tabula_game_client::smoke_scene(theme, pointer)
+            .expect("the static smoke scene satisfies RenderList construction invariants");
+        if let Err(error) = renderer.submit(&scene) {
+            eprintln!("renderer smoke scene failed: {error:?}");
+            break;
+        }
+        renderer
+            .end_frame()
+            .expect("Macroquad end_frame is infallible");
+        mq::next_frame().await;
+    }
+}
+
+/// Converts Macroquad's monotonic presentation clock into the renderer frame fact.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::float_arithmetic
+)]
+fn presentation_now_ms() -> u64 {
+    (mq::get_time() * 1_000.0) as u64
 }
