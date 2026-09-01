@@ -686,15 +686,10 @@ impl GamePresentation for ChessPresentation {
     }
 }
 
-fn one_cue(id: &str) -> AudioCues {
-    AudioCue::new(id).map_or_else(
-        |_| AudioCues::new(),
-        |cue| {
-            let mut cues = AudioCues::new();
-            cues.push(cue);
-            cues
-        },
-    )
+fn one_cue(id: &'static str) -> AudioCues {
+    let mut cues = AudioCues::new();
+    cues.push(AudioCue::from_static(id));
+    cues
 }
 
 #[allow(clippy::float_arithmetic)]
