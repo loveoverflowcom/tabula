@@ -10,10 +10,10 @@ use glam::Vec2;
 use tabula_design::{Color as SemanticTint, Theme};
 use tabula_game_api::{A11yAction, A11yDescription, A11yItem, A11yRegion, ActionId, GameRules};
 use tabula_presentation::{
-    handle_navigation, lerp_vec2, Align, AssetPackRef, Border, Camera2D, Corners, FocusGraph,
-    FocusId, FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation, InputEvent, Intent,
-    Layer, MotionMode, MotionTimeline, NavigationAction, Paint, PointerButton, PointerPhase,
-    PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError,
+    handle_navigation, lerp_vec2, Align, AssetPackRef, AudioCue, AudioCues, Border, Camera2D,
+    Corners, FocusGraph, FocusId, FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation,
+    InputEvent, Intent, Layer, MotionMode, MotionTimeline, NavigationAction, Paint, PointerButton,
+    PointerPhase, PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError,
     TextStyleToken, Viewport,
 };
 
@@ -417,14 +417,14 @@ impl GamePresentation for ChessPresentation {
         event: &<ChessRules as GameRules>::ViewEvent,
         local: &mut ChessLocal,
         frame: &FrameCtx,
-    ) {
+    ) -> AudioCues {
         match event {
             crate::ViewEvent::Moved {
                 seat,
                 from,
                 to,
                 promotion,
-                ..
+                captured,
             } => {
                 local.last_move = Some((*from, *to));
                 local.clear_interaction();
@@ -445,11 +445,19 @@ impl GamePresentation for ChessPresentation {
                 } else {
                     local.move_animation = None;
                 }
+                one_cue(if captured.is_some() {
+                    "capture"
+                } else {
+                    "move"
+                })
             }
-            crate::ViewEvent::Ended { .. } => local.clear_interaction(),
+            crate::ViewEvent::Ended { .. } => {
+                local.clear_interaction();
+                one_cue("game-end")
+            }
             crate::ViewEvent::ClockUpdated { .. }
             | crate::ViewEvent::DrawOffered { .. }
-            | crate::ViewEvent::DrawDeclined { .. } => {}
+            | crate::ViewEvent::DrawDeclined { .. } => AudioCues::new(),
         }
     }
 
@@ -676,6 +684,17 @@ impl GamePresentation for ChessPresentation {
     fn a11y(view: &View, local: &ChessLocal) -> A11yDescription {
         chess_a11y(view, local)
     }
+}
+
+fn one_cue(id: &str) -> AudioCues {
+    AudioCue::new(id).map_or_else(
+        |_| AudioCues::new(),
+        |cue| {
+            let mut cues = AudioCues::new();
+            cues.push(cue);
+            cues
+        },
+    )
 }
 
 #[allow(clippy::float_arithmetic)]
@@ -1433,6 +1452,179 @@ mod tests {
             &mut ctx,
         )
         .expect("test command is legal")
+    }
+
+    fn cues_for_outcome(
+        state: &crate::State,
+        outcome: &Outcome<ChessRules>,
+        local: &mut ChessLocal,
+        frame: &FrameCtx,
+        viewer: Viewer,
+    ) -> AudioCues {
+        let mut cues = AudioCues::new();
+        for event in &outcome.events {
+            if let Some(event) = ChessRules::view_event(state, event, viewer) {
+                cues.extend(ChessPresentation::on_view_event(&event, local, frame));
+            }
+        }
+        cues
+    }
+
+    fn cue_ids(cues: &AudioCues) -> Vec<&str> {
+        cues.iter().map(AudioCue::id).collect()
+    }
+
+    #[test]
+    fn accepted_projected_move_emits_one_cue_without_mutating_canonical_state() {
+        let mut state = crate::State::initial();
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            1,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+        let before_presentation = canonical_encode(&state).unwrap();
+        let mut local = ChessLocal::default();
+
+        let cues = cues_for_outcome(
+            &state,
+            &outcome,
+            &mut local,
+            &frame_at(640.0, 640.0, 100),
+            Viewer::Seat(SeatId(0)),
+        );
+
+        assert_eq!(cue_ids(&cues), ["move"]);
+        assert_eq!(canonical_encode(&state).unwrap(), before_presentation);
+    }
+
+    #[test]
+    fn projected_capture_emits_capture_not_move() {
+        let mut state = crate::State::initial();
+        legal_apply(
+            &mut state,
+            0,
+            1,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+        legal_apply(
+            &mut state,
+            1,
+            2,
+            Command::Move {
+                from: 51,
+                to: 35,
+                promotion: None,
+            },
+        );
+        let capture = legal_apply(
+            &mut state,
+            0,
+            3,
+            Command::Move {
+                from: 28,
+                to: 35,
+                promotion: None,
+            },
+        );
+
+        let cues = cues_for_outcome(
+            &state,
+            &capture,
+            &mut ChessLocal::default(),
+            &frame(640.0, 640.0),
+            Viewer::Seat(SeatId(0)),
+        );
+
+        assert_eq!(cue_ids(&cues), ["capture"]);
+    }
+
+    #[test]
+    fn terminal_projected_events_preserve_move_then_game_end_cue_order() {
+        let mut state = crate::State::initial();
+        for (seat, index, from, to) in [(0, 1, 13, 21), (1, 2, 52, 36), (0, 3, 14, 30)] {
+            legal_apply(
+                &mut state,
+                seat,
+                index,
+                Command::Move {
+                    from,
+                    to,
+                    promotion: None,
+                },
+            );
+        }
+        let terminal = legal_apply(
+            &mut state,
+            1,
+            4,
+            Command::Move {
+                from: 59,
+                to: 31,
+                promotion: None,
+            },
+        );
+
+        let cues = cues_for_outcome(
+            &state,
+            &terminal,
+            &mut ChessLocal::default(),
+            &frame(640.0, 640.0),
+            Viewer::Seat(SeatId(0)),
+        );
+
+        assert_eq!(cue_ids(&cues), ["move", "game-end"]);
+    }
+
+    #[test]
+    fn cue_identity_is_frame_independent_and_present_is_audio_free() {
+        let event = crate::ViewEvent::Moved {
+            seat: SeatId(0),
+            from: Square(12),
+            to: Square(28),
+            promotion: None,
+            captured: None,
+        };
+        let mut local = ChessLocal::default();
+        let first =
+            ChessPresentation::on_view_event(&event, &mut local, &frame_at(640.0, 640.0, 100));
+        let later = ChessPresentation::on_view_event(
+            &event,
+            &mut ChessLocal::default(),
+            &frame_at(640.0, 640.0, 900),
+        );
+        let state = crate::State::initial();
+        let current_view = view(&state);
+
+        for now_ms in 0..100 {
+            let _ =
+                ChessPresentation::present(&current_view, &local, &frame_at(640.0, 640.0, now_ms));
+        }
+
+        assert_eq!(cue_ids(&first), ["move"]);
+        assert_eq!(cue_ids(&later), ["move"]);
+    }
+
+    #[test]
+    fn clock_updates_are_silent() {
+        let cues = ChessPresentation::on_view_event(
+            &crate::ViewEvent::ClockUpdated {
+                seat: SeatId(0),
+                remaining: tabula_core::Millis(1_000),
+            },
+            &mut ChessLocal::default(),
+            &frame(640.0, 640.0),
+        );
+
+        assert!(cues.is_empty());
     }
 
     #[test]

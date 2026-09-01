@@ -1069,16 +1069,18 @@ white-knight = [0, 0, 128, 128]
 
 ## 13. Audio
 
-- One `AudioSink` trait in `tabula-presentation`; `renderer-macroquad` implements it for MVP.
-- Presenters emit `AudioCue { asset, gain, pan, priority, cooldown_ms }` alongside render commands;
-  the sink handles voice-count limits and cooldowns so a 13-card deal does not fire 13 overlapping
-  sounds (the deal cue is one sound with a stagger, not thirteen).
-- Buses: `sfx`, `ui`, `music`, `voice-duck`. When voice chat is active, `music` ducks by 12 dB and
-  `sfx` by 6 dB. **EXPERIMENT** — Macroquad's audio may not support buses cleanly; if not, this is
-  the trigger to adopt `kira` in the backend (doc 01 §1.3), with no change above the trait.
+- `tabula-presentation` owns the synchronous, renderer-neutral `AudioCue` / `AudioSink` contract;
+  `renderer-macroquad` supplies the MVP sink.
+- A presenter derives ordered, pack-local one-shot cue IDs from authoritative projected
+  `ViewEvent`s, never canonical `State` or speculative `Intent`. The active
+  `GamePresentation::asset_pack()` scopes IDs, so platform code never branches on `game_id`.
+- Presentation owns cue semantics; the sink owns playback of already-resolved handles; the asset
+  system owns loading and resolution. Asset loading remains Phase 3 work.
+- Playback failures (for example, an unavailable loaded handle) are non-authoritative: they cannot
+  fail, roll back, or otherwise alter a match, its projection, or input processing.
 - Every audio cue has a visual equivalent (§10.4).
-- Sound is off by default on web (browsers block autoplay anyway) and on by default on native, with
-  a first-run prompt.
+- Volume, mute preferences, music, buses, and cooldown policy remain client/backend concerns until
+  a shipped behavior needs them.
 
 ---
 

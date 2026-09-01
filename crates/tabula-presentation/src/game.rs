@@ -1,6 +1,6 @@
 use tabula_game_api::{A11yDescription, GameRules};
 
-use crate::{FrameCtx, InputEvent, RenderList};
+use crate::{AudioCues, FrameCtx, InputEvent, RenderList};
 
 /// A phase-2 placeholder for a pack identity; backend-specific handles stay below this crate.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -73,11 +73,14 @@ pub trait GamePresentation: Send + 'static {
         local: &Self::Local,
         frame: &FrameCtx,
     ) -> RenderList;
+    /// Updates local presentation state and emits one-shot cues for an
+    /// authoritative projected event. Returned cues are ordered and must be
+    /// played in that same order by the imperative shell.
     fn on_view_event(
         event: &<Self::Rules as GameRules>::ViewEvent,
         local: &mut Self::Local,
         frame: &FrameCtx,
-    );
+    ) -> AudioCues;
     fn on_input(
         input: &InputEvent,
         view: &<Self::Rules as GameRules>::View,
