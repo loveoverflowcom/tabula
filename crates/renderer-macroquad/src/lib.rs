@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+mod audio;
 mod draw;
 mod input;
 mod renderer;
@@ -13,4 +14,5 @@ mod state;
 mod support;
 mod text;
 
+pub use audio::{MacroquadAudioError, MacroquadAudioSink};
 pub use renderer::MacroquadRenderer;

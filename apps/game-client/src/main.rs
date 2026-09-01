@@ -2,9 +2,9 @@
 
 use glam::Vec2;
 use macroquad::prelude as mq;
-use renderer_macroquad::MacroquadRenderer;
+use renderer_macroquad::{MacroquadAudioSink, MacroquadRenderer};
 use tabula_design::{Theme, ThemeKind};
-use tabula_presentation::{Dpi, Renderer, Viewport};
+use tabula_presentation::{AudioSink, Dpi, Renderer, Viewport};
 
 fn window_conf() -> mq::Conf {
     mq::Conf {
@@ -18,6 +18,9 @@ fn window_conf() -> mq::Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut renderer = MacroquadRenderer::new();
+    // Phase 3 binds preloaded pack sounds here. An unavailable cue remains a
+    // non-authoritative playback failure and cannot interrupt the match loop.
+    let mut audio = MacroquadAudioSink::new();
     let theme = Theme::by_kind(ThemeKind::Light);
     let mut local_match = tabula_game_client::LocalChessMatch::new();
 
@@ -29,9 +32,16 @@ async fn main() {
         let now_ms = presentation_now_ms();
         let frame = renderer.begin_frame(viewport, dpi, now_ms, theme);
         for event in renderer.drain_input() {
-            if let Err(error) = local_match.handle_input(&event, &frame) {
-                eprintln!("local match stopped: {error:?}");
-                break 'game_loop;
+            match local_match.handle_input(&event, &frame) {
+                Ok(cues) => {
+                    for cue in &cues {
+                        let _ = audio.play(cue);
+                    }
+                }
+                Err(error) => {
+                    eprintln!("local match stopped: {error:?}");
+                    break 'game_loop;
+                }
             }
         }
         let scene = local_match.present(&frame);

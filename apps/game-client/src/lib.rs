@@ -26,7 +26,7 @@ use tabula_core::{
 };
 use tabula_game_api::{Budget, Ctx, GameRules, Input};
 use tabula_game_chess as local_game; // xtask-allow-game-id: direct Phase 2 local vertical slice; not a game-id branch.
-use tabula_presentation::{FrameCtx, GamePresentation, InputEvent, RenderList};
+use tabula_presentation::{AudioCues, FrameCtx, GamePresentation, InputEvent, RenderList};
 
 /// A deterministic two-seat shell for a local hot-seat match.
 ///
@@ -96,14 +96,17 @@ impl LocalChessMatch {
     /// Rejected commands are harmless: the rules contract leaves `state` and
     /// `view` unchanged. The attempted command still consumes its input-log
     /// index and RNG domain, matching the runtime replay contract.
+    /// Returned cues come exclusively from authoritative projected events. The
+    /// caller may pass them to a [`tabula_presentation::AudioSink`], but sink failure cannot alter
+    /// the completed canonical transition.
     pub fn handle_input(
         &mut self,
         input: &InputEvent,
         frame: &FrameCtx,
-    ) -> Result<(), LocalChessMatchError> {
+    ) -> Result<AudioCues, LocalChessMatchError> {
         self.local.set_viewport(frame.viewport());
         let Some(intent) = ChessPresentation::on_input(input, &self.view, &mut self.local) else {
-            return Ok(());
+            return Ok(AudioCues::new());
         };
         let seat = self.view.you.unwrap_or(self.view.turn).seat();
         let input_index = self
@@ -131,17 +134,22 @@ impl LocalChessMatch {
             &mut ctx,
         );
         let Ok(outcome) = result else {
-            return Ok(());
+            return Ok(AudioCues::new());
         };
 
+        let mut cues = AudioCues::new();
         for event in &outcome.events {
             if let Some(view_event) = ChessRules::view_event(&self.state, event, Viewer::Seat(seat))
             {
-                ChessPresentation::on_view_event(&view_event, &mut self.local, frame);
+                cues.extend(ChessPresentation::on_view_event(
+                    &view_event,
+                    &mut self.local,
+                    frame,
+                ));
             }
         }
         self.view = ChessRules::project(&self.state, Viewer::Seat(self.state.turn.seat()));
-        Ok(())
+        Ok(cues)
     }
 
     /// Builds the renderer-neutral frame from the latest projection.
@@ -189,7 +197,9 @@ mod tests {
     use super::*;
     use glam::Vec2;
     use renderer_macroquad::MacroquadRenderer;
-    use tabula_presentation::{Dpi, PointerButton, PointerPhase, PointerPosition, Viewport};
+    use tabula_presentation::{
+        AudioCue, AudioSink, Dpi, PointerButton, PointerPhase, PointerPosition, Viewport,
+    };
 
     fn frame() -> FrameCtx {
         FrameCtx::new(
@@ -230,6 +240,71 @@ mod tests {
         assert_eq!(local_match.view().board[12], None);
         assert_eq!(local_match.view().board[28].unwrap().kind, PieceKind::Pawn);
         assert_eq!(local_match.view().turn, ChessColor::Black);
+    }
+
+    #[test]
+    fn accepted_move_returns_one_authoritative_audio_cue() {
+        let frame = frame();
+        let layout = BoardLayout::from_viewport(frame.viewport());
+        let mut local_match = LocalChessMatch::new();
+
+        assert!(local_match
+            .handle_input(&click(layout, 12), &frame)
+            .expect("selection is local")
+            .is_empty());
+        let cues = local_match
+            .handle_input(&click(layout, 28), &frame)
+            .expect("legal move has an input index");
+
+        assert_eq!(cues.iter().map(AudioCue::id).collect::<Vec<_>>(), ["move"]);
+    }
+
+    #[test]
+    fn rejected_move_returns_no_authoritative_audio_cue() {
+        let frame = frame();
+        let layout = BoardLayout::from_viewport(frame.viewport());
+        let mut local_match = LocalChessMatch::new();
+
+        local_match
+            .handle_input(&click(layout, 12), &frame)
+            .expect("selection is local");
+        let cues = local_match
+            .handle_input(&click(layout, 36), &frame)
+            .expect("rejected move still consumes its input index");
+
+        assert!(cues.is_empty());
+        assert_eq!(local_match.view().board[12].unwrap().kind, PieceKind::Pawn);
+        assert_eq!(local_match.view().board[36], None);
+    }
+
+    #[test]
+    fn audio_sink_failure_cannot_undo_an_accepted_move() {
+        struct UnavailableSink;
+
+        impl AudioSink for UnavailableSink {
+            type Error = ();
+
+            fn play(&mut self, _: &AudioCue) -> Result<(), Self::Error> {
+                Err(())
+            }
+        }
+
+        let frame = frame();
+        let layout = BoardLayout::from_viewport(frame.viewport());
+        let mut local_match = LocalChessMatch::new();
+        local_match
+            .handle_input(&click(layout, 12), &frame)
+            .expect("selection is local");
+        let cues = local_match
+            .handle_input(&click(layout, 28), &frame)
+            .expect("accepted move is already complete before playback");
+        let mut sink = UnavailableSink;
+
+        for cue in &cues {
+            assert_eq!(sink.play(cue), Err(()));
+        }
+        assert_eq!(local_match.view().board[12], None);
+        assert_eq!(local_match.view().board[28].unwrap().kind, PieceKind::Pawn);
     }
 
     #[test]

@@ -5,6 +5,7 @@
 
 #![forbid(unsafe_code)]
 
+mod audio;
 mod focus;
 mod game;
 mod input;
@@ -12,6 +13,7 @@ mod motion;
 mod render;
 mod renderer;
 
+pub use audio::{AudioCue, AudioCueError, AudioCues, AudioSink};
 pub use focus::{
     handle_navigation, FocusDirection, FocusGraph, FocusGraphError, FocusId, FocusModality,
     FocusNode, FocusState, NavigationAction,
