@@ -2283,6 +2283,134 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
+    fn active_animation_does_not_gate_drag() {
+        let mut state = crate::State::initial();
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+        let frame = frame_at(640.0, 640.0, 1000);
+
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            0,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+        for event in outcome.events {
+            if let Some(view_event) =
+                ChessRules::view_event(&state, &event, Viewer::Seat(SeatId(0)))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut local, &frame);
+            }
+        }
+
+        let current_view = ChessRules::project(&state, Viewer::Seat(SeatId(1)));
+        assert_eq!(current_view.turn, ChessColor::Black);
+        assert!(
+            !local
+                .move_animation()
+                .expect("White's opening move is animating")
+                .timeline
+                .sample(1100)
+                .done
+        );
+
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let pos_e7 = pointer(layout, Square(52));
+        let pos_e5 = pointer(layout, Square(36));
+        let intermediate_step =
+            PointerPosition::new(pos_e7.get() + Vec2::new(0.0, layout.drag_threshold() * 1.5))
+                .unwrap();
+
+        // 1. Pointer Down at center(e7)
+        let down_intent = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e7,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &current_view,
+            &mut local,
+        );
+        assert!(down_intent.is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Pressed {
+                from: Square(52),
+                down_at: pos_e7,
+                was_selected: false,
+            }
+        );
+        assert!(local.move_animation().is_some());
+
+        // 2. Pointer Move beyond threshold
+        let move_step_intent = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: intermediate_step,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &current_view,
+            &mut local,
+        );
+        assert!(move_step_intent.is_none());
+        assert!(matches!(
+            local.interaction(),
+            Interaction::Dragging {
+                from: Square(52),
+                ..
+            }
+        ));
+
+        // 3. Pointer Move to e5
+        let move_dest_intent = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e5,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &current_view,
+            &mut local,
+        );
+        assert!(move_dest_intent.is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Dragging {
+                from: Square(52),
+                pointer: pos_e5,
+                over: Some(Square(36)),
+            }
+        );
+
+        // 4. Pointer Up at e5 produces the legal move intent without waiting for animation to finish
+        let intent = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e5,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Up,
+            },
+            &current_view,
+            &mut local,
+        )
+        .expect("active animation does not gate drag intent");
+
+        assert_eq!(
+            intent.into_command(),
+            Command::Move {
+                from: 52,
+                to: 36,
+                promotion: None,
+            }
+        );
+        assert_eq!(local.interaction(), Interaction::Idle);
+        assert!(local.move_animation().is_some());
+    }
+
+    #[test]
     fn piece_in_transit_is_not_double_rendered() {
         let mut state = crate::State::initial();
         let mut local = ChessLocal::default();
@@ -3115,23 +3243,79 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn drag_and_tap_and_keyboard_converge_on_the_same_move_command() {
         let state = crate::State::initial();
         let view = view(&state);
         let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
 
-        // Path A: tap-tap
-        let mut local_a = ChessLocal::default();
-        local_a.set_viewport(viewport(640.0, 640.0));
-        assert!(click(&view, &mut local_a, layout, Square(12)).is_none());
-        let intent_a =
-            click(&view, &mut local_a, layout, Square(28)).expect("tap-tap produces a move intent");
-
-        // Path B: drag-and-drop
-        let mut local_b = ChessLocal::default();
-        local_b.set_viewport(viewport(640.0, 640.0));
         let pos_e2 = pointer(layout, Square(12));
         let pos_e4 = pointer(layout, Square(28));
+
+        // Path A: real tap-tap (Down -> Pressed -> Up)
+        let mut local_a = ChessLocal::default();
+        local_a.set_viewport(viewport(640.0, 640.0));
+
+        // Tap 1: select e2
+        assert!(ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e2,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local_a,
+        )
+        .is_none());
+        assert_eq!(
+            local_a.interaction(),
+            Interaction::Pressed {
+                from: Square(12),
+                down_at: pos_e2,
+                was_selected: false,
+            }
+        );
+        assert!(ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e2,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Up,
+            },
+            &view,
+            &mut local_a,
+        )
+        .is_none());
+        assert_eq!(
+            local_a.interaction(),
+            Interaction::Selected { square: Square(12) }
+        );
+
+        // Tap 2: choose destination e4
+        assert!(ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e4,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local_a,
+        )
+        .is_none());
+        let intent_a = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e4,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Up,
+            },
+            &view,
+            &mut local_a,
+        )
+        .expect("tap-tap produces a move intent");
+        assert_eq!(local_a.interaction(), Interaction::Idle);
+
+        // Path B: real drag-and-drop (Down -> Move -> Up)
+        let mut local_b = ChessLocal::default();
+        local_b.set_viewport(viewport(640.0, 640.0));
         ChessPresentation::on_input(
             &InputEvent::Pointer {
                 position: pos_e2,
@@ -3160,6 +3344,7 @@ mod tests {
             &mut local_b,
         )
         .expect("drag-and-drop produces a move intent");
+        assert_eq!(local_b.interaction(), Interaction::Idle);
 
         // Path C: keyboard activation
         let mut local_c = ChessLocal::default();
@@ -3173,6 +3358,7 @@ mod tests {
             .set_keyboard_focus(Some(FocusId::new(28)));
         let intent_c = ChessPresentation::on_input(&key(Key::Space), &view, &mut local_c)
             .expect("keyboard navigation produces a move intent");
+        assert_eq!(local_c.interaction(), Interaction::Idle);
 
         assert_eq!(intent_a, intent_b);
         assert_eq!(intent_b, intent_c);
