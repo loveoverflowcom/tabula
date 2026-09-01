@@ -39,7 +39,9 @@ use tabula_presentation::{FrameCtx, GamePresentation, InputEvent, RenderList};
 /// @ai.pure false
 /// @ai.invariant projection-only-presenter-input
 /// @ai.invariant deterministic-untimed-application
+/// @ai.invariant input-index-per-attempt
 /// @ai.evidence tests::local_hotseat_applies_a_presenter_move_through_canonical_rules
+/// @ai.evidence tests::every_emitted_command_consumes_a_distinct_input_index
 #[allow(clippy::doc_markdown)]
 #[derive(Debug)]
 pub struct LocalChessMatch {
@@ -47,7 +49,13 @@ pub struct LocalChessMatch {
     view: View,
     local: ChessLocal,
     seed: MatchSeed,
-    input_index: u64,
+    next_input_index: u64,
+}
+
+/// Failure raised when the finite canonical input-index domain is exhausted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LocalChessMatchError {
+    InputIndexExhausted,
 }
 
 impl LocalChessMatch {
@@ -76,22 +84,31 @@ impl LocalChessMatch {
             view,
             local: ChessLocal::default(),
             seed,
-            input_index: 0,
+            // Match creation owns index 0; player attempts begin at index 1.
+            next_input_index: 1,
         }
     }
 
     /// Processes one frame-normalized input and applies any emitted intent.
     ///
     /// Rejected commands are harmless: the rules contract leaves `state` and
-    /// the input index unchanged, while the presenter has already cleared the
-    /// attempted selection and can accept the next click.
-    pub fn handle_input(&mut self, input: &InputEvent, frame: &FrameCtx) {
+    /// `view` unchanged. The attempted command still consumes its input-log
+    /// index and RNG domain, matching the runtime replay contract.
+    pub fn handle_input(
+        &mut self,
+        input: &InputEvent,
+        frame: &FrameCtx,
+    ) -> Result<(), LocalChessMatchError> {
         self.local.set_viewport(frame.viewport());
         let Some(intent) = ChessPresentation::on_input(input, &self.view, &mut self.local) else {
-            return;
+            return Ok(());
         };
         let seat = self.view.you.unwrap_or(self.view.turn).seat();
-        let input_index = InputIndex(self.input_index);
+        let input_index = InputIndex(self.next_input_index);
+        self.next_input_index = self
+            .next_input_index
+            .checked_add(1)
+            .ok_or(LocalChessMatchError::InputIndexExhausted)?;
         let mut rng = DetRng::for_input(&self.seed, input_index);
         let mut ctx = Ctx {
             // This match uses the default no-clock configuration. Presentation
@@ -110,7 +127,7 @@ impl LocalChessMatch {
             &mut ctx,
         );
         let Ok(outcome) = result else {
-            return;
+            return Ok(());
         };
 
         for event in &outcome.events {
@@ -119,8 +136,8 @@ impl LocalChessMatch {
                 ChessPresentation::on_view_event(&view_event, &mut self.local, frame);
             }
         }
-        self.input_index = self.input_index.saturating_add(1);
         self.view = ChessRules::project(&self.state, Viewer::Seat(self.state.turn.seat()));
+        Ok(())
     }
 
     /// Builds the renderer-neutral frame from the latest projection.
@@ -197,12 +214,74 @@ mod tests {
         let layout = BoardLayout::from_viewport(frame.viewport());
         let mut local_match = LocalChessMatch::new();
 
-        local_match.handle_input(&click(layout, 12), &frame);
+        local_match
+            .handle_input(&click(layout, 12), &frame)
+            .expect("source selection has an available input index");
         assert_eq!(local_match.view().board[12].unwrap().kind, PieceKind::Pawn);
-        local_match.handle_input(&click(layout, 28), &frame);
+        local_match
+            .handle_input(&click(layout, 28), &frame)
+            .expect("legal move has an available input index");
 
         assert_eq!(local_match.view().board[12], None);
         assert_eq!(local_match.view().board[28].unwrap().kind, PieceKind::Pawn);
         assert_eq!(local_match.view().turn, ChessColor::Black);
+    }
+
+    #[test]
+    fn every_emitted_command_consumes_a_distinct_input_index() {
+        let frame = frame();
+        let layout = BoardLayout::from_viewport(frame.viewport());
+        let e2 = click(layout, 12);
+        let e5 = click(layout, 36);
+        let e4 = click(layout, 28);
+        let mut local_match = LocalChessMatch::new();
+
+        assert_eq!(local_match.next_input_index, 1);
+
+        local_match
+            .handle_input(&e2, &frame)
+            .expect("first source selection has an available input index");
+        assert_eq!(local_match.next_input_index, 1);
+        local_match
+            .handle_input(&e5, &frame)
+            .expect("first rejected command still has an input index");
+        assert_eq!(local_match.next_input_index, 2);
+        assert_eq!(local_match.view().board[12].unwrap().kind, PieceKind::Pawn);
+        assert_eq!(local_match.view().board[28], None);
+
+        local_match
+            .handle_input(&e2, &frame)
+            .expect("second source selection has an available input index");
+        local_match
+            .handle_input(&e5, &frame)
+            .expect("second rejected command still has an input index");
+        assert_eq!(local_match.next_input_index, 3);
+
+        local_match
+            .handle_input(&e2, &frame)
+            .expect("valid source selection has an available input index");
+        local_match
+            .handle_input(&e4, &frame)
+            .expect("valid command has an available input index");
+        assert_eq!(local_match.next_input_index, 4);
+        assert_eq!(local_match.view().board[12], None);
+        assert_eq!(local_match.view().board[28].unwrap().kind, PieceKind::Pawn);
+    }
+
+    #[test]
+    fn exhausted_input_index_stops_before_reusing_an_rng_domain() {
+        let frame = frame();
+        let layout = BoardLayout::from_viewport(frame.viewport());
+        let mut local_match = LocalChessMatch::new();
+        local_match.next_input_index = u64::MAX;
+
+        local_match
+            .handle_input(&click(layout, 12), &frame)
+            .expect("source selection does not consume an input index");
+        assert_eq!(
+            local_match.handle_input(&click(layout, 28), &frame),
+            Err(LocalChessMatchError::InputIndexExhausted)
+        );
+        assert_eq!(local_match.next_input_index, u64::MAX);
     }
 }

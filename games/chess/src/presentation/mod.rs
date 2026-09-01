@@ -23,12 +23,15 @@ const PROMOTION_KINDS: [PieceKind; 4] = [
     PieceKind::Bishop,
     PieceKind::Knight,
 ];
+const STATUS_HEIGHT_FRACTION: f32 = 0.12;
+const STATUS_MAX_HEIGHT: f32 = 48.0;
 
 /// The validated, responsive geometry shared by board rendering and hit testing.
 ///
-/// The board uses the smaller viewport axis, so its rectangle is always square
-/// and centered. A `Square` is converted to a rectangle only through this type,
-/// which keeps rendering and pointer mapping on the same coordinate calculation.
+/// The board uses the smaller remaining content axis, so its rectangle is always
+/// square and centered below a small status header. A `Square` is converted to a
+/// rectangle only through this type, which keeps rendering and pointer mapping
+/// on the same coordinate calculation.
 ///
 /// @ai.role proof-boundary
 /// @ai.domain presentation.chess-layout
@@ -41,6 +44,7 @@ const PROMOTION_KINDS: [PieceKind; 4] = [
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoardLayout {
     board: Rect,
+    status: Rect,
     square_size: f32,
 }
 
@@ -50,12 +54,18 @@ impl BoardLayout {
     #[allow(clippy::float_arithmetic)]
     pub fn from_viewport(viewport: Viewport) -> Self {
         let viewport_size = viewport.size();
-        let side = viewport_size.x.min(viewport_size.y);
-        let board_origin = (viewport_size - Vec2::splat(side)) * 0.5;
+        let status_height = (viewport_size.y * STATUS_HEIGHT_FRACTION).min(STATUS_MAX_HEIGHT);
+        let status = Rect::new(Vec2::ZERO, Vec2::new(viewport_size.x, status_height))
+            .expect("a finite positive viewport produces finite status geometry");
+        let content_origin = Vec2::new(0.0, status_height);
+        let content_size = Vec2::new(viewport_size.x, viewport_size.y - status_height);
+        let side = content_size.x.min(content_size.y);
+        let board_origin = content_origin + (content_size - Vec2::splat(side)) * 0.5;
         let board = Rect::new(board_origin, Vec2::splat(side))
             .expect("a finite positive viewport produces finite board geometry");
         Self {
             board,
+            status,
             square_size: side / 8.0,
         }
     }
@@ -63,6 +73,11 @@ impl BoardLayout {
     #[must_use]
     pub const fn board(self) -> Rect {
         self.board
+    }
+
+    #[must_use]
+    pub const fn status(self) -> Rect {
+        self.status
     }
 
     #[must_use]
@@ -559,9 +574,18 @@ fn build_render_list(
     }
 
     let status = status_text(view);
+    let status_rect = layout.status();
+    let status_line_height = theme
+        .text_style(TextStyleToken::TitleLg)
+        .line_height()
+        .get();
     builder.push(RenderCmd::Text {
         text: status,
-        at: Vec2::new(frame.viewport().size().x * 0.5, 8.0),
+        at: status_rect.origin()
+            + Vec2::new(
+                status_rect.size().x * 0.5,
+                status_rect.size().y * 0.5 - status_line_height * 0.5,
+            ),
         style: TextStyleToken::TitleLg,
         align: Align::Center,
         max_width: None,
@@ -571,6 +595,7 @@ fn build_render_list(
     })?;
 
     if matches!(local.interaction, Interaction::Promotion { .. }) {
+        let promotion_color = view.turn;
         if let Some(panel) = promotion_panel_rect(layout) {
             builder.push(RenderCmd::Rect {
                 rect: panel,
@@ -601,7 +626,7 @@ fn build_render_list(
             })?;
             builder.push(RenderCmd::Text {
                 text: piece_glyph(Piece {
-                    color: ChessColor::White,
+                    color: promotion_color,
                     kind,
                 })
                 .to_owned(),
@@ -844,10 +869,12 @@ mod tests {
         for (width, height) in [(320.0, 640.0), (640.0, 320.0)] {
             let layout = BoardLayout::from_viewport(viewport(width, height));
             let board = layout.board();
+            let status = layout.status();
             assert_eq!(board.size().x, board.size().y);
             assert!(board.origin().x >= 0.0 && board.origin().y >= 0.0);
             assert!(board.origin().x + board.size().x <= width);
             assert!(board.origin().y + board.size().y <= height);
+            assert!(board.origin().y >= status.origin().y + status.size().y);
             assert_eq!(
                 (0..64)
                     .filter_map(Square::new)
@@ -1041,6 +1068,25 @@ mod tests {
                 promotion: Some(PieceKind::Queen)
             }
         );
+    }
+
+    #[test]
+    fn black_promotion_chooser_uses_black_piece_glyphs() {
+        let state = crate::State::from_fen("7k/8/8/8/8/8/4p3/K7 b - - 0 1").unwrap();
+        let view = ChessRules::project(&state, Viewer::Seat(SeatId(1)));
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        assert!(click(&view, &mut local, layout, Square::new(12).unwrap()).is_none());
+        assert!(click(&view, &mut local, layout, Square::new(4).unwrap()).is_none());
+        assert!(matches!(local.interaction(), Interaction::Promotion { .. }));
+
+        let rendered = ChessPresentation::present(&view, &local, &frame(640.0, 640.0));
+        for glyph in ["q", "r", "b", "n"] {
+            assert!(rendered.commands().iter().any(|command| matches!(
+                command,
+                RenderCmd::Text { text, layer: Layer::MODAL, .. } if text == glyph
+            )));
+        }
     }
 
     #[test]

@@ -21,7 +21,7 @@ async fn main() {
     let theme = Theme::by_kind(ThemeKind::Light);
     let mut local_match = tabula_game_client::LocalChessMatch::new();
 
-    loop {
+    'game_loop: loop {
         let viewport = Viewport::new(Vec2::new(mq::screen_width(), mq::screen_height()))
             .expect("Macroquad supplies a finite non-empty viewport");
         let dpi =
@@ -29,7 +29,10 @@ async fn main() {
         let now_ms = presentation_now_ms();
         let frame = renderer.begin_frame(viewport, dpi, now_ms, theme);
         for event in renderer.drain_input() {
-            local_match.handle_input(&event, &frame);
+            if let Err(error) = local_match.handle_input(&event, &frame) {
+                eprintln!("local match stopped: {error:?}");
+                break 'game_loop;
+            }
         }
         let scene = local_match.present(&frame);
         if let Err(error) = renderer.submit(&scene) {
