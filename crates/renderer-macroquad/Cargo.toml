@@ -16,11 +16,9 @@ tabula-core         = { workspace = true }
 tabula-design       = { workspace = true }
 tabula-presentation = { workspace = true }
 tabula-assets       = { workspace = true }
+macroquad           = { workspace = true }
+glam                = { workspace = true }
 
-# Phase 2 — uncomment together with the Renderer impl. Kept out of the default
-# build so a Phase-0/1 checkout needs no graphics system libraries.
-# macroquad = { workspace = true }
-# glam      = { workspace = true }
 
 [lints]
 workspace = true

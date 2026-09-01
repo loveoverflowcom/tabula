@@ -23,13 +23,11 @@ crate-type = ["rlib"]  # ["rlib", "cdylib", "staticlib"] from Phase 6
 [dependencies]
 tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
-
-# Phase 2+ — uncomment with the first scene.
-# tabula-design       = { workspace = true }
-# tabula-presentation = { workspace = true }
-# tabula-assets       = { workspace = true }
-# renderer-macroquad  = { workspace = true }
-# macroquad           = { workspace = true }
+tabula-design       = { workspace = true }
+tabula-presentation = { workspace = true }
+renderer-macroquad  = { workspace = true }
+macroquad           = { workspace = true }
+glam                = { workspace = true }
 # Phase 4+
 # tabula-protocol   = { workspace = true }
 # tabula-registry   = { workspace = true }
