@@ -218,27 +218,27 @@ fn fill_convex(points: &[Vec2], colors: &[Color], transform: Affine2) -> Result<
 
 fn stroke_outline(points: &[Vec2], border: Border, opacity: f32, transform: Affine2) {
     for pair in points.windows(2) {
-        let start = transform.transform_point2(pair[0]);
-        let end = transform.transform_point2(pair[1]);
-        let delta = end - start;
-        let length = delta.length();
-        if length == 0.0 {
+        let Some(quad) = stroke_quad(pair[0], pair[1], border.width()) else {
             continue;
-        }
-        let normal = Vec2::new(-delta.y, delta.x) * (border.width() / (2.0 * length));
+        };
         let color = apply_opacity(border.color(), opacity);
-        let vertices = [
-            vertex(start + normal, color),
-            vertex(start - normal, color),
-            vertex(end - normal, color),
-            vertex(end + normal, color),
-        ];
+        let vertices = quad.map(|point| vertex(transform.transform_point2(point), color));
         mq::draw_mesh(&mq::Mesh {
             vertices: vertices.to_vec(),
             indices: vec![0, 1, 2, 0, 2, 3],
             texture: None,
         });
     }
+}
+
+fn stroke_quad(start: Vec2, end: Vec2, width: f32) -> Option<[Vec2; 4]> {
+    let delta = end - start;
+    let length = delta.length();
+    if length == 0.0 {
+        return None;
+    }
+    let normal = Vec2::new(-delta.y, delta.x) * (width / (2.0 * length));
+    Some([start + normal, start - normal, end - normal, end + normal])
 }
 
 fn vertex(position: Vec2, color: Color) -> Vertex {
@@ -293,9 +293,15 @@ fn rounded_outline(rect: Rect, corners: Corners) -> Vec<Vec2> {
 }
 
 fn is_convex(points: &[Vec2]) -> bool {
+    if points.len() < 3 {
+        return false;
+    }
     let mut sign = None;
-    for window in points.windows(3) {
-        let cross = (window[1] - window[0]).perp_dot(window[2] - window[1]);
+    for index in 0..points.len() {
+        let first = points[index];
+        let second = points[(index + 1) % points.len()];
+        let third = points[(index + 2) % points.len()];
+        let cross = (second - first).perp_dot(third - second);
         if cross == 0.0 {
             continue;
         }
@@ -305,7 +311,7 @@ fn is_convex(points: &[Vec2]) -> bool {
         }
         sign = Some(current);
     }
-    true
+    sign.is_some()
 }
 
 #[allow(
@@ -356,4 +362,57 @@ fn apply_opacity(color: Color, opacity: f32) -> Color {
         color.blue(),
         (f32::from(color.alpha()) * opacity).round() as u8,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stroke_width_is_transformed_with_its_local_geometry() {
+        let quad = stroke_quad(Vec2::ZERO, Vec2::new(4.0, 0.0), 2.0).unwrap();
+        let transform = Affine2::from_scale(Vec2::new(3.0, 2.0));
+        let transformed = quad.map(|point| transform.transform_point2(point));
+        let height = transformed
+            .iter()
+            .map(|point| point.y)
+            .fold(f32::NEG_INFINITY, f32::max)
+            - transformed
+                .iter()
+                .map(|point| point.y)
+                .fold(f32::INFINITY, f32::min);
+
+        assert!((height - 4.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn convexity_includes_the_wraparound_vertices() {
+        let concave_at_the_wraparound = [
+            Vec2::new(1.0, 1.0),
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(2.0, 2.0),
+            Vec2::new(0.0, 2.0),
+        ];
+        for rotation in 0..concave_at_the_wraparound.len() {
+            let mut rotated = concave_at_the_wraparound.to_vec();
+            rotated.rotate_left(rotation);
+            assert!(!is_convex(&rotated));
+        }
+    }
+
+    #[test]
+    fn convexity_is_invariant_under_vertex_rotation() {
+        let square = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(2.0, 2.0),
+            Vec2::new(0.0, 2.0),
+        ];
+        for rotation in 0..square.len() {
+            let mut rotated = square.to_vec();
+            rotated.rotate_left(rotation);
+            assert!(is_convex(&rotated));
+        }
+    }
 }

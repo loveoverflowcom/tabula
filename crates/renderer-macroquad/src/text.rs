@@ -53,16 +53,15 @@ pub(crate) fn draw(
     theme: &Theme,
     _dpi: f32,
 ) -> Result<(), RenderError> {
-    if !is_axis_aligned(transform) {
+    let Some(scale) = uniform_positive_scale(transform) else {
         return Err(RenderError(String::from(
             "renderer-macroquad cannot draw transformed text without a text-shaping backend",
         )));
-    }
+    };
     let style = theme.text_style(token);
     let lines = wrap_lines(value, max_width, |line| {
         raw_measure(line, font_size(style)).width
     });
-    let base = transform.transform_point2(at);
     let container_width = max_width.map(Positive::get);
     for (index, line) in lines.iter().enumerate() {
         let dimensions = raw_measure(line, font_size(style));
@@ -72,11 +71,12 @@ pub(crate) fn draw(
             Align::Center => -width / 2.0,
             Align::End => -container_width.unwrap_or(width),
         };
-        let point = Vec2::new(
-            base.x + offset,
-            base.y
-                + style.line_height().get()
+        let point = transform.transform_point2(
+            at + Vec2::new(
+                offset,
+                style.line_height().get()
                     * f32::from(u16::try_from(index + 1).expect("line count fits u16")),
+            ),
         );
         mq::draw_text_ex(
             line,
@@ -84,7 +84,7 @@ pub(crate) fn draw(
             point.y,
             mq::TextParams {
                 font_size: font_size(style),
-                font_scale: 1.0,
+                font_scale: scale,
                 font_scale_aspect: 1.0,
                 font: None,
                 color: with_opacity(color, opacity),
@@ -108,8 +108,14 @@ fn font_size(style: TextStyle) -> u16 {
     style.size().get().round().clamp(1.0, f32::from(u16::MAX)) as u16
 }
 
-fn is_axis_aligned(transform: Affine2) -> bool {
-    transform.matrix2.x_axis.y == 0.0 && transform.matrix2.y_axis.x == 0.0
+fn uniform_positive_scale(transform: Affine2) -> Option<f32> {
+    let scale = transform.matrix2.x_axis.x;
+    (transform.matrix2.x_axis.y == 0.0
+        && transform.matrix2.y_axis.x == 0.0
+        && (scale - transform.matrix2.y_axis.y).abs() <= f32::EPSILON
+        && scale.is_finite()
+        && scale > 0.0)
+        .then_some(scale)
 }
 
 #[allow(
@@ -134,8 +140,8 @@ fn wrap_lines(text: &str, max_width: Option<Positive>, measure: impl Fn(&str) ->
     for paragraph in text.split('\n') {
         let mut start = 0;
         let mut last_fitting = 0;
-        for (index, _) in paragraph.char_indices() {
-            let end = index + 1;
+        for (index, character) in paragraph.char_indices() {
+            let end = index + character.len_utf8();
             if measure(&paragraph[start..end]) <= max_width.get() {
                 last_fitting = end;
                 continue;
@@ -172,6 +178,36 @@ mod tests {
         assert_eq!(
             wrap_lines("first\nsecond", None, |_| 0.0),
             ["first", "second"]
+        );
+    }
+
+    #[test]
+    fn wrapping_never_slices_a_valid_unicode_scalar() {
+        for text in ["Tiếng Việt", "こんにちは", "🙂🙂🙂", "aé中🙂"] {
+            let unbounded = wrap_lines(text, None, |_| 0.0);
+            assert_eq!(unbounded.concat(), text);
+
+            let bounded = wrap_lines(text, Some(Positive::new(2.0).unwrap()), |value| {
+                f32::from(u16::try_from(value.chars().count()).expect("test input is short"))
+            });
+            assert_eq!(bounded.concat(), text);
+        }
+    }
+
+    #[test]
+    fn text_transform_requires_positive_uniform_scale() {
+        assert_eq!(
+            uniform_positive_scale(Affine2::from_scale(Vec2::splat(2.0))),
+            Some(2.0)
+        );
+        assert_eq!(
+            uniform_positive_scale(Affine2::from_scale(Vec2::new(2.0, 3.0))),
+            None
+        );
+        assert_eq!(uniform_positive_scale(Affine2::from_angle(0.5)), None);
+        assert_eq!(
+            uniform_positive_scale(Affine2::from_scale(Vec2::new(-1.0, 1.0))),
+            None
         );
     }
 }
