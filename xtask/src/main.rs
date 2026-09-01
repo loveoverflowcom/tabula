@@ -111,7 +111,9 @@ fn main() {
                 std::process::exit(2);
             }
         },
-        Some("new-game") => todo!("doc 02 §10.1 — scaffold from games/tictactoe"),
+        Some("new-game") => {
+            unimplemented_command("new-game", "doc 02 §10.1 — scaffold from games/tictactoe")
+        }
         Some("selfplay") => match selfplay_cmd::run() {
             Ok(()) => {}
             Err(err) => {
@@ -159,31 +161,84 @@ fn main() {
                 std::process::exit(2);
             }
         },
-        Some("pack-assets") => todo!("doc 04 §12"),
+        Some("pack-assets") => future_command("pack-assets", 3, "doc 04 §12"),
 
         // Phase 4+
-        Some("gen-protocol-vectors" | "check-protocol") => todo!("doc 05 §9.2 — I-13 version gate"),
-        Some("db") => todo!("sqlx migrate / reset"),
-        Some("load") => todo!("doc 06 §10 — scenarios L1..L8"),
-
-        other => {
-            if let Some(c) = other {
-                eprintln!("unknown command: {c}\n");
-            }
-            eprintln!(
-                "usage: cargo xtask <command>\n\n\
-                 local gate:  check   (fmt, clippy, test, check-deps, check-no-game-ids,\n\
-                                        check-manifests, cargo-deny, in that order)\n\n\
-                 phase 0:  check-deps  check-no-game-ids  check-manifests\n\
-                           new-game <slug>  selfplay <game>  replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]\n\
-                           replay-goldens (intentional fixture regeneration)\n\
-                 phase 1:  perft chess [depth]\n\
-                 phase 2:  gen-tokens  check-no-raw-colors\n\
-                 phase 3:  pack-assets <game>\n\
-                 phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\
-                 See xtask/README.md and docs/architecture/01-stack-and-repository-plan.md §6.3."
-            );
-            std::process::exit(2);
+        Some("gen-protocol-vectors") => {
+            future_command("gen-protocol-vectors", 4, "doc 05 §9.2 — I-13 version gate")
         }
+        Some("check-protocol") => {
+            future_command("check-protocol", 4, "doc 05 §9.2 — I-13 version gate")
+        }
+        Some("db") => future_command("db", 4, "doc 06 §3 — sqlx migrate / reset"),
+        Some("load") => future_command("load", 4, "doc 06 §10 — scenarios L1..L8"),
+
+        other => print_usage_and_exit(other),
+    }
+}
+
+fn print_usage_and_exit(other: Option<&str>) -> ! {
+    if let Some(c) = other {
+        eprintln!("unknown command: {c}\n");
+    }
+    eprintln!(
+        "usage: cargo xtask <command>\n\n\
+         local gate:  check   (fmt, clippy, test, check-deps, check-no-game-ids,\n\
+                                check-manifests, cargo-deny, in that order)\n\n\
+         phase 0:  check-deps  check-no-game-ids  check-manifests\n\
+                   new-game <slug>  selfplay <game>  replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]\n\
+                   replay-goldens (intentional fixture regeneration)\n\
+         phase 1:  perft chess [depth]\n\
+         phase 2:  gen-tokens  check-no-raw-colors\n\
+         phase 3:  pack-assets <game>\n\
+         phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\
+         See xtask/README.md and docs/architecture/01-stack-and-repository-plan.md §6.3."
+    );
+    std::process::exit(2);
+}
+
+pub fn unavailable_message(command: &str, planned_phase: u8, doc_ref: &str) -> String {
+    format!(
+        "{command} is not available in Phase 2 (planned activation: Phase {planned_phase}, {doc_ref})"
+    )
+}
+
+pub fn unimplemented_message(command: &str, doc_ref: &str) -> String {
+    format!("{command} is not yet implemented ({doc_ref})")
+}
+
+fn future_command(command: &str, planned_phase: u8, doc_ref: &str) -> ! {
+    eprintln!("{}", unavailable_message(command, planned_phase, doc_ref));
+    std::process::exit(2);
+}
+
+fn unimplemented_command(command: &str, doc_ref: &str) -> ! {
+    eprintln!("{}", unimplemented_message(command, doc_ref));
+    std::process::exit(2);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn future_commands_produce_intentional_messages_without_panic() {
+        let msg = unavailable_message("check-protocol", 4, "doc 05 §9.2 — I-13 version gate");
+        assert_eq!(
+            msg,
+            "check-protocol is not available in Phase 2 (planned activation: Phase 4, doc 05 §9.2 — I-13 version gate)"
+        );
+
+        let msg = unavailable_message("pack-assets", 3, "doc 04 §12");
+        assert_eq!(
+            msg,
+            "pack-assets is not available in Phase 2 (planned activation: Phase 3, doc 04 §12)"
+        );
+
+        let msg = unimplemented_message("new-game", "doc 02 §10.1 — scaffold from games/tictactoe");
+        assert_eq!(
+            msg,
+            "new-game is not yet implemented (doc 02 §10.1 — scaffold from games/tictactoe)"
+        );
     }
 }

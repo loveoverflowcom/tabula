@@ -115,7 +115,8 @@ If you believe a phase gate is wrong, write an ADR — do not quietly cross it.
 
 ```bash
 just check          # cargo xtask check: fmt, clippy, test, check-deps, check-no-game-ids,
-                    # check-manifests, cargo deny check — in that order, stops at the first failure
+                    # check-manifests, generated design tokens current, check-no-raw-colors,
+                    # cargo deny check — in that order, stops at the first failure
 ```
 
 Or individually:
@@ -126,9 +127,13 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask check-deps            # the deps.toml matrix (I-1, I-15)
 cargo xtask check-no-game-ids     # I-9
 cargo xtask check-manifests       # game.toml/Cargo.toml schema and feature-shape validation
+cargo xtask check-no-raw-colors   # doc 04 §8.1 semantic design tokens
 cargo nextest run --workspace
 cargo deny check
 ```
+
+`just check` (or `cargo xtask check`) is the authoritative portable local core gate.
+CI additionally checks the full workspace feature matrix (`cargo check --workspace --no-default-features` and `--all-features`) and target-specific WASM compilation (`wasm32-unknown-unknown`). You can test the feature matrix locally with `just check-all` or `just features`.
 
 A change to a game crate additionally needs its conformance suite green
 (`tabula_testkit::conformance!(YourFixture)` against a `GameTestFixture` impl — doc 02 §11.1)
