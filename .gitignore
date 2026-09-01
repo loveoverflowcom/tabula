@@ -35,6 +35,7 @@ __pycache__/
 
 # local verification output
 /mutants.out/
+/mutants.out.old/
 
 # local perf/profiling output
 perf.data*

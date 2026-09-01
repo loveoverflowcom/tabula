@@ -91,11 +91,17 @@ replay-all:
 verification-install:
     cargo install --locked kani-verifier --version 0.67.0
     cargo kani setup
+    cargo install --locked cargo-nextest --version 0.9.143
     cargo install --locked cargo-mutants --version 27.1.0
 
-# Proves only that the pinned Kani installation and repository plumbing work.
-kani-smoke:
-    cargo kani --manifest-path verification/kani-smoke/Cargo.toml
+# Proves the real logical-time arithmetic in tabula-core over its symbolic u64
+# domains. Kani is opt-in and is not part of the normal workspace gate.
+kani-core:
+    cargo kani -p tabula-core
+
+# Proves the real TicTacToe placement transition's rejection transactionality.
+kani-tictactoe:
+    cargo kani -Z stubbing -p tabula-game-tictactoe
 
 # Preview the mutation set for one named workspace package.
 mutants-list package:

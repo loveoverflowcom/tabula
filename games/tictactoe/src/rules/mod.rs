@@ -11,11 +11,14 @@
 //! @ai.pure true
 //! @ai.invariant rules-hash-excludes-noncanonical-feature-source
 //! @ai.invariant canonical-rules-depend-only-on-rules-tree
+//! @ai.invariant rejected-input-preserves-state
 //! @ai.law canonical-rules-source-change-changes-rules-hash
 //! @ai.evidence tests::rules_hash_matches_independent_rules_subtree_oracle
 //! @ai.evidence tests::canonical_source_mutation_changes_oracle_hash
 //! @ai.evidence tests::canonical_tree_rejects_noncanonical_feature_sources
 //! @ai.evidence tests::canonical_rules_do_not_depend_on_crate_root_sources
+//! @ai.evidence verification::rejected_initial_place_preserves_state
+//! @ai.evidence verification::rejected_second_place_preserves_state
 
 pub mod state;
 
@@ -178,8 +181,23 @@ impl GameRules for TicTacToeRules {
 ///
 /// Everything that can reject happens above the first assignment to `state`. That
 /// is contract R2 made structural rather than remembered.
+///
+/// @ai.role domain-transition
+/// @ai.domain tictactoe.rules.place
+/// @ai.pure true
+/// @ai.invariant rejected-input-preserves-state
+/// @ai.law validate-then-mutate
+/// @ai.evidence verification::rejected_initial_place_preserves_state
+/// @ai.evidence verification::rejected_second_place_preserves_state
 fn place(state: &mut State, seat: SeatId, cell: u8) -> Result<Outcome<TicTacToeRules>, RuleError> {
-    // ---- validate fully BEFORE mutating (contract R2) ----
+    let idx = validate_place(state, seat, cell)?;
+
+    Ok(commit_place(state, seat, cell, idx))
+}
+
+/// The pure validation half of [`place`]. Keeping this separate makes the R2
+/// boundary visible to both readers and the proof harness.
+fn validate_place(state: &State, seat: SeatId, cell: u8) -> Result<usize, RuleError> {
     if seat != state.turn {
         return Err(RuleError::code(RuleErrorCode::NotYourTurn));
     }
@@ -187,8 +205,12 @@ fn place(state: &mut State, seat: SeatId, cell: u8) -> Result<Outcome<TicTacToeR
     if idx >= 9 || state.board[idx].is_some() {
         return Err(RuleError::code(RuleErrorCode::IllegalMove));
     }
+    Ok(idx)
+}
 
-    // ---- mutate ----
+/// The mutation half of [`place`], called only after [`validate_place`] succeeds.
+#[cfg_attr(kani, inline(never))]
+fn commit_place(state: &mut State, seat: SeatId, cell: u8, idx: usize) -> Outcome<TicTacToeRules> {
     let mark = state.mark_for(seat);
     state.board[idx] = Some(mark);
 
@@ -214,7 +236,7 @@ fn place(state: &mut State, seat: SeatId, cell: u8) -> Result<Outcome<TicTacToeR
         });
     }
 
-    Ok(Outcome { events, effects })
+    Outcome { events, effects }
 }
 
 fn check_end(state: &State, mover: SeatId) -> Option<MatchOutcome> {
@@ -320,5 +342,130 @@ pub(crate) fn move_timeout(cfg: &Config) -> Result<u64, ()> {
         0 => Ok(MIN_MOVE_TIMEOUT),
         value if value >= MIN_MOVE_TIMEOUT => Ok(value),
         _ => Err(()),
+    }
+}
+
+#[cfg(kani)]
+mod verification {
+    use super::{place, Mark, State, TicTacToeRules};
+    use tabula_core::SeatId;
+    use tabula_game_api::Outcome;
+
+    /// Compare every field that participates in the canonical TicTacToe state.
+    /// This proof intentionally establishes field equality, not serialized-byte
+    /// equality. The serde representation is the fixed declaration-order
+    /// encoding of these five fields; there are no ignored or derived canonical
+    /// fields, so equal fields imply equal current canonical bytes. The proof
+    /// deliberately avoids invoking the codec; an explicit encoding proof
+    /// remains future work.
+    fn canonical_state_fields_equal(before: &State, after: &State) -> bool {
+        before.board == after.board
+            && before.seats == after.seats
+            && before.turn == after.turn
+            && before.status == after.status
+            && before.move_timeout_ms == after.move_timeout_ms
+    }
+
+    fn initial_state() -> State {
+        State::new([SeatId(7), SeatId(42)], 5_000)
+            .expect("the proof fixture is a valid initial state")
+    }
+
+    /// The transactional proofs only exercise `place`'s rejection path. This
+    /// verifier-only replacement makes reaching the outcome-building mutation
+    /// path an immediate counterexample instead of asking CBMC to model its
+    /// unrelated `SmallVec` drops. The second harness uses the same production
+    /// `place` call for its known-valid prefix; this tiny replacement models
+    /// only that fixed prefix and rejects every other commit attempt.
+    #[allow(dead_code)]
+    fn commit_place_verification_stub(
+        state: &mut State,
+        seat: SeatId,
+        cell: u8,
+        idx: usize,
+    ) -> Outcome<TicTacToeRules> {
+        if state.board == [None; 9]
+            && state.seats == [SeatId(7), SeatId(42)]
+            && state.turn == SeatId(7)
+            && state.status == super::Status::Playing
+            && state.move_timeout_ms == 5_000
+            && seat == SeatId(7)
+            && cell == 0
+            && idx == 0
+        {
+            state.board[0] = Some(Mark::X);
+            state.turn = SeatId(42);
+            return Outcome::empty();
+        }
+        panic!("a rejected placement must not reach commit_place")
+    }
+
+    #[kani::proof]
+    fn concrete_opening_place_is_accepted() {
+        let mut state = initial_state();
+        let opening = place(&mut state, SeatId(7), 0);
+        assert!(opening.is_ok());
+        assert!(state.board[0] == Some(Mark::X));
+        assert!(state.turn == SeatId(42));
+        core::mem::forget(opening);
+    }
+
+    /// For every raw seat and cell, a rejected placement against the canonical
+    /// initial state leaves all canonical fields unchanged. Symbolic execution
+    /// naturally covers wrong-player, unknown-seat, and out-of-range-cell
+    /// rejections without assuming any failure class away.
+    #[kani::proof]
+    #[kani::stub(super::commit_place, commit_place_verification_stub)]
+    fn rejected_initial_place_preserves_state() {
+        let mut state = initial_state();
+        let before = state.clone();
+        let seat = SeatId(kani::any());
+        let cell: u8 = kani::any();
+        let should_reject = seat != state.turn || cell >= 9;
+
+        if should_reject {
+            let result = place(&mut state, seat, cell);
+            let rejected = result.is_err();
+            let unchanged = canonical_state_fields_equal(&before, &state);
+            // The proof concerns the state mutation, not `Outcome` destruction.
+            // Avoid making CBMC unwind SmallVec's unrelated drop implementation.
+            core::mem::forget(result);
+
+            assert!(rejected);
+            assert!(unchanged);
+        }
+    }
+
+    /// After the known-valid opening move at cell zero, every raw second
+    /// placement that is rejected leaves all canonical fields unchanged. The
+    /// model covers the occupied cell, wrong turn, unknown seat, and out-of-range
+    /// cell classes reachable after this one-move prefix; it does not claim R2
+    /// for every arbitrary reachable TicTacToe position.
+    #[kani::proof]
+    #[kani::stub(super::commit_place, commit_place_verification_stub)]
+    fn rejected_second_place_preserves_state() {
+        let mut state = initial_state();
+        let opening = place(&mut state, SeatId(7), 0);
+        let opening_was_accepted = opening.is_ok();
+        core::mem::forget(opening);
+        assert!(opening_was_accepted);
+        assert!(state.board[0] == Some(Mark::X));
+        assert!(state.turn == SeatId(42));
+        let before = state.clone();
+        let seat = SeatId(kani::any());
+        let cell: u8 = kani::any();
+        let should_reject = seat != state.turn || cell == 0 || cell >= 9;
+
+        if should_reject {
+            let result = place(&mut state, seat, cell);
+            let rejected = result.is_err();
+            let unchanged = canonical_state_fields_equal(&before, &state);
+            // The proof concerns the state mutation, not `Outcome` destruction.
+            // Avoid making CBMC unwind SmallVec's unrelated drop implementation.
+            core::mem::forget(result);
+
+            assert!(rejected);
+            assert!(unchanged);
+        }
     }
 }
