@@ -399,7 +399,7 @@ impl GamePresentation for ChessPresentation {
     type Local = ChessLocal;
 
     fn asset_pack() -> AssetPackRef {
-        AssetPackRef::new("chess", "0.1.0")
+        AssetPackRef::from_static("chess", "0.1.0")
     }
 
     fn present(view: &View, local: &ChessLocal, frame: &FrameCtx) -> RenderList {
@@ -3981,5 +3981,14 @@ mod tests {
         );
         let list = ChessPresentation::present(&view, &local, &frame);
         assert_render_list_snapshot!("chess_drag_e2_to_e4_midflight_dark", list);
+    }
+
+    #[test]
+    fn chess_declares_typed_asset_pack_matching_metadata() {
+        let pack = ChessPresentation::asset_pack();
+        assert_eq!(pack, AssetPackRef::from_static("chess", "0.1.0"));
+        assert_eq!(pack.to_string(), "chess@0.1.0");
+        assert_eq!(pack.pack().as_str(), "chess");
+        assert_eq!(pack.version().as_str(), "0.1.0");
     }
 }

@@ -172,6 +172,8 @@ fn validate_game_feature_shape(rel_path: &str, doc: &Value) -> Vec<ManifestViola
     out
 }
 
+use tabula_assets::AssetPackRef;
+
 // ---------------------------------------------------------------------------
 // game.toml
 // ---------------------------------------------------------------------------
@@ -186,6 +188,7 @@ struct GameToml {
     estimated_minutes: Option<(u32, u32)>,
     seats: Option<SeatsToml>,
     capabilities: Option<CapabilitiesToml>,
+    assets: Option<AssetsToml>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -200,6 +203,13 @@ struct CapabilitiesToml {
     spectators: Option<String>,
     durability: Option<String>,
     state_size: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AssetsToml {
+    pack: Option<String>,
+    #[allow(dead_code)]
+    size_kb: Option<u64>,
 }
 
 const TURN_MODELS: &[&str] = &["strict_sequential", "simultaneous", "phased", "free_form"];
@@ -296,6 +306,27 @@ pub fn validate_game_toml(
                 STATE_SIZES,
             ));
         }
+    }
+
+    match &doc.assets {
+        None => out.push(violation(
+            "assets",
+            "missing required [assets] table".to_string(),
+        )),
+        Some(assets) => match &assets.pack {
+            None => out.push(violation(
+                "assets.pack",
+                "missing required field `assets.pack`".to_string(),
+            )),
+            Some(pack) => {
+                if let Err(err) = AssetPackRef::parse(pack) {
+                    out.push(violation(
+                        "assets.pack",
+                        format!("invalid asset pack reference \"{pack}\": {err}"),
+                    ));
+                }
+            }
+        },
     }
 
     Ok(out)
@@ -459,6 +490,10 @@ mod tests {
             spectators = "live"
             durability = "ack_after_apply"
             state_size = "tiny"
+
+            [assets]
+            pack = "tictactoe@0.1.0"
+            size_kb = 40
         "#;
         let violations =
             validate_game_toml("games/tictactoe/game.toml", src, "com.tabula.tictactoe").unwrap();
@@ -479,6 +514,7 @@ mod tests {
         assert!(violations.iter().any(|v| v.field == "rules_version"));
         assert!(violations.iter().any(|v| v.field == "seats"));
         assert!(violations.iter().any(|v| v.field == "capabilities"));
+        assert!(violations.iter().any(|v| v.field == "assets"));
     }
 
     #[test]
@@ -501,6 +537,9 @@ mod tests {
             spectators = "live"
             durability = "ack_after_apply"
             state_size = "tiny"
+
+            [assets]
+            pack = "tictactoe@0.1.0"
         "#;
         let violations =
             validate_game_toml("games/tictactoe/game.toml", src, "com.tabula.tictactoe").unwrap();
@@ -529,6 +568,9 @@ mod tests {
             spectators = "live"
             durability = "ack_after_apply"
             state_size = "tiny"
+
+            [assets]
+            pack = "tictactoe@0.1.0"
         "#;
         let violations =
             validate_game_toml("games/tictactoe/game.toml", src, "com.tabula.tictactoe").unwrap();
@@ -555,9 +597,101 @@ mod tests {
             spectators = "live"
             durability = "ack_after_apply"
             state_size = "tiny"
+
+            [assets]
+            pack = "tictactoe@0.1.0"
         "#;
         let violations =
             validate_game_toml("games/tictactoe/game.toml", src, "com.tabula.tictactoe").unwrap();
         assert!(violations.iter().any(|v| v.field == "seats"));
+    }
+
+    #[test]
+    fn game_toml_invalid_asset_pack_ref_fails() {
+        let base = r#"
+            id = "com.tabula.chess"
+            version = "0.1.0"
+            rules_version = 3
+            name_key = "game.chess.name"
+            categories = ["abstract"]
+            estimated_minutes = [10, 90]
+
+            [seats]
+            min = 2
+            max = 2
+
+            [capabilities]
+            turn_model = "strict_sequential"
+            hidden_information = false
+            spectators = "live"
+            durability = "ack_after_persist"
+            state_size = "small"
+        "#;
+
+        for invalid_pack in [
+            "chess",
+            "@0.1.0",
+            "chess@",
+            "chess@bad",
+            "chess@not-semver",
+            "chess@@1.0.0",
+            " chess@1.0.0",
+            "chess@1.0.0 ",
+            "chess/sub@1.0.0",
+        ] {
+            let src = format!("{base}\n[assets]\npack = \"{invalid_pack}\"");
+            let violations =
+                validate_game_toml("games/chess/game.toml", &src, "com.tabula.chess").unwrap();
+            assert!(
+                violations.iter().any(|v| v.field == "assets.pack"
+                    && v.message.contains("invalid asset pack reference")),
+                "expected rejection of pack = \"{invalid_pack}\", got {violations:?}"
+            );
+        }
+
+        // Valid pack passes
+        let valid_src = format!("{base}\n[assets]\npack = \"chess@0.1.0\"");
+        let violations =
+            validate_game_toml("games/chess/game.toml", &valid_src, "com.tabula.chess").unwrap();
+        assert!(
+            violations.is_empty(),
+            "expected clean validation for valid pack, got {violations:?}"
+        );
+    }
+
+    #[test]
+    fn committed_game_manifests_declare_valid_asset_packs_matching_presenters() {
+        use tabula_game_chess::presentation::ChessPresentation;
+        use tabula_presentation::GamePresentation;
+
+        let chess_toml = include_str!("../../games/chess/game.toml");
+        let violations =
+            validate_game_toml("games/chess/game.toml", chess_toml, "com.tabula.chess").unwrap();
+        assert!(
+            violations.is_empty(),
+            "chess game.toml must be valid: {violations:?}"
+        );
+
+        let doc: GameToml = toml::from_str(chess_toml).unwrap();
+        let manifest_pack_str = doc
+            .assets
+            .as_ref()
+            .and_then(|a| a.pack.as_ref())
+            .expect("chess game.toml must declare [assets].pack");
+        let manifest_pack = AssetPackRef::parse(manifest_pack_str)
+            .expect("chess game.toml asset pack must be valid");
+        assert_eq!(ChessPresentation::asset_pack(), manifest_pack);
+
+        let tictactoe_toml = include_str!("../../games/tictactoe/game.toml");
+        let violations = validate_game_toml(
+            "games/tictactoe/game.toml",
+            tictactoe_toml,
+            "com.tabula.tictactoe",
+        )
+        .unwrap();
+        assert!(
+            violations.is_empty(),
+            "tictactoe game.toml must be valid: {violations:?}"
+        );
     }
 }
