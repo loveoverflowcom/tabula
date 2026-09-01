@@ -1,8 +1,8 @@
 //! Renderer-neutral Chess presentation. (doc 04 §5)
 //!
 //! The presenter consumes [`View`] and keeps only ephemeral interaction state. The
-//! rules state remains behind the `GamePresentation` boundary: pointer input is
-//! translated into a [`Command`] and sent back to the shell as an [`Intent`].
+//! rules state remains behind the `GamePresentation` boundary: pointer and keyboard
+//! input are translated into a [`Command`] and sent back to the shell as an [`Intent`].
 
 #![allow(clippy::doc_markdown)]
 
@@ -10,9 +10,10 @@ use glam::Vec2;
 use tabula_design::{Color as SemanticTint, Theme};
 use tabula_game_api::{A11yAction, A11yDescription, A11yItem, A11yRegion, ActionId, GameRules};
 use tabula_presentation::{
-    Align, AssetPackRef, Border, Camera2D, Corners, FrameCtx, GamePresentation, InputEvent, Intent,
-    Key, Layer, Paint, PointerButton, PointerPhase, PointerPosition, Rect, RenderCmd, RenderList,
-    RenderListBuilder, RenderListError, TextStyleToken, Viewport,
+    handle_navigation, lerp_vec2, Align, AssetPackRef, Border, Camera2D, Corners, FocusGraph,
+    FocusId, FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation, InputEvent, Intent,
+    Layer, MotionTimeline, NavigationAction, Paint, PointerButton, PointerPhase, PointerPosition,
+    Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError, TextStyleToken, Viewport,
 };
 
 use crate::{ChessRules, Color as ChessColor, Command, Piece, PieceKind, Square, Status, View};
@@ -23,6 +24,7 @@ const PROMOTION_CHOICES: [PromotionChoice; 4] = [
     PromotionChoice::Bishop,
     PromotionChoice::Knight,
 ];
+const PROMOTION_BASE_FOCUS_ID: u32 = 100;
 const STATUS_HEIGHT_FRACTION: f32 = 0.12;
 const STATUS_MAX_HEIGHT: f32 = 48.0;
 
@@ -53,22 +55,6 @@ impl PromotionChoice {
         }
     }
 
-    const fn previous(self) -> Self {
-        match self {
-            Self::Queen | Self::Rook => Self::Queen,
-            Self::Bishop => Self::Rook,
-            Self::Knight => Self::Bishop,
-        }
-    }
-
-    const fn next(self) -> Self {
-        match self {
-            Self::Queen => Self::Rook,
-            Self::Rook => Self::Bishop,
-            Self::Bishop | Self::Knight => Self::Knight,
-        }
-    }
-
     const fn action_id(self) -> &'static str {
         match self {
             Self::Queen => "promote-queen",
@@ -77,6 +63,58 @@ impl PromotionChoice {
             Self::Knight => "promote-knight",
         }
     }
+}
+
+fn promotion_choice_focus_id(choice: PromotionChoice) -> FocusId {
+    let index = match choice {
+        PromotionChoice::Queen => 0,
+        PromotionChoice::Rook => 1,
+        PromotionChoice::Bishop => 2,
+        PromotionChoice::Knight => 3,
+    };
+    FocusId::new(PROMOTION_BASE_FOCUS_ID + index)
+}
+
+fn focus_id_to_promotion_choice(id: FocusId) -> Option<PromotionChoice> {
+    match id.get().checked_sub(PROMOTION_BASE_FOCUS_ID)? {
+        0 => Some(PromotionChoice::Queen),
+        1 => Some(PromotionChoice::Rook),
+        2 => Some(PromotionChoice::Bishop),
+        3 => Some(PromotionChoice::Knight),
+        _ => None,
+    }
+}
+
+/// Constructs the focus graph for all 64 board squares.
+fn chess_board_focus_graph(layout: BoardLayout) -> FocusGraph {
+    let mut nodes = Vec::with_capacity(64);
+    for rank in 0..8_u8 {
+        for file in 0..8_u8 {
+            let square = Square::new(file + rank * 8).expect("valid board square");
+            let id = FocusId::new(u32::from(square.0));
+            let rect = layout.square_rect(square).expect("valid square geometry");
+            let up = (rank < 7).then(|| FocusId::new(u32::from(square.0 + 8)));
+            let down = (rank > 0).then(|| FocusId::new(u32::from(square.0 - 8)));
+            let left = (file > 0).then(|| FocusId::new(u32::from(square.0 - 1)));
+            let right = (file < 7).then(|| FocusId::new(u32::from(square.0 + 1)));
+            nodes.push(FocusNode::with_neighbors(id, rect, up, down, left, right));
+        }
+    }
+    FocusGraph::new(nodes).expect("board focus graph topology is valid")
+}
+
+/// Constructs the focus graph for the 4 horizontal promotion choices.
+fn chess_promotion_focus_graph(layout: BoardLayout) -> FocusGraph {
+    let mut nodes = Vec::with_capacity(4);
+    for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
+        let id = promotion_choice_focus_id(choice);
+        let rect = promotion_choice_rect(layout, index).expect("valid choice geometry");
+        let left = (index > 0).then(|| promotion_choice_focus_id(PROMOTION_CHOICES[index - 1]));
+        let right = (index + 1 < PROMOTION_CHOICES.len())
+            .then(|| promotion_choice_focus_id(PROMOTION_CHOICES[index + 1]));
+        nodes.push(FocusNode::with_neighbors(id, rect, None, None, left, right));
+    }
+    FocusGraph::new(nodes).expect("promotion focus graph topology is valid")
 }
 
 /// The validated, responsive geometry shared by board rendering and hit testing.
@@ -200,6 +238,16 @@ pub enum Interaction {
     },
 }
 
+/// Ephemeral animation description for a piece in transit following a [`crate::ViewEvent::Moved`].
+///
+/// This state is presentation-only: it does not affect rules, authority, or command formation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ChessMoveAnimation {
+    pub from: Square,
+    pub to: Square,
+    pub timeline: MotionTimeline,
+}
+
 /// Chess presentation state that is never sent to rules or treated as truth.
 ///
 /// @ai.role presentation-state
@@ -211,7 +259,8 @@ pub struct ChessLocal {
     interaction: Interaction,
     hover: Option<Square>,
     last_move: Option<(Square, Square)>,
-    cursor: Square,
+    focus: FocusState,
+    move_animation: Option<ChessMoveAnimation>,
     viewport: Viewport,
 }
 
@@ -221,7 +270,8 @@ impl Default for ChessLocal {
             interaction: Interaction::Idle,
             hover: None,
             last_move: None,
-            cursor: Square::new(0).expect("a1 is a representable square"),
+            focus: FocusState::new(Some(FocusId::new(0)), FocusModality::Pointer, true),
+            move_animation: None,
             viewport: Viewport::new(Vec2::splat(1.0)).expect("unit viewport is valid"),
         }
     }
@@ -244,8 +294,26 @@ impl ChessLocal {
     }
 
     #[must_use]
-    pub const fn cursor(&self) -> Square {
-        self.cursor
+    pub const fn focus(&self) -> &FocusState {
+        &self.focus
+    }
+
+    pub fn focus_mut(&mut self) -> &mut FocusState {
+        &mut self.focus
+    }
+
+    #[must_use]
+    pub fn cursor(&self) -> Square {
+        self.focus
+            .current()
+            .and_then(|id| u8::try_from(id.get()).ok())
+            .and_then(Square::new)
+            .unwrap_or(Square(0))
+    }
+
+    #[must_use]
+    pub const fn move_animation(&self) -> Option<&ChessMoveAnimation> {
+        self.move_animation.as_ref()
     }
 
     /// Records the current logical viewport for pointer hit testing.
@@ -257,7 +325,7 @@ impl ChessLocal {
         self.viewport = viewport;
     }
 
-    fn clear_interaction(&mut self) {
+    pub fn clear_interaction(&mut self) {
         self.interaction = Interaction::Idle;
     }
 }
@@ -288,12 +356,22 @@ impl GamePresentation for ChessPresentation {
     fn on_view_event(
         event: &<ChessRules as GameRules>::ViewEvent,
         local: &mut ChessLocal,
-        _frame: &FrameCtx,
+        frame: &FrameCtx,
     ) {
         match event {
             crate::ViewEvent::Moved { from, to, .. } => {
                 local.last_move = Some((*from, *to));
                 local.clear_interaction();
+                let timeline = MotionTimeline::from_profile(
+                    frame.now_ms(),
+                    frame.theme().motion.piece_move,
+                    &frame.theme(),
+                );
+                local.move_animation = Some(ChessMoveAnimation {
+                    from: *from,
+                    to: *to,
+                    timeline,
+                });
             }
             crate::ViewEvent::Ended { .. } => local.clear_interaction(),
             crate::ViewEvent::ClockUpdated { .. }
@@ -307,80 +385,93 @@ impl GamePresentation for ChessPresentation {
         view: &View,
         local: &mut ChessLocal,
     ) -> Option<Intent<Command>> {
-        // The input contract is already normalized, so the presenter only
-        // performs local hit testing and command translation here.
+        let layout = BoardLayout::from_viewport(local.viewport);
         match input {
             InputEvent::Pointer {
                 position,
                 button,
                 phase,
-            } => {
-                let layout = BoardLayout::from_viewport(local.viewport);
-                match phase {
-                    PointerPhase::Move | PointerPhase::Down => {
-                        local.hover = layout.square_at(*position);
-                        local.cursor = local.hover.unwrap_or(local.cursor);
-                        None
+            } => match phase {
+                PointerPhase::Move | PointerPhase::Down => {
+                    local.hover = layout.square_at(*position);
+                    if let Some(square) = local.hover {
+                        local
+                            .focus
+                            .set_pointer_focus(Some(FocusId::new(u32::from(square.0))));
                     }
-                    PointerPhase::Cancel => {
-                        local.hover = None;
-                        local.clear_interaction();
-                        None
-                    }
-                    PointerPhase::Up if *button == PointerButton::Primary => {
-                        let square = layout.square_at(*position);
-                        local.hover = square;
-                        if let Some(square) = square {
-                            local.cursor = square;
-                        }
-                        click_square(view, local, layout, square, Some(*position))
-                    }
-                    PointerPhase::Up => None,
+                    None
                 }
-            }
-            InputEvent::Key { key, pressed: true } => {
-                let layout = BoardLayout::from_viewport(local.viewport);
-                match key {
-                    Key::Escape => {
-                        local.clear_interaction();
-                        None
+                PointerPhase::Cancel => {
+                    local.hover = None;
+                    local.clear_interaction();
+                    None
+                }
+                PointerPhase::Up if *button == PointerButton::Primary => {
+                    let square = layout.square_at(*position);
+                    local.hover = square;
+                    if let Some(square) = square {
+                        local
+                            .focus
+                            .set_pointer_focus(Some(FocusId::new(u32::from(square.0))));
                     }
-                    Key::ArrowUp => {
-                        if !matches!(local.interaction, Interaction::Promotion { .. }) {
-                            move_cursor(local, 0, 1);
-                        }
-                        None
-                    }
-                    Key::ArrowDown => {
-                        if !matches!(local.interaction, Interaction::Promotion { .. }) {
-                            move_cursor(local, 0, -1);
-                        }
-                        None
-                    }
-                    Key::ArrowLeft => {
-                        if !move_promotion_selection(local, false) {
-                            move_cursor(local, -1, 0);
-                        }
-                        None
-                    }
-                    Key::ArrowRight => {
-                        if !move_promotion_selection(local, true) {
-                            move_cursor(local, 1, 0);
-                        }
-                        None
-                    }
-                    Key::Enter | Key::Space => {
-                        if let Interaction::Promotion { from, to, selected } = local.interaction {
-                            local.interaction = Interaction::Idle;
-                            Some(promotion_intent(from, to, selected))
+                    click_square(view, local, layout, square, Some(*position))
+                }
+                PointerPhase::Up => None,
+            },
+            InputEvent::Key { .. } | InputEvent::Focus(_) => {
+                let is_promotion = matches!(local.interaction, Interaction::Promotion { .. });
+                let graph = if is_promotion {
+                    chess_promotion_focus_graph(layout)
+                } else {
+                    chess_board_focus_graph(layout)
+                };
+
+                // Reconcile focus if active mode switched or current focus is invalid for this graph
+                if local.focus.current().is_none()
+                    || !graph.contains(local.focus.current().unwrap())
+                {
+                    let default_id =
+                        if let Interaction::Promotion { selected, .. } = local.interaction {
+                            promotion_choice_focus_id(selected)
                         } else {
-                            click_square(view, local, layout, Some(local.cursor), None)
+                            graph.first_id().unwrap_or(FocusId::new(0))
+                        };
+                    local.focus.set_current(Some(default_id));
+                }
+
+                match handle_navigation(&graph, &mut local.focus, input) {
+                    NavigationAction::None => None,
+                    NavigationAction::Cancel => {
+                        local.clear_interaction();
+                        None
+                    }
+                    NavigationAction::FocusChanged(focus_id) => {
+                        if let Interaction::Promotion { from, to, .. } = local.interaction {
+                            if let Some(choice) = focus_id_to_promotion_choice(focus_id) {
+                                local.interaction = Interaction::Promotion {
+                                    from,
+                                    to,
+                                    selected: choice,
+                                };
+                            }
+                        }
+                        None
+                    }
+                    NavigationAction::Activate(focus_id) => {
+                        if let Interaction::Promotion { from, to, selected } = local.interaction {
+                            let choice = focus_id_to_promotion_choice(focus_id).unwrap_or(selected);
+                            local.clear_interaction();
+                            Some(promotion_intent(from, to, choice))
+                        } else if let Some(square) =
+                            u8::try_from(focus_id.get()).ok().and_then(Square::new)
+                        {
+                            click_square(view, local, layout, Some(square), None)
+                        } else {
+                            None
                         }
                     }
-                    Key::Tab => None,
                 }
             }
-            InputEvent::Key { pressed: false, .. } | InputEvent::Focus(_) => None,
         }
     }
 
@@ -454,6 +545,9 @@ fn click_square(
                     to: square,
                     selected: PromotionChoice::Queen,
                 };
+                local
+                    .focus
+                    .set_keyboard_focus(Some(promotion_choice_focus_id(PromotionChoice::Queen)));
                 return None;
             }
             local.clear_interaction();
@@ -475,22 +569,6 @@ fn promotion_intent(from: Square, to: Square, choice: PromotionChoice) -> Intent
     })
 }
 
-fn move_promotion_selection(local: &mut ChessLocal, forward: bool) -> bool {
-    let Interaction::Promotion { from, to, selected } = local.interaction else {
-        return false;
-    };
-    local.interaction = Interaction::Promotion {
-        from,
-        to,
-        selected: if forward {
-            selected.next()
-        } else {
-            selected.previous()
-        },
-    };
-    true
-}
-
 fn has_promotion_command(view: &View, from: Square, to: Square) -> bool {
     view.legal_moves.iter().any(|command| {
         matches!(
@@ -502,14 +580,6 @@ fn has_promotion_command(view: &View, from: Square, to: Square) -> bool {
             } if *command_from == from.0 && *command_to == to.0
         )
     })
-}
-
-fn move_cursor(local: &mut ChessLocal, file_delta: i8, rank_delta: i8) {
-    let file = u8::try_from((i16::from(local.cursor.file()) + i16::from(file_delta)).clamp(0, 7))
-        .expect("clamped cursor file fits u8");
-    let rank = u8::try_from((i16::from(local.cursor.rank()) + i16::from(rank_delta)).clamp(0, 7))
-        .expect("clamped cursor rank fits u8");
-    local.cursor = Square::new(file + rank * 8).expect("clamped cursor is a board square");
 }
 
 #[allow(clippy::cast_precision_loss, clippy::float_arithmetic)]
@@ -579,6 +649,8 @@ fn build_render_list(
         }
     }
 
+    let is_promotion = matches!(local.interaction, Interaction::Promotion { .. });
+
     for square in 0..64_u8 {
         let square = Square::new(square).ok_or(RenderListError::InvalidGeometry)?;
         let is_selected = matches!(
@@ -592,6 +664,9 @@ fn build_render_list(
             local.interaction,
             Interaction::Selected { square: from } if legal_destination(view, from, square)
         );
+        let is_focused = local.focus.is_focus_visible()
+            && !is_promotion
+            && local.focus.current() == Some(FocusId::new(u32::from(square.0)));
         let rect = layout
             .square_rect(square)
             .ok_or(RenderListError::InvalidGeometry)?;
@@ -628,7 +703,31 @@ fn build_render_list(
                 &theme,
             )?)?;
         }
+        if is_focused {
+            builder.push(outline(
+                rect,
+                theme.focus.ring_color,
+                Layer::OVERLAY,
+                150,
+                &theme,
+            )?)?;
+        }
     }
+
+    let move_sample = local
+        .move_animation
+        .as_ref()
+        .map(|anim| (anim, anim.timeline.sample(frame.now_ms())));
+
+    let in_transit_dest = move_sample.and_then(
+        |(anim, sample)| {
+            if sample.done {
+                None
+            } else {
+                Some(anim.to)
+            }
+        },
+    );
 
     for (index, piece) in view.board.iter().enumerate() {
         let Some(piece) = piece else {
@@ -637,6 +736,10 @@ fn build_render_list(
         let square =
             Square::new(u8::try_from(index).map_err(|_| RenderListError::InvalidGeometry)?)
                 .ok_or(RenderListError::InvalidGeometry)?;
+        if in_transit_dest == Some(square) {
+            // Avoid double-drawing destination piece while animation is in flight
+            continue;
+        }
         let rect = layout
             .square_rect(square)
             .ok_or(RenderListError::InvalidGeometry)?;
@@ -653,6 +756,36 @@ fn build_render_list(
             layer: Layer::PIECES,
             z: i16::try_from(index).map_err(|_| RenderListError::InvalidGeometry)?,
         })?;
+    }
+
+    if let Some((anim, sample)) = move_sample {
+        if !sample.done {
+            if let Some(piece) = view.board[usize::from(anim.to.0)] {
+                let from_rect = layout
+                    .square_rect(anim.from)
+                    .ok_or(RenderListError::InvalidGeometry)?;
+                let to_rect = layout
+                    .square_rect(anim.to)
+                    .ok_or(RenderListError::InvalidGeometry)?;
+                let current_origin = lerp_vec2(from_rect.origin(), to_rect.origin(), sample.factor);
+                let style = TextStyleToken::DisplaySm;
+                let line_height = theme.text_style(style).line_height().get();
+                builder.push(RenderCmd::Text {
+                    text: piece_glyph(piece).to_owned(),
+                    at: current_origin
+                        + Vec2::new(
+                            from_rect.size().x * 0.5,
+                            from_rect.size().y * 0.5 - line_height * 0.5,
+                        ),
+                    style,
+                    align: Align::Center,
+                    max_width: None,
+                    color: piece_color(piece, &theme),
+                    layer: Layer::PIECES,
+                    z: 100,
+                })?;
+            }
+        }
     }
 
     let status = status_text(view);
@@ -676,7 +809,7 @@ fn build_render_list(
         z: 0,
     })?;
 
-    if matches!(local.interaction, Interaction::Promotion { .. }) {
+    if is_promotion {
         let promotion_color = view.turn;
         if let Some(panel) = promotion_panel_rect(layout) {
             builder.push(RenderCmd::Rect {
@@ -700,6 +833,15 @@ fn build_render_list(
                 continue;
             };
             let is_selected = choice == selected;
+            let is_focused = local.focus.is_focus_visible()
+                && local.focus.current() == Some(promotion_choice_focus_id(choice));
+            let border_color = if is_focused {
+                theme.focus.ring_color
+            } else if is_selected {
+                theme.color.selected
+            } else {
+                theme.color.primary
+            };
             builder.push(RenderCmd::Rect {
                 rect,
                 radii: Corners::uniform(theme.shape.sm.get())?,
@@ -708,14 +850,7 @@ fn build_render_list(
                 } else {
                     theme.color.surface_container_high
                 })),
-                border: Some(Border::new(
-                    theme.focus.ring_width.get(),
-                    if is_selected {
-                        theme.color.selected
-                    } else {
-                        theme.color.primary
-                    },
-                )?),
+                border: Some(Border::new(theme.focus.ring_width.get(), border_color)?),
                 layer: Layer::MODAL,
                 z: i16::try_from(index + 1).map_err(|_| RenderListError::InvalidGeometry)?,
             })?;
@@ -929,16 +1064,21 @@ mod tests {
         canonical_encode, DetRng, InputIndex, LogicalTime, MatchSeed, SeatId, Viewer,
     };
     use tabula_game_api::{Budget, Ctx, Input, Outcome};
+    use tabula_presentation::Key;
 
     fn viewport(width: f32, height: f32) -> Viewport {
         Viewport::new(Vec2::new(width, height)).expect("test viewport is valid")
     }
 
     fn frame(width: f32, height: f32) -> FrameCtx {
+        frame_at(width, height, 0)
+    }
+
+    fn frame_at(width: f32, height: f32, now_ms: u64) -> FrameCtx {
         FrameCtx::new(
             viewport(width, height),
             tabula_presentation::Dpi::new(1.0).expect("test DPI is valid"),
-            0,
+            now_ms,
             Theme::by_kind(tabula_design::ThemeKind::Light),
         )
     }
@@ -1366,9 +1506,347 @@ mod tests {
         for glyph in ["q", "r", "b", "n"] {
             assert!(rendered.commands().iter().any(|command| matches!(
                 command,
-                RenderCmd::Text { text, layer: Layer::MODAL, .. } if text == glyph
+                RenderCmd::Text {
+                    text,
+                    layer: Layer::MODAL,
+                    ..
+                } if text == glyph
             )));
         }
+    }
+
+    #[test]
+    fn chess_board_focus_uses_shared_directional_navigation() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        // Start focus at e4 (square 28: file 4, rank 3)
+        local.focus_mut().set_keyboard_focus(Some(FocusId::new(28)));
+
+        // ArrowUp: rank 3 -> 4 => e5 (square 36)
+        ChessPresentation::on_input(&key(Key::ArrowUp), &view, &mut local);
+        assert_eq!(local.cursor(), Square(36));
+
+        // ArrowDown: rank 4 -> 3 => e4 (square 28)
+        ChessPresentation::on_input(&key(Key::ArrowDown), &view, &mut local);
+        assert_eq!(local.cursor(), Square(28));
+
+        // ArrowLeft: file 4 -> 3 => d4 (square 27)
+        ChessPresentation::on_input(&key(Key::ArrowLeft), &view, &mut local);
+        assert_eq!(local.cursor(), Square(27));
+
+        // ArrowRight: file 3 -> 4 => e4 (square 28)
+        ChessPresentation::on_input(&key(Key::ArrowRight), &view, &mut local);
+        assert_eq!(local.cursor(), Square(28));
+    }
+
+    #[test]
+    fn board_boundaries_clamp_directional_arrows() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        // a1 (square 0): Left and Down must stay at a1
+        local.focus_mut().set_keyboard_focus(Some(FocusId::new(0)));
+        ChessPresentation::on_input(&key(Key::ArrowLeft), &view, &mut local);
+        assert_eq!(local.cursor(), Square(0));
+        ChessPresentation::on_input(&key(Key::ArrowDown), &view, &mut local);
+        assert_eq!(local.cursor(), Square(0));
+
+        // h8 (square 63): Right and Up must stay at h8
+        local.focus_mut().set_keyboard_focus(Some(FocusId::new(63)));
+        ChessPresentation::on_input(&key(Key::ArrowRight), &view, &mut local);
+        assert_eq!(local.cursor(), Square(63));
+        ChessPresentation::on_input(&key(Key::ArrowUp), &view, &mut local);
+        assert_eq!(local.cursor(), Square(63));
+    }
+
+    #[test]
+    fn tab_navigation_traverses_all_board_squares() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        local.focus_mut().set_keyboard_focus(Some(FocusId::new(0)));
+        for expected in 1..64_u8 {
+            ChessPresentation::on_input(&key(Key::Tab), &view, &mut local);
+            assert_eq!(local.cursor(), Square(expected));
+        }
+        // Cycles back to 0
+        ChessPresentation::on_input(&key(Key::Tab), &view, &mut local);
+        assert_eq!(local.cursor(), Square(0));
+    }
+
+    #[test]
+    fn pointer_and_keyboard_activation_build_the_same_move() {
+        let state = crate::State::initial();
+        let view = view(&state);
+
+        // Pointer path: click e2 (12), click e4 (28)
+        let mut pointer_local = ChessLocal::default();
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        assert!(click(&view, &mut pointer_local, layout, Square(12)).is_none());
+        let pointer_intent = click(&view, &mut pointer_local, layout, Square(28)).unwrap();
+
+        // Keyboard path: focus e2 (12), Enter, focus e4 (28), Space
+        let mut keyboard_local = ChessLocal::default();
+        keyboard_local.set_viewport(viewport(640.0, 640.0));
+        keyboard_local
+            .focus_mut()
+            .set_keyboard_focus(Some(FocusId::new(12)));
+        assert!(
+            ChessPresentation::on_input(&key(Key::Enter), &view, &mut keyboard_local).is_none()
+        );
+        assert_eq!(
+            keyboard_local.interaction(),
+            Interaction::Selected { square: Square(12) }
+        );
+
+        keyboard_local
+            .focus_mut()
+            .set_keyboard_focus(Some(FocusId::new(28)));
+        let keyboard_intent =
+            ChessPresentation::on_input(&key(Key::Space), &view, &mut keyboard_local).unwrap();
+
+        assert_eq!(
+            pointer_intent.into_command(),
+            keyboard_intent.into_command()
+        );
+    }
+
+    #[test]
+    fn focus_is_local_and_never_mutates_authoritative_state() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let before = canonical_encode(&state).unwrap();
+        for _ in 0..10 {
+            ChessPresentation::on_input(&key(Key::ArrowRight), &view, &mut local);
+            ChessPresentation::on_input(&key(Key::ArrowUp), &view, &mut local);
+            ChessPresentation::on_input(&key(Key::Tab), &view, &mut local);
+        }
+        assert_eq!(canonical_encode(&state).unwrap(), before);
+    }
+
+    #[test]
+    fn keyboard_focus_renders_semantic_focus_ring() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        // When pointer modality is active, no focus ring
+        let rendered_pointer = ChessPresentation::present(&view, &local, &frame(640.0, 640.0));
+        let theme = Theme::by_kind(tabula_design::ThemeKind::Light);
+        assert!(!rendered_pointer.commands().iter().any(|cmd| matches!(
+            cmd,
+            RenderCmd::Rect {
+                border: Some(border),
+                z: 150,
+                ..
+            } if border.color() == theme.focus.ring_color
+        )));
+
+        // Navigate with keyboard -> focus visible
+        ChessPresentation::on_input(&key(Key::Tab), &view, &mut local);
+        let rendered_kb = ChessPresentation::present(&view, &local, &frame(640.0, 640.0));
+        assert!(rendered_kb.commands().iter().any(|cmd| matches!(
+            cmd,
+            RenderCmd::Rect {
+                border: Some(border),
+                z: 150,
+                ..
+            } if border.color() == theme.focus.ring_color
+        )));
+    }
+
+    #[test]
+    fn chess_move_animation_is_driven_by_view_event() {
+        let mut state = crate::State::initial();
+        let mut local = ChessLocal::default();
+        let frame = frame_at(640.0, 640.0, 1000);
+
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            0,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+
+        for event in outcome.events {
+            if let Some(view_event) =
+                ChessRules::view_event(&state, &event, Viewer::Seat(SeatId(0)))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut local, &frame);
+            }
+        }
+
+        let anim = local
+            .move_animation()
+            .expect("Moved view event starts move animation");
+        assert_eq!(anim.from, Square(12));
+        assert_eq!(anim.to, Square(28));
+        assert_eq!(anim.timeline.started_at_ms(), 1000);
+    }
+
+    #[test]
+    fn chess_animation_never_mutates_authoritative_state() {
+        let mut state = crate::State::initial();
+        let mut local = ChessLocal::default();
+        let frame = frame_at(640.0, 640.0, 1000);
+
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            0,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+        for event in outcome.events {
+            if let Some(view_event) =
+                ChessRules::view_event(&state, &event, Viewer::Seat(SeatId(0)))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut local, &frame);
+            }
+        }
+
+        let before = canonical_encode(&state).unwrap();
+        for t in [1000, 1050, 1100, 1150, 1280, 1500] {
+            let _ = ChessPresentation::present(&view(&state), &local, &frame_at(640.0, 640.0, t));
+        }
+        assert_eq!(canonical_encode(&state).unwrap(), before);
+    }
+
+    #[test]
+    fn chess_final_render_is_identical_after_sparse_or_dense_sampling() {
+        let mut state = crate::State::initial();
+        let mut local = ChessLocal::default();
+        let start_frame = frame_at(640.0, 640.0, 1000);
+
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            0,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+        for event in outcome.events {
+            if let Some(view_event) =
+                ChessRules::view_event(&state, &event, Viewer::Seat(SeatId(0)))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut local, &start_frame);
+            }
+        }
+        let current_view = view(&state);
+
+        // Path A: sample final directly (terminal time >= 1280)
+        let final_frame = frame_at(640.0, 640.0, 1280);
+        let direct_render = ChessPresentation::present(&current_view, &local, &final_frame);
+
+        // Path B: sample at intermediate frames first
+        for t in [1016, 1032, 1048, 1064, 1080, 1150, 1200] {
+            let _ = ChessPresentation::present(&current_view, &local, &frame_at(640.0, 640.0, t));
+        }
+        let sequential_render = ChessPresentation::present(&current_view, &local, &final_frame);
+
+        assert_eq!(direct_render, sequential_render);
+    }
+
+    #[test]
+    fn animation_does_not_gate_input_or_intent_creation() {
+        let mut state = crate::State::initial();
+        let mut local = ChessLocal::default();
+        let frame = frame_at(640.0, 640.0, 1000);
+
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            0,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+        for event in outcome.events {
+            if let Some(view_event) =
+                ChessRules::view_event(&state, &event, Viewer::Seat(SeatId(0)))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut local, &frame);
+            }
+        }
+        let current_view = view(&state);
+
+        // Animation is in flight (midpoint t = 1100)
+        let mid_frame = frame_at(640.0, 640.0, 1100);
+        local.set_viewport(mid_frame.viewport());
+
+        // Input works normally
+        let layout = BoardLayout::from_viewport(mid_frame.viewport());
+        assert!(click(&current_view, &mut local, layout, Square(6)).is_none());
+        assert_eq!(local.interaction(), Interaction::Idle);
+    }
+
+    #[test]
+    fn piece_in_transit_is_not_double_rendered() {
+        let mut state = crate::State::initial();
+        let mut local = ChessLocal::default();
+        let start_frame = frame_at(640.0, 640.0, 1000);
+
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            0,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+        for event in outcome.events {
+            if let Some(view_event) =
+                ChessRules::view_event(&state, &event, Viewer::Seat(SeatId(0)))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut local, &start_frame);
+            }
+        }
+        let current_view = view(&state);
+
+        // Mid-animation frame at t=1100 (duration is 280ms, so 1100 is in flight)
+        let mid_render =
+            ChessPresentation::present(&current_view, &local, &frame_at(640.0, 640.0, 1100));
+        let piece_texts = mid_render
+            .commands()
+            .iter()
+            .filter(|cmd| {
+                matches!(
+                    cmd,
+                    RenderCmd::Text {
+                        layer: Layer::PIECES,
+                        ..
+                    }
+                )
+            })
+            .count();
+
+        // Exactly 32 pieces are rendered (31 stationary + 1 in transit)
+        assert_eq!(piece_texts, 32);
     }
 
     #[test]
@@ -1459,7 +1937,11 @@ mod tests {
             ChessPresentation::present(&view, &ChessLocal::default(), &frame(640.0, 640.0));
         assert!(rendered.commands().iter().any(|command| matches!(
             command,
-            RenderCmd::Text { text, layer: Layer::HUD, .. } if text.starts_with("Game over")
+            RenderCmd::Text {
+                text,
+                layer: Layer::HUD,
+                ..
+            } if text.starts_with("Game over")
         )));
 
         let mut local = ChessLocal::default();

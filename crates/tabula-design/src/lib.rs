@@ -466,7 +466,7 @@ pub struct ElevationTokens {
     pub high: u8,
 }
 
-/// Motion data only; animation execution belongs to the later presentation runtime. (I-10)
+/// Motion tokens consumed by the presentation motion runtime. (I-10)
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MotionTokens {
     pub instant: MotionDuration,
@@ -503,6 +503,11 @@ pub struct MotionTokens {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MotionDuration(u16);
 impl MotionDuration {
+    #[must_use]
+    pub const fn from_millis(value: u16) -> Self {
+        Self(value)
+    }
+
     #[must_use]
     pub const fn milliseconds(self) -> u16 {
         self.0

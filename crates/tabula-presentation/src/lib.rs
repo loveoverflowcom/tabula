@@ -5,14 +5,24 @@
 
 #![forbid(unsafe_code)]
 
+mod focus;
 mod game;
 mod input;
+mod motion;
 mod render;
 mod renderer;
 
+pub use focus::{
+    handle_navigation, FocusDirection, FocusGraph, FocusGraphError, FocusId, FocusModality,
+    FocusNode, FocusState, NavigationAction,
+};
 pub use game::{AssetPackRef, GamePresentation, Intent};
 pub use input::{
     InputEvent, Key, PointerButton, PointerPhase, PointerPosition, PointerPositionError,
+};
+pub use motion::{
+    lerp_f32, lerp_vec2, resolve_duration, resolve_spring, staggered_start, MotionSample,
+    MotionTimeline, STALE_ANIMATION_THRESHOLD_MS,
 };
 pub use render::{
     Align, Border, Camera2D, Corners, GradientStop, Layer, LinearGradient, Opacity, OpacityError,
