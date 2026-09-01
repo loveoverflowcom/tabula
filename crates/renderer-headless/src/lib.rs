@@ -224,9 +224,28 @@ pub struct RasterDiff {
     pub max_channel_delta: u8,
 }
 
+/// Identifies which input image caused a raster comparison validation failure.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RasterSide {
+    Expected,
+    Actual,
+}
+
 /// Structured diagnostic when a raster comparison fails.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RasterMismatch {
+    InvalidBuffer {
+        side: RasterSide,
+        width: u32,
+        height: u32,
+        actual_len: usize,
+        expected_len: usize,
+    },
+    BufferSizeOverflow {
+        side: RasterSide,
+        width: u32,
+        height: u32,
+    },
     DimensionMismatch {
         expected: (u32, u32),
         actual: (u32, u32),
@@ -236,7 +255,7 @@ pub enum RasterMismatch {
         max_allowed_pixels: usize,
         max_channel_delta: u8,
         max_allowed_channel_delta: u8,
-        first_mismatch: (u32, u32),
+        triggering_difference: (u32, u32),
         expected_rgba: [u8; 4],
         actual_rgba: [u8; 4],
     },
@@ -245,6 +264,24 @@ pub enum RasterMismatch {
 impl std::fmt::Display for RasterMismatch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::InvalidBuffer {
+                side,
+                width,
+                height,
+                actual_len,
+                expected_len,
+            } => write!(
+                f,
+                "{side:?} raster has an invalid RGBA buffer: {width}x{height} requires {expected_len} bytes, got {actual_len}"
+            ),
+            Self::BufferSizeOverflow {
+                side,
+                width,
+                height,
+            } => write!(
+                f,
+                "{side:?} raster dimensions cannot be represented as an RGBA buffer: {width}x{height}"
+            ),
             Self::DimensionMismatch { expected, actual } => {
                 write!(
                     f,
@@ -257,14 +294,14 @@ impl std::fmt::Display for RasterMismatch {
                 max_allowed_pixels,
                 max_channel_delta,
                 max_allowed_channel_delta,
-                first_mismatch,
+                triggering_difference,
                 expected_rgba,
                 actual_rgba,
             } => {
                 write!(
                     f,
-                    "raster pixel differences exceeded tolerance: {different_pixels} differing pixels (max {max_allowed_pixels}), max channel delta {max_channel_delta} (max {max_allowed_channel_delta}); first mismatch at ({}, {}): expected {expected_rgba:?}, got {actual_rgba:?}",
-                    first_mismatch.0, first_mismatch.1
+                    "raster pixel differences exceeded tolerance: {different_pixels} differing pixels (max {max_allowed_pixels}), max channel delta {max_channel_delta} (max {max_allowed_channel_delta}); triggering difference at ({}, {}): expected {expected_rgba:?}, got {actual_rgba:?}",
+                    triggering_difference.0, triggering_difference.1
                 )
             }
         }
@@ -289,6 +326,9 @@ pub fn compare_raster(
     actual: &RasterImage,
     tolerance: RasterTolerance,
 ) -> Result<RasterDiff, RasterMismatch> {
+    validate_buffer(expected, RasterSide::Expected)?;
+    validate_buffer(actual, RasterSide::Actual)?;
+
     if expected.width != actual.width || expected.height != actual.height {
         return Err(RasterMismatch::DimensionMismatch {
             expected: (expected.width, expected.height),
@@ -298,12 +338,16 @@ pub fn compare_raster(
 
     let mut different_pixels = 0;
     let mut max_channel_delta: u8 = 0;
-    let mut first_mismatch = None;
+    let mut triggering_difference = None;
 
     for y in 0..expected.height {
         for x in 0..expected.width {
-            let exp_px = expected.pixel(x, y).expect("within bounds");
-            let act_px = actual.pixel(x, y).expect("within bounds");
+            let Some(exp_px) = expected.pixel(x, y) else {
+                return Err(buffer_mismatch(expected, RasterSide::Expected));
+            };
+            let Some(act_px) = actual.pixel(x, y) else {
+                return Err(buffer_mismatch(actual, RasterSide::Actual));
+            };
 
             if exp_px != act_px {
                 let r_delta = exp_px[0].abs_diff(act_px[0]);
@@ -315,11 +359,11 @@ pub fn compare_raster(
                 if px_max_delta > 0 {
                     different_pixels += 1;
                     max_channel_delta = max_channel_delta.max(px_max_delta);
-                    if first_mismatch.is_none()
+                    if triggering_difference.is_none()
                         && (px_max_delta > tolerance.max_channel_delta
                             || different_pixels > tolerance.max_different_pixels)
                     {
-                        first_mismatch = Some(((x, y), exp_px, act_px));
+                        triggering_difference = Some(((x, y), exp_px, act_px));
                     }
                 }
             }
@@ -330,13 +374,13 @@ pub fn compare_raster(
         || different_pixels > tolerance.max_different_pixels
     {
         let (coord, exp_rgba, act_rgba) =
-            first_mismatch.unwrap_or(((0, 0), [0, 0, 0, 0], [0, 0, 0, 0]));
+            triggering_difference.unwrap_or(((0, 0), [0, 0, 0, 0], [0, 0, 0, 0]));
         return Err(RasterMismatch::PixelDifferenceExceeded {
             different_pixels,
             max_allowed_pixels: tolerance.max_different_pixels,
             max_channel_delta,
             max_allowed_channel_delta: tolerance.max_channel_delta,
-            first_mismatch: coord,
+            triggering_difference: coord,
             expected_rgba: exp_rgba,
             actual_rgba: act_rgba,
         });
@@ -346,6 +390,41 @@ pub fn compare_raster(
         different_pixels,
         max_channel_delta,
     })
+}
+
+fn expected_buffer_len(width: u32, height: u32) -> Option<usize> {
+    usize::try_from(width)
+        .ok()?
+        .checked_mul(usize::try_from(height).ok()?)?
+        .checked_mul(4)
+}
+
+fn validate_buffer(image: &RasterImage, side: RasterSide) -> Result<(), RasterMismatch> {
+    let expected_len = expected_buffer_len(image.width, image.height)
+        .ok_or_else(|| buffer_mismatch(image, side))?;
+
+    if image.rgba.len() != expected_len {
+        return Err(buffer_mismatch(image, side));
+    }
+
+    Ok(())
+}
+
+fn buffer_mismatch(image: &RasterImage, side: RasterSide) -> RasterMismatch {
+    match expected_buffer_len(image.width, image.height) {
+        Some(expected_len) => RasterMismatch::InvalidBuffer {
+            side,
+            width: image.width,
+            height: image.height,
+            actual_len: image.rgba.len(),
+            expected_len,
+        },
+        None => RasterMismatch::BufferSizeOverflow {
+            side,
+            width: image.width,
+            height: image.height,
+        },
+    }
 }
 
 impl RasterImage {
@@ -1106,7 +1185,7 @@ mod tests {
                 max_allowed_pixels: 10,
                 max_channel_delta: 5,
                 max_allowed_channel_delta: 3,
-                first_mismatch: (0, 0),
+                triggering_difference: (0, 0),
                 expected_rgba: [100, 100, 100, 255],
                 actual_rgba: [105, 100, 100, 255],
             })
@@ -1134,7 +1213,7 @@ mod tests {
                 max_allowed_pixels: 2,
                 max_channel_delta: 1,
                 max_allowed_channel_delta: 2,
-                first_mismatch: (2, 0),
+                triggering_difference: (2, 0),
                 expected_rgba: [30, 30, 30, 255],
                 actual_rgba: [31, 30, 30, 255],
             })
@@ -1153,5 +1232,78 @@ mod tests {
         let png_bytes = original.encode_png().expect("PNG encode succeeds");
         let decoded = RasterImage::from_png_bytes(&png_bytes).expect("PNG decode succeeds");
         assert_eq!(original, decoded);
+    }
+
+    #[test]
+    fn compare_raster_rejects_malformed_expected_buffer_without_panicking() {
+        let expected = RasterImage {
+            width: 2,
+            height: 2,
+            rgba: vec![0; 15],
+        };
+        let actual = RasterImage {
+            width: 2,
+            height: 2,
+            rgba: vec![0; 16],
+        };
+
+        assert_eq!(
+            compare_raster(&expected, &actual, RasterTolerance::EXACT),
+            Err(RasterMismatch::InvalidBuffer {
+                side: RasterSide::Expected,
+                width: 2,
+                height: 2,
+                actual_len: 15,
+                expected_len: 16,
+            })
+        );
+    }
+
+    #[test]
+    fn compare_raster_rejects_malformed_actual_buffer_without_panicking() {
+        let expected = RasterImage {
+            width: 2,
+            height: 2,
+            rgba: vec![0; 16],
+        };
+        let actual = RasterImage {
+            width: 2,
+            height: 2,
+            rgba: vec![0; 15],
+        };
+
+        assert_eq!(
+            compare_raster(&expected, &actual, RasterTolerance::EXACT),
+            Err(RasterMismatch::InvalidBuffer {
+                side: RasterSide::Actual,
+                width: 2,
+                height: 2,
+                actual_len: 15,
+                expected_len: 16,
+            })
+        );
+    }
+
+    #[test]
+    fn compare_raster_rejects_buffer_size_overflow_without_panicking() {
+        let expected = RasterImage {
+            width: u32::MAX,
+            height: u32::MAX,
+            rgba: Vec::new(),
+        };
+        let actual = RasterImage {
+            width: 1,
+            height: 1,
+            rgba: vec![0; 4],
+        };
+
+        assert_eq!(
+            compare_raster(&expected, &actual, RasterTolerance::EXACT),
+            Err(RasterMismatch::BufferSizeOverflow {
+                side: RasterSide::Expected,
+                width: u32::MAX,
+                height: u32::MAX,
+            })
+        );
     }
 }
