@@ -53,5 +53,6 @@ mod manifest;
 pub use manifest::{
     AssetByteSize, AssetByteSizeError, AssetContentHash, AssetContentHashError, AssetDensity,
     AssetDensityError, AssetFile, AssetFileName, AssetFileNameError, AssetPackId, AssetPackIdError,
-    AssetPackManifest, AssetPackVersion, AssetPath, AssetPathError, AssetPriority, ManifestError,
+    AssetPackManifest, AssetPackRef, AssetPackRefError, AssetPackVersion, AssetPath,
+    AssetPathError, AssetPriority, ManifestBindingError, ManifestError,
 };

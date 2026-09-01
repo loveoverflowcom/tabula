@@ -1037,7 +1037,31 @@ flowchart TB
 8. **Offline**: a previously-played game's pack stays cached, so a local/bot game works offline
    (Phase 3 already supports local play with no server).
 
-The Phase-3 manifest parser currently proves only that each path is a safe, canonical relative
+The Phase-3 asset identity is typed and pinned end-to-end:
+
+- `AssetPackRef`: the exact pack identity (`AssetPackId`) and version (`AssetPackVersion`), canonically formatted as `pack@version`.
+- `AssetPackManifest.game`: the reverse-DNS game ID to which the pack is bound.
+- `AssetPackManifest::validate_binding(...)`: pure proof that a fetched manifest matches the requested `AssetPackRef` and intended `GameId` before any asset handle or I/O exists.
+
+The resolution and loading pipeline flow:
+
+```text
+GamePresentation::asset_pack()
+        ↓
+   AssetPackRef
+        ↓
+  manifest fetch          [future]
+        ↓
+ parse + validate
+        ↓
+ validate_binding
+        ↓
+resource resolution       [future]
+        ↓
+  loaded handles          [future]
+```
+
+The Phase-3 manifest parser proves that each path is a safe, canonical relative
 pack path and that the manifest declares a structurally valid content hash. `AssetPath` does not
 yet prove that the path embeds that hash, and the parser does not verify file bytes. Before cache
 or CDN resolution ships, `xtask pack-assets` must emit and enforce the content-addressed,

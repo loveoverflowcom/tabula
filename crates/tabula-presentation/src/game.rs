@@ -2,21 +2,7 @@ use tabula_game_api::{A11yDescription, GameRules};
 
 use crate::{AudioCues, FrameCtx, InputEvent, RenderList};
 
-/// A phase-2 placeholder for a pack identity; backend-specific handles stay below this crate.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AssetPackRef {
-    pub game: String,
-    pub version: String,
-}
-impl AssetPackRef {
-    #[must_use]
-    pub fn new(game: impl Into<String>, version: impl Into<String>) -> Self {
-        Self {
-            game: game.into(),
-            version: version.into(),
-        }
-    }
-}
+pub use tabula_assets::AssetPackRef;
 
 /// A command requested by presentation. It never mutates authoritative state itself.
 #[derive(Clone, Debug, PartialEq, Eq)]

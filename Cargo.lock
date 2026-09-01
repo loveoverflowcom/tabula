@@ -1356,6 +1356,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
+ "tabula-assets",
  "tabula-core",
  "tabula-game-api",
  "tabula-game-chess",

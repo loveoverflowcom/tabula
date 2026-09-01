@@ -9,7 +9,7 @@
 
 #![allow(clippy::doc_markdown)]
 
-use std::{collections::BTreeSet, fmt};
+use std::{collections::BTreeSet, fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use tabula_core::{
@@ -31,8 +31,7 @@ use tabula_core::{
 /// @ai.evidence tests::manifest_rejects_hostile_and_ambiguous_file_metadata
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssetPackManifest {
-    pack: AssetPackId,
-    version: AssetPackVersion,
+    pack_ref: AssetPackRef,
     game: GameId,
     files: Vec<AssetFile>,
 }
@@ -47,6 +46,7 @@ impl AssetPackManifest {
     fn validate(spec: ManifestSpec) -> Result<Self, ManifestError> {
         let pack = AssetPackId::new(spec.pack).map_err(ManifestError::InvalidPackId)?;
         let version = AssetPackVersion::new(spec.version).map_err(ManifestError::InvalidVersion)?;
+        let pack_ref = AssetPackRef::new(pack, version);
         let game = GameId::new(spec.game).map_err(ManifestError::InvalidGameId)?;
 
         if spec.files.is_empty() {
@@ -68,23 +68,28 @@ impl AssetPackManifest {
         }
 
         Ok(Self {
-            pack,
-            version,
+            pack_ref,
             game,
             files,
         })
     }
 
+    /// Returns this manifest's exact pack reference.
+    #[must_use]
+    pub const fn pack_ref(&self) -> &AssetPackRef {
+        &self.pack_ref
+    }
+
     /// Returns the manifest's pack-local identity.
     #[must_use]
     pub const fn pack(&self) -> &AssetPackId {
-        &self.pack
+        self.pack_ref.pack()
     }
 
     /// Returns this asset pack's version, distinct from rules versioning.
     #[must_use]
     pub const fn version(&self) -> &AssetPackVersion {
-        &self.version
+        self.pack_ref.version()
     }
 
     /// Returns the game to which this pack is bound.
@@ -98,19 +103,93 @@ impl AssetPackManifest {
     pub fn files(&self) -> &[AssetFile] {
         &self.files
     }
+
+    /// Proves that this manifest matches the expected pack reference and game binding.
+    ///
+    /// @ai.role trust-boundary
+    /// @ai.domain assets.manifest
+    /// @ai.pure true
+    /// @ai.invariant expected-pack-and-game-binding
+    /// @ai.evidence tests::manifest_validate_binding_partitions
+    pub fn validate_binding(
+        &self,
+        expected_pack: &AssetPackRef,
+        expected_game: &GameId,
+    ) -> Result<(), ManifestBindingError> {
+        if self.pack() != expected_pack.pack() {
+            return Err(ManifestBindingError::PackMismatch {
+                expected: expected_pack.pack().clone(),
+                found: self.pack().clone(),
+            });
+        }
+        if self.version() != expected_pack.version() {
+            return Err(ManifestBindingError::VersionMismatch {
+                expected: expected_pack.version().clone(),
+                found: self.version().clone(),
+            });
+        }
+        if self.game() != expected_game {
+            return Err(ManifestBindingError::GameMismatch {
+                expected: expected_game.clone(),
+                found: self.game().clone(),
+            });
+        }
+        Ok(())
+    }
+}
+
+/// Why an [`AssetPackManifest`] failed binding validation against expected pack/game identity.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ManifestBindingError {
+    /// The manifest declares a different pack identity than requested.
+    #[error("asset pack id mismatch: expected {expected}, found {found}")]
+    PackMismatch {
+        expected: AssetPackId,
+        found: AssetPackId,
+    },
+    /// The manifest declares a different pack version than requested.
+    #[error("asset pack version mismatch: expected {expected}, found {found}")]
+    VersionMismatch {
+        expected: AssetPackVersion,
+        found: AssetPackVersion,
+    },
+    /// The manifest is bound to a different game than requested.
+    #[error("game binding mismatch: expected {expected}, found {found}")]
+    GameMismatch { expected: GameId, found: GameId },
 }
 
 /// A non-empty, non-whitespace asset-pack identity.
+///
+/// Pack identities must be valid path segments for pack addressing and cannot
+/// contain the reserved `@` delimiter used in canonical [`AssetPackRef`] strings.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AssetPackId(String);
 
 impl AssetPackId {
-    /// Validates a pack identity without imposing game-ID syntax.
+    /// Validates a pack identity without imposing reverse-DNS game-ID syntax.
     pub fn new(value: impl Into<String>) -> Result<Self, AssetPackIdError> {
         let value = value.into();
-        (!value.trim().is_empty())
-            .then_some(Self(value))
-            .ok_or(AssetPackIdError::Blank)
+        if value.is_empty() {
+            return Err(AssetPackIdError::Empty);
+        }
+        if value.trim().is_empty() {
+            return Err(AssetPackIdError::Blank);
+        }
+        if value.trim() != value {
+            return Err(AssetPackIdError::SurroundingWhitespace);
+        }
+        if value.contains('@') {
+            return Err(AssetPackIdError::ReservedDelimiter);
+        }
+        if value.contains('/')
+            || value.contains('\\')
+            || value.contains(':')
+            || value == "."
+            || value == ".."
+        {
+            return Err(AssetPackIdError::InvalidPathSegment);
+        }
+        Ok(Self(value))
     }
 
     /// Returns the original validated identity.
@@ -126,12 +205,46 @@ impl fmt::Display for AssetPackId {
     }
 }
 
+impl TryFrom<String> for AssetPackId {
+    type Error = AssetPackIdError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for AssetPackId {
+    type Error = AssetPackIdError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<AssetPackId> for String {
+    fn from(id: AssetPackId) -> Self {
+        id.0
+    }
+}
+
 /// Why an [`AssetPackId`] failed validation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum AssetPackIdError {
+    /// Pack identities cannot be empty.
+    #[error("asset pack id must not be empty")]
+    Empty,
     /// Pack identities must contain at least one non-whitespace character.
     #[error("asset pack id must not be blank")]
     Blank,
+    /// Pack identities cannot contain leading or trailing whitespace.
+    #[error("asset pack id must not contain surrounding whitespace")]
+    SurroundingWhitespace,
+    /// '@' is reserved as the delimiter separating pack ID from pack version.
+    #[error("asset pack id must not contain reserved '@' delimiter")]
+    ReservedDelimiter,
+    /// Pack identities must be valid path segments without path separators or dot-segments.
+    #[error("asset pack id contains invalid path segment characters")]
+    InvalidPathSegment,
 }
 
 /// A `SemVer` asset-pack version, deliberately distinct from canonical rules versions.
@@ -155,6 +268,149 @@ impl fmt::Display for AssetPackVersion {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(self.as_str())
     }
+}
+
+impl TryFrom<String> for AssetPackVersion {
+    type Error = GameVersionError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for AssetPackVersion {
+    type Error = GameVersionError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<AssetPackVersion> for String {
+    fn from(v: AssetPackVersion) -> Self {
+        v.as_str().to_string()
+    }
+}
+
+/// An immutable, validated reference to a specific versioned asset pack (`pack@version`).
+///
+/// It combines a validated [`AssetPackId`] and [`AssetPackVersion`] without public struct
+/// literals, guaranteeing that every constructed instance is valid and unambiguous.
+///
+/// @ai.role validated-domain-value
+/// @ai.domain assets.identity
+/// @ai.invariant canonical-pack-ref
+/// @ai.law parse-display-round-trip
+/// @ai.evidence tests::asset_pack_ref_parse_and_display_round_trip
+/// @ai.evidence tests::asset_pack_ref_constructor_and_parser_partitions
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
+pub struct AssetPackRef {
+    pack: AssetPackId,
+    version: AssetPackVersion,
+}
+
+impl AssetPackRef {
+    /// Creates a reference from already validated pack identity and version.
+    #[must_use]
+    pub const fn new(pack: AssetPackId, version: AssetPackVersion) -> Self {
+        Self { pack, version }
+    }
+
+    /// Creates a static reference declared by code.
+    ///
+    /// Static declarations are developer-owned configuration. An invalid
+    /// declaration is a programming error and fails loudly with a panic.
+    #[track_caller]
+    #[must_use]
+    pub fn from_static(pack: &'static str, version: &'static str) -> Self {
+        let pack = AssetPackId::new(pack).unwrap_or_else(|error| {
+            panic!("static asset pack id declaration must be valid: {error}")
+        });
+        let version = AssetPackVersion::new(version).unwrap_or_else(|error| {
+            panic!("static asset pack version declaration must be valid: {error}")
+        });
+        Self::new(pack, version)
+    }
+
+    /// Parses the canonical external textual representation: `pack@version`.
+    pub fn parse(value: &str) -> Result<Self, AssetPackRefError> {
+        let Some((pack_str, version_str)) = value.split_once('@') else {
+            return Err(AssetPackRefError::MissingSeparator(value.to_string()));
+        };
+        if version_str.contains('@') {
+            return Err(AssetPackRefError::MultipleSeparators(value.to_string()));
+        }
+        let pack = AssetPackId::new(pack_str).map_err(AssetPackRefError::InvalidPackId)?;
+        let version =
+            AssetPackVersion::new(version_str).map_err(AssetPackRefError::InvalidVersion)?;
+        Ok(Self::new(pack, version))
+    }
+
+    /// Returns the pack-local identity.
+    #[must_use]
+    pub const fn pack(&self) -> &AssetPackId {
+        &self.pack
+    }
+
+    /// Returns the asset pack version.
+    #[must_use]
+    pub const fn version(&self) -> &AssetPackVersion {
+        &self.version
+    }
+}
+
+impl fmt::Display for AssetPackRef {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}@{}", self.pack, self.version)
+    }
+}
+
+impl FromStr for AssetPackRef {
+    type Err = AssetPackRefError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
+    }
+}
+
+impl TryFrom<String> for AssetPackRef {
+    type Error = AssetPackRefError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::parse(&value)
+    }
+}
+
+impl TryFrom<&str> for AssetPackRef {
+    type Error = AssetPackRefError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::parse(value)
+    }
+}
+
+impl From<AssetPackRef> for String {
+    fn from(value: AssetPackRef) -> Self {
+        value.to_string()
+    }
+}
+
+/// Why an [`AssetPackRef`] failed validation during parsing.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum AssetPackRefError {
+    /// The string does not contain the required '@' separator.
+    #[error("missing '@' separator in asset pack reference: {0:?}")]
+    MissingSeparator(String),
+    /// The string contains multiple '@' delimiters.
+    #[error("multiple '@' separators in asset pack reference: {0:?}")]
+    MultipleSeparators(String),
+    /// The pack identity portion failed validation.
+    #[error("invalid asset pack id in reference: {0}")]
+    InvalidPackId(#[source] AssetPackIdError),
+    /// The version portion failed SemVer validation.
+    #[error("invalid asset pack version in reference: {0}")]
+    InvalidVersion(#[source] GameVersionError),
 }
 
 /// A stable, manifest-local file identity.
@@ -689,5 +945,297 @@ mod tests {
             AssetPackManifest::from_toml(source),
             Err(ManifestError::EmptyFiles)
         ));
+    }
+
+    #[test]
+    fn asset_pack_id_constructor_partitions() {
+        use super::{AssetPackId, AssetPackIdError};
+
+        for valid in ["sample", "alpha", "beta", "sample-pack_1", "pack2"] {
+            let id = AssetPackId::new(valid).unwrap();
+            assert_eq!(id.as_str(), valid);
+            assert_eq!(id.to_string(), valid);
+        }
+
+        assert_eq!(AssetPackId::new(""), Err(AssetPackIdError::Empty));
+        assert_eq!(AssetPackId::new("   "), Err(AssetPackIdError::Blank));
+        assert_eq!(
+            AssetPackId::new(" sample"),
+            Err(AssetPackIdError::SurroundingWhitespace)
+        );
+        assert_eq!(
+            AssetPackId::new("sample "),
+            Err(AssetPackIdError::SurroundingWhitespace)
+        );
+        assert_eq!(
+            AssetPackId::new("sample@legacy"),
+            Err(AssetPackIdError::ReservedDelimiter)
+        );
+        for invalid_path in [
+            "sample/pack",
+            "sample\\pack",
+            "sample:pack",
+            ".",
+            "..",
+            "foo/bar",
+        ] {
+            assert_eq!(
+                AssetPackId::new(invalid_path),
+                Err(AssetPackIdError::InvalidPathSegment),
+                "testing {invalid_path}"
+            );
+        }
+    }
+
+    #[test]
+    fn asset_pack_ref_constructor_and_parser_partitions() {
+        use super::{
+            AssetPackId, AssetPackIdError, AssetPackRef, AssetPackRefError, AssetPackVersion,
+        };
+        use tabula_core::ids::GameVersionError;
+
+        // Valid refs
+        for (valid, expected_pack, expected_version) in [
+            ("sample@0.1.0", "sample", "0.1.0"),
+            ("alpha@1.2.3", "alpha", "1.2.3"),
+            ("beta@2.0.0-alpha.1", "beta", "2.0.0-alpha.1"),
+            ("alpha@1.2.3+build.7", "alpha", "1.2.3+build.7"),
+        ] {
+            let parsed = AssetPackRef::parse(valid).unwrap();
+            assert_eq!(parsed.pack().as_str(), expected_pack);
+            assert_eq!(parsed.version().as_str(), expected_version);
+            assert_eq!(parsed.to_string(), valid);
+        }
+
+        // Invalid separator shapes
+        assert!(matches!(
+            AssetPackRef::parse("sample"),
+            Err(AssetPackRefError::MissingSeparator(_))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("@1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(AssetPackIdError::Empty))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("sample@"),
+            Err(AssetPackRefError::InvalidVersion(GameVersionError))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("sample@@1.0.0"),
+            Err(AssetPackRefError::MultipleSeparators(_))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("sample@1.0.0@extra"),
+            Err(AssetPackRefError::MultipleSeparators(_))
+        ));
+
+        // Invalid version
+        for invalid_ver in [
+            "sample@1",
+            "sample@1.2",
+            "sample@01.2.3",
+            "sample@v1.2.3",
+            "sample@not-semver",
+        ] {
+            assert!(
+                matches!(
+                    AssetPackRef::parse(invalid_ver),
+                    Err(AssetPackRefError::InvalidVersion(GameVersionError))
+                ),
+                "testing {invalid_ver}"
+            );
+        }
+
+        // Invalid pack IDs
+        assert!(matches!(
+            AssetPackRef::parse("   @1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(AssetPackIdError::Blank))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse(" sample@1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(
+                AssetPackIdError::SurroundingWhitespace
+            ))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("sample @1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(
+                AssetPackIdError::SurroundingWhitespace
+            ))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("sample/sub@1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(
+                AssetPackIdError::InvalidPathSegment
+            ))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("../sample@1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(
+                AssetPackIdError::InvalidPathSegment
+            ))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("..@1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(
+                AssetPackIdError::InvalidPathSegment
+            ))
+        ));
+
+        // Infallible constructor from validated parts
+        let pack = AssetPackId::new("sample").unwrap();
+        let version = AssetPackVersion::new("0.1.0").unwrap();
+        let direct = AssetPackRef::new(pack.clone(), version.clone());
+        assert_eq!(direct.pack(), &pack);
+        assert_eq!(direct.version(), &version);
+    }
+
+    #[test]
+    fn asset_pack_ref_parse_and_display_round_trip() {
+        use super::AssetPackRef;
+
+        for canonical in [
+            "sample@0.1.0",
+            "alpha@1.2.3",
+            "beta@2.0.0-alpha.1",
+            "alpha@1.2.3+build.7",
+            "my-custom-pack_1@0.0.1",
+        ] {
+            let parsed = AssetPackRef::parse(canonical).unwrap();
+            let displayed = parsed.to_string();
+            assert_eq!(displayed, canonical);
+            let reparsed = AssetPackRef::parse(&displayed).unwrap();
+            assert_eq!(parsed, reparsed);
+            assert_eq!(format!("{parsed}"), canonical);
+        }
+    }
+
+    #[test]
+    fn asset_pack_ref_serde_round_trip_and_validation_barrier() {
+        use super::AssetPackRef;
+        use tabula_core::{canonical_decode, canonical_encode};
+
+        #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
+        struct Config {
+            pack: AssetPackRef,
+        }
+
+        let pack_ref = AssetPackRef::parse("sample@0.1.0").unwrap();
+
+        // Round-trip through canonical postcard encoding
+        let encoded = canonical_encode(&pack_ref).unwrap();
+        let decoded: AssetPackRef = canonical_decode(&encoded).unwrap();
+        assert_eq!(decoded, pack_ref);
+
+        // Round-trip through TOML
+        let config = Config {
+            pack: pack_ref.clone(),
+        };
+        let toml_str = toml::to_string(&config).unwrap();
+        assert!(toml_str.contains("pack = \"sample@0.1.0\""));
+        let deserialized_config: Config = toml::from_str(&toml_str).unwrap();
+        assert_eq!(deserialized_config, config);
+
+        // Deserialization cannot bypass validation
+        for invalid in [
+            "pack = \"sample\"",
+            "pack = \"@0.1.0\"",
+            "pack = \"sample@\"",
+            "pack = \"sample@bad\"",
+            "pack = \"sample@@1.0.0\"",
+            "pack = \" sample@1.0.0\"",
+            "pack = \"sample/sub@1.0.0\"",
+            "pack = \"\"",
+        ] {
+            assert!(
+                toml::from_str::<Config>(invalid).is_err(),
+                "should reject {invalid}"
+            );
+        }
+
+        // Postcard raw invalid byte strings cannot forge AssetPackRef
+        let invalid_postcard = canonical_encode(&String::from("sample@@1.0.0")).unwrap();
+        assert!(canonical_decode::<AssetPackRef>(&invalid_postcard).is_err());
+    }
+
+    #[test]
+    fn asset_pack_ref_from_static_panics_on_invalid_literals() {
+        use super::AssetPackRef;
+
+        let valid = AssetPackRef::from_static("sample", "0.1.0");
+        assert_eq!(valid.to_string(), "sample@0.1.0");
+
+        let panic_on_id = std::panic::catch_unwind(|| {
+            let _ = AssetPackRef::from_static(" sample", "0.1.0");
+        });
+        assert!(panic_on_id.is_err());
+
+        let panic_on_delimiter = std::panic::catch_unwind(|| {
+            let _ = AssetPackRef::from_static("sample@bad", "0.1.0");
+        });
+        assert!(panic_on_delimiter.is_err());
+
+        let panic_on_version = std::panic::catch_unwind(|| {
+            let _ = AssetPackRef::from_static("sample", "bad_version");
+        });
+        assert!(panic_on_version.is_err());
+    }
+
+    #[test]
+    fn manifest_exposes_pack_ref_matching_pack_and_version() {
+        use super::AssetPackRef;
+
+        let parsed = AssetPackManifest::from_toml(&manifest(&file())).unwrap();
+        let pack_ref = parsed.pack_ref();
+
+        assert_eq!(pack_ref.pack(), parsed.pack());
+        assert_eq!(pack_ref.version(), parsed.version());
+        assert_eq!(pack_ref, &AssetPackRef::from_static("sample", "1.0.0"));
+    }
+
+    #[test]
+    fn manifest_validate_binding_partitions() {
+        use super::{AssetPackId, AssetPackRef, AssetPackVersion, ManifestBindingError};
+        use tabula_core::GameId;
+
+        let parsed = AssetPackManifest::from_toml(&manifest(&file())).unwrap();
+        let expected_pack = AssetPackRef::from_static("sample", "1.0.0");
+        let expected_game = GameId::new("com.example.sample").unwrap();
+
+        // Exact match passes
+        assert_eq!(
+            parsed.validate_binding(&expected_pack, &expected_game),
+            Ok(())
+        );
+
+        // Mutation A: wrong version -> VersionMismatch
+        let wrong_version_pack = AssetPackRef::from_static("sample", "0.2.0");
+        assert_eq!(
+            parsed.validate_binding(&wrong_version_pack, &expected_game),
+            Err(ManifestBindingError::VersionMismatch {
+                expected: AssetPackVersion::new("0.2.0").unwrap(),
+                found: AssetPackVersion::new("1.0.0").unwrap(),
+            })
+        );
+
+        // Mutation B: wrong pack name -> PackMismatch
+        let wrong_pack = AssetPackRef::from_static("alternate", "1.0.0");
+        assert_eq!(
+            parsed.validate_binding(&wrong_pack, &expected_game),
+            Err(ManifestBindingError::PackMismatch {
+                expected: AssetPackId::new("alternate").unwrap(),
+                found: AssetPackId::new("sample").unwrap(),
+            })
+        );
+
+        // Mutation C: wrong game binding -> GameMismatch
+        let wrong_game = GameId::new("com.example.alternate").unwrap();
+        assert_eq!(
+            parsed.validate_binding(&expected_pack, &wrong_game),
+            Err(ManifestBindingError::GameMismatch {
+                expected: GameId::new("com.example.alternate").unwrap(),
+                found: GameId::new("com.example.sample").unwrap(),
+            })
+        );
     }
 }

@@ -36,7 +36,7 @@
 //!     type Rules = TicTacToeRules;
 //!     type Local = Local;
 //!
-//!     fn asset_pack() -> AssetPackRef { AssetPackRef::new("tictactoe", "0.1.0") }
+//!     fn asset_pack() -> AssetPackRef { AssetPackRef::from_static("tictactoe", "0.1.0") }
 //!
 //!     fn present(view: &View, local: &Local, frame: &FrameCtx) -> RenderList {
 //!         // board grid   -> Layer::Board
