@@ -15,9 +15,9 @@ tabula-core = { workspace = true }
 serde       = { workspace = true }
 blake3      = { workspace = true }
 thiserror   = { workspace = true }
+toml        = { workspace = true }
 
 # Phase 3+: loader backends are per-target features, never a default.
-# toml         = { workspace = true }
 # reqwest      = { workspace = true, optional = true }
 # web-sys      = { workspace = true, optional = true }
 

@@ -882,6 +882,7 @@ dependencies = [
  "serde",
  "tabula-core",
  "thiserror 1.0.69",
+ "toml",
 ]
 
 [[package]]

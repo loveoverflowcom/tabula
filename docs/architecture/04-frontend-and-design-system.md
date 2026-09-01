@@ -1069,6 +1069,8 @@ white-knight = [0, 0, 128, 128]
 
 ## 13. Audio
 
+### 13.1 Stable Phase-2 contract
+
 - `tabula-presentation` owns the synchronous, renderer-neutral `AudioCue` / `AudioSink` contract;
   `renderer-macroquad` supplies the MVP sink.
 - A presenter derives ordered, pack-local one-shot cue IDs from authoritative projected
@@ -1079,8 +1081,19 @@ white-knight = [0, 0, 128, 128]
 - Playback failures (for example, an unavailable loaded handle) are non-authoritative: they cannot
   fail, roll back, or otherwise alter a match, its projection, or input processing.
 - Every audio cue has a visual equivalent (§10.4).
-- Volume, mute preferences, music, buses, and cooldown policy remain client/backend concerns until
-  a shipped behavior needs them.
+
+### 13.2 Deferred client and backend policy
+
+The following are product/backend policy, not fields or behavior in the stable `AudioCue` API:
+
+- mute and volume preferences;
+- voice ducking;
+- buses and music;
+- browser autoplay policy;
+- cooldown and voice-count policy.
+
+They remain deferred until a shipped behavior establishes a concrete requirement. They must not
+change the meaning of a pack-local cue identity or affect authoritative match behavior.
 
 ---
 

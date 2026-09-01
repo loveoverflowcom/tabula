@@ -32,6 +32,19 @@ impl AudioCue {
         Ok(Self { id })
     }
 
+    /// Creates a cue declared by this program.
+    ///
+    /// Static cue identities are developer-owned configuration. An invalid
+    /// declaration is therefore a programming error, unlike an unavailable
+    /// cue at an [`AudioSink`], which remains a non-authoritative runtime
+    /// failure.
+    #[track_caller]
+    #[must_use]
+    pub fn from_static(id: &'static str) -> Self {
+        Self::new(id)
+            .unwrap_or_else(|error| panic!("static audio cue declaration must be valid: {error:?}"))
+    }
+
     /// Returns this cue's pack-local semantic identity.
     #[must_use]
     pub fn id(&self) -> &str {
@@ -73,5 +86,11 @@ mod tests {
     fn empty_cue_id_is_rejected() {
         assert_eq!(AudioCue::new(""), Err(AudioCueError::EmptyId));
         assert_eq!(AudioCue::new("move").unwrap().id(), "move");
+    }
+
+    #[test]
+    #[should_panic(expected = "static audio cue declaration must be valid")]
+    fn invalid_static_cue_declaration_fails_loudly() {
+        let _ = AudioCue::from_static("");
     }
 }

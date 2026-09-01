@@ -42,27 +42,16 @@
 //! 4. **Density variants** are picked from `FrameCtx.dpi`, so a phone does not
 //!    download a desktop atlas.
 //!
-//! ## `AssetSource` is a port, so the CDN is replaceable
-//!
-//! ```rust,ignore
-//! pub trait AssetSource {
-//!     async fn fetch(&self, path: &str) -> Result<Bytes, AssetError>;
-//! }
-//! ```
-//!
-//! Backends: HTTP (`reqwest` native / `web-sys` browser), filesystem, embedded.
-//! All behind per-target features — this crate must compile for wasm32 without
-//! dragging in a native HTTP stack.
-//!
-//! ## Module layout when this becomes real
-//!
-//! ```text
-//! src/manifest.rs  pack schema, parsing, validation, atlas regions
-//! src/refs.rs      AssetRef, AssetHandle, AssetPackRef, handle lifetimes
-//! src/resolve.rs   AssetRef -> URL/path, density + priority selection
-//! src/cache.rs     local cache with blake3 integrity checking
-//! src/source/      AssetSource backends (http, fs, embedded) behind features
-//! src/loader.rs    progressive/priority loading, byte-level progress reporting
-//! ```
+//! This phase owns only the pure, validated manifest contract. Fetching,
+//! caching, integrity checking against bytes, density selection, decoding, and
+//! backend handles are deliberately deferred.
 
 #![forbid(unsafe_code)]
+
+mod manifest;
+
+pub use manifest::{
+    AssetByteSize, AssetByteSizeError, AssetContentHash, AssetContentHashError, AssetDensity,
+    AssetDensityError, AssetFile, AssetFileName, AssetFileNameError, AssetPackId, AssetPackIdError,
+    AssetPackManifest, AssetPackVersion, AssetPath, AssetPathError, AssetPriority, ManifestError,
+};
