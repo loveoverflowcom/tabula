@@ -158,10 +158,14 @@ pub enum ManifestBindingError {
     GameMismatch { expected: GameId, found: GameId },
 }
 
-/// A non-empty, non-whitespace asset-pack identity.
+/// A non-empty, non-whitespace, path-safe asset-pack identity.
 ///
-/// Pack identities must be valid path segments for pack addressing and cannot
-/// contain the reserved `@` delimiter used in canonical [`AssetPackRef`] strings.
+/// Pack identities must be valid URI/path-safe segments containing only ASCII
+/// alphanumeric characters, `'-'`, `'_'`, `'.'`, or `'~'`, and cannot be
+/// `.` or `..`. They cannot contain the reserved `@` delimiter used in
+/// canonical [`AssetPackRef`] strings, URI query/fragment delimiters (`?`, `#`),
+/// percent-encoding characters (`%`), path separators (`/`, `\`, `:`), or
+/// whitespace and control characters.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AssetPackId(String);
 
@@ -181,13 +185,17 @@ impl AssetPackId {
         if value.contains('@') {
             return Err(AssetPackIdError::ReservedDelimiter);
         }
-        if value.contains('/')
-            || value.contains('\\')
-            || value.contains(':')
-            || value == "."
-            || value == ".."
-        {
-            return Err(AssetPackIdError::InvalidPathSegment);
+        if value == "." || value == ".." {
+            return Err(AssetPackIdError::ReservedDotSegment);
+        }
+        if !value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric()
+                || byte == b'-'
+                || byte == b'_'
+                || byte == b'.'
+                || byte == b'~'
+        }) {
+            return Err(AssetPackIdError::InvalidCharacter);
         }
         Ok(Self(value))
     }
@@ -242,9 +250,14 @@ pub enum AssetPackIdError {
     /// '@' is reserved as the delimiter separating pack ID from pack version.
     #[error("asset pack id must not contain reserved '@' delimiter")]
     ReservedDelimiter,
-    /// Pack identities must be valid path segments without path separators or dot-segments.
-    #[error("asset pack id contains invalid path segment characters")]
-    InvalidPathSegment,
+    /// Pack identities cannot be '.' or '..' dot segments.
+    #[error("asset pack id must not be '.' or '..' dot segment")]
+    ReservedDotSegment,
+    /// Pack identities must contain only URI/path-safe characters (ASCII alphanumeric, '-', '_', '.', '~').
+    #[error(
+        "asset pack id must contain only ASCII alphanumeric, '-', '_', '.', or '~' characters"
+    )]
+    InvalidCharacter,
 }
 
 /// A `SemVer` asset-pack version, deliberately distinct from canonical rules versions.
@@ -951,7 +964,17 @@ mod tests {
     fn asset_pack_id_constructor_partitions() {
         use super::{AssetPackId, AssetPackIdError};
 
-        for valid in ["sample", "alpha", "beta", "sample-pack_1", "pack2"] {
+        for valid in [
+            "sample",
+            "alpha",
+            "beta",
+            "sample-pack_1",
+            "pack2",
+            "sample.name",
+            "sample~1",
+            "a-b_c.d~e",
+            "v1",
+        ] {
             let id = AssetPackId::new(valid).unwrap();
             assert_eq!(id.as_str(), valid);
             assert_eq!(id.to_string(), valid);
@@ -971,28 +994,42 @@ mod tests {
             AssetPackId::new("sample@legacy"),
             Err(AssetPackIdError::ReservedDelimiter)
         );
-        for invalid_path in [
+        assert_eq!(
+            AssetPackId::new("."),
+            Err(AssetPackIdError::ReservedDotSegment)
+        );
+        assert_eq!(
+            AssetPackId::new(".."),
+            Err(AssetPackIdError::ReservedDotSegment)
+        );
+
+        for invalid_char in [
+            "sample?debug",
+            "sample#fragment",
+            "sample%2Fother",
+            "sample\nlegacy",
+            "sample\tlegacy",
+            "sample\rlegacy",
             "sample/pack",
             "sample\\pack",
             "sample:pack",
-            ".",
-            "..",
-            "foo/bar",
+            "sample pack",
+            "sample€",
+            "sample!name",
+            "sample$name",
+            "sample*name",
         ] {
             assert_eq!(
-                AssetPackId::new(invalid_path),
-                Err(AssetPackIdError::InvalidPathSegment),
-                "testing {invalid_path}"
+                AssetPackId::new(invalid_char),
+                Err(AssetPackIdError::InvalidCharacter),
+                "testing {invalid_char}"
             );
         }
     }
 
     #[test]
-    fn asset_pack_ref_constructor_and_parser_partitions() {
-        use super::{
-            AssetPackId, AssetPackIdError, AssetPackRef, AssetPackRefError, AssetPackVersion,
-        };
-        use tabula_core::ids::GameVersionError;
+    fn asset_pack_ref_valid_parsing_and_construction() {
+        use super::{AssetPackId, AssetPackRef, AssetPackVersion};
 
         // Valid refs
         for (valid, expected_pack, expected_version) in [
@@ -1000,12 +1037,26 @@ mod tests {
             ("alpha@1.2.3", "alpha", "1.2.3"),
             ("beta@2.0.0-alpha.1", "beta", "2.0.0-alpha.1"),
             ("alpha@1.2.3+build.7", "alpha", "1.2.3+build.7"),
+            ("sample.pack~1@1.0.0", "sample.pack~1", "1.0.0"),
         ] {
             let parsed = AssetPackRef::parse(valid).unwrap();
             assert_eq!(parsed.pack().as_str(), expected_pack);
             assert_eq!(parsed.version().as_str(), expected_version);
             assert_eq!(parsed.to_string(), valid);
         }
+
+        // Infallible constructor from validated parts
+        let pack = AssetPackId::new("sample").unwrap();
+        let version = AssetPackVersion::new("0.1.0").unwrap();
+        let direct = AssetPackRef::new(pack.clone(), version.clone());
+        assert_eq!(direct.pack(), &pack);
+        assert_eq!(direct.version(), &version);
+    }
+
+    #[test]
+    fn asset_pack_ref_invalid_separator_and_version_partitions() {
+        use super::{AssetPackIdError, AssetPackRef, AssetPackRefError};
+        use tabula_core::ids::GameVersionError;
 
         // Invalid separator shapes
         assert!(matches!(
@@ -1045,8 +1096,12 @@ mod tests {
                 "testing {invalid_ver}"
             );
         }
+    }
 
-        // Invalid pack IDs
+    #[test]
+    fn asset_pack_ref_invalid_pack_id_partitions() {
+        use super::{AssetPackIdError, AssetPackRef, AssetPackRefError};
+
         assert!(matches!(
             AssetPackRef::parse("   @1.0.0"),
             Err(AssetPackRefError::InvalidPackId(AssetPackIdError::Blank))
@@ -1064,30 +1119,47 @@ mod tests {
             ))
         ));
         assert!(matches!(
+            AssetPackRef::parse("sample?debug@1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(
+                AssetPackIdError::InvalidCharacter
+            ))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("sample#frag@1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(
+                AssetPackIdError::InvalidCharacter
+            ))
+        ));
+        assert!(matches!(
+            AssetPackRef::parse("sample%20pack@1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(
+                AssetPackIdError::InvalidCharacter
+            ))
+        ));
+        assert!(matches!(
             AssetPackRef::parse("sample/sub@1.0.0"),
             Err(AssetPackRefError::InvalidPackId(
-                AssetPackIdError::InvalidPathSegment
+                AssetPackIdError::InvalidCharacter
             ))
         ));
         assert!(matches!(
             AssetPackRef::parse("../sample@1.0.0"),
             Err(AssetPackRefError::InvalidPackId(
-                AssetPackIdError::InvalidPathSegment
+                AssetPackIdError::InvalidCharacter
             ))
         ));
         assert!(matches!(
             AssetPackRef::parse("..@1.0.0"),
             Err(AssetPackRefError::InvalidPackId(
-                AssetPackIdError::InvalidPathSegment
+                AssetPackIdError::ReservedDotSegment
             ))
         ));
-
-        // Infallible constructor from validated parts
-        let pack = AssetPackId::new("sample").unwrap();
-        let version = AssetPackVersion::new("0.1.0").unwrap();
-        let direct = AssetPackRef::new(pack.clone(), version.clone());
-        assert_eq!(direct.pack(), &pack);
-        assert_eq!(direct.version(), &version);
+        assert!(matches!(
+            AssetPackRef::parse(".@1.0.0"),
+            Err(AssetPackRefError::InvalidPackId(
+                AssetPackIdError::ReservedDotSegment
+            ))
+        ));
     }
 
     #[test]

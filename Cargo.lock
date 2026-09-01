@@ -1361,6 +1361,7 @@ dependencies = [
  "tabula-game-api",
  "tabula-game-chess",
  "tabula-game-tictactoe",
+ "tabula-presentation",
  "tabula-testkit",
  "tempfile",
  "thiserror 1.0.69",

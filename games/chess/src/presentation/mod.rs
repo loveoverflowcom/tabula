@@ -3984,28 +3984,11 @@ mod tests {
     }
 
     #[test]
-    fn chess_declares_typed_asset_pack_matching_source_of_truth() {
+    fn chess_declares_typed_asset_pack_matching_metadata() {
         let pack = ChessPresentation::asset_pack();
         assert_eq!(pack, AssetPackRef::from_static("chess", "0.1.0"));
         assert_eq!(pack.to_string(), "chess@0.1.0");
         assert_eq!(pack.pack().as_str(), "chess");
         assert_eq!(pack.version().as_str(), "0.1.0");
-
-        // Cross-check against source-of-truth game.toml
-        let game_toml_str = include_str!("../../../chess/game.toml");
-        let pack_line = game_toml_str
-            .lines()
-            .find(|line| line.trim().starts_with("pack"))
-            .expect("game.toml must declare pack in [assets]");
-        let pack_value = pack_line
-            .split('=')
-            .nth(1)
-            .expect("pack line must have value")
-            .trim()
-            .trim_matches('"');
-
-        let manifest_pack_ref =
-            AssetPackRef::parse(pack_value).expect("game.toml asset pack must be valid");
-        assert_eq!(pack, manifest_pack_ref);
     }
 }

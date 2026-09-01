@@ -658,4 +658,40 @@ mod tests {
             "expected clean validation for valid pack, got {violations:?}"
         );
     }
+
+    #[test]
+    fn committed_game_manifests_declare_valid_asset_packs_matching_presenters() {
+        use tabula_game_chess::presentation::ChessPresentation;
+        use tabula_presentation::GamePresentation;
+
+        let chess_toml = include_str!("../../games/chess/game.toml");
+        let violations =
+            validate_game_toml("games/chess/game.toml", chess_toml, "com.tabula.chess").unwrap();
+        assert!(
+            violations.is_empty(),
+            "chess game.toml must be valid: {violations:?}"
+        );
+
+        let doc: GameToml = toml::from_str(chess_toml).unwrap();
+        let manifest_pack_str = doc
+            .assets
+            .as_ref()
+            .and_then(|a| a.pack.as_ref())
+            .expect("chess game.toml must declare [assets].pack");
+        let manifest_pack = AssetPackRef::parse(manifest_pack_str)
+            .expect("chess game.toml asset pack must be valid");
+        assert_eq!(ChessPresentation::asset_pack(), manifest_pack);
+
+        let tictactoe_toml = include_str!("../../games/tictactoe/game.toml");
+        let violations = validate_game_toml(
+            "games/tictactoe/game.toml",
+            tictactoe_toml,
+            "com.tabula.tictactoe",
+        )
+        .unwrap();
+        assert!(
+            violations.is_empty(),
+            "tictactoe game.toml must be valid: {violations:?}"
+        );
+    }
 }
