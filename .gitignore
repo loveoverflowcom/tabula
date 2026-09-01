@@ -33,6 +33,9 @@ deploy/**/*.secret.*
 __pycache__/
 *.py[cod]
 
+# local verification output
+/mutants.out/
+
 # local perf/profiling output
 perf.data*
 flamegraph.svg
