@@ -58,6 +58,8 @@
 pub mod conformance;
 pub mod determinism;
 pub mod fakes;
+#[cfg(feature = "presentation")]
+pub mod presentation;
 pub mod projection;
 pub mod replay;
 pub mod selfplay;
@@ -67,6 +69,8 @@ pub use conformance::{
     GameTestFixture, InvalidCommandScenario, RandomnessScenario, TerminalScenario,
 };
 pub use determinism::{RunTrace, Scenario};
+#[cfg(feature = "presentation")]
+pub use presentation::{render_list_snapshot, AsRenderList};
 pub use projection::{Secret, SecretModel};
 pub use replay::{
     CheckpointEvidence, Divergence, DivergenceKind, DivergenceLocation, DivergenceWindow,
