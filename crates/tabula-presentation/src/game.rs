@@ -83,5 +83,9 @@ pub trait GamePresentation: Send + 'static {
         view: &<Self::Rules as GameRules>::View,
         local: &mut Self::Local,
     ) -> Option<Intent<<Self::Rules as GameRules>::Command>>;
-    fn a11y(view: &<Self::Rules as GameRules>::View) -> A11yDescription;
+    /// Describes authoritative view facts together with local interaction state.
+    ///
+    /// Local state is required for honest descriptions of transient controls,
+    /// such as which option is selected in a promotion chooser.
+    fn a11y(view: &<Self::Rules as GameRules>::View, local: &Self::Local) -> A11yDescription;
 }

@@ -8,7 +8,9 @@
 use glam::{Affine2, Vec2};
 use macroquad::{models::Vertex, prelude as mq};
 use tabula_design::Color;
-use tabula_presentation::{Border, Corners, LinearGradient, Paint, Rect, RenderCmd, RenderError};
+use tabula_presentation::{
+    Border, Corners, LinearGradient, Paint, Rect, RenderCmd, RenderCmdKind, RenderError,
+};
 
 use crate::state::{logical_transform, Clip, DrawState};
 use crate::text;
@@ -72,10 +74,8 @@ pub(crate) fn execute(
             state.opacity.get(),
             transform,
         )?,
-        RenderCmd::Sprite { asset, .. } => {
-            return Err(RenderError(format!(
-                "renderer-macroquad cannot render sprite {asset:?}: asset loading is deferred to Phase 3"
-            )));
+        RenderCmd::Sprite { .. } => {
+            return Err(RenderError::Unsupported(RenderCmdKind::Sprite));
         }
         RenderCmd::PushClip { .. }
         | RenderCmd::PopClip { .. }
@@ -83,10 +83,77 @@ pub(crate) fn execute(
         | RenderCmd::PopTransform { .. }
         | RenderCmd::PushOpacity { .. }
         | RenderCmd::PopOpacity { .. } => {
-            return Err(RenderError(String::from(
+            return Err(RenderError::Execution(String::from(
                 "renderer-macroquad received a scope command as a primitive",
             )));
         }
+    }
+    Ok(())
+}
+
+/// Checks one primitive and its effective state without calling Macroquad.
+pub(crate) fn validate(
+    command: &RenderCmd,
+    state: DrawState,
+    camera: tabula_presentation::Camera2D,
+    frame: &tabula_presentation::FrameCtx,
+) -> Result<(), RenderError> {
+    validate_clip(state.clip, frame)?;
+    let transform = logical_transform(camera, state.transform);
+    if !transform.matrix2.x_axis.is_finite()
+        || !transform.matrix2.y_axis.is_finite()
+        || !transform.translation.is_finite()
+    {
+        return Err(RenderError::Execution(String::from(
+            "renderer-macroquad effective transform is not finite",
+        )));
+    }
+
+    match command {
+        RenderCmd::Sprite { .. } => Err(RenderError::Unsupported(RenderCmdKind::Sprite)),
+        RenderCmd::Text { .. } if !text::supports_transform(transform) => {
+            Err(RenderError::Unsupported(RenderCmdKind::Text))
+        }
+        RenderCmd::Rect { rect, radii, .. } => {
+            validate_transformed_points(&rounded_outline(*rect, *radii), transform)
+        }
+        RenderCmd::Path {
+            points,
+            fill: Some(_),
+            ..
+        } if !is_convex(points) => Err(RenderError::Unsupported(RenderCmdKind::Path)),
+        RenderCmd::Path { points, fill, .. } => {
+            if fill.is_some() && points.len() > usize::from(u16::MAX) {
+                return Err(RenderError::Execution(String::from(
+                    "renderer-macroquad polygon exceeds mesh index capacity",
+                )));
+            }
+            validate_transformed_points(points, transform)
+        }
+        RenderCmd::Text {
+            text: value,
+            style,
+            max_width,
+            ..
+        } => text::validate(value, *style, *max_width, frame),
+        RenderCmd::PushClip { .. } | RenderCmd::PopClip { .. } => Ok(()),
+        RenderCmd::PushTransform { .. }
+        | RenderCmd::PopTransform { .. }
+        | RenderCmd::PushOpacity { .. }
+        | RenderCmd::PopOpacity { .. } => Err(RenderError::Execution(String::from(
+            "renderer-macroquad received a scope command as a primitive",
+        ))),
+    }
+}
+
+fn validate_transformed_points(points: &[Vec2], transform: Affine2) -> Result<(), RenderError> {
+    if points
+        .iter()
+        .any(|point| !transform.transform_point2(*point).is_finite())
+    {
+        return Err(RenderError::Execution(String::from(
+            "renderer-macroquad transformed geometry is not finite",
+        )));
     }
     Ok(())
 }
@@ -95,6 +162,7 @@ fn configure_clip_viewport(
     clip: Clip,
     frame: &tabula_presentation::FrameCtx,
 ) -> Result<(), RenderError> {
+    validate_clip(clip, frame)?;
     let Clip::Rect(rect) = clip else {
         if matches!(clip, Clip::Unbounded) {
             mq::set_default_camera();
@@ -122,11 +190,23 @@ fn configure_clip_viewport(
     Ok(())
 }
 
+fn validate_clip(clip: Clip, frame: &tabula_presentation::FrameCtx) -> Result<(), RenderError> {
+    let Clip::Rect(rect) = clip else {
+        return Ok(());
+    };
+    let dpi = frame.dpi().get();
+    device_coordinate(rect.origin().x * dpi)?;
+    device_coordinate(rect.origin().y * dpi)?;
+    device_coordinate(rect.size().x * dpi)?;
+    device_coordinate(rect.size().y * dpi)?;
+    Ok(())
+}
+
 #[allow(clippy::cast_possible_truncation, clippy::float_arithmetic)]
 fn device_coordinate(value: f32) -> Result<i32, RenderError> {
     let rounded = value.round();
     if !rounded.is_finite() || rounded < i32::MIN as f32 || rounded > i32::MAX as f32 {
-        return Err(RenderError(String::from(
+        return Err(RenderError::Execution(String::from(
             "renderer-macroquad scissor exceeds supported device coordinates",
         )));
     }
@@ -161,9 +241,7 @@ fn draw_path(
 ) -> Result<(), RenderError> {
     if let Some(paint) = fill {
         if !is_convex(points) {
-            return Err(RenderError(String::from(
-                "renderer-macroquad supports filled convex paths only",
-            )));
+            return Err(RenderError::Unsupported(RenderCmdKind::Path));
         }
         let colors = match paint {
             Paint::Solid(color) => vec![apply_opacity(*color, opacity); points.len()],
@@ -185,7 +263,7 @@ fn draw_path(
 
 fn fill_convex(points: &[Vec2], colors: &[Color], transform: Affine2) -> Result<(), RenderError> {
     if points.len() != colors.len() || points.len() < 3 {
-        return Err(RenderError(String::from(
+        return Err(RenderError::Execution(String::from(
             "renderer-macroquad received invalid convex fill geometry",
         )));
     }
@@ -195,14 +273,14 @@ fn fill_convex(points: &[Vec2], colors: &[Color], transform: Affine2) -> Result<
     }
     let mut indices = Vec::with_capacity((points.len() - 2) * 3);
     for index in 1..(points.len() - 1) {
-        let first = u16::try_from(0).expect("zero fits in a mesh index");
+        let first = 0_u16;
         let second = u16::try_from(index).map_err(|_| {
-            RenderError(String::from(
+            RenderError::Execution(String::from(
                 "renderer-macroquad polygon exceeds mesh index capacity",
             ))
         })?;
         let third = u16::try_from(index + 1).map_err(|_| {
-            RenderError(String::from(
+            RenderError::Execution(String::from(
                 "renderer-macroquad polygon exceeds mesh index capacity",
             ))
         })?;

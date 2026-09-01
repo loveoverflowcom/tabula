@@ -943,8 +943,10 @@ traversal, focus rendering, and activation.
 #### The Board Reader (canvas accessibility fallback)
 
 A canvas is opaque to assistive technology. Rather than pretend otherwise, every game provides
-`describe(view, viewer) -> A11yDescription` (doc 02 §3), and the client renders it as a **real DOM
-mirror** on web (and as a native accessibility tree on mobile, via a small platform bridge).
+`describe(view, viewer) -> A11yDescription` (doc 02 §3). The client-side presentation layer derives
+its accessibility description from `(View, Local)` so transient controls such as promotion remain
+visible, then renders it as a **real DOM mirror** on web (and as a native accessibility tree on
+mobile, via a small platform bridge).
 
 ```rust
 pub struct A11yDescription {
@@ -963,10 +965,9 @@ pub struct A11yAction { pub id: ActionId, pub label: String, pub enabled: bool }
 ```
 
 On web, the game page renders this as a visually-hidden but focusable DOM tree next to the canvas,
-updated from the same `View`. Activating a DOM item dispatches the same `Intent` the canvas would.
-**Result: the game is playable entirely without the canvas.** This is why `describe()` is part of
-the game contract rather than an afterthought — it is not optional politeness, it is the only way a
-canvas game is accessible.
+updated from the same `(View, Local)` inputs. Activating a DOM item exposes an `ActionId`; mapping
+that id to an `Intent` is a Phase 5 residual, not yet an end-to-end path. The target is playability
+without the canvas. This is why `describe()` is part of the game contract rather than an afterthought.
 
 Phase plan: `status` + `actions` in Phase 5 (announcements and keyboard play), full `regions`
 navigation in Phase 9. Games with no `describe()` implementation are flagged in CI and may not be

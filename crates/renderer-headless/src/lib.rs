@@ -148,7 +148,8 @@ impl Renderer for HeadlessRenderer {
     ) -> Result<TextMetrics, RenderError> {
         let natural = text.chars().count() as f32 * 8.0;
         let width = max_width.map_or(natural, |max| natural.min(max.get()));
-        TextMetrics::new(glam::vec2(width, 16.0), 1).map_err(|error| RenderError(error.to_string()))
+        TextMetrics::new(glam::vec2(width, 16.0), 1)
+            .map_err(|error| RenderError::Execution(error.to_string()))
     }
 
     fn drain_input(&mut self) -> Vec<InputEvent> {

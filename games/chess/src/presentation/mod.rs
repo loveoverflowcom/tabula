@@ -17,14 +17,67 @@ use tabula_presentation::{
 
 use crate::{ChessRules, Color as ChessColor, Command, Piece, PieceKind, Square, Status, View};
 
-const PROMOTION_KINDS: [PieceKind; 4] = [
-    PieceKind::Queen,
-    PieceKind::Rook,
-    PieceKind::Bishop,
-    PieceKind::Knight,
+const PROMOTION_CHOICES: [PromotionChoice; 4] = [
+    PromotionChoice::Queen,
+    PromotionChoice::Rook,
+    PromotionChoice::Bishop,
+    PromotionChoice::Knight,
 ];
 const STATUS_HEIGHT_FRACTION: f32 = 0.12;
 const STATUS_MAX_HEIGHT: f32 = 48.0;
+
+/// The closed set of pieces a pawn may become at the end of a Chess move.
+///
+/// Keeping this separate from [`PieceKind`] makes Pawn and King unrepresentable
+/// in the presentation-local promotion chooser.
+///
+/// @ai.role closed-domain
+/// @ai.domain presentation.chess-promotion
+/// @ai.invariant only-promotable-piece-kinds
+/// @ai.evidence tests::promotion_choice_type_contains_exactly_the_four_upgrade_pieces
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PromotionChoice {
+    Queen,
+    Rook,
+    Bishop,
+    Knight,
+}
+
+impl PromotionChoice {
+    const fn piece_kind(self) -> PieceKind {
+        match self {
+            Self::Queen => PieceKind::Queen,
+            Self::Rook => PieceKind::Rook,
+            Self::Bishop => PieceKind::Bishop,
+            Self::Knight => PieceKind::Knight,
+        }
+    }
+
+    const fn previous(self) -> Self {
+        match self {
+            Self::Queen | Self::Rook => Self::Queen,
+            Self::Bishop => Self::Rook,
+            Self::Knight => Self::Bishop,
+        }
+    }
+
+    const fn next(self) -> Self {
+        match self {
+            Self::Queen => Self::Rook,
+            Self::Rook => Self::Bishop,
+            Self::Bishop | Self::Knight => Self::Knight,
+        }
+    }
+
+    const fn action_id(self) -> &'static str {
+        match self {
+            Self::Queen => "promote-queen",
+            Self::Rook => "promote-rook",
+            Self::Bishop => "promote-bishop",
+            Self::Knight => "promote-knight",
+        }
+    }
+}
 
 /// The validated, responsive geometry shared by board rendering and hit testing.
 ///
@@ -143,6 +196,7 @@ pub enum Interaction {
     Promotion {
         from: Square,
         to: Square,
+        selected: PromotionChoice,
     },
 }
 
@@ -292,29 +346,33 @@ impl GamePresentation for ChessPresentation {
                         None
                     }
                     Key::ArrowUp => {
-                        move_cursor(local, 0, 1);
+                        if !matches!(local.interaction, Interaction::Promotion { .. }) {
+                            move_cursor(local, 0, 1);
+                        }
                         None
                     }
                     Key::ArrowDown => {
-                        move_cursor(local, 0, -1);
+                        if !matches!(local.interaction, Interaction::Promotion { .. }) {
+                            move_cursor(local, 0, -1);
+                        }
                         None
                     }
                     Key::ArrowLeft => {
-                        move_cursor(local, -1, 0);
+                        if !move_promotion_selection(local, false) {
+                            move_cursor(local, -1, 0);
+                        }
                         None
                     }
                     Key::ArrowRight => {
-                        move_cursor(local, 1, 0);
+                        if !move_promotion_selection(local, true) {
+                            move_cursor(local, 1, 0);
+                        }
                         None
                     }
                     Key::Enter | Key::Space => {
-                        if let Interaction::Promotion { from, to } = local.interaction {
+                        if let Interaction::Promotion { from, to, selected } = local.interaction {
                             local.interaction = Interaction::Idle;
-                            Some(Intent::new(Command::Move {
-                                from: from.0,
-                                to: to.0,
-                                promotion: Some(PROMOTION_KINDS[0]),
-                            }))
+                            Some(promotion_intent(from, to, selected))
                         } else {
                             click_square(view, local, layout, Some(local.cursor), None)
                         }
@@ -326,8 +384,8 @@ impl GamePresentation for ChessPresentation {
         }
     }
 
-    fn a11y(view: &View) -> A11yDescription {
-        chess_a11y(view)
+    fn a11y(view: &View, local: &ChessLocal) -> A11yDescription {
+        chess_a11y(view, local)
     }
 }
 
@@ -339,24 +397,20 @@ fn click_square(
     square: Option<Square>,
     pointer: Option<PointerPosition>,
 ) -> Option<Intent<Command>> {
-    if let Interaction::Promotion { from, to } = local.interaction {
+    if let Interaction::Promotion { from, to, .. } = local.interaction {
         let selected_promotion = pointer.and_then(|position| {
-            PROMOTION_KINDS
+            PROMOTION_CHOICES
                 .iter()
                 .copied()
                 .enumerate()
-                .find_map(|(index, kind)| {
-                    let choice = promotion_choice_rect(layout, index)?;
-                    choice.contains(position.get()).then_some(kind)
+                .find_map(|(index, choice)| {
+                    let rect = promotion_choice_rect(layout, index)?;
+                    rect.contains(position.get()).then_some(choice)
                 })
         });
         if let Some(promotion) = selected_promotion {
             local.clear_interaction();
-            return Some(Intent::new(Command::Move {
-                from: from.0,
-                to: to.0,
-                promotion: Some(promotion),
-            }));
+            return Some(promotion_intent(from, to, promotion));
         }
         local.clear_interaction();
         return None;
@@ -395,7 +449,11 @@ fn click_square(
                 return None;
             }
             if has_promotion_command(view, from, square) {
-                local.interaction = Interaction::Promotion { from, to: square };
+                local.interaction = Interaction::Promotion {
+                    from,
+                    to: square,
+                    selected: PromotionChoice::Queen,
+                };
                 return None;
             }
             local.clear_interaction();
@@ -407,6 +465,30 @@ fn click_square(
         }
         Interaction::Promotion { .. } => None,
     }
+}
+
+fn promotion_intent(from: Square, to: Square, choice: PromotionChoice) -> Intent<Command> {
+    Intent::new(Command::Move {
+        from: from.0,
+        to: to.0,
+        promotion: Some(choice.piece_kind()),
+    })
+}
+
+fn move_promotion_selection(local: &mut ChessLocal, forward: bool) -> bool {
+    let Interaction::Promotion { from, to, selected } = local.interaction else {
+        return false;
+    };
+    local.interaction = Interaction::Promotion {
+        from,
+        to,
+        selected: if forward {
+            selected.next()
+        } else {
+            selected.previous()
+        },
+    };
+    true
 }
 
 fn has_promotion_command(view: &View, from: Square, to: Square) -> bool {
@@ -432,7 +514,7 @@ fn move_cursor(local: &mut ChessLocal, file_delta: i8, rank_delta: i8) {
 
 #[allow(clippy::cast_precision_loss, clippy::float_arithmetic)]
 fn promotion_choice_rect(layout: BoardLayout, index: usize) -> Option<Rect> {
-    if index >= PROMOTION_KINDS.len() || layout.square_size() <= 0.0 {
+    if index >= PROMOTION_CHOICES.len() || layout.square_size() <= 0.0 {
         return None;
     }
     let button_size = layout.square_size() * 0.9;
@@ -609,17 +691,30 @@ fn build_render_list(
                 z: 0,
             })?;
         }
-        for (index, kind) in PROMOTION_KINDS.iter().copied().enumerate() {
+        let selected = match local.interaction {
+            Interaction::Promotion { selected, .. } => selected,
+            Interaction::Idle | Interaction::Selected { .. } => PromotionChoice::Queen,
+        };
+        for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
             let Some(rect) = promotion_choice_rect(layout, index) else {
                 continue;
             };
+            let is_selected = choice == selected;
             builder.push(RenderCmd::Rect {
                 rect,
                 radii: Corners::uniform(theme.shape.sm.get())?,
-                fill: Some(Paint::Solid(theme.color.surface_container_high)),
+                fill: Some(Paint::Solid(if is_selected {
+                    theme.color.primary
+                } else {
+                    theme.color.surface_container_high
+                })),
                 border: Some(Border::new(
                     theme.focus.ring_width.get(),
-                    theme.color.primary,
+                    if is_selected {
+                        theme.color.selected
+                    } else {
+                        theme.color.primary
+                    },
                 )?),
                 layer: Layer::MODAL,
                 z: i16::try_from(index + 1).map_err(|_| RenderListError::InvalidGeometry)?,
@@ -627,7 +722,7 @@ fn build_render_list(
             builder.push(RenderCmd::Text {
                 text: piece_glyph(Piece {
                     color: promotion_color,
-                    kind,
+                    kind: choice.piece_kind(),
                 })
                 .to_owned(),
                 at: rect.origin()
@@ -643,7 +738,11 @@ fn build_render_list(
                 style: TextStyleToken::TitleLg,
                 align: Align::Center,
                 max_width: None,
-                color: theme.color.on_surface,
+                color: if is_selected {
+                    theme.color.on_primary
+                } else {
+                    theme.color.on_surface
+                },
                 layer: Layer::MODAL,
                 z: i16::try_from(index + 5).map_err(|_| RenderListError::InvalidGeometry)?,
             })?;
@@ -696,7 +795,7 @@ fn status_text(view: &View) -> String {
     }
 }
 
-fn chess_a11y(view: &View) -> A11yDescription {
+fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
     let items = view
         .board
         .iter()
@@ -724,7 +823,8 @@ fn chess_a11y(view: &View) -> A11yDescription {
         })
         .collect();
 
-    A11yDescription {
+    let promotion_active = matches!(local.interaction, Interaction::Promotion { .. });
+    let mut description = A11yDescription {
         status: status_text(view),
         regions: vec![A11yRegion {
             label: String::from("Chess board"),
@@ -733,9 +833,46 @@ fn chess_a11y(view: &View) -> A11yDescription {
         actions: vec![A11yAction {
             id: ActionId(String::from("move-square")),
             label: String::from("Select a piece and move it"),
-            enabled: matches!(view.status, Status::Playing) && view.you == Some(view.turn),
+            enabled: matches!(view.status, Status::Playing)
+                && view.you == Some(view.turn)
+                && !promotion_active,
         }],
+    };
+
+    if let Interaction::Promotion { selected, .. } = local.interaction {
+        description.status = format!(
+            "{} — choose promotion, {} selected",
+            description.status,
+            piece_name(selected.piece_kind())
+        );
+        description.regions.push(A11yRegion {
+            label: String::from("Promotion choices"),
+            items: PROMOTION_CHOICES
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(index, choice)| A11yItem {
+                    label: format!("Promote to {}", piece_name(choice.piece_kind())),
+                    position: format!("choice {}", index + 1),
+                    state: if choice == selected {
+                        String::from("selected")
+                    } else {
+                        String::from("available")
+                    },
+                    activates: Some(ActionId(String::from(choice.action_id()))),
+                })
+                .collect(),
+        });
+        description
+            .actions
+            .extend(PROMOTION_CHOICES.iter().copied().map(|choice| A11yAction {
+                id: ActionId(String::from(choice.action_id())),
+                label: format!("Promote to {}", piece_name(choice.piece_kind())),
+                enabled: true,
+            }));
     }
+
+    description
 }
 
 fn piece_glyph(piece: Piece) -> &'static str {
@@ -812,6 +949,10 @@ mod tests {
 
     fn pointer(layout: BoardLayout, square: Square) -> PointerPosition {
         clicked_center(layout.square_rect(square).expect("test square is valid"))
+    }
+
+    fn key(key: Key) -> InputEvent {
+        InputEvent::Key { key, pressed: true }
     }
 
     fn click(
@@ -1048,7 +1189,8 @@ mod tests {
             local.interaction(),
             Interaction::Promotion {
                 from: Square(52),
-                to: Square(60)
+                to: Square(60),
+                selected: PromotionChoice::Queen,
             }
         );
         let choice = promotion_choice_rect(layout, 0).unwrap();
@@ -1068,6 +1210,146 @@ mod tests {
                 promotion: Some(PieceKind::Queen)
             }
         );
+    }
+
+    fn promotion_fixture() -> (View, BoardLayout, ChessLocal) {
+        let state = crate::State::from_fen("k7/4P3/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        assert!(click(&view, &mut local, layout, Square::new(52).unwrap()).is_none());
+        assert!(click(&view, &mut local, layout, Square::new(60).unwrap()).is_none());
+        (view, layout, local)
+    }
+
+    #[test]
+    fn promotion_choice_type_contains_exactly_the_four_upgrade_pieces() {
+        assert_eq!(
+            PROMOTION_CHOICES.map(PromotionChoice::piece_kind),
+            [
+                PieceKind::Queen,
+                PieceKind::Rook,
+                PieceKind::Bishop,
+                PieceKind::Knight,
+            ]
+        );
+    }
+
+    #[test]
+    fn every_pointer_promotion_choice_emits_the_matching_command() {
+        for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
+            let (view, layout, mut local) = promotion_fixture();
+            let event = InputEvent::Pointer {
+                position: clicked_center(promotion_choice_rect(layout, index).unwrap()),
+                button: PointerButton::Primary,
+                phase: PointerPhase::Up,
+            };
+            local.set_viewport(viewport(640.0, 640.0));
+            assert_eq!(
+                ChessPresentation::on_input(&event, &view, &mut local)
+                    .expect("pointer promotion choice emits a command")
+                    .into_command(),
+                Command::Move {
+                    from: 52,
+                    to: 60,
+                    promotion: Some(choice.piece_kind()),
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn keyboard_promotion_navigation_is_clamped_and_commits_the_selected_piece() {
+        for (steps, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
+            let (view, _layout, mut local) = promotion_fixture();
+            for _ in 0..steps {
+                assert!(
+                    ChessPresentation::on_input(&key(Key::ArrowRight), &view, &mut local).is_none()
+                );
+            }
+            assert_eq!(
+                local.interaction(),
+                Interaction::Promotion {
+                    from: Square(52),
+                    to: Square(60),
+                    selected: choice,
+                }
+            );
+            let commit_key = if steps % 2 == 0 {
+                Key::Enter
+            } else {
+                Key::Space
+            };
+            assert_eq!(
+                ChessPresentation::on_input(&key(commit_key), &view, &mut local)
+                    .expect("keyboard promotion choice emits a command")
+                    .into_command(),
+                Command::Move {
+                    from: 52,
+                    to: 60,
+                    promotion: Some(choice.piece_kind()),
+                }
+            );
+            assert_eq!(local.interaction(), Interaction::Idle);
+        }
+
+        let (view, _layout, mut local) = promotion_fixture();
+        for _ in 0..PROMOTION_CHOICES.len() {
+            ChessPresentation::on_input(&key(Key::ArrowLeft), &view, &mut local);
+        }
+        assert_eq!(
+            local.interaction(),
+            Interaction::Promotion {
+                from: Square(52),
+                to: Square(60),
+                selected: PromotionChoice::Queen,
+            }
+        );
+
+        let (view, _layout, mut local) = promotion_fixture();
+        for _ in 0..PROMOTION_CHOICES.len() {
+            ChessPresentation::on_input(&key(Key::ArrowRight), &view, &mut local);
+        }
+        assert_eq!(
+            local.interaction(),
+            Interaction::Promotion {
+                from: Square(52),
+                to: Square(60),
+                selected: PromotionChoice::Knight,
+            }
+        );
+    }
+
+    #[test]
+    fn pointer_and_keyboard_promotion_selection_share_command_construction() {
+        let (view, layout, mut pointer_local) = promotion_fixture();
+        let pointer_event = InputEvent::Pointer {
+            position: clicked_center(promotion_choice_rect(layout, 2).unwrap()),
+            button: PointerButton::Primary,
+            phase: PointerPhase::Up,
+        };
+        pointer_local.set_viewport(viewport(640.0, 640.0));
+        let pointer_command =
+            ChessPresentation::on_input(&pointer_event, &view, &mut pointer_local)
+                .unwrap()
+                .into_command();
+
+        let (view, _layout, mut keyboard_local) = promotion_fixture();
+        ChessPresentation::on_input(&key(Key::ArrowRight), &view, &mut keyboard_local);
+        ChessPresentation::on_input(&key(Key::ArrowRight), &view, &mut keyboard_local);
+        let keyboard_command =
+            ChessPresentation::on_input(&key(Key::Enter), &view, &mut keyboard_local)
+                .unwrap()
+                .into_command();
+
+        assert_eq!(pointer_command, keyboard_command);
+    }
+
+    #[test]
+    fn escape_cancels_promotion_without_emitting_a_command() {
+        let (view, _layout, mut local) = promotion_fixture();
+        assert!(ChessPresentation::on_input(&key(Key::Escape), &view, &mut local).is_none());
+        assert_eq!(local.interaction(), Interaction::Idle);
     }
 
     #[test]
@@ -1194,7 +1476,7 @@ mod tests {
     #[test]
     fn a11y_describes_every_square_from_the_projection() {
         let state = crate::State::initial();
-        let description = ChessPresentation::a11y(&view(&state));
+        let description = ChessPresentation::a11y(&view(&state), &ChessLocal::default());
         assert!(description.status.contains("White"));
         assert_eq!(description.regions[0].items.len(), 64);
         assert!(description.regions[0]
@@ -1202,5 +1484,21 @@ mod tests {
             .iter()
             .any(|item| item.position == "e2" && item.label == "White pawn"));
         assert!(description.actions[0].enabled);
+    }
+
+    #[test]
+    fn a11y_describes_the_active_promotion_selection() {
+        let (view, _layout, local) = promotion_fixture();
+        let description = ChessPresentation::a11y(&view, &local);
+        assert!(description.status.contains("choose promotion"));
+        let choices = &description.regions[1];
+        assert_eq!(choices.label, "Promotion choices");
+        assert_eq!(choices.items.len(), PROMOTION_CHOICES.len());
+        assert_eq!(choices.items[0].state, "selected");
+        assert!(choices.items[1..]
+            .iter()
+            .all(|item| item.state == "available"));
+        assert_eq!(description.actions.len(), 1 + PROMOTION_CHOICES.len());
+        assert!(description.actions[1..].iter().all(|action| action.enabled));
     }
 }
