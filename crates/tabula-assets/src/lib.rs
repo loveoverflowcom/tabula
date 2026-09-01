@@ -27,7 +27,7 @@
 //! density  = 2
 //!
 //! [atlas.pieces]
-//! white-knight = [0, 0, 128, 128]   # so presenters use AssetRef("pieces/white-knight")
+//! white-knight = [0, 0, 128, 128]   # so presenters use AssetRef::new("pieces/white-knight")
 //! ```
 //!
 //! ## Rules that make the cache trustworthy

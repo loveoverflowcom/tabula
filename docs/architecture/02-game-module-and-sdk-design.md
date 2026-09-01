@@ -434,6 +434,10 @@ pub struct GameMetadata {
 }
 ```
 
+The Phase-2 Rust implementation uses private validated metadata fields. Authors construct a
+`GameMetadataSpec` from proof-bearing `I18nKey` and `AssetRef` values, then cross the boundary into
+`GameMetadata`; serialized metadata keeps the same string-shaped representation.
+
 ### 4.2 `GameCapabilities`
 
 **This is the most over-designable type in the platform.** The discipline: *every field must be
@@ -497,6 +501,8 @@ pub struct ChatPolicy {
     pub game_scoped: bool,
 }
 pub struct ChatChannelSpec { pub key: &'static str, pub kind: ChatKind }  // Table, Team, Dead, Whisper
+
+// Rust implementation: empty and duplicate channel keys are rejected; authored order is retained.
 
 pub enum VoiceRequirement { No, Optional, Recommended }
 

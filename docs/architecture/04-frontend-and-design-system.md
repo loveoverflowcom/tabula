@@ -325,6 +325,10 @@ flowchart LR
 board games at a few hundred draw items per frame, rebuilding is cheap and eliminates an entire
 class of stale-UI bugs.
 
+`InputEvent::Pointer` carries a finite `PointerPosition`. Renderer backends validate framework
+coordinates before emitting the backend-neutral event; the presentation contract does not impose a
+viewport bound, so an otherwise valid pointer may be outside the viewport.
+
 The public list is opaque and can only be produced by a validating builder. The backend receives a
 flat stream, but the builder models every clip, transform, and opacity scope as a tree group before
 flattening it. At each tree level, sibling draws and groups are stably ordered by `(layer, z)`;
@@ -1056,7 +1060,7 @@ bytes    = 8_112
 priority = "high"
 
 [atlas.pieces]
-# name -> (x, y, w, h) so presenters reference AssetRef("pieces/white-knight")
+# name -> (x, y, w, h) so presenters reference AssetRef::new("pieces/white-knight")
 white-knight = [0, 0, 128, 128]
 ```
 

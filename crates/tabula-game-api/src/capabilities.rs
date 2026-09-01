@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tabula_core::{BotLevel, Millis};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(try_from = "RawGameCapabilities")]
+#[serde(try_from = "GameCapabilitiesSpec")]
 pub struct GameCapabilities {
     seats: SeatSpec,
     turn_model: TurnModel,
@@ -30,24 +30,26 @@ pub struct GameCapabilities {
     max_match_duration: Option<Millis>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct RawGameCapabilities {
-    seats: SeatSpec,
-    turn_model: TurnModel,
-    hidden_information: bool,
-    spectators: SpectatorPolicy,
-    chat: ChatPolicy,
-    voice: VoiceRequirement,
-    ranked: RankedSupport,
-    async_turns: AsyncTurnPolicy,
-    reconnect: ReconnectPolicy,
-    substitution: SubstitutionPolicy,
-    pausable: bool,
-    durability: Durability,
-    client_preview: bool,
-    state_size: StateSizeClass,
-    apply_budget: Budget,
-    max_match_duration: Option<Millis>,
+/// Named capability authoring input. It may describe a cross-field-invalid
+/// combination; [`GameCapabilities::try_from_spec`] is the single validator.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GameCapabilitiesSpec {
+    pub seats: SeatSpec,
+    pub turn_model: TurnModel,
+    pub hidden_information: bool,
+    pub spectators: SpectatorPolicy,
+    pub chat: ChatPolicy,
+    pub voice: VoiceRequirement,
+    pub ranked: RankedSupport,
+    pub async_turns: AsyncTurnPolicy,
+    pub reconnect: ReconnectPolicy,
+    pub substitution: SubstitutionPolicy,
+    pub pausable: bool,
+    pub durability: Durability,
+    pub client_preview: bool,
+    pub state_size: StateSizeClass,
+    pub apply_budget: Budget,
+    pub max_match_duration: Option<Millis>,
 }
 
 /// Why a complete capability declaration is self-contradictory.
@@ -66,46 +68,29 @@ impl GameCapabilities {
     /// @ai.evidence crate::capabilities::tests::ranked_capabilities_require_durable_acknowledgement
     /// @ai.evidence crate::capabilities::tests::capability_deserialization_cannot_bypass_cross_field_validation
     #[allow(clippy::doc_markdown)]
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        seats: SeatSpec,
-        turn_model: TurnModel,
-        hidden_information: bool,
-        spectators: SpectatorPolicy,
-        chat: ChatPolicy,
-        voice: VoiceRequirement,
-        ranked: RankedSupport,
-        async_turns: AsyncTurnPolicy,
-        reconnect: ReconnectPolicy,
-        substitution: SubstitutionPolicy,
-        pausable: bool,
-        durability: Durability,
-        client_preview: bool,
-        state_size: StateSizeClass,
-        apply_budget: Budget,
-        max_match_duration: Option<Millis>,
-    ) -> Result<Self, GameCapabilitiesError> {
-        if matches!(ranked, RankedSupport::Yes { .. }) && durability != Durability::AckAfterPersist
+    pub fn try_from_spec(spec: GameCapabilitiesSpec) -> Result<Self, GameCapabilitiesError> {
+        if matches!(spec.ranked, RankedSupport::Yes { .. })
+            && spec.durability != Durability::AckAfterPersist
         {
             return Err(GameCapabilitiesError::RankedNeedsDurability);
         }
         Ok(Self {
-            seats,
-            turn_model,
-            hidden_information,
-            spectators,
-            chat,
-            voice,
-            ranked,
-            async_turns,
-            reconnect,
-            substitution,
-            pausable,
-            durability,
-            client_preview,
-            state_size,
-            apply_budget,
-            max_match_duration,
+            seats: spec.seats,
+            turn_model: spec.turn_model,
+            hidden_information: spec.hidden_information,
+            spectators: spec.spectators,
+            chat: spec.chat,
+            voice: spec.voice,
+            ranked: spec.ranked,
+            async_turns: spec.async_turns,
+            reconnect: spec.reconnect,
+            substitution: spec.substitution,
+            pausable: spec.pausable,
+            durability: spec.durability,
+            client_preview: spec.client_preview,
+            state_size: spec.state_size,
+            apply_budget: spec.apply_budget,
+            max_match_duration: spec.max_match_duration,
         })
     }
 
@@ -190,28 +175,11 @@ impl GameCapabilities {
     }
 }
 
-impl TryFrom<RawGameCapabilities> for GameCapabilities {
+impl TryFrom<GameCapabilitiesSpec> for GameCapabilities {
     type Error = GameCapabilitiesError;
 
-    fn try_from(raw: RawGameCapabilities) -> Result<Self, Self::Error> {
-        Self::new(
-            raw.seats,
-            raw.turn_model,
-            raw.hidden_information,
-            raw.spectators,
-            raw.chat,
-            raw.voice,
-            raw.ranked,
-            raw.async_turns,
-            raw.reconnect,
-            raw.substitution,
-            raw.pausable,
-            raw.durability,
-            raw.client_preview,
-            raw.state_size,
-            raw.apply_budget,
-            raw.max_match_duration,
-        )
+    fn try_from(spec: GameCapabilitiesSpec) -> Result<Self, Self::Error> {
+        Self::try_from_spec(spec)
     }
 }
 
@@ -429,19 +397,177 @@ pub enum SpectatorPolicy {
     GameControlled,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+/// Chat channels declared by a game. Channel identity is unique and authored
+/// order is retained because it is catalog-visible presentation data.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "RawChatPolicy")]
 pub struct ChatPolicy {
-    pub channels: Vec<ChatChannelSpec>,
-    pub game_scoped: bool,
+    channels: Vec<ChatChannelSpec>,
+    game_scoped: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ChatChannelSpec {
-    pub key: String,
-    pub kind: ChatKind,
+struct RawChatPolicy {
+    channels: Vec<RawChatChannelSpec>,
+    game_scoped: bool,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+/// Stable identity of a platform chat channel within one game.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
+pub struct ChatChannelKey(String);
+
+/// Why a chat channel key cannot identify a channel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ChatChannelKeyError {
+    #[error("chat channel key must not be empty")]
+    Empty,
+}
+
+impl ChatChannelKey {
+    pub fn new(value: impl Into<String>) -> Result<Self, ChatChannelKeyError> {
+        let value = value.into();
+        (!value.is_empty())
+            .then_some(Self(value))
+            .ok_or(ChatChannelKeyError::Empty)
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl TryFrom<String> for ChatChannelKey {
+    type Error = ChatChannelKeyError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for ChatChannelKey {
+    type Error = ChatChannelKeyError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<ChatChannelKey> for String {
+    fn from(value: ChatChannelKey) -> Self {
+        value.0
+    }
+}
+
+/// One channel's validated identity and transport kind.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "RawChatChannelSpec", into = "RawChatChannelSpec")]
+pub struct ChatChannelSpec {
+    key: ChatChannelKey,
+    kind: ChatKind,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct RawChatChannelSpec {
+    key: String,
+    kind: ChatKind,
+}
+
+/// Why a chat policy cannot be represented without ambiguity.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ChatPolicyError {
+    #[error("chat channel key is invalid: {0}")]
+    InvalidChannelKey(#[from] ChatChannelKeyError),
+    #[error("chat channel key `{key}` occurs more than once")]
+    DuplicateChannelKey { key: String },
+}
+
+impl ChatChannelSpec {
+    pub fn new(key: impl Into<String>, kind: ChatKind) -> Result<Self, ChatChannelKeyError> {
+        Ok(Self {
+            key: ChatChannelKey::new(key)?,
+            kind,
+        })
+    }
+
+    #[must_use]
+    pub const fn key(&self) -> &ChatChannelKey {
+        &self.key
+    }
+
+    #[must_use]
+    pub const fn kind(&self) -> ChatKind {
+        self.kind
+    }
+}
+
+impl TryFrom<RawChatChannelSpec> for ChatChannelSpec {
+    type Error = ChatChannelKeyError;
+
+    fn try_from(raw: RawChatChannelSpec) -> Result<Self, Self::Error> {
+        Self::new(raw.key, raw.kind)
+    }
+}
+
+impl From<ChatChannelSpec> for RawChatChannelSpec {
+    fn from(value: ChatChannelSpec) -> Self {
+        Self {
+            key: value.key.into(),
+            kind: value.kind,
+        }
+    }
+}
+
+impl ChatPolicy {
+    /// Rejects duplicate channel identities without changing authored order.
+    ///
+    /// @ai.role proof-boundary
+    /// @ai.domain game.capabilities.chat
+    /// @ai.invariant unique-chat-channel-identities
+    /// @ai.evidence crate::capabilities::tests::chat_policy_rejects_duplicate_channel_identity
+    #[allow(clippy::doc_markdown)]
+    pub fn new(channels: Vec<ChatChannelSpec>, game_scoped: bool) -> Result<Self, ChatPolicyError> {
+        let mut seen = Vec::with_capacity(channels.len());
+        for channel in &channels {
+            if seen.iter().any(|key: &ChatChannelKey| key == channel.key()) {
+                return Err(ChatPolicyError::DuplicateChannelKey {
+                    key: channel.key().as_str().to_owned(),
+                });
+            }
+            seen.push(channel.key().clone());
+        }
+        Ok(Self {
+            channels,
+            game_scoped,
+        })
+    }
+
+    #[must_use]
+    pub fn channels(&self) -> &[ChatChannelSpec] {
+        &self.channels
+    }
+
+    #[must_use]
+    pub const fn game_scoped(&self) -> bool {
+        self.game_scoped
+    }
+}
+
+impl TryFrom<RawChatPolicy> for ChatPolicy {
+    type Error = ChatPolicyError;
+
+    fn try_from(raw: RawChatPolicy) -> Result<Self, Self::Error> {
+        let channels = raw
+            .channels
+            .into_iter()
+            .map(ChatChannelSpec::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+        Self::new(channels, raw.game_scoped)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChatKind {
     Table,
     Team,
@@ -616,32 +742,29 @@ mod tests {
     #[test]
     fn ranked_capabilities_require_durable_acknowledgement() {
         let seats = SeatSpec::new(SeatCounts::range(2, 2).unwrap(), None, false, true);
-        let result = GameCapabilities::new(
+        let result = GameCapabilities::try_from(GameCapabilitiesSpec {
             seats,
-            TurnModel::StrictSequential,
-            false,
-            SpectatorPolicy::Live,
-            ChatPolicy {
-                channels: Vec::new(),
-                game_scoped: false,
-            },
-            VoiceRequirement::No,
-            RankedSupport::Yes {
+            turn_model: TurnModel::StrictSequential,
+            hidden_information: false,
+            spectators: SpectatorPolicy::Live,
+            chat: ChatPolicy::new(Vec::new(), false).unwrap(),
+            voice: VoiceRequirement::No,
+            ranked: RankedSupport::Yes {
                 rating: RatingKind::Elo,
             },
-            AsyncTurnPolicy::Disabled,
-            ReconnectPolicy {
+            async_turns: AsyncTurnPolicy::Disabled,
+            reconnect: ReconnectPolicy {
                 grace: Millis(1),
                 notify_rules: false,
             },
-            SubstitutionPolicy::Forbidden,
-            false,
-            Durability::AckAfterApply,
-            true,
-            StateSizeClass::Tiny,
-            Budget::default(),
-            None,
-        );
+            substitution: SubstitutionPolicy::Forbidden,
+            pausable: false,
+            durability: Durability::AckAfterApply,
+            client_preview: true,
+            state_size: StateSizeClass::Tiny,
+            apply_budget: Budget::default(),
+            max_match_duration: None,
+        });
         assert!(matches!(
             result,
             Err(GameCapabilitiesError::RankedNeedsDurability)
@@ -650,15 +773,12 @@ mod tests {
 
     #[test]
     fn capability_deserialization_cannot_bypass_cross_field_validation() {
-        let raw = RawGameCapabilities {
+        let raw = GameCapabilitiesSpec {
             seats: SeatSpec::new(SeatCounts::range(2, 2).unwrap(), None, false, true),
             turn_model: TurnModel::StrictSequential,
             hidden_information: false,
             spectators: SpectatorPolicy::Live,
-            chat: ChatPolicy {
-                channels: Vec::new(),
-                game_scoped: false,
-            },
+            chat: ChatPolicy::new(Vec::new(), false).unwrap(),
             voice: VoiceRequirement::No,
             ranked: RankedSupport::Yes {
                 rating: RatingKind::Elo,
@@ -688,44 +808,46 @@ mod tests {
             true,
             false,
         );
-        let capabilities = GameCapabilities::new(
+        let spec = GameCapabilitiesSpec {
             seats,
-            TurnModel::Phased,
-            true,
-            SpectatorPolicy::Delayed { by: Millis(30) },
-            ChatPolicy {
-                channels: vec![ChatChannelSpec {
-                    key: "table".into(),
-                    kind: ChatKind::Table,
-                }],
-                game_scoped: true,
-            },
-            VoiceRequirement::Recommended,
-            RankedSupport::Yes {
+            turn_model: TurnModel::Phased,
+            hidden_information: true,
+            spectators: SpectatorPolicy::Delayed { by: Millis(30) },
+            chat: ChatPolicy::new(
+                vec![ChatChannelSpec::new("table", ChatKind::Table).unwrap()],
+                true,
+            )
+            .unwrap(),
+            voice: VoiceRequirement::Recommended,
+            ranked: RankedSupport::Yes {
                 rating: RatingKind::Glicko2,
             },
-            AsyncTurnPolicy::Enabled {
+            async_turns: AsyncTurnPolicy::Enabled {
                 turn_deadline: Some(Millis(60)),
                 match_ttl: None,
             },
-            ReconnectPolicy {
+            reconnect: ReconnectPolicy {
                 grace: Millis(10),
                 notify_rules: true,
             },
-            SubstitutionPolicy::BotOnly {
+            substitution: SubstitutionPolicy::BotOnly {
                 levels: BotLevels::new(vec![BotLevel::Easy]).unwrap(),
             },
-            true,
-            Durability::AckAfterPersist,
-            true,
-            StateSizeClass::Medium,
-            Budget {
+            pausable: true,
+            durability: Durability::AckAfterPersist,
+            client_preview: true,
+            state_size: StateSizeClass::Medium,
+            apply_budget: Budget {
                 max_apply_micros: 1_000,
                 max_events_per_input: 2,
             },
-            Some(Millis(600)),
-        )
-        .unwrap();
+            max_match_duration: Some(Millis(600)),
+        };
+        let capabilities = GameCapabilities::try_from(spec.clone()).unwrap();
+        assert_eq!(
+            canonical_encode(&spec).unwrap(),
+            canonical_encode(&capabilities).unwrap()
+        );
 
         assert!(capabilities.seats().allowed().contains(2));
         assert_eq!(capabilities.seats().teams().unwrap().teams(), 2);
@@ -737,7 +859,7 @@ mod tests {
             capabilities.spectators(),
             SpectatorPolicy::Delayed { .. }
         ));
-        assert_eq!(capabilities.chat().channels.len(), 1);
+        assert_eq!(capabilities.chat().channels().len(), 1);
         assert!(matches!(
             capabilities.voice(),
             VoiceRequirement::Recommended
@@ -771,5 +893,41 @@ mod tests {
 
         let zero_team = tabula_core::canonical_encode(&(0u8, 1u8)).unwrap();
         assert!(tabula_core::canonical_decode::<TeamSpec>(&zero_team).is_err());
+    }
+
+    #[test]
+    fn chat_policy_rejects_duplicate_channel_identity() {
+        let channels = vec![
+            ChatChannelSpec::new("table", ChatKind::Table).unwrap(),
+            ChatChannelSpec::new("table", ChatKind::Whisper).unwrap(),
+        ];
+        assert_eq!(
+            ChatPolicy::new(channels, false),
+            Err(ChatPolicyError::DuplicateChannelKey {
+                key: "table".to_owned()
+            })
+        );
+        assert_eq!(
+            ChatChannelSpec::new("", ChatKind::Table),
+            Err(ChatChannelKeyError::Empty)
+        );
+        let empty_key = canonical_encode(&String::new()).unwrap();
+        assert!(tabula_core::canonical_decode::<ChatChannelKey>(&empty_key).is_err());
+
+        let raw = RawChatPolicy {
+            channels: vec![
+                RawChatChannelSpec {
+                    key: "table".to_owned(),
+                    kind: ChatKind::Table,
+                },
+                RawChatChannelSpec {
+                    key: "table".to_owned(),
+                    kind: ChatKind::Whisper,
+                },
+            ],
+            game_scoped: false,
+        };
+        let bytes = canonical_encode(&raw).unwrap();
+        assert!(tabula_core::canonical_decode::<ChatPolicy>(&bytes).is_err());
     }
 }

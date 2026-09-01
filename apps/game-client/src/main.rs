@@ -35,7 +35,7 @@ async fn main() {
                 ..
             } = event
             {
-                pointer = Some(position);
+                pointer = Some(position.get());
             }
         }
         let scene = tabula_game_client::smoke_scene(theme, pointer)

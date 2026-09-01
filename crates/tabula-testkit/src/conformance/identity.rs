@@ -16,8 +16,8 @@ use super::support;
 use super::GameTestFixture;
 
 pub fn check<F: GameTestFixture>() {
-    let id_a = F::Module::metadata().id.clone();
-    let id_b = F::Module::metadata().id.clone();
+    let id_a = F::Module::metadata().id().clone();
+    let id_b = F::Module::metadata().id().clone();
 
     assert!(
         !id_a.as_str().is_empty(),

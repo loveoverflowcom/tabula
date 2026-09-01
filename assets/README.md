@@ -37,7 +37,7 @@ priority = "critical"      # critical | high | low
 density  = 2
 
 [atlas.pieces]
-white-knight = [0, 0, 128, 128]   # presenters use AssetRef("pieces/white-knight")
+white-knight = [0, 0, 128, 128]   # presenters use AssetRef::new("pieces/white-knight")
 ```
 
 ## Rules

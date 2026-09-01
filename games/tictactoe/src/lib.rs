@@ -50,12 +50,12 @@ pub mod ui;
 use std::sync::LazyLock;
 
 use tabula_core::{BotLevel, SeatRoster};
-use tabula_game_api::metadata::AssetRef;
 use tabula_game_api::{
-    AsyncTurnPolicy, BotLevels, Budget, Category, ChatPolicy, Complexity, ConfigError,
-    ContentRating, Durability, DurationRange, GameCapabilities, GameId, GameMetadata, GameModule,
-    GameRules, GameVersion, RankedSupport, ReconnectPolicy, SeatCounts, SeatSpec, SpectatorPolicy,
-    StateSizeClass, SubstitutionPolicy, TurnModel, VoiceRequirement,
+    AssetRef, AsyncTurnPolicy, BotLevels, Budget, Category, ChatPolicy, Complexity, ConfigError,
+    ContentRating, Durability, DurationRange, GameCapabilities, GameCapabilitiesSpec, GameId,
+    GameMetadata, GameMetadataSpec, GameModule, GameRules, GameVersion, I18nKey, RankedSupport,
+    ReconnectPolicy, SeatCounts, SeatSpec, SpectatorPolicy, StateSizeClass, SubstitutionPolicy,
+    TurnModel, VoiceRequirement,
 };
 
 pub use rules::{
@@ -105,58 +105,58 @@ impl GameModule for TicTacToeModule {
 // Until those proc macros exist, these hand-written values and `game.toml` are
 // deliberately independent. `xtask check-manifests` validates each form, but
 // does not yet compare them; see xtask/README.md for the deferred cross-check.
-static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| GameMetadata {
-    id: GameId::new("com.tabula.tictactoe").expect("literal is a valid game id"),
-    version: GameVersion::new("0.2.0").expect("literal is valid SemVer"),
-    rules_version: TicTacToeRules::RULES_VERSION,
-    name_key: "game.tictactoe.name".to_owned(),
-    tagline_key: "game.tictactoe.tagline".to_owned(),
-    description_key: "game.tictactoe.description".to_owned(),
-    categories: vec![Category::Abstract],
-    tags: vec!["template".to_owned(), "tutorial".to_owned()],
-    estimated_minutes: DurationRange::new(1, 3).expect("literal range is ordered"),
-    complexity: Complexity::Light,
-    content_rating: ContentRating::Everyone,
-    icon: AssetRef("tictactoe/icon".to_owned()),
-    hero: AssetRef("tictactoe/hero".to_owned()),
-    rules_url_key: None,
+static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| {
+    GameMetadata::from(GameMetadataSpec {
+        id: GameId::new("com.tabula.tictactoe").expect("literal is a valid game id"),
+        version: GameVersion::new("0.2.0").expect("literal is valid SemVer"),
+        rules_version: TicTacToeRules::RULES_VERSION,
+        name_key: I18nKey::new("game.tictactoe.name").expect("literal is a valid i18n key"),
+        tagline_key: I18nKey::new("game.tictactoe.tagline").expect("literal is a valid i18n key"),
+        description_key: I18nKey::new("game.tictactoe.description")
+            .expect("literal is a valid i18n key"),
+        categories: vec![Category::Abstract],
+        tags: vec!["template".to_owned(), "tutorial".to_owned()],
+        estimated_minutes: DurationRange::new(1, 3).expect("literal range is ordered"),
+        complexity: Complexity::Light,
+        content_rating: ContentRating::Everyone,
+        icon: AssetRef::new("tictactoe/icon").expect("literal is a valid asset reference"),
+        hero: AssetRef::new("tictactoe/hero").expect("literal is a valid asset reference"),
+        rules_url_key: None,
+    })
 });
 
 static CAPABILITIES: LazyLock<GameCapabilities> = LazyLock::new(|| {
-    GameCapabilities::new(
-        SeatSpec::new(
+    GameCapabilities::try_from(GameCapabilitiesSpec {
+        seats: SeatSpec::new(
             SeatCounts::range(2, 2).expect("literal range is valid"),
             None,
             true,
             false,
         ),
-        TurnModel::StrictSequential,
-        false,
-        SpectatorPolicy::Live,
-        ChatPolicy {
-            channels: Vec::new(),
-            game_scoped: false,
-        },
-        VoiceRequirement::No,
-        RankedSupport::No,
-        AsyncTurnPolicy::Disabled,
-        ReconnectPolicy {
+        turn_model: TurnModel::StrictSequential,
+        hidden_information: false,
+        spectators: SpectatorPolicy::Live,
+        chat: ChatPolicy::new(Vec::new(), false).expect("empty chat policy is valid"),
+        voice: VoiceRequirement::No,
+        ranked: RankedSupport::No,
+        async_turns: AsyncTurnPolicy::Disabled,
+        reconnect: ReconnectPolicy {
             grace: tabula_core::Millis(60_000),
             notify_rules: false,
         },
-        SubstitutionPolicy::BotOnly {
+        substitution: SubstitutionPolicy::BotOnly {
             levels: BotLevels::new(vec![BotLevel::Trivial, BotLevel::Easy])
                 .expect("literal levels are non-empty and unique"),
         },
-        false,
-        Durability::AckAfterApply,
-        true,
-        StateSizeClass::Tiny,
-        Budget {
+        pausable: false,
+        durability: Durability::AckAfterApply,
+        client_preview: true,
+        state_size: StateSizeClass::Tiny,
+        apply_budget: Budget {
             max_apply_micros: 200,
             max_events_per_input: 4,
         },
-        Some(tabula_core::Millis(600_000)),
-    )
+        max_match_duration: Some(tabula_core::Millis(600_000)),
+    })
     .expect("tic-tac-toe capabilities are coherent")
 });
