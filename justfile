@@ -66,6 +66,15 @@ features:
     cargo check --workspace --no-default-features
     cargo check --workspace --all-features
 
+# No raw colors outside tabula-design. (doc 04 §8.1)
+colors:
+    cargo xtask check-no-raw-colors
+
+# Design tokens generation check.
+tokens-check:
+    cargo xtask gen-tokens
+    git diff --exit-code -- apps/web/style/tokens.css crates/tabula-design/src/generated.rs docs/ui/tokens.json
+
 audit:
     cargo deny check
 

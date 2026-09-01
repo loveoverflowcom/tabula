@@ -115,7 +115,8 @@ If you believe a phase gate is wrong, write an ADR — do not quietly cross it.
 
 ```bash
 just check          # cargo xtask check: fmt, clippy, test, check-deps, check-no-game-ids,
-                    # check-manifests, cargo deny check — in that order, stops at the first failure
+                    # check-manifests, generated design tokens current, check-no-raw-colors,
+                    # cargo deny check — in that order, stops at the first failure
 ```
 
 Or individually:
@@ -126,6 +127,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask check-deps            # the deps.toml matrix (I-1, I-15)
 cargo xtask check-no-game-ids     # I-9
 cargo xtask check-manifests       # game.toml/Cargo.toml schema and feature-shape validation
+cargo xtask check-no-raw-colors   # doc 04 §8.1 semantic design tokens
 cargo nextest run --workspace
 cargo deny check
 ```
