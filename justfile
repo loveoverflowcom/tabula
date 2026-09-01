@@ -84,6 +84,28 @@ replay file:
 replay-all:
     cargo xtask replay --all
 
+# ------------------------------------------------------------ verification
+# Development-only, opt-in verification tools. They are deliberately outside
+# `cargo xtask check` until real proof harnesses / a mutation budget justify CI.
+
+verification-install:
+    cargo install --locked kani-verifier --version 0.67.0
+    cargo kani setup
+    cargo install --locked cargo-mutants --version 27.1.0
+
+# Proves only that the pinned Kani installation and repository plumbing work.
+kani-smoke:
+    cargo kani --manifest-path verification/kani-smoke/Cargo.toml
+
+# Preview the mutation set for one named workspace package.
+mutants-list package:
+    cargo mutants --package {{package}} --list
+
+# Run mutation testing for one named workspace package. `.cargo/mutants.toml`
+# selects Nextest so this follows the repository's ordinary test runner policy.
+mutants package:
+    cargo mutants --package {{package}}
+
 # --------------------------------------------------------------- generation
 # All of these are committed outputs. CI fails if they are stale.
 
