@@ -223,15 +223,69 @@ impl BoardLayout {
         }
         Square::new(file + (7 - row) * 8)
     }
+
+    /// The deterministic pointer distance required to transition from a pressed
+    /// piece to an active drag.
+    ///
+    /// Deriving this threshold as a fraction of the responsive square size rather
+    /// than fixed device pixels ensures that drag activation feels consistent across
+    /// compact mobile viewports and large desktop screens without depending on OS
+    /// gesture frameworks or platform APIs.
+    ///
+    /// @ai.role pure-calculation
+    /// @ai.domain presentation.chess-layout
+    /// @ai.pure true
+    /// @ai.invariant deterministic-drag-threshold
+    /// @ai.evidence tests::movement_below_drag_threshold_remains_tap_candidate
+    /// @ai.evidence tests::movement_above_drag_threshold_enters_dragging
+    #[must_use]
+    #[allow(clippy::float_arithmetic)]
+    pub fn drag_threshold(self) -> f32 {
+        self.square_size * 0.15
+    }
+
+    /// Checks whether the Euclidean distance between two pointer coordinates exceeds
+    /// the drag activation threshold for this board layout.
+    ///
+    /// @ai.role pure-calculation
+    /// @ai.domain presentation.chess-layout
+    /// @ai.pure true
+    /// @ai.invariant deterministic-drag-threshold-check
+    /// @ai.evidence tests::movement_below_drag_threshold_remains_tap_candidate
+    /// @ai.evidence tests::movement_above_drag_threshold_enters_dragging
+    #[must_use]
+    #[allow(clippy::float_arithmetic)]
+    pub fn exceeds_drag_threshold(self, start: PointerPosition, current: PointerPosition) -> bool {
+        let delta = current.get() - start.get();
+        let threshold = self.drag_threshold();
+        delta.length_squared() >= threshold * threshold
+    }
 }
 
 /// Mutually exclusive interaction modes owned by the client only.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+///
+/// @ai.role closed-domain
+/// @ai.domain presentation.chess-interaction
+/// @ai.invariant valid-drag-and-selection-state
+/// @ai.evidence tests::pointer_selection_is_local_and_valid_destination_emits_one_command
+/// @ai.evidence tests::pointer_down_on_movable_piece_enters_pressed_state
+/// @ai.evidence tests::movement_above_drag_threshold_enters_dragging
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Interaction {
     #[default]
     Idle,
     Selected {
         square: Square,
+    },
+    Pressed {
+        from: Square,
+        down_at: PointerPosition,
+        was_selected: bool,
+    },
+    Dragging {
+        from: Square,
+        pointer: PointerPosition,
+        over: Option<Square>,
     },
     Promotion {
         from: Square,
@@ -399,6 +453,7 @@ impl GamePresentation for ChessPresentation {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn on_input(
         input: &InputEvent,
         view: &View,
@@ -411,18 +466,94 @@ impl GamePresentation for ChessPresentation {
                 button,
                 phase,
             } => match phase {
-                PointerPhase::Move | PointerPhase::Down => {
+                PointerPhase::Down => {
                     local.hover = layout.square_at(*position);
                     if let Some(square) = local.hover {
                         local
                             .focus
                             .set_pointer_focus(Some(FocusId::new(u32::from(square.0))));
                     }
+                    if *button == PointerButton::Primary {
+                        let is_promotion =
+                            matches!(local.interaction, Interaction::Promotion { .. });
+                        if !is_promotion
+                            && matches!(view.status, Status::Playing)
+                            && view.you == Some(view.turn)
+                        {
+                            if let Some(square) = local.hover {
+                                let own_piece = view
+                                    .board
+                                    .get(usize::from(square.0))
+                                    .and_then(|piece| *piece)
+                                    .is_some_and(|piece| Some(piece.color) == view.you);
+                                if own_piece {
+                                    let was_selected = matches!(
+                                        local.interaction,
+                                        Interaction::Selected { square: prev } if prev == square
+                                    );
+                                    local.interaction = Interaction::Pressed {
+                                        from: square,
+                                        down_at: *position,
+                                        was_selected,
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    None
+                }
+                PointerPhase::Move => {
+                    local.hover = layout.square_at(*position);
+                    if let Some(square) = local.hover {
+                        local
+                            .focus
+                            .set_pointer_focus(Some(FocusId::new(u32::from(square.0))));
+                    }
+                    match local.interaction {
+                        Interaction::Pressed {
+                            from,
+                            down_at,
+                            was_selected,
+                        } => {
+                            if layout.exceeds_drag_threshold(down_at, *position) {
+                                local.interaction = Interaction::Dragging {
+                                    from,
+                                    pointer: *position,
+                                    over: local.hover,
+                                };
+                            } else {
+                                local.interaction = Interaction::Pressed {
+                                    from,
+                                    down_at,
+                                    was_selected,
+                                };
+                            }
+                        }
+                        Interaction::Dragging { from, .. } => {
+                            local.interaction = Interaction::Dragging {
+                                from,
+                                pointer: *position,
+                                over: local.hover,
+                            };
+                        }
+                        Interaction::Idle
+                        | Interaction::Selected { .. }
+                        | Interaction::Promotion { .. } => {}
+                    }
                     None
                 }
                 PointerPhase::Cancel => {
+                    match local.interaction {
+                        Interaction::Dragging { from, .. } | Interaction::Pressed { from, .. } => {
+                            local.interaction = Interaction::Selected { square: from };
+                        }
+                        Interaction::Idle
+                        | Interaction::Selected { .. }
+                        | Interaction::Promotion { .. } => {
+                            local.clear_interaction();
+                        }
+                    }
                     local.hover = None;
-                    local.clear_interaction();
                     None
                 }
                 PointerPhase::Up if *button == PointerButton::Primary => {
@@ -433,7 +564,55 @@ impl GamePresentation for ChessPresentation {
                             .focus
                             .set_pointer_focus(Some(FocusId::new(u32::from(square.0))));
                     }
-                    click_square(view, local, layout, square, Some(*position))
+                    match local.interaction {
+                        Interaction::Dragging { from, .. } => {
+                            if let Some(to) = square {
+                                if has_promotion_command(view, from, to) {
+                                    local.interaction = Interaction::Promotion {
+                                        from,
+                                        to,
+                                        selected: PromotionChoice::Queen,
+                                    };
+                                    local.focus.set_current(Some(promotion_choice_focus_id(
+                                        PromotionChoice::Queen,
+                                    )));
+                                    None
+                                } else if legal_destination(view, from, to) {
+                                    local.clear_interaction();
+                                    Some(move_intent(from, to))
+                                } else {
+                                    local.interaction = Interaction::Selected { square: from };
+                                    None
+                                }
+                            } else {
+                                local.interaction = Interaction::Selected { square: from };
+                                None
+                            }
+                        }
+                        Interaction::Pressed {
+                            from, was_selected, ..
+                        } => {
+                            if square == Some(from) {
+                                if was_selected {
+                                    local.clear_interaction();
+                                } else {
+                                    local.interaction = Interaction::Selected { square: from };
+                                }
+                                None
+                            } else if let Some(to) = square {
+                                local.interaction = Interaction::Selected { square: from };
+                                click_square(view, local, layout, Some(to), Some(*position))
+                            } else {
+                                local.clear_interaction();
+                                None
+                            }
+                        }
+                        Interaction::Idle
+                        | Interaction::Selected { .. }
+                        | Interaction::Promotion { .. } => {
+                            click_square(view, local, layout, square, Some(*position))
+                        }
+                    }
                 }
                 PointerPhase::Up => None,
             },
@@ -549,7 +728,9 @@ fn click_square(
             }
             None
         }
-        Interaction::Selected { square: from } => {
+        Interaction::Selected { square: from }
+        | Interaction::Pressed { from, .. }
+        | Interaction::Dragging { from, .. } => {
             if square == from {
                 local.clear_interaction();
                 return None;
@@ -573,14 +754,18 @@ fn click_square(
                 return None;
             }
             local.clear_interaction();
-            Some(Intent::new(Command::Move {
-                from: from.0,
-                to: square.0,
-                promotion: None,
-            }))
+            Some(move_intent(from, square))
         }
         Interaction::Promotion { .. } => None,
     }
+}
+
+fn move_intent(from: Square, to: Square) -> Intent<Command> {
+    Intent::new(Command::Move {
+        from: from.0,
+        to: to.0,
+        promotion: None,
+    })
 }
 
 fn promotion_intent(from: Square, to: Square, choice: PromotionChoice) -> Intent<Command> {
@@ -677,14 +862,20 @@ fn build_render_list(
         let square = Square::new(square).ok_or(RenderListError::InvalidGeometry)?;
         let is_selected = matches!(
             local.interaction,
-            Interaction::Selected { square: selected } if selected == square
+            Interaction::Selected { square: selected }
+                | Interaction::Pressed { from: selected, .. }
+                | Interaction::Dragging { from: selected, .. }
+            if selected == square
         );
         let is_last_move = local
             .last_move
             .is_some_and(|(from, to)| from == square || to == square);
         let is_legal_destination = matches!(
             local.interaction,
-            Interaction::Selected { square: from } if legal_destination(view, from, square)
+            Interaction::Selected { square: from }
+                | Interaction::Pressed { from, .. }
+                | Interaction::Dragging { from, .. }
+            if legal_destination(view, from, square)
         );
         let is_focused = local.focus.is_focus_visible()
             && !is_promotion
@@ -725,6 +916,34 @@ fn build_render_list(
                 &theme,
             )?)?;
         }
+        if let Interaction::Dragging {
+            from,
+            over: Some(over_square),
+            ..
+        } = local.interaction
+        {
+            if over_square == square {
+                if legal_destination(view, from, square)
+                    || has_promotion_command(view, from, square)
+                {
+                    builder.push(outline(
+                        rect,
+                        theme.color.legal_target,
+                        Layer::OVERLAY,
+                        120,
+                        &theme,
+                    )?)?;
+                } else if square != from {
+                    builder.push(outline(
+                        rect,
+                        theme.color.illegal_target,
+                        Layer::OVERLAY,
+                        120,
+                        &theme,
+                    )?)?;
+                }
+            }
+        }
         if is_focused {
             builder.push(outline(
                 rect,
@@ -751,6 +970,11 @@ fn build_render_list(
         },
     );
 
+    let dragged_from = match local.interaction {
+        Interaction::Dragging { from, .. } => Some(from),
+        _ => None,
+    };
+
     for (index, piece) in view.board.iter().enumerate() {
         let Some(piece) = piece else {
             continue;
@@ -758,8 +982,9 @@ fn build_render_list(
         let square =
             Square::new(u8::try_from(index).map_err(|_| RenderListError::InvalidGeometry)?)
                 .ok_or(RenderListError::InvalidGeometry)?;
-        if in_transit_dest == Some(square) {
-            // Avoid double-drawing destination piece while animation is in flight
+        if in_transit_dest == Some(square) || dragged_from == Some(square) {
+            // Avoid double-drawing destination piece while animation is in flight,
+            // or source piece while dragging is active.
             continue;
         }
         let rect = layout
@@ -817,6 +1042,23 @@ fn build_render_list(
         }
     }
 
+    if let Interaction::Dragging { from, pointer, .. } = local.interaction {
+        if let Some(Some(piece)) = view.board.get(usize::from(from.0)) {
+            let style = TextStyleToken::DisplaySm;
+            let line_height = theme.text_style(style).line_height().get();
+            builder.push(RenderCmd::Text {
+                text: piece_glyph(*piece).to_owned(),
+                at: Vec2::new(pointer.get().x, pointer.get().y - line_height * 0.5),
+                style,
+                align: Align::Center,
+                max_width: None,
+                color: piece_color(*piece, &theme),
+                layer: Layer::PIECES,
+                z: IN_TRANSIT_PIECE_Z + 10,
+            })?;
+        }
+    }
+
     let status = status_text(view);
     let status_rect = layout.status();
     let status_line_height = theme
@@ -855,7 +1097,7 @@ fn build_render_list(
         }
         let selected = match local.interaction {
             Interaction::Promotion { selected, .. } => selected,
-            Interaction::Idle | Interaction::Selected { .. } => PromotionChoice::Queen,
+            _ => PromotionChoice::Queen,
         };
         for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
             let Some(rect) = promotion_choice_rect(layout, index) else {
@@ -2414,5 +2656,957 @@ mod tests {
         );
         let list = ChessPresentation::present(&view, &local, &frame);
         assert_render_list_snapshot!("chess_terminal_checkmate_hud", list);
+    }
+
+    #[test]
+    fn pointer_down_on_movable_piece_enters_pressed_state() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let down_pos = pointer(layout, Square(12));
+        let down_event = InputEvent::Pointer {
+            position: down_pos,
+            button: PointerButton::Primary,
+            phase: PointerPhase::Down,
+        };
+
+        let before = canonical_encode(&state).unwrap();
+        let intent = ChessPresentation::on_input(&down_event, &view, &mut local);
+        assert!(intent.is_none());
+        assert_eq!(canonical_encode(&state).unwrap(), before);
+        assert_eq!(
+            local.interaction(),
+            Interaction::Pressed {
+                from: Square(12),
+                down_at: down_pos,
+                was_selected: false,
+            }
+        );
+    }
+
+    #[test]
+    fn movement_below_drag_threshold_remains_tap_candidate() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let down_pos = pointer(layout, Square(12));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: down_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+
+        // Move by half the threshold distance (small jitter)
+        let jitter_pos =
+            PointerPosition::new(down_pos.get() + Vec2::new(layout.drag_threshold() * 0.5, 0.0))
+                .unwrap();
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: jitter_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        assert_eq!(
+            local.interaction(),
+            Interaction::Pressed {
+                from: Square(12),
+                down_at: down_pos,
+                was_selected: false,
+            }
+        );
+
+        // Releasing within the same square commits selection as a tap
+        let up_event = InputEvent::Pointer {
+            position: jitter_pos,
+            button: PointerButton::Primary,
+            phase: PointerPhase::Up,
+        };
+        assert!(ChessPresentation::on_input(&up_event, &view, &mut local).is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Selected { square: Square(12) }
+        );
+    }
+
+    #[test]
+    fn movement_above_drag_threshold_enters_dragging() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let down_pos = pointer(layout, Square(12));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: down_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+
+        let drag_pos =
+            PointerPosition::new(down_pos.get() + Vec2::new(0.0, -layout.drag_threshold() * 1.5))
+                .unwrap();
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: drag_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        assert_eq!(
+            local.interaction(),
+            Interaction::Dragging {
+                from: Square(12),
+                pointer: drag_pos,
+                over: layout.square_at(drag_pos),
+            }
+        );
+        assert_eq!(local.focus().modality(), FocusModality::Pointer);
+        assert!(!local.focus().is_focus_visible());
+    }
+
+    #[test]
+    fn drag_source_identity_never_changes() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let down_pos = pointer(layout, Square(12));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: down_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+
+        for target_square in [Square(20), Square(28), Square(36), Square(63)] {
+            let target_pos = pointer(layout, target_square);
+            ChessPresentation::on_input(
+                &InputEvent::Pointer {
+                    position: target_pos,
+                    button: PointerButton::Primary,
+                    phase: PointerPhase::Move,
+                },
+                &view,
+                &mut local,
+            );
+            assert_eq!(
+                local.interaction(),
+                Interaction::Dragging {
+                    from: Square(12),
+                    pointer: target_pos,
+                    over: Some(target_square),
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn drag_outside_board_is_total_and_has_no_target() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let down_pos = pointer(layout, Square(12));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: down_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+
+        let outside_pos = PointerPosition::new(Vec2::new(-50.0, -50.0)).unwrap();
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: outside_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        assert_eq!(
+            local.interaction(),
+            Interaction::Dragging {
+                from: Square(12),
+                pointer: outside_pos,
+                over: None,
+            }
+        );
+
+        let up_intent = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: outside_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Up,
+            },
+            &view,
+            &mut local,
+        );
+        assert!(up_intent.is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Selected { square: Square(12) }
+        );
+    }
+
+    #[test]
+    fn pointer_cancel_during_drag_emits_no_intent_and_clears_drag() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let down_pos = pointer(layout, Square(12));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: down_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+
+        let move_pos = pointer(layout, Square(28));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: move_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        let cancel_event = InputEvent::Pointer {
+            position: move_pos,
+            button: PointerButton::Primary,
+            phase: PointerPhase::Cancel,
+        };
+        let intent = ChessPresentation::on_input(&cancel_event, &view, &mut local);
+        assert!(intent.is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Selected { square: Square(12) }
+        );
+        assert_eq!(local.hover(), None);
+    }
+
+    #[test]
+    fn invalid_drop_emits_no_intent_and_restores_source_selection() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let down_pos = pointer(layout, Square(12));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: down_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+
+        // Move to e5 (Square(36)), which is illegal on move 1 for pawn on e2
+        let invalid_pos = pointer(layout, Square(36));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: invalid_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        let up_event = InputEvent::Pointer {
+            position: invalid_pos,
+            button: PointerButton::Primary,
+            phase: PointerPhase::Up,
+        };
+        let intent = ChessPresentation::on_input(&up_event, &view, &mut local);
+        assert!(intent.is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Selected { square: Square(12) }
+        );
+    }
+
+    #[test]
+    fn legal_drag_emits_exact_move_intent() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let down_pos = pointer(layout, Square(12));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: down_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+
+        let target_pos = pointer(layout, Square(28));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: target_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        let up_event = InputEvent::Pointer {
+            position: target_pos,
+            button: PointerButton::Primary,
+            phase: PointerPhase::Up,
+        };
+        let intent = ChessPresentation::on_input(&up_event, &view, &mut local)
+            .expect("legal drag-and-drop produces a move intent");
+        assert_eq!(
+            intent.into_command(),
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            }
+        );
+        assert_eq!(local.interaction(), Interaction::Idle);
+    }
+
+    #[test]
+    fn real_opening_e2_to_e4_drag_drop_sequence() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let pos_e2 = pointer(layout, Square(12));
+        let pos_e4 = pointer(layout, Square(28));
+        let intermediate_step =
+            PointerPosition::new(pos_e2.get() + Vec2::new(0.0, -layout.drag_threshold() * 1.5))
+                .unwrap();
+
+        // 1. Pointer Down at center(e2)
+        assert!(ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e2,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        )
+        .is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Pressed {
+                from: Square(12),
+                down_at: pos_e2,
+                was_selected: false,
+            }
+        );
+
+        // 2. Pointer Move beyond threshold
+        assert!(ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: intermediate_step,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        )
+        .is_none());
+        assert!(matches!(
+            local.interaction(),
+            Interaction::Dragging {
+                from: Square(12),
+                ..
+            }
+        ));
+
+        // 3. Pointer Move near/inside e4
+        assert!(ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e4,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        )
+        .is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Dragging {
+                from: Square(12),
+                pointer: pos_e4,
+                over: Some(Square(28)),
+            }
+        );
+
+        // 4. Pointer Up at e4
+        let intent = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e4,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Up,
+            },
+            &view,
+            &mut local,
+        )
+        .expect("e2->e4 drag emits the move intent");
+
+        assert_eq!(
+            intent.into_command(),
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            }
+        );
+        assert_eq!(local.interaction(), Interaction::Idle);
+    }
+
+    #[test]
+    fn drag_and_tap_and_keyboard_converge_on_the_same_move_command() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+
+        // Path A: tap-tap
+        let mut local_a = ChessLocal::default();
+        local_a.set_viewport(viewport(640.0, 640.0));
+        assert!(click(&view, &mut local_a, layout, Square(12)).is_none());
+        let intent_a =
+            click(&view, &mut local_a, layout, Square(28)).expect("tap-tap produces a move intent");
+
+        // Path B: drag-and-drop
+        let mut local_b = ChessLocal::default();
+        local_b.set_viewport(viewport(640.0, 640.0));
+        let pos_e2 = pointer(layout, Square(12));
+        let pos_e4 = pointer(layout, Square(28));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e2,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local_b,
+        );
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e4,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local_b,
+        );
+        let intent_b = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e4,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Up,
+            },
+            &view,
+            &mut local_b,
+        )
+        .expect("drag-and-drop produces a move intent");
+
+        // Path C: keyboard activation
+        let mut local_c = ChessLocal::default();
+        local_c.set_viewport(viewport(640.0, 640.0));
+        local_c
+            .focus_mut()
+            .set_keyboard_focus(Some(FocusId::new(12)));
+        assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local_c).is_none());
+        local_c
+            .focus_mut()
+            .set_keyboard_focus(Some(FocusId::new(28)));
+        let intent_c = ChessPresentation::on_input(&key(Key::Space), &view, &mut local_c)
+            .expect("keyboard navigation produces a move intent");
+
+        assert_eq!(intent_a, intent_b);
+        assert_eq!(intent_b, intent_c);
+        assert_eq!(
+            intent_a.into_command(),
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            }
+        );
+    }
+
+    #[test]
+    fn promotion_drag_regression() {
+        let state = crate::State::from_fen("k7/4P3/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+
+        let pos_e7 = pointer(layout, Square(52));
+        let pos_e8 = pointer(layout, Square(60));
+
+        // 1. Driving the pawn with pointer drag to e8 opens the promotion chooser
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e7,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e8,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        let drop_result = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e8,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Up,
+            },
+            &view,
+            &mut local,
+        );
+        assert!(drop_result.is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Promotion {
+                from: Square(52),
+                to: Square(60),
+                selected: PromotionChoice::Queen,
+            }
+        );
+        assert_eq!(local.focus().modality(), FocusModality::Pointer);
+        assert!(!local.focus().is_focus_visible());
+
+        // 2. Selecting each promotion choice produces identical commands to tap/keyboard paths
+        for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
+            let mut choice_local = ChessLocal::default();
+            choice_local.set_viewport(viewport(640.0, 640.0));
+
+            ChessPresentation::on_input(
+                &InputEvent::Pointer {
+                    position: pos_e7,
+                    button: PointerButton::Primary,
+                    phase: PointerPhase::Down,
+                },
+                &view,
+                &mut choice_local,
+            );
+            ChessPresentation::on_input(
+                &InputEvent::Pointer {
+                    position: pos_e8,
+                    button: PointerButton::Primary,
+                    phase: PointerPhase::Move,
+                },
+                &view,
+                &mut choice_local,
+            );
+            ChessPresentation::on_input(
+                &InputEvent::Pointer {
+                    position: pos_e8,
+                    button: PointerButton::Primary,
+                    phase: PointerPhase::Up,
+                },
+                &view,
+                &mut choice_local,
+            );
+
+            let choice_pos = clicked_center(promotion_choice_rect(layout, index).unwrap());
+            let intent = ChessPresentation::on_input(
+                &InputEvent::Pointer {
+                    position: choice_pos,
+                    button: PointerButton::Primary,
+                    phase: PointerPhase::Up,
+                },
+                &view,
+                &mut choice_local,
+            )
+            .expect("promotion choice selection emits a command");
+
+            assert_eq!(
+                intent.into_command(),
+                Command::Move {
+                    from: 52,
+                    to: 60,
+                    promotion: Some(choice.piece_kind()),
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn drag_does_not_enable_keyboard_focus_visible() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let pos_e2 = pointer(layout, Square(12));
+        let pos_e4 = pointer(layout, Square(28));
+
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e2,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e4,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        assert_eq!(local.focus().modality(), FocusModality::Pointer);
+        assert!(!local.focus().is_focus_visible());
+
+        let mut theme = Theme::by_kind(tabula_design::ThemeKind::Light);
+        theme.focus.ring_color = theme.color.danger;
+        let rendered =
+            ChessPresentation::present(&view, &local, &frame_with_theme(640.0, 640.0, 0, &theme));
+
+        // No focus ring command with z=150 should exist during pointer drag
+        assert!(!rendered.commands().iter().any(|cmd| matches!(
+            cmd,
+            RenderCmd::Rect {
+                layer: Layer::OVERLAY,
+                border: Some(border),
+                z: 150,
+                ..
+            } if border.color() == theme.focus.ring_color
+        )));
+    }
+
+    #[test]
+    fn resize_mid_drag_remains_total() {
+        let state = crate::State::initial();
+        let view = view(&state);
+
+        let initial_viewport = viewport(800.0, 500.0);
+        let initial_layout = BoardLayout::from_viewport(initial_viewport);
+        let mut local = ChessLocal::default();
+        local.set_viewport(initial_viewport);
+
+        let down_pos = pointer(initial_layout, Square(12));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: down_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+
+        // Viewport resizes while dragging
+        let resized_viewport = viewport(320.0, 640.0);
+        let resized_layout = BoardLayout::from_viewport(resized_viewport);
+        local.set_viewport(resized_viewport);
+
+        let resized_dest = pointer(resized_layout, Square(28));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: resized_dest,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        assert_eq!(
+            local.interaction(),
+            Interaction::Dragging {
+                from: Square(12),
+                pointer: resized_dest,
+                over: Some(Square(28)),
+            }
+        );
+
+        let intent = ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: resized_dest,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Up,
+            },
+            &view,
+            &mut local,
+        )
+        .expect("drop on resized board successfully produces move intent");
+
+        assert_eq!(
+            intent.into_command(),
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            }
+        );
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)]
+    fn rendering_proves_no_duplicate_piece_during_drag() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let pos_e2 = pointer(layout, Square(12));
+        let pos_e4 = pointer(layout, Square(28));
+        let mid_pos =
+            PointerPosition::new((pos_e2.get() + pos_e4.get()) * 0.5).expect("valid mid pointer");
+
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e2,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: mid_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        let frame = frame_with_theme(
+            640.0,
+            640.0,
+            0,
+            &Theme::by_kind(tabula_design::ThemeKind::Light),
+        );
+        let list = ChessPresentation::present(&view, &local, &frame);
+
+        // 1. Stationary pieces: exactly 31 stationary pieces (32 minus the 1 lifted pawn)
+        let stationary_pieces = list
+            .commands()
+            .iter()
+            .filter(|cmd| {
+                matches!(
+                    cmd,
+                    RenderCmd::Text {
+                        layer: Layer::PIECES,
+                        z,
+                        ..
+                    } if *z < IN_TRANSIT_PIECE_Z
+                )
+            })
+            .count();
+        assert_eq!(stationary_pieces, 31);
+
+        // 2. The source resting position does NOT have a stationary piece rendered
+        let e2_resting_pos = piece_position(layout, Square(12));
+        assert!(!list.commands().iter().any(|cmd| matches!(
+            cmd,
+            RenderCmd::Text {
+                at,
+                layer: Layer::PIECES,
+                z,
+                ..
+            } if *z < IN_TRANSIT_PIECE_Z && *at == e2_resting_pos
+        )));
+
+        // 3. Exactly one focal dragged piece exists in Layer::PIECES with z=IN_TRANSIT_PIECE_Z + 10
+        let dragged_pieces: Vec<_> = list
+            .commands()
+            .iter()
+            .filter(|cmd| {
+                matches!(
+                    cmd,
+                    RenderCmd::Text {
+                        layer: Layer::PIECES,
+                        z,
+                        ..
+                    } if *z == IN_TRANSIT_PIECE_Z + 10
+                )
+            })
+            .collect();
+        assert_eq!(dragged_pieces.len(), 1);
+
+        let style = TextStyleToken::DisplaySm;
+        let line_height = frame.theme().text_style(style).line_height().get();
+        let expected_lifted_at = mid_pos.get() - Vec2::new(0.0, line_height * 0.5);
+
+        match dragged_pieces[0] {
+            RenderCmd::Text { text, at, .. } => {
+                assert_eq!(text, "P");
+                assert_eq!(*at, expected_lifted_at);
+            }
+            _ => panic!("expected RenderCmd::Text"),
+        }
+
+        // 4. Source square has selected outline cue (z=100)
+        assert!(list.commands().iter().any(|cmd| matches!(
+            cmd,
+            RenderCmd::Rect {
+                layer: Layer::OVERLAY,
+                z: 100,
+                border: Some(border),
+                ..
+            } if border.color() == frame.theme().color.selected
+        )));
+
+        // 5. Target square shows legal feedback when hovering over e4
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e4,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+        let list_over_legal = ChessPresentation::present(&view, &local, &frame);
+        assert!(list_over_legal.commands().iter().any(|cmd| matches!(
+            cmd,
+            RenderCmd::Rect {
+                rect,
+                layer: Layer::OVERLAY,
+                z: 120,
+                border: Some(border),
+                ..
+            } if *rect == layout.square_rect(Square(28)).unwrap() && border.color() == frame.theme().color.legal_target
+        )));
+
+        // 6. Target square shows illegal feedback when hovering over an illegal destination (e.g. d3: Square(19))
+        let illegal_target_pos = pointer(layout, Square(19));
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: illegal_target_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+        let list_over_illegal = ChessPresentation::present(&view, &local, &frame);
+        assert!(list_over_illegal.commands().iter().any(|cmd| matches!(
+            cmd,
+            RenderCmd::Rect {
+                rect,
+                layer: Layer::OVERLAY,
+                z: 120,
+                border: Some(border),
+                ..
+            } if *rect == layout.square_rect(Square(19)).unwrap() && border.color() == frame.theme().color.illegal_target
+        )));
+    }
+
+    #[test]
+    fn golden_chess_drag_e2_to_e4_midflight_dark() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+
+        let pos_e2 = pointer(layout, Square(12));
+        let pos_e4 = pointer(layout, Square(28));
+        let mid_pos =
+            PointerPosition::new((pos_e2.get() + pos_e4.get()) * 0.5).expect("valid mid pointer");
+
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: pos_e2,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Down,
+            },
+            &view,
+            &mut local,
+        );
+        ChessPresentation::on_input(
+            &InputEvent::Pointer {
+                position: mid_pos,
+                button: PointerButton::Primary,
+                phase: PointerPhase::Move,
+            },
+            &view,
+            &mut local,
+        );
+
+        let frame = frame_with_theme(
+            640.0,
+            640.0,
+            0,
+            &Theme::by_kind(tabula_design::ThemeKind::Dark),
+        );
+        let list = ChessPresentation::present(&view, &local, &frame);
+        assert_render_list_snapshot!("chess_drag_e2_to_e4_midflight_dark", list);
     }
 }
