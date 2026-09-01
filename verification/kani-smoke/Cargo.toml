@@ -1,0 +1,11 @@
+[package]
+name = "tabula-kani-smoke"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Keep this proof-only package out of the root workspace/dependency matrix.
+[workspace]
+
+[lints.rust]
+unsafe_code = "forbid"
