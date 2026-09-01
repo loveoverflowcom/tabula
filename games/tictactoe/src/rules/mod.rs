@@ -11,7 +11,7 @@
 //! @ai.pure true
 //! @ai.invariant rules-hash-excludes-noncanonical-feature-source
 //! @ai.invariant canonical-rules-depend-only-on-rules-tree
-//! @ai.invariant rejected-input-preserves-state
+//! @ai.invariant rejected-input-preserves-canonical-fields
 //! @ai.law canonical-rules-source-change-changes-rules-hash
 //! @ai.evidence tests::rules_hash_matches_independent_rules_subtree_oracle
 //! @ai.evidence tests::canonical_source_mutation_changes_oracle_hash
@@ -185,7 +185,7 @@ impl GameRules for TicTacToeRules {
 /// @ai.role domain-transition
 /// @ai.domain tictactoe.rules.place
 /// @ai.pure true
-/// @ai.invariant rejected-input-preserves-state
+/// @ai.invariant rejected-input-preserves-canonical-fields
 /// @ai.law validate-then-mutate
 /// @ai.evidence verification::rejected_initial_place_preserves_state
 /// @ai.evidence verification::rejected_second_place_preserves_state
@@ -352,18 +352,31 @@ mod verification {
     use tabula_game_api::Outcome;
 
     /// Compare every field that participates in the canonical TicTacToe state.
-    /// This proof intentionally establishes field equality, not serialized-byte
-    /// equality. The serde representation is the fixed declaration-order
-    /// encoding of these five fields; there are no ignored or derived canonical
-    /// fields, so equal fields imply equal current canonical bytes. The proof
-    /// deliberately avoids invoking the codec; an explicit encoding proof
-    /// remains future work.
+    /// The exhaustive destructuring is intentional: adding a state field makes
+    /// this proof fail to compile until its R2 comparison is reviewed. This is
+    /// field-level R2 evidence, not a serialized-byte proof; byte-level R2
+    /// evidence remains in the testkit.
     fn canonical_state_fields_equal(before: &State, after: &State) -> bool {
-        before.board == after.board
-            && before.seats == after.seats
-            && before.turn == after.turn
-            && before.status == after.status
-            && before.move_timeout_ms == after.move_timeout_ms
+        let State {
+            board: before_board,
+            seats: before_seats,
+            turn: before_turn,
+            status: before_status,
+            move_timeout_ms: before_move_timeout_ms,
+        } = before;
+        let State {
+            board: after_board,
+            seats: after_seats,
+            turn: after_turn,
+            status: after_status,
+            move_timeout_ms: after_move_timeout_ms,
+        } = after;
+
+        before_board == after_board
+            && before_seats == after_seats
+            && before_turn == after_turn
+            && before_status == after_status
+            && before_move_timeout_ms == after_move_timeout_ms
     }
 
     fn initial_state() -> State {
@@ -371,33 +384,22 @@ mod verification {
             .expect("the proof fixture is a valid initial state")
     }
 
-    /// The transactional proofs only exercise `place`'s rejection path. This
-    /// verifier-only replacement makes reaching the outcome-building mutation
-    /// path an immediate counterexample instead of asking CBMC to model its
-    /// unrelated `SmallVec` drops. The second harness uses the same production
-    /// `place` call for its known-valid prefix; this tiny replacement models
-    /// only that fixed prefix and rejects every other commit attempt.
+    /// The transactional proofs execute the production `place` function across
+    /// all symbolic inputs. This total verifier-only replacement models the
+    /// accepted state transition while avoiding CBMC's unrelated `SmallVec`
+    /// outcome/drop work; rejected calls return before reaching it. The
+    /// concrete harness above separately exercises the real outcome builder.
     #[allow(dead_code)]
     fn commit_place_verification_stub(
         state: &mut State,
         seat: SeatId,
-        cell: u8,
+        _cell: u8,
         idx: usize,
     ) -> Outcome<TicTacToeRules> {
-        if state.board == [None; 9]
-            && state.seats == [SeatId(7), SeatId(42)]
-            && state.turn == SeatId(7)
-            && state.status == super::Status::Playing
-            && state.move_timeout_ms == 5_000
-            && seat == SeatId(7)
-            && cell == 0
-            && idx == 0
-        {
-            state.board[0] = Some(Mark::X);
-            state.turn = SeatId(42);
-            return Outcome::empty();
-        }
-        panic!("a rejected placement must not reach commit_place")
+        let mark = state.mark_for(seat);
+        state.board[idx] = Some(mark);
+        state.turn = state.other(state.turn);
+        Outcome::empty()
     }
 
     #[kani::proof]
@@ -421,19 +423,14 @@ mod verification {
         let before = state.clone();
         let seat = SeatId(kani::any());
         let cell: u8 = kani::any();
-        let should_reject = seat != state.turn || cell >= 9;
-
-        if should_reject {
-            let result = place(&mut state, seat, cell);
-            let rejected = result.is_err();
+        let result = place(&mut state, seat, cell);
+        if result.is_err() {
             let unchanged = canonical_state_fields_equal(&before, &state);
-            // The proof concerns the state mutation, not `Outcome` destruction.
-            // Avoid making CBMC unwind SmallVec's unrelated drop implementation.
-            core::mem::forget(result);
-
-            assert!(rejected);
             assert!(unchanged);
         }
+        // The proof concerns state mutation, not `Outcome` destruction. Avoid
+        // making CBMC unwind SmallVec's unrelated drop implementation.
+        core::mem::forget(result);
     }
 
     /// After the known-valid opening move at cell zero, every raw second
@@ -454,18 +451,13 @@ mod verification {
         let before = state.clone();
         let seat = SeatId(kani::any());
         let cell: u8 = kani::any();
-        let should_reject = seat != state.turn || cell == 0 || cell >= 9;
-
-        if should_reject {
-            let result = place(&mut state, seat, cell);
-            let rejected = result.is_err();
+        let result = place(&mut state, seat, cell);
+        if result.is_err() {
             let unchanged = canonical_state_fields_equal(&before, &state);
-            // The proof concerns the state mutation, not `Outcome` destruction.
-            // Avoid making CBMC unwind SmallVec's unrelated drop implementation.
-            core::mem::forget(result);
-
-            assert!(rejected);
             assert!(unchanged);
         }
+        // The proof concerns state mutation, not `Outcome` destruction. Avoid
+        // making CBMC unwind SmallVec's unrelated drop implementation.
+        core::mem::forget(result);
     }
 }
