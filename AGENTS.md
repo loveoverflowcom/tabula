@@ -132,6 +132,9 @@ cargo nextest run --workspace
 cargo deny check
 ```
 
+`just check` (or `cargo xtask check`) is the authoritative portable local core gate.
+CI additionally checks the full workspace feature matrix (`cargo check --workspace --no-default-features` and `--all-features`) and target-specific WASM compilation (`wasm32-unknown-unknown`). You can test the feature matrix locally with `just check-all` or `just features`.
+
 A change to a game crate additionally needs its conformance suite green
 (`tabula_testkit::conformance!(YourFixture)` against a `GameTestFixture` impl — doc 02 §11.1)
 and, if the game has hidden information, a `SecretModel` with the projection scan passing.

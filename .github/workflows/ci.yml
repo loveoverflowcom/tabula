@@ -1,12 +1,13 @@
 # CI pipeline — doc 01 §6.1.
 #
-# Target PR wall-clock: UNDER 10 MINUTES. If it grows past that, move the wasm and
-# integration jobs into a merge-queue-only stage rather than weakening the checks.
+# Target PR wall-clock: UNDER 10 MINUTES. If it grows past that, move the wasm
+# job into a merge-queue-only stage rather than weakening the checks.
 # Weakening a check is how the invariants rot.
 #
-# Phase note: several jobs below are inert until the crates they check exist.
-# They are wired now on purpose — doc 09 §7 step 4: "Write the enforcement FIRST.
-# Then deliberately add a forbidden dependency and confirm CI fails."
+# Phase note: Only implemented / current-phase required gates run on normal PRs.
+# Future-phase capabilities (protocol wire vectors, integration databases) remain
+# documented in xtask and the architectural roadmap, and are activated when their
+# respective phases begin.
 
 name: ci
 

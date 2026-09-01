@@ -28,14 +28,17 @@ client *ARGS:
     cargo run -p tabula-game-client {{ARGS}}
 
 # ------------------------------------------------------------------ the gate
-# Everything CI runs, in the order that fails fastest first. `xtask check` is
-# the source of truth (doc 01 §1.4: `just` is a wrapper, never the source of
-# truth) — this recipe used to hand-list a subset of gates and had drifted to
-# omit `manifests` and `audit`, which is exactly the failure mode a single
-# entrypoint is meant to prevent.
-
+# Authoritative portable local core gate (doc 01 §1.4). Runs the fast,
+# deterministic checks: fmt, clippy, test, check-deps, check-no-game-ids,
+# check-manifests, token freshness, check-no-raw-colors, and cargo deny.
+#
+# CI runs these same gates, plus the workspace feature matrix (`features`) and
+# target-specific WASM compilation checks (`wasm`).
 check:
     cargo xtask check
+
+# Runs the local core gate plus workspace feature matrix checks.
+check-all: check features
 
 fmt:
     cargo fmt --all
