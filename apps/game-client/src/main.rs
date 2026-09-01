@@ -1,16 +1,16 @@
-//! Macroquad platform entry point for the renderer smoke scene, not Chess UI.
+//! Macroquad platform entry point for the local hot-seat board.
 
 use glam::Vec2;
 use macroquad::prelude as mq;
 use renderer_macroquad::MacroquadRenderer;
 use tabula_design::{Theme, ThemeKind};
-use tabula_presentation::{Dpi, InputEvent, PointerPhase, Renderer, Viewport};
+use tabula_presentation::{Dpi, Renderer, Viewport};
 
 fn window_conf() -> mq::Conf {
     mq::Conf {
-        window_title: String::from("Tabula renderer smoke"),
+        window_title: String::from("Tabula — local hot seat"),
         window_width: 720,
-        window_height: 460,
+        window_height: 720,
         ..mq::Conf::default()
     }
 }
@@ -19,7 +19,7 @@ fn window_conf() -> mq::Conf {
 async fn main() {
     let mut renderer = MacroquadRenderer::new();
     let theme = Theme::by_kind(ThemeKind::Light);
-    let mut pointer = None;
+    let mut local_match = tabula_game_client::LocalChessMatch::new();
 
     loop {
         let viewport = Viewport::new(Vec2::new(mq::screen_width(), mq::screen_height()))
@@ -27,21 +27,13 @@ async fn main() {
         let dpi =
             Dpi::new(mq::screen_dpi_scale()).expect("Macroquad supplies a positive DPI scale");
         let now_ms = presentation_now_ms();
-        let _frame = renderer.begin_frame(viewport, dpi, now_ms, theme);
+        let frame = renderer.begin_frame(viewport, dpi, now_ms, theme);
         for event in renderer.drain_input() {
-            if let InputEvent::Pointer {
-                position,
-                phase: PointerPhase::Down | PointerPhase::Move | PointerPhase::Up,
-                ..
-            } = event
-            {
-                pointer = Some(position.get());
-            }
+            local_match.handle_input(&event, &frame);
         }
-        let scene = tabula_game_client::smoke_scene(theme, pointer)
-            .expect("the static smoke scene satisfies RenderList construction invariants");
+        let scene = local_match.present(&frame);
         if let Err(error) = renderer.submit(&scene) {
-            eprintln!("renderer smoke scene failed: {error:?}");
+            eprintln!("local board render failed: {error:?}");
             break;
         }
         renderer

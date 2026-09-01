@@ -28,6 +28,9 @@ tabula-presentation = { workspace = true }
 renderer-macroquad  = { workspace = true }
 macroquad           = { workspace = true }
 glam                = { workspace = true }
+# Phase 2 uses the game package directly; the Phase 4 registry will replace
+# this leaf dependency when the online runtime is introduced.
+tabula-game-chess   = { workspace = true, features = ["rules", "presentation"] }
 # Phase 4+
 # tabula-protocol   = { workspace = true }
 # tabula-registry   = { workspace = true }

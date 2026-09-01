@@ -177,6 +177,7 @@ allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "t
 [crate."apps/game-client"]
 tier    = "binary"
 allow   = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-presentation", "tabula-assets", "tabula-net-client", "renderer-macroquad", "macroquad", "glam"]
+allow_games = true # Phase 2 local vertical slice; Phase 4 moves selection behind registry.
 feature = { native = ["tokio"], web = ["web-sys", "wasm-bindgen"] }
 # I-15: `leptos` must NEVER appear in this graph, native or wasm.
 forbid  = ["leptos", "tauri"]
