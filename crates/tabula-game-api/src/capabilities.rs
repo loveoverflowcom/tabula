@@ -422,14 +422,25 @@ pub struct ChatChannelKey(String);
 pub enum ChatChannelKeyError {
     #[error("chat channel key must not be empty")]
     Empty,
+    #[error("chat channel key must not be whitespace-only")]
+    WhitespaceOnly,
+    #[error("chat channel key must not have surrounding whitespace")]
+    SurroundingWhitespace,
 }
 
 impl ChatChannelKey {
     pub fn new(value: impl Into<String>) -> Result<Self, ChatChannelKeyError> {
         let value = value.into();
-        (!value.is_empty())
-            .then_some(Self(value))
-            .ok_or(ChatChannelKeyError::Empty)
+        if value.is_empty() {
+            return Err(ChatChannelKeyError::Empty);
+        }
+        if value.trim().is_empty() {
+            return Err(ChatChannelKeyError::WhitespaceOnly);
+        }
+        if value.trim() != value {
+            return Err(ChatChannelKeyError::SurroundingWhitespace);
+        }
+        Ok(Self(value))
     }
 
     #[must_use]
@@ -911,8 +922,18 @@ mod tests {
             ChatChannelSpec::new("", ChatKind::Table),
             Err(ChatChannelKeyError::Empty)
         );
+        assert_eq!(
+            ChatChannelSpec::new(" \t", ChatKind::Table),
+            Err(ChatChannelKeyError::WhitespaceOnly)
+        );
+        assert_eq!(
+            ChatChannelSpec::new(" table", ChatKind::Table),
+            Err(ChatChannelKeyError::SurroundingWhitespace)
+        );
         let empty_key = canonical_encode(&String::new()).unwrap();
         assert!(tabula_core::canonical_decode::<ChatChannelKey>(&empty_key).is_err());
+        let whitespace_key = canonical_encode(&String::from(" \t")).unwrap();
+        assert!(tabula_core::canonical_decode::<ChatChannelKey>(&whitespace_key).is_err());
 
         let raw = RawChatPolicy {
             channels: vec![

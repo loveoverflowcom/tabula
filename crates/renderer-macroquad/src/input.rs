@@ -34,7 +34,8 @@ struct ActiveTouch {
 #[derive(Debug, Default)]
 pub(crate) struct InputState {
     active_touch: Option<ActiveTouch>,
-    previous_mouse_position: Option<PointerPosition>,
+    active_mouse_buttons: [bool; 3],
+    last_mouse_position: Option<PointerPosition>,
 }
 
 impl InputState {
@@ -59,32 +60,30 @@ impl InputState {
         touches.sort_by_key(|touch| touch.id);
 
         let mouse_position = mq::mouse_position();
-        let mouse_position =
-            PointerPosition::try_from(Vec2::new(mouse_position.0, mouse_position.1)).ok();
+        let raw_mouse_position = Vec2::new(mouse_position.0, mouse_position.1);
+        let mouse_position = PointerPosition::try_from(raw_mouse_position).ok();
         let mut mouse = Vec::new();
         for (button, macroquad_button) in [
             (PointerButton::Primary, mq::MouseButton::Left),
             (PointerButton::Secondary, mq::MouseButton::Right),
             (PointerButton::Middle, mq::MouseButton::Middle),
         ] {
-            if let Some(position) = mouse_position {
-                if mq::is_mouse_button_pressed(macroquad_button) {
-                    mouse.push(RawMouse {
-                        position: position.get(),
-                        button,
-                        phase: PointerPhase::Down,
-                    });
-                }
-                if mq::is_mouse_button_released(macroquad_button) {
-                    mouse.push(RawMouse {
-                        position: position.get(),
-                        button,
-                        phase: PointerPhase::Up,
-                    });
-                }
+            if mq::is_mouse_button_pressed(macroquad_button) {
+                mouse.push(RawMouse {
+                    position: raw_mouse_position,
+                    button,
+                    phase: PointerPhase::Down,
+                });
+            }
+            if mq::is_mouse_button_released(macroquad_button) {
+                mouse.push(RawMouse {
+                    position: raw_mouse_position,
+                    button,
+                    phase: PointerPhase::Up,
+                });
             }
         }
-        if self.previous_mouse_position != mouse_position {
+        if self.last_mouse_position != mouse_position {
             if let Some(position) = mouse_position {
                 mouse.push(RawMouse {
                     position: position.get(),
@@ -93,7 +92,9 @@ impl InputState {
                 });
             }
         }
-        self.previous_mouse_position = mouse_position;
+        if mouse_position.is_some() {
+            self.last_mouse_position = mouse_position;
+        }
 
         let keys = [
             (Key::ArrowUp, mq::KeyCode::Up),
@@ -150,21 +151,51 @@ impl InputState {
 
         let mut events = touch_event.into_iter().collect::<Vec<_>>();
         if !touch_contact {
-            events.extend(mouse.into_iter().filter_map(|event| {
-                PointerPosition::try_from(event.position)
-                    .ok()
-                    .map(|position| InputEvent::Pointer {
-                        position,
-                        button: event.button,
-                        phase: event.phase,
-                    })
-            }));
+            events.extend(
+                mouse
+                    .into_iter()
+                    .filter_map(|event| self.normalize_mouse_event(&event)),
+            );
         }
         events.extend(
             keys.into_iter()
                 .map(|(key, pressed)| InputEvent::Key { key, pressed }),
         );
         events
+    }
+
+    fn normalize_mouse_event(&mut self, event: &RawMouse) -> Option<InputEvent> {
+        let button_index = mouse_button_index(event.button);
+        match PointerPosition::try_from(event.position) {
+            Ok(position) => {
+                self.last_mouse_position = Some(position);
+                match event.phase {
+                    PointerPhase::Down => self.active_mouse_buttons[button_index] = true,
+                    PointerPhase::Up | PointerPhase::Cancel => {
+                        self.active_mouse_buttons[button_index] = false;
+                    }
+                    PointerPhase::Move => {}
+                }
+                Some(InputEvent::Pointer {
+                    position,
+                    button: event.button,
+                    phase: event.phase,
+                })
+            }
+            Err(_)
+                if matches!(event.phase, PointerPhase::Up | PointerPhase::Cancel)
+                    && self.active_mouse_buttons[button_index] =>
+            {
+                self.active_mouse_buttons[button_index] = false;
+                self.last_mouse_position
+                    .map(|position| InputEvent::Pointer {
+                        position,
+                        button: event.button,
+                        phase: PointerPhase::Cancel,
+                    })
+            }
+            Err(_) => None,
+        }
     }
 
     fn active_touch_event(&mut self, active: ActiveTouch, touch: RawTouch) -> Option<InputEvent> {
@@ -207,6 +238,14 @@ impl InputState {
                 Some(pointer_event(position, PointerPhase::Cancel))
             }
         }
+    }
+}
+
+const fn mouse_button_index(button: PointerButton) -> usize {
+    match button {
+        PointerButton::Primary => 0,
+        PointerButton::Secondary => 1,
+        PointerButton::Middle => 2,
     }
 }
 
@@ -464,5 +503,39 @@ mod tests {
             [],
         );
         assert!(events.is_empty());
+    }
+
+    #[test]
+    fn invalid_mouse_release_cancels_at_last_finite_position() {
+        let mut state = InputState::default();
+        let position = Vec2::new(10.0, 20.0);
+
+        assert_eq!(
+            state.normalize(
+                vec![],
+                vec![RawMouse {
+                    position,
+                    button: PointerButton::Primary,
+                    phase: PointerPhase::Down,
+                }],
+                [],
+            ),
+            [valid_pointer_event(position, PointerPhase::Down)]
+        );
+
+        assert_eq!(
+            state.normalize(
+                vec![],
+                vec![RawMouse {
+                    position: Vec2::new(f32::NAN, f32::INFINITY),
+                    button: PointerButton::Primary,
+                    phase: PointerPhase::Up,
+                }],
+                [],
+            ),
+            [valid_pointer_event(position, PointerPhase::Cancel)]
+        );
+
+        assert!(state.normalize(vec![], vec![], []).is_empty());
     }
 }

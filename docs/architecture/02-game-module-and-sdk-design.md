@@ -502,7 +502,7 @@ pub struct ChatPolicy {
 }
 pub struct ChatChannelSpec { pub key: &'static str, pub kind: ChatKind }  // Table, Team, Dead, Whisper
 
-// Rust implementation: empty and duplicate channel keys are rejected; authored order is retained.
+// Rust implementation: empty, whitespace-padded, and duplicate channel keys are rejected; authored order is retained.
 
 pub enum VoiceRequirement { No, Optional, Recommended }
 
