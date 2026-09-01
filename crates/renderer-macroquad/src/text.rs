@@ -29,7 +29,7 @@ pub(crate) fn measure(
         .map(|line| raw_measure(line, font_size(style)).width)
         .fold(0.0, f32::max);
     let line_count = u16::try_from(lines.len()).map_err(|_| {
-        RenderError(String::from(
+        RenderError::Execution(String::from(
             "renderer-macroquad text has more than u16::MAX lines",
         ))
     })?;
@@ -37,7 +37,24 @@ pub(crate) fn measure(
         Vec2::new(width, style.line_height().get() * f32::from(line_count)),
         line_count,
     )
-    .map_err(|error| RenderError(error.to_string()))
+    .map_err(|error| RenderError::Execution(error.to_string()))
+}
+
+/// Validates the same wrapped line count used by drawing, before any line is emitted.
+pub(crate) fn validate(
+    value: &str,
+    token: TextStyleToken,
+    max_width: Option<Positive>,
+    frame: &tabula_presentation::FrameCtx,
+) -> Result<(), RenderError> {
+    let style = frame.theme().text_style(token);
+    let line_count = wrap_lines(value, max_width, |line| {
+        raw_measure(line, font_size(style)).width
+    })
+    .len();
+    u16::try_from(line_count).map(|_| ()).map_err(|_| {
+        RenderError::Execution(String::from("backend text has more than u16::MAX lines"))
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -54,9 +71,9 @@ pub(crate) fn draw(
     _dpi: f32,
 ) -> Result<(), RenderError> {
     let Some(scale) = uniform_positive_scale(transform) else {
-        return Err(RenderError(String::from(
-            "renderer-macroquad cannot draw transformed text without a text-shaping backend",
-        )));
+        return Err(RenderError::Unsupported(
+            tabula_presentation::RenderCmdKind::Text,
+        ));
     };
     let style = theme.text_style(token);
     let lines = wrap_lines(value, max_width, |line| {
@@ -75,7 +92,11 @@ pub(crate) fn draw(
             at + Vec2::new(
                 offset,
                 style.line_height().get()
-                    * f32::from(u16::try_from(index + 1).expect("line count fits u16")),
+                    * f32::from(u16::try_from(index + 1).map_err(|_| {
+                        RenderError::Execution(String::from(
+                            "renderer-macroquad text has more than u16::MAX lines",
+                        ))
+                    })?),
             ),
         );
         mq::draw_text_ex(
@@ -116,6 +137,10 @@ fn uniform_positive_scale(transform: Affine2) -> Option<f32> {
         && scale.is_finite()
         && scale > 0.0)
         .then_some(scale)
+}
+
+pub(crate) fn supports_transform(transform: Affine2) -> bool {
+    uniform_positive_scale(transform).is_some()
 }
 
 #[allow(

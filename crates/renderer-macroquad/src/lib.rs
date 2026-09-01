@@ -10,6 +10,7 @@ mod draw;
 mod input;
 mod renderer;
 mod state;
+mod support;
 mod text;
 
 pub use renderer::MacroquadRenderer;

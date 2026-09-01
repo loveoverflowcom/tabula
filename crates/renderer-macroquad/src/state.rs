@@ -33,6 +33,9 @@ pub(crate) enum Clip {
 
 impl Clip {
     fn intersect(self, rect: Rect) -> Self {
+        if rect.size().x <= 0.0 || rect.size().y <= 0.0 {
+            return Self::Empty;
+        }
         match self {
             Self::Unbounded => Self::Rect(rect),
             Self::Rect(current) => intersect_rects(current, rect).map_or(Self::Empty, Self::Rect),
@@ -272,5 +275,20 @@ mod tests {
         let states = states(&builder.finish().unwrap());
         assert_eq!(states[0].clip, Clip::Rect(inner));
         assert_eq!(states[1].clip, Clip::Rect(outer));
+    }
+
+    #[test]
+    fn direct_zero_area_clips_canonicalize_to_empty() {
+        let zero_width = Rect::new(Vec2::ZERO, Vec2::new(0.0, 2.0)).unwrap();
+        let zero_height = Rect::new(Vec2::ZERO, Vec2::new(2.0, 0.0)).unwrap();
+        assert_eq!(Clip::Unbounded.intersect(zero_width), Clip::Empty);
+        assert_eq!(Clip::Unbounded.intersect(zero_height), Clip::Empty);
+    }
+
+    #[test]
+    fn nested_clip_collapse_stays_empty() {
+        let outer = Rect::new(Vec2::ZERO, Vec2::splat(4.0)).unwrap();
+        let zero = Rect::new(Vec2::new(2.0, 2.0), Vec2::new(0.0, 1.0)).unwrap();
+        assert_eq!(Clip::Rect(outer).intersect(zero), Clip::Empty);
     }
 }

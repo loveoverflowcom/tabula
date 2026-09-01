@@ -91,7 +91,8 @@ fn choose_best(scored: Vec<(i32, Command)>, rng: &mut DetRng) -> Option<Command>
     choose_uniform(&best_moves, rng)
 }
 
-/// Scores every original projected move using a two-ply minimax search.
+/// Scores every original projected move using a projection-limited two-ply
+/// position search.
 fn easy_scores(view: &View, color: Color) -> Vec<(i32, Command)> {
     let state = state_from_view(view);
     view.legal_moves
@@ -137,6 +138,10 @@ fn score_after_reply(after_our_move: &State, our_color: Color) -> i32 {
 }
 
 /// Reconstructs only the public position facts exposed by [`View`].
+///
+/// The synthetic one-entry repetition vector is enough for the private rules
+/// simulation to have a current position key, but it is not recovered history.
+/// Consequently this search is intentionally not a repetition-aware oracle.
 fn state_from_view(view: &View) -> State {
     let mut state = State {
         board: view.board,
@@ -149,8 +154,8 @@ fn state_from_view(view: &View) -> State {
         status: view.status.clone(),
         draw_offer: view.draw_offer,
         // Search is intentionally position-only. A bot cannot infer elapsed
-        // wall-clock time from a projection and should not alter its move policy
-        // based on a non-authoritative approximation of it.
+        // wall-clock time or repetition history from a projection and should
+        // not alter its move policy based on a non-authoritative approximation.
         clock: None,
     };
     let current_key = state.position_key();
@@ -249,5 +254,36 @@ fn piece_square_value(kind: PieceKind, color: Color, square: usize) -> i32 {
         PieceKind::Queen => center * 4,
         // The simple Easy policy values king safety over activity.
         PieceKind::King => -center * 4,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tabula_core::canonical_encode;
+
+    #[test]
+    fn easy_bot_cannot_distinguish_unprojected_repetition_history() {
+        let first = State::initial();
+        let mut second = first.clone();
+        second.repetition.push(crate::PositionKey(0xfeed_face));
+        let first_view = ChessRules::project(&first, Viewer::Seat(SeatId(0)));
+        let second_view = ChessRules::project(&second, Viewer::Seat(SeatId(0)));
+
+        assert_ne!(
+            canonical_encode(&first).unwrap(),
+            canonical_encode(&second).unwrap()
+        );
+        assert_eq!(
+            canonical_encode(&first_view).unwrap(),
+            canonical_encode(&second_view).unwrap()
+        );
+
+        let mut first_rng = DetRng::for_input(&SEARCH_SEED, InputIndex(7));
+        let mut second_rng = DetRng::for_input(&SEARCH_SEED, InputIndex(7));
+        assert_eq!(
+            ChessBot::new(BotLevel::Easy).choose(&first_view, SeatId(0), &mut first_rng,),
+            ChessBot::new(BotLevel::Easy).choose(&second_view, SeatId(0), &mut second_rng,)
+        );
     }
 }

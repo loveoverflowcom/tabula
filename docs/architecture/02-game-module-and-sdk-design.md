@@ -406,7 +406,10 @@ pub trait GamePresentation: Send + 'static {
         frame: &FrameCtx);
     fn on_input(input: &InputEvent, view: &<Self::Rules as GameRules>::View,
         local: &mut Self::Local) -> Option<Intent<<Self::Rules as GameRules>::Command>>;
-    fn a11y(view: &<Self::Rules as GameRules>::View) -> A11yDescription;
+    fn a11y(
+        view: &<Self::Rules as GameRules>::View,
+        local: &Self::Local,
+    ) -> A11yDescription;
 }
 ```
 

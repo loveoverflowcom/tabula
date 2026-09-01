@@ -1,7 +1,7 @@
 use glam::Vec2;
 use tabula_design::{Positive, Theme};
 
-use crate::{InputEvent, RenderList, TextStyleToken};
+use crate::{InputEvent, RenderCmdKind, RenderList, TextStyleToken};
 
 /// A finite, non-empty logical viewport supplied by a renderer backend.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -138,8 +138,16 @@ impl core::fmt::Display for TextMetricsError {
 
 impl std::error::Error for TextMetricsError {}
 
+/// Why a renderer could not accept or finish a frame.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RenderError(pub String);
+pub enum RenderError {
+    /// A frame operation was requested outside the `begin_frame`/`end_frame` lifecycle.
+    InvalidLifecycle,
+    /// The list is structurally valid, but this backend does not support one of its commands.
+    Unsupported(RenderCmdKind),
+    /// The backend could not execute an otherwise supported operation.
+    Execution(String),
+}
 
 /// Imperative backend port for a renderer-neutral [`RenderList`].
 ///

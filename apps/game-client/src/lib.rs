@@ -42,6 +42,8 @@ use tabula_presentation::{FrameCtx, GamePresentation, InputEvent, RenderList};
 /// @ai.invariant input-index-per-attempt
 /// @ai.evidence tests::local_hotseat_applies_a_presenter_move_through_canonical_rules
 /// @ai.evidence tests::every_emitted_command_consumes_a_distinct_input_index
+/// @ai.evidence tests::exhausted_input_index_stops_before_reusing_an_rng_domain
+/// @ai.evidence tests::max_minus_one_and_max_are_each_consumed_before_exhaustion
 #[allow(clippy::doc_markdown)]
 #[derive(Debug)]
 pub struct LocalChessMatch {
@@ -49,7 +51,7 @@ pub struct LocalChessMatch {
     view: View,
     local: ChessLocal,
     seed: MatchSeed,
-    next_input_index: u64,
+    next_input_index: Option<InputIndex>,
 }
 
 /// Failure raised when the finite canonical input-index domain is exhausted.
@@ -85,7 +87,7 @@ impl LocalChessMatch {
             local: ChessLocal::default(),
             seed,
             // Match creation owns index 0; player attempts begin at index 1.
-            next_input_index: 1,
+            next_input_index: Some(InputIndex(1)),
         }
     }
 
@@ -104,11 +106,13 @@ impl LocalChessMatch {
             return Ok(());
         };
         let seat = self.view.you.unwrap_or(self.view.turn).seat();
-        let input_index = InputIndex(self.next_input_index);
-        self.next_input_index = self
+        let input_index = self
             .next_input_index
-            .checked_add(1)
+            .take()
             .ok_or(LocalChessMatchError::InputIndexExhausted)?;
+        // `None` is the explicit exhausted state. It must not be encoded as a
+        // sentinel because `InputIndex(u64::MAX)` is a valid final attempt.
+        self.next_input_index = input_index.0.checked_add(1).map(InputIndex);
         let mut rng = DetRng::for_input(&self.seed, input_index);
         let mut ctx = Ctx {
             // This match uses the default no-clock configuration. Presentation
@@ -184,6 +188,7 @@ mod tests {
     use super::local_game::{presentation::BoardLayout, Color as ChessColor, PieceKind, Square};
     use super::*;
     use glam::Vec2;
+    use renderer_macroquad::MacroquadRenderer;
     use tabula_presentation::{Dpi, PointerButton, PointerPhase, PointerPosition, Viewport};
 
     fn frame() -> FrameCtx {
@@ -236,16 +241,16 @@ mod tests {
         let e4 = click(layout, 28);
         let mut local_match = LocalChessMatch::new();
 
-        assert_eq!(local_match.next_input_index, 1);
+        assert_eq!(local_match.next_input_index, Some(InputIndex(1)));
 
         local_match
             .handle_input(&e2, &frame)
             .expect("first source selection has an available input index");
-        assert_eq!(local_match.next_input_index, 1);
+        assert_eq!(local_match.next_input_index, Some(InputIndex(1)));
         local_match
             .handle_input(&e5, &frame)
             .expect("first rejected command still has an input index");
-        assert_eq!(local_match.next_input_index, 2);
+        assert_eq!(local_match.next_input_index, Some(InputIndex(2)));
         assert_eq!(local_match.view().board[12].unwrap().kind, PieceKind::Pawn);
         assert_eq!(local_match.view().board[28], None);
 
@@ -255,7 +260,7 @@ mod tests {
         local_match
             .handle_input(&e5, &frame)
             .expect("second rejected command still has an input index");
-        assert_eq!(local_match.next_input_index, 3);
+        assert_eq!(local_match.next_input_index, Some(InputIndex(3)));
 
         local_match
             .handle_input(&e2, &frame)
@@ -263,7 +268,7 @@ mod tests {
         local_match
             .handle_input(&e4, &frame)
             .expect("valid command has an available input index");
-        assert_eq!(local_match.next_input_index, 4);
+        assert_eq!(local_match.next_input_index, Some(InputIndex(4)));
         assert_eq!(local_match.view().board[12], None);
         assert_eq!(local_match.view().board[28].unwrap().kind, PieceKind::Pawn);
     }
@@ -273,15 +278,57 @@ mod tests {
         let frame = frame();
         let layout = BoardLayout::from_viewport(frame.viewport());
         let mut local_match = LocalChessMatch::new();
-        local_match.next_input_index = u64::MAX;
+        local_match.next_input_index = Some(InputIndex(u64::MAX));
 
         local_match
             .handle_input(&click(layout, 12), &frame)
             .expect("source selection does not consume an input index");
+        local_match
+            .handle_input(&click(layout, 28), &frame)
+            .expect("the final input index is passed to rule application");
+        assert_eq!(local_match.view().board[28].unwrap().kind, PieceKind::Pawn);
+        assert_eq!(local_match.next_input_index, None);
+
+        local_match
+            .handle_input(&click(layout, 52), &frame)
+            .expect("source selection after exhaustion consumes no input index");
         assert_eq!(
-            local_match.handle_input(&click(layout, 28), &frame),
+            local_match.handle_input(&click(layout, 36), &frame),
             Err(LocalChessMatchError::InputIndexExhausted)
         );
-        assert_eq!(local_match.next_input_index, u64::MAX);
+        assert_eq!(local_match.next_input_index, None);
+    }
+
+    #[test]
+    fn max_minus_one_and_max_are_each_consumed_before_exhaustion() {
+        let frame = frame();
+        let layout = BoardLayout::from_viewport(frame.viewport());
+        let mut local_match = LocalChessMatch::new();
+        local_match.next_input_index = Some(InputIndex(u64::MAX - 1));
+
+        local_match
+            .handle_input(&click(layout, 12), &frame)
+            .expect("source selection consumes no input index");
+        local_match
+            .handle_input(&click(layout, 36), &frame)
+            .expect("the rejected MAX-1 attempt is still consumed");
+        assert_eq!(local_match.next_input_index, Some(InputIndex(u64::MAX)));
+
+        local_match
+            .handle_input(&click(layout, 12), &frame)
+            .expect("source selection consumes no input index");
+        local_match
+            .handle_input(&click(layout, 28), &frame)
+            .expect("MAX is the final usable input index");
+        assert_eq!(local_match.next_input_index, None);
+    }
+
+    #[test]
+    fn presenter_produces_a_macroquad_supported_render_list() {
+        let local_match = LocalChessMatch::new();
+        let frame = frame();
+        let scene = local_match.present(&frame);
+
+        assert_eq!(MacroquadRenderer::preflight(&scene, &frame), Ok(()));
     }
 }

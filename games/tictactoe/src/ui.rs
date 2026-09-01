@@ -58,6 +58,6 @@
 //!         // default (doc 04 §10.2). Min touch target 44x44 dp.
 //!     }
 //!
-//!     fn a11y(view: &View) -> A11yDescription { TicTacToeRules::describe(...) }
+//!     fn a11y(view: &View, _local: &Local) -> A11yDescription { TicTacToeRules::describe(...) }
 //! }
 //! ```
