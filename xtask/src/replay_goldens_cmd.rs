@@ -184,8 +184,8 @@ fn write_replay<M: GameModule>(
     let draft = ReplayDraft {
         header: ReplayHeader {
             match_id,
-            game_id: M::metadata().id.clone(),
-            game_version: M::metadata().version.clone(),
+            game_id: M::metadata().id().clone(),
+            game_version: M::metadata().version().clone(),
             rules_version: M::Rules::RULES_VERSION,
             rules_hash: M::rules_hash(),
             config: canonical_encode(&config).map_err(|_| "config encoding failed".to_owned())?,

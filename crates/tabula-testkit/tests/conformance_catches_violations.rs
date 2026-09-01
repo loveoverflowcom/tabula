@@ -17,10 +17,11 @@ use tabula_core::{
     SeatEntry, SeatId, SeatRoster, UserId, Viewer,
 };
 use tabula_game_api::{
-    AsyncTurnPolicy, Budget, Category, ChatPolicy, Complexity, ConfigError, ContentRating, Ctx,
-    Durability, DurationRange, GameCapabilities, GameMetadata, GameModule, GameRules, Init,
-    InitError, Input, LegalCommands, Outcome, RankedSupport, ReconnectPolicy, SeatCounts, SeatSpec,
-    SpectatorPolicy, StateSizeClass, SubstitutionPolicy, TurnModel, VoiceRequirement,
+    AssetRef, AsyncTurnPolicy, Budget, Category, ChatPolicy, Complexity, ConfigError,
+    ContentRating, Ctx, Durability, DurationRange, GameCapabilities, GameCapabilitiesSpec,
+    GameMetadata, GameMetadataSpec, GameModule, GameRules, I18nKey, Init, InitError, Input,
+    LegalCommands, Outcome, RankedSupport, ReconnectPolicy, SeatCounts, SeatSpec, SpectatorPolicy,
+    StateSizeClass, SubstitutionPolicy, TurnModel, VoiceRequirement,
 };
 use tabula_testkit::{GameTestFixture, TerminalScenario};
 
@@ -54,50 +55,47 @@ fn one_seat_roster() -> SeatRoster {
 }
 
 fn minimal_capabilities() -> GameCapabilities {
-    GameCapabilities::new(
-        SeatSpec::new(SeatCounts::range(1, 1).unwrap(), None, false, true),
-        TurnModel::FreeForm,
-        false,
-        SpectatorPolicy::Forbidden,
-        ChatPolicy {
-            channels: Vec::new(),
-            game_scoped: false,
-        },
-        VoiceRequirement::No,
-        RankedSupport::No,
-        AsyncTurnPolicy::Disabled,
-        ReconnectPolicy {
+    GameCapabilities::try_from(GameCapabilitiesSpec {
+        seats: SeatSpec::new(SeatCounts::range(1, 1).unwrap(), None, false, true),
+        turn_model: TurnModel::FreeForm,
+        hidden_information: false,
+        spectators: SpectatorPolicy::Forbidden,
+        chat: ChatPolicy::new(Vec::new(), false).unwrap(),
+        voice: VoiceRequirement::No,
+        ranked: RankedSupport::No,
+        async_turns: AsyncTurnPolicy::Disabled,
+        reconnect: ReconnectPolicy {
             grace: Millis(0),
             notify_rules: false,
         },
-        SubstitutionPolicy::Forbidden,
-        false,
-        Durability::AckAfterApply,
-        true,
-        StateSizeClass::Tiny,
-        Budget::default(),
-        None,
-    )
+        substitution: SubstitutionPolicy::Forbidden,
+        pausable: false,
+        durability: Durability::AckAfterApply,
+        client_preview: true,
+        state_size: StateSizeClass::Tiny,
+        apply_budget: Budget::default(),
+        max_match_duration: None,
+    })
     .unwrap()
 }
 
 fn minimal_metadata(id: &str) -> GameMetadata {
-    GameMetadata {
+    GameMetadata::from(GameMetadataSpec {
         id: GameId::new(id).unwrap(),
         version: GameVersion::new("0.0.0").unwrap(),
         rules_version: RulesVersion(1),
-        name_key: "test.name".to_owned(),
-        tagline_key: "test.tagline".to_owned(),
-        description_key: "test.description".to_owned(),
+        name_key: I18nKey::new("test.name").unwrap(),
+        tagline_key: I18nKey::new("test.tagline").unwrap(),
+        description_key: I18nKey::new("test.description").unwrap(),
         categories: vec![Category::Abstract],
         tags: Vec::new(),
         estimated_minutes: DurationRange::new(1, 1).unwrap(),
         complexity: Complexity::Light,
         content_rating: ContentRating::Everyone,
-        icon: tabula_game_api::metadata::AssetRef("icon".to_owned()),
-        hero: tabula_game_api::metadata::AssetRef("hero".to_owned()),
+        icon: AssetRef::new("icon").unwrap(),
+        hero: AssetRef::new("hero").unwrap(),
         rules_url_key: None,
-    }
+    })
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

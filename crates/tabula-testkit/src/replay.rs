@@ -369,7 +369,7 @@ impl ReplayIdentity {
     #[must_use]
     pub fn from_module<M: GameModule>() -> Self {
         Self {
-            game_id: M::metadata().id.clone(),
+            game_id: M::metadata().id().clone(),
             rules_version: M::Rules::RULES_VERSION,
             rules_hash: M::rules_hash(),
         }

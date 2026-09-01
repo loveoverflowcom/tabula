@@ -11,7 +11,9 @@ mod render;
 mod renderer;
 
 pub use game::{AssetPackRef, GamePresentation, Intent};
-pub use input::{InputEvent, Key, PointerButton, PointerPhase};
+pub use input::{
+    InputEvent, Key, PointerButton, PointerPhase, PointerPosition, PointerPositionError,
+};
 pub use render::{
     Align, Border, Camera2D, Corners, GradientStop, Layer, LinearGradient, Opacity, OpacityError,
     Paint, Rect, RenderCmd, RenderCmdKind, RenderList, RenderListBuilder, RenderListError,
