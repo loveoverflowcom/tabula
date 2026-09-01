@@ -17,6 +17,7 @@ pub use focus::{
     FocusNode, FocusState, NavigationAction,
 };
 pub use game::{AssetPackRef, GamePresentation, Intent};
+pub use glam::{Affine2, Vec2};
 pub use input::{
     InputEvent, Key, PointerButton, PointerPhase, PointerPosition, PointerPositionError,
 };
@@ -32,4 +33,4 @@ pub use render::{
 pub use renderer::{
     Dpi, FrameCtx, FrameCtxError, RenderError, Renderer, TextMetrics, TextMetricsError, Viewport,
 };
-pub use tabula_design::TextStyleToken;
+pub use tabula_design::{Color, Positive, TextStyleToken};

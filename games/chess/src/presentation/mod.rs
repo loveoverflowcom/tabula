@@ -1094,6 +1094,7 @@ mod tests {
     };
     use tabula_game_api::{Budget, Ctx, Input, Outcome};
     use tabula_presentation::Key;
+    use tabula_testkit::assert_render_list_snapshot;
 
     fn viewport(width: f32, height: f32) -> Viewport {
         Viewport::new(Vec2::new(width, height)).expect("test viewport is valid")
@@ -2250,5 +2251,168 @@ mod tests {
             .all(|item| item.state == "available"));
         assert_eq!(description.actions.len(), 1 + PROMOTION_CHOICES.len());
         assert!(description.actions[1..].iter().all(|action| action.enabled));
+    }
+
+    #[test]
+    fn golden_chess_initial_640x640_light() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let local = ChessLocal::default();
+        let frame = frame_with_theme(
+            640.0,
+            640.0,
+            0,
+            &Theme::by_kind(tabula_design::ThemeKind::Light),
+        );
+        let list = ChessPresentation::present(&view, &local, &frame);
+        assert_render_list_snapshot!("chess_initial_640x640_light", list);
+    }
+
+    #[test]
+    fn golden_chess_initial_320x640_responsive() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let local = ChessLocal::default();
+        let frame = frame_with_theme(
+            320.0,
+            640.0,
+            0,
+            &Theme::by_kind(tabula_design::ThemeKind::Light),
+        );
+        let list = ChessPresentation::present(&view, &local, &frame);
+        assert_render_list_snapshot!("chess_initial_320x640_responsive", list);
+    }
+
+    #[test]
+    fn golden_chess_selected_focus_overlay_dark() {
+        let state = crate::State::initial();
+        let view = view(&state);
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+        let layout = BoardLayout::from_viewport(viewport(640.0, 640.0));
+
+        // Select e2 (Square(12))
+        assert!(click(&view, &mut local, layout, Square(12)).is_none());
+        assert_eq!(
+            local.interaction(),
+            Interaction::Selected { square: Square(12) }
+        );
+
+        // Focus on e4 (Square(28)) with keyboard modality
+        local.focus_mut().set_keyboard_focus(Some(FocusId::new(28)));
+
+        let frame = frame_with_theme(
+            640.0,
+            640.0,
+            0,
+            &Theme::by_kind(tabula_design::ThemeKind::Dark),
+        );
+        let list = ChessPresentation::present(&view, &local, &frame);
+        assert_render_list_snapshot!("chess_selected_focus_overlay_dark", list);
+    }
+
+    #[test]
+    fn golden_chess_move_animation_midflight() {
+        let mut state = crate::State::initial();
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+        let start_frame = frame_at(640.0, 640.0, 1000);
+
+        let outcome = legal_apply(
+            &mut state,
+            0,
+            0,
+            Command::Move {
+                from: 12,
+                to: 28,
+                promotion: None,
+            },
+        );
+        for event in outcome.events {
+            if let Some(view_event) =
+                ChessRules::view_event(&state, &event, Viewer::Seat(SeatId(0)))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut local, &start_frame);
+            }
+        }
+
+        let current_view = view(&state);
+        let sample_frame = frame_at(640.0, 640.0, 1100);
+        let list = ChessPresentation::present(&current_view, &local, &sample_frame);
+        assert_render_list_snapshot!("chess_move_animation_midflight", list);
+    }
+
+    #[test]
+    fn golden_chess_promotion_chooser_modal() {
+        let (view, _layout, mut local) = promotion_fixture();
+        local.set_viewport(viewport(640.0, 640.0));
+        local
+            .focus_mut()
+            .set_keyboard_focus(Some(promotion_choice_focus_id(PromotionChoice::Queen)));
+
+        let frame = frame_with_theme(
+            640.0,
+            640.0,
+            0,
+            &Theme::by_kind(tabula_design::ThemeKind::Light),
+        );
+        let list = ChessPresentation::present(&view, &local, &frame);
+        assert_render_list_snapshot!("chess_promotion_chooser_modal", list);
+    }
+
+    #[test]
+    fn golden_chess_terminal_checkmate_hud() {
+        let mut state = crate::State::initial();
+        for (index, (seat, command)) in [
+            (
+                0,
+                Command::Move {
+                    from: 13,
+                    to: 21,
+                    promotion: None,
+                },
+            ),
+            (
+                1,
+                Command::Move {
+                    from: 52,
+                    to: 36,
+                    promotion: None,
+                },
+            ),
+            (
+                0,
+                Command::Move {
+                    from: 14,
+                    to: 30,
+                    promotion: None,
+                },
+            ),
+            (
+                1,
+                Command::Move {
+                    from: 59,
+                    to: 31,
+                    promotion: None,
+                },
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let _ = legal_apply(&mut state, seat, index as u64, command);
+        }
+
+        let view = view(&state);
+        assert!(matches!(view.status, Status::Ended { .. }));
+        let local = ChessLocal::default();
+        let frame = frame_with_theme(
+            640.0,
+            640.0,
+            0,
+            &Theme::by_kind(tabula_design::ThemeKind::Light),
+        );
+        let list = ChessPresentation::present(&view, &local, &frame);
+        assert_render_list_snapshot!("chess_terminal_checkmate_hud", list);
     }
 }

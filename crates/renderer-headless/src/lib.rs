@@ -6,6 +6,7 @@
 //! rejects every other stable draw feature explicitly rather than silently omitting pixels.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::doc_markdown)]
 
 use glam::{Affine2, Vec2};
 use tabula_design::{Color, Positive, Theme};
@@ -168,9 +169,206 @@ pub struct RasterImage {
 pub enum RasterError {
     ImageTooLarge,
     UnsupportedCommand(RenderCmdKind),
+    PngDecodeFailed,
+    PngEncodeFailed,
+}
+
+impl std::fmt::Display for RasterError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ImageTooLarge => write!(f, "image dimensions exceed maximum raster limits"),
+            Self::UnsupportedCommand(kind) => {
+                write!(
+                    f,
+                    "unsupported draw command for headless rasterizer: {kind:?}"
+                )
+            }
+            Self::PngDecodeFailed => write!(f, "failed to decode PNG bytes into raster image"),
+            Self::PngEncodeFailed => write!(f, "failed to encode raster image to PNG bytes"),
+        }
+    }
+}
+
+impl std::error::Error for RasterError {}
+
+/// Explicit tolerance settings for raster golden comparisons.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RasterTolerance {
+    /// Maximum allowed delta (absolute difference) for any single color channel (R, G, B, A).
+    pub max_channel_delta: u8,
+    /// Maximum allowed number of pixels with differing channel values.
+    pub max_different_pixels: usize,
+}
+
+impl RasterTolerance {
+    /// Exact match policy: 0 differing pixels and 0 channel delta.
+    pub const EXACT: Self = Self {
+        max_channel_delta: 0,
+        max_different_pixels: 0,
+    };
+
+    /// Strict tolerance allowing up to `max_different_pixels` with at most `max_channel_delta` per channel.
+    #[must_use]
+    pub const fn strict(max_channel_delta: u8, max_different_pixels: usize) -> Self {
+        Self {
+            max_channel_delta,
+            max_different_pixels,
+        }
+    }
+}
+
+/// Statistics reported when a raster comparison succeeds within tolerance.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RasterDiff {
+    pub different_pixels: usize,
+    pub max_channel_delta: u8,
+}
+
+/// Structured diagnostic when a raster comparison fails.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RasterMismatch {
+    DimensionMismatch {
+        expected: (u32, u32),
+        actual: (u32, u32),
+    },
+    PixelDifferenceExceeded {
+        different_pixels: usize,
+        max_allowed_pixels: usize,
+        max_channel_delta: u8,
+        max_allowed_channel_delta: u8,
+        first_mismatch: (u32, u32),
+        expected_rgba: [u8; 4],
+        actual_rgba: [u8; 4],
+    },
+}
+
+impl std::fmt::Display for RasterMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DimensionMismatch { expected, actual } => {
+                write!(
+                    f,
+                    "raster dimensions do not match: expected {}x{}, got {}x{}",
+                    expected.0, expected.1, actual.0, actual.1
+                )
+            }
+            Self::PixelDifferenceExceeded {
+                different_pixels,
+                max_allowed_pixels,
+                max_channel_delta,
+                max_allowed_channel_delta,
+                first_mismatch,
+                expected_rgba,
+                actual_rgba,
+            } => {
+                write!(
+                    f,
+                    "raster pixel differences exceeded tolerance: {different_pixels} differing pixels (max {max_allowed_pixels}), max channel delta {max_channel_delta} (max {max_allowed_channel_delta}); first mismatch at ({}, {}): expected {expected_rgba:?}, got {actual_rgba:?}",
+                    first_mismatch.0, first_mismatch.1
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for RasterMismatch {}
+
+/// Compares two raster images against an explicit tolerance policy.
+///
+/// Returns `Ok(RasterDiff)` if dimensions match and differences are within tolerance.
+/// Returns `Err(RasterMismatch)` with structured diagnostics if dimensions mismatch or tolerance is exceeded.
+///
+/// @ai.role raster-comparator
+/// @ai.domain presentation.raster-oracle
+/// @ai.pure true
+/// @ai.invariant exact-dimensions-required
+/// @ai.evidence tests::compare_raster_dimension_mismatch_fails_regardless_of_pixels
+/// @ai.evidence tests::compare_raster_channel_delta_beyond_tolerance_fails
+pub fn compare_raster(
+    expected: &RasterImage,
+    actual: &RasterImage,
+    tolerance: RasterTolerance,
+) -> Result<RasterDiff, RasterMismatch> {
+    if expected.width != actual.width || expected.height != actual.height {
+        return Err(RasterMismatch::DimensionMismatch {
+            expected: (expected.width, expected.height),
+            actual: (actual.width, actual.height),
+        });
+    }
+
+    let mut different_pixels = 0;
+    let mut max_channel_delta: u8 = 0;
+    let mut first_mismatch = None;
+
+    for y in 0..expected.height {
+        for x in 0..expected.width {
+            let exp_px = expected.pixel(x, y).expect("within bounds");
+            let act_px = actual.pixel(x, y).expect("within bounds");
+
+            if exp_px != act_px {
+                let r_delta = exp_px[0].abs_diff(act_px[0]);
+                let g_delta = exp_px[1].abs_diff(act_px[1]);
+                let b_delta = exp_px[2].abs_diff(act_px[2]);
+                let a_delta = exp_px[3].abs_diff(act_px[3]);
+                let px_max_delta = r_delta.max(g_delta).max(b_delta).max(a_delta);
+
+                if px_max_delta > 0 {
+                    different_pixels += 1;
+                    max_channel_delta = max_channel_delta.max(px_max_delta);
+                    if first_mismatch.is_none()
+                        && (px_max_delta > tolerance.max_channel_delta
+                            || different_pixels > tolerance.max_different_pixels)
+                    {
+                        first_mismatch = Some(((x, y), exp_px, act_px));
+                    }
+                }
+            }
+        }
+    }
+
+    if max_channel_delta > tolerance.max_channel_delta
+        || different_pixels > tolerance.max_different_pixels
+    {
+        let (coord, exp_rgba, act_rgba) =
+            first_mismatch.unwrap_or(((0, 0), [0, 0, 0, 0], [0, 0, 0, 0]));
+        return Err(RasterMismatch::PixelDifferenceExceeded {
+            different_pixels,
+            max_allowed_pixels: tolerance.max_different_pixels,
+            max_channel_delta,
+            max_allowed_channel_delta: tolerance.max_channel_delta,
+            first_mismatch: coord,
+            expected_rgba: exp_rgba,
+            actual_rgba: act_rgba,
+        });
+    }
+
+    Ok(RasterDiff {
+        different_pixels,
+        max_channel_delta,
+    })
 }
 
 impl RasterImage {
+    /// Loads a raster image from PNG bytes.
+    pub fn from_png_bytes(bytes: &[u8]) -> Result<Self, RasterError> {
+        let pixmap =
+            tiny_skia::Pixmap::decode_png(bytes).map_err(|_| RasterError::PngDecodeFailed)?;
+        Ok(Self {
+            width: pixmap.width(),
+            height: pixmap.height(),
+            rgba: pixmap.data().to_vec(),
+        })
+    }
+
+    /// Encodes the raster image into PNG bytes.
+    pub fn encode_png(&self) -> Result<Vec<u8>, RasterError> {
+        let pixmap = tiny_skia::PixmapRef::from_bytes(&self.rgba, self.width, self.height)
+            .ok_or(RasterError::PngEncodeFailed)?;
+        pixmap
+            .encode_png()
+            .map_err(|_| RasterError::PngEncodeFailed)
+    }
+
     #[must_use]
     pub fn checksum(&self) -> u64 {
         self.rgba.iter().fold(0xcbf2_9ce4_8422_2325, |hash, byte| {
@@ -832,5 +1030,128 @@ mod tests {
                 Err(RasterError::UnsupportedCommand(kind))
             );
         }
+    }
+
+    #[test]
+    fn compare_raster_identical_images_pass_exact() {
+        let image_a = RasterImage {
+            width: 2,
+            height: 2,
+            rgba: vec![
+                255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+            ],
+        };
+        let image_b = image_a.clone();
+        let diff = compare_raster(&image_a, &image_b, RasterTolerance::EXACT).unwrap();
+        assert_eq!(diff.different_pixels, 0);
+        assert_eq!(diff.max_channel_delta, 0);
+    }
+
+    #[test]
+    fn compare_raster_dimension_mismatch_fails_regardless_of_pixels() {
+        let image_a = RasterImage {
+            width: 2,
+            height: 2,
+            rgba: vec![0; 16],
+        };
+        let image_b = RasterImage {
+            width: 3,
+            height: 2,
+            rgba: vec![0; 24],
+        };
+        assert_eq!(
+            compare_raster(&image_a, &image_b, RasterTolerance::strict(255, 100)),
+            Err(RasterMismatch::DimensionMismatch {
+                expected: (2, 2),
+                actual: (3, 2),
+            })
+        );
+    }
+
+    #[test]
+    fn compare_raster_channel_delta_within_tolerance_passes() {
+        let image_a = RasterImage {
+            width: 1,
+            height: 1,
+            rgba: vec![100, 100, 100, 255],
+        };
+        let image_b = RasterImage {
+            width: 1,
+            height: 1,
+            rgba: vec![102, 99, 100, 255],
+        };
+        let tolerance = RasterTolerance::strict(2, 1);
+        let diff = compare_raster(&image_a, &image_b, tolerance).unwrap();
+        assert_eq!(diff.different_pixels, 1);
+        assert_eq!(diff.max_channel_delta, 2);
+    }
+
+    #[test]
+    fn compare_raster_channel_delta_beyond_tolerance_fails() {
+        let image_a = RasterImage {
+            width: 1,
+            height: 1,
+            rgba: vec![100, 100, 100, 255],
+        };
+        let image_b = RasterImage {
+            width: 1,
+            height: 1,
+            rgba: vec![105, 100, 100, 255],
+        };
+        let tolerance = RasterTolerance::strict(3, 10);
+        assert_eq!(
+            compare_raster(&image_a, &image_b, tolerance),
+            Err(RasterMismatch::PixelDifferenceExceeded {
+                different_pixels: 1,
+                max_allowed_pixels: 10,
+                max_channel_delta: 5,
+                max_allowed_channel_delta: 3,
+                first_mismatch: (0, 0),
+                expected_rgba: [100, 100, 100, 255],
+                actual_rgba: [105, 100, 100, 255],
+            })
+        );
+    }
+
+    #[test]
+    fn compare_raster_too_many_different_pixels_fails() {
+        let image_a = RasterImage {
+            width: 3,
+            height: 1,
+            rgba: vec![10, 10, 10, 255, 20, 20, 20, 255, 30, 30, 30, 255],
+        };
+        let image_b = RasterImage {
+            width: 3,
+            height: 1,
+            rgba: vec![11, 10, 10, 255, 21, 20, 20, 255, 31, 30, 30, 255],
+        };
+        // Each pixel delta is only 1, but 3 pixels differ when only 2 are allowed
+        let tolerance = RasterTolerance::strict(2, 2);
+        assert_eq!(
+            compare_raster(&image_a, &image_b, tolerance),
+            Err(RasterMismatch::PixelDifferenceExceeded {
+                different_pixels: 3,
+                max_allowed_pixels: 2,
+                max_channel_delta: 1,
+                max_allowed_channel_delta: 2,
+                first_mismatch: (2, 0),
+                expected_rgba: [30, 30, 30, 255],
+                actual_rgba: [31, 30, 30, 255],
+            })
+        );
+    }
+
+    #[test]
+    fn png_encode_and_decode_round_trip() {
+        let original = RasterImage {
+            width: 2,
+            height: 2,
+            rgba: vec![
+                255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 128, 128, 128, 255,
+            ],
+        };
+        let png_bytes = original.encode_png().expect("PNG encode succeeds");
+        let decoded = RasterImage::from_png_bytes(&png_bytes).expect("PNG decode succeeds");
+        assert_eq!(original, decoded);
     }
 }
