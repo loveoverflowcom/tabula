@@ -1,261 +1,287 @@
 //! # `tabula-game-client` — the Macroquad gameplay runtime
 //!
-//! > ## Phase 2 rendering smoke slice
-//!
-//! **One codebase, four platforms.** Desktop, Android, iOS, and web-at-`/play/:id`
-//! will all run this crate; only the renderer smoke scene is real in this focused first slice.
-//! Chess presentation, local hot-seat play, and every network concern remain deliberately deferred.
-//!
-//! ## I-15, the invariant that defines this crate
-//!
-//! **`leptos` must never appear in this dependency graph** — native or WASM.
-//! Gameplay does not live in a DOM runtime (ADR-011), and it does not live in a
-//! `WebView` (ADR-019). `xtask check-deps` enforces it.
-//!
-//! ## The frame loop (doc 04 §4.1, §5.1)
+//! Phase 2 is a local hot-seat vertical slice. The application shell owns the
+//! canonical state and deterministic rule context; the game presenter sees
+//! only the current projection and its own ephemeral local state.
 //!
 //! ```text
-//! renderer.drain_input()  ─→ Presenter::on_input ─→ Intent<Command>
-//!                                                    ─→ MatchClient::send_command
-//! MatchClient::poll()     ─→ drained ONCE PER FRAME
-//!                            Welcome/Resync → replace view
-//!                            ViewEvents     → on_view_event → animations
-//!                            Ack/Reject     → resolve or discard the preview
-//! theme()                 ─→ resolved once per frame
-//! present(view, local, frame) ─→ RenderList (rebuilt fully, sorted by layer,z)
-//! renderer.submit(&list)
+//! renderer input → presenter → Intent<Command> → ChessRules::apply
+//!                                      ↓
+//!                         project(state, viewer) → presenter → RenderList
 //! ```
 //!
-//! Synchronous, single-threaded, **no `async` in the presentation path, no
-//! locks**. That is what `poll()` returning an iterator buys.
-//!
-//! ## Web: two bundles, not one (doc 04 §3.1, ADR-011)
-//!
-//! ```text
-//! /                → app.wasm   (Leptos shell,  target ~1.5–2.5 MB gz)
-//! /play/:match_id  → game.wasm  (this crate,    target ~4–6 MB gz)
-//! ```
-//!
-//! `/play/:id` is a **separate document** — a real navigation, not a client-side
-//! route into a canvas. Two runtimes fighting over the canvas, the DOM, and the
-//! event loop is a problem we decline to have. Two bundles also means two
-//! independent caches: a shell deploy does not invalidate the game.
-//!
-//! Hard size cap: **< 6 MB gzipped** including one game's code, excluding assets.
-//! CI fails on a >10% regression (doc 01 §7).
-//!
-//! ## The handoff (doc 04 §3.4)
-//!
-//! ```text
-//! shell:  POST /matches → { match_id, join_token }
-//! shell:  sessionStorage["match.ctx"] = { match_id, join_token, game_id@version, pack }
-//! shell:  prefetch game.wasm + pack manifest (link rel=prefetch) DURING the room screen
-//! shell:  navigate to /play/:match_id
-//! game:   read match.ctx → branded loader with REAL byte-level progress
-//! game:   WS Hello + Attach(join_token) → Welcome { view, capabilities }
-//!         ... play ...
-//! game:   in-canvas result summary + "Rematch" / "Back to lobby"
-//! game:   navigate to /matches/:id or /rooms/:id
-//! ```
-//!
-//! Back/forward and deep links must work; re-entering `/play/:id` resumes.
-//!
-//! **Native has no navigation — it swaps a scene.** The same `MatchContext`
-//! struct is passed in-process, so the runtime code is identical on every
-//! platform.
-//!
-//! ## WASM constraints that shape the design (doc 01 §7)
-//!
-//! Do not rediscover these in Phase 5:
-//!
-//! - **No threads by default.** Nothing in shared client code may use
-//!   `std::thread`.
-//! - **No blocking I/O.** All network access is event-driven — hence
-//!   `tabula-net-client`'s two backends.
-//! - `Instant::now()` works via a `performance.now()` shim, but it is banned in
-//!   rules anyway (I-3). Presentation uses the renderer's frame time.
-//!
-//! ## Current entry point and future layout
-//!
-//! ```text
-//! src/lib.rs        the renderer-neutral visual smoke scene
-//! src/main.rs       native/WASM Macroquad entry point
-//! src/scene/
-//!   mod.rs          the scene stack (native has no navigation — it swaps scenes)
-//!   loader.rs       branded loader with real asset progress
-//!   match_.rs       the in-match scene: HUD, chat overlay, clocks, result summary
-//!   shell.rs        native lobby/catalog screens, drawn with tabula-presentation
-//! src/hotseat.rs    deferred: local two-player driver, no server involved
-//! src/online.rs     Phase 4: MatchClient wiring, connection-state UI
-//! src/context.rs    MatchContext handoff struct + deep-link parsing
-//! src/platform/
-//!   web.rs          #[cfg(target_arch = "wasm32")] boot from sessionStorage
-//!   native.rs       window setup, config dirs
-//!   android.rs      Phase 6: cdylib entry, lifecycle events into net-client
-//!   ios.rs          Phase 6: staticlib entry
-//! ```
+//! The frame clock is used only for presentation timing. The local match sends
+//! `LogicalTime::ZERO` to untimed rules, so wall-clock time cannot affect the
+//! canonical match.
 
 #![forbid(unsafe_code)]
 
-use glam::{Affine2, Vec2};
-use tabula_design::Theme;
-use tabula_presentation::{
-    Align, Border, Camera2D, Corners, Layer, Opacity, Paint, Rect, RenderCmd, RenderList,
-    RenderListBuilder, RenderListError, TextStyleToken,
+use local_game::{
+    presentation::{ChessLocal, ChessPresentation},
+    ChessRules, Config, State, View,
 };
+use tabula_core::{
+    DetRng, InputIndex, LogicalTime, MatchSeed, Occupant, SeatEntry, SeatId, SeatRoster, UserId,
+    Viewer,
+};
+use tabula_game_api::{Budget, Ctx, GameRules, Input};
+use tabula_game_chess as local_game; // xtask-allow-game-id: direct Phase 2 local vertical slice; not a game-id branch.
+use tabula_presentation::{FrameCtx, GamePresentation, InputEvent, RenderList};
 
-/// Builds the deterministic diagnostic scene used to manually smoke-test the renderer backend.
+/// A deterministic two-seat shell for a local hot-seat match.
 ///
-/// It exercises only the renderer-neutral command vocabulary; the executable submits the returned
-/// list through `Renderer`, exactly as a future game presenter will.
-#[allow(
-    clippy::cast_precision_loss,
-    clippy::float_arithmetic,
-    clippy::too_many_lines
-)]
-pub fn smoke_scene(theme: Theme, pointer: Option<Vec2>) -> Result<RenderList, RenderListError> {
-    let mut builder = RenderListBuilder::new(Camera2D::default());
-    let square = 42.0;
-    let board_origin = Vec2::new(36.0, 88.0);
-    for rank in 0..8 {
-        for file in 0..8 {
-            let color = if (rank + file) % 2 == 0 {
-                theme.color.surface_container
-            } else {
-                theme.color.surface_container_high
-            };
-            builder.push(RenderCmd::Rect {
-                rect: Rect::new(
-                    board_origin + Vec2::new(file as f32 * square, rank as f32 * square),
-                    Vec2::splat(square),
-                )?,
-                radii: Corners::uniform(0.0)?,
-                fill: Some(Paint::Solid(color)),
-                border: None,
-                layer: Layer::BOARD,
-                z: i16::try_from(rank * 8 + file).expect("8 by 8 grid fits in i16"),
-            })?;
+/// `state` is intentionally private: only this imperative shell applies rules.
+/// The presenter receives `view`, never the canonical state, and emits intents
+/// that come back through [`ChessRules::apply`].
+///
+/// @ai.role imperative-shell
+/// @ai.domain client.local-match
+/// @ai.pure false
+/// @ai.invariant projection-only-presenter-input
+/// @ai.invariant deterministic-untimed-application
+/// @ai.invariant input-index-per-attempt
+/// @ai.evidence tests::local_hotseat_applies_a_presenter_move_through_canonical_rules
+/// @ai.evidence tests::every_emitted_command_consumes_a_distinct_input_index
+#[allow(clippy::doc_markdown)]
+#[derive(Debug)]
+pub struct LocalChessMatch {
+    state: State,
+    view: View,
+    local: ChessLocal,
+    seed: MatchSeed,
+    next_input_index: u64,
+}
+
+/// Failure raised when the finite canonical input-index domain is exhausted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LocalChessMatchError {
+    InputIndexExhausted,
+}
+
+impl LocalChessMatch {
+    /// Creates an untimed standard match with a fixed local seed.
+    ///
+    /// A fixed seed is sufficient because the standard opening position does
+    /// not draw randomness. A future local randomised game should receive its
+    /// seed from the shell in the same way as the server.
+    #[must_use]
+    pub fn new() -> Self {
+        let seed = MatchSeed::from_bytes([0; 32]);
+        let roster = local_roster();
+        let mut rng = DetRng::for_input(&seed, InputIndex(0));
+        let mut ctx = Ctx {
+            now: LogicalTime::ZERO,
+            index: InputIndex(0),
+            rng: &mut rng,
+            budget: Budget::default(),
+        };
+        let init = ChessRules::create(&Config::default(), &roster, &mut ctx)
+            .expect("the local two-seat standard match configuration is valid");
+        let state = init.state;
+        let view = ChessRules::project(&state, Viewer::Seat(SeatId(0)));
+        Self {
+            state,
+            view,
+            local: ChessLocal::default(),
+            seed,
+            // Match creation owns index 0; player attempts begin at index 1.
+            next_input_index: 1,
         }
     }
 
-    builder.push(RenderCmd::Text {
-        text: String::from("Macroquad renderer smoke scene"),
-        at: Vec2::new(36.0, 42.0),
-        style: TextStyleToken::HeadlineSm,
-        align: Align::Start,
-        max_width: None,
-        color: theme.color.on_surface,
-        layer: Layer::HUD,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::Rect {
-        rect: Rect::new(Vec2::new(396.0, 88.0), Vec2::new(284.0, 150.0))?,
-        radii: Corners::uniform(theme.shape.lg.get())?,
-        fill: Some(Paint::Solid(theme.color.surface_container)),
-        border: Some(Border::new(
-            theme.focus.ring_width.get(),
-            theme.color.outline,
-        )?),
-        layer: Layer::HUD,
-        z: 1,
-    })?;
-    builder.push(RenderCmd::Text {
-        text: String::from("semantic colours\nrounded border\ntext metrics"),
-        at: Vec2::new(420.0, 112.0),
-        style: TextStyleToken::BodyLg,
-        align: Align::Start,
-        max_width: None,
-        color: theme.color.on_surface_variant,
-        layer: Layer::HUD,
-        z: 2,
-    })?;
+    /// Processes one frame-normalized input and applies any emitted intent.
+    ///
+    /// Rejected commands are harmless: the rules contract leaves `state` and
+    /// `view` unchanged. The attempted command still consumes its input-log
+    /// index and RNG domain, matching the runtime replay contract.
+    pub fn handle_input(
+        &mut self,
+        input: &InputEvent,
+        frame: &FrameCtx,
+    ) -> Result<(), LocalChessMatchError> {
+        self.local.set_viewport(frame.viewport());
+        let Some(intent) = ChessPresentation::on_input(input, &self.view, &mut self.local) else {
+            return Ok(());
+        };
+        let seat = self.view.you.unwrap_or(self.view.turn).seat();
+        let input_index = InputIndex(self.next_input_index);
+        self.next_input_index = self
+            .next_input_index
+            .checked_add(1)
+            .ok_or(LocalChessMatchError::InputIndexExhausted)?;
+        let mut rng = DetRng::for_input(&self.seed, input_index);
+        let mut ctx = Ctx {
+            // This match uses the default no-clock configuration. Presentation
+            // time never crosses into the deterministic rules context.
+            now: LogicalTime::ZERO,
+            index: input_index,
+            rng: &mut rng,
+            budget: Budget::default(),
+        };
+        let result = ChessRules::apply(
+            &mut self.state,
+            Input::Player {
+                seat,
+                command: intent.into_command(),
+            },
+            &mut ctx,
+        );
+        let Ok(outcome) = result else {
+            return Ok(());
+        };
 
-    let scope_layer = Layer::OVERLAY;
-    builder.push(RenderCmd::PushClip {
-        rect: Rect::new(Vec2::new(396.0, 270.0), Vec2::new(180.0, 120.0))?,
-        layer: scope_layer,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::PushTransform {
-        matrix: Affine2::from_scale_angle_translation(
-            Vec2::splat(1.2),
-            0.28,
-            Vec2::new(434.0, 270.0),
-        ),
-        layer: scope_layer,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::PushOpacity {
-        opacity: Opacity::try_from(0.5).expect("literal opacity is valid"),
-        layer: scope_layer,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::PushOpacity {
-        opacity: Opacity::try_from(0.5).expect("literal opacity is valid"),
-        layer: scope_layer,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::Rect {
-        rect: Rect::new(Vec2::ZERO, Vec2::new(160.0, 96.0))?,
-        radii: Corners::uniform(theme.shape.md.get())?,
-        fill: Some(Paint::Solid(theme.color.primary)),
-        border: None,
-        layer: Layer::PIECES,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::PopOpacity {
-        layer: scope_layer,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::PopOpacity {
-        layer: scope_layer,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::PopTransform {
-        layer: scope_layer,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::PopClip {
-        layer: scope_layer,
-        z: 0,
-    })?;
+        for event in &outcome.events {
+            if let Some(view_event) = ChessRules::view_event(&self.state, event, Viewer::Seat(seat))
+            {
+                ChessPresentation::on_view_event(&view_event, &mut self.local, frame);
+            }
+        }
+        self.view = ChessRules::project(&self.state, Viewer::Seat(self.state.turn.seat()));
+        Ok(())
+    }
 
-    let indicator = pointer.unwrap_or(Vec2::new(-12.0, -12.0));
-    builder.push(RenderCmd::Rect {
-        rect: Rect::new(indicator - Vec2::splat(6.0), Vec2::splat(12.0))?,
-        radii: Corners::uniform(6.0)?,
-        fill: Some(Paint::Solid(theme.color.danger)),
-        border: Some(Border::new(2.0, theme.color.on_danger)?),
-        layer: Layer::TOAST,
-        z: 0,
-    })?;
-    builder.finish()
+    /// Builds the renderer-neutral frame from the latest projection.
+    #[must_use]
+    pub fn present(&self, frame: &FrameCtx) -> RenderList {
+        ChessPresentation::present(&self.view, &self.local, frame)
+    }
+
+    /// Exposes the authoritative projection for shell diagnostics and tests.
+    #[must_use]
+    pub const fn view(&self) -> &View {
+        &self.view
+    }
+}
+
+impl Default for LocalChessMatch {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+fn local_roster() -> SeatRoster {
+    SeatRoster::new(
+        [
+            SeatEntry {
+                seat: SeatId(0),
+                occupant: Occupant::Human(UserId(1)),
+                team: None,
+            },
+            SeatEntry {
+                seat: SeatId(1),
+                occupant: Occupant::Human(UserId(2)),
+                team: None,
+            },
+        ]
+        .into_iter()
+        .collect(),
+    )
+    .expect("local seats are unique")
 }
 
 #[cfg(test)]
 mod tests {
+    use super::local_game::{presentation::BoardLayout, Color as ChessColor, PieceKind, Square};
     use super::*;
-    use tabula_design::ThemeKind;
+    use glam::Vec2;
+    use tabula_presentation::{Dpi, PointerButton, PointerPhase, PointerPosition, Viewport};
+
+    fn frame() -> FrameCtx {
+        FrameCtx::new(
+            Viewport::new(Vec2::splat(640.0)).expect("test viewport is valid"),
+            Dpi::new(1.0).expect("test DPI is valid"),
+            0,
+            tabula_design::Theme::by_kind(tabula_design::ThemeKind::Light),
+        )
+    }
+
+    fn click(layout: BoardLayout, square: u8) -> InputEvent {
+        let square = Square::new(square).expect("test square is valid");
+        let rect = layout
+            .square_rect(square)
+            .expect("test square has geometry");
+        InputEvent::Pointer {
+            position: PointerPosition::new(rect.origin() + rect.size() * 0.5)
+                .expect("test pointer is finite"),
+            button: PointerButton::Primary,
+            phase: PointerPhase::Up,
+        }
+    }
 
     #[test]
-    fn smoke_scene_is_a_valid_render_list_with_every_state_scope_balanced() {
-        let scene =
-            smoke_scene(Theme::by_kind(ThemeKind::HighContrastDark), Some(Vec2::ONE)).unwrap();
-        assert!(scene
-            .commands()
-            .iter()
-            .any(|command| matches!(command, RenderCmd::Text { .. })));
-        assert!(scene
-            .commands()
-            .iter()
-            .any(|command| matches!(command, RenderCmd::PushClip { .. })));
-        assert!(scene
-            .commands()
-            .iter()
-            .any(|command| matches!(command, RenderCmd::PushTransform { .. })));
-        assert!(scene
-            .commands()
-            .iter()
-            .any(|command| matches!(command, RenderCmd::PushOpacity { .. })));
+    fn local_hotseat_applies_a_presenter_move_through_canonical_rules() {
+        let frame = frame();
+        let layout = BoardLayout::from_viewport(frame.viewport());
+        let mut local_match = LocalChessMatch::new();
+
+        local_match
+            .handle_input(&click(layout, 12), &frame)
+            .expect("source selection has an available input index");
+        assert_eq!(local_match.view().board[12].unwrap().kind, PieceKind::Pawn);
+        local_match
+            .handle_input(&click(layout, 28), &frame)
+            .expect("legal move has an available input index");
+
+        assert_eq!(local_match.view().board[12], None);
+        assert_eq!(local_match.view().board[28].unwrap().kind, PieceKind::Pawn);
+        assert_eq!(local_match.view().turn, ChessColor::Black);
+    }
+
+    #[test]
+    fn every_emitted_command_consumes_a_distinct_input_index() {
+        let frame = frame();
+        let layout = BoardLayout::from_viewport(frame.viewport());
+        let e2 = click(layout, 12);
+        let e5 = click(layout, 36);
+        let e4 = click(layout, 28);
+        let mut local_match = LocalChessMatch::new();
+
+        assert_eq!(local_match.next_input_index, 1);
+
+        local_match
+            .handle_input(&e2, &frame)
+            .expect("first source selection has an available input index");
+        assert_eq!(local_match.next_input_index, 1);
+        local_match
+            .handle_input(&e5, &frame)
+            .expect("first rejected command still has an input index");
+        assert_eq!(local_match.next_input_index, 2);
+        assert_eq!(local_match.view().board[12].unwrap().kind, PieceKind::Pawn);
+        assert_eq!(local_match.view().board[28], None);
+
+        local_match
+            .handle_input(&e2, &frame)
+            .expect("second source selection has an available input index");
+        local_match
+            .handle_input(&e5, &frame)
+            .expect("second rejected command still has an input index");
+        assert_eq!(local_match.next_input_index, 3);
+
+        local_match
+            .handle_input(&e2, &frame)
+            .expect("valid source selection has an available input index");
+        local_match
+            .handle_input(&e4, &frame)
+            .expect("valid command has an available input index");
+        assert_eq!(local_match.next_input_index, 4);
+        assert_eq!(local_match.view().board[12], None);
+        assert_eq!(local_match.view().board[28].unwrap().kind, PieceKind::Pawn);
+    }
+
+    #[test]
+    fn exhausted_input_index_stops_before_reusing_an_rng_domain() {
+        let frame = frame();
+        let layout = BoardLayout::from_viewport(frame.viewport());
+        let mut local_match = LocalChessMatch::new();
+        local_match.next_input_index = u64::MAX;
+
+        local_match
+            .handle_input(&click(layout, 12), &frame)
+            .expect("source selection does not consume an input index");
+        assert_eq!(
+            local_match.handle_input(&click(layout, 28), &frame),
+            Err(LocalChessMatchError::InputIndexExhausted)
+        );
+        assert_eq!(local_match.next_input_index, u64::MAX);
     }
 }

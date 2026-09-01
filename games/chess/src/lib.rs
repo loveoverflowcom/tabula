@@ -20,6 +20,9 @@ mod rules;
 #[cfg(feature = "bots")]
 pub mod bot;
 
+#[cfg(feature = "presentation")]
+pub mod presentation;
+
 pub use rules::{
     perft, CastlingRights, ChessRules, ClockConfig, ClockControl, ClockState, Color, Command,
     Config, Event, FenError, Piece, PieceKind, PositionKey, Square, State, Status, View, ViewEvent,
