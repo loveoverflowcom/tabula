@@ -247,10 +247,10 @@ impl AssetContentHash {
             return Err(AssetContentHashError::InvalidLength { found: value.len() });
         }
         let mut bytes = [0_u8; blake3::OUT_LEN];
-        for (index, byte) in bytes.iter_mut().enumerate() {
-            let offset = index * 2;
-            *byte = u8::from_str_radix(&value[offset..offset + 2], 16)
-                .map_err(|_| AssetContentHashError::InvalidHex)?;
+        for (index, pair) in value.as_bytes().chunks_exact(2).enumerate() {
+            let high = hex_nibble(pair[0]).ok_or(AssetContentHashError::InvalidHex)?;
+            let low = hex_nibble(pair[1]).ok_or(AssetContentHashError::InvalidHex)?;
+            bytes[index] = (high << 4) | low;
         }
         Ok(Self(bytes))
     }
@@ -259,6 +259,15 @@ impl AssetContentHash {
     #[must_use]
     pub const fn as_bytes(&self) -> &[u8; blake3::OUT_LEN] {
         &self.0
+    }
+}
+
+fn hex_nibble(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
     }
 }
 
@@ -470,6 +479,7 @@ pub enum ManifestError {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ManifestSpec {
     pack: String,
     version: String,
@@ -478,6 +488,7 @@ struct ManifestSpec {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AssetFileSpec {
     name: String,
     path: String,
@@ -489,7 +500,9 @@ struct AssetFileSpec {
 
 #[cfg(test)]
 mod tests {
-    use super::{AssetPackManifest, AssetPriority, ManifestError};
+    use super::{
+        AssetContentHash, AssetContentHashError, AssetPackManifest, AssetPriority, ManifestError,
+    };
 
     const HASH: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
@@ -565,6 +578,31 @@ mod tests {
                 Err(ManifestError::InvalidHash(_))
             ));
         }
+    }
+
+    #[test]
+    fn hash_validation_rejects_non_ascii_at_exact_byte_length_without_panicking() {
+        let hash = format!("€{}", "0".repeat(61));
+        assert_eq!(hash.len(), 64);
+        assert_eq!(
+            AssetContentHash::new(&hash),
+            Err(AssetContentHashError::InvalidHex)
+        );
+    }
+
+    #[test]
+    fn manifest_schema_rejects_unknown_top_level_and_file_fields() {
+        let unknown_top_level = format!("unsupported = true\n{}", manifest(&file()));
+        assert!(matches!(
+            AssetPackManifest::from_toml(&unknown_top_level),
+            Err(ManifestError::Toml(_))
+        ));
+
+        let unknown_file_field = manifest(&format!("{}\nunsupported = true", file()));
+        assert!(matches!(
+            AssetPackManifest::from_toml(&unknown_file_field),
+            Err(ManifestError::Toml(_))
+        ));
     }
 
     #[test]

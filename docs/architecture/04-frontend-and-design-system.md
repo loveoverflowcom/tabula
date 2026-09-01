@@ -1037,7 +1037,17 @@ flowchart TB
 8. **Offline**: a previously-played game's pack stays cached, so a local/bot game works offline
    (Phase 3 already supports local play with no server).
 
+The Phase-3 manifest parser currently proves only that each path is a safe, canonical relative
+pack path and that the manifest declares a structurally valid content hash. `AssetPath` does not
+yet prove that the path embeds that hash, and the parser does not verify file bytes. Before cache
+or CDN resolution ships, `xtask pack-assets` must emit and enforce the content-addressed,
+immutable-path convention, with the loader verifying bytes against the manifest hash.
+
 ### 12.3 Manifest sketch
+
+The parser's current schema is intentionally limited to `pack`, `version`, `game`, and `files`;
+unknown fields are rejected. The atlas section below is a future schema extension and is not
+accepted until atlas metadata has a defined validated domain type.
 
 ```toml
 # generated: assets/packs/chess/pack.toml → served as pack.json
