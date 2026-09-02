@@ -1068,7 +1068,7 @@ GameMetadata / GamePresentation
               └── AssetDensity
 ```
 
-The current implementation includes the pure identity, binding, and resolution layer:
+The current implementation includes the pure identity, binding, resolution, and byte-integrity layer:
 
 - `AssetPackRef`: the exact pack identity (`AssetPackId`) and version (`AssetPackVersion`), canonically formatted as `pack@version`.
 - `AssetPackManifest.game`: the reverse-DNS game ID to which the pack is bound.
@@ -1076,6 +1076,7 @@ The current implementation includes the pure identity, binding, and resolution l
 - `AssetPixelRegion`: structural physical source-pixel metadata, distinct from logical `Rect`; it proves positive extents and non-overflowing endpoints, not decoded-image bounds.
 - `AssetPackManifest::validate_binding(...) -> BoundAssetPack`: pure binding evidence for one exact requested `AssetPackRef` and `GameId`.
 - `BoundAssetPack::resolve(...) -> ResolvedAsset`: pure deterministic metadata lookup. Exact density wins; otherwise nearest density wins, with equal distances selecting the higher density.
+- `VerifiedAssetBytes`: typed proof binding an exact `AssetFile` and verified raw bytes, constructible only by `AssetFile::verify_bytes` after size and BLAKE3 checks succeed.
 
 Implemented now:
 
@@ -1084,13 +1085,13 @@ Implemented now:
 - duplicate file-name and path rejection;
 - explicit logical resource declarations with no filename inference;
 - structural atlas-region validation and shared physical atlas files;
-- pack-to-game binding witness and deterministic pure resource resolution.
+- pack-to-game binding witness and deterministic pure resource resolution;
+- byte-level integrity verification against manifest-declared size and BLAKE3 hash ([`AssetFile::verify_bytes`] returning [`VerifiedAssetBytes`]).
 
 Not implemented yet:
 
 - asset sources, network or filesystem loading;
 - cache management, CDN URL/signature generation, or retry policy;
-- byte-level integrity verification;
 - decoding or renderer handles.
 
 The resolution and loading pipeline flow:
@@ -1108,14 +1109,29 @@ GamePresentation::asset_pack()
         ↓
 resource resolution       [implemented / pure]
         ↓
-  loaded handles          [future]
+   ResolvedAsset
+        ↓
+     AssetFile
+        ↓
+   future source          [future]
+        ↓
+  untrusted bytes         [untrusted input]
+        ↓
+verify size + BLAKE3      [implemented / pure]
+        ↓
+VerifiedAssetBytes
+        ↓
+  decode / loader         [future]
+        ↓
+   loaded handles         [future]
 ```
 
 The Phase-3 manifest parser proves that each path is a safe, canonical relative
 pack path and that the manifest declares a structurally valid content hash. `AssetPath` does not
-yet prove that the path embeds that hash, and the parser does not verify file bytes. Before cache
-or CDN resolution ships, `xtask pack-assets` must emit and enforce the content-addressed,
-immutable-path convention, with the loader verifying bytes against the manifest hash.
+yet prove that the path embeds that hash. Pure byte-level integrity verification (`AssetFile::verify_bytes`)
+enforces that actual bytes match the declared size and BLAKE3 hash before producing `VerifiedAssetBytes`.
+Future asset sources will pass all fetched bytes through this verification boundary before cache
+persistence or decoding.
 
 ### 12.3 Manifest schema
 

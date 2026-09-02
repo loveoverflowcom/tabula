@@ -746,7 +746,7 @@ fn is_asset_segment(value: &str) -> bool {
 pub struct AssetContentHash([u8; blake3::OUT_LEN]);
 
 impl AssetContentHash {
-    fn new(value: &str) -> Result<Self, AssetContentHashError> {
+    pub(crate) fn new(value: &str) -> Result<Self, AssetContentHashError> {
         if value.len() != blake3::OUT_LEN * 2 {
             return Err(AssetContentHashError::InvalidLength { found: value.len() });
         }
@@ -759,7 +759,12 @@ impl AssetContentHash {
         Ok(Self(bytes))
     }
 
-    /// Returns the digest bytes used by a future integrity verifier.
+    #[must_use]
+    pub(crate) const fn from_bytes(bytes: [u8; blake3::OUT_LEN]) -> Self {
+        Self(bytes)
+    }
+
+    /// Returns the digest bytes used by an integrity verifier.
     #[must_use]
     pub const fn as_bytes(&self) -> &[u8; blake3::OUT_LEN] {
         &self.0
@@ -800,7 +805,7 @@ pub enum AssetContentHashError {
 pub struct AssetByteSize(u64);
 
 impl AssetByteSize {
-    fn new(value: u64) -> Result<Self, AssetByteSizeError> {
+    pub(crate) fn new(value: u64) -> Result<Self, AssetByteSizeError> {
         (value > 0)
             .then_some(Self(value))
             .ok_or(AssetByteSizeError::Zero)
@@ -810,6 +815,12 @@ impl AssetByteSize {
     #[must_use]
     pub const fn get(self) -> u64 {
         self.0
+    }
+}
+
+impl fmt::Display for AssetByteSize {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}", self.0)
     }
 }
 

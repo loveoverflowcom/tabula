@@ -52,8 +52,12 @@ region = { x = 0, y = 0, width = 64, height = 64 }
 the resolver never guesses from a filename, path, extension, density suffix, or
 atlas name. Binding a manifest to its expected pack and game produces the
 pure `BoundAssetPack` view, which deterministically returns metadata only
-(`AssetFile` plus an optional structural pixel region). It neither reads bytes
-nor creates a renderer or audio handle.
+(`AssetFile` plus an optional structural pixel region).
+
+Byte-level integrity verification is also pure: untrusted raw bytes pass through
+`AssetFile::verify_bytes`, which enforces declared byte length before BLAKE3 digest
+and returns a typed `VerifiedAssetBytes` witness. It neither performs I/O nor creates
+a renderer or audio handle.
 
 ## Planned delivery rules
 
