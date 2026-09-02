@@ -1,7 +1,7 @@
 [package]
 name        = "tabula-assets"
 version     = "0.0.0"
-description = "Validated asset-pack contracts, source ports, pure resolution, and byte integrity verification."
+description = "Validated asset-pack contracts, source ports, pure resolution, and verified loading."
 edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true

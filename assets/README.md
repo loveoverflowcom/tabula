@@ -79,11 +79,15 @@ pure `BoundAssetPack` view, which deterministically returns metadata only
 (`AssetFile` plus an optional structural pixel region).
 
 Byte-level integrity verification is also pure: untrusted raw bytes pass through
-`AssetFile::verify_bytes`, which enforces declared byte length before BLAKE3 digest
-and returns a typed `VerifiedAssetBytes` witness. An `AssetSource` returns owned
-`UnverifiedAssetBytes`; a successful source read is not an integrity success. The
-source port and memory adapter neither perform filesystem/network I/O nor create
-a renderer or audio handle.
+`AssetFile::verify_bytes` or `AssetFile::verify_owned_bytes`, which enforce declared
+byte length before the BLAKE3 digest. The former returns a borrowed
+`VerifiedAssetBytes` witness; the latter consumes owned `UnverifiedAssetBytes` and
+returns an immutable, owned `OwnedVerifiedAssetBytes` value. `load_verified(file,
+source)` is the thin async-capable composition of `AssetSource::fetch` and the
+owned trust transition. A successful source read is not an integrity success, and
+source errors remain distinct from integrity errors. The source port and memory
+adapter neither perform filesystem/network I/O nor create a renderer or audio
+handle.
 
 The builder intentionally does not generate atlases, decode or convert media,
 load from a filesystem/HTTP/browser source, manage a cache, upload to a CDN, or

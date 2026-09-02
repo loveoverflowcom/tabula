@@ -2,8 +2,10 @@
 //!
 //! A source only retrieves owned bytes for a validated physical [`AssetPath`].
 //! It does not know logical resources or manifest integrity metadata. Every
-//! returned payload must still pass [`crate::AssetFile::verify_bytes`] before
-//! it can become [`crate::VerifiedAssetBytes`].
+//! returned payload must still pass the integrity boundary before it can
+//! become [`crate::VerifiedAssetBytes`] or
+//! [`crate::OwnedVerifiedAssetBytes`]. [`crate::load_verified`] composes the
+//! fetch and owned verification transitions for runtime callers.
 //!
 //! @ai.role source-port
 //! @ai.domain assets.source
