@@ -1001,8 +1001,9 @@ handle. We adopt one behind `VoiceService`, measure, and keep the option to chan
 
 ### 12.1 Target model
 
-The following diagram describes the target asset-delivery system. Only the pure
-manifest and identity boundary described in §12.2 is implemented today.
+The following diagram describes the target asset-delivery system. The pure
+manifest, identity, integrity, and source-port boundaries described in §12.2
+are implemented today; concrete delivery adapters remain future work.
 
 ```mermaid
 flowchart TB
@@ -1021,8 +1022,9 @@ flowchart TB
 
 ### 12.2 Target delivery rules
 
-The following rules describe the target Phase-3 delivery system. Only the pure
-manifest and identity boundary described below is implemented today.
+The following rules describe the target Phase-3 delivery system. The pure
+manifest, identity, integrity, and source-port boundaries described below are
+implemented today; concrete delivery adapters remain future work.
 
 1. **No game's full-resolution assets are in any app binary.** The binary carries only: brand
    assets, UI icons, two fonts, and a tiny placeholder set (so a game is playable-if-ugly when the
@@ -1036,8 +1038,10 @@ manifest and identity boundary described below is implemented today.
    `Low` (celebration art, alternative themes) loads lazily. The loader reports real byte progress
    for the branded loader (§3.4).
 5. **Integrity check on every cached file** (blake3 vs manifest). A mismatch re-downloads.
-6. **Per-density variants**: `@1x/@2x/@3x` atlases, chosen from `FrameCtx.dpi`; the manifest lists
-   only what exists and the loader picks the nearest.
+6. **Per-density variants**: `@1x/@2x/@3x` atlases, with the manifest listing only what exists.
+   `BoundAssetPack::resolve(asset_ref, target_density)` is the pure layer that selects the nearest
+   physical `AssetFile`; `AssetSource` and the future loader consume its selected `AssetPath` and
+   do not choose density variants.
 7. **Cache budget**: 300 MB default on native, 150 MB on web, LRU eviction by pack, never evicting
    the pack of a live match.
 8. **Offline target**: a previously-played pack remains cached so local/bot play can use it without
@@ -1076,6 +1080,8 @@ The current implementation includes the pure identity, binding, resolution, and 
 - `AssetPixelRegion`: structural physical source-pixel metadata, distinct from logical `Rect`; it proves positive extents and non-overflowing endpoints, not decoded-image bounds.
 - `AssetPackManifest::validate_binding(...) -> BoundAssetPack`: pure binding evidence for one exact requested `AssetPackRef` and `GameId`.
 - `BoundAssetPack::resolve(...) -> ResolvedAsset`: pure deterministic metadata lookup. Exact density wins; otherwise nearest density wins, with equal distances selecting the higher density.
+- `AssetSource`: platform-neutral, async-capable port addressed only by a physical `AssetPath`; it returns owned `UnverifiedAssetBytes` and never performs integrity verification.
+- `MemoryAssetSource`: deterministic in-memory reference source for tests; it is not a cache and does not know logical `AssetRef` values.
 - `VerifiedAssetBytes`: typed proof binding an exact `AssetFile` and verified raw bytes, constructible only by `AssetFile::verify_bytes` after size and BLAKE3 checks succeed.
 
 Implemented now:
@@ -1087,10 +1093,12 @@ Implemented now:
 - structural atlas-region validation and shared physical atlas files;
 - pack-to-game binding witness and deterministic pure resource resolution;
 - byte-level integrity verification against manifest-declared size and BLAKE3 hash ([`AssetFile::verify_bytes`] returning [`VerifiedAssetBytes`]).
+- platform-neutral `AssetSource` port with explicit `UnverifiedAssetBytes` output;
+- deterministic `MemoryAssetSource` reference adapter and source-to-integrity composition.
 
 Not implemented yet:
 
-- asset sources, network or filesystem loading;
+- filesystem, HTTP, or browser asset-source implementations;
 - cache management, CDN URL/signature generation, or retry policy;
 - decoding or renderer handles.
 
@@ -1113,9 +1121,9 @@ resource resolution       [implemented / pure]
         ↓
      AssetFile
         ↓
-   future source          [future]
+AssetSource::fetch(AssetPath) [port; memory reference implemented]
         ↓
-  untrusted bytes         [untrusted input]
+  UnverifiedAssetBytes     [untrusted input]
         ↓
 verify size + BLAKE3      [implemented / pure]
         ↓
@@ -1130,8 +1138,9 @@ The Phase-3 manifest parser proves that each path is a safe, canonical relative
 pack path and that the manifest declares a structurally valid content hash. `AssetPath` does not
 yet prove that the path embeds that hash. Pure byte-level integrity verification (`AssetFile::verify_bytes`)
 enforces that actual bytes match the declared size and BLAKE3 hash before producing `VerifiedAssetBytes`.
-Future asset sources will pass all fetched bytes through this verification boundary before cache
-persistence or decoding.
+Future concrete asset sources will pass all fetched bytes through this verification boundary before
+cache persistence or decoding. The current `MemoryAssetSource` exercises the same composition
+without performing I/O.
 
 ### 12.3 Manifest schema
 

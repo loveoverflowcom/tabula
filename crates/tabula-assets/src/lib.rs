@@ -3,10 +3,11 @@
 //! > ## PHASE 3
 //!
 //! The planned product ships **per-game packs delivered from a CDN and cached
-//! locally**, not bundled into app releases (ADR-017). This crate currently
-//! owns validated manifests, identities, explicit resources, pack/game binding,
-//! structural pixel regions, and pure deterministic resolution. Future clients,
-//! servers, and pack-build tools consume those values without moving I/O here.
+//! locally**, not bundled into app releases (ADR-017). This crate owns validated
+//! manifests, identities, explicit resources, pack/game binding, structural
+//! pixel regions, pure deterministic resolution, and the platform-neutral port
+//! for obtaining physical asset bytes. It does not implement filesystem,
+//! network, or browser I/O.
 //!
 //! ## Current manifest (doc 04 §12.3)
 //!
@@ -58,10 +59,12 @@
 //! - deterministic, pure density selection returning [`ResolvedAsset`] metadata;
 //! - structurally valid source-pixel regions, without decoded-image bounds checks;
 //! - pure byte-level integrity verification against manifest-declared size and
-//!   BLAKE3 digest ([`AssetFile::verify_bytes`] returning a [`VerifiedAssetBytes`] witness).
+//!   BLAKE3 digest ([`AssetFile::verify_bytes`] returning a [`VerifiedAssetBytes`] witness);
+//! - the [`AssetSource`] port, explicit [`UnverifiedAssetBytes`] state, and
+//!   deterministic [`MemoryAssetSource`] reference adapter.
 //!
 //! Not implemented yet:
-//! - asset sources, network fetch, or filesystem loading;
+//! - filesystem, HTTP, or browser asset-source implementations;
 //! - cache management or CDN URL/signature generation;
 //! - decoding or renderer handles.
 
@@ -69,6 +72,7 @@
 
 mod integrity;
 mod manifest;
+mod source;
 
 pub use integrity::{AssetIntegrityError, VerifiedAssetBytes};
 pub use manifest::{
@@ -79,3 +83,4 @@ pub use manifest::{
     AssetResource, AssetResourceVariant, BoundAssetPack, ManifestBindingError, ManifestError,
     ResolvedAsset,
 };
+pub use source::{AssetSource, MemoryAssetSource, MemoryAssetSourceError, UnverifiedAssetBytes};

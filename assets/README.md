@@ -18,7 +18,9 @@ an art fix requires a store review.
 
 The pack builder and delivery pipeline are future work. The manifest schema
 below is parsed and resolved purely today; the repository still does not read
-asset files, emit packs, fetch resources, or manage a cache.
+filesystem or network resources, emit packs, or manage a cache. The crate does
+provide a platform-neutral `AssetSource` port, plus a deterministic
+`MemoryAssetSource` for tests and reference flows.
 
 ```bash
 cargo xtask pack-assets <game>  # planned
@@ -56,7 +58,9 @@ pure `BoundAssetPack` view, which deterministically returns metadata only
 
 Byte-level integrity verification is also pure: untrusted raw bytes pass through
 `AssetFile::verify_bytes`, which enforces declared byte length before BLAKE3 digest
-and returns a typed `VerifiedAssetBytes` witness. It neither performs I/O nor creates
+and returns a typed `VerifiedAssetBytes` witness. An `AssetSource` returns owned
+`UnverifiedAssetBytes`; a successful source read is not an integrity success. The
+source port and memory adapter neither perform filesystem/network I/O nor create
 a renderer or audio handle.
 
 ## Planned delivery rules
