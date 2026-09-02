@@ -1,0 +1,21 @@
+---
+source: games/tictactoe/src/ui.rs
+expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
+---
+camera origin=(0.000, 0.000) zoom=1.000
+commands (total 15):
+  0: rect [origin=(24.000, 48.000) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=board(0) z=0
+  1: rect [origin=(221.333, 48.000) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=board(0) z=1
+  2: rect [origin=(418.667, 48.000) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=board(0) z=2
+  3: rect [origin=(24.000, 245.333) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=board(0) z=3
+  4: rect [origin=(221.333, 245.333) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=board(0) z=4
+  5: rect [origin=(418.667, 245.333) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=board(0) z=5
+  6: rect [origin=(24.000, 442.667) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=board(0) z=6
+  7: rect [origin=(221.333, 442.667) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=board(0) z=7
+  8: rect [origin=(418.667, 442.667) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=board(0) z=8
+  9: text "X" at=(122.667, 114.667) style=DisplayLg align=Center max_width=none color=#005f73ff layer=pieces(10) z=0
+  10: text "X" at=(320.000, 114.667) style=DisplayLg align=Center max_width=none color=#005f73ff layer=pieces(10) z=1
+  11: text "X" at=(517.333, 114.667) style=DisplayLg align=Center max_width=none color=#005f73ff layer=pieces(10) z=2
+  12: text "O" at=(122.667, 312.000) style=DisplayLg align=Center max_width=none color=#ca6702ff layer=pieces(10) z=3
+  13: text "O" at=(320.000, 312.000) style=DisplayLg align=Center max_width=none color=#ca6702ff layer=pieces(10) z=4
+  14: text "X won!" at=(320.000, 10.000) style=TitleLg align=Center max_width=none color=#1e1c21ff layer=hud(30) z=0

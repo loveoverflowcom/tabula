@@ -1,0 +1,28 @@
+---
+source: games/tictactoe/src/ui.rs
+expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
+---
+camera origin=(0.000, 0.000) zoom=1.000
+commands (total 22):
+  0: rect [origin=(24.000, 48.000) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=board(0) z=0
+  1: rect [origin=(221.333, 48.000) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=board(0) z=1
+  2: rect [origin=(418.667, 48.000) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=board(0) z=2
+  3: rect [origin=(24.000, 245.333) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=board(0) z=3
+  4: rect [origin=(221.333, 245.333) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=board(0) z=4
+  5: rect [origin=(418.667, 245.333) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=board(0) z=5
+  6: rect [origin=(24.000, 442.667) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=board(0) z=6
+  7: rect [origin=(221.333, 442.667) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=board(0) z=7
+  8: rect [origin=(418.667, 442.667) size=(197.333, 197.333)] radii=uniform(0.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=board(0) z=8
+  9: text "X" at=(122.667, 114.667) style=DisplayLg align=Center max_width=none color=#66d9efff layer=pieces(10) z=0
+  10: text "O" at=(320.000, 312.000) style=DisplayLg align=Center max_width=none color=#ffb86cff layer=pieces(10) z=4
+  11: rect [origin=(221.333, 245.333) size=(197.333, 197.333)] radii=uniform(0.000) fill=none border=[width=3.000 color=#ffddb1ff] layer=overlay(20) z=0
+  12: rect [origin=(304.213, 130.880) size=(31.573, 31.573)] radii=uniform(15.787) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=1
+  13: rect [origin=(501.547, 130.880) size=(31.573, 31.573)] radii=uniform(15.787) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=2
+  14: rect [origin=(106.880, 328.213) size=(31.573, 31.573)] radii=uniform(15.787) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=3
+  15: rect [origin=(501.547, 328.213) size=(31.573, 31.573)] radii=uniform(15.787) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=5
+  16: rect [origin=(106.880, 525.547) size=(31.573, 31.573)] radii=uniform(15.787) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=6
+  17: rect [origin=(304.213, 525.547) size=(31.573, 31.573)] radii=uniform(15.787) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=7
+  18: rect [origin=(501.547, 525.547) size=(31.573, 31.573)] radii=uniform(15.787) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=8
+  19: rect [origin=(418.667, 48.000) size=(197.333, 197.333)] radii=uniform(0.000) fill=none border=[width=3.000 color=#74f8a6ff] layer=overlay(20) z=100
+  20: rect [origin=(418.667, 48.000) size=(197.333, 197.333)] radii=uniform(0.000) fill=none border=[width=3.000 color=#cfbcffff] layer=overlay(20) z=150
+  21: text "Your turn (X)" at=(320.000, 10.000) style=TitleLg align=Center max_width=none color=#e7e1e5ff layer=hud(30) z=0

@@ -47,6 +47,14 @@ pub mod bot;
 #[cfg(feature = "presentation")]
 pub mod ui;
 
+#[cfg(feature = "presentation")]
+pub use ui::{BoardLayout, TicTacToeLocal, TicTacToePresentation};
+
+#[cfg(feature = "presentation")]
+pub mod presentation {
+    pub use super::ui::*;
+}
+
 use std::sync::LazyLock;
 
 use tabula_core::{BotLevel, SeatRoster};
