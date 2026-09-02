@@ -1013,8 +1013,10 @@ flowchart TB
     PACK --> CDN[("CDN — immutable, content-hashed paths")]
     PACK --> SRV["server: validates + serves manifest URL"]
     CDN --> CACHE["client cache<br/>web: Cache API · native: app cache dir"]
-    CACHE --> LOAD["tabula-assets loader → AssetHandle"]
-    LOAD --> REND["renderer-macroquad: upload textures"]
+    CACHE --> LOAD["tabula-assets loader → OwnedVerifiedAssetBytes"]
+    LOAD --> DECODE["future decoder / backend boundary"]
+    DECODE --> HANDLE["future AssetHandle"]
+    HANDLE --> REND["renderer-macroquad: upload textures"]
 ```
 
 ### 12.2 Target delivery rules
@@ -1038,8 +1040,8 @@ remain future work.
 5. **Integrity check on every cached file** (blake3 vs manifest). A mismatch re-downloads.
 6. **Per-density variants**: `@1x/@2x/@3x` atlases, with the manifest listing only what exists.
    `BoundAssetPack::resolve(asset_ref, target_density)` is the pure layer that selects the nearest
-   physical `AssetFile`; `AssetSource` and the future loader consume its selected `AssetPath` and
-   do not choose density variants.
+   physical `AssetFile`; `AssetSource` and `load_verified` consume its selected `AssetPath` and do
+   not choose density variants.
 7. **Cache budget**: 300 MB default on native, 150 MB on web, LRU eviction by pack, never evicting
    the pack of a live match.
 8. **Offline target**: a previously-played pack remains cached so local/bot play can use it without
@@ -1081,6 +1083,8 @@ The current implementation includes the pure identity, binding, resolution, and 
 - `AssetSource`: platform-neutral, async-capable port addressed only by a physical `AssetPath`; it returns owned `UnverifiedAssetBytes` and never performs integrity verification.
 - `MemoryAssetSource`: deterministic in-memory reference source for tests; it is not a cache and does not know logical `AssetRef` values.
 - `VerifiedAssetBytes`: typed proof binding an exact `AssetFile` and verified raw bytes, constructible only by `AssetFile::verify_bytes` after size and BLAKE3 checks succeed.
+- `OwnedVerifiedAssetBytes`: owned proof-bearing payload binding an exact `AssetFile`; its only public byte view is immutable, and it is constructible only after the same size and BLAKE3 checks succeed.
+- `load_verified(file, source)`: thin async-capable orchestration that fetches explicitly unverified bytes and returns `OwnedVerifiedAssetBytes`, preserving source failures separately from integrity failures without requiring `Send`.
 
 Implemented now:
 
@@ -1094,7 +1098,8 @@ Implemented now:
 - pack-to-game binding witness and deterministic pure resource resolution;
 - byte-level integrity verification against manifest-declared size and BLAKE3 hash ([`AssetFile::verify_bytes`] returning [`VerifiedAssetBytes`]).
 - platform-neutral `AssetSource` port with explicit `UnverifiedAssetBytes` output;
-- deterministic `MemoryAssetSource` reference adapter and source-to-integrity composition.
+- deterministic `MemoryAssetSource` reference adapter and source-to-integrity composition;
+- owned verified payload construction and the `load_verified` source-to-integrity boundary.
 
 Not implemented yet:
 
@@ -1128,7 +1133,7 @@ AssetSource::fetch(AssetPath) [port; memory reference implemented]
         ↓
 verify size + BLAKE3      [implemented / pure]
         ↓
-VerifiedAssetBytes
+OwnedVerifiedAssetBytes   [owned proof-bearing payload]
         ↓
   decode / loader         [future]
         ↓
@@ -1137,11 +1142,12 @@ VerifiedAssetBytes
 
 The Phase-3 manifest parser proves that each path is a safe, canonical relative
 pack path and that the manifest declares a structurally valid content hash. `AssetPath` does not
-yet prove that the path embeds that hash. Pure byte-level integrity verification (`AssetFile::verify_bytes`)
-enforces that actual bytes match the declared size and BLAKE3 hash before producing `VerifiedAssetBytes`.
-Future concrete asset sources will pass all fetched bytes through this verification boundary before
-cache persistence or decoding. The current `MemoryAssetSource` exercises the same composition
-without performing I/O.
+yet prove that the path embeds that hash. Pure byte-level integrity verification (`AssetFile::verify_bytes`
+and `AssetFile::verify_owned_bytes`) enforces that actual bytes match the declared size and BLAKE3
+hash before producing a borrowed `VerifiedAssetBytes` or owned `OwnedVerifiedAssetBytes` value.
+`load_verified` composes the source port with the owned trust transition; future concrete asset
+sources will use this boundary before cache persistence or decoding. The current
+`MemoryAssetSource` exercises the same composition without performing I/O.
 
 ### 12.3 Manifest schema
 

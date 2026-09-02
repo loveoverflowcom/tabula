@@ -11,6 +11,7 @@
 #![allow(clippy::doc_markdown)]
 
 use crate::manifest::{AssetByteSize, AssetContentHash, AssetFile};
+use crate::source::UnverifiedAssetBytes;
 
 /// Why raw asset payload bytes failed integrity verification against an [`AssetFile`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -78,6 +79,83 @@ impl AsRef<[u8]> for VerifiedAssetBytes<'_, '_> {
     }
 }
 
+/// An owned payload whose bytes match an exact validated [`AssetFile`].
+///
+/// Unlike [`VerifiedAssetBytes`], this value owns the fetched byte buffer, so
+/// it can cross an async loading boundary without borrowing a source result.
+/// The manifest metadata is also retained by value, keeping the proof tied to
+/// the exact file declaration that was checked. Only immutable byte views are
+/// exposed; no public operation can mutate the payload while retaining its
+/// verified state.
+///
+/// This value proves only declared byte length and BLAKE3 equality. It does not
+/// prove source authenticity, media-format validity, decoding success, or
+/// renderer/backend upload success.
+///
+/// Fields are private and the only public constructor is
+/// [`AssetFile::verify_owned_bytes`].
+///
+/// @ai.role validated-domain-value
+/// @ai.domain assets.integrity
+/// @ai.pure true
+/// @ai.invariant bytes-match-owned-asset-file
+/// @ai.evidence tests::owned_verified_asset_bytes_survive_source_and_file_scope
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OwnedVerifiedAssetBytes {
+    file: AssetFile,
+    bytes: Vec<u8>,
+}
+
+impl OwnedVerifiedAssetBytes {
+    /// Returns the exact validated file metadata checked against this payload.
+    #[must_use]
+    pub const fn file(&self) -> &AssetFile {
+        &self.file
+    }
+
+    /// Returns an immutable view of the verified payload.
+    #[must_use]
+    pub fn bytes(&self) -> &[u8] {
+        self.bytes.as_slice()
+    }
+}
+
+impl AsRef<[u8]> for OwnedVerifiedAssetBytes {
+    fn as_ref(&self) -> &[u8] {
+        self.bytes()
+    }
+}
+
+/// Checks the shared size-then-BLAKE3 integrity contract without choosing an
+/// owned or borrowed result representation.
+fn verify_integrity(file: &AssetFile, bytes: &[u8]) -> Result<(), AssetIntegrityError> {
+    let Ok(found_size) = u64::try_from(bytes.len()) else {
+        return Err(AssetIntegrityError::SizeMismatch {
+            expected: file.bytes(),
+            found: u64::MAX,
+        });
+    };
+
+    if found_size != file.bytes().get() {
+        return Err(AssetIntegrityError::SizeMismatch {
+            expected: file.bytes(),
+            found: found_size,
+        });
+    }
+
+    let computed_digest = *blake3::hash(bytes).as_bytes();
+    let computed_hash = AssetContentHash::from_bytes(computed_digest);
+
+    if computed_hash != *file.hash() {
+        return Err(AssetIntegrityError::HashMismatch {
+            expected: *file.hash(),
+            found: computed_hash,
+        });
+    }
+
+    Ok(())
+}
+
 impl AssetFile {
     /// Verifies that untrusted raw bytes match this file's declared size and BLAKE3 digest.
     ///
@@ -100,31 +178,35 @@ impl AssetFile {
         &'file self,
         bytes: &'bytes [u8],
     ) -> Result<VerifiedAssetBytes<'file, 'bytes>, AssetIntegrityError> {
-        let Ok(found_size) = u64::try_from(bytes.len()) else {
-            return Err(AssetIntegrityError::SizeMismatch {
-                expected: self.bytes(),
-                found: u64::MAX,
-            });
-        };
-
-        if found_size != self.bytes().get() {
-            return Err(AssetIntegrityError::SizeMismatch {
-                expected: self.bytes(),
-                found: found_size,
-            });
-        }
-
-        let computed_digest = *blake3::hash(bytes).as_bytes();
-        let computed_hash = AssetContentHash::from_bytes(computed_digest);
-
-        if computed_hash != *self.hash() {
-            return Err(AssetIntegrityError::HashMismatch {
-                expected: *self.hash(),
-                found: computed_hash,
-            });
-        }
+        verify_integrity(self, bytes)?;
 
         Ok(VerifiedAssetBytes { file: self, bytes })
+    }
+
+    /// Verifies and takes ownership of an untrusted source payload.
+    ///
+    /// The same pure size-then-BLAKE3 checks used by [`AssetFile::verify_bytes`]
+    /// run before the payload becomes [`OwnedVerifiedAssetBytes`]. The validated
+    /// file metadata is retained by value, so the returned payload remains
+    /// usable after the source result and the caller's file temporary are gone.
+    ///
+    /// @ai.role trust-transition
+    /// @ai.domain assets.integrity
+    /// @ai.pure true
+    /// @ai.requires source-output-is-unverified
+    /// @ai.ensures bytes-match-owned-asset-file
+    /// @ai.evidence tests::owned_verified_asset_bytes_survive_source_and_file_scope
+    /// @ai.evidence tests::owned_verification_reuses_integrity_error_partitions
+    pub fn verify_owned_bytes(
+        &self,
+        bytes: UnverifiedAssetBytes,
+    ) -> Result<OwnedVerifiedAssetBytes, AssetIntegrityError> {
+        verify_integrity(self, bytes.as_slice())?;
+
+        Ok(OwnedVerifiedAssetBytes {
+            file: self.clone(),
+            bytes: bytes.into_vec(),
+        })
     }
 }
 
@@ -219,6 +301,63 @@ region = {{ x = 0, y = 0, width = 128, height = 128 }}
         assert_eq!(verified, copied);
         assert_eq!(verified, cloned);
         assert_eq!(copied.bytes(), FIXTURE_BYTES);
+    }
+
+    #[test]
+    fn owned_verified_asset_bytes_survive_source_and_file_scope() {
+        let manifest = sample_manifest(
+            "pieces@2x.atlas",
+            "sample/1.0.0/pieces@2x.png",
+            FIXTURE_BYTES,
+        );
+
+        let verified = {
+            let file = manifest.files()[0].clone();
+            let source_result = UnverifiedAssetBytes::new(FIXTURE_BYTES.to_vec());
+            file.verify_owned_bytes(source_result)
+                .expect("matching owned bytes must verify")
+        };
+
+        assert_eq!(verified.file(), &manifest.files()[0]);
+        assert_eq!(verified.bytes(), FIXTURE_BYTES);
+        assert_eq!(verified.as_ref(), FIXTURE_BYTES);
+    }
+
+    #[test]
+    fn owned_verification_reuses_integrity_error_partitions() {
+        let manifest = sample_manifest(
+            "pieces@2x.atlas",
+            "sample/1.0.0/pieces@2x.png",
+            FIXTURE_BYTES,
+        );
+        let file = &manifest.files()[0];
+
+        let truncated = UnverifiedAssetBytes::new(FIXTURE_BYTES[..5].to_vec());
+        assert_eq!(
+            file.verify_owned_bytes(truncated).unwrap_err(),
+            AssetIntegrityError::SizeMismatch {
+                expected: file.bytes(),
+                found: 5,
+            }
+        );
+
+        let mut oversized = FIXTURE_BYTES.to_vec();
+        oversized.extend_from_slice(b"-extra");
+        assert_eq!(
+            file.verify_owned_bytes(UnverifiedAssetBytes::new(oversized))
+                .unwrap_err(),
+            AssetIntegrityError::SizeMismatch {
+                expected: file.bytes(),
+                found: (FIXTURE_BYTES.len() + 6) as u64,
+            }
+        );
+
+        let mut corrupted = FIXTURE_BYTES.to_vec();
+        corrupted[0] ^= 0x01;
+        assert!(matches!(
+            file.verify_owned_bytes(UnverifiedAssetBytes::new(corrupted)),
+            Err(AssetIntegrityError::HashMismatch { .. })
+        ));
     }
 
     #[test]
