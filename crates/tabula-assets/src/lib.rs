@@ -4,14 +4,15 @@
 //!
 //! The planned product ships **per-game packs delivered from a CDN and cached
 //! locally**, not bundled into app releases (ADR-017). This crate currently
-//! owns only the pure manifest and identity contract that those future clients,
-//! servers, and pack-build tools will consume.
+//! owns validated manifests, identities, explicit resources, pack/game binding,
+//! structural pixel regions, and pure deterministic resolution. Future clients,
+//! servers, and pack-build tools consume those values without moving I/O here.
 //!
 //! ## Current manifest (doc 04 §12.3)
 //!
 //! This is the exact pure manifest shape accepted today. Future delivery
-//! metadata, including explicit logical resources and structural atlas regions,
-//! is accepted without reading files or creating backend handles.
+//! resources and structural atlas regions, is accepted without reading files or
+//! creating backend handles.
 //!
 //! ```toml
 //! # current example; a future pack builder may emit pack.json

@@ -1132,16 +1132,16 @@ game    = "com.tabula.chess"
 
 [[files]]
 name     = "pieces@1x.atlas"
-path     = "chess/1.0.0/pieces@1x.b3-4f8a...png"
-hash     = "4f8a..."
+path     = "chess/1.0.0/pieces@1x.b3-4f8a.png"
+hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bytes    = 412_003
 priority = "critical"
 density  = 1
 
 [[files]]
 name     = "pieces@2x.atlas"
-path     = "chess/1.0.0/pieces@2x.b3-9c21....png"
-hash     = "9c21..."
+path     = "chess/1.0.0/pieces@2x.b3-9c21.png"
+hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bytes    = 824_006
 priority = "critical"
 density  = 2

@@ -34,8 +34,8 @@ game    = "com.tabula.chess"
 
 [[files]]
 name     = "pieces@1x.atlas"
-path     = "chess/1.0.0/pieces@1x.b3-4f8a....png"   # content-hashed
-hash     = "4f8a..."
+path     = "chess/1.0.0/pieces@1x.b3-4f8a.png"   # content-hashed
+hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bytes    = 412_003
 priority = "critical"      # critical | high | low
 density  = 1

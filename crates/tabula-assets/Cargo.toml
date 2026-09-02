@@ -1,15 +1,15 @@
 [package]
 name        = "tabula-assets"
 version     = "0.0.0"
-description = "Validated asset-pack manifests and identity types."
+description = "Validated asset-pack manifests, resources, binding, and pure resolution."
 edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
 publish.workspace      = true
 
-# PHASE 3. Currently owns only the pure manifest and identity contract. Future
-# client, server, and pack-build integrations must consume these validated types.
+# PHASE 3. Owns pure manifest/resource validation, binding, and resolution.
+# Future client, server, and pack-build integrations must consume these types.
 [dependencies]
 tabula-core = { workspace = true }
 tabula-game-api = { workspace = true }
