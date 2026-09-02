@@ -384,7 +384,7 @@ pub struct RenderList { /* private validated command stream + camera */ }
 
 pub enum RenderCmd {
     /// Textured quad from an atlas region, with tint, rotation, and pivot.
-    Sprite { asset: String, rect: Rect, src: Option<Rect>, tint: Color,
+    Sprite { asset: AssetRef, rect: Rect, src: Option<Rect>, tint: Color,
              rotation: f32, pivot: Vec2, layer: Layer, z: i16 },
     /// Rounded rectangle with optional per-corner radii and border.
     Rect { rect: Rect, radii: Corners, fill: Option<Paint>, border: Option<Border>,
@@ -1043,8 +1043,31 @@ manifest and identity boundary described below is implemented today.
 8. **Offline target**: a previously-played pack remains cached so local/bot play can use it without
    a server. The rules engine already supports local play; asset-pack caching does not exist yet.
 
-The Phase-3 asset identity is typed and pinned end-to-end. The current
-implementation is limited to the pure identity and manifest layer:
+The Phase-3 asset identity is typed and pinned end-to-end. The architecture
+enforces a strict separation between logical resource identity and physical pack metadata:
+
+- **`AssetRef`** (`tabula-game-api`): semantic/logical resource identity representing presentation and catalog intent (e.g. `pieces/white-knight`, `catalog/icon`, `board/background`). Presenters and metadata never know physical filenames, atlas coordinates, density variants, hashes, or CDN URLs.
+- **`AssetFileName`** (`tabula-assets`): manifest-local identity of a physical file entry (e.g. `pieces@2x.atlas`, `move.ogg`).
+- **`AssetPath`** (`tabula-assets`): canonical relative physical pack path (e.g. `chess/1.0.0/pieces@2x.b3-4f8a.png`).
+- **`AssetPackRef`** (`tabula-assets`): exact versioned asset pack identity (e.g. `chess@1.0.0`).
+
+```text
+GameMetadata / GamePresentation
+              │
+              ▼
+           AssetRef
+              │
+              │ future pure resolution
+              ▼
+      AssetPackManifest
+              │
+              ├── AssetFileName
+              ├── AssetPath
+              ├── AssetContentHash
+              └── AssetDensity
+```
+
+The current implementation is limited to the pure identity and manifest layer:
 
 - `AssetPackRef`: the exact pack identity (`AssetPackId`) and version (`AssetPackVersion`), canonically formatted as `pack@version`.
 - `AssetPackManifest.game`: the reverse-DNS game ID to which the pack is bound.
