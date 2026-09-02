@@ -8,6 +8,8 @@
 
 use std::{collections::BTreeMap, marker::PhantomData};
 
+#[cfg(test)]
+use tabula_core::StateHash;
 use tabula_core::{
     Audience, DetRng, InputIndex, LogicalTime, MatchOutcome, MatchSeed, Millis, RuleError, SeatId,
     TimerId, Viewer,
@@ -86,6 +88,17 @@ pub enum LocalMatchError {
     Rejected(RuleError),
     /// Rules emitted `EndMatch`; no later gameplay input may enter the stream.
     MatchEnded,
+    /// Rules emitted a second terminal authority, contrary to the effect contract.
+    MultipleEndMatch,
+}
+
+/// Failure raised while constructing a local match.
+#[derive(Debug)]
+pub enum LocalMatchInitError {
+    /// Rules rejected the requested config or roster.
+    Rules(InitError),
+    /// Init effects violated the local effect contract.
+    Effects(LocalMatchError),
 }
 
 /// A generic local executor for one deterministic game and one presentation.
@@ -156,7 +169,7 @@ where
         roster: &tabula_core::SeatRoster,
         seed: MatchSeed,
         viewer: Viewer,
-    ) -> Result<Self, InitError> {
+    ) -> Result<Self, LocalMatchInitError> {
         let mut rng = DetRng::for_input(&seed, InputIndex(0));
         let mut ctx = Ctx {
             now: LogicalTime::ZERO,
@@ -164,7 +177,7 @@ where
             rng: &mut rng,
             budget: Budget::default(),
         };
-        let init = R::create(config, roster, &mut ctx)?;
+        let init = R::create(config, roster, &mut ctx).map_err(LocalMatchInitError::Rules)?;
         let view = R::project(&init.state, viewer);
         let mut local_match = Self {
             state: init.state,
@@ -182,7 +195,9 @@ where
             notices: Vec::new(),
             _presentation: PhantomData,
         };
-        local_match.interpret_effects(&init.effects);
+        local_match
+            .interpret_effects(&init.effects)
+            .map_err(LocalMatchInitError::Effects)?;
         Ok(local_match)
     }
 
@@ -201,38 +216,48 @@ where
         requested: LogicalTime,
         frame: &FrameCtx,
     ) -> Result<AudioCues, LocalMatchError> {
-        self.now = self.now.max(requested);
+        let target = self.now.max(requested);
         let mut cues = AudioCues::new();
-        while let Some(id) = self.next_due_timer() {
+        while self.ended.is_none() {
+            let Some((id, deadline)) = self.next_due_timer(target) else {
+                break;
+            };
+            // A late frame delivers the timer at its requested logical
+            // deadline, matching `tabula-testkit::selfplay` rather than the
+            // renderer's sampling cadence.
+            self.now = deadline;
             self.timers.remove(&id);
             cues.extend(self.apply_canonical(Input::Timer { timer: id }, frame)?);
         }
+        self.now = target;
         Ok(cues)
     }
 
     /// Passes normalized UI input through the presenter and, when it emits a
     /// command, into the ordinary canonical `Input::Player` stream.
     ///
-    /// The caller must call [`Self::advance_frame`] once per frame before this
-    /// method. UI-only interactions that produce no intent consume no index.
+    /// Due timers are processed before presentation input. UI-only interactions
+    /// that produce no intent consume no index.
     pub fn handle_presentation_input(
         &mut self,
         input: &InputEvent,
         frame: &FrameCtx,
     ) -> Result<AudioCues, LocalMatchError> {
+        let mut cues = self.advance_frame(frame)?;
         let Some(intent) = P::on_input(input, &self.view, &mut self.local) else {
-            return Ok(AudioCues::new());
+            return Ok(cues);
         };
         let Some(seat) = self.viewer.seat() else {
             return Err(LocalMatchError::ViewerCannotSubmitPlayerInput);
         };
-        self.apply_canonical(
+        cues.extend(self.apply_canonical(
             Input::Player {
                 seat,
                 command: intent.into_command(),
             },
             frame,
-        )
+        )?);
+        Ok(cues)
     }
 
     /// Submits a typed canonical input through `GameRules::apply`.
@@ -241,7 +266,9 @@ where
         input: Input<R::Command>,
         frame: &FrameCtx,
     ) -> Result<AudioCues, LocalMatchError> {
-        self.apply_canonical(input, frame)
+        let mut cues = self.advance_frame(frame)?;
+        cues.extend(self.apply_canonical(input, frame)?);
+        Ok(cues)
     }
 
     /// Returns a locally executed bot command through the ordinary player path.
@@ -251,7 +278,7 @@ where
         command: R::Command,
         frame: &FrameCtx,
     ) -> Result<AudioCues, LocalMatchError> {
-        self.apply_canonical(Input::Player { seat, command }, frame)
+        self.submit_input(Input::Player { seat, command }, frame)
     }
 
     /// Switches the authorised projection shown to this local presentation.
@@ -318,6 +345,11 @@ where
     }
 
     #[cfg(test)]
+    fn state_hash(&self) -> StateHash {
+        R::state_hash(&self.state)
+    }
+
+    #[cfg(test)]
     fn set_next_input_index_for_test(&mut self, index: Option<InputIndex>) {
         self.next_input_index = index;
     }
@@ -352,7 +384,7 @@ where
                 cues.extend(P::on_view_event(&event, &mut self.local, frame));
             }
         }
-        self.interpret_effects(&outcome.effects);
+        self.interpret_effects(&outcome.effects)?;
         self.rebuild_view();
         Ok(cues)
     }
@@ -366,16 +398,15 @@ where
         Ok(index)
     }
 
-    fn next_due_timer(&self) -> Option<TimerId> {
+    fn next_due_timer(&self, target: LogicalTime) -> Option<(TimerId, LogicalTime)> {
         self.timers
             .iter()
-            .filter(|(_, deadline)| **deadline <= self.now)
+            .filter(|(_, deadline)| **deadline <= target)
             .map(|(id, deadline)| (*id, *deadline))
             .min_by_key(|(id, deadline)| (*deadline, *id))
-            .map(|(id, _)| id)
     }
 
-    fn interpret_effects(&mut self, effects: &[Effect]) {
+    fn interpret_effects(&mut self, effects: &[Effect]) -> Result<(), LocalMatchError> {
         for effect in effects {
             match effect {
                 Effect::SetTimer { id, delay } => {
@@ -389,6 +420,9 @@ where
                     self.effects.push(LocalEffect::TimerCancelled { id: *id });
                 }
                 Effect::EndMatch { outcome } => {
+                    if self.ended.is_some() {
+                        return Err(LocalMatchError::MultipleEndMatch);
+                    }
                     self.ended = Some(outcome.clone());
                     self.effects.push(LocalEffect::MatchEnded {
                         outcome: outcome.clone(),
@@ -420,6 +454,7 @@ where
                 _ => self.effects.push(LocalEffect::UnknownEffectIgnored),
             }
         }
+        Ok(())
     }
 
     fn rebuild_view(&mut self) {
@@ -482,6 +517,46 @@ mod tests {
             Viewer::Seat(SeatId(0)),
         )
         .expect("standard local rules configuration is valid")
+    }
+
+    fn timed_config(initial: u64) -> Config {
+        Config {
+            clock: Some(ClockConfig {
+                initial: Millis(initial),
+                control: ClockControl::Fischer {
+                    increment: Millis::ZERO,
+                },
+            }),
+        }
+    }
+
+    fn reference_timeout_hash(deadline: LogicalTime) -> StateHash {
+        let seed = MatchSeed::from_bytes([0; 32]);
+        let config = timed_config(10);
+        let mut create_rng = DetRng::for_input(&seed, InputIndex(0));
+        let mut create_ctx = Ctx {
+            now: LogicalTime::ZERO,
+            index: InputIndex(0),
+            rng: &mut create_rng,
+            budget: Budget::default(),
+        };
+        let mut state = ChessRules::create(&config, &roster(), &mut create_ctx)
+            .expect("clocked reference match is valid")
+            .state;
+        let mut timer_rng = DetRng::for_input(&seed, InputIndex(1));
+        let mut timer_ctx = Ctx {
+            now: deadline,
+            index: InputIndex(1),
+            rng: &mut timer_rng,
+            budget: Budget::default(),
+        };
+        ChessRules::apply(
+            &mut state,
+            Input::Timer { timer: TimerId(1) },
+            &mut timer_ctx,
+        )
+        .expect("the reference timer is accepted");
+        ChessRules::state_hash(&state)
     }
 
     fn click(layout: BoardLayout, square: u8) -> InputEvent {
@@ -612,14 +687,7 @@ mod tests {
 
     #[test]
     fn clock_timer_reenters_rules_as_a_recorded_timer_input() {
-        let mut match_ = match_for_rules(&Config {
-            clock: Some(ClockConfig {
-                initial: Millis(10),
-                control: ClockControl::Fischer {
-                    increment: Millis::ZERO,
-                },
-            }),
-        });
+        let mut match_ = match_for_rules(&timed_config(10));
         match_
             .advance_frame(&frame(10))
             .expect("due clock timer fires");
@@ -640,24 +708,108 @@ mod tests {
     }
 
     #[test]
+    fn late_frame_replays_the_timer_at_its_deadline_not_frame_arrival() {
+        let mut match_ = match_for_rules(&timed_config(10));
+        match_
+            .advance_frame(&frame(20))
+            .expect("late frame processes the due timer");
+
+        assert!(matches!(
+            match_.recorded_inputs(),
+            [RecordedInput {
+                input: Input::Timer { timer: TimerId(1) },
+                now: LogicalTime(10),
+                ..
+            }]
+        ));
+        assert_eq!(match_.now(), LogicalTime(20));
+        // Independent reference scheduling follows the `selfplay` rule: apply
+        // the timer at its logical deadline, not the sampled render frame.
+        assert_eq!(match_.state_hash(), reference_timeout_hash(LogicalTime(10)));
+    }
+
+    #[test]
+    fn public_bot_entry_cannot_overtake_a_due_timer() {
+        let frame = frame(10);
+        let mut match_ = match_for_rules(&timed_config(10));
+
+        assert!(matches!(
+            match_.submit_bot_move(
+                SeatId(0),
+                local_game::Command::Move {
+                    from: 12,
+                    to: 28,
+                    promotion: None,
+                },
+                &frame,
+            ),
+            Err(LocalMatchError::MatchEnded)
+        ));
+        assert!(matches!(
+            match_.recorded_inputs(),
+            [RecordedInput {
+                input: Input::Timer { timer: TimerId(1) },
+                now: LogicalTime(10),
+                ..
+            }]
+        ));
+    }
+
+    #[test]
+    fn public_input_entry_cannot_overtake_a_due_timer() {
+        let frame = frame(10);
+        let mut match_ = match_for_rules(&timed_config(10));
+
+        assert!(matches!(
+            match_.submit_input(
+                Input::Player {
+                    seat: SeatId(0),
+                    command: local_game::Command::Move {
+                        from: 12,
+                        to: 28,
+                        promotion: None,
+                    },
+                },
+                &frame,
+            ),
+            Err(LocalMatchError::MatchEnded)
+        ));
+        assert_eq!(match_.recorded_inputs().len(), 1);
+        assert!(matches!(
+            match_.recorded_inputs()[0],
+            RecordedInput {
+                input: Input::Timer { timer: TimerId(1) },
+                now: LogicalTime(10),
+                ..
+            }
+        ));
+    }
+
+    #[test]
     fn cancellation_rearm_and_simultaneous_timer_order_are_stable() {
         let first_frame = frame(10);
         let mut match_ = match_for_rules(&Config::default());
-        match_.interpret_effects(&[
-            Effect::SetTimer {
-                id: TimerId(2),
-                delay: Millis(10),
-            },
-            Effect::SetTimer {
-                id: TimerId(1),
-                delay: Millis(10),
-            },
-            Effect::CancelTimer { id: TimerId(2) },
-            Effect::SetTimer {
-                id: TimerId(2),
-                delay: Millis(20),
-            },
-        ]);
+        match_
+            .interpret_effects(&[
+                Effect::SetTimer {
+                    id: TimerId(2),
+                    delay: Millis(10),
+                },
+                Effect::SetTimer {
+                    id: TimerId(1),
+                    delay: Millis(10),
+                },
+                Effect::SetTimer {
+                    id: TimerId(3),
+                    delay: Millis(15),
+                },
+                Effect::CancelTimer { id: TimerId(3) },
+                Effect::SetTimer {
+                    id: TimerId(3),
+                    delay: Millis(20),
+                },
+            ])
+            .expect("effect sequence is valid");
         match_
             .advance_frame(&first_frame)
             .expect("first timer fires");
@@ -669,13 +821,16 @@ mod tests {
             match_
                 .recorded_inputs()
                 .iter()
-                .map(|entry| &entry.input)
-                .filter_map(|input| match input {
-                    Input::Timer { timer } => Some(*timer),
+                .filter_map(|entry| match entry.input {
+                    Input::Timer { timer } => Some((timer, entry.now)),
                     _ => None,
                 })
                 .collect::<Vec<_>>(),
-            [TimerId(1), TimerId(2)]
+            [
+                (TimerId(1), LogicalTime(10)),
+                (TimerId(2), LogicalTime(10)),
+                (TimerId(3), LogicalTime(20)),
+            ]
         );
     }
 
@@ -687,26 +842,28 @@ mod tests {
             #[allow(clippy::default_trait_access)]
             args: Default::default(),
         };
-        match_.interpret_effects(&[
-            Effect::SetTimer {
-                id: TimerId(3),
-                delay: Millis(1),
-            },
-            Effect::CancelTimer { id: TimerId(3) },
-            Effect::RequestBotMove {
-                seat: SeatId(0),
-                deadline: Millis(2),
-            },
-            Effect::Notify {
-                audience: tabula_core::Audience::Everyone,
-                notice: notice.clone(),
-            },
-            Effect::SetChatScopes(ChatScopes::default()),
-            Effect::SetVoiceScopes(VoiceScopes::default()),
-            Effect::Checkpoint {
-                label: CheckpointLabel("local".into()),
-            },
-        ]);
+        match_
+            .interpret_effects(&[
+                Effect::SetTimer {
+                    id: TimerId(3),
+                    delay: Millis(1),
+                },
+                Effect::CancelTimer { id: TimerId(3) },
+                Effect::RequestBotMove {
+                    seat: SeatId(0),
+                    deadline: Millis(2),
+                },
+                Effect::Notify {
+                    audience: tabula_core::Audience::Everyone,
+                    notice: notice.clone(),
+                },
+                Effect::SetChatScopes(ChatScopes::default()),
+                Effect::SetVoiceScopes(VoiceScopes::default()),
+                Effect::Checkpoint {
+                    label: CheckpointLabel("local".into()),
+                },
+            ])
+            .expect("effect sequence is valid");
 
         assert!(matches!(
             match_.effects(),
@@ -724,6 +881,29 @@ mod tests {
         let notices = match_.drain_notices().collect::<Vec<_>>();
         assert_eq!(notices.len(), 1);
         assert_eq!(notices[0].notice.key, notice.key);
+    }
+
+    #[test]
+    fn duplicate_end_match_is_rejected_without_overwriting_the_first_outcome() {
+        let mut match_ = match_for_rules(&timed_config(10));
+        match_
+            .advance_frame(&frame(10))
+            .expect("clock timer ends the match");
+        let first = match_
+            .ended()
+            .expect("first terminal outcome exists")
+            .clone();
+
+        assert!(matches!(
+            match_.interpret_effects(&[Effect::EndMatch {
+                outcome: first.clone(),
+            }]),
+            Err(LocalMatchError::MultipleEndMatch)
+        ));
+        assert_eq!(
+            match_.ended().expect("first outcome remains").summary(),
+            first.summary()
+        );
     }
 
     #[test]
