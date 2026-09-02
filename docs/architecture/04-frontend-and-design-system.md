@@ -1038,8 +1038,10 @@ implemented today; concrete delivery adapters remain future work.
    `Low` (celebration art, alternative themes) loads lazily. The loader reports real byte progress
    for the branded loader (§3.4).
 5. **Integrity check on every cached file** (blake3 vs manifest). A mismatch re-downloads.
-6. **Per-density variants**: `@1x/@2x/@3x` atlases, chosen from `FrameCtx.dpi`; the manifest lists
-   only what exists and the loader picks the nearest.
+6. **Per-density variants**: `@1x/@2x/@3x` atlases, with the manifest listing only what exists.
+   `BoundAssetPack::resolve(asset_ref, target_density)` is the pure layer that selects the nearest
+   physical `AssetFile`; `AssetSource` and the future loader consume its selected `AssetPath` and
+   do not choose density variants.
 7. **Cache budget**: 300 MB default on native, 150 MB on web, LRU eviction by pack, never evicting
    the pack of a live match.
 8. **Offline target**: a previously-played pack remains cached so local/bot play can use it without
