@@ -999,7 +999,10 @@ handle. We adopt one behind `VoiceService`, measure, and keep the option to chan
 
 ## 12. Asset system
 
-### 12.1 Model
+### 12.1 Target model
+
+The following diagram describes the target asset-delivery system. Only the pure
+manifest and identity boundary described in §12.2 is implemented today.
 
 ```mermaid
 flowchart TB
@@ -1016,7 +1019,10 @@ flowchart TB
     LOAD --> REND["renderer-macroquad: upload textures"]
 ```
 
-### 12.2 Rules
+### 12.2 Target delivery rules
+
+The following rules describe the target Phase-3 delivery system. Only the pure
+manifest and identity boundary described below is implemented today.
 
 1. **No game's full-resolution assets are in any app binary.** The binary carries only: brand
    assets, UI icons, two fonts, and a tiny placeholder set (so a game is playable-if-ugly when the
@@ -1034,8 +1040,8 @@ flowchart TB
    only what exists and the loader picks the nearest.
 7. **Cache budget**: 300 MB default on native, 150 MB on web, LRU eviction by pack, never evicting
    the pack of a live match.
-8. **Offline**: a previously-played game's pack stays cached, so a local/bot game works offline
-   (Phase 3 already supports local play with no server).
+8. **Offline target**: a previously-played pack remains cached so local/bot play can use it without
+   a server. The rules engine already supports local play; asset-pack caching does not exist yet.
 
 The Phase-3 asset identity is typed and pinned end-to-end. The current
 implementation is limited to the pure identity and manifest layer:
@@ -1082,7 +1088,7 @@ yet prove that the path embeds that hash, and the parser does not verify file by
 or CDN resolution ships, `xtask pack-assets` must emit and enforce the content-addressed,
 immutable-path convention, with the loader verifying bytes against the manifest hash.
 
-### 12.3 Manifest sketch
+### 12.3 Target manifest sketch
 
 The parser's current schema is intentionally limited to `pack`, `version`, `game`, and `files`;
 unknown fields are rejected. The atlas section below is a future schema extension and is not

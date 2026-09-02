@@ -7,24 +7,25 @@
 //! owns only the pure manifest and identity contract that those future clients,
 //! servers, and pack-build tools will consume.
 //!
-//! ## The manifest (doc 04 §12.3)
+//! ## Current manifest (doc 04 §12.3)
+//!
+//! This is the exact pure manifest shape accepted today. Future delivery
+//! metadata, including atlas regions, belongs to the target architecture and
+//! is not accepted by the current parser.
 //!
 //! ```toml
-//! # assets/packs/chess/pack.toml  →  served as pack.json
-//! pack    = "chess"
+//! # current example; a future pack builder may emit pack.json
+//! pack    = "sample"
 //! version = "1.0.0"
-//! game    = "com.tabula.chess"
+//! game    = "com.example.sample"
 //!
 //! [[files]]
 //! name     = "pieces@2x.atlas"
-//! path     = "chess/1.0.0/pieces@2x.b3-4f8a....png"   # content-hashed path
-//! hash     = "4f8a..."
+//! path     = "sample/1.0.0/pieces@2x.png"
+//! hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 //! bytes    = 412_003
 //! priority = "critical"      # critical | high | low
 //! density  = 2
-//!
-//! [atlas.pieces]
-//! white-knight = [0, 0, 128, 128]   # so presenters use AssetRef::new("pieces/white-knight")
 //! ```
 //!
 //! ## Planned rules for trustworthy asset delivery
