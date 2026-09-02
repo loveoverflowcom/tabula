@@ -21,6 +21,7 @@ publish.workspace       = true
 [dependencies]
 toml           = { workspace = true }
 serde          = { workspace = true }
+blake3         = { workspace = true }
 thiserror      = { workspace = true }
 # `cargo metadata --format-version 1` output, for check-deps. Tooling-only:
 # xtask is exempt from the dependency matrix (never linked into a shipped binary).

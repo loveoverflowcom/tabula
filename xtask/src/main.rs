@@ -72,6 +72,7 @@ mod game_ids_policy;
 mod graph;
 mod manifest_cmd;
 mod manifest_policy;
+mod pack_assets_cmd;
 mod perft_cmd;
 mod replay_cmd;
 mod replay_goldens_cmd;
@@ -161,7 +162,13 @@ fn main() {
                 std::process::exit(2);
             }
         },
-        Some("pack-assets") => future_command("pack-assets", 3, "doc 04 §12"),
+        Some("pack-assets") => match pack_assets_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("pack-assets: {err}");
+                std::process::exit(2);
+            }
+        },
 
         // Phase 4+
         Some("gen-protocol-vectors") => {

@@ -32,7 +32,7 @@ use tabula_core::{GameId, GameVersion, RulesVersion};
 ///
 /// - [`AssetRef`]: semantic/logical resource identity (pack-local, e.g. `pieces/white-knight`)
 /// - `AssetFileName`: identity of a physical file entry in the manifest (e.g. `pieces@2x.atlas`)
-/// - `AssetPath`: canonical relative physical pack path (e.g. `chess/1.0.0/pieces@2x.b3-abcd.png`)
+/// - `AssetPath`: canonical relative physical pack path (e.g. `chess/1.0.0/pieces@2x.b3-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png`)
 /// - `AssetPackRef`: exact versioned asset pack identity (e.g. `chess@1.0.0`)
 ///
 /// ## Canonical grammar

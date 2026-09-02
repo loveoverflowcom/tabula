@@ -14,20 +14,42 @@ The reason is arithmetic: bundling means every app release grows with every game
 At game five that is annoying; at game twenty it is fatal on mobile, and it means
 an art fix requires a store review.
 
-## Planned pack build
+## Pack build
 
-The pack builder and delivery pipeline are future work. The manifest schema
-below is parsed and resolved purely today; the repository still does not read
-filesystem or network resources, emit packs, or manage a cache. The crate does
-provide a platform-neutral `AssetSource` port, plus a deterministic
-`MemoryAssetSource` for tests and reference flows.
+The Phase-3 builder is active. The manifest schema is still parsed and
+resolved purely by tabula-assets; the builder is tooling in xtask, not a
+runtime source adapter. It reads opaque source bytes, computes exact sizes and
+full lowercase BLAKE3 digests, writes deterministic content-addressed files,
+generates pack.toml, validates it through AssetPackManifest, and verifies
+every staged file through AssetFile::verify_bytes before publishing.
 
 ```bash
-cargo xtask pack-assets <game>  # planned
+cargo xtask pack-assets <game>
 ```
 
-Reads `assets/packs/<game>/`, produces content-hashed files plus a
-`pack.toml` → served as `pack.json` (doc 04 §12.3):
+The builder reads the game identity and pinned [assets].pack from
+games/<game>/game.toml, then reads the builder-only
+assets/packs/<game>/pack.source.toml. The source manifest contains only
+explicit source files and logical-resource mappings; generated path, hash, and
+byte-size fields are not accepted:
+
+```toml
+[[files]]
+name = "pieces@1x.atlas"
+source = "pieces@1x.png"
+priority = "critical"
+density = 1
+
+[[resources]]
+id = "pieces/white-knight"
+
+[[resources.variants]]
+file = "pieces@1x.atlas"
+region = { x = 0, y = 0, width = 64, height = 64 }
+```
+
+It produces content-hashed files plus a runtime pack.toml under
+target/asset-packs/<pack>/<version>/:
 
 ```toml
 pack    = "chess"
@@ -36,7 +58,7 @@ game    = "com.tabula.chess"
 
 [[files]]
 name     = "pieces@1x.atlas"
-path     = "chess/1.0.0/pieces@1x.b3-4f8a.png"   # content-hashed
+path     = "chess/1.0.0/pieces@1x.b3-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"   # full BLAKE3
 hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bytes    = 412_003
 priority = "critical"      # critical | high | low
@@ -63,7 +85,11 @@ and returns a typed `VerifiedAssetBytes` witness. An `AssetSource` returns owned
 source port and memory adapter neither perform filesystem/network I/O nor create
 a renderer or audio handle.
 
-## Planned delivery rules
+The builder intentionally does not generate atlases, decode or convert media,
+load from a filesystem/HTTP/browser source, manage a cache, upload to a CDN, or
+create renderer/audio handles. Those remain delivery/runtime work.
+
+## Delivery rules
 
 1. **Content-hashed paths.** A URL's bytes never change, so `immutable` caching
    is honest and cache invalidation is not a problem we have.

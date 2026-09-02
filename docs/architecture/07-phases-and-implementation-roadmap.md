@@ -202,7 +202,7 @@ games/tiles:             tile bag, placement validation, incremental feature gra
                          legal-position hints; bots
 games/werewolf (rules only): phases, role assignment, night actions, voting, redaction with
                          view_event → None, chat/voice scope Effects; NO UI yet
-crates/tabula-assets:    manifest, hashing, cache, loaders, priorities; xtask pack-assets
+crates/tabula-assets:    manifest, hashing, integrity, resolution; xtask pack-assets source inspection, deterministic full-digest paths, manifest generation, and staged verification
 Local play driver:       bot opponents, seat selection, "replay this match" from .tbr
 ```
 
