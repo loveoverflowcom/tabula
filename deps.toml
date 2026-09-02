@@ -116,7 +116,7 @@ feature = { leptos-adapter = ["leptos"] }
 # -----------------------------------------------------------------------------
 [crate."tabula-assets"]
 tier    = "client"
-allow   = ["tabula-core", "serde", "blake3", "toml", "thiserror"]
+allow   = ["tabula-core", "tabula-game-api", "serde", "blake3", "toml", "thiserror"]
 feature = { http = ["reqwest"], web = ["web-sys", "wasm-bindgen"] }
 
 [crate."tabula-presentation"]

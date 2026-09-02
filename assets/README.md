@@ -16,9 +16,9 @@ an art fix requires a store review.
 
 ## Planned pack build
 
-The pack builder and delivery pipeline are future work. The command and manifest
-below describe the target shape; the current repository does not read asset
-files, emit packs, fetch resources, or manage a cache.
+The pack builder and delivery pipeline are future work. The manifest schema
+below is parsed and resolved purely today; the repository still does not read
+asset files, emit packs, fetch resources, or manage a cache.
 
 ```bash
 cargo xtask pack-assets <game>  # planned
@@ -33,16 +33,27 @@ version = "1.0.0"
 game    = "com.tabula.chess"
 
 [[files]]
-name     = "pieces@2x.atlas"
-path     = "chess/1.0.0/pieces@2x.b3-4f8a....png"   # content-hashed
-hash     = "4f8a..."
+name     = "pieces@1x.atlas"
+path     = "chess/1.0.0/pieces@1x.b3-4f8a.png"   # content-hashed
+hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bytes    = 412_003
 priority = "critical"      # critical | high | low
-density  = 2
+density  = 1
 
-[atlas.pieces]
-white-knight = [0, 0, 128, 128]   # presenters use AssetRef::new("pieces/white-knight")
+[[resources]]
+id = "pieces/white-knight"
+
+[[resources.variants]]
+file = "pieces@1x.atlas"
+region = { x = 0, y = 0, width = 64, height = 64 }
 ```
+
+`AssetRef` values resolve only through these explicit resource declarations;
+the resolver never guesses from a filename, path, extension, density suffix, or
+atlas name. Binding a manifest to its expected pack and game produces the
+pure `BoundAssetPack` view, which deterministically returns metadata only
+(`AssetFile` plus an optional structural pixel region). It neither reads bytes
+nor creates a renderer or audio handle.
 
 ## Planned delivery rules
 

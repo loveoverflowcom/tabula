@@ -290,7 +290,6 @@ pub enum RenderCmd {
     Sprite {
         asset: AssetRef,
         rect: Rect,
-        src: Option<Rect>,
         tint: Color,
         rotation: f32,
         pivot: Vec2,
@@ -593,15 +592,11 @@ impl RenderListBuilder {
         match command {
             RenderCmd::Sprite {
                 rect,
-                src,
                 rotation,
                 pivot,
                 ..
             } => {
                 Self::valid_rect(*rect)?;
-                if let Some(src) = src {
-                    Self::valid_rect(*src)?;
-                }
                 if !rotation.is_finite() || !finite(*pivot) {
                     return Err(RenderListError::InvalidGeometry);
                 }
@@ -968,7 +963,6 @@ mod tests {
         let valid_sprite = RenderCmd::Sprite {
             asset: AssetRef::from_static("pieces/white-knight"),
             rect: Rect::new(Vec2::ZERO, Vec2::splat(64.0)).unwrap(),
-            src: Some(Rect::new(Vec2::ZERO, Vec2::splat(128.0)).unwrap()),
             tint: semantic_color(),
             rotation: 0.0,
             pivot: Vec2::splat(32.0),
@@ -983,7 +977,6 @@ mod tests {
                 origin: Vec2::ZERO,
                 size: Vec2::new(-10.0, 10.0),
             },
-            src: None,
             tint: semantic_color(),
             rotation: f32::NAN,
             pivot: Vec2::ZERO,

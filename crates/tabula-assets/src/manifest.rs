@@ -9,13 +9,19 @@
 
 #![allow(clippy::doc_markdown)]
 
-use std::{collections::BTreeSet, fmt, str::FromStr};
+use std::{
+    cmp::Reverse,
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    str::FromStr,
+};
 
 use serde::{Deserialize, Serialize};
 use tabula_core::{
     ids::{GameIdError, GameVersionError},
     GameId, GameVersion,
 };
+use tabula_game_api::{AssetRef, AssetRefError};
 
 /// A validated asset-pack manifest, independent of I/O and backend handles.
 ///
@@ -34,6 +40,7 @@ pub struct AssetPackManifest {
     pack_ref: AssetPackRef,
     game: GameId,
     files: Vec<AssetFile>,
+    resources: Vec<AssetResource>,
 }
 
 impl AssetPackManifest {
@@ -55,6 +62,7 @@ impl AssetPackManifest {
 
         let mut names = BTreeSet::new();
         let mut paths = BTreeSet::new();
+        let mut file_densities = BTreeMap::new();
         let mut files = Vec::with_capacity(spec.files.len());
         for file in spec.files {
             let file = AssetFile::validate(file)?;
@@ -64,13 +72,32 @@ impl AssetPackManifest {
             if !paths.insert(file.path.clone()) {
                 return Err(ManifestError::DuplicatePath(file.path.to_string()));
             }
+            file_densities.insert(
+                file.name.clone(),
+                (AssetFileIndex(files.len()), file.density()),
+            );
             files.push(file);
+        }
+
+        if spec.resources.is_empty() {
+            return Err(ManifestError::EmptyResources);
+        }
+
+        let mut resource_ids = BTreeSet::new();
+        let mut resources = Vec::with_capacity(spec.resources.len());
+        for resource in spec.resources {
+            let resource = AssetResource::validate(resource, &file_densities)?;
+            if !resource_ids.insert(resource.id.clone()) {
+                return Err(ManifestError::DuplicateResourceId(resource.id.to_string()));
+            }
+            resources.push(resource);
         }
 
         Ok(Self {
             pack_ref,
             game,
             files,
+            resources,
         })
     }
 
@@ -104,6 +131,12 @@ impl AssetPackManifest {
         &self.files
     }
 
+    /// Returns the explicit logical-resource declarations in manifest order.
+    #[must_use]
+    pub fn resources(&self) -> &[AssetResource] {
+        &self.resources
+    }
+
     /// Proves that this manifest matches the expected pack reference and game binding.
     ///
     /// @ai.role trust-boundary
@@ -115,7 +148,7 @@ impl AssetPackManifest {
         &self,
         expected_pack: &AssetPackRef,
         expected_game: &GameId,
-    ) -> Result<(), ManifestBindingError> {
+    ) -> Result<BoundAssetPack<'_>, ManifestBindingError> {
         if self.pack() != expected_pack.pack() {
             return Err(ManifestBindingError::PackMismatch {
                 expected: expected_pack.pack().clone(),
@@ -134,8 +167,94 @@ impl AssetPackManifest {
                 found: self.game().clone(),
             });
         }
-        Ok(())
+        Ok(BoundAssetPack { manifest: self })
     }
+}
+
+/// Evidence that one exact manifest has been bound to an expected pack and game.
+///
+/// This scoped view is the only public path to resource resolution. It contains
+/// no loaded bytes or backend handles; [`BoundAssetPack::resolve`] is a pure
+/// lookup over already-validated manifest metadata.
+///
+/// @ai.role scoped-witness
+/// @ai.domain assets.resolution
+/// @ai.pure true
+/// @ai.invariant expected-pack-and-game-binding
+/// @ai.evidence tests::manifest_validate_binding_partitions
+#[derive(Debug)]
+pub struct BoundAssetPack<'a> {
+    manifest: &'a AssetPackManifest,
+}
+
+impl BoundAssetPack<'_> {
+    /// Resolves one logical resource to deterministic physical metadata.
+    ///
+    /// A valid bound manifest guarantees that a known resource has exactly one
+    /// density-independent variant or a non-ambiguous density-aware variant
+    /// set. No filesystem, network, cache, clock, or backend state is read.
+    ///
+    /// @ai.role pure-resolver
+    /// @ai.domain assets.resolution
+    /// @ai.pure true
+    /// @ai.requires expected-pack-and-game-binding
+    /// @ai.law density-selection-is-declaration-order-independent
+    /// @ai.law equal-distance-selects-higher-density
+    /// @ai.evidence tests::resolution_obeys_density_selection_law
+    /// @ai.evidence tests::resolution_is_declaration_order_independent_and_never_infers_file_names
+    pub fn resolve(
+        &self,
+        asset: &AssetRef,
+        target_density: AssetDensity,
+    ) -> Result<ResolvedAsset<'_>, AssetResolveError> {
+        let resource = self
+            .manifest
+            .resources
+            .iter()
+            .find(|resource| resource.id() == asset)
+            .ok_or_else(|| AssetResolveError::UnknownResource(asset.clone()))?;
+
+        let variant = resource.select_variant(target_density);
+        let file = variant.file_metadata(&self.manifest.files);
+
+        Ok(ResolvedAsset {
+            file,
+            region: variant.region(),
+        })
+    }
+}
+
+/// Pure physical metadata selected for one logical [`AssetRef`].
+///
+/// `ResolvedAsset` deliberately contains neither bytes nor a renderer/audio
+/// handle. Loading, decoding, cache management, and backend upload remain
+/// later I/O boundaries.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResolvedAsset<'a> {
+    file: &'a AssetFile,
+    region: Option<AssetPixelRegion>,
+}
+
+impl ResolvedAsset<'_> {
+    /// Returns the selected validated physical file metadata.
+    #[must_use]
+    pub const fn file(&self) -> &AssetFile {
+        self.file
+    }
+
+    /// Returns the optional structurally valid source-pixel region.
+    #[must_use]
+    pub const fn region(&self) -> Option<AssetPixelRegion> {
+        self.region
+    }
+}
+
+/// Why pure resolution could not select physical metadata.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum AssetResolveError {
+    /// The logical resource was not declared by this bound manifest.
+    #[error("unknown logical asset resource {0}")]
+    UnknownResource(AssetRef),
 }
 
 /// Why an [`AssetPackManifest`] failed binding validation against expected pack/game identity.
@@ -730,13 +849,13 @@ impl AssetPriority {
 pub struct AssetDensity(u8);
 
 impl AssetDensity {
-    fn new(value: u64) -> Result<Self, AssetDensityError> {
+    /// Validates a discrete 1x, 2x, or 3x density target.
+    pub fn new(value: u8) -> Result<Self, AssetDensityError> {
         match value {
-            1..=3 => match u8::try_from(value) {
-                Ok(value) => Ok(Self(value)),
-                Err(_) => Err(AssetDensityError::Unsupported { value }),
-            },
-            _ => Err(AssetDensityError::Unsupported { value }),
+            1..=3 => Ok(Self(value)),
+            _ => Err(AssetDensityError::Unsupported {
+                value: u64::from(value),
+            }),
         }
     }
 
@@ -744,6 +863,30 @@ impl AssetDensity {
     #[must_use]
     pub const fn get(self) -> u8 {
         self.0
+    }
+}
+
+impl TryFrom<u8> for AssetDensity {
+    type Error = AssetDensityError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<u64> for AssetDensity {
+    type Error = AssetDensityError;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        u8::try_from(value)
+            .map_err(|_| AssetDensityError::Unsupported { value })
+            .and_then(Self::new)
+    }
+}
+
+impl fmt::Display for AssetDensity {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}", self.get())
     }
 }
 
@@ -776,7 +919,7 @@ impl AssetFile {
             priority: AssetPriority::parse(spec.priority)?,
             density: spec
                 .density
-                .map(AssetDensity::new)
+                .map(AssetDensity::try_from)
                 .transpose()
                 .map_err(ManifestError::InvalidDensity)?,
         })
@@ -819,6 +962,336 @@ impl AssetFile {
     }
 }
 
+/// A structurally valid source-pixel rectangle within a physical asset file.
+///
+/// This type proves non-zero extents and non-overflowing pixel arithmetic. It
+/// does not prove the rectangle is inside a decoded image; that requires image
+/// metadata and belongs to a future decoding boundary. (doc 04 §12)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AssetPixelRegion {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+}
+
+impl AssetPixelRegion {
+    /// Validates source-pixel origin, extent, and endpoint arithmetic.
+    pub fn new(x: u32, y: u32, width: u32, height: u32) -> Result<Self, AssetPixelRegionError> {
+        if width == 0 {
+            return Err(AssetPixelRegionError::ZeroWidth);
+        }
+        if height == 0 {
+            return Err(AssetPixelRegionError::ZeroHeight);
+        }
+        if x.checked_add(width).is_none() {
+            return Err(AssetPixelRegionError::HorizontalOverflow);
+        }
+        if y.checked_add(height).is_none() {
+            return Err(AssetPixelRegionError::VerticalOverflow);
+        }
+        Ok(Self {
+            x,
+            y,
+            width,
+            height,
+        })
+    }
+
+    /// Returns the non-negative horizontal source-pixel origin.
+    #[must_use]
+    pub const fn x(self) -> u32 {
+        self.x
+    }
+
+    /// Returns the non-negative vertical source-pixel origin.
+    #[must_use]
+    pub const fn y(self) -> u32 {
+        self.y
+    }
+
+    /// Returns the strictly positive source-pixel width.
+    #[must_use]
+    pub const fn width(self) -> u32 {
+        self.width
+    }
+
+    /// Returns the strictly positive source-pixel height.
+    #[must_use]
+    pub const fn height(self) -> u32 {
+        self.height
+    }
+
+    fn validate(spec: AssetPixelRegionSpec) -> Result<Self, ManifestError> {
+        let x = u32::try_from(spec.x).map_err(|_| ManifestError::PixelRegionOutOfRange {
+            coordinate: "x",
+            value: spec.x,
+        })?;
+        let y = u32::try_from(spec.y).map_err(|_| ManifestError::PixelRegionOutOfRange {
+            coordinate: "y",
+            value: spec.y,
+        })?;
+        let width =
+            u32::try_from(spec.width).map_err(|_| ManifestError::PixelRegionOutOfRange {
+                coordinate: "width",
+                value: spec.width,
+            })?;
+        let height =
+            u32::try_from(spec.height).map_err(|_| ManifestError::PixelRegionOutOfRange {
+                coordinate: "height",
+                value: spec.height,
+            })?;
+        Self::new(x, y, width, height).map_err(ManifestError::InvalidPixelRegion)
+    }
+}
+
+/// Why an [`AssetPixelRegion`] failed structural validation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum AssetPixelRegionError {
+    /// A source region must span at least one pixel horizontally.
+    #[error("asset pixel region width must be greater than zero")]
+    ZeroWidth,
+    /// A source region must span at least one pixel vertically.
+    #[error("asset pixel region height must be greater than zero")]
+    ZeroHeight,
+    /// Horizontal source-pixel endpoint arithmetic overflowed `u32`.
+    #[error("asset pixel region horizontal endpoint overflows u32")]
+    HorizontalOverflow,
+    /// Vertical source-pixel endpoint arithmetic overflowed `u32`.
+    #[error("asset pixel region vertical endpoint overflows u32")]
+    VerticalOverflow,
+}
+
+/// One explicit mapping from a logical [`AssetRef`] to physical file variants.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AssetResource {
+    id: AssetRef,
+    variants: AssetResourceVariants,
+}
+
+impl AssetResource {
+    fn validate(
+        spec: AssetResourceSpec,
+        files: &BTreeMap<AssetFileName, (AssetFileIndex, Option<AssetDensity>)>,
+    ) -> Result<Self, ManifestError> {
+        let id = AssetRef::new(spec.id).map_err(ManifestError::InvalidResourceId)?;
+        let mut raw_variants = spec.variants.into_iter();
+        let Some(first_spec) = raw_variants.next() else {
+            return Err(ManifestError::EmptyResourceVariants(id));
+        };
+
+        let (first_variant, first_density) =
+            AssetResourceVariant::validate(first_spec, &id, files)?;
+        let mut variants = match first_density {
+            None => AssetResourceVariants::DensityIndependent(first_variant),
+            Some(density) => AssetResourceVariants::DensityAware(NonEmptyVariants::new(
+                DensityAwareResourceVariant {
+                    variant: first_variant,
+                    density,
+                },
+            )),
+        };
+        let mut densities = BTreeSet::new();
+        if let Some(density) = first_density {
+            let _ = densities.insert(density);
+        }
+        for raw_variant in raw_variants {
+            let (variant, density) = AssetResourceVariant::validate(raw_variant, &id, files)?;
+            match (&mut variants, density) {
+                (AssetResourceVariants::DensityIndependent(_), Some(_))
+                | (AssetResourceVariants::DensityAware(_), None) => {
+                    return Err(ManifestError::MixedResourceDensityMode(id));
+                }
+                (AssetResourceVariants::DensityIndependent(_), None) => {
+                    return Err(ManifestError::MultipleDensitylessResourceVariants(id));
+                }
+                (AssetResourceVariants::DensityAware(variants), Some(density)) => {
+                    if !densities.insert(density) {
+                        return Err(ManifestError::DuplicateResourceDensity { id, density });
+                    }
+                    variants.push(DensityAwareResourceVariant { variant, density });
+                }
+            }
+        }
+
+        Ok(Self { id, variants })
+    }
+
+    /// Returns the resource's canonical logical identity.
+    #[must_use]
+    pub const fn id(&self) -> &AssetRef {
+        &self.id
+    }
+
+    /// Returns the validated physical alternatives for this resource.
+    #[must_use]
+    pub fn variant_count(&self) -> usize {
+        self.variants.len()
+    }
+
+    /// Returns a physical alternative by its stable manifest declaration index.
+    #[must_use]
+    pub fn variant(&self, index: usize) -> Option<&AssetResourceVariant> {
+        self.variants.get(index)
+    }
+
+    fn select_variant(&self, target_density: AssetDensity) -> &AssetResourceVariant {
+        self.variants.select(target_density)
+    }
+}
+
+/// The validated density mode of one [`AssetResource`].
+///
+/// The private representation makes an empty resource, mixed density modes,
+/// and a density-aware variant without a density unrepresentable after parsing.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum AssetResourceVariants {
+    DensityIndependent(AssetResourceVariant),
+    DensityAware(NonEmptyVariants<DensityAwareResourceVariant>),
+}
+
+impl AssetResourceVariants {
+    fn len(&self) -> usize {
+        match self {
+            Self::DensityIndependent(_) => 1,
+            Self::DensityAware(variants) => variants.len(),
+        }
+    }
+
+    fn get(&self, index: usize) -> Option<&AssetResourceVariant> {
+        match self {
+            Self::DensityIndependent(variant) => (index == 0).then_some(variant),
+            Self::DensityAware(variants) => variants.get(index).map(|variant| &variant.variant),
+        }
+    }
+
+    fn select(&self, target_density: AssetDensity) -> &AssetResourceVariant {
+        match self {
+            Self::DensityIndependent(variant) => variant,
+            Self::DensityAware(variants) => {
+                &variants
+                    .min_by_key(|variant| {
+                        (
+                            u8::abs_diff(variant.density.get(), target_density.get()),
+                            Reverse(variant.density),
+                        )
+                    })
+                    .variant
+            }
+        }
+    }
+}
+
+/// A private non-empty collection used only after the resource validation boundary.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct NonEmptyVariants<T> {
+    first: T,
+    rest: Vec<T>,
+}
+
+impl<T> NonEmptyVariants<T> {
+    fn new(first: T) -> Self {
+        Self {
+            first,
+            rest: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, value: T) {
+        self.rest.push(value);
+    }
+
+    fn len(&self) -> usize {
+        self.rest.len() + 1
+    }
+
+    fn get(&self, index: usize) -> Option<&T> {
+        if index == 0 {
+            Some(&self.first)
+        } else {
+            self.rest.get(index - 1)
+        }
+    }
+
+    fn min_by_key<K: Ord>(&self, key: impl Fn(&T) -> K) -> &T {
+        self.rest.iter().fold(&self.first, |best, candidate| {
+            if key(candidate) < key(best) {
+                candidate
+            } else {
+                best
+            }
+        })
+    }
+}
+
+/// A density-aware resource alternative with a density proven from its referenced file.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct DensityAwareResourceVariant {
+    variant: AssetResourceVariant,
+    density: AssetDensity,
+}
+
+/// One physical file and optional source-pixel region of an [`AssetResource`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AssetResourceVariant {
+    file: AssetFileName,
+    file_index: AssetFileIndex,
+    region: Option<AssetPixelRegion>,
+}
+
+impl AssetResourceVariant {
+    fn validate(
+        spec: AssetResourceVariantSpec,
+        resource: &AssetRef,
+        files: &BTreeMap<AssetFileName, (AssetFileIndex, Option<AssetDensity>)>,
+    ) -> Result<(Self, Option<AssetDensity>), ManifestError> {
+        let file = AssetFileName::new(spec.file).map_err(ManifestError::InvalidResourceFileName)?;
+        let (file_index, density) =
+            files
+                .get(&file)
+                .copied()
+                .ok_or_else(|| ManifestError::UnknownResourceFile {
+                    resource: resource.clone(),
+                    file: file.clone(),
+                })?;
+        let region = spec.region.map(AssetPixelRegion::validate).transpose()?;
+        Ok((
+            Self {
+                file,
+                file_index,
+                region,
+            },
+            density,
+        ))
+    }
+
+    /// Returns the referenced manifest-local physical file identity.
+    #[must_use]
+    pub const fn file(&self) -> &AssetFileName {
+        &self.file
+    }
+
+    /// Returns optional structural atlas metadata for this variant.
+    #[must_use]
+    pub const fn region(&self) -> Option<AssetPixelRegion> {
+        self.region
+    }
+
+    fn file_metadata<'a>(&self, files: &'a [AssetFile]) -> &'a AssetFile {
+        self.file_index.resolve(files)
+    }
+}
+
+/// A manifest-private proof that a resource variant refers to one declared file.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct AssetFileIndex(usize);
+
+impl AssetFileIndex {
+    fn resolve(self, files: &[AssetFile]) -> &AssetFile {
+        &files[self.0]
+    }
+}
+
 /// A focused failure while parsing or validating a manifest.
 #[derive(Debug, thiserror::Error)]
 pub enum ManifestError {
@@ -852,15 +1325,54 @@ pub enum ManifestError {
     /// A raster density was outside the supported domain.
     #[error("invalid asset density: {0}")]
     InvalidDensity(#[source] AssetDensityError),
+    /// A logical resource ID did not satisfy the canonical `AssetRef` grammar.
+    #[error("invalid logical asset resource id: {0}")]
+    InvalidResourceId(#[source] AssetRefError),
+    /// A resource referenced an invalid manifest-local file identity.
+    #[error("invalid resource file name: {0}")]
+    InvalidResourceFileName(#[source] AssetFileNameError),
+    /// A resource declared an invalid structural atlas region.
+    #[error("invalid asset pixel region: {0}")]
+    InvalidPixelRegion(#[source] AssetPixelRegionError),
+    /// A source-pixel field did not fit the physical pixel coordinate domain.
+    #[error("asset pixel region {coordinate} is outside u32: {value}")]
+    PixelRegionOutOfRange {
+        coordinate: &'static str,
+        value: u64,
+    },
     /// A pack without files cannot resolve any presentation assets.
     #[error("asset manifest must contain at least one file")]
     EmptyFiles,
+    /// A pack without logical resource declarations cannot satisfy presenters.
+    #[error("asset manifest must contain at least one resource")]
+    EmptyResources,
     /// Two entries named the same manifest-local file.
     #[error("duplicate asset file name {0:?}")]
     DuplicateFileName(String),
     /// Two entries named the same pack path, making addressing ambiguous.
     #[error("duplicate asset path {0:?}")]
     DuplicatePath(String),
+    /// Two declarations used the same logical resource identity.
+    #[error("duplicate logical asset resource {0}")]
+    DuplicateResourceId(String),
+    /// A resource must explicitly map to at least one declared file.
+    #[error("logical asset resource {0} must contain at least one variant")]
+    EmptyResourceVariants(AssetRef),
+    /// A resource variant named no declared physical file.
+    #[error("logical asset resource {resource} references undeclared file {file}")]
+    UnknownResourceFile {
+        resource: AssetRef,
+        file: AssetFileName,
+    },
+    /// A resource cannot mix density-aware and density-independent files.
+    #[error("logical asset resource {0} mixes density-aware and density-independent variants")]
+    MixedResourceDensityMode(AssetRef),
+    /// A density-aware resource cannot have two variants at the same density.
+    #[error("logical asset resource {id} has duplicate {density}x variants")]
+    DuplicateResourceDensity { id: AssetRef, density: AssetDensity },
+    /// A density-independent resource has exactly one physical variant.
+    #[error("logical asset resource {0} has multiple density-independent variants")]
+    MultipleDensitylessResourceVariants(AssetRef),
 }
 
 #[derive(Deserialize)]
@@ -870,6 +1382,7 @@ struct ManifestSpec {
     version: String,
     game: String,
     files: Vec<AssetFileSpec>,
+    resources: Vec<AssetResourceSpec>,
 }
 
 #[derive(Deserialize)]
@@ -883,6 +1396,29 @@ struct AssetFileSpec {
     density: Option<u64>,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AssetResourceSpec {
+    id: String,
+    variants: Vec<AssetResourceVariantSpec>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AssetResourceVariantSpec {
+    file: String,
+    region: Option<AssetPixelRegionSpec>,
+}
+
+#[derive(Clone, Copy, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AssetPixelRegionSpec {
+    x: u64,
+    y: u64,
+    width: u64,
+    height: u64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -893,7 +1429,7 @@ mod tests {
 
     fn manifest(file: &str) -> String {
         format!(
-            "pack = \"sample\"\nversion = \"1.0.0\"\ngame = \"com.example.sample\"\n\n[[files]]\n{file}"
+            "pack = \"sample\"\nversion = \"1.0.0\"\ngame = \"com.example.sample\"\n\n[[files]]\n{file}\n\n[[resources]]\nid = \"pieces/white-knight\"\n\n[[resources.variants]]\nfile = \"pieces@2x.atlas\""
         )
     }
 
@@ -905,6 +1441,29 @@ mod tests {
 
     fn file_with(field: &str, replacement: &str) -> String {
         file().replacen(field, replacement, 1)
+    }
+
+    fn file_named(name: &str, density: Option<u8>) -> String {
+        let density = density.map_or_else(String::new, |density| format!("\ndensity = {density}"));
+        format!(
+            "name = \"{name}\"\npath = \"sample/1.0.0/{name}.bin\"\nhash = \"{HASH}\"\nbytes = 100\npriority = \"critical\"{density}"
+        )
+    }
+
+    fn manifest_with(files: &[String], resources: &str) -> String {
+        format!(
+            "pack = \"sample\"\nversion = \"1.0.0\"\ngame = \"com.example.sample\"\n\n[[files]]\n{}\n\n{resources}",
+            files.join("\n\n[[files]]\n")
+        )
+    }
+
+    fn resource(id: &str, files: &[&str]) -> String {
+        let variants = files
+            .iter()
+            .map(|file| format!("[[resources.variants]]\nfile = \"{file}\""))
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        format!("[[resources]]\nid = \"{id}\"\n\n{variants}")
     }
 
     #[test]
@@ -1211,7 +1770,7 @@ mod tests {
     #[test]
     fn manifest_without_files_is_not_a_resolvable_asset_pack() {
         let source =
-            "pack = \"sample\"\nversion = \"1.0.0\"\ngame = \"com.example.sample\"\nfiles = []";
+            "pack = \"sample\"\nversion = \"1.0.0\"\ngame = \"com.example.sample\"\nfiles = []\nresources = []";
 
         assert!(matches!(
             AssetPackManifest::from_toml(source),
@@ -1534,39 +2093,325 @@ mod tests {
         let expected_game = GameId::new("com.example.sample").unwrap();
 
         // Exact match passes
-        assert_eq!(
-            parsed.validate_binding(&expected_pack, &expected_game),
-            Ok(())
-        );
+        assert!(parsed
+            .validate_binding(&expected_pack, &expected_game)
+            .is_ok());
 
         // Mutation A: wrong version -> VersionMismatch
         let wrong_version_pack = AssetPackRef::from_static("sample", "0.2.0");
         assert_eq!(
-            parsed.validate_binding(&wrong_version_pack, &expected_game),
-            Err(ManifestBindingError::VersionMismatch {
+            parsed
+                .validate_binding(&wrong_version_pack, &expected_game)
+                .unwrap_err(),
+            ManifestBindingError::VersionMismatch {
                 expected: AssetPackVersion::new("0.2.0").unwrap(),
                 found: AssetPackVersion::new("1.0.0").unwrap(),
-            })
+            }
         );
 
         // Mutation B: wrong pack name -> PackMismatch
         let wrong_pack = AssetPackRef::from_static("alternate", "1.0.0");
         assert_eq!(
-            parsed.validate_binding(&wrong_pack, &expected_game),
-            Err(ManifestBindingError::PackMismatch {
+            parsed
+                .validate_binding(&wrong_pack, &expected_game)
+                .unwrap_err(),
+            ManifestBindingError::PackMismatch {
                 expected: AssetPackId::new("alternate").unwrap(),
                 found: AssetPackId::new("sample").unwrap(),
-            })
+            }
         );
 
         // Mutation C: wrong game binding -> GameMismatch
         let wrong_game = GameId::new("com.example.alternate").unwrap();
         assert_eq!(
-            parsed.validate_binding(&expected_pack, &wrong_game),
-            Err(ManifestBindingError::GameMismatch {
+            parsed
+                .validate_binding(&expected_pack, &wrong_game)
+                .unwrap_err(),
+            ManifestBindingError::GameMismatch {
                 expected: GameId::new("com.example.alternate").unwrap(),
                 found: GameId::new("com.example.sample").unwrap(),
-            })
+            }
+        );
+    }
+
+    #[test]
+    fn resource_validation_rejects_empty_duplicate_and_ambiguous_declarations() {
+        use super::AssetRef;
+
+        let one_x = file_named("pieces@1x.atlas", Some(1));
+        let two_x = file_named("pieces@2x.atlas", Some(2));
+        let audio = file_named("move.ogg", None);
+
+        let no_resources = format!(
+            "pack = \"sample\"\nversion = \"1.0.0\"\ngame = \"com.example.sample\"\nresources = []\n\n[[files]]\n{one_x}"
+        );
+        assert!(matches!(
+            AssetPackManifest::from_toml(&no_resources),
+            Err(ManifestError::EmptyResources)
+        ));
+
+        let duplicate = format!(
+            "{}\n\n{}",
+            resource("pieces/white-knight", &["pieces@1x.atlas"]),
+            resource("pieces/white-knight", &["pieces@1x.atlas"])
+        );
+        assert!(matches!(
+            AssetPackManifest::from_toml(&manifest_with(std::slice::from_ref(&one_x), &duplicate)),
+            Err(ManifestError::DuplicateResourceId(_))
+        ));
+
+        let zero_variants = "[[resources]]\nid = \"pieces/white-knight\"\nvariants = []";
+        assert!(matches!(
+            AssetPackManifest::from_toml(&manifest_with(std::slice::from_ref(&one_x), zero_variants)),
+            Err(ManifestError::EmptyResourceVariants(id)) if id == AssetRef::from_static("pieces/white-knight")
+        ));
+
+        assert!(matches!(
+            AssetPackManifest::from_toml(&manifest_with(
+                std::slice::from_ref(&one_x),
+                &resource("pieces/white-knight", &["missing.atlas"])
+            )),
+            Err(ManifestError::UnknownResourceFile { .. })
+        ));
+
+        assert!(matches!(
+            AssetPackManifest::from_toml(&manifest_with(
+                &[one_x.clone(), audio.clone()],
+                &resource("pieces/white-knight", &["pieces@1x.atlas", "move.ogg"])
+            )),
+            Err(ManifestError::MixedResourceDensityMode(_))
+        ));
+
+        let another_two_x = file_named("alternate@2x.atlas", Some(2));
+        assert!(matches!(
+            AssetPackManifest::from_toml(&manifest_with(
+                &[two_x.clone(), another_two_x],
+                &resource(
+                    "pieces/white-knight",
+                    &["pieces@2x.atlas", "alternate@2x.atlas"]
+                )
+            )),
+            Err(ManifestError::DuplicateResourceDensity { .. })
+        ));
+
+        let another_audio = file_named("other.ogg", None);
+        assert!(matches!(
+            AssetPackManifest::from_toml(&manifest_with(
+                &[audio, another_audio],
+                &resource("audio/move", &["move.ogg", "other.ogg"])
+            )),
+            Err(ManifestError::MultipleDensitylessResourceVariants(_))
+        ));
+
+        assert!(matches!(
+            AssetPackManifest::from_toml(&manifest_with(
+                &[one_x],
+                &resource("../white-knight", &["pieces@1x.atlas"])
+            )),
+            Err(ManifestError::InvalidResourceId(_))
+        ));
+    }
+
+    #[test]
+    fn resource_validation_accepts_whole_files_density_variants_and_atlas_sharing() {
+        let one_x = file_named("pieces@1x.atlas", Some(1));
+        let two_x = file_named("pieces@2x.atlas", Some(2));
+        let three_x = file_named("pieces@3x.atlas", Some(3));
+        let board = file_named("board.png", None);
+        let resources = [
+            "[[resources]]\nid = \"pieces/white-knight\"\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"\nregion = { x = 0, y = 0, width = 64, height = 64 }\n\n[[resources.variants]]\nfile = \"pieces@2x.atlas\"\nregion = { x = 0, y = 0, width = 128, height = 128 }\n\n[[resources.variants]]\nfile = \"pieces@3x.atlas\"\nregion = { x = 0, y = 0, width = 192, height = 192 }".to_owned(),
+            "[[resources]]\nid = \"pieces/white-queen\"\n\n[[resources.variants]]\nfile = \"pieces@2x.atlas\"\nregion = { x = 64, y = 0, width = 64, height = 64 }".to_owned(),
+            resource("pieces/single", &["pieces@1x.atlas"]),
+            resource("board/background", &["board.png"]),
+        ]
+        .join("\n\n");
+        let manifest = AssetPackManifest::from_toml(&manifest_with(
+            &[one_x, two_x, three_x, board],
+            &resources,
+        ))
+        .unwrap();
+
+        assert_eq!(manifest.resources().len(), 4);
+        assert_eq!(manifest.resources()[0].variant_count(), 3);
+        assert_eq!(
+            manifest.resources()[1]
+                .variant(0)
+                .unwrap()
+                .region()
+                .unwrap()
+                .width(),
+            64
+        );
+    }
+
+    #[test]
+    fn pixel_region_validation_rejects_degenerate_overflowing_and_unknown_input() {
+        use super::AssetPixelRegionError;
+
+        assert_eq!(
+            super::AssetPixelRegion::new(0, 0, 0, 1),
+            Err(AssetPixelRegionError::ZeroWidth)
+        );
+        assert_eq!(
+            super::AssetPixelRegion::new(0, 0, 1, 0),
+            Err(AssetPixelRegionError::ZeroHeight)
+        );
+        assert_eq!(
+            super::AssetPixelRegion::new(u32::MAX, 0, 1, 1),
+            Err(AssetPixelRegionError::HorizontalOverflow)
+        );
+        assert_eq!(
+            super::AssetPixelRegion::new(0, u32::MAX, 1, 1),
+            Err(AssetPixelRegionError::VerticalOverflow)
+        );
+
+        let invalid_region = "[[resources]]\nid = \"pieces/white-knight\"\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"\nregion = { x = 0, y = 0, width = 0, height = 1 }";
+        assert!(matches!(
+            AssetPackManifest::from_toml(&manifest_with(
+                &[file_named("pieces@1x.atlas", Some(1))],
+                invalid_region
+            )),
+            Err(ManifestError::InvalidPixelRegion(
+                AssetPixelRegionError::ZeroWidth
+            ))
+        ));
+
+        let overflowing_region = "[[resources]]\nid = \"pieces/white-knight\"\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"\nregion = { x = 4294967295, y = 0, width = 1, height = 1 }";
+        assert!(matches!(
+            AssetPackManifest::from_toml(&manifest_with(
+                &[file_named("pieces@1x.atlas", Some(1))],
+                overflowing_region
+            )),
+            Err(ManifestError::InvalidPixelRegion(
+                AssetPixelRegionError::HorizontalOverflow
+            ))
+        ));
+
+        let unknown_resource_field = "[[resources]]\nid = \"pieces/white-knight\"\nunsupported = true\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"";
+        let unknown_variant_field = "[[resources]]\nid = \"pieces/white-knight\"\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"\nunsupported = true";
+        let unknown_region_field = "[[resources]]\nid = \"pieces/white-knight\"\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"\nregion = { x = 0, y = 0, width = 1, height = 1, unsupported = true }";
+        for source in [
+            unknown_resource_field,
+            unknown_variant_field,
+            unknown_region_field,
+        ] {
+            assert!(matches!(
+                AssetPackManifest::from_toml(&manifest_with(
+                    &[file_named("pieces@1x.atlas", Some(1))],
+                    source
+                )),
+                Err(ManifestError::Toml(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn resolution_obeys_density_selection_law() {
+        use super::{AssetDensity, AssetRef};
+        use tabula_core::GameId;
+
+        let files = [
+            file_named("pieces@1x.atlas", Some(1)),
+            file_named("pieces@2x.atlas", Some(2)),
+            file_named("pieces@3x.atlas", Some(3)),
+            file_named("move.ogg", None),
+        ];
+        let resources = [
+            "[[resources]]\nid = \"pieces/all\"\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"\nregion = { x = 0, y = 0, width = 64, height = 64 }\n\n[[resources.variants]]\nfile = \"pieces@2x.atlas\"\nregion = { x = 10, y = 20, width = 128, height = 128 }\n\n[[resources.variants]]\nfile = \"pieces@3x.atlas\"\nregion = { x = 30, y = 40, width = 192, height = 192 }".to_owned(),
+            "[[resources]]\nid = \"pieces/tie\"\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"\nregion = { x = 0, y = 0, width = 64, height = 64 }\n\n[[resources.variants]]\nfile = \"pieces@3x.atlas\"\nregion = { x = 30, y = 40, width = 192, height = 192 }".to_owned(),
+            resource("pieces/low", &["pieces@1x.atlas", "pieces@2x.atlas"]),
+            resource("pieces/high", &["pieces@2x.atlas", "pieces@3x.atlas"]),
+            resource("audio/move", &["move.ogg"]),
+        ]
+        .join("\n\n");
+        let manifest = AssetPackManifest::from_toml(&manifest_with(&files, &resources)).unwrap();
+        let bound = manifest
+            .validate_binding(
+                &super::AssetPackRef::from_static("sample", "1.0.0"),
+                &GameId::new("com.example.sample").unwrap(),
+            )
+            .unwrap();
+        let resolve = |id: &str, target| {
+            let resolved = bound
+                .resolve(
+                    &AssetRef::new(id).unwrap(),
+                    AssetDensity::new(target).unwrap(),
+                )
+                .unwrap();
+            (
+                resolved.file().name().as_str().to_owned(),
+                resolved.region(),
+            )
+        };
+
+        let one_x = resolve("pieces/all", 1);
+        assert_eq!(one_x.0, "pieces@1x.atlas");
+        assert_eq!(one_x.1.unwrap().width(), 64);
+        let two_x = resolve("pieces/all", 2);
+        assert_eq!(two_x.0, "pieces@2x.atlas");
+        assert_eq!(two_x.1.unwrap().width(), 128);
+        assert_eq!(two_x.1.unwrap().x(), 10);
+        let three_x = resolve("pieces/all", 3);
+        assert_eq!(three_x.0, "pieces@3x.atlas");
+        assert_eq!(three_x.1.unwrap().width(), 192);
+        assert_eq!(three_x.1.unwrap().x(), 30);
+        let fallback = resolve("pieces/tie", 2);
+        assert_eq!(fallback.0, "pieces@3x.atlas");
+        assert_eq!(fallback.1.unwrap().width(), 192);
+        assert_eq!(resolve("pieces/low", 3).0, "pieces@2x.atlas");
+        assert_eq!(resolve("pieces/high", 1).0, "pieces@2x.atlas");
+        assert_eq!(resolve("audio/move", 1).0, "move.ogg");
+        assert_eq!(resolve("audio/move", 3).0, "move.ogg");
+    }
+
+    #[test]
+    fn resolution_is_declaration_order_independent_and_never_infers_file_names() {
+        use super::{AssetDensity, AssetPackRef, AssetRef, AssetResolveError};
+        use tabula_core::GameId;
+
+        let files = [
+            file_named("pieces@1x.atlas", Some(1)),
+            file_named("pieces@3x.atlas", Some(3)),
+        ];
+        let first = AssetPackManifest::from_toml(&manifest_with(
+            &files,
+            "[[resources]]\nid = \"pieces/white-knight\"\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"\nregion = { x = 0, y = 0, width = 64, height = 64 }\n\n[[resources.variants]]\nfile = \"pieces@3x.atlas\"\nregion = { x = 30, y = 40, width = 192, height = 192 }",
+        ))
+        .unwrap();
+        let reversed = AssetPackManifest::from_toml(&manifest_with(
+            &files,
+            "[[resources]]\nid = \"pieces/white-knight\"\n\n[[resources.variants]]\nfile = \"pieces@3x.atlas\"\nregion = { x = 30, y = 40, width = 192, height = 192 }\n\n[[resources.variants]]\nfile = \"pieces@1x.atlas\"\nregion = { x = 0, y = 0, width = 64, height = 64 }",
+        ))
+        .unwrap();
+        let game = GameId::new("com.example.sample").unwrap();
+        let pack = AssetPackRef::from_static("sample", "1.0.0");
+        let target = AssetDensity::new(2).unwrap();
+        let first_bound = first.validate_binding(&pack, &game).unwrap();
+        let first_result = first_bound
+            .resolve(&AssetRef::from_static("pieces/white-knight"), target)
+            .unwrap();
+        let reversed_bound = reversed.validate_binding(&pack, &game).unwrap();
+        let reversed_result = reversed_bound
+            .resolve(&AssetRef::from_static("pieces/white-knight"), target)
+            .unwrap();
+        assert_eq!(first_result, reversed_result);
+        assert_eq!(first_result.file().name().as_str(), "pieces@3x.atlas");
+        assert_eq!(first_result.region().unwrap().width(), 192);
+        assert_eq!(first_result.region().unwrap().x(), 30);
+
+        let no_inference = AssetPackManifest::from_toml(&manifest_with(
+            &[file_named("white-knight", Some(1))],
+            &resource("other/resource", &["white-knight"]),
+        ))
+        .unwrap();
+        assert_eq!(
+            no_inference
+                .validate_binding(&pack, &game)
+                .unwrap()
+                .resolve(&AssetRef::from_static("pieces/white-knight"), target),
+            Err(AssetResolveError::UnknownResource(AssetRef::from_static(
+                "pieces/white-knight"
+            )))
         );
     }
 }

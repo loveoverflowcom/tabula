@@ -115,7 +115,6 @@ fn format_command(out: &mut String, cmd: &RenderCmd) {
         RenderCmd::Sprite {
             asset,
             rect,
-            src,
             tint,
             rotation,
             pivot,
@@ -124,10 +123,9 @@ fn format_command(out: &mut String, cmd: &RenderCmd) {
         } => {
             let _ = write!(
                 out,
-                "sprite asset=\"{}\" rect={} src={} tint={} rotation={} pivot={} layer={} z={}",
+                "sprite asset=\"{}\" rect={} tint={} rotation={} pivot={} layer={} z={}",
                 asset.as_str().escape_debug(),
                 format_rect(*rect),
-                format_opt_rect(*src),
                 format_color(*tint),
                 format_scalar(*rotation),
                 format_vec2(*pivot),
@@ -271,10 +269,6 @@ fn format_rect(r: Rect) -> String {
         format_scalar(r.size().x),
         format_scalar(r.size().y)
     )
-}
-
-fn format_opt_rect(r: Option<Rect>) -> String {
-    r.map_or_else(|| "none".to_string(), format_rect)
 }
 
 #[allow(clippy::float_arithmetic)]
@@ -665,7 +659,6 @@ mod tests {
                 RenderCmd::Sprite {
                     asset: AssetRef::from_static("pawn_white"),
                     rect: Rect::new(Vec2::ZERO, Vec2::splat(10.0)).unwrap(),
-                    src: Some(Rect::new(Vec2::ZERO, Vec2::splat(64.0)).unwrap()),
                     tint: Color::rgba(255, 255, 255, 200),
                     rotation: 0.5,
                     pivot: Vec2::new(5.0, 5.0),

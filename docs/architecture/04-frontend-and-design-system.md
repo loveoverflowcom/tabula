@@ -383,8 +383,8 @@ pub struct RenderList { /* private validated command stream + camera */ }
 // nodes by (layer, z), checks balanced Push*/Pop* pairs, then flattens for backends.
 
 pub enum RenderCmd {
-    /// Textured quad from an atlas region, with tint, rotation, and pivot.
-    Sprite { asset: AssetRef, rect: Rect, src: Option<Rect>, tint: Color,
+    /// Textured quad for a logical resource, with tint, rotation, and pivot.
+    Sprite { asset: AssetRef, rect: Rect, tint: Color,
              rotation: f32, pivot: Vec2, layer: Layer, z: i16 },
     /// Rounded rectangle with optional per-corner radii and border.
     Rect { rect: Rect, radii: Corners, fill: Option<Paint>, border: Option<Border>,
@@ -1057,35 +1057,41 @@ GameMetadata / GamePresentation
               ▼
            AssetRef
               │
-              │ future pure resolution
+              │ explicit resource declaration + pure resolution
               ▼
       AssetPackManifest
               │
+              ├── AssetResource
               ├── AssetFileName
               ├── AssetPath
               ├── AssetContentHash
               └── AssetDensity
 ```
 
-The current implementation is limited to the pure identity and manifest layer:
+The current implementation includes the pure identity, binding, and resolution layer:
 
 - `AssetPackRef`: the exact pack identity (`AssetPackId`) and version (`AssetPackVersion`), canonically formatted as `pack@version`.
 - `AssetPackManifest.game`: the reverse-DNS game ID to which the pack is bound.
-- `AssetPackManifest::validate_binding(...)`: pure validation that a parsed manifest matches the requested `AssetPackRef` and intended `GameId` before any asset handle or I/O exists.
+- `AssetResource`: one explicit `AssetRef` declaration with one density-independent file variant or one variant per density-aware `AssetFile`.
+- `AssetPixelRegion`: structural physical source-pixel metadata, distinct from logical `Rect`; it proves positive extents and non-overflowing endpoints, not decoded-image bounds.
+- `AssetPackManifest::validate_binding(...) -> BoundAssetPack`: pure binding evidence for one exact requested `AssetPackRef` and `GameId`.
+- `BoundAssetPack::resolve(...) -> ResolvedAsset`: pure deterministic metadata lookup. Exact density wins; otherwise nearest density wins, with equal distances selecting the higher density.
 
 Implemented now:
 
 - manifest TOML parsing with unknown-field rejection;
 - validated pack/file identity, canonical relative paths, hashes, sizes, priorities, and densities;
 - duplicate file-name and path rejection;
-- pack-to-game binding validation.
+- explicit logical resource declarations with no filename inference;
+- structural atlas-region validation and shared physical atlas files;
+- pack-to-game binding witness and deterministic pure resource resolution.
 
 Not implemented yet:
 
 - asset sources, network or filesystem loading;
 - cache management, CDN URL/signature generation, or retry policy;
 - byte-level integrity verification;
-- density/atlas resolution, decoding, or renderer handles.
+- decoding or renderer handles.
 
 The resolution and loading pipeline flow:
 
@@ -1098,9 +1104,9 @@ GamePresentation::asset_pack()
         ↓
  parse + validate
         ↓
- validate_binding
+ validate_binding → BoundAssetPack
         ↓
-resource resolution       [future]
+resource resolution       [implemented / pure]
         ↓
   loaded handles          [future]
 ```
@@ -1111,11 +1117,12 @@ yet prove that the path embeds that hash, and the parser does not verify file by
 or CDN resolution ships, `xtask pack-assets` must emit and enforce the content-addressed,
 immutable-path convention, with the loader verifying bytes against the manifest hash.
 
-### 12.3 Target manifest sketch
+### 12.3 Manifest schema
 
-The parser's current schema is intentionally limited to `pack`, `version`, `game`, and `files`;
-unknown fields are rejected. The atlas section below is a future schema extension and is not
-accepted until atlas metadata has a defined validated domain type.
+The parser accepts `pack`, `version`, `game`, `files`, and explicit `resources`; unknown fields
+at every level are rejected. A logical resource is never inferred from a filename, path, atlas
+name, extension, or density suffix. `RenderCmd::Sprite` carries only `AssetRef` and logical
+geometry; physical source-pixel regions belong only to the matching resource variant.
 
 ```toml
 # generated: assets/packs/chess/pack.toml → served as pack.json
@@ -1124,23 +1131,31 @@ version = "1.0.0"
 game    = "com.tabula.chess"
 
 [[files]]
-name     = "pieces@2x.atlas"
-path     = "chess/1.0.0/pieces@2x.b3-4f8a...png"
-hash     = "4f8a..."
+name     = "pieces@1x.atlas"
+path     = "chess/1.0.0/pieces@1x.b3-4f8a.png"
+hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bytes    = 412_003
+priority = "critical"
+density  = 1
+
+[[files]]
+name     = "pieces@2x.atlas"
+path     = "chess/1.0.0/pieces@2x.b3-9c21.png"
+hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+bytes    = 824_006
 priority = "critical"
 density  = 2
 
-[[files]]
-name     = "move.ogg"
-path     = "chess/1.0.0/move.b3-9c21....ogg"
-hash     = "9c21..."
-bytes    = 8_112
-priority = "high"
+[[resources]]
+id = "pieces/white-knight"
 
-[atlas.pieces]
-# name -> (x, y, w, h) so presenters reference AssetRef::new("pieces/white-knight")
-white-knight = [0, 0, 128, 128]
+[[resources.variants]]
+file = "pieces@1x.atlas"
+region = { x = 0, y = 0, width = 64, height = 64 }
+
+[[resources.variants]]
+file = "pieces@2x.atlas"
+region = { x = 0, y = 0, width = 128, height = 128 }
 ```
 
 ---
