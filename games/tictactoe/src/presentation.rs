@@ -6,7 +6,6 @@
 
 #![allow(clippy::doc_markdown)]
 
-use glam::Vec2;
 use tabula_design::{Color, Theme};
 use tabula_game_api::{
     A11yAction, A11yDescription, A11yItem, A11yRegion, ActionId, GameRules, SeatId,
@@ -16,7 +15,7 @@ use tabula_presentation::{
     FocusGraph, FocusId, FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation,
     InputEvent, Intent, Layer, NavigationAction, Paint, PointerButton, PointerPhase,
     PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError,
-    TextStyleToken, Viewport,
+    TextStyleToken, Vec2, Viewport,
 };
 
 use crate::{Command, Event, Mark, Status, TicTacToeRules, View};

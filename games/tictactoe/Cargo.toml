@@ -20,7 +20,7 @@ publish.workspace      = true
 [features]
 default      = ["rules"]
 rules        = []
-presentation = ["dep:tabula-presentation", "dep:tabula-design", "dep:tabula-assets", "dep:glam"]
+presentation = ["dep:tabula-presentation", "dep:tabula-design", "dep:tabula-assets"]
 bots         = []
 testkit      = ["dep:tabula-testkit"]
 
@@ -34,7 +34,6 @@ thiserror       = { workspace = true }
 tabula-presentation = { workspace = true, optional = true }
 tabula-design       = { workspace = true, optional = true }
 tabula-assets       = { workspace = true, optional = true }
-glam                = { workspace = true, optional = true }
 tabula-testkit      = { workspace = true, optional = true }
 
 [dev-dependencies]

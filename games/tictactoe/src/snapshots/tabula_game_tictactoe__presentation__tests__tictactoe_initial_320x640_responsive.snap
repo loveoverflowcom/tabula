@@ -1,5 +1,6 @@
 ---
-source: games/tictactoe/src/ui.rs
+source: games/tictactoe/src/presentation.rs
+assertion_line: 925
 expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
 ---
 camera origin=(0.000, 0.000) zoom=1.000

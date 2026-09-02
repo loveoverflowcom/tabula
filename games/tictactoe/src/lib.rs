@@ -45,15 +45,7 @@ pub mod rules;
 pub mod bot;
 
 #[cfg(feature = "presentation")]
-pub mod ui;
-
-#[cfg(feature = "presentation")]
-pub use ui::{BoardLayout, TicTacToeLocal, TicTacToePresentation};
-
-#[cfg(feature = "presentation")]
-pub mod presentation {
-    pub use super::ui::*;
-}
+pub mod presentation;
 
 use std::sync::LazyLock;
 

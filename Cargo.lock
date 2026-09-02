@@ -975,7 +975,6 @@ name = "tabula-game-tictactoe"
 version = "0.2.0"
 dependencies = [
  "blake3",
- "glam 0.29.3",
  "serde",
  "smallvec",
  "tabula-assets",
