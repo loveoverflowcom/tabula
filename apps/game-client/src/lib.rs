@@ -15,7 +15,26 @@ use tabula_core::{
     TimerId, Viewer,
 };
 use tabula_game_api::{Budget, Ctx, Effect, GameRules, InitError, Input, Notice};
-use tabula_presentation::{AudioCues, FrameCtx, GamePresentation, InputEvent, RenderList};
+use tabula_presentation::{
+    AudioCues, Dpi, FrameCtx, GamePresentation, InputEvent, RenderList, Viewport,
+};
+
+/// Validates platform-reported display dimensions and device-pixel scale.
+///
+/// Returns `None` if the platform measurement is non-positive or non-finite
+/// (for example during initial canvas attach, window minimization, or rapid browser resizing).
+/// The caller should skip or defer rendering for that frame rather than constructing an invalid
+/// frame context.
+#[must_use]
+pub fn resolve_display_geometry(
+    width: f32,
+    height: f32,
+    dpi_scale: f32,
+) -> Option<(Viewport, Dpi)> {
+    let viewport = Viewport::new(glam::Vec2::new(width, height)).ok()?;
+    let dpi = Dpi::new(dpi_scale).ok()?;
+    Some((viewport, dpi))
+}
 
 /// One recorded canonical input attempt, ready for the replay writer in the
 /// next local-runtime increment (doc 00 §3.1).
@@ -984,5 +1003,58 @@ mod tests {
             assert_eq!(sink.play(cue), Err(()));
         }
         assert_eq!(match_.view().board[12], None);
+    }
+
+    #[test]
+    fn display_geometry_accepts_positive_finite_viewport_and_dpi() {
+        let geometry = resolve_display_geometry(800.0, 600.0, 2.0);
+        let (viewport, dpi) = geometry.expect("positive geometry is valid");
+        assert_eq!(viewport.size(), glam::Vec2::new(800.0, 600.0));
+        assert!((dpi.get() - 2.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn display_geometry_rejects_zero_or_negative_dimensions() {
+        assert!(resolve_display_geometry(0.0, 600.0, 1.0).is_none());
+        assert!(resolve_display_geometry(800.0, 0.0, 1.0).is_none());
+        assert!(resolve_display_geometry(0.0, 0.0, 1.0).is_none());
+        assert!(resolve_display_geometry(-100.0, 600.0, 1.0).is_none());
+        assert!(resolve_display_geometry(800.0, -100.0, 1.0).is_none());
+        assert!(resolve_display_geometry(f32::NAN, 600.0, 1.0).is_none());
+        assert!(resolve_display_geometry(800.0, f32::INFINITY, 1.0).is_none());
+    }
+
+    #[test]
+    fn display_geometry_rejects_non_finite_or_zero_dpi() {
+        assert!(resolve_display_geometry(800.0, 600.0, 0.0).is_none());
+        assert!(resolve_display_geometry(800.0, 600.0, -1.0).is_none());
+        assert!(resolve_display_geometry(800.0, 600.0, f32::NAN).is_none());
+        assert!(resolve_display_geometry(800.0, 600.0, f32::INFINITY).is_none());
+    }
+
+    #[test]
+    fn transient_invalid_viewport_resumes_without_state_mutation() {
+        let mut match_ = match_for_rules(&Config::default());
+        let initial_hash = match_.state_hash();
+
+        // Simulate transient zero during browser startup / resize.
+        let transient_geom = resolve_display_geometry(0.0, 0.0, 1.0);
+        assert!(transient_geom.is_none());
+        assert_eq!(match_.state_hash(), initial_hash);
+        assert!(match_.recorded_inputs().is_empty());
+
+        // Platform geometry becomes valid on next frame.
+        let (viewport, dpi) = resolve_display_geometry(640.0, 640.0, 1.0).expect("valid geometry");
+        let frame = FrameCtx::new(
+            viewport,
+            dpi,
+            16,
+            tabula_design::Theme::by_kind(tabula_design::ThemeKind::Light),
+        );
+        match_
+            .advance_frame(&frame)
+            .expect("advancing frame succeeds");
+        assert_eq!(match_.now(), LogicalTime(16));
+        assert_eq!(match_.state_hash(), initial_hash);
     }
 }

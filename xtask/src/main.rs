@@ -78,8 +78,10 @@ mod replay_cmd;
 mod replay_goldens_cmd;
 mod selfplay_cmd;
 mod tokens_cmd;
+mod wasm_stage_cmd;
 mod workspace;
 
+#[allow(clippy::too_many_lines)]
 fn main() {
     let cmd = std::env::args().nth(1);
 
@@ -170,6 +172,16 @@ fn main() {
                 std::process::exit(2);
             }
         },
+        Some("stage-wasm-game" | "stage-wasm") => {
+            let args: Vec<String> = std::env::args().skip(2).collect();
+            match wasm_stage_cmd::run(&args) {
+                Ok(_) => {}
+                Err(err) => {
+                    eprintln!("stage-wasm-game: {err}");
+                    std::process::exit(1);
+                }
+            }
+        }
 
         // Phase 4+
         Some("gen-protocol-vectors") => {
@@ -197,7 +209,7 @@ fn print_usage_and_exit(other: Option<&str>) -> ! {
                    new-game <slug>  selfplay <game>  replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]\n\
                    replay-goldens (intentional fixture regeneration)\n\
          phase 1:  perft chess [depth]\n\
-         phase 2:  gen-tokens  check-no-raw-colors\n\
+         phase 2:  gen-tokens  check-no-raw-colors  stage-wasm-game [--out-dir PATH]\n\
          phase 3:  pack-assets <game>\n\
          phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\
          See xtask/README.md and docs/architecture/01-stack-and-repository-plan.md §6.3."
