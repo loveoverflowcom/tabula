@@ -5,19 +5,23 @@ brand/   logo, shared fonts, shared icons — the things that are the same in ev
 packs/   per-game source assets and pack build inputs
 ```
 
-## Asset packs, not bundled assets (ADR-017)
+## Planned asset packs, not bundled assets (ADR-017)
 
-Assets ship as **versioned, hashed, per-game packs** delivered from a CDN and
-cached locally. They are not bundled into app releases.
+The target architecture ships **versioned, hashed, per-game packs** delivered
+from a CDN and cached locally. They are not bundled into app releases.
 
 The reason is arithmetic: bundling means every app release grows with every game.
 At game five that is annoying; at game twenty it is fatal on mobile, and it means
 an art fix requires a store review.
 
-## Building a pack
+## Planned pack build
+
+The pack builder and delivery pipeline are future work. The command and manifest
+below describe the target shape; the current repository does not read asset
+files, emit packs, fetch resources, or manage a cache.
 
 ```bash
-cargo xtask pack-assets <game>
+cargo xtask pack-assets <game>  # planned
 ```
 
 Reads `assets/packs/<game>/`, produces content-hashed files plus a
@@ -40,7 +44,7 @@ density  = 2
 white-knight = [0, 0, 128, 128]   # presenters use AssetRef::new("pieces/white-knight")
 ```
 
-## Rules
+## Planned delivery rules
 
 1. **Content-hashed paths.** A URL's bytes never change, so `immutable` caching
    is honest and cache invalidation is not a problem we have.
@@ -53,7 +57,7 @@ white-knight = [0, 0, 128, 128]   # presenters use AssetRef::new("pieces/white-k
 5. **No assets in the binary** beyond a single placeholder. If a game renders
    without its pack, it renders placeholders — it does not fail to start.
 
-## Brand assets are the exception
+## Planned brand-asset exception
 
 `brand/` is small, shared, and needed before any pack loads (the loader itself is
 branded). It may be embedded.

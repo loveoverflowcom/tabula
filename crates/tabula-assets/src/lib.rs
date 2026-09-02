@@ -2,35 +2,33 @@
 //!
 //! > ## PHASE 3
 //!
-//! Assets ship as **per-game packs delivered from a CDN and cached locally**, not
-//! bundled into app releases (ADR-017). Otherwise every app release grows with
-//! every game, which is fatal for mobile.
+//! The planned product ships **per-game packs delivered from a CDN and cached
+//! locally**, not bundled into app releases (ADR-017). This crate currently
+//! owns only the pure manifest and identity contract that those future clients,
+//! servers, and pack-build tools will consume.
 //!
-//! Shared by the client (loading), the server (manifest validation, CDN URL
-//! signing), and the pack build tooling in `xtask` — which is why it is a crate
-//! rather than a module in the client.
+//! ## Current manifest (doc 04 §12.3)
 //!
-//! ## The manifest (doc 04 §12.3)
+//! This is the exact pure manifest shape accepted today. Future delivery
+//! metadata, including atlas regions, belongs to the target architecture and
+//! is not accepted by the current parser.
 //!
 //! ```toml
-//! # assets/packs/chess/pack.toml  →  served as pack.json
-//! pack    = "chess"
+//! # current example; a future pack builder may emit pack.json
+//! pack    = "sample"
 //! version = "1.0.0"
-//! game    = "com.tabula.chess"
+//! game    = "com.example.sample"
 //!
 //! [[files]]
 //! name     = "pieces@2x.atlas"
-//! path     = "chess/1.0.0/pieces@2x.b3-4f8a....png"   # content-hashed path
-//! hash     = "4f8a..."
+//! path     = "sample/1.0.0/pieces@2x.png"
+//! hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 //! bytes    = 412_003
 //! priority = "critical"      # critical | high | low
 //! density  = 2
-//!
-//! [atlas.pieces]
-//! white-knight = [0, 0, 128, 128]   # so presenters use AssetRef::new("pieces/white-knight")
 //! ```
 //!
-//! ## Rules that make the cache trustworthy
+//! ## Planned rules for trustworthy asset delivery
 //!
 //! 1. **Content-hashed paths.** A given URL's bytes never change, so the cache is
 //!    immutable and `Cache-Control: immutable` is honest.
@@ -42,9 +40,20 @@
 //! 4. **Density variants** are picked from `FrameCtx.dpi`, so a phone does not
 //!    download a desktop atlas.
 //!
-//! This phase owns only the pure, validated manifest contract. Fetching,
-//! caching, integrity checking against bytes, density selection, decoding, and
-//! backend handles are deliberately deferred.
+//! ## Current implementation boundary
+//!
+//! Implemented now:
+//! - manifest TOML parsing with unknown-field rejection;
+//! - validated pack, file-name, path, size, density, priority, and hash metadata;
+//! - duplicate file-name/path detection;
+//! - typed pack binding through [`AssetPackRef`].
+//!
+//! Not implemented yet:
+//! - asset sources, network fetch, or filesystem loading;
+//! - cache management or CDN URL/signature generation;
+//! - byte-level integrity verification;
+//! - density or atlas resolution;
+//! - decoding or renderer handles.
 
 #![forbid(unsafe_code)]
 
