@@ -881,6 +881,7 @@ dependencies = [
  "blake3",
  "serde",
  "tabula-core",
+ "tabula-game-api",
  "thiserror 1.0.69",
  "toml",
 ]

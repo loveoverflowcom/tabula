@@ -10,8 +10,8 @@
 //! ## Current manifest (doc 04 §12.3)
 //!
 //! This is the exact pure manifest shape accepted today. Future delivery
-//! metadata, including atlas regions, belongs to the target architecture and
-//! is not accepted by the current parser.
+//! metadata, including explicit logical resources and structural atlas regions,
+//! is accepted without reading files or creating backend handles.
 //!
 //! ```toml
 //! # current example; a future pack builder may emit pack.json
@@ -26,6 +26,13 @@
 //! bytes    = 412_003
 //! priority = "critical"      # critical | high | low
 //! density  = 2
+//!
+//! [[resources]]
+//! id = "pieces/white-knight"
+//!
+//! [[resources.variants]]
+//! file = "pieces@2x.atlas"
+//! region = { x = 0, y = 0, width = 128, height = 128 }
 //! ```
 //!
 //! ## Planned rules for trustworthy asset delivery
@@ -46,13 +53,16 @@
 //! - manifest TOML parsing with unknown-field rejection;
 //! - validated pack, file-name, path, size, density, priority, and hash metadata;
 //! - duplicate file-name/path detection;
-//! - typed pack binding through [`AssetPackRef`].
+//! - explicit [`AssetResource`] declarations from [`tabula_game_api::AssetRef`]
+//!   values to physical file variants;
+//! - typed pack binding through [`BoundAssetPack`];
+//! - deterministic, pure density selection returning [`ResolvedAsset`] metadata;
+//! - structurally valid source-pixel regions, without decoded-image bounds checks.
 //!
 //! Not implemented yet:
 //! - asset sources, network fetch, or filesystem loading;
 //! - cache management or CDN URL/signature generation;
 //! - byte-level integrity verification;
-//! - density or atlas resolution;
 //! - decoding or renderer handles.
 
 #![forbid(unsafe_code)]
@@ -63,5 +73,7 @@ pub use manifest::{
     AssetByteSize, AssetByteSizeError, AssetContentHash, AssetContentHashError, AssetDensity,
     AssetDensityError, AssetFile, AssetFileName, AssetFileNameError, AssetPackId, AssetPackIdError,
     AssetPackManifest, AssetPackRef, AssetPackRefError, AssetPackVersion, AssetPath,
-    AssetPathError, AssetPriority, ManifestBindingError, ManifestError,
+    AssetPathError, AssetPixelRegion, AssetPixelRegionError, AssetPriority, AssetResolveError,
+    AssetResource, AssetResourceVariant, BoundAssetPack, ManifestBindingError, ManifestError,
+    ResolvedAsset,
 };

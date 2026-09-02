@@ -12,6 +12,7 @@ publish.workspace      = true
 # client, server, and pack-build integrations must consume these validated types.
 [dependencies]
 tabula-core = { workspace = true }
+tabula-game-api = { workspace = true }
 serde       = { workspace = true }
 blake3      = { workspace = true }
 thiserror   = { workspace = true }

@@ -151,7 +151,6 @@ mod tests {
         let list = list_with(RenderCmd::Sprite {
             asset: AssetRef::from_static("deferred/asset"),
             rect: Rect::new(Vec2::ZERO, Vec2::ONE).unwrap(),
-            src: None,
             tint: color(),
             rotation: 0.0,
             pivot: Vec2::ZERO,
