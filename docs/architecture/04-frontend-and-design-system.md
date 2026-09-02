@@ -1037,11 +1037,26 @@ flowchart TB
 8. **Offline**: a previously-played game's pack stays cached, so a local/bot game works offline
    (Phase 3 already supports local play with no server).
 
-The Phase-3 asset identity is typed and pinned end-to-end:
+The Phase-3 asset identity is typed and pinned end-to-end. The current
+implementation is limited to the pure identity and manifest layer:
 
 - `AssetPackRef`: the exact pack identity (`AssetPackId`) and version (`AssetPackVersion`), canonically formatted as `pack@version`.
 - `AssetPackManifest.game`: the reverse-DNS game ID to which the pack is bound.
-- `AssetPackManifest::validate_binding(...)`: pure proof that a fetched manifest matches the requested `AssetPackRef` and intended `GameId` before any asset handle or I/O exists.
+- `AssetPackManifest::validate_binding(...)`: pure validation that a parsed manifest matches the requested `AssetPackRef` and intended `GameId` before any asset handle or I/O exists.
+
+Implemented now:
+
+- manifest TOML parsing with unknown-field rejection;
+- validated pack/file identity, canonical relative paths, hashes, sizes, priorities, and densities;
+- duplicate file-name and path rejection;
+- pack-to-game binding validation.
+
+Not implemented yet:
+
+- asset sources, network or filesystem loading;
+- cache management, CDN URL/signature generation, or retry policy;
+- byte-level integrity verification;
+- density/atlas resolution, decoding, or renderer handles.
 
 The resolution and loading pipeline flow:
 

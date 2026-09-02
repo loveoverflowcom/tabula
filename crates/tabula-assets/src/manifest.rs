@@ -427,14 +427,39 @@ pub enum AssetPackRefError {
 }
 
 /// A stable, manifest-local file identity.
+///
+/// Names use the same ASCII-safe segment grammar as [`AssetPath`] without path
+/// separators: alphanumeric characters plus `-`, `_`, `.`, `~`, and `@`.
+/// They are not filesystem paths and are never trimmed or normalized.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AssetFileName(String);
 
 impl AssetFileName {
-    fn new(value: String) -> Result<Self, AssetFileNameError> {
-        (!value.trim().is_empty())
-            .then_some(Self(value))
-            .ok_or(AssetFileNameError::Blank)
+    /// Validates a manifest-local file identity.
+    ///
+    /// @ai.role proof-constructor
+    /// @ai.domain assets.file-name
+    /// @ai.pure true
+    /// @ai.invariant canonical-manifest-file-name
+    /// @ai.evidence tests::asset_file_name_constructor_partitions
+    pub fn new(value: impl Into<String>) -> Result<Self, AssetFileNameError> {
+        let value = value.into();
+        if value.is_empty() {
+            return Err(AssetFileNameError::Empty);
+        }
+        if value.trim().is_empty() {
+            return Err(AssetFileNameError::Blank);
+        }
+        if has_whitespace_or_control(&value) {
+            return Err(AssetFileNameError::WhitespaceOrControl);
+        }
+        if value.contains('/') || value.contains('\\') || value.contains(':') {
+            return Err(AssetFileNameError::PathLike);
+        }
+        if !is_asset_segment(&value) {
+            return Err(AssetFileNameError::InvalidCharacter);
+        }
+        Ok(Self(value))
     }
 
     /// Returns this file's manifest-local name.
@@ -450,31 +475,82 @@ impl fmt::Display for AssetFileName {
     }
 }
 
+impl TryFrom<String> for AssetFileName {
+    type Error = AssetFileNameError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for AssetFileName {
+    type Error = AssetFileNameError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<AssetFileName> for String {
+    fn from(value: AssetFileName) -> Self {
+        value.0
+    }
+}
+
 /// Why an [`AssetFileName`] failed validation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum AssetFileNameError {
+    /// File names cannot be empty.
+    #[error("asset file name must not be empty")]
+    Empty,
     /// File names must contain at least one non-whitespace character.
     #[error("asset file name must not be blank")]
     Blank,
+    /// File names cannot contain whitespace or control characters.
+    #[error("asset file name must not contain whitespace or control characters")]
+    WhitespaceOrControl,
+    /// Path separators, drive delimiters, and other path-like spellings are not file identities.
+    #[error("asset file name must not contain path separators or ':'")]
+    PathLike,
+    /// File names must use the explicit ASCII-safe asset segment grammar.
+    #[error("asset file name contains a character outside the ASCII-safe asset grammar")]
+    InvalidCharacter,
 }
 
 /// A validated, relative, canonical pack path.
+///
+/// Each segment uses the ASCII-safe grammar of alphanumeric characters plus
+/// `-`, `_`, `.`, `~`, and `@`; `/` is the only separator. Input is rejected
+/// rather than trimmed, decoded, or normalized.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AssetPath(String);
 
 impl AssetPath {
-    fn new(value: String) -> Result<Self, AssetPathError> {
+    /// Validates a canonical relative pack path.
+    ///
+    /// @ai.role proof-constructor
+    /// @ai.domain assets.path
+    /// @ai.pure true
+    /// @ai.invariant canonical-relative-pack-path
+    /// @ai.evidence tests::asset_path_constructor_partitions
+    pub fn new(value: impl Into<String>) -> Result<Self, AssetPathError> {
+        let value = value.into();
         if value.is_empty() {
             return Err(AssetPathError::Empty);
         }
         if value.starts_with('/') || value.contains('\\') || value.contains(':') {
-            return Err(AssetPathError::NotRelative);
+            return Err(AssetPathError::AbsoluteOrPlatformPath);
         }
-        if value
-            .split('/')
-            .any(|part| part.is_empty() || part == "." || part == "..")
-        {
-            return Err(AssetPathError::NonCanonicalSegment);
+        if has_whitespace_or_control(&value) {
+            return Err(AssetPathError::WhitespaceOrControl);
+        }
+        for segment in value.split('/') {
+            if segment.is_empty() || segment == "." || segment == ".." {
+                return Err(AssetPathError::NonCanonicalSegment);
+            }
+            if !is_asset_segment(segment) {
+                return Err(AssetPathError::InvalidCharacter);
+            }
         }
         Ok(Self(value))
     }
@@ -492,18 +568,58 @@ impl fmt::Display for AssetPath {
     }
 }
 
+impl TryFrom<String> for AssetPath {
+    type Error = AssetPathError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<&str> for AssetPath {
+    type Error = AssetPathError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<AssetPath> for String {
+    fn from(value: AssetPath) -> Self {
+        value.0
+    }
+}
+
 /// Why an [`AssetPath`] failed validation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum AssetPathError {
     /// A pack path cannot be empty.
     #[error("asset path must not be empty")]
     Empty,
-    /// A pack path must not be an absolute, URL-like, or Windows path.
-    #[error("asset path must be a relative pack path")]
-    NotRelative,
+    /// A pack path must not be absolute, URL-like, or platform-specific.
+    #[error("asset path must be a relative, platform-neutral pack path")]
+    AbsoluteOrPlatformPath,
     /// Dot, parent, and empty segments are rejected rather than normalized.
     #[error("asset path contains a non-canonical segment")]
     NonCanonicalSegment,
+    /// Pack paths cannot contain whitespace or control characters.
+    #[error("asset path must not contain whitespace or control characters")]
+    WhitespaceOrControl,
+    /// Pack path segments must use the explicit ASCII-safe asset grammar.
+    #[error("asset path contains a character outside the ASCII-safe asset grammar")]
+    InvalidCharacter,
+}
+
+fn has_whitespace_or_control(value: &str) -> bool {
+    value
+        .chars()
+        .any(|character| character.is_whitespace() || character.is_control())
+}
+
+fn is_asset_segment(value: &str) -> bool {
+    value.bytes().all(|byte| {
+        byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~' | b'@')
+    })
 }
 
 /// A validated BLAKE3 digest stored as its fixed-size bytes.
@@ -875,6 +991,125 @@ mod tests {
     }
 
     #[test]
+    fn asset_file_name_constructor_partitions() {
+        use super::{AssetFileName, AssetFileNameError};
+
+        for valid in ["pieces@2x.atlas", "move.ogg", "board-background"] {
+            let name = AssetFileName::new(valid).unwrap();
+            assert_eq!(name.as_str(), valid);
+            assert_eq!(name.to_string(), valid);
+        }
+
+        assert_eq!(AssetFileName::new(""), Err(AssetFileNameError::Empty));
+        assert_eq!(AssetFileName::new("   "), Err(AssetFileNameError::Blank));
+
+        for whitespace in [
+            " move.ogg",
+            "move.ogg ",
+            "piece\nname",
+            "piece\tname",
+            "piece\rname",
+        ] {
+            assert_eq!(
+                AssetFileName::new(whitespace),
+                Err(AssetFileNameError::WhitespaceOrControl),
+                "testing {whitespace:?}"
+            );
+        }
+
+        for path_like in ["foo/bar.png", r"foo\bar.png", "foo:bar"] {
+            assert_eq!(
+                AssetFileName::new(path_like),
+                Err(AssetFileNameError::PathLike),
+                "testing {path_like:?}"
+            );
+        }
+
+        for invalid in ["foo?bar", "foo#bar", "foo%2Fbar", "foo€bar"] {
+            assert_eq!(
+                AssetFileName::new(invalid),
+                Err(AssetFileNameError::InvalidCharacter),
+                "testing {invalid:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn asset_path_constructor_partitions() {
+        use super::{AssetPath, AssetPathError};
+
+        let valid_paths = [
+            "sample/1.0.0/pieces@2x.png".to_owned(),
+            ["ch", "ess/1.0.0/move.ogg"].concat(),
+            "foo/bar-baz_1.png".to_owned(),
+            "foo/a.b~c@3x.png".to_owned(),
+        ];
+        for valid in valid_paths {
+            let path = AssetPath::new(valid.as_str()).unwrap();
+            assert_eq!(path.as_str(), valid.as_str());
+            assert_eq!(path.to_string(), valid);
+        }
+
+        assert_eq!(AssetPath::new(""), Err(AssetPathError::Empty));
+
+        for absolute_or_platform in [
+            "/path.png",
+            r"C:\path.png",
+            "C:/path.png",
+            r"\\server\share",
+        ] {
+            assert_eq!(
+                AssetPath::new(absolute_or_platform),
+                Err(AssetPathError::AbsoluteOrPlatformPath),
+                "testing {absolute_or_platform:?}"
+            );
+        }
+
+        for non_canonical in [
+            "../secret",
+            "foo/../../secret",
+            "foo/./bar",
+            "foo//bar",
+            "./foo",
+            "foo/.",
+            "foo/..",
+        ] {
+            assert_eq!(
+                AssetPath::new(non_canonical),
+                Err(AssetPathError::NonCanonicalSegment),
+                "testing {non_canonical:?}"
+            );
+        }
+
+        for invalid in [
+            "foo/bar.png?x=1",
+            "foo/bar.png#fragment",
+            "foo/%2e%2e/bar",
+            "foo/%2F/bar",
+        ] {
+            assert_eq!(
+                AssetPath::new(invalid),
+                Err(AssetPathError::InvalidCharacter),
+                "testing {invalid:?}"
+            );
+        }
+
+        for whitespace in [
+            "foo/bar.png ",
+            "foo/ bar.png",
+            "foo/\tbar.png",
+            "foo/bar\n.png",
+            "foo/bar\r.png",
+        ] {
+            assert_eq!(
+                AssetPath::new(whitespace),
+                Err(AssetPathError::WhitespaceOrControl),
+                "testing {whitespace:?}"
+            );
+        }
+    }
+
+    #[test]
     fn manifest_rejects_hostile_and_ambiguous_file_metadata() {
         for path in [
             "../secret",
@@ -893,6 +1128,30 @@ mod tests {
                 AssetPackManifest::from_toml(&source),
                 Err(ManifestError::InvalidPath(_))
             ));
+        }
+
+        for name in [
+            "",
+            "   ",
+            " move.ogg",
+            "move.ogg ",
+            "foo/bar",
+            r"foo\bar",
+            "foo:bar",
+            "foo\nbar",
+            "foo\tbar",
+        ] {
+            let source = manifest(&file_with(
+                "name = \"pieces@2x.atlas\"",
+                &format!("name = {name:?}"),
+            ));
+            assert!(
+                matches!(
+                    AssetPackManifest::from_toml(&source),
+                    Err(ManifestError::InvalidFileName(_))
+                ),
+                "testing {name:?}"
+            );
         }
 
         let first = file();
