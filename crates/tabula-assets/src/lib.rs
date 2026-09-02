@@ -48,8 +48,6 @@
 //! 4. **Density variants** are picked from `FrameCtx.dpi`, so a phone does not
 //!    download a desktop atlas.
 //!
-//! ## Current implementation boundary
-//!
 //! Implemented now:
 //! - manifest TOML parsing with unknown-field rejection;
 //! - validated pack, file-name, path, size, density, priority, and hash metadata;
@@ -58,18 +56,21 @@
 //!   values to physical file variants;
 //! - typed pack binding through [`BoundAssetPack`];
 //! - deterministic, pure density selection returning [`ResolvedAsset`] metadata;
-//! - structurally valid source-pixel regions, without decoded-image bounds checks.
+//! - structurally valid source-pixel regions, without decoded-image bounds checks;
+//! - pure byte-level integrity verification against manifest-declared size and
+//!   BLAKE3 digest ([`AssetFile::verify_bytes`] returning a [`VerifiedAssetBytes`] witness).
 //!
 //! Not implemented yet:
 //! - asset sources, network fetch, or filesystem loading;
 //! - cache management or CDN URL/signature generation;
-//! - byte-level integrity verification;
 //! - decoding or renderer handles.
 
 #![forbid(unsafe_code)]
 
+mod integrity;
 mod manifest;
 
+pub use integrity::{AssetIntegrityError, VerifiedAssetBytes};
 pub use manifest::{
     AssetByteSize, AssetByteSizeError, AssetContentHash, AssetContentHashError, AssetDensity,
     AssetDensityError, AssetFile, AssetFileName, AssetFileNameError, AssetPackId, AssetPackIdError,
