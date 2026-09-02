@@ -59,10 +59,6 @@ pub struct VerifiedAssetBytes<'file, 'bytes> {
 }
 
 impl<'file, 'bytes> VerifiedAssetBytes<'file, 'bytes> {
-    pub(crate) const fn new(file: &'file AssetFile, bytes: &'bytes [u8]) -> Self {
-        Self { file, bytes }
-    }
-
     /// Returns the exact [`AssetFile`] metadata verified against these bytes.
     #[must_use]
     pub const fn file(&self) -> &'file AssetFile {
@@ -128,7 +124,7 @@ impl AssetFile {
             });
         }
 
-        Ok(VerifiedAssetBytes::new(self, bytes))
+        Ok(VerifiedAssetBytes { file: self, bytes })
     }
 }
 
@@ -272,9 +268,8 @@ region = {{ x = 0, y = 0, width = 128, height = 128 }}
 
     #[test]
     fn size_checked_before_hashing_even_if_hash_would_match() {
-        // Mutation test: if hashing occurred before size validation, supplying a slice whose
-        // hash matches the declared hash but whose length differs from declared size would pass
-        // hash check or fail at the wrong step.
+        // Verifies that a payload whose content hash matches the declared hash but whose
+        // length differs from declared size is rejected with SizeMismatch.
         let full_payload = b"0123456789012345678901234567890123456789"; // 40 bytes
         let slice_30 = &full_payload[..30]; // 30 bytes
         let hash_of_slice_30 = blake3::hash(slice_30).to_hex();

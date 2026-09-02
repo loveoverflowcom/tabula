@@ -746,8 +746,7 @@ fn is_asset_segment(value: &str) -> bool {
 pub struct AssetContentHash([u8; blake3::OUT_LEN]);
 
 impl AssetContentHash {
-    /// Validates a 64-character hexadecimal BLAKE3 digest string.
-    pub fn new(value: &str) -> Result<Self, AssetContentHashError> {
+    pub(crate) fn new(value: &str) -> Result<Self, AssetContentHashError> {
         if value.len() != blake3::OUT_LEN * 2 {
             return Err(AssetContentHashError::InvalidLength { found: value.len() });
         }
@@ -760,9 +759,8 @@ impl AssetContentHash {
         Ok(Self(bytes))
     }
 
-    /// Creates an [`AssetContentHash`] directly from raw 32-byte BLAKE3 digest bytes.
     #[must_use]
-    pub const fn from_bytes(bytes: [u8; blake3::OUT_LEN]) -> Self {
+    pub(crate) const fn from_bytes(bytes: [u8; blake3::OUT_LEN]) -> Self {
         Self(bytes)
     }
 
@@ -770,12 +768,6 @@ impl AssetContentHash {
     #[must_use]
     pub const fn as_bytes(&self) -> &[u8; blake3::OUT_LEN] {
         &self.0
-    }
-}
-
-impl From<[u8; blake3::OUT_LEN]> for AssetContentHash {
-    fn from(bytes: [u8; blake3::OUT_LEN]) -> Self {
-        Self::from_bytes(bytes)
     }
 }
 
@@ -813,8 +805,7 @@ pub enum AssetContentHashError {
 pub struct AssetByteSize(u64);
 
 impl AssetByteSize {
-    /// Validates a positive declared asset byte size.
-    pub fn new(value: u64) -> Result<Self, AssetByteSizeError> {
+    pub(crate) fn new(value: u64) -> Result<Self, AssetByteSizeError> {
         (value > 0)
             .then_some(Self(value))
             .ok_or(AssetByteSizeError::Zero)
@@ -830,20 +821,6 @@ impl AssetByteSize {
 impl fmt::Display for AssetByteSize {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{}", self.0)
-    }
-}
-
-impl TryFrom<u64> for AssetByteSize {
-    type Error = AssetByteSizeError;
-
-    fn try_from(value: u64) -> Result<Self, Self::Error> {
-        Self::new(value)
-    }
-}
-
-impl From<AssetByteSize> for u64 {
-    fn from(size: AssetByteSize) -> Self {
-        size.get()
     }
 }
 
