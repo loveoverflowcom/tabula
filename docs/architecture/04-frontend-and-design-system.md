@@ -1145,9 +1145,10 @@ pack path and that the manifest declares a structurally valid content hash. `Ass
 yet prove that the path embeds that hash. Pure byte-level integrity verification (`AssetFile::verify_bytes`
 and `AssetFile::verify_owned_bytes`) enforces that actual bytes match the declared size and BLAKE3
 hash before producing a borrowed `VerifiedAssetBytes` or owned `OwnedVerifiedAssetBytes` value.
-`load_verified` composes the source port with the owned trust transition; future concrete asset
-sources will use this boundary before cache persistence or decoding. The current
-`MemoryAssetSource` exercises the same composition without performing I/O.
+`load_verified` composes the source port with the owned trust transition; future runtime and cache
+orchestration will route bytes from concrete sources through this boundary before trusted cache
+insertion or decoding. The current `MemoryAssetSource` exercises the same composition without
+performing I/O.
 
 ### 12.3 Manifest schema
 

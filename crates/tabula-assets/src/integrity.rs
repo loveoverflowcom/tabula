@@ -10,6 +10,8 @@
 
 #![allow(clippy::doc_markdown)]
 
+use std::fmt;
+
 use crate::manifest::{AssetByteSize, AssetContentHash, AssetFile};
 use crate::source::UnverifiedAssetBytes;
 
@@ -100,10 +102,20 @@ impl AsRef<[u8]> for VerifiedAssetBytes<'_, '_> {
 /// @ai.pure true
 /// @ai.invariant bytes-match-owned-asset-file
 /// @ai.evidence tests::owned_verified_asset_bytes_survive_source_and_file_scope
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct OwnedVerifiedAssetBytes {
     file: AssetFile,
     bytes: Vec<u8>,
+}
+
+impl fmt::Debug for OwnedVerifiedAssetBytes {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("OwnedVerifiedAssetBytes")
+            .field("file", &self.file)
+            .field("bytes_len", &self.bytes.len())
+            .finish()
+    }
 }
 
 impl OwnedVerifiedAssetBytes {
@@ -321,6 +333,22 @@ region = {{ x = 0, y = 0, width = 128, height = 128 }}
         assert_eq!(verified.file(), &manifest.files()[0]);
         assert_eq!(verified.bytes(), FIXTURE_BYTES);
         assert_eq!(verified.as_ref(), FIXTURE_BYTES);
+    }
+
+    #[test]
+    fn owned_verified_asset_debug_redacts_payload_bytes() {
+        let payload = b"asset-debug-payload-must-not-be-logged";
+        let manifest = sample_manifest("pieces@2x.atlas", "sample/1.0.0/pieces@2x.png", payload);
+        let file = &manifest.files()[0];
+        let verified = file
+            .verify_owned_bytes(UnverifiedAssetBytes::new(payload.to_vec()))
+            .expect("matching owned bytes must verify");
+
+        let debug = format!("{verified:?}");
+
+        assert!(debug.contains("bytes_len"));
+        assert!(debug.contains(&payload.len().to_string()));
+        assert!(!debug.contains("asset-debug-payload-must-not-be-logged"));
     }
 
     #[test]
