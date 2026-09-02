@@ -172,14 +172,15 @@ fn validate_game_feature_shape(rel_path: &str, doc: &Value) -> Vec<ManifestViola
     out
 }
 
-use tabula_assets::AssetPackRef;
+use tabula_assets::{AssetPackRef, AssetPackRefError};
+use tabula_core::{ids::GameIdError, GameId};
 
 // ---------------------------------------------------------------------------
 // game.toml
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]
-struct GameToml {
+pub(crate) struct GameToml {
     id: Option<String>,
     version: Option<String>,
     rules_version: Option<i64>,
@@ -217,6 +218,54 @@ const SPECTATOR_POLICIES: &[&str] = &["forbidden", "live", "delayed", "game_cont
 const DURABILITIES: &[&str] = &["ack_after_apply", "ack_after_persist"];
 const STATE_SIZES: &[&str] = &["tiny", "small", "medium", "large"];
 
+/// The typed game and pinned asset-pack identity extracted from one validated
+/// `game.toml`. The builder consumes this evidence instead of maintaining a
+/// second source of truth for either identity.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct GameAssetBinding {
+    pub(crate) game: GameId,
+    pub(crate) pack: AssetPackRef,
+}
+
+impl GameToml {
+    pub(crate) fn asset_binding(&self) -> Result<GameAssetBinding, GameAssetBindingError> {
+        let game = self
+            .id
+            .clone()
+            .ok_or(GameAssetBindingError::MissingGameId)
+            .and_then(|id| GameId::new(id).map_err(GameAssetBindingError::InvalidGameId))?;
+        let pack = self
+            .assets
+            .as_ref()
+            .and_then(|assets| assets.pack.clone())
+            .ok_or(GameAssetBindingError::MissingPack)
+            .and_then(|pack| {
+                AssetPackRef::parse(&pack).map_err(GameAssetBindingError::InvalidPackRef)
+            })?;
+        Ok(GameAssetBinding { game, pack })
+    }
+}
+
+/// Why a game manifest could not provide the typed identity a pack build needs.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum GameAssetBindingError {
+    #[error("game.toml is missing required `id`")]
+    MissingGameId,
+    #[error("game.toml contains an invalid game id: {0}")]
+    InvalidGameId(#[source] GameIdError),
+    #[error("game.toml is missing required [assets].pack")]
+    MissingPack,
+    #[error("game.toml contains an invalid asset pack reference: {0}")]
+    InvalidPackRef(#[source] AssetPackRefError),
+}
+
+pub(crate) fn parse_game_toml(
+    rel_path: &str,
+    toml_src: &str,
+) -> Result<GameToml, ManifestParseError> {
+    toml::from_str(toml_src).map_err(|e| ManifestParseError(rel_path.to_string(), e))
+}
+
 /// Validate `game.toml` text against the smallest schema that catches a
 /// missing field or a self-contradictory value. `expected_id` is
 /// `com.tabula.<game directory name>`.
@@ -225,8 +274,15 @@ pub fn validate_game_toml(
     toml_src: &str,
     expected_id: &str,
 ) -> Result<Vec<ManifestViolation>, ManifestParseError> {
-    let doc: GameToml =
-        toml::from_str(toml_src).map_err(|e| ManifestParseError(rel_path.to_string(), e))?;
+    let doc = parse_game_toml(rel_path, toml_src)?;
+    Ok(validate_game_document(rel_path, &doc, expected_id))
+}
+
+pub(crate) fn validate_game_document(
+    rel_path: &str,
+    doc: &GameToml,
+    expected_id: &str,
+) -> Vec<ManifestViolation> {
     let mut out = Vec::new();
     let violation = |field: &str, message: String| ManifestViolation {
         manifest: rel_path.to_string(),
@@ -329,7 +385,7 @@ pub fn validate_game_toml(
         },
     }
 
-    Ok(out)
+    out
 }
 
 fn check_enum(

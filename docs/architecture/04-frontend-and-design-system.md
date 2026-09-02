@@ -1002,19 +1002,16 @@ handle. We adopt one behind `VoiceService`, measure, and keep the option to chan
 ### 12.1 Target model
 
 The following diagram describes the target asset-delivery system. The pure
-manifest, identity, integrity, and source-port boundaries described in §12.2
-are implemented today; concrete delivery adapters remain future work.
+manifest, identity, integrity, source-port, and deterministic pack-builder
+boundaries described in §12.2 are implemented today; concrete delivery
+adapters remain future work.
 
 ```mermaid
 flowchart TB
     SRC["assets/packs/chess/*<br/>source art, audio, fonts"] --> BUILD["xtask pack-assets chess"]
-    BUILD --> ATLAS["texture atlases (+ mipmaps)"]
-    BUILD --> AUDIO["audio (ogg/opus)"]
-    BUILD --> MAN["pack manifest<br/>version · per-file blake3 · sizes · atlas coords"]
-    ATLAS --> CDN[("CDN — immutable, content-hashed paths")]
-    AUDIO --> CDN
-    MAN --> CDN
-    MAN --> SRV["server: validates + serves manifest URL"]
+    BUILD --> PACK["staged pack output<br/>opaque files + pack.toml"]
+    PACK --> CDN[("CDN — immutable, content-hashed paths")]
+    PACK --> SRV["server: validates + serves manifest URL"]
     CDN --> CACHE["client cache<br/>web: Cache API · native: app cache dir"]
     CACHE --> LOAD["tabula-assets loader → AssetHandle"]
     LOAD --> REND["renderer-macroquad: upload textures"]
@@ -1023,8 +1020,9 @@ flowchart TB
 ### 12.2 Target delivery rules
 
 The following rules describe the target Phase-3 delivery system. The pure
-manifest, identity, integrity, and source-port boundaries described below are
-implemented today; concrete delivery adapters remain future work.
+manifest, identity, integrity, source-port, and deterministic pack-builder
+boundaries described below are implemented today; concrete delivery adapters
+remain future work.
 
 1. **No game's full-resolution assets are in any app binary.** The binary carries only: brand
    assets, UI icons, two fonts, and a tiny placeholder set (so a game is playable-if-ugly when the
@@ -1052,7 +1050,7 @@ enforces a strict separation between logical resource identity and physical pack
 
 - **`AssetRef`** (`tabula-game-api`): semantic/logical resource identity representing presentation and catalog intent (e.g. `pieces/white-knight`, `catalog/icon`, `board/background`). Presenters and metadata never know physical filenames, atlas coordinates, density variants, hashes, or CDN URLs.
 - **`AssetFileName`** (`tabula-assets`): manifest-local identity of a physical file entry (e.g. `pieces@2x.atlas`, `move.ogg`).
-- **`AssetPath`** (`tabula-assets`): canonical relative physical pack path (e.g. `chess/1.0.0/pieces@2x.b3-4f8a.png`).
+- **`AssetPath`** (`tabula-assets`): canonical relative physical pack path (e.g. `chess/1.0.0/pieces@2x.b3-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png`).
 - **`AssetPackRef`** (`tabula-assets`): exact versioned asset pack identity (e.g. `chess@1.0.0`).
 
 ```text
@@ -1086,6 +1084,8 @@ The current implementation includes the pure identity, binding, resolution, and 
 
 Implemented now:
 
+- deterministic xtask pack-assets <game> source inspection, full-digest paths, runtime manifest generation, staged publication, and post-build integrity verification.
+
 - manifest TOML parsing with unknown-field rejection;
 - validated pack/file identity, canonical relative paths, hashes, sizes, priorities, and densities;
 - duplicate file-name and path rejection;
@@ -1098,6 +1098,7 @@ Implemented now:
 
 Not implemented yet:
 
+- atlas generation, mipmap generation, or media conversion;
 - filesystem, HTTP, or browser asset-source implementations;
 - cache management, CDN URL/signature generation, or retry policy;
 - decoding or renderer handles.
@@ -1150,14 +1151,14 @@ name, extension, or density suffix. `RenderCmd::Sprite` carries only `AssetRef` 
 geometry; physical source-pixel regions belong only to the matching resource variant.
 
 ```toml
-# generated: assets/packs/chess/pack.toml → served as pack.json
+# generated: target/asset-packs/chess/1.0.0/pack.toml → served as pack.json
 pack    = "chess"
 version = "1.0.0"
 game    = "com.tabula.chess"
 
 [[files]]
 name     = "pieces@1x.atlas"
-path     = "chess/1.0.0/pieces@1x.b3-4f8a.png"
+path     = "chess/1.0.0/pieces@1x.b3-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
 hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bytes    = 412_003
 priority = "critical"
@@ -1165,8 +1166,8 @@ density  = 1
 
 [[files]]
 name     = "pieces@2x.atlas"
-path     = "chess/1.0.0/pieces@2x.b3-9c21.png"
-hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+path     = "chess/1.0.0/pieces@2x.b3-fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210.png"
+hash     = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
 bytes    = 824_006
 priority = "critical"
 density  = 2
