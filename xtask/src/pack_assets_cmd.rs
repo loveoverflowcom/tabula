@@ -143,6 +143,13 @@ struct InspectedSourceFile {
 }
 
 /// Computes source facts from exact bytes without reading the filesystem.
+///
+/// @ai.role integrity-fact
+/// @ai.domain assets.pack-build
+/// @ai.pure true
+/// @ai.invariant digest-matches-exact-bytes
+/// @ai.invariant byte-count-matches-exact-bytes
+/// @ai.evidence tests::content_addressed_path_commits_to_exact_bytes
 fn inspect_source_bytes(
     spec: &SourceFileSpec,
     bytes: Vec<u8>,
@@ -241,14 +248,15 @@ struct RuntimeRegionSpec {
 
 /// Creates the canonical full-digest physical path for one exact source.
 ///
-/// The path commits to pack identity, version, source parent, source filename
-/// stem, and the complete lowercase BLAKE3 digest. It does not read files or
-/// consult filesystem metadata.
+/// The path embeds pack identity, version, source parent, source filename stem,
+/// and the supplied complete lowercase BLAKE3 digest. The digest-to-bytes
+/// relationship is established by [`inspect_source_bytes`]; this helper does
+/// not read files or consult filesystem metadata.
 ///
 /// @ai.role canonicalization
 /// @ai.domain assets.pack-build
 /// @ai.pure true
-/// @ai.invariant content-path-commits-to-bytes
+/// @ai.invariant content-path-embeds-full-digest
 /// @ai.evidence tests::content_addressed_path_commits_to_exact_bytes
 fn content_addressed_path(
     pack: &AssetPackRef,
@@ -293,8 +301,9 @@ fn content_addressed_path(
 /// @ai.domain assets.pack-build
 /// @ai.pure true
 /// @ai.invariant deterministic-pack-plan
-/// @ai.invariant content-path-commits-to-bytes
+/// @ai.invariant content-path-embeds-full-digest
 /// @ai.law declaration-order-independence
+/// @ai.requires inspected-source-facts-match-bytes
 /// @ai.evidence tests::declaration_order_does_not_change_the_pack_plan
 /// @ai.evidence tests::one_byte_changes_content_identity
 /// @ai.evidence tests::generated_manifest_round_trips_through_runtime_parser
@@ -513,7 +522,7 @@ pub(crate) fn run() -> Result<(), PackAssetsError> {
     if args.next().is_some() {
         return Err(PackAssetsError::Usage);
     }
-    let repository_root = env::current_dir().map_err(PackAssetsError::CurrentDirectory)?;
+    let repository_root = crate::workspace::root().map_err(PackAssetsError::WorkspaceMetadata)?;
     let output_root = repository_root.join("target").join("asset-packs");
     let summary = build_pack(&repository_root, &output_root, &game)?;
     println!(
@@ -794,8 +803,8 @@ pub(crate) enum PackAssetsError {
     Usage,
     #[error("invalid game directory {0:?}")]
     InvalidGameDirectory(String),
-    #[error("could not determine the repository directory: {0}")]
-    CurrentDirectory(#[source] io::Error),
+    #[error("could not determine the Cargo workspace directory: {0}")]
+    WorkspaceMetadata(#[source] cargo_metadata::Error),
     #[error("could not read input file {path}: {source}")]
     InputIo { path: PathBuf, source: io::Error },
     #[error("could not parse game manifest: {0}")]

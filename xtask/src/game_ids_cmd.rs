@@ -25,6 +25,8 @@ const TEXT_EXTENSIONS: &[&str] = &[
 
 #[derive(Debug, thiserror::Error)]
 pub enum CheckGameIdsError {
+    #[error("running `cargo metadata`: {0}")]
+    WorkspaceMetadata(#[source] cargo_metadata::Error),
     #[error("io error at {path}: {source}")]
     Io {
         path: PathBuf,
@@ -33,7 +35,7 @@ pub enum CheckGameIdsError {
 }
 
 pub fn run() -> Result<bool, CheckGameIdsError> {
-    let workspace_root = workspace_root();
+    let workspace_root = crate::workspace::root().map_err(CheckGameIdsError::WorkspaceMetadata)?;
     let game_ids = discover_game_ids(&workspace_root)?;
 
     let mut files_scanned = 0usize;
@@ -72,17 +74,6 @@ pub fn run() -> Result<bool, CheckGameIdsError> {
         );
         Ok(false)
     }
-}
-
-fn workspace_root() -> PathBuf {
-    // `cargo run -p xtask` and `cargo xtask ...` both set this; xtask itself
-    // is never invoked outside a cargo context.
-    let manifest_dir =
-        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is set by cargo");
-    Path::new(&manifest_dir)
-        .parent()
-        .expect("xtask/ has a parent: the workspace root")
-        .to_path_buf()
 }
 
 fn discover_game_ids(workspace_root: &Path) -> Result<Vec<String>, CheckGameIdsError> {

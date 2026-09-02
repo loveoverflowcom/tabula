@@ -78,6 +78,7 @@ mod replay_cmd;
 mod replay_goldens_cmd;
 mod selfplay_cmd;
 mod tokens_cmd;
+mod workspace;
 
 fn main() {
     let cmd = std::env::args().nth(1);

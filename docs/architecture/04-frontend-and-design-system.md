@@ -1166,8 +1166,8 @@ density  = 1
 
 [[files]]
 name     = "pieces@2x.atlas"
-path     = "chess/1.0.0/pieces@2x.b3-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
-hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+path     = "chess/1.0.0/pieces@2x.b3-fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210.png"
+hash     = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
 bytes    = 824_006
 priority = "critical"
 density  = 2
