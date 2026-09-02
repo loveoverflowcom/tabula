@@ -50,16 +50,16 @@ fn canonical_tree_rejects_noncanonical_feature_sources() {
 
     assert_noncanonical_feature_source(&canonical_root, &manifest_root.join("src/lib.rs"));
     assert_noncanonical_feature_source(&canonical_root, &manifest_root.join("src/bot.rs"));
-    assert_noncanonical_feature_source(&canonical_root, &manifest_root.join("src/ui.rs"));
+    assert_noncanonical_feature_source(&canonical_root, &manifest_root.join("src/presentation.rs"));
 
     let misplaced_bot = canonical_root.join("bot.rs");
     assert!(
         !is_outside_canonical_tree(&canonical_root, &misplaced_bot),
         "a bot source under src/rules must be rejected by the source-boundary policy"
     );
-    let misplaced_ui = canonical_root.join("ui.rs");
+    let misplaced_presentation = canonical_root.join("presentation.rs");
     assert!(
-        !is_outside_canonical_tree(&canonical_root, &misplaced_ui),
+        !is_outside_canonical_tree(&canonical_root, &misplaced_presentation),
         "a presentation source under src/rules must be rejected by the source-boundary policy"
     );
 }

@@ -259,13 +259,13 @@ pub enum Status {
     Aborted,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Command {
     Place { cell: u8 },
     Resign,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Event {
     Placed { seat: SeatId, cell: u8, mark: Mark },
     Ended { outcome: MatchOutcome },

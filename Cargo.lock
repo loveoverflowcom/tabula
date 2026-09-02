@@ -966,6 +966,7 @@ dependencies = [
  "tabula-design",
  "tabula-game-api",
  "tabula-game-chess",
+ "tabula-game-tictactoe",
  "tabula-presentation",
 ]
 

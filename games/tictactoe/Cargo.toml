@@ -37,7 +37,7 @@ tabula-assets       = { workspace = true, optional = true }
 tabula-testkit      = { workspace = true, optional = true }
 
 [dev-dependencies]
-tabula-testkit = { workspace = true }
+tabula-testkit = { workspace = true, features = ["presentation"] }
 blake3 = { workspace = true }
 
 [build-dependencies]

@@ -406,7 +406,7 @@ where
             .min_by_key(|(id, deadline)| (*deadline, *id))
     }
 
-    fn interpret_effects(&mut self, effects: &[Effect]) -> Result<(), LocalMatchError> {
+    pub fn interpret_effects(&mut self, effects: &[Effect]) -> Result<(), LocalMatchError> {
         for effect in effects {
             match effect {
                 Effect::SetTimer { id, delay } => {
@@ -476,7 +476,7 @@ mod tests {
     use tabula_game_chess as local_game; // xtask-allow-game-id: direct Phase 2 local vertical slice test wiring.
     use tabula_presentation::{
         AudioCue, AudioSink, Dpi, PointerButton, PointerPhase, PointerPosition, Viewport,
-    }; // xtask-allow-game-id: direct Phase 2 local vertical slice test wiring.
+    };
 
     type ChessMatch = LocalMatch<ChessRules, ChessPresentation>;
 

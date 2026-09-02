@@ -45,7 +45,7 @@ pub mod rules;
 pub mod bot;
 
 #[cfg(feature = "presentation")]
-pub mod ui;
+pub mod presentation;
 
 use std::sync::LazyLock;
 
