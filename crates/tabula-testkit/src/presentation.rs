@@ -125,7 +125,7 @@ fn format_command(out: &mut String, cmd: &RenderCmd) {
             let _ = write!(
                 out,
                 "sprite asset=\"{}\" rect={} src={} tint={} rotation={} pivot={} layer={} z={}",
-                asset.escape_debug(),
+                asset.as_str().escape_debug(),
                 format_rect(*rect),
                 format_opt_rect(*src),
                 format_color(*tint),
@@ -391,7 +391,7 @@ fn format_layer(l: Layer) -> String {
 mod tests {
     use super::*;
     use tabula_presentation::{
-        Affine2, Camera2D, GradientStop, LinearGradient, Opacity, RenderListBuilder, Vec2,
+        Affine2, AssetRef, Camera2D, GradientStop, LinearGradient, Opacity, RenderListBuilder, Vec2,
     };
 
     fn make_list(camera: Camera2D, commands: impl IntoIterator<Item = RenderCmd>) -> RenderList {
@@ -663,7 +663,7 @@ mod tests {
             Camera2D::default(),
             [
                 RenderCmd::Sprite {
-                    asset: "pawn_white".to_string(),
+                    asset: AssetRef::from_static("pawn_white"),
                     rect: Rect::new(Vec2::ZERO, Vec2::splat(10.0)).unwrap(),
                     src: Some(Rect::new(Vec2::ZERO, Vec2::splat(64.0)).unwrap()),
                     tint: Color::rgba(255, 255, 255, 200),

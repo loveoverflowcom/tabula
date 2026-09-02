@@ -36,3 +36,4 @@ pub use renderer::{
     Dpi, FrameCtx, FrameCtxError, RenderError, Renderer, TextMetrics, TextMetricsError, Viewport,
 };
 pub use tabula_design::{Color, Positive, TextStyleToken};
+pub use tabula_game_api::{AssetRef, AssetRefError};

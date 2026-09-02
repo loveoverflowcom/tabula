@@ -25,8 +25,8 @@ mod tests {
     use glam::{Affine2, Vec2};
     use tabula_design::{Color, TextStyleToken, Theme, ThemeKind};
     use tabula_presentation::{
-        Border, Camera2D, Corners, Dpi, Layer, Opacity, Paint, Rect, RenderCmd, RenderCmdKind,
-        RenderError, RenderList, RenderListBuilder, Viewport,
+        AssetRef, Border, Camera2D, Corners, Dpi, Layer, Opacity, Paint, Rect, RenderCmd,
+        RenderCmdKind, RenderError, RenderList, RenderListBuilder, Viewport,
     };
 
     use super::preflight;
@@ -149,7 +149,7 @@ mod tests {
     #[test]
     fn sprite_is_rejected_before_execution() {
         let list = list_with(RenderCmd::Sprite {
-            asset: String::from("deferred/asset"),
+            asset: AssetRef::from_static("deferred/asset"),
             rect: Rect::new(Vec2::ZERO, Vec2::ONE).unwrap(),
             src: None,
             tint: color(),

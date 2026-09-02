@@ -16,7 +16,8 @@ use smallvec::SmallVec;
 /// @ai.role presentation-value
 /// @ai.domain presentation.audio
 /// @ai.invariant nonempty-pack-local-cue-identity
-/// @ai.evidence `tests::empty_cue_id_is_rejected`
+/// @ai.evidence tests::empty_cue_id_is_rejected
+#[allow(clippy::doc_markdown)]
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AudioCue {
     id: String,

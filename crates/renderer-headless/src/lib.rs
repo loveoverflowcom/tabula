@@ -1022,7 +1022,7 @@ mod tests {
                 list(
                     Camera2D::default(),
                     [RenderCmd::Sprite {
-                        asset: String::from("piece"),
+                        asset: tabula_presentation::AssetRef::from_static("piece"),
                         rect: Rect::new(Vec2::ZERO, Vec2::ONE).unwrap(),
                         src: None,
                         tint: black,

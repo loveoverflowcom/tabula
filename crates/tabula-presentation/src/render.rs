@@ -1,6 +1,7 @@
 use glam::{Affine2, Vec2};
 use smallvec::SmallVec;
 use tabula_design::{Color, Positive, TextStyleToken};
+use tabula_game_api::AssetRef;
 
 type Palette = Color;
 
@@ -287,7 +288,7 @@ pub enum Align {
 #[derive(Clone, Debug, PartialEq)]
 pub enum RenderCmd {
     Sprite {
-        asset: String,
+        asset: AssetRef,
         rect: Rect,
         src: Option<Rect>,
         tint: Color,
@@ -957,6 +958,40 @@ mod tests {
                 layer: Layer::BOARD,
                 z: 0,
             }),
+            Err(RenderListError::InvalidGeometry)
+        );
+    }
+
+    #[test]
+    fn sprite_command_requires_canonical_asset_ref_and_valid_geometry() {
+        let mut builder = RenderListBuilder::new(Camera2D::default());
+        let valid_sprite = RenderCmd::Sprite {
+            asset: AssetRef::from_static("pieces/white-knight"),
+            rect: Rect::new(Vec2::ZERO, Vec2::splat(64.0)).unwrap(),
+            src: Some(Rect::new(Vec2::ZERO, Vec2::splat(128.0)).unwrap()),
+            tint: semantic_color(),
+            rotation: 0.0,
+            pivot: Vec2::splat(32.0),
+            layer: Layer::PIECES,
+            z: 0,
+        };
+        assert!(builder.push(valid_sprite).is_ok());
+
+        let invalid_geometry = RenderCmd::Sprite {
+            asset: AssetRef::from_static("board/background"),
+            rect: Rect {
+                origin: Vec2::ZERO,
+                size: Vec2::new(-10.0, 10.0),
+            },
+            src: None,
+            tint: semantic_color(),
+            rotation: f32::NAN,
+            pivot: Vec2::ZERO,
+            layer: Layer::BOARD,
+            z: 0,
+        };
+        assert_eq!(
+            builder.push(invalid_geometry),
             Err(RenderListError::InvalidGeometry)
         );
     }
