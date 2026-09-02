@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Kani"
+  short_description: "Bounded model checking with an honest scope statement"
+  default_prompt: "Use $rust-kani to decide whether a Kani harness is warranted, write it without vacuity, and report its exact proof scope."

@@ -25,7 +25,11 @@ the nearest `AGENTS.md` and repository docs as the contract; read them before ed
 5. Implement the smallest pure transformation. Validate completely before mutating. Prefer a
    proof-bearing intermediate when it makes the commit phase infallible.
 6. Add targeted semantic tests and the relevant law/property tests. Use
-   `rust-verification-testing` when the edge space or invariant is nontrivial.
+   `rust-verification-testing` — the router — when the edge space or invariant is nontrivial. A pure
+   core is what makes the strong oracles affordable: reference models, exhaustive enumeration of a
+   finite state space (`rust-replay-differential-testing`), sequence properties over reachable
+   states (`rust-property-testing`), and bounded model checking (`rust-kani`) all require the
+   determinism the core provides.
 7. Run the narrowest useful checks first, then repository-required broad checks.
 8. Report the invariant changed, boundary preserved, evidence run, and any unverified risk.
 
