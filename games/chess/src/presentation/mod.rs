@@ -17,7 +17,9 @@ use tabula_presentation::{
     TextStyleToken, Viewport,
 };
 
-use crate::{ChessRules, Color as ChessColor, Command, Piece, PieceKind, Square, Status, View};
+use crate::{
+    ChessRules, ClockControl, Color as ChessColor, Command, Piece, PieceKind, Square, Status, View,
+};
 
 const PROMOTION_CHOICES: [PromotionChoice; 4] = [
     PromotionChoice::Queen,
@@ -1094,6 +1096,25 @@ fn build_render_list(
         z: 0,
     })?;
 
+    if let Some([white_clock, black_clock]) = clock_text(view, frame) {
+        let clock_y = status_rect.origin().y + status_rect.size().y * 0.78;
+        for (x_fraction, text) in [(0.25, white_clock), (0.75, black_clock)] {
+            builder.push(RenderCmd::Text {
+                text,
+                at: Vec2::new(
+                    status_rect.origin().x + status_rect.size().x * x_fraction,
+                    clock_y,
+                ),
+                style: TextStyleToken::LabelMd,
+                align: Align::Center,
+                max_width: None,
+                color: theme.color.on_surface_variant,
+                layer: Layer::HUD,
+                z: 1,
+            })?;
+        }
+    }
+
     if is_promotion {
         let promotion_color = view.turn;
         if let Some(panel) = promotion_panel_rect(layout) {
@@ -1213,6 +1234,33 @@ fn status_text(view: &View) -> String {
         }
         Status::Ended { outcome } => format!("Game over — {}", outcome.summary()),
     }
+}
+
+/// Derives a presentation-only live clock from the last authoritative clock
+/// checkpoint and the current frame. It cannot alter rules state or timer
+/// scheduling; the next authoritative input replaces this estimate.
+fn clock_text(view: &View, frame: &FrameCtx) -> Option<[String; 2]> {
+    let clock = view.clock?;
+    let elapsed = frame.now_ms().saturating_sub(clock.last_move_at.0);
+    let charge = match clock.control {
+        ClockControl::Fischer { .. } => elapsed,
+        ClockControl::Bronstein { delay } => elapsed.saturating_sub(delay.0),
+    };
+    let mut remaining = clock.remaining;
+    let active = match view.turn {
+        ChessColor::White => 0,
+        ChessColor::Black => 1,
+    };
+    remaining[active].0 = remaining[active].0.saturating_sub(charge);
+    Some([
+        format_clock("White", remaining[0].0),
+        format_clock("Black", remaining[1].0),
+    ])
+}
+
+fn format_clock(color: &str, millis: u64) -> String {
+    let seconds = millis / 1_000;
+    format!("{color} {}:{:02}", seconds / 60, seconds % 60)
 }
 
 fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
@@ -1346,7 +1394,7 @@ fn square_name(square: Square) -> String {
 mod tests {
     use super::*;
     use tabula_core::{
-        canonical_encode, DetRng, InputIndex, LogicalTime, MatchSeed, SeatId, Viewer,
+        canonical_encode, DetRng, InputIndex, LogicalTime, MatchSeed, Millis, SeatId, Viewer,
     };
     use tabula_game_api::{Budget, Ctx, Input, Outcome};
     use tabula_presentation::Key;
@@ -1467,6 +1515,35 @@ mod tests {
 
     fn cue_ids(cues: &AudioCues) -> Vec<&str> {
         cues.iter().map(AudioCue::id).collect()
+    }
+
+    #[test]
+    fn clocked_presentation_visibly_counts_down_from_authoritative_clock_state() {
+        let mut state = crate::State::initial();
+        state.clock = Some(crate::ClockState {
+            remaining: [Millis(60_000), Millis(120_000)],
+            last_move_at: LogicalTime::ZERO,
+            control: crate::ClockControl::Fischer {
+                increment: Millis::ZERO,
+            },
+        });
+        let view = view(&state);
+        let scene = ChessPresentation::present(
+            &view,
+            &ChessLocal::default(),
+            &frame_at(640.0, 640.0, 1_500),
+        );
+
+        let clock_labels = scene
+            .commands()
+            .iter()
+            .filter_map(|command| match command {
+                RenderCmd::Text { text, .. } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(clock_labels.contains(&"White 0:58"));
+        assert!(clock_labels.contains(&"Black 2:00"));
     }
 
     #[test]
