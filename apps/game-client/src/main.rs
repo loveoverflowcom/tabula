@@ -1,6 +1,5 @@
 //! Macroquad platform entry point for local hot-seat gameplay wiring.
 
-use glam::Vec2;
 use macroquad::prelude as mq;
 use renderer_macroquad::{MacroquadAudioSink, MacroquadRenderer};
 use tabula_core::{MatchSeed, Millis, Occupant, SeatEntry, SeatId, SeatRoster, UserId, Viewer};
@@ -8,12 +7,12 @@ use tabula_core::{MatchSeed, Millis, Occupant, SeatEntry, SeatId, SeatRoster, Us
 use tabula_game_chess::{ // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
     presentation::ChessPresentation, ChessRules, ClockConfig, ClockControl, Config as ChessConfig,
 };
-use tabula_game_client::LocalMatch;
+use tabula_game_client::{resolve_display_geometry, LocalMatch};
 #[rustfmt::skip]
 use tabula_game_tictactoe::{ // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
     presentation::TicTacToePresentation, Config as TicTacToeConfig, TicTacToeRules,
 };
-use tabula_presentation::{AudioSink, Dpi, Renderer, Viewport};
+use tabula_presentation::{AudioSink, Renderer};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum SelectedGame {
@@ -27,6 +26,7 @@ fn window_conf() -> mq::Conf {
         window_title: String::from("Tabula — local hot seat"),
         window_width: 720,
         window_height: 720,
+        high_dpi: true,
         ..mq::Conf::default()
     }
 }
@@ -85,10 +85,17 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
     .expect("the fixed local chess configuration is valid"); // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
 
     'game_loop: loop {
-        let viewport = Viewport::new(Vec2::new(mq::screen_width(), mq::screen_height()))
-            .expect("Macroquad supplies a finite non-empty viewport");
-        let dpi =
-            Dpi::new(mq::screen_dpi_scale()).expect("Macroquad supplies a positive DPI scale");
+        let Some((viewport, dpi)) = resolve_display_geometry(
+            mq::screen_width(),
+            mq::screen_height(),
+            mq::screen_dpi_scale(),
+        ) else {
+            // A transient zero or non-finite viewport/DPI (e.g. during startup,
+            // backgrounding, or rapid browser resize) is skipped at the shell
+            // boundary rather than weakening the validated Viewport type.
+            mq::next_frame().await;
+            continue 'game_loop;
+        };
         let frame = renderer.begin_frame(viewport, dpi, presentation_now_ms(), *theme);
         local_match.local_mut().set_viewport(frame.viewport());
         match local_match.advance_frame(&frame) {
@@ -141,10 +148,17 @@ async fn run_tictactoe( // xtask-allow-game-id: direct Phase 2 local vertical sl
     .expect("the fixed local tictactoe configuration is valid"); // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
 
     'game_loop: loop {
-        let viewport = Viewport::new(Vec2::new(mq::screen_width(), mq::screen_height()))
-            .expect("Macroquad supplies a finite non-empty viewport");
-        let dpi =
-            Dpi::new(mq::screen_dpi_scale()).expect("Macroquad supplies a positive DPI scale");
+        let Some((viewport, dpi)) = resolve_display_geometry(
+            mq::screen_width(),
+            mq::screen_height(),
+            mq::screen_dpi_scale(),
+        ) else {
+            // A transient zero or non-finite viewport/DPI (e.g. during startup,
+            // backgrounding, or rapid browser resize) is skipped at the shell
+            // boundary rather than weakening the validated Viewport type.
+            mq::next_frame().await;
+            continue 'game_loop;
+        };
         let frame = renderer.begin_frame(viewport, dpi, presentation_now_ms(), *theme);
         local_match.local_mut().set_viewport(frame.viewport());
         match local_match.advance_frame(&frame) {

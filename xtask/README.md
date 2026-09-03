@@ -43,6 +43,7 @@ xtask = "run --package xtask --"
 | `perft <depth>` | 1 | Chess move-generation node counts, against published positions |
 | `gen-tokens` | 2 | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json`. Outputs are committed; CI fails if stale. |
 | `check-no-raw-colors` | 2 | No hex literals or `Color::rgb`/`Color::rgba`/`Color::new` constructors outside `tabula-design` |
+| `stage-wasm-game` | 2 | Stages the checked-in HTML host, pinned JS bootstrap, and wasm-release binary into `target/tabula-web-game/` |
 | `pack-assets <game>` | 3 | Reads pack.source.toml, builds deterministic full-BLAKE3 content-addressed files, validates and verifies a staged pack, then publishes it under target/asset-packs/ |
 | `gen-protocol-vectors --bump minor\|major` | 4 | Regenerates golden wire vectors, bumps `PROTOCOL_VERSION`, appends to `protocol-changelog.md` (planned Phase 4) |
 | `check-protocol` | 4 | Golden vectors round-trip; the I-13 version gate (planned Phase 4) |

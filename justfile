@@ -156,6 +156,12 @@ sqlx-prepare:
 
 wasm-game:
     cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+    cargo xtask stage-wasm-game
+
+# Serve the staged Macroquad gameplay client in a local browser.
+wasm-serve port="8000": wasm-game
+    @echo "Serving Tabula gameplay client at http://localhost:{{port}}"
+    python3 -m http.server {{port}} --directory target/tabula-web-game
 
 server-release:
     cargo build -p tabula-server --profile release-server
