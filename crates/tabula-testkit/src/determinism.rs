@@ -184,6 +184,54 @@ fn encode<T: serde::Serialize>(value: &T) -> Vec<u8> {
     canonical_encode(value).expect("canonical types must be encodable (doc 05 §7.1)")
 }
 
+/// Like [`run`], but returns the typed final state instead of only its
+/// canonical encoding.
+///
+/// [`RunTrace::final_state`] is already-encoded bytes, which is the right
+/// ground truth for comparing two runs, but a projection check needs a live
+/// `&R::State` to pass to `GameRules::project`. This shares `run`'s exact
+/// input-index and logical-time discipline so a state built this way is the
+/// same kind of "reachable" state `run` would report on.
+///
+/// # Errors
+/// [`ScenarioFailed`] if `create` rejects the config/roster.
+pub fn run_typed<R: GameRules>(scenario: &Scenario<R>) -> Result<R::State, ScenarioFailed> {
+    let mut rng = tabula_core::DetRng::for_input(&scenario.seed, InputIndex(0));
+    let mut ctx = Ctx {
+        now: LogicalTime::ZERO,
+        index: InputIndex(0),
+        rng: &mut rng,
+        budget: Budget {
+            max_apply_micros: u32::MAX,
+            max_events_per_input: u16::MAX,
+        },
+    };
+
+    let init = R::create(&scenario.config, &scenario.roster, &mut ctx)
+        .map_err(|e| ScenarioFailed(format!("{e:?}")))?;
+    let mut state = init.state;
+
+    for (i, input) in scenario.inputs.iter().enumerate() {
+        let index = InputIndex(i as u64 + 1);
+        let mut rng = tabula_core::DetRng::for_input(&scenario.seed, index);
+        let mut ctx = Ctx {
+            now: LogicalTime(index.0 * 1_000),
+            index,
+            rng: &mut rng,
+            budget: Budget {
+                max_apply_micros: u32::MAX,
+                max_events_per_input: u16::MAX,
+            },
+        };
+        // Rejections are a total no-op (R2, checked elsewhere); this helper
+        // only needs the resulting state, live or rejected, to hand to
+        // `project`.
+        let _ = R::apply(&mut state, input.clone(), &mut ctx);
+    }
+
+    Ok(state)
+}
+
 /// Run a sequence twice and assert byte-identical results. (I-2)
 ///
 /// The two runs build state from scratch independently, which is what makes this
