@@ -75,7 +75,7 @@ pub use presentation::{render_list_snapshot, AsRenderList};
 pub use projection::{
     assert_no_event_bypasses_redaction, assert_no_leaks, assert_projection_differs,
     assert_projection_noninterference, assert_view_event_differs,
-    assert_view_event_noninterference, Secret, SecretModel,
+    assert_view_event_noninterference, EventScanCoverage, LeakScanCoverage, Secret, SecretModel,
 };
 pub use replay::{
     CheckpointEvidence, Divergence, DivergenceKind, DivergenceLocation, DivergenceWindow,

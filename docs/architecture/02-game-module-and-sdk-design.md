@@ -1225,11 +1225,17 @@ about, so the claim and the evidence keep saying the same thing:
   game with hidden information gets real evidence for both, not one standing in for the other.
 - **Redaction vs. routing.** `view_event_never_bypasses`'s I-6 citation is about **redaction
   correctness**: every canonical event this suite's reachable trace produced was actually passed to
-  `view_event` for every real client viewer, and nothing it returned leaked. It is not evidence that
-  `view_event` is the *only* code path by which event bytes can reach a client — that routing
-  exclusivity is a property of `tabula-match`'s (Phase 4) broadcast path, enforced at the type level
-  today by `View`/`ViewEvent` being the only `Serialize`-exposed wire shapes (I-5's enforcement
-  column), not re-verified by this test.
+  `view_event` for every real client viewer, and nothing it returned leaked. It is **not** evidence
+  that `view_event` is the *only* code path by which event bytes can reach a client. Routing
+  exclusivity is not mechanically established by this suite, and it is not established by the type
+  system today either: `GameRules::State` and `GameRules::Event` are themselves `Serialize` (§3 —
+  needed for snapshots, the event log, and replay, all server-side), so "only `View`/`ViewEvent` are
+  serializable" is false as a description of the current types. What I-5's enforcement column
+  actually requires — that no wire message can carry a canonical `State` or `Event` to a client — is
+  a property of `tabula-match`'s (Phase 4) broadcast path and `tabula-protocol`'s wire types, neither
+  of which exists yet. Until Phase 4 builds that boundary and a protocol test asserts it (I-5's own
+  enforcement note), routing exclusivity is an architectural commitment, not executed evidence — see
+  this PR's own verification ledger, which says the same thing.
 - **`Viewer::Audit` is excluded, not silently passed.** "Every viewer" in both rows means every real
   client viewer a `HiddenInformationFixture` derives from the roster and `SpectatorPolicy` — never
   `Viewer::Audit`, which doc 00 §9.4 documents as legitimately seeing canonical information. Scanning

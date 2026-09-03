@@ -114,6 +114,70 @@ use tabula_game_api::GameRules;
 /// ```
 pub trait SecretModel: GameRules {
     fn secrets(state: &Self::State) -> Vec<Secret>;
+
+    /// Secrets carried by one canonical `Event` itself — **not** necessarily
+    /// still present in `secrets(state_after)`.
+    ///
+    /// # Why this cannot be inferred from `secrets(state_after)` alone
+    ///
+    /// A canonical event's payload does not have to survive into state. A
+    /// sealed-bid auction is the clearest case: `apply` records only that a
+    /// bid happened (a public count, a public "someone bid" fact) and never
+    /// stores the amount anywhere `state_after` still holds — the amount
+    /// lives only in the one `Event::BidSubmitted { seat, amount }` that
+    /// reported it. A scanner that only ever asked `secrets(state_after)`
+    /// "what's secret right now" would have *nothing* to compare an
+    /// unauthorized viewer's `ViewEvent` against, and a `view_event` that
+    /// forwards `amount` to every viewer would sail through
+    /// [`assert_no_event_bypasses_redaction`] uncaught — not because the
+    /// scan is broken, but because it was only ever told about
+    /// state-persistent secrets. See
+    /// `crates/tabula-testkit/tests/projection_noninterference.rs`'s
+    /// `event_secret_never_touches_state` fixture for exactly this failure
+    /// mode, caught only once a game declares it here.
+    ///
+    /// Default: no event carries secret data beyond what
+    /// `secrets(state_after)` already declares. True for `Event = ()` and
+    /// for any event whose only secret content (a dealt hand, a role) is
+    /// itself long-lived state the game already lists in `secrets`.
+    /// Override this whenever an event's payload is transient — reported
+    /// once, then gone from `State`.
+    fn event_secrets(_state_after: &Self::State, _event: &Self::Event) -> Vec<Secret> {
+        Vec::new()
+    }
+}
+
+/// What [`assert_no_leaks`] actually exercised for one call, so a caller
+/// (the hidden-information security suite, `crate::conformance::security`)
+/// can tell a real containment scan apart from a vacuous one — a fixture
+/// whose reachable trace never reaches a state with any declared secret, or
+/// never presents an unauthorized viewer, would otherwise report a
+/// passing scan while having compared nothing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LeakScanCoverage {
+    /// How many [`Secret`]s `SecretModel::secrets` declared over this state.
+    pub secrets_declared: usize,
+    /// How many (secret, viewer) pairs were actually compared, because the
+    /// viewer was **not** in that secret's [`Secret::authorized`] list.
+    pub unauthorized_checks: usize,
+}
+
+/// The event-scan counterpart of [`LeakScanCoverage`], returned by
+/// [`assert_no_event_bypasses_redaction`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EventScanCoverage {
+    /// Canonical events for which `view_event` returned `Some(..)` to at
+    /// least one of the supplied viewers — evidence `view_event` was
+    /// actually exercised for a real event, independent of whether any
+    /// secret happened to be relevant to it.
+    pub events_with_output: usize,
+    /// (event, viewer, secret) triples actually compared, because the
+    /// viewer was **not** authorized for that secret. This can be zero even
+    /// when `events_with_output` is not — e.g. a public `RoundAdvanced`
+    /// event next to secrets it has nothing to do with — which is exactly
+    /// why the two counts are tracked separately rather than one implying
+    /// the other.
+    pub unauthorized_checks: usize,
 }
 
 /// One secret: some tokens, and the viewers allowed to see them.
@@ -215,11 +279,28 @@ fn find_leaked_token(haystack: &[u8], secret: &Secret) -> Option<usize> {
 ///   message names `case`, the secret's label, the viewer, and the encoded
 ///   output's length and digest — never the raw secret bytes or the full
 ///   encoded `View` (item 14).
-pub fn assert_no_leaks<R: SecretModel>(case: &str, state: &R::State, viewers: &[Viewer]) {
+///
+/// # Returns
+/// [`LeakScanCoverage`] — how many secrets and unauthorized comparisons this
+/// call actually made, so a caller can refuse to call an all-vacuous run a
+/// pass. This is not extra ceremony for its own sake: see the module docs on
+/// [`crate::conformance::security::check`] for why a fixture whose reachable
+/// trace never touches a secret must not be allowed to look like a passing
+/// security suite.
+pub fn assert_no_leaks<R: SecretModel>(
+    case: &str,
+    state: &R::State,
+    viewers: &[Viewer],
+) -> LeakScanCoverage {
     let secrets = R::secrets(state);
     for secret in &secrets {
         validate_secret(case, secret);
     }
+
+    let mut coverage = LeakScanCoverage {
+        secrets_declared: secrets.len(),
+        unauthorized_checks: 0,
+    };
 
     for secret in &secrets {
         for &viewer in viewers {
@@ -232,6 +313,7 @@ pub fn assert_no_leaks<R: SecretModel>(case: &str, state: &R::State, viewers: &[
             if secret.authorized.contains(&viewer) {
                 continue;
             }
+            coverage.unauthorized_checks += 1;
 
             let bytes = canonical_encode(&R::project(state, viewer))
                 .expect("a View must be canonically encodable");
@@ -246,6 +328,8 @@ pub fn assert_no_leaks<R: SecretModel>(case: &str, state: &R::State, viewers: &[
             }
         }
     }
+
+    coverage
 }
 
 /// Containment scan over `view_event()`: **Oracle A** for events (doc 00
@@ -254,16 +338,20 @@ pub fn assert_no_leaks<R: SecretModel>(case: &str, state: &R::State, viewers: &[
 /// For every canonical `event` in `events` (a reachable trace step's
 /// emissions — see `crate::determinism::run_typed_trace`) and every `viewer`
 /// in the caller-supplied list, calls `R::view_event(state_after, event,
-/// viewer)`. Every `Some(view_event)` result is then checked, per
-/// [`Secret`] declared over `state_after`, exactly like [`assert_no_leaks`]:
-/// an unauthorized viewer's redacted event must not contain that secret's
-/// tokens.
+/// viewer)`. Every `Some(view_event)` result is then checked against the
+/// **union** of two secret sources — [`SecretModel::secrets`] over
+/// `state_after` AND [`SecretModel::event_secrets`] over this specific
+/// `event` — for exactly the reason [`SecretModel::event_secrets`]'s own
+/// docs give: an event's payload does not have to survive into state, so
+/// `state_after`'s secrets alone can be a strict subset of what this event
+/// actually needs redacted.
 ///
 /// The property this proves is not "the function can be called" — a call
 /// that always returns `Some`/`None` regardless of input would pass a naive
 /// smoke test and prove nothing (this PR's item 9). It is: **every canonical
 /// event this reachable trace actually produced was routed through
-/// `view_event` for every real client viewer, and none of the results leak.**
+/// `view_event` for every real client viewer, and none of the results leak
+/// either its own payload or whatever it touches in `state_after`.**
 /// Calling this once per reachable-trace step, for the step's own emitted
 /// events, is what makes "every event" true across a whole match rather than
 /// one hand-picked example — see
@@ -279,18 +367,35 @@ pub fn assert_no_leaks<R: SecretModel>(case: &str, state: &R::State, viewers: &[
 ///   message names `case`, the event's index, the secret's label, the
 ///   viewer, and the encoded output's length and digest — never raw secret
 ///   bytes or the full encoded event.
+///
+/// # Returns
+/// [`EventScanCoverage`] — see [`assert_no_leaks`]'s note on why this is
+/// returned rather than discarded.
 pub fn assert_no_event_bypasses_redaction<R: SecretModel>(
     case: &str,
     state_after: &R::State,
     events: &[R::Event],
     viewers: &[Viewer],
-) {
-    let secrets = R::secrets(state_after);
-    for secret in &secrets {
+) -> EventScanCoverage {
+    let state_secrets = R::secrets(state_after);
+    for secret in &state_secrets {
         validate_secret(case, secret);
     }
 
+    let mut coverage = EventScanCoverage::default();
+
     for (event_index, event) in events.iter().enumerate() {
+        let event_secrets = R::event_secrets(state_after, event);
+        for secret in &event_secrets {
+            validate_secret(case, secret);
+        }
+        // The union, not just `state_secrets`: an event's own payload may
+        // never touch `state_after` at all (a bid amount, e.g.) — see
+        // `SecretModel::event_secrets`'s docs.
+        let relevant_secrets: Vec<&Secret> =
+            state_secrets.iter().chain(event_secrets.iter()).collect();
+
+        let mut event_had_output = false;
         for &viewer in viewers {
             assert!(
                 !matches!(viewer, Viewer::Audit),
@@ -301,13 +406,15 @@ pub fn assert_no_event_bypasses_redaction<R: SecretModel>(
             let Some(view_event) = R::view_event(state_after, event, viewer) else {
                 continue;
             };
+            event_had_output = true;
             let bytes =
                 canonical_encode(&view_event).expect("a ViewEvent must be canonically encodable");
 
-            for secret in &secrets {
+            for secret in &relevant_secrets {
                 if secret.authorized.contains(&viewer) {
                     continue;
                 }
+                coverage.unauthorized_checks += 1;
                 if let Some(token_index) = find_leaked_token(&bytes, secret) {
                     panic!(
                         "event secrecy violated [{case}]: secret \"{label}\" (token \
@@ -319,7 +426,12 @@ pub fn assert_no_event_bypasses_redaction<R: SecretModel>(
                 }
             }
         }
+        if event_had_output {
+            coverage.events_with_output += 1;
+        }
     }
+
+    coverage
 }
 
 /// Short diagnostic for a canonically-encoded projection: length plus a

@@ -91,15 +91,19 @@ use tabula_testkit::{GameTestFixture, HiddenInformationFixture};
 // each hand set exactly once by a legal `Deal` command.
 // ---------------------------------------------------------------------------
 
-/// Canonical state. `hands` is the only secret: each seat's own hand is
-/// authorized to that seat and to `Viewer::Audit`; nobody else may see it.
+/// Canonical state. `hands` is the game's *persistent* secret: each seat's
+/// own hand is authorized to that seat and to `Viewer::Audit`; nobody else
+/// may see it. `bid_counts` is deliberately public (how many bids a seat has
+/// submitted) — the bid *amount* is never stored here at all; see
+/// `Command::SubmitSecretBid` and `Event::BidSubmitted` for why that matters.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct State {
     public_round: u32,
     hands: BTreeMap<SeatId, Vec<u8>>,
+    bid_counts: BTreeMap<SeatId, u32>,
 }
 
-/// The only two things that can happen in this reference game — deliberately
+/// The only things that can happen in this reference game — deliberately
 /// tiny, but real transitions, so that every `State` this file exercises is
 /// produced by `GameRules::apply`, never by a struct literal.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -111,12 +115,20 @@ enum Command {
     /// minimal public-state transition, used only to give the P3 positive
     /// control a real reachable "public fact changed" pair.
     AdvanceRound,
+    /// Submit a sealed bid. Legal from any seat, any time. `state_after`
+    /// only ever records that a bid happened (`bid_counts` +1) — `amount`
+    /// itself is never written into `State` anywhere. This is deliberate:
+    /// it is the smallest reachable case of a secret that lives ONLY in a
+    /// canonical `Event`, to exercise `SecretModel::event_secrets` (see
+    /// `event_secret_never_touches_state` below).
+    SubmitSecretBid { amount: u8 },
 }
 
 fn initial_state(roster: &SeatRoster) -> State {
     State {
         public_round: 0,
         hands: roster.iter().map(|e| (e.seat, Vec::new())).collect(),
+        bid_counts: roster.iter().map(|e| (e.seat, 0u32)).collect(),
     }
 }
 
@@ -147,6 +159,19 @@ fn apply_command(state: &mut State, input: &Input<Command>) -> Result<(), RuleEr
             ..
         } => {
             state.public_round += 1;
+            Ok(())
+        }
+        Input::Player {
+            seat,
+            command: Command::SubmitSecretBid { .. },
+        } => {
+            let count = state
+                .bid_counts
+                .get_mut(seat)
+                .ok_or_else(|| RuleError::code(RuleErrorCode::NoSuchSeat))?;
+            // The amount itself is intentionally dropped here — it never
+            // becomes part of `State`. Only the count is public.
+            *count += 1;
             Ok(())
         }
         _ => Err(RuleError::code(RuleErrorCode::UnknownCommand)),
@@ -212,6 +237,13 @@ enum Event {
     RoundAdvanced {
         round: u32,
     },
+    /// The one secret in this file that `state_after` never holds: `amount`
+    /// is reported here and nowhere else (`apply_command` drops it, keeping
+    /// only `bid_counts`). See `SecretModel::event_secrets`.
+    BidSubmitted {
+        seat: SeatId,
+        amount: u8,
+    },
 }
 
 /// Per-viewer redacted event. A genuinely different *type* from [`Event`]
@@ -239,6 +271,20 @@ enum ViewEvent {
     RoundAdvanced {
         round: u32,
     },
+    /// The bidder learns its own amount.
+    BidSubmittedToYou {
+        amount: u8,
+    },
+    /// Everyone else learns only that a bid happened, and by whom — never
+    /// the amount.
+    BidSubmittedByOther {
+        seat: SeatId,
+    },
+    /// `Viewer::Audit` sees the full canonical event (doc 00 §9.4).
+    BidSubmittedForAudit {
+        seat: SeatId,
+        amount: u8,
+    },
 }
 
 /// Build the canonical event a just-applied `input` produced, from the
@@ -260,15 +306,22 @@ fn command_event(input: &Input<Command>, state: &State) -> Event {
         } => Event::RoundAdvanced {
             round: state.public_round,
         },
+        Input::Player {
+            seat,
+            command: Command::SubmitSecretBid { amount },
+        } => Event::BidSubmitted {
+            seat: *seat,
+            amount: *amount,
+        },
         _ => unreachable!("apply_command already rejected any other input shape"),
     }
 }
 
-/// The honest redaction: an owner learns its own cards, everyone else (any
-/// other seat, and any spectator) learns only that a deal happened and how
-/// many cards, and `Viewer::Audit` sees the canonical event in full — the
-/// same authorization shape [`project_honestly`] uses for state, applied to
-/// one event.
+/// The honest redaction: an owner learns its own cards/bid, everyone else
+/// (any other seat, and any spectator) learns only that something happened
+/// and, where relevant, by whom — never the hidden content — and
+/// `Viewer::Audit` sees the canonical event in full. The same authorization
+/// shape [`project_honestly`] uses for state, applied to one event.
 fn view_event_honestly(event: &Event, viewer: Viewer) -> ViewEvent {
     match event {
         Event::Dealt { seat, cards } => match viewer {
@@ -285,6 +338,32 @@ fn view_event_honestly(event: &Event, viewer: Viewer) -> ViewEvent {
             },
         },
         Event::RoundAdvanced { round } => ViewEvent::RoundAdvanced { round: *round },
+        Event::BidSubmitted { seat, amount } => match viewer {
+            Viewer::Seat(s) if s == *seat => ViewEvent::BidSubmittedToYou { amount: *amount },
+            Viewer::Seat(_) | Viewer::Spectator(_) => {
+                ViewEvent::BidSubmittedByOther { seat: *seat }
+            }
+            Viewer::Audit => ViewEvent::BidSubmittedForAudit {
+                seat: *seat,
+                amount: *amount,
+            },
+        },
+    }
+}
+
+/// The [`SecretModel::event_secrets`] every real-event `GameRules` impl in
+/// this file that models bids shares ([`Rules`], [`BypassingRules`]): the
+/// amount from one `Event::BidSubmitted`, authorized only to the bidding
+/// seat. Nothing here reads `state_after` — the whole point is that this
+/// secret has no home there at all (see `Command::SubmitSecretBid`'s docs).
+fn bid_event_secrets(event: &Event) -> Vec<Secret> {
+    match event {
+        Event::BidSubmitted { seat, amount } => vec![Secret::authorized(
+            &format!("seat {}'s bid amount", seat.0),
+            vec![vec![*amount]],
+            vec![Viewer::Seat(*seat)],
+        )],
+        Event::Dealt { .. } | Event::RoundAdvanced { .. } => Vec::new(),
     }
 }
 
@@ -369,6 +448,10 @@ impl SecretModel for Rules {
     fn secrets(state: &State) -> Vec<Secret> {
         hand_secrets(state)
     }
+
+    fn event_secrets(_state_after: &State, event: &Event) -> Vec<Secret> {
+        bid_event_secrets(event)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -412,6 +495,13 @@ fn advance_round() -> Input<Command> {
     Input::Player {
         seat: SeatId(0),
         command: Command::AdvanceRound,
+    }
+}
+
+fn submit_secret_bid(seat: u8, amount: u8) -> Input<Command> {
+    Input::Player {
+        seat: SeatId(seat),
+        command: Command::SubmitSecretBid { amount },
     }
 }
 
@@ -915,6 +1005,75 @@ mod honest_pipeline {
 }
 
 // ---------------------------------------------------------------------------
+// The PR review's second blocker: a fixture that never actually reaches a
+// secret state, or never exercises an unauthorized viewer, must not be
+// allowed to report a passing security suite. `security::check` tracks
+// coverage across the whole reachable trace and refuses a vacuous run.
+// ---------------------------------------------------------------------------
+
+mod vacuous_suite_is_rejected {
+    use super::*;
+
+    struct Module;
+    impl GameModule for Module {
+        type Rules = Rules;
+        fn metadata() -> &'static GameMetadata {
+            &METADATA
+        }
+        fn capabilities() -> &'static GameCapabilities {
+            &CAPS_LIVE
+        }
+        fn validate_config((): &(), _: &SeatRoster) -> Result<(), ConfigError> {
+            Ok(())
+        }
+    }
+
+    /// The bug this fixture demonstrates: it never sends a single input, so
+    /// no hand is ever dealt and no event is ever emitted. Every containment
+    /// scan in `security::check` would trivially "pass" — zero secrets, zero
+    /// comparisons — while checking nothing at all.
+    struct Fixture;
+    impl GameTestFixture for Fixture {
+        type Module = Module;
+        fn config() {}
+        fn roster() -> SeatRoster {
+            three_seat_roster()
+        }
+        fn seed() -> MatchSeed {
+            MatchSeed::from_bytes([42u8; 32])
+        }
+        fn deterministic_script() -> Vec<Input<Command>> {
+            Vec::new()
+        }
+    }
+    impl HiddenInformationFixture for Fixture {}
+
+    #[test]
+    fn an_empty_script_that_never_touches_a_secret_is_rejected_as_vacuous() {
+        let result = catch_unwind(security::check::<Fixture>);
+
+        let Err(payload) = result else {
+            panic!(
+                "security::check ACCEPTED a fixture whose deterministic_script() never deals a \
+                 hand or exercises any secret — a hidden-information suite that passes over zero \
+                 real comparisons proves nothing, exactly the \"green tick that means nothing\" \
+                 failure mode tabula-testkit's own conformance docs warn about."
+            );
+        };
+        let message = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("<non-string panic>");
+        assert!(
+            message.contains("never reached a state where SecretModel::secrets declared anything"),
+            "the check rejected the vacuous fixture but not with the expected diagnostic; \
+             got: {message}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
 // P7 — the viewer universe must come from roster + capabilities, not from
 // whichever seats a human test author happened to check.
 //
@@ -1101,8 +1260,8 @@ mod game_controlled_spectators {
         }
     }
     impl HiddenInformationFixture for FixtureWithHook {
-        fn game_controlled_spectators() -> Option<Vec<Viewer>> {
-            Some(vec![Viewer::Spectator(SpectatorTier::Live)])
+        fn game_controlled_spectators() -> Option<Vec<SpectatorTier>> {
+            Some(vec![SpectatorTier::Live])
         }
     }
 
@@ -1308,6 +1467,10 @@ mod direct_leaks_are_caught {
         fn secrets(state: &State) -> Vec<Secret> {
             hand_secrets(state)
         }
+
+        fn event_secrets(_state_after: &State, event: &Event) -> Vec<Secret> {
+            bid_event_secrets(event)
+        }
     }
 
     #[test]
@@ -1345,6 +1508,64 @@ mod direct_leaks_are_caught {
             .unwrap_or("<non-string panic>");
         assert!(
             message.contains("event secrecy violated"),
+            "the check panicked but not with the expected diagnostic; got: {message}"
+        );
+    }
+
+    /// The PR review's headline blocker: an event containment scan that only
+    /// ever consults `SecretModel::secrets(state_after)` has literally
+    /// nothing to compare against for a secret that never touches `State` —
+    /// a bid amount, reported once in `Event::BidSubmitted` and then
+    /// dropped. `SecretModel::event_secrets` exists precisely to close this
+    /// gap; this test fails if `assert_no_event_bypasses_redaction` is ever
+    /// changed back to consulting only `secrets(state_after)`.
+    #[test]
+    fn event_secret_never_touches_state_is_still_caught() {
+        // No hands dealt at all — only a bid. `hand_secrets` (and therefore
+        // `BypassingRules::secrets`) has nothing to say about this state.
+        let state = dealt_state::<BypassingRules>(vec![submit_secret_bid(1, 17)]);
+        let event = Event::BidSubmitted {
+            seat: SeatId(1),
+            amount: 17,
+        };
+
+        // Structural proof the gap is real, not merely asserted: state-based
+        // secrets are provably empty here, so a scanner that consulted only
+        // `secrets(state_after)` would have had zero tokens to check this
+        // event against and would have silently accepted the leak below.
+        assert!(
+            BypassingRules::secrets(&state).is_empty(),
+            "test setup: this script must not create any state-persistent secret, or it would \
+             stop isolating the event-local-secret case this test exists to prove"
+        );
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            assert_no_event_bypasses_redaction::<BypassingRules>(
+                "a secret that lives only in the event, never in state_after",
+                &state,
+                &[event],
+                &[
+                    Viewer::Seat(SeatId(0)),
+                    Viewer::Spectator(SpectatorTier::Live),
+                ],
+            );
+        }));
+
+        let Err(payload) = result else {
+            panic!(
+                "assert_no_event_bypasses_redaction ACCEPTED a leak of a secret that exists ONLY \
+                 in the canonical event, never in state_after. A scanner that only consults \
+                 SecretModel::secrets(state_after) is blind to exactly this class of leak — see \
+                 SecretModel::event_secrets."
+            );
+        };
+        let message = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("<non-string panic>");
+        assert!(
+            message.contains("event secrecy violated") && message.contains("bid amount"),
             "the check panicked but not with the expected diagnostic; got: {message}"
         );
     }
@@ -1429,6 +1650,10 @@ mod derived_event_leak_needs_noninterference {
                 Event::RoundAdvanced { round } => {
                     DerivedLeakViewEvent::RoundAdvanced { round: *round }
                 }
+                Event::BidSubmitted { .. } => unreachable!(
+                    "this fixture's tests only ever submit Deal/AdvanceRound inputs — it exists \
+                     to isolate the Dealt-checksum leak, not to model bids"
+                ),
             })
         }
     }

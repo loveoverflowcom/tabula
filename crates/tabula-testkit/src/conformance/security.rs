@@ -38,7 +38,10 @@ use tabula_game_api::{GameModule, SpectatorPolicy};
 
 use crate::conformance::{scenario, GameTestFixture, RulesOf};
 use crate::determinism::run_typed_trace;
-use crate::projection::{assert_no_event_bypasses_redaction, assert_no_leaks, SecretModel};
+use crate::projection::{
+    assert_no_event_bypasses_redaction, assert_no_leaks, EventScanCoverage, LeakScanCoverage,
+    SecretModel,
+};
 
 /// Additional facts a [`GameTestFixture`] must supply to receive the
 /// hidden-information security suite, on top of what [`GameTestFixture`]
@@ -53,7 +56,7 @@ pub trait HiddenInformationFixture: GameTestFixture
 where
     RulesOf<Self>: SecretModel,
 {
-    /// The exact spectator [`Viewer`]s to scan when
+    /// The exact spectator tiers to scan when
     /// `GameModule::capabilities().spectators()` is
     /// [`SpectatorPolicy::GameControlled`] — the one spectator policy whose
     /// concrete viewer set the platform, not the game, decides case by case
@@ -61,12 +64,21 @@ where
     /// allows attach"), so it cannot be derived generically the way `Live`
     /// and `Delayed { by }` can.
     ///
+    /// Typed as `SpectatorTier`, not `Viewer` — this hook exists to name
+    /// *which spectators*, so the type should make "which seat" or "audit
+    /// tooling" unrepresentable here rather than merely undesired. Every
+    /// tier this returns is wrapped in `Viewer::Spectator` by
+    /// [`client_viewer_universe`], which is also where a caller who really
+    /// does mean to add a `Viewer::Seat`/`Viewer::Audit` beyond the roster
+    /// would have to say so explicitly and separately — not silently, by
+    /// slipping it through a spectator hook.
+    ///
     /// The default `None` is a deliberate "not supplied" signal, not an
-    /// empty viewer set: [`client_viewer_universe`] panics rather than
+    /// empty tier set: [`client_viewer_universe`] panics rather than
     /// silently scanning zero game-controlled spectators when the policy is
     /// `GameControlled` and this returns `None` (this PR's item 4 — "do not
     /// silently skip `GameControlled`").
-    fn game_controlled_spectators() -> Option<Vec<Viewer>> {
+    fn game_controlled_spectators() -> Option<Vec<SpectatorTier>> {
         None
     }
 }
@@ -108,7 +120,7 @@ where
                     core::any::type_name::<F>()
                 )
             });
-            viewers.extend(extra);
+            viewers.extend(extra.into_iter().map(Viewer::Spectator));
         }
     }
 
@@ -137,6 +149,12 @@ where
 ///   tokens to an unauthorized [`Viewer`] — see [`assert_no_leaks`] and
 ///   [`assert_no_event_bypasses_redaction`] for the exact oracle and
 ///   diagnostic shape.
+/// - If the reachable trace never actually exercised the properties this
+///   suite claims to check — see [`SecurityCoverage`] below. A fixture whose
+///   `deterministic_script` never deals a hand, or whose roster leaves no
+///   unauthorized viewer to check against, must not be allowed to look like
+///   a passing security suite; a green tick that means nothing is exactly
+///   the failure mode `tabula-testkit`'s own conformance docs warn about.
 pub fn check<F>()
 where
     F: HiddenInformationFixture,
@@ -158,14 +176,101 @@ where
     let trace = run_typed_trace::<RulesOf<F>>(&scenario::<F>(script))
         .expect("HiddenInformationFixture::deterministic_script must be legal for this fixture");
 
+    let mut coverage = SecurityCoverage::default();
+
     for (step_index, step) in trace.iter().enumerate() {
         let case = format!("{} step {step_index}", core::any::type_name::<F>());
-        assert_no_leaks::<RulesOf<F>>(&case, &step.state, &viewers);
-        assert_no_event_bypasses_redaction::<RulesOf<F>>(
+        let leak_coverage = assert_no_leaks::<RulesOf<F>>(&case, &step.state, &viewers);
+        let event_coverage = assert_no_event_bypasses_redaction::<RulesOf<F>>(
             &case,
             &step.state,
             &step.events,
             &viewers,
+        );
+        coverage.accumulate(leak_coverage, event_coverage);
+    }
+
+    coverage.assert_not_vacuous::<F>();
+}
+
+/// Evidence that a [`check`] run actually exercised the properties it
+/// claims to, not just replayed an empty script against an empty
+/// `SecretModel` and reported green.
+///
+/// This exists because passing a fixture-driven suite is not itself
+/// evidence: `tabula-testkit`'s own conformance docs call out "a green tick
+/// that means nothing" as a bug class in its own right, and the naive
+/// version of this suite — `deterministic_script() -> vec![]`, an initial
+/// state with no dealt secrets — would pass every assertion in
+/// [`crate::projection`] over zero real comparisons.
+#[derive(Debug, Default)]
+struct SecurityCoverage {
+    /// Reachable-trace steps at which `SecretModel::secrets` declared at
+    /// least one secret.
+    states_with_secrets: usize,
+    /// (secret, viewer) pairs [`assert_no_leaks`] actually compared, across
+    /// every step, because the viewer was unauthorized for that secret.
+    unauthorized_projection_checks: usize,
+    /// Canonical events for which `view_event` returned `Some(..)` to at
+    /// least one viewer, across every step.
+    canonical_events_scanned: usize,
+    /// (event, viewer, secret) triples [`assert_no_event_bypasses_redaction`]
+    /// actually compared, across every step, because the viewer was
+    /// unauthorized for that secret.
+    unauthorized_view_event_checks: usize,
+}
+
+impl SecurityCoverage {
+    fn accumulate(&mut self, leaks: LeakScanCoverage, events: EventScanCoverage) {
+        if leaks.secrets_declared > 0 {
+            self.states_with_secrets += 1;
+        }
+        self.unauthorized_projection_checks += leaks.unauthorized_checks;
+        self.canonical_events_scanned += events.events_with_output;
+        self.unauthorized_view_event_checks += events.unauthorized_checks;
+    }
+
+    /// # Panics
+    /// If any coverage counter that must be nonzero for this run to mean
+    /// anything is zero. Each assertion names exactly which claim would
+    /// have been vacuous, so a game author sees precisely what to add to
+    /// `deterministic_script`/`SecretModel`/the roster rather than a single
+    /// "coverage too low".
+    fn assert_not_vacuous<F: HiddenInformationFixture>(&self)
+    where
+        RulesOf<F>: SecretModel,
+    {
+        let name = core::any::type_name::<F>();
+        assert!(
+            self.states_with_secrets > 0,
+            "{name}'s reachable trace never reached a state where SecretModel::secrets \
+             declared anything — this suite would pass on a fixture that never actually deals \
+             or otherwise creates hidden information. Extend deterministic_script() to reach a \
+             state with at least one real secret.",
+        );
+        assert!(
+            self.unauthorized_projection_checks > 0,
+            "{name}'s reachable trace never compared `project` against an (unauthorized viewer, \
+             secret) pair — every viewer in the derived universe was authorized for every \
+             declared secret, so the View containment scan ran over zero real comparisons. \
+             Either the roster/spectator policy leaves no unauthorized viewer, or every secret's \
+             `authorized` list is too permissive.",
+        );
+        assert!(
+            self.canonical_events_scanned > 0,
+            "{name}'s reachable trace never had `view_event` return Some(..) to any viewer for \
+             any canonical event — either deterministic_script() produced no events, or every \
+             `view_event` call returned None. A ViewEvent containment scan that never actually \
+             saw a redacted event proves nothing about redaction correctness.",
+        );
+        assert!(
+            self.unauthorized_view_event_checks > 0,
+            "{name}'s reachable trace scanned canonical events but never compared one against \
+             an (unauthorized viewer, secret) pair — every event's relevant secrets (state- or \
+             event-local) were either empty or fully authorized for every viewer that received \
+             output. Extend the script/SecretModel/SecretModel::event_secrets so at least one \
+             event actually carries something an unauthorized viewer's redaction is checked \
+             against.",
         );
     }
 }
