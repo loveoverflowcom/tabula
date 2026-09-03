@@ -47,7 +47,7 @@
 //! |---|---|
 //! | [`conformance`] | The `conformance!` macro and the mandatory test list |
 //! | [`determinism`] | Re-run harness, clone-and-compare R2 checker, snapshot round-trip |
-//! | [`projection`] | `SecretModel` scanning — the security test category |
+//! | [`projection`] | `SecretModel` scanning and projection noninterference — the security test category |
 //! | [`replay`] | `.tbr` reader/encoder, evidence diagnosis, and `ReplayRunner` |
 //! | [`selfplay`] | Bot-vs-bot driver, the primary fuzzer |
 //! | [`strategies`] | `proptest` generators for inputs, rosters, configs |
@@ -71,7 +71,9 @@ pub use conformance::{
 pub use determinism::{RunTrace, Scenario};
 #[cfg(feature = "presentation")]
 pub use presentation::{render_list_snapshot, AsRenderList};
-pub use projection::{Secret, SecretModel};
+pub use projection::{
+    assert_projection_differs, assert_projection_noninterference, Secret, SecretModel,
+};
 pub use replay::{
     CheckpointEvidence, Divergence, DivergenceKind, DivergenceLocation, DivergenceWindow,
     ExactDivergence, FinalEvidenceOnly, PositionEvidence, PrefixPosition, ReplayDiagnosis,
