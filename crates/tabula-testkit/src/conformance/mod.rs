@@ -64,6 +64,17 @@
 //! functions in [`identity`], [`determinism`], [`replay`], [`serialization`],
 //! [`commands`], [`terminal`], [`hashing`], and [`rng`] — not macro bodies —
 //! so they type-check, navigate, and fail like any other Rust code.
+//!
+//! # Hidden information is a separate, opt-in suite
+//!
+//! [`security`] is deliberately **not** part of [`conformance!`]'s
+//! expansion. A game either has hidden information or it does not; forcing
+//! every game to implement `SecretModel` to satisfy one macro would mean
+//! Chess and `TicTacToe` carry a fake secret model for no reason. A game with
+//! `hidden_information = true` additionally implements
+//! [`security::HiddenInformationFixture`] and expands
+//! [`crate::projection_security!`] alongside `conformance!`; a
+//! perfect-information game does neither and is unaffected.
 
 pub mod commands;
 pub mod determinism;
@@ -71,6 +82,7 @@ pub mod hashing;
 pub mod identity;
 pub mod replay;
 pub mod rng;
+pub mod security;
 pub mod serialization;
 mod support;
 pub mod terminal;

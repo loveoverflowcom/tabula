@@ -184,6 +184,92 @@ fn encode<T: serde::Serialize>(value: &T) -> Vec<u8> {
     canonical_encode(value).expect("canonical types must be encodable (doc 05 §7.1)")
 }
 
+/// One point on a reachable trace: the state immediately after `create` or
+/// after one accepted input, paired with the typed events that step emitted.
+///
+/// Exists for callers — currently the hidden-information security scan in
+/// [`crate::projection`] — that need real `R::Event` values alongside the
+/// exact `R::State` they were produced from. [`run`] only offers events
+/// pre-encoded (fine for comparing two runs, useless for calling
+/// `GameRules::view_event`); [`run_typed`] discards events entirely.
+pub struct TraceStep<R: GameRules> {
+    pub state: R::State,
+    pub events: Vec<R::Event>,
+}
+
+// Manual, same reasoning as `Scenario`'s: `R::State`/`R::Event` carry no
+// `Debug` bound (deliberately — see `crate::projection`'s note on why this
+// crate does not add one for verification-only convenience), and a game's
+// hidden-information state is exactly the kind of thing that must not end up
+// in a log line via a derived Debug impl.
+impl<R: GameRules> core::fmt::Debug for TraceStep<R> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TraceStep")
+            .field("events", &self.events.len())
+            .finish_non_exhaustive()
+    }
+}
+
+/// Replay a scenario through `create`/`apply` with [`run_typed`]'s exact
+/// discipline, retaining one [`TraceStep`] per step: `create`'s own step,
+/// then one step per **accepted** input.
+///
+/// A rejected input contributes no step: contract R2 (`assert_transactional_on_error`)
+/// guarantees it left `state` byte-identical, and R8
+/// (`assert_rejection_does_not_disturb_rng`) guarantees it produced no
+/// observable event — so it carries no evidence a state/event security scan
+/// could use, and re-deriving that guarantee here would duplicate the R2/R8
+/// harness rather than reuse it.
+///
+/// # Errors
+/// [`ScenarioFailed`] if `create` rejects the config/roster.
+pub fn run_typed_trace<R: GameRules>(
+    scenario: &Scenario<R>,
+) -> Result<Vec<TraceStep<R>>, ScenarioFailed> {
+    let mut rng = tabula_core::DetRng::for_input(&scenario.seed, InputIndex(0));
+    let mut ctx = Ctx {
+        now: LogicalTime::ZERO,
+        index: InputIndex(0),
+        rng: &mut rng,
+        budget: Budget {
+            max_apply_micros: u32::MAX,
+            max_events_per_input: u16::MAX,
+        },
+    };
+
+    let init = R::create(&scenario.config, &scenario.roster, &mut ctx)
+        .map_err(|e| ScenarioFailed(format!("{e:?}")))?;
+    let mut state = init.state;
+
+    let mut steps = Vec::with_capacity(scenario.inputs.len() + 1);
+    steps.push(TraceStep {
+        state: state.clone(),
+        events: init.events.iter().cloned().collect(),
+    });
+
+    for (i, input) in scenario.inputs.iter().enumerate() {
+        let index = InputIndex(i as u64 + 1);
+        let mut rng = tabula_core::DetRng::for_input(&scenario.seed, index);
+        let mut ctx = Ctx {
+            now: LogicalTime(index.0 * 1_000),
+            index,
+            rng: &mut rng,
+            budget: Budget {
+                max_apply_micros: u32::MAX,
+                max_events_per_input: u16::MAX,
+            },
+        };
+        if let Ok(outcome) = R::apply(&mut state, input.clone(), &mut ctx) {
+            steps.push(TraceStep {
+                state: state.clone(),
+                events: outcome.events.iter().cloned().collect(),
+            });
+        }
+    }
+
+    Ok(steps)
+}
+
 /// Like [`run`], but returns the typed final state instead of only its
 /// canonical encoding.
 ///
