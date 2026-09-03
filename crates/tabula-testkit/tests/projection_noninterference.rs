@@ -1,6 +1,12 @@
 //! Proves [`tabula_testkit::projection::assert_projection_noninterference`]
-//! (and its positive-control sibling `assert_projection_differs`) against a
-//! tiny, test-only reference model with genuine hidden information.
+//! (and its positive-control sibling `assert_projection_differs`), the two
+//! secret-containment scanners (`assert_no_leaks`,
+//! `assert_no_event_bypasses_redaction`), their event-shaped noninterference
+//! counterparts (`assert_view_event_noninterference`,
+//! `assert_view_event_differs`), and the opt-in
+//! `HiddenInformationFixture`/`projection_security!` conformance layer —
+//! against a tiny, test-only reference model with genuine hidden
+//! information.
 //!
 //! # Why a reference model instead of a real game
 //!
@@ -39,21 +45,46 @@
 //! P1  projection is deterministic for fixed state/viewer
 //! P2  hidden-state noninterference (the primary proposition)
 //! P3  authorized/public differences remain observable (the sanity control)
+//! P4  direct secret containment: View        (assert_no_leaks)
+//! P5  direct secret containment: ViewEvent   (assert_no_event_bypasses_redaction)
+//! P6  derived-leak noninterference: ViewEvent (assert_view_event_noninterference)
+//! P7  the roster/capability-derived client viewer universe cannot be
+//!     bypassed by a leak to a seat no Secret ever named
 //! ```
+//!
+//! P1–P3 are exercised directly against `project`/`view_event` with
+//! hand-picked viewers, in the style PR #37 established. P4–P7 additionally
+//! exercise the fixture-driven pipeline
+//! (`tabula_testkit::conformance::security`) that a real hidden-information
+//! game crate would use, via the `HiddenInformationFixture` impls below —
+//! proving the wiring, not just the primitives, works end to end.
 
 use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::LazyLock;
 
 use proptest::prelude::*;
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 use tabula_core::{
-    MatchSeed, Occupant, RuleError, RuleErrorCode, RulesVersion, SeatEntry, SeatId, SeatRoster,
-    SpectatorTier, UserId, Viewer,
+    GameId, GameVersion, MatchSeed, Millis, Occupant, RuleError, RuleErrorCode, RulesVersion,
+    SeatEntry, SeatId, SeatRoster, SpectatorTier, UserId, Viewer,
 };
-use tabula_game_api::{Ctx, GameRules, Init, InitError, Input, Outcome};
+use tabula_game_api::{
+    AssetRef, AsyncTurnPolicy, Budget, Category, ChatPolicy, Complexity, ConfigError,
+    ContentRating, Ctx, Durability, DurationRange, GameCapabilities, GameCapabilitiesSpec,
+    GameMetadata, GameMetadataSpec, GameModule, GameRules, I18nKey, Init, InitError, Input,
+    Outcome, RankedSupport, ReconnectPolicy, SeatCounts, SeatSpec, SpectatorPolicy, StateSizeClass,
+    SubstitutionPolicy, TurnModel, VoiceRequirement,
+};
+use tabula_testkit::conformance::security;
 use tabula_testkit::determinism::{run_typed, Scenario};
-use tabula_testkit::projection::{assert_projection_differs, assert_projection_noninterference};
+use tabula_testkit::projection::{
+    assert_no_event_bypasses_redaction, assert_no_leaks, assert_projection_differs,
+    assert_projection_noninterference, assert_view_event_differs,
+    assert_view_event_noninterference, Secret, SecretModel,
+};
+use tabula_testkit::{GameTestFixture, HiddenInformationFixture};
 
 // ---------------------------------------------------------------------------
 // The reference model: a public round counter plus one hidden hand per seat,
@@ -165,14 +196,141 @@ fn project_honestly(state: &State, viewer: Viewer) -> View {
     }
 }
 
+/// Canonical, full-information record of what happened (doc 00 §5, I-6). One
+/// variant per [`Command`] this model has, exactly mirroring it — this is the
+/// "meaningful canonical event" this PR's item 11 asks for, in place of the
+/// dummy `Event = ()` PR #37 used (that PR only needed `project`/state
+/// noninterference; this one also needs to exercise `view_event`).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+enum Event {
+    /// The dealt seat's own cards, in the clear — this is canonical, never
+    /// redacted at this layer (doc 02 §12.2's `Event::Dealt`).
+    Dealt {
+        seat: SeatId,
+        cards: Vec<u8>,
+    },
+    RoundAdvanced {
+        round: u32,
+    },
+}
+
+/// Per-viewer redacted event. A genuinely different *type* from [`Event`]
+/// (doc 02 §7.2: never `type ViewEvent = Event`), matching the
+/// `Dealt`/`DealtToOther` degrade-not-hide shape doc 02 §12.2 uses for real
+/// cards.
+#[derive(Clone, Debug, Serialize)]
+enum ViewEvent {
+    /// The dealt seat learns its own cards.
+    DealtToYou {
+        cards: Vec<u8>,
+    },
+    /// Everyone else learns only that a deal happened, and how many cards —
+    /// the "card back flies across the table" case (doc 02 §7.2) — never the
+    /// content.
+    DealtToOther {
+        seat: SeatId,
+        count: usize,
+    },
+    /// `Viewer::Audit` sees the full canonical event (doc 00 §9.4).
+    DealtForAudit {
+        seat: SeatId,
+        cards: Vec<u8>,
+    },
+    RoundAdvanced {
+        round: u32,
+    },
+}
+
+/// Build the canonical event a just-applied `input` produced, from the
+/// post-mutation `state`. Shared by every `GameRules` impl in this file that
+/// uses real events ([`Rules`], [`BypassingRules`], [`DerivedEventLeakRules`]
+/// below) so their event shape cannot drift from `apply_command`'s mutation.
+fn command_event(input: &Input<Command>, state: &State) -> Event {
+    match input {
+        Input::Player {
+            seat,
+            command: Command::Deal { cards },
+        } => Event::Dealt {
+            seat: *seat,
+            cards: cards.clone(),
+        },
+        Input::Player {
+            command: Command::AdvanceRound,
+            ..
+        } => Event::RoundAdvanced {
+            round: state.public_round,
+        },
+        _ => unreachable!("apply_command already rejected any other input shape"),
+    }
+}
+
+/// The honest redaction: an owner learns its own cards, everyone else (any
+/// other seat, and any spectator) learns only that a deal happened and how
+/// many cards, and `Viewer::Audit` sees the canonical event in full — the
+/// same authorization shape [`project_honestly`] uses for state, applied to
+/// one event.
+fn view_event_honestly(event: &Event, viewer: Viewer) -> ViewEvent {
+    match event {
+        Event::Dealt { seat, cards } => match viewer {
+            Viewer::Seat(s) if s == *seat => ViewEvent::DealtToYou {
+                cards: cards.clone(),
+            },
+            Viewer::Seat(_) | Viewer::Spectator(_) => ViewEvent::DealtToOther {
+                seat: *seat,
+                count: cards.len(),
+            },
+            Viewer::Audit => ViewEvent::DealtForAudit {
+                seat: *seat,
+                cards: cards.clone(),
+            },
+        },
+        Event::RoundAdvanced { round } => ViewEvent::RoundAdvanced { round: *round },
+    }
+}
+
+/// The [`SecretModel`] every `GameRules` impl in this file shares: each
+/// seat's own hand, authorized only to that seat — never to
+/// `Viewer::Audit`, which this file treats as a documented, separately
+/// controlled exception rather than folding it into "authorized" (this PR's
+/// item 5/12). A seat that has not been dealt yet (an empty hand) has
+/// nothing to declare: an empty token would be a malformed declaration (item
+/// 13), not a secret, and there is genuinely no card to leak yet.
+///
+/// # Token granularity
+///
+/// One token per hand — the whole dealt `Vec<u8>`, not one token per card.
+/// A per-card token here would be a single byte, and a single byte is not
+/// collision-resistant: it would spuriously "match" `public_round`,
+/// `hand_counts` entries, or any other small integer serialized nearby,
+/// making the scan noisy rather than strict (item 12). The whole-hand token
+/// is exactly the bytes `serde` emits for a `Vec<u8>` field, so it appears
+/// verbatim inside a `View`/`ViewEvent` that embeds the hand honestly, and
+/// the tests below choose hand contents ([`AAAA`]-style byte pairs distinct
+/// from any nearby public integer) so an accidental byte-sequence collision
+/// with an unrelated field is not a realistic risk for this fixture.
+fn hand_secrets(state: &State) -> Vec<Secret> {
+    state
+        .hands
+        .iter()
+        .filter(|(_, hand)| !hand.is_empty())
+        .map(|(seat, hand)| {
+            Secret::authorized(
+                &format!("seat {}'s hand", seat.0),
+                vec![hand.clone()],
+                vec![Viewer::Seat(*seat)],
+            )
+        })
+        .collect()
+}
+
 struct Rules;
 
 impl GameRules for Rules {
     type State = State;
     type Command = Command;
-    type Event = ();
+    type Event = Event;
     type View = View;
-    type ViewEvent = ();
+    type ViewEvent = ViewEvent;
     type Config = ();
 
     const RULES_VERSION: RulesVersion = RulesVersion(1);
@@ -191,15 +349,25 @@ impl GameRules for Rules {
         _: &mut Ctx<'_>,
     ) -> Result<Outcome<Self>, RuleError> {
         apply_command(state, &input)?;
-        Ok(Outcome::empty())
+        let event = command_event(&input, state);
+        Ok(Outcome {
+            events: smallvec![event],
+            effects: SmallVec::new(),
+        })
     }
 
     fn project(state: &State, viewer: Viewer) -> View {
         project_honestly(state, viewer)
     }
 
-    fn view_event(_: &State, (): &(), _: Viewer) -> Option<()> {
-        None
+    fn view_event(_state_after: &State, event: &Event, viewer: Viewer) -> Option<ViewEvent> {
+        Some(view_event_honestly(event, viewer))
+    }
+}
+
+impl SecretModel for Rules {
+    fn secrets(state: &State) -> Vec<Secret> {
+        hand_secrets(state)
     }
 }
 
@@ -623,6 +791,938 @@ mod leaky_projection_is_caught {
         assert!(
             message.contains("projection noninterference violated"),
             "the check panicked but not with the expected diagnostic; got: {message}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Shared `GameModule` plumbing for the `HiddenInformationFixture` pipeline
+// (P4-P7). Every fixture below shares this game's `GameMetadata` — nothing
+// in these tests exercises catalog identity, so one is enough — and picks a
+// `SpectatorPolicy` via `reference_capabilities` to exercise item 4's three
+// derivable cases (`Forbidden`, `Live`, `GameControlled`).
+// ---------------------------------------------------------------------------
+
+fn reference_metadata() -> GameMetadata {
+    GameMetadata::from(GameMetadataSpec {
+        id: GameId::new("com.tabula.testkit.hidden-reference").unwrap(),
+        version: GameVersion::new("0.0.0").unwrap(),
+        rules_version: RulesVersion(1),
+        name_key: I18nKey::new("test.hidden_reference.name").unwrap(),
+        tagline_key: I18nKey::new("test.hidden_reference.tagline").unwrap(),
+        description_key: I18nKey::new("test.hidden_reference.description").unwrap(),
+        categories: vec![Category::Abstract],
+        tags: Vec::new(),
+        estimated_minutes: DurationRange::new(1, 1).unwrap(),
+        complexity: Complexity::Light,
+        content_rating: ContentRating::Everyone,
+        icon: AssetRef::new("icon").unwrap(),
+        hero: AssetRef::new("hero").unwrap(),
+        rules_url_key: None,
+    })
+}
+
+static METADATA: LazyLock<GameMetadata> = LazyLock::new(reference_metadata);
+
+fn reference_capabilities(spectators: SpectatorPolicy) -> GameCapabilities {
+    GameCapabilities::try_from(GameCapabilitiesSpec {
+        seats: SeatSpec::new(SeatCounts::range(2, 8).unwrap(), None, false, true),
+        turn_model: TurnModel::FreeForm,
+        hidden_information: true,
+        spectators,
+        chat: ChatPolicy::new(Vec::new(), false).unwrap(),
+        voice: VoiceRequirement::No,
+        ranked: RankedSupport::No,
+        async_turns: AsyncTurnPolicy::Disabled,
+        reconnect: ReconnectPolicy {
+            grace: Millis(0),
+            notify_rules: false,
+        },
+        substitution: SubstitutionPolicy::Forbidden,
+        pausable: false,
+        durability: Durability::AckAfterApply,
+        client_preview: true,
+        state_size: StateSizeClass::Tiny,
+        apply_budget: Budget::default(),
+        max_match_duration: None,
+    })
+    .unwrap()
+}
+
+static CAPS_LIVE: LazyLock<GameCapabilities> =
+    LazyLock::new(|| reference_capabilities(SpectatorPolicy::Live));
+static CAPS_FORBIDDEN: LazyLock<GameCapabilities> =
+    LazyLock::new(|| reference_capabilities(SpectatorPolicy::Forbidden));
+static CAPS_GAME_CONTROLLED: LazyLock<GameCapabilities> =
+    LazyLock::new(|| reference_capabilities(SpectatorPolicy::GameControlled));
+
+// ---------------------------------------------------------------------------
+// P4-P7 — the honest reference game through the real
+// `HiddenInformationFixture` / `projection_security!` pipeline.
+//
+// This is the green path: it proves the wiring (roster -> viewer universe,
+// reachable-trace replay, both containment scanners, the
+// `hidden_information()` consistency check) works end to end on a game that
+// does everything right, not just that the primitives can be called in
+// isolation.
+// ---------------------------------------------------------------------------
+
+mod honest_pipeline {
+    use super::*;
+
+    struct Module;
+
+    impl GameModule for Module {
+        type Rules = Rules;
+        fn metadata() -> &'static GameMetadata {
+            &METADATA
+        }
+        fn capabilities() -> &'static GameCapabilities {
+            &CAPS_LIVE
+        }
+        fn validate_config((): &(), _: &SeatRoster) -> Result<(), ConfigError> {
+            Ok(())
+        }
+    }
+
+    struct Fixture;
+
+    impl GameTestFixture for Fixture {
+        type Module = Module;
+        fn config() {}
+        fn roster() -> SeatRoster {
+            three_seat_roster()
+        }
+        fn seed() -> MatchSeed {
+            MatchSeed::from_bytes([42u8; 32])
+        }
+        fn deterministic_script() -> Vec<Input<Command>> {
+            vec![
+                deal(0, &[0xAA, 0xBB]),
+                deal(1, &[0x11, 0x22]),
+                deal(2, &[0x33, 0x44]),
+                advance_round(),
+            ]
+        }
+    }
+
+    impl HiddenInformationFixture for Fixture {}
+
+    // Exercises the macro a real game crate would write, over every roster
+    // seat (0, 1, 2) and the declared `Live` spectator, across `create`'s
+    // step and every accepted `Deal`/`AdvanceRound` input.
+    tabula_testkit::projection_security!(Fixture);
+}
+
+// ---------------------------------------------------------------------------
+// P7 — the viewer universe must come from roster + capabilities, not from
+// whichever seats a human test author happened to check.
+//
+// `LeakyToUnlistedSeatRules` leaks seat 0's hand verbatim to seat 2 — a seat
+// that is part of the roster but is never named by any `Secret`'s
+// `authorized` list, by any `Command`, or by this test file's other
+// hand-picked viewer lists (which only ever exercise seats 0 and 1
+// explicitly elsewhere). If `client_viewer_universe` did not derive "every
+// roster seat" automatically, nothing here would ever construct
+// `Viewer::Seat(2)` and this leak would pass silently (this PR's item 4/17).
+// ---------------------------------------------------------------------------
+
+mod viewer_universe_completeness {
+    use super::*;
+
+    #[derive(Clone, Debug, Serialize)]
+    struct UnlistedSeatLeakView {
+        public_round: u32,
+        your_hand: Option<Vec<u8>>,
+        hand_counts: BTreeMap<SeatId, usize>,
+        /// THE BUG: seat 0's actual hand, handed unconditionally to seat 2.
+        leaked_to_seat_2: Option<Vec<u8>>,
+    }
+
+    struct LeakyToUnlistedSeatRules;
+
+    impl GameRules for LeakyToUnlistedSeatRules {
+        type State = State;
+        type Command = Command;
+        type Event = ();
+        type View = UnlistedSeatLeakView;
+        type ViewEvent = ();
+        type Config = ();
+
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+
+        fn create((): &(), roster: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: initial_state(roster),
+                events: SmallVec::new(),
+                effects: SmallVec::new(),
+            })
+        }
+
+        fn apply(
+            state: &mut State,
+            input: Input<Command>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, RuleError> {
+            apply_command(state, &input)?;
+            Ok(Outcome::empty())
+        }
+
+        fn project(state: &State, viewer: Viewer) -> UnlistedSeatLeakView {
+            let hand_counts = state.hands.iter().map(|(s, h)| (*s, h.len())).collect();
+            UnlistedSeatLeakView {
+                public_round: state.public_round,
+                your_hand: match viewer {
+                    Viewer::Seat(seat) => state.hands.get(&seat).cloned(),
+                    Viewer::Spectator(_) | Viewer::Audit => None,
+                },
+                hand_counts,
+                leaked_to_seat_2: if viewer == Viewer::Seat(SeatId(2)) {
+                    state.hands.get(&SeatId(0)).cloned()
+                } else {
+                    None
+                },
+            }
+        }
+
+        fn view_event(_: &State, (): &(), _: Viewer) -> Option<()> {
+            None
+        }
+    }
+
+    impl SecretModel for LeakyToUnlistedSeatRules {
+        fn secrets(state: &State) -> Vec<Secret> {
+            hand_secrets(state)
+        }
+    }
+
+    struct Module;
+    impl GameModule for Module {
+        type Rules = LeakyToUnlistedSeatRules;
+        fn metadata() -> &'static GameMetadata {
+            &METADATA
+        }
+        fn capabilities() -> &'static GameCapabilities {
+            &CAPS_FORBIDDEN
+        }
+        fn validate_config((): &(), _: &SeatRoster) -> Result<(), ConfigError> {
+            Ok(())
+        }
+    }
+
+    struct Fixture;
+    impl GameTestFixture for Fixture {
+        type Module = Module;
+        fn config() {}
+        fn roster() -> SeatRoster {
+            three_seat_roster()
+        }
+        fn seed() -> MatchSeed {
+            MatchSeed::from_bytes([42u8; 32])
+        }
+        fn deterministic_script() -> Vec<Input<Command>> {
+            vec![
+                deal(0, &[0xAA, 0xBB]),
+                deal(1, &[0x11, 0x22]),
+                deal(2, &[0x33, 0x44]),
+            ]
+        }
+    }
+    impl HiddenInformationFixture for Fixture {}
+
+    #[test]
+    fn viewer_universe_derivation_catches_a_leak_to_a_seat_no_secret_ever_named() {
+        let result = catch_unwind(security::check::<Fixture>);
+
+        let Err(payload) = result else {
+            panic!(
+                "the hidden-information security suite ACCEPTED a leak of seat 0's hand to \
+                 seat 2, a roster seat no Secret's `authorized` list ever mentioned. If this \
+                 passes, the viewer universe is not actually covering every roster seat."
+            );
+        };
+        let message = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("<non-string panic>");
+        assert!(
+            message.contains("projection secrecy violated"),
+            "the suite rejected the leaky fixture but not with the expected diagnostic; \
+             got: {message}"
+        );
+        assert!(
+            message.contains("SeatId(2)"),
+            "the failure did not name the unlisted seat that actually received the leak; \
+             got: {message}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Item 4 — `SpectatorPolicy::GameControlled` must not be silently guessed or
+// skipped: the harness requires an explicit fixture hook naming the concrete
+// spectator viewers, and fails loudly if that hook is not overridden.
+// ---------------------------------------------------------------------------
+
+mod game_controlled_spectators {
+    use super::*;
+
+    struct Module;
+    impl GameModule for Module {
+        type Rules = Rules;
+        fn metadata() -> &'static GameMetadata {
+            &METADATA
+        }
+        fn capabilities() -> &'static GameCapabilities {
+            &CAPS_GAME_CONTROLLED
+        }
+        fn validate_config((): &(), _: &SeatRoster) -> Result<(), ConfigError> {
+            Ok(())
+        }
+    }
+
+    fn fixture_script() -> Vec<Input<Command>> {
+        vec![deal(0, &[0xAA, 0xBB]), deal(1, &[0x11, 0x22])]
+    }
+
+    struct FixtureWithHook;
+    impl GameTestFixture for FixtureWithHook {
+        type Module = Module;
+        fn config() {}
+        fn roster() -> SeatRoster {
+            three_seat_roster()
+        }
+        fn seed() -> MatchSeed {
+            MatchSeed::from_bytes([42u8; 32])
+        }
+        fn deterministic_script() -> Vec<Input<Command>> {
+            fixture_script()
+        }
+    }
+    impl HiddenInformationFixture for FixtureWithHook {
+        fn game_controlled_spectators() -> Option<Vec<Viewer>> {
+            Some(vec![Viewer::Spectator(SpectatorTier::Live)])
+        }
+    }
+
+    struct FixtureMissingHook;
+    impl GameTestFixture for FixtureMissingHook {
+        type Module = Module;
+        fn config() {}
+        fn roster() -> SeatRoster {
+            three_seat_roster()
+        }
+        fn seed() -> MatchSeed {
+            MatchSeed::from_bytes([42u8; 32])
+        }
+        fn deterministic_script() -> Vec<Input<Command>> {
+            fixture_script()
+        }
+    }
+    impl HiddenInformationFixture for FixtureMissingHook {}
+
+    #[test]
+    fn an_explicit_hook_names_the_game_controlled_spectators_and_the_suite_passes() {
+        security::check::<FixtureWithHook>();
+    }
+
+    #[test]
+    fn a_missing_hook_fails_loudly_instead_of_silently_scanning_no_spectators() {
+        let result = catch_unwind(security::client_viewer_universe::<FixtureMissingHook>);
+
+        let Err(payload) = result else {
+            panic!(
+                "client_viewer_universe ACCEPTED a GameControlled spectator policy with no \
+                 game_controlled_spectators() override, silently scanning zero spectators \
+                 instead of failing loudly."
+            );
+        };
+        let message = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("<non-string panic>");
+        assert!(
+            message.contains("GameControlled") && message.contains("game_controlled_spectators"),
+            "the panic did not explain which hook needed to be overridden; got: {message}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Containment scanner: direct leaks (this PR's item 15, first two bullets).
+// ---------------------------------------------------------------------------
+
+mod direct_leaks_are_caught {
+    use super::*;
+
+    /// Bug: spectators receive every seat's actual hand, verbatim, alongside
+    /// the honest fields. Oracle A (containment) must catch this — it is
+    /// exactly "a whole card list leaking" from doc 02 §7.3.
+    #[derive(Clone, Debug, Serialize)]
+    struct SpectatorLeakView {
+        public_round: u32,
+        your_hand: Option<Vec<u8>>,
+        hand_counts: BTreeMap<SeatId, usize>,
+        all_hands_for_spectator: Option<BTreeMap<SeatId, Vec<u8>>>,
+    }
+
+    struct LeakyProjectionRules;
+
+    impl GameRules for LeakyProjectionRules {
+        type State = State;
+        type Command = Command;
+        type Event = ();
+        type View = SpectatorLeakView;
+        type ViewEvent = ();
+        type Config = ();
+
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+
+        fn create((): &(), roster: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: initial_state(roster),
+                events: SmallVec::new(),
+                effects: SmallVec::new(),
+            })
+        }
+
+        fn apply(
+            state: &mut State,
+            input: Input<Command>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, RuleError> {
+            apply_command(state, &input)?;
+            Ok(Outcome::empty())
+        }
+
+        fn project(state: &State, viewer: Viewer) -> SpectatorLeakView {
+            let hand_counts = state.hands.iter().map(|(s, h)| (*s, h.len())).collect();
+            SpectatorLeakView {
+                public_round: state.public_round,
+                your_hand: match viewer {
+                    Viewer::Seat(seat) => state.hands.get(&seat).cloned(),
+                    Viewer::Spectator(_) | Viewer::Audit => None,
+                },
+                hand_counts,
+                all_hands_for_spectator: matches!(viewer, Viewer::Spectator(_))
+                    .then(|| state.hands.clone()),
+            }
+        }
+
+        fn view_event(_: &State, (): &(), _: Viewer) -> Option<()> {
+            None
+        }
+    }
+
+    impl SecretModel for LeakyProjectionRules {
+        fn secrets(state: &State) -> Vec<Secret> {
+            hand_secrets(state)
+        }
+    }
+
+    #[test]
+    fn containment_scanner_catches_a_direct_projection_leak_to_a_spectator() {
+        let state = dealt_state::<LeakyProjectionRules>(vec![
+            deal(0, &[0xAA, 0xBB]),
+            deal(1, &[0x11, 0x22]),
+        ]);
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            assert_no_leaks::<LeakyProjectionRules>(
+                "direct spectator leak",
+                &state,
+                &[
+                    Viewer::Seat(SeatId(0)),
+                    Viewer::Seat(SeatId(1)),
+                    Viewer::Spectator(SpectatorTier::Live),
+                ],
+            );
+        }));
+
+        let Err(payload) = result else {
+            panic!(
+                "assert_no_leaks ACCEPTED a spectator View containing another seat's hand \
+                 verbatim. The containment oracle is not enforcing anything."
+            );
+        };
+        let message = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("<non-string panic>");
+        assert!(
+            message.contains("projection secrecy violated"),
+            "the check panicked but not with the expected diagnostic; got: {message}"
+        );
+    }
+
+    /// Bug: `view_event` is the "new Event variant added, match arm falls
+    /// through to a catch-all `Some(..)`" failure I-6 exists to prevent — it
+    /// forwards the canonical event, unredacted, to every viewer.
+    struct BypassingRules;
+
+    impl GameRules for BypassingRules {
+        type State = State;
+        type Command = Command;
+        type Event = Event;
+        type View = View;
+        type ViewEvent = Event;
+        type Config = ();
+
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+
+        fn create((): &(), roster: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: initial_state(roster),
+                events: SmallVec::new(),
+                effects: SmallVec::new(),
+            })
+        }
+
+        fn apply(
+            state: &mut State,
+            input: Input<Command>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, RuleError> {
+            apply_command(state, &input)?;
+            let event = command_event(&input, state);
+            Ok(Outcome {
+                events: smallvec![event],
+                effects: SmallVec::new(),
+            })
+        }
+
+        fn project(state: &State, viewer: Viewer) -> View {
+            project_honestly(state, viewer)
+        }
+
+        fn view_event(_: &State, event: &Event, _viewer: Viewer) -> Option<Event> {
+            // THE BUG.
+            Some(event.clone())
+        }
+    }
+
+    impl SecretModel for BypassingRules {
+        fn secrets(state: &State) -> Vec<Secret> {
+            hand_secrets(state)
+        }
+    }
+
+    #[test]
+    fn event_containment_scanner_catches_a_direct_view_event_leak() {
+        let state =
+            dealt_state::<BypassingRules>(vec![deal(0, &[0xAA, 0xBB]), deal(1, &[0x11, 0x22])]);
+        let event = Event::Dealt {
+            seat: SeatId(1),
+            cards: vec![0x11, 0x22],
+        };
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            assert_no_event_bypasses_redaction::<BypassingRules>(
+                "view_event forwards the canonical event verbatim",
+                &state,
+                &[event],
+                &[
+                    Viewer::Seat(SeatId(0)),
+                    Viewer::Spectator(SpectatorTier::Live),
+                ],
+            );
+        }));
+
+        let Err(payload) = result else {
+            panic!(
+                "assert_no_event_bypasses_redaction ACCEPTED a ViewEvent that forwards a \
+                 canonical event verbatim to an unauthorized viewer. The event containment \
+                 oracle is not enforcing anything."
+            );
+        };
+        let message = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("<non-string panic>");
+        assert!(
+            message.contains("event secrecy violated"),
+            "the check panicked but not with the expected diagnostic; got: {message}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Item 15 (third bullet) / item 10 — a derived event leak: same public
+// seat/count, different hidden cards, `ViewEvent` exposes a checksum. Proves
+// containment cannot see it and event noninterference does.
+// ---------------------------------------------------------------------------
+
+mod derived_event_leak_needs_noninterference {
+    use super::*;
+
+    #[derive(Clone, Debug, Serialize)]
+    enum DerivedLeakViewEvent {
+        DealtToYou {
+            cards: Vec<u8>,
+        },
+        DealtToOtherWithChecksum {
+            seat: SeatId,
+            count: usize,
+            checksum: u32,
+        },
+        RoundAdvanced {
+            round: u32,
+        },
+    }
+
+    struct DerivedEventLeakRules;
+
+    impl GameRules for DerivedEventLeakRules {
+        type State = State;
+        type Command = Command;
+        type Event = Event;
+        type View = View;
+        type ViewEvent = DerivedLeakViewEvent;
+        type Config = ();
+
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+
+        fn create((): &(), roster: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: initial_state(roster),
+                events: SmallVec::new(),
+                effects: SmallVec::new(),
+            })
+        }
+
+        fn apply(
+            state: &mut State,
+            input: Input<Command>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, RuleError> {
+            apply_command(state, &input)?;
+            let event = command_event(&input, state);
+            Ok(Outcome {
+                events: smallvec![event],
+                effects: SmallVec::new(),
+            })
+        }
+
+        fn project(state: &State, viewer: Viewer) -> View {
+            project_honestly(state, viewer)
+        }
+
+        fn view_event(_: &State, event: &Event, viewer: Viewer) -> Option<DerivedLeakViewEvent> {
+            Some(match event {
+                Event::Dealt { seat, cards } => match viewer {
+                    Viewer::Seat(s) if s == *seat => DerivedLeakViewEvent::DealtToYou {
+                        cards: cards.clone(),
+                    },
+                    _ => DerivedLeakViewEvent::DealtToOtherWithChecksum {
+                        seat: *seat,
+                        count: cards.len(),
+                        // THE BUG: derived from every hidden card, never
+                        // copied verbatim, so a token-containment scan
+                        // structurally cannot see it.
+                        checksum: cards.iter().map(|&b| u32::from(b)).sum(),
+                    },
+                },
+                Event::RoundAdvanced { round } => {
+                    DerivedLeakViewEvent::RoundAdvanced { round: *round }
+                }
+            })
+        }
+    }
+
+    impl SecretModel for DerivedEventLeakRules {
+        fn secrets(state: &State) -> Vec<Secret> {
+            hand_secrets(state)
+        }
+    }
+
+    #[test]
+    fn event_containment_is_blind_to_a_derived_checksum_leak() {
+        // Same public facts (seat 1, count 2) either way — only card CONTENT
+        // differs, exactly the partition that defeats byte containment.
+        let state = dealt_state::<DerivedEventLeakRules>(vec![
+            deal(0, &[0xAA, 0xBB]),
+            deal(1, &[0x11, 0x22]),
+        ]);
+        let event = Event::Dealt {
+            seat: SeatId(1),
+            cards: vec![0x11, 0x22],
+        };
+
+        // This is the documented residual gap (item 2/15), not a bug: the
+        // containment scan passes here on purpose, demonstrating why
+        // noninterference must exist as an independent oracle.
+        assert_no_event_bypasses_redaction::<DerivedEventLeakRules>(
+            "derived checksum leak is invisible to containment",
+            &state,
+            &[event],
+            &[Viewer::Seat(SeatId(0))],
+        );
+    }
+
+    #[test]
+    fn event_noninterference_catches_the_derived_checksum_leak_containment_missed() {
+        let state_a = dealt_state::<DerivedEventLeakRules>(vec![
+            deal(0, &[0xAA, 0xBB]),
+            deal(1, &[0x11, 0x22]),
+        ]);
+        let state_b = dealt_state::<DerivedEventLeakRules>(vec![
+            deal(0, &[0xAA, 0xBB]),
+            deal(1, &[0x33, 0x44]),
+        ]);
+        let event_a = Event::Dealt {
+            seat: SeatId(1),
+            cards: vec![0x11, 0x22],
+        };
+        let event_b = Event::Dealt {
+            seat: SeatId(1),
+            cards: vec![0x33, 0x44],
+        };
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            assert_view_event_noninterference::<DerivedEventLeakRules>(
+                "derived checksum leak",
+                &state_a,
+                &event_a,
+                &state_b,
+                &event_b,
+                Viewer::Seat(SeatId(0)),
+            );
+        }));
+
+        let Err(payload) = result else {
+            panic!(
+                "assert_view_event_noninterference ACCEPTED a ViewEvent carrying a checksum \
+                 derived from a hidden hand it never copied verbatim. Noninterference is the \
+                 only oracle that can catch this class of leak, and it did not."
+            );
+        };
+        let message = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("<non-string panic>");
+        assert!(
+            message.contains("event noninterference violated"),
+            "the check panicked but not with the expected diagnostic; got: {message}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Event noninterference and its positive controls, on the HONEST reference
+// model (item 16 / item 25's "Event noninterference" list).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn unauthorized_seat_and_spectator_receive_degraded_deal_detail_not_the_cards() {
+    let state = dealt_state::<Rules>(vec![deal(0, &[0xAA, 0xBB]), deal(1, &[0x11, 0x22])]);
+    let event = Event::Dealt {
+        seat: SeatId(1),
+        cards: vec![0x11, 0x22],
+    };
+
+    // Every canonical event actually passes through view_event...
+    let to_other_seat = Rules::view_event(&state, &event, Viewer::Seat(SeatId(0)));
+    assert!(matches!(
+        to_other_seat,
+        Some(ViewEvent::DealtToOther {
+            seat: SeatId(1),
+            count: 2
+        })
+    ));
+
+    let to_spectator = Rules::view_event(&state, &event, Viewer::Spectator(SpectatorTier::Live));
+    assert!(matches!(
+        to_spectator,
+        Some(ViewEvent::DealtToOther {
+            seat: SeatId(1),
+            count: 2
+        })
+    ));
+
+    // ...and the authorized owner gets the real detail...
+    let to_owner = Rules::view_event(&state, &event, Viewer::Seat(SeatId(1)));
+    assert!(matches!(
+        to_owner,
+        Some(ViewEvent::DealtToYou { ref cards }) if cards == &[0x11, 0x22]
+    ));
+
+    // ...and Audit, a documented exception, sees the canonical detail too.
+    let to_audit = Rules::view_event(&state, &event, Viewer::Audit);
+    assert!(matches!(
+        to_audit,
+        Some(ViewEvent::DealtForAudit { seat: SeatId(1), ref cards }) if cards == &[0x11, 0x22]
+    ));
+}
+
+#[test]
+fn unauthorized_seat_and_spectator_are_indifferent_to_another_seats_deal_detail() {
+    // Same public facts (seat 1 dealt, count 2) either way; only seat 1's
+    // card CONTENT differs — the partition that isolates the property from
+    // "count is secret too", exactly like the state-projection property test
+    // above.
+    let state_a = dealt_state::<Rules>(vec![deal(0, &[0xAA, 0xBB]), deal(1, &[0x11, 0x22])]);
+    let state_b = dealt_state::<Rules>(vec![deal(0, &[0xAA, 0xBB]), deal(1, &[0x33, 0x44])]);
+    let event_a = Event::Dealt {
+        seat: SeatId(1),
+        cards: vec![0x11, 0x22],
+    };
+    let event_b = Event::Dealt {
+        seat: SeatId(1),
+        cards: vec![0x33, 0x44],
+    };
+
+    for viewer in [
+        Viewer::Seat(SeatId(0)),
+        Viewer::Spectator(SpectatorTier::Live),
+    ] {
+        assert_view_event_noninterference::<Rules>(
+            "seat 1's dealt cards are not seat 0's or a spectator's business",
+            &state_a,
+            &event_a,
+            &state_b,
+            &event_b,
+            viewer,
+        );
+    }
+}
+
+#[test]
+fn owner_receives_authorized_deal_detail_that_differs_with_its_own_cards() {
+    let state_a = dealt_state::<Rules>(vec![deal(0, &[0xAA, 0xBB]), deal(1, &[0x11, 0x22])]);
+    let state_b = dealt_state::<Rules>(vec![deal(0, &[0xCC, 0xDD]), deal(1, &[0x11, 0x22])]);
+    let event_a = Event::Dealt {
+        seat: SeatId(0),
+        cards: vec![0xAA, 0xBB],
+    };
+    let event_b = Event::Dealt {
+        seat: SeatId(0),
+        cards: vec![0xCC, 0xDD],
+    };
+
+    assert_view_event_differs::<Rules>(
+        "the owner sees its own dealt cards change",
+        &state_a,
+        &event_a,
+        &state_b,
+        &event_b,
+        Viewer::Seat(SeatId(0)),
+    );
+}
+
+#[test]
+fn audit_sees_full_deal_detail_change_regardless_of_seat() {
+    // Not a leak: doc 00 §9.4 states Audit "sees canonical information".
+    let state_a = dealt_state::<Rules>(vec![deal(0, &[0xAA, 0xBB]), deal(1, &[0x11, 0x22])]);
+    let state_b = dealt_state::<Rules>(vec![deal(0, &[0xAA, 0xBB]), deal(1, &[0x33, 0x44])]);
+    let event_a = Event::Dealt {
+        seat: SeatId(1),
+        cards: vec![0x11, 0x22],
+    };
+    let event_b = Event::Dealt {
+        seat: SeatId(1),
+        cards: vec![0x33, 0x44],
+    };
+
+    assert_view_event_differs::<Rules>(
+        "Audit sees hidden deal detail by design",
+        &state_a,
+        &event_a,
+        &state_b,
+        &event_b,
+        Viewer::Audit,
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Item 13 — a malformed (empty) secret token must fail loudly and
+// distinguishably from an actual leak, never silently pass.
+// ---------------------------------------------------------------------------
+
+mod malformed_secret_token_fails_loudly {
+    use super::*;
+
+    struct EmptyTokenRules;
+
+    impl GameRules for EmptyTokenRules {
+        type State = State;
+        type Command = Command;
+        type Event = ();
+        type View = View;
+        type ViewEvent = ();
+        type Config = ();
+
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+
+        fn create((): &(), roster: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: initial_state(roster),
+                events: SmallVec::new(),
+                effects: SmallVec::new(),
+            })
+        }
+
+        fn apply(
+            state: &mut State,
+            input: Input<Command>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, RuleError> {
+            apply_command(state, &input)?;
+            Ok(Outcome::empty())
+        }
+
+        fn project(state: &State, viewer: Viewer) -> View {
+            project_honestly(state, viewer)
+        }
+
+        fn view_event(_: &State, (): &(), _: Viewer) -> Option<()> {
+            None
+        }
+    }
+
+    impl SecretModel for EmptyTokenRules {
+        fn secrets(_state: &State) -> Vec<Secret> {
+            // THE BUG: an empty token matches every byte string.
+            vec![Secret::authorized(
+                "malformed secret",
+                vec![Vec::new()],
+                vec![Viewer::Seat(SeatId(0))],
+            )]
+        }
+    }
+
+    #[test]
+    fn containment_scanner_fails_loudly_on_an_empty_token_instead_of_silently_passing() {
+        let state = dealt_state::<EmptyTokenRules>(Vec::new());
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            assert_no_leaks::<EmptyTokenRules>(
+                "malformed secret",
+                &state,
+                &[Viewer::Seat(SeatId(1))],
+            );
+        }));
+
+        let Err(payload) = result else {
+            panic!(
+                "assert_no_leaks silently accepted a SecretModel that declared an empty token. \
+                 An empty token matches every projection, so this must fail loudly rather than \
+                 pass or (worse) report a leak on every unrelated viewer."
+            );
+        };
+        let message = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("<non-string panic>");
+        assert!(
+            message.contains("malformed SecretModel"),
+            "the panic did not identify the declaration as malformed (as opposed to a real \
+             leak); got: {message}"
         );
     }
 }

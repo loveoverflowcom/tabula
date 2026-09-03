@@ -696,31 +696,44 @@ fn view_event(state_after: &State, event: &Event, viewer: Viewer) -> Option<View
 
 ### 7.3 Mandatory projection tests
 
-Every game with `hidden_information = true` must provide a `SecretSet` describing what is secret
-and to whom:
+Every game with `hidden_information = true` must provide a [`SecretModel`] describing what is
+secret and to whom:
 
 ```rust
 impl SecretModel for CardsRules {
     fn secrets(state: &State) -> Vec<Secret> {
-        let mut v = vec![Secret::deck_order(&state.deck)];
+        let mut v = vec![Secret::nobody("deck order", state.deck.tokens())];
         for (seat, hand) in state.hands.iter() {
-            v.push(Secret::authorized(hand.tokens(), Viewer::Seat(*seat)));
+            v.push(Secret::authorized(
+                &format!("seat {}'s hand", seat.0),
+                hand.tokens(),
+                vec![Viewer::Seat(*seat)],
+            ));
         }
         v
     }
 }
 ```
 
-`tabula-testkit` then runs, for random states from random self-play games:
+`tabula-testkit` then runs, over a **reachable** trace — `create`'s own step, then one per accepted
+input, exactly as `tabula_testkit::determinism::run_typed_trace` replays a
+`HiddenInformationFixture::deterministic_script` — for every real client [`Viewer`] the roster and
+declared `SpectatorPolicy` name (never `Viewer::Audit`; see §11.1's note below):
 
 ```text
 for every secret S, for every viewer V not authorized for S:
-    assert!( !encode(project(state, V)).contains_tokens(S) )
-    assert!( events.all(|e| !encode(view_event(state, e, V)).contains_tokens(S)) )
+    assert!( !canonical_encode(project(state, V)).contains_any_token_of(S) )
+    for every canonical event E of this step:
+        if let Some(ve) = view_event(state_after, E, V):
+            assert!( !canonical_encode(ve).contains_any_token_of(S) )
 ```
 
 Token-level containment scanning is coarse but catches the real bugs (a whole card list leaking,
-a role map serialized wholesale). It runs on every PR for every hidden-information game.
+a role map serialized wholesale). It is the mandatory scan for every hidden-information game once
+that game exists (`games/cards`, `games/werewolf` — Phase 3); see §11.1 for the sibling
+noninterference oracle this containment scan does not replace, and
+`crates/tabula-testkit/tests/projection_noninterference.rs` for a worked reference model exercising
+both against a real reachable trace.
 
 ---
 
@@ -1195,6 +1208,33 @@ until it passes.** This is the single mechanism that keeps determinism from rott
 | `golden_replays` | Committed replays in `tests/replays/<game>/*.tbr` still reproduce their recorded hashes | I-8, I-16 |
 | `no_forbidden_deps` | The rules feature set builds with no banned crate in the tree | I-1 |
 | `apply_within_budget` | p99 `apply` time under `capabilities.apply_budget` on the CI machine class | — |
+
+`projection_hides_secrets` and `view_event_never_bypasses` are mechanical as of
+`tabula_testkit::projection::assert_no_leaks` / `assert_no_event_bypasses_redaction`. They are
+**not** part of `conformance!`'s own expansion — a perfect-information game has nothing to scan —
+but an opt-in sibling: a game with `hidden_information = true` additionally implements
+`SecretModel` and `HiddenInformationFixture`, and expands `projection_security!` alongside
+`conformance!` (`tabula_testkit::conformance::security`). Two distinctions worth being precise
+about, so the claim and the evidence keep saying the same thing:
+
+- **Containment vs. noninterference.** Both mandatory checks are **containment** scans: a secret's
+  own bytes must not appear in an unauthorized `View`/`ViewEvent`. They cannot see a *derived* leak
+  — a count, checksum, or other value computed from hidden data without copying it verbatim (§7.1's
+  "derived-secret audit" case). `assert_projection_noninterference` and
+  `assert_view_event_noninterference` are the complementary, independent oracle for that class; a
+  game with hidden information gets real evidence for both, not one standing in for the other.
+- **Redaction vs. routing.** `view_event_never_bypasses`'s I-6 citation is about **redaction
+  correctness**: every canonical event this suite's reachable trace produced was actually passed to
+  `view_event` for every real client viewer, and nothing it returned leaked. It is not evidence that
+  `view_event` is the *only* code path by which event bytes can reach a client — that routing
+  exclusivity is a property of `tabula-match`'s (Phase 4) broadcast path, enforced at the type level
+  today by `View`/`ViewEvent` being the only `Serialize`-exposed wire shapes (I-5's enforcement
+  column), not re-verified by this test.
+- **`Viewer::Audit` is excluded, not silently passed.** "Every viewer" in both rows means every real
+  client viewer a `HiddenInformationFixture` derives from the roster and `SpectatorPolicy` — never
+  `Viewer::Audit`, which doc 00 §9.4 documents as legitimately seeing canonical information. Scanning
+  Audit as if it were an unauthorized client would fail the suite on the documented exception instead
+  of a real leak.
 
 ### 11.2 Property-test strategies the testkit provides
 

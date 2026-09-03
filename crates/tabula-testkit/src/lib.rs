@@ -45,9 +45,9 @@
 //!
 //! | Module | What it is |
 //! |---|---|
-//! | [`conformance`] | The `conformance!` macro and the mandatory test list |
+//! | [`conformance`] | The `conformance!` macro, the mandatory test list, and the opt-in `conformance::security` suite for hidden-information games |
 //! | [`determinism`] | Re-run harness, clone-and-compare R2 checker, snapshot round-trip |
-//! | [`projection`] | `SecretModel` scanning and projection noninterference — the security test category |
+//! | [`projection`] | `SecretModel` containment scanning (`View` and `ViewEvent`) plus projection/event noninterference — the security test category |
 //! | [`replay`] | `.tbr` reader/encoder, evidence diagnosis, and `ReplayRunner` |
 //! | [`selfplay`] | Bot-vs-bot driver, the primary fuzzer |
 //! | [`strategies`] | `proptest` generators for inputs, rosters, configs |
@@ -66,13 +66,16 @@ pub mod selfplay;
 pub mod strategies;
 
 pub use conformance::{
-    GameTestFixture, InvalidCommandScenario, RandomnessScenario, TerminalScenario,
+    security::HiddenInformationFixture, GameTestFixture, InvalidCommandScenario,
+    RandomnessScenario, TerminalScenario,
 };
 pub use determinism::{RunTrace, Scenario};
 #[cfg(feature = "presentation")]
 pub use presentation::{render_list_snapshot, AsRenderList};
 pub use projection::{
-    assert_projection_differs, assert_projection_noninterference, Secret, SecretModel,
+    assert_no_event_bypasses_redaction, assert_no_leaks, assert_projection_differs,
+    assert_projection_noninterference, assert_view_event_differs,
+    assert_view_event_noninterference, Secret, SecretModel,
 };
 pub use replay::{
     CheckpointEvidence, Divergence, DivergenceKind, DivergenceLocation, DivergenceWindow,
