@@ -425,7 +425,7 @@ where
             .min_by_key(|(id, deadline)| (*deadline, *id))
     }
 
-    pub fn interpret_effects(&mut self, effects: &[Effect]) -> Result<(), LocalMatchError> {
+    fn interpret_effects(&mut self, effects: &[Effect]) -> Result<(), LocalMatchError> {
         for effect in effects {
             match effect {
                 Effect::SetTimer { id, delay } => {

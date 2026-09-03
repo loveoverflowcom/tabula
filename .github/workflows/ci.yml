@@ -127,6 +127,8 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - run: cargo check -p tabula-game-client --target wasm32-unknown-unknown --no-default-features --features web
+      - run: cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+      - run: cargo xtask stage-wasm-game
       - run: cargo check -p tabula-web --target wasm32-unknown-unknown
       # Bundle size cap: < 6 MB gzipped (doc 01 §7). Fail on a >10% regression.
       # - run: cargo xtask check-bundle-size

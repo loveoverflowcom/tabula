@@ -37,6 +37,9 @@ pub enum WasmStageError {
 
     #[error("staged file {0} is empty")]
     EmptyStagedFile(PathBuf),
+
+    #[error("unexpected argument for stage-wasm-game: {0}")]
+    UnexpectedArgument(String),
 }
 
 /// Report summarizing successfully staged artifacts.
@@ -49,19 +52,14 @@ pub struct WasmStageReport {
 }
 
 pub fn run(args: &[String]) -> Result<WasmStageReport, WasmStageError> {
+    if let Some(argument) = args.first() {
+        return Err(WasmStageError::UnexpectedArgument(argument.clone()));
+    }
+
     let root = crate::workspace::root()?;
     let web_src_dir = root.join("apps").join("game-client").join("web");
     let wasm_src = resolve_wasm_source(&root)?;
-
-    let out_dir = if let Some(pos) = args.iter().position(|a| a == "--out-dir") {
-        if let Some(path) = args.get(pos + 1) {
-            PathBuf::from(path)
-        } else {
-            root.join("target").join("tabula-web-game")
-        }
-    } else {
-        root.join("target").join("tabula-web-game")
-    };
+    let out_dir = root.join("target").join("tabula-web-game");
 
     let report = stage_bundle(&web_src_dir, &wasm_src, &out_dir)?;
 
@@ -105,6 +103,11 @@ pub fn stage_bundle(
     let html_src = web_src_dir.join("index.html");
     let js_src = web_src_dir.join("mq_js_bundle.js");
 
+    // The destination is workspace-owned output. Invalidate it before every
+    // attempt so a failed current stage cannot leave a previous bundle to be
+    // served accidentally.
+    remove_existing_destination(out_dir)?;
+
     if !wasm_src.is_file() {
         return Err(WasmStageError::MissingWasmArtifact(wasm_src.to_path_buf()));
     }
@@ -117,24 +120,40 @@ pub fn stage_bundle(
 
     validate_host_html(&html_src)?;
 
-    if !out_dir.exists() {
-        std::fs::create_dir_all(out_dir).map_err(|source| WasmStageError::CreateDir {
-            path: out_dir.to_path_buf(),
+    let parent = out_dir
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    std::fs::create_dir_all(parent).map_err(|source| WasmStageError::CreateDir {
+        path: parent.to_path_buf(),
+        source,
+    })?;
+    let staging_dir = tempfile::Builder::new()
+        .prefix(".tabula-web-game-")
+        .tempdir_in(parent)
+        .map_err(|source| WasmStageError::CreateDir {
+            path: parent.to_path_buf(),
             source,
         })?;
-    }
 
-    let html_dst = out_dir.join("index.html");
-    let js_dst = out_dir.join("mq_js_bundle.js");
-    let wasm_dst = out_dir.join("tabula-game-client.wasm");
+    let html_dst = staging_dir.path().join("index.html");
+    let js_dst = staging_dir.path().join("mq_js_bundle.js");
+    let wasm_dst = staging_dir.path().join("tabula-game-client.wasm");
 
     copy_file(&html_src, &html_dst)?;
     copy_file(&js_src, &js_dst)?;
     copy_file(wasm_src, &wasm_dst)?;
 
+    validate_host_html(&html_dst)?;
     let html_size = file_size(&html_dst)?;
     let js_size = file_size(&js_dst)?;
     let wasm_size = file_size(&wasm_dst)?;
+
+    std::fs::rename(staging_dir.path(), out_dir).map_err(|source| WasmStageError::Io {
+        src: staging_dir.path().to_path_buf(),
+        dst: out_dir.to_path_buf(),
+        source,
+    })?;
 
     Ok(WasmStageReport {
         out_dir: out_dir.to_path_buf(),
@@ -142,6 +161,22 @@ pub fn stage_bundle(
         js_size,
         wasm_size,
     })
+}
+
+fn remove_existing_destination(out_dir: &Path) -> Result<(), WasmStageError> {
+    match std::fs::symlink_metadata(out_dir) {
+        Ok(_) => std::fs::remove_dir_all(out_dir).map_err(|source| WasmStageError::Io {
+            src: out_dir.to_path_buf(),
+            dst: out_dir.to_path_buf(),
+            source,
+        }),
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(source) => Err(WasmStageError::Io {
+            src: out_dir.to_path_buf(),
+            dst: out_dir.to_path_buf(),
+            source,
+        }),
+    }
 }
 
 fn validate_host_html(path: &Path) -> Result<(), WasmStageError> {
@@ -215,6 +250,8 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
+    const VALID_WASM: &[u8] = b"\0asm\x01\0\0\0";
+
     fn write_valid_html(path: &Path) {
         let content = r#"<!DOCTYPE html>
 <html>
@@ -240,7 +277,7 @@ mod tests {
 
         write_valid_html(&html_path);
         std::fs::write(&js_path, "/* mock js */").unwrap();
-        std::fs::write(&wasm_path, b"\0asm\x01\0\0\0").unwrap();
+        std::fs::write(&wasm_path, VALID_WASM).unwrap();
 
         let report = stage_bundle(web_dir.path(), &wasm_path, out_dir.path()).unwrap();
 
@@ -249,6 +286,20 @@ mod tests {
         assert!(out_dir.path().join("mq_js_bundle.js").is_file());
         assert!(out_dir.path().join("tabula-game-client.wasm").is_file());
         assert_eq!(report.wasm_size, 8);
+
+        let mut entries: Vec<_> = std::fs::read_dir(out_dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        entries.sort();
+        assert_eq!(
+            entries,
+            vec![
+                std::ffi::OsString::from("index.html"),
+                std::ffi::OsString::from("mq_js_bundle.js"),
+                std::ffi::OsString::from("tabula-game-client.wasm"),
+            ]
+        );
     }
 
     #[test]
@@ -268,16 +319,31 @@ mod tests {
     }
 
     #[test]
-    fn stage_bundle_fails_when_host_files_are_missing() {
+    fn stage_bundle_fails_when_html_is_missing() {
         let web_dir = tempdir().unwrap();
         let wasm_dir = tempdir().unwrap();
         let out_dir = tempdir().unwrap();
 
         let wasm_path = wasm_dir.path().join("tabula-game-client.wasm");
-        std::fs::write(&wasm_path, b"\0asm\x01\0\0\0").unwrap();
+        std::fs::write(&wasm_path, VALID_WASM).unwrap();
 
         let err = stage_bundle(web_dir.path(), &wasm_path, out_dir.path()).unwrap_err();
         assert!(matches!(err, WasmStageError::MissingHostFile(_)));
+    }
+
+    #[test]
+    fn stage_bundle_fails_when_js_is_missing() {
+        let web_dir = tempdir().unwrap();
+        let wasm_dir = tempdir().unwrap();
+        let out_dir = tempdir().unwrap();
+
+        let html_path = web_dir.path().join("index.html");
+        let wasm_path = wasm_dir.path().join("tabula-game-client.wasm");
+        write_valid_html(&html_path);
+        std::fs::write(&wasm_path, VALID_WASM).unwrap();
+
+        let err = stage_bundle(web_dir.path(), &wasm_path, out_dir.path()).unwrap_err();
+        assert!(matches!(err, WasmStageError::MissingBootstrapFile(_)));
     }
 
     #[test]
@@ -300,7 +366,7 @@ mod tests {
 </html>"#;
         std::fs::write(&html_path, cdn_html).unwrap();
         std::fs::write(&js_path, "/* mock js */").unwrap();
-        std::fs::write(&wasm_path, b"\0asm\x01\0\0\0").unwrap();
+        std::fs::write(&wasm_path, VALID_WASM).unwrap();
 
         let err = stage_bundle(web_dir.path(), &wasm_path, out_dir.path()).unwrap_err();
         assert!(matches!(err, WasmStageError::InvalidHostHtml { .. }));
@@ -324,6 +390,7 @@ mod tests {
         std::fs::write(out_dir.path().join("index.html"), "stale").unwrap();
         std::fs::write(out_dir.path().join("mq_js_bundle.js"), "stale").unwrap();
         std::fs::write(out_dir.path().join("tabula-game-client.wasm"), "stale").unwrap();
+        std::fs::write(out_dir.path().join("stale.txt"), "stale").unwrap();
 
         let report = stage_bundle(web_dir.path(), &wasm_path, out_dir.path()).unwrap();
         assert_eq!(report.wasm_size, 10);
@@ -331,5 +398,47 @@ mod tests {
             std::fs::read(out_dir.path().join("tabula-game-client.wasm")).unwrap(),
             b"\0asm\x01\0\0\0v2"
         );
+        assert!(!out_dir.path().join("stale.txt").exists());
+        assert_eq!(std::fs::read_dir(out_dir.path()).unwrap().count(), 3);
+    }
+
+    #[test]
+    fn stage_bundle_rejects_empty_staged_file() {
+        let web_dir = tempdir().unwrap();
+        let wasm_dir = tempdir().unwrap();
+        let out_dir = tempdir().unwrap();
+
+        let html_path = web_dir.path().join("index.html");
+        let js_path = web_dir.path().join("mq_js_bundle.js");
+        let wasm_path = wasm_dir.path().join("tabula-game-client.wasm");
+
+        write_valid_html(&html_path);
+        std::fs::write(&js_path, "/* mock js */").unwrap();
+        std::fs::write(&wasm_path, b"").unwrap();
+
+        let err = stage_bundle(web_dir.path(), &wasm_path, out_dir.path()).unwrap_err();
+        assert!(matches!(err, WasmStageError::EmptyStagedFile(_)));
+        assert!(!out_dir.path().exists());
+    }
+
+    #[test]
+    fn failed_stage_removes_previous_bundle() {
+        let web_dir = tempdir().unwrap();
+        let wasm_dir = tempdir().unwrap();
+        let out_dir = tempdir().unwrap();
+
+        let html_path = web_dir.path().join("index.html");
+        let js_path = web_dir.path().join("mq_js_bundle.js");
+        let wasm_path = wasm_dir.path().join("tabula-game-client.wasm");
+
+        write_valid_html(&html_path);
+        std::fs::write(&js_path, "/* mock js */").unwrap();
+        std::fs::write(&wasm_path, VALID_WASM).unwrap();
+        stage_bundle(web_dir.path(), &wasm_path, out_dir.path()).unwrap();
+
+        std::fs::remove_file(&wasm_path).unwrap();
+        let err = stage_bundle(web_dir.path(), &wasm_path, out_dir.path()).unwrap_err();
+        assert!(matches!(err, WasmStageError::MissingWasmArtifact(_)));
+        assert!(!out_dir.path().exists());
     }
 }
