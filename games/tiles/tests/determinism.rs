@@ -15,11 +15,11 @@
 mod support;
 
 use proptest::prelude::*;
-use tabula_core::{canonical_encode, MatchSeed, SeatId};
-use tabula_game_api::{AdminInput, GameRules, Input};
+use tabula_core::{canonical_decode, canonical_encode, MatchSeed, SeatId};
+use tabula_game_api::{AdminInput, GameRules, Input, LegalCommands};
 use tabula_game_tiles::{
-    rules::{legal_placements, MAX_COORD},
-    Command, Coord, Rotation, State, Status, TilesRules,
+    rules::{PlaceTileHint, HINT_PLACE_TILE, MAX_COORD},
+    Command, Coord, Rotation, State, Status, TilesRules, TurnPhase,
 };
 
 use support::{apply_at, config, create, next_placement, SEATS_MAX, SEATS_MIN};
@@ -131,31 +131,57 @@ proptest! {
         }
     }
 
-    /// **Hint soundness over reachable states**, not just at two hand-picked
-    /// positions the way the conformance suite checks enumerations.
+    /// **Hint and enumeration soundness over reachable states.** Every command
+    /// `legal_commands` advertises — a `(square, rotation)` inside a
+    /// `place-tile` hint, or a claim in the enumerated claim step — must be
+    /// accepted by `apply`.
+    ///
+    /// The conformance suite only inspects `Enumerated` results and only at two
+    /// hand-picked positions. This covers both variants across the whole
+    /// reachable space, which is what Tiles needs: it is the first game whose
+    /// answer changes shape depending on the state.
     #[test]
-    fn every_advertised_placement_is_accepted_by_apply(state in reachable_strategy()) {
+    fn every_command_legal_commands_advertises_is_accepted_by_apply(
+        state in reachable_strategy(),
+    ) {
         prop_assume!(state.status() == Status::Playing);
-        let kind = state.drawn().expect("a playing match holds a drawn tile");
         let seed = MatchSeed::from_bytes([7u8; 32]);
+        let seat = state.turn();
 
-        for (at, rotations) in legal_placements(state.board(), kind) {
-            for rotation in rotations {
-                let mut probe = state.clone();
-                let outcome = apply_at(
-                    &mut probe,
-                    Input::Player {
-                        seat: state.turn(),
-                        command: Command::PlaceTile { at, rotation },
-                    },
-                    &seed,
-                    1,
-                );
-                prop_assert!(
-                    outcome.is_ok(),
-                    "legal_placements advertised {at:?} {rotation:?} but apply refused it"
-                );
+        let commands: Vec<Command> = match TilesRules::legal_commands(&state, seat) {
+            LegalCommands::Enumerated(commands) => {
+                prop_assert_eq!(state.phase(), TurnPhase::PlaceMeeple);
+                commands
             }
+            LegalCommands::Hints(hints) => {
+                prop_assert_eq!(state.phase(), TurnPhase::PlaceTile);
+                let mut commands = Vec::new();
+                for hint in &hints {
+                    prop_assert_eq!(hint.kind(), HINT_PLACE_TILE);
+                    let payload: PlaceTileHint = canonical_decode(hint.data())
+                        .expect("a hint payload is canonically encoded");
+                    for rotation in payload.rotations {
+                        commands.push(Command::PlaceTile { at: payload.at, rotation });
+                    }
+                }
+                commands
+            }
+            LegalCommands::None | LegalCommands::Unknown => Vec::new(),
+        };
+
+        prop_assert!(
+            !commands.is_empty(),
+            "a playing match always offers the seat on turn something to do"
+        );
+        for command in commands {
+            let mut probe = state.clone();
+            let outcome = apply_at(&mut probe, Input::Player { seat, command }, &seed, 1);
+            prop_assert!(
+                outcome.is_ok(),
+                "legal_commands advertised {:?} but apply refused it: {:?}",
+                command,
+                outcome.err()
+            );
         }
     }
 

@@ -35,22 +35,29 @@
 //! rules::coord      Coord, Side, Rotation           — the coordinate system
 //! rules::tile       Terrain, FeatureKind, TileKind, PlacedTile, Board, TILE_SET
 //! rules::placement  pure placement legality over a Board
+//! rules::feature    FeatureGraph — the incremental component structure, plus
+//!                   the whole-board recomputation it is checked against
+//! rules::scoring    the single authority for every point in the game
+//! rules::secret     the information model, test/testkit builds only
 //! rules::state      State, Command, Event, View, Config, and the validator
 //! rules             impl GameRules for TilesRules
+//! bot               a shallow policy over the projection; the fuzz driver
 //! ```
 //!
 //! Dependencies point one way only: `coord → tile → placement → feature →
-//! state → rules → (bot, presentation)`. Canonical rules never reach back into
-//! `bot` or `presentation`.
+//! scoring → state → rules → (bot, presentation)`. Canonical rules never reach
+//! back into `bot` or `presentation`.
 //!
 //! ## The contract lessons this game actually produced
 //!
 //! 1. **`state_size` is set from a measurement, not from the design estimate.**
-//!    Doc 02 §12.4 expected `Medium` (30–120 KB). `tests/state_size.rs`
-//!    measures the canonical encoding of a full board and the declared class
-//!    follows that number. See [`rules::state`] and `docs/games/tiles.md` for
-//!    what the measurement came out to and what it means for doc 03 §9.2's
-//!    snapshot table.
+//!    Doc 02 §12.4 expected `Medium` (30–120 KB). `tests/state_size.rs` plays
+//!    complete matches at every seat count and measures the canonical
+//!    encoding: **a full board is about 1.7 KB**, so the declared class is
+//!    `Small`. The test asserts the declared class *is* the measured one, in
+//!    both this file and `game.toml`, so the two cannot drift. The honest
+//!    consequence — no game in the portfolio occupies `Medium` — is recorded
+//!    in doc 03 §9.2 and `docs/games/tiles.md`.
 //!
 //! 2. **`legal_commands` returns `Hints` in the placement phase.** One hint per
 //!    legal coordinate, carrying that coordinate's legal rotations — enough for
@@ -66,9 +73,12 @@
 //!    is why `apply` takes `&mut State` (doc 02 §3.3). It participates in the
 //!    state hash by construction (it is a `State` field and `state_hash` is the
 //!    default postcard hash), so a divergence in it is caught rather than
-//!    silently accumulating. It is deliberately **not** a union-find: see
-//!    [`rules::feature`] for the four representations that were compared and
-//!    why canonical-serialization safety decided it.
+//!    silently accumulating. It is deliberately **not** a union-find — the one
+//!    word of doc 02 §12.4's sketch that implementation overturned, because
+//!    path compression mutates on read and `project` is a read path. See
+//!    [`rules::feature`] for the four representations compared and why
+//!    canonical-serialization safety decided it, and `tests/features.rs` for
+//!    the whole-board recomputation kept as its differential oracle.
 //!
 //! 4. **The bag order is secret; the count is public.** Tiles declares
 //!    `hidden_information = true`, implements
@@ -117,9 +127,13 @@
 // into those noncanonical sources.
 pub mod rules;
 
-// `bots` and `presentation` arrive with Parts 2 and 3 of this change; the
-// feature flags exist from the start because the feature *shape* is identical
-// for every game crate (doc 01 §5.1 rule 3), not because the code is written.
+// `cfg(test)` alongside the feature so `cargo test -p tabula-game-tiles` runs
+// the self-play fuzzer: an integration test cannot enable its own crate's
+// features, and self-play belongs with the rules rather than in the client.
+#[cfg(any(test, feature = "bots"))]
+pub mod bot;
+
+// `presentation` arrives with Part 3.
 
 use std::sync::LazyLock;
 
@@ -133,8 +147,9 @@ use tabula_game_api::{
 };
 
 pub use rules::{
-    Board, Command, Config, Coord, Event, FeatureKind, PlacedTile, Rotation, Side, State, Status,
-    Terrain, TileKind, TilesRules, View, ViewEvent,
+    Board, Command, Config, Coord, Event, Feature, FeatureGraph, FeatureId, FeatureKind,
+    PlacedTile, Rotation, SegmentRef, Side, State, Status, Terrain, TileKind, TilesRules,
+    TurnPhase, View, ViewEvent,
 };
 
 /// The game package around [`TilesRules`].
@@ -150,6 +165,14 @@ impl GameModule for TilesModule {
 
     fn capabilities() -> &'static GameCapabilities {
         &CAPABILITIES
+    }
+
+    #[cfg(any(test, feature = "bots"))]
+    fn bot(level: BotLevel) -> Option<Box<dyn tabula_game_api::GameBot<TilesRules>>> {
+        match level {
+            BotLevel::Trivial | BotLevel::Easy => Some(Box::new(bot::Greedy::new(level))),
+            BotLevel::Medium | BotLevel::Hard => None,
+        }
     }
 
     fn validate_config(cfg: &Config, roster: &SeatRoster) -> Result<(), ConfigError> {
@@ -228,7 +251,7 @@ static CAPABILITIES: LazyLock<GameCapabilities> = LazyLock::new(|| {
         // False deliberately — see the "Deferred, and honestly so" note above.
         client_preview: false,
         // Set from `tests/state_size.rs`, not from the design estimate.
-        state_size: StateSizeClass::Tiny,
+        state_size: StateSizeClass::Small,
         apply_budget: Budget {
             max_apply_micros: 2_000,
             max_events_per_input: 16,

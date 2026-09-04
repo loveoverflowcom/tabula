@@ -14,10 +14,12 @@ use tabula_core::{
 use tabula_game_api::{AdminInput, GameRules, Input, LegalCommands};
 use tabula_game_tiles::{
     rules::{PlaceTileHint, HINT_PLACE_TILE},
-    Command, Coord, Event, Rotation, State, Status, TilesRules,
+    Command, Coord, Event, Rotation, State, Status, TilesRules, TurnPhase,
 };
 
-use support::{apply_at, config, create, drive, next_placement, timed_config, ALT_SEED, SEED};
+use support::{
+    apply_at, config, create, drive, next_input, next_placement, timed_config, ALT_SEED, SEED,
+};
 
 const SEATS: u8 = 3;
 
@@ -53,29 +55,92 @@ fn create_opens_with_the_start_tile_placed_and_one_tile_in_hand() {
 }
 
 #[test]
-fn a_placement_hands_the_turn_on_and_draws_for_the_next_seat() {
+fn a_placement_enters_the_claim_step_and_only_then_hands_the_turn_on() {
     let mut state = opening();
     let before_bag = state.bag_remaining();
-    let input = next_placement(&state).unwrap();
-    let outcome = apply_at(&mut state, input, &seed(), 1).expect("legal");
+    let seat = state.turn();
 
-    assert_eq!(state.turn(), SeatId(1));
+    // Step one: the tile goes down. No draw yet, and the turn has not moved —
+    // scoring waits for the claim, because a follower placed now can still
+    // score a feature this very tile completed.
+    let input = next_input(&state).unwrap();
+    let outcome = apply_at(&mut state, input, &seed(), 1).expect("legal");
+    assert_eq!(state.phase(), TurnPhase::PlaceMeeple);
+    assert_eq!(state.turn(), seat, "the same seat is still acting");
     assert_eq!(state.board().len(), 2);
-    assert_eq!(state.bag_remaining(), before_bag - 1);
-    assert!(state.drawn().is_some());
+    assert_eq!(state.drawn(), None);
+    assert_eq!(state.bag_remaining(), before_bag);
     assert!(matches!(
         outcome.events.first(),
-        Some(Event::TilePlaced { seat, .. }) if *seat == SeatId(0)
+        Some(Event::TilePlaced { seat: s, .. }) if *s == seat
     ));
+    assert!(
+        !outcome
+            .events
+            .iter()
+            .any(|event| matches!(event, Event::TileDrawn { .. })),
+        "the next tile is drawn when the turn ends, not when the tile lands"
+    );
+
+    // Step two: the claim decision ends the turn and draws for the next seat.
+    let input = next_input(&state).unwrap();
+    let outcome = apply_at(&mut state, input, &seed(), 2).expect("legal");
+    assert_eq!(state.phase(), TurnPhase::PlaceTile);
+    assert_eq!(state.turn(), SeatId(1));
+    assert_eq!(state.bag_remaining(), before_bag - 1);
+    assert!(state.drawn().is_some());
     assert!(outcome
         .events
         .iter()
         .any(|event| matches!(event, Event::TileDrawn { .. })));
 }
 
+/// The claim step is offered only when there is something to claim: a seat
+/// with no followers left is never asked.
 #[test]
-fn turn_order_cycles_through_every_seat() {
-    let (state, script) = drive(&seed(), SEATS, config(), 7);
+fn a_seat_with_no_followers_left_skips_the_claim_step_entirely() {
+    let (mut state, _) = drive(&seed(), SEATS, config(), 60);
+    // The greedy driver claims whenever it can, so by now at least one seat has
+    // spent its followers.
+    let exhausted = state
+        .meeples_in_hand()
+        .iter()
+        .find(|(_, in_hand)| **in_hand == 0)
+        .map(|(seat, _)| *seat);
+    let Some(exhausted) = exhausted else {
+        return; // nothing to assert on this shuffle
+    };
+
+    // Advance to that seat's placement step.
+    for step in 0..24u64 {
+        if state.turn() == exhausted && state.phase() == TurnPhase::PlaceTile {
+            break;
+        }
+        let Some(input) = next_input(&state) else {
+            return;
+        };
+        apply_at(&mut state, input, &seed(), 200 + step).expect("legal");
+    }
+    if state.turn() != exhausted || state.phase() != TurnPhase::PlaceTile {
+        return;
+    }
+
+    let before = state.turn();
+    let input = next_input(&state).unwrap();
+    apply_at(&mut state, input, &seed(), 300).expect("legal");
+    assert_eq!(
+        state.phase(),
+        TurnPhase::PlaceTile,
+        "a seat with nothing to claim is not asked to claim"
+    );
+    assert_ne!(state.turn(), before, "its turn ended with the placement");
+}
+
+/// Turn order rotates once per *turn*, not once per input: a turn is a
+/// placement and then a claim decision, both by the same seat.
+#[test]
+fn turn_order_cycles_through_every_seat_once_per_turn() {
+    let (_, script) = drive(&seed(), SEATS, config(), 12);
     let seats: Vec<SeatId> = script
         .iter()
         .map(|input| match input {
@@ -83,19 +148,22 @@ fn turn_order_cycles_through_every_seat() {
             _ => unreachable!("the driver only produces player inputs"),
         })
         .collect();
-    assert_eq!(
-        seats,
-        vec![
-            SeatId(0),
-            SeatId(1),
-            SeatId(2),
-            SeatId(0),
-            SeatId(1),
-            SeatId(2),
-            SeatId(0)
-        ]
-    );
-    assert_eq!(state.turn(), SeatId(1));
+
+    // Collapse consecutive runs by the same seat into one turn.
+    let mut turns: Vec<SeatId> = Vec::new();
+    for seat in seats {
+        if turns.last() != Some(&seat) {
+            turns.push(seat);
+        }
+    }
+    assert!(turns.len() >= 4, "the script must cover several turns");
+    for (index, seat) in turns.iter().enumerate() {
+        assert_eq!(
+            *seat,
+            SeatId(u8::try_from(index % usize::from(SEATS)).unwrap()),
+            "turn {index} belongs to the wrong seat"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -484,12 +552,39 @@ fn the_match_ends_when_the_bag_runs_dry_with_every_tile_accounted_for() {
     assert_eq!(state.status(), Status::Ended);
     assert_eq!(state.bag_remaining(), 0);
     assert_eq!(state.drawn(), None);
+    assert_eq!(state.phase(), TurnPhase::PlaceTile);
     assert_eq!(
         state.board().len() - 1 + state.discarded().len(),
         tabula_game_tiles::rules::BAG_SIZE,
         "every tile that left the bag is either on the board or in the discards"
     );
-    assert_eq!(script.len(), state.board().len() - 1);
+    let placements = script
+        .iter()
+        .filter(|input| {
+            matches!(
+                input,
+                Input::Player {
+                    command: Command::PlaceTile { .. },
+                    ..
+                }
+            )
+        })
+        .count();
+    assert_eq!(placements, state.board().len() - 1);
+
+    // Every follower is back in a hand: end-of-game scoring retires every
+    // remaining feature, and a retired feature holds nothing.
+    assert!(state.features().followers().is_empty());
+    for seat in state.seats() {
+        assert_eq!(
+            state.meeples_in_hand().get(seat).copied(),
+            Some(tabula_game_tiles::rules::MEEPLES_PER_SEAT)
+        );
+    }
+    // Somebody scored something: a whole match that awarded nothing would make
+    // every scoring assertion elsewhere suspect.
+    assert!(state.scores().values().any(|score| *score > 0));
+
     // The validator agrees the terminal position is well formed.
     assert_eq!(state.check_invariants(), Ok(()));
 }

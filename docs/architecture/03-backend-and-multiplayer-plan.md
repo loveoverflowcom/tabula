@@ -565,10 +565,18 @@ Caro's `StateSizeClass` remains `TBD` until its final board dimensions and canon
 implemented and measured; the implementation then selects `Tiny` or `Small` from the encoded
 state size rather than from the placeholder design.
 
-Tiles was the design's expected `Medium` example. That expectation is also `TBD` until Phase 3
-measures the canonical encoding of a full board, and the row above deliberately names no game
-rather than naming one on the strength of an estimate. A class that no shipped game occupies is an
-honest table entry; a class assigned from a guess sets a snapshot cadence nobody measured.
+Tiles was the design's expected `Medium` example. Phase 3 measured it
+(`games/tiles/tests/state_size.rs`, over complete matches at every supported seat count): **a full
+Tiles board encodes to about 1.7 KB**, so Tiles is `Small`, and the `Medium` row above deliberately
+names no game rather than naming one on the strength of an estimate. A class that no shipped game
+occupies is an honest table entry; a class assigned from a guess sets a snapshot cadence nobody
+measured.
+
+What this does *not* mean is that `StateSizeClass` is idle. Tiles' state grows about fivefold over
+a match while chess's barely moves, which is the behaviour the class exists to describe; the
+absolute numbers simply came out smaller than the design guessed, because a `BTreeMap` of 72
+`(i16, i16) -> (u8, u8)` entries plus its feature graph is small. The trigger to revisit the
+`Medium` row is a game whose canonical state genuinely exceeds 16 KiB — not a re-estimate.
 
 ### 9.3 State hashes
 

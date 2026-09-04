@@ -69,20 +69,9 @@ impl FeatureKind {
         }
     }
 
-    /// Points per tile when the feature is completed.
-    #[must_use]
-    pub const fn points_per_tile_complete(self) -> i64 {
-        match self {
-            Self::Road | Self::Monastery => 1,
-            Self::City => 2,
-        }
-    }
-
-    /// Points per tile at end of game, for a feature left unfinished.
-    #[must_use]
-    pub const fn points_per_tile_incomplete(self) -> i64 {
-        1
-    }
+    // Point values deliberately live in `super::scoring` and nowhere else: a
+    // `points_per_tile` constant here would be right for roads and cities and
+    // wrong for a monastery, which is worth nine while covering one tile.
 }
 
 /// One feature as it appears on a single tile: a kind, the tile edges it

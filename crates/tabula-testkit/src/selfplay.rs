@@ -568,6 +568,7 @@ fn simulate<M: GameModule>(
     let mut now = LogicalTime::ZERO;
     let mut hostile_since_progress = false;
     let mut last_timer = None;
+    let mut owed_resume = false;
 
     while trace.terminal_outcome.is_none() {
         if trace.steps.len() >= usize::try_from(cfg.max_inputs).unwrap_or(usize::MAX) {
@@ -592,6 +593,54 @@ fn simulate<M: GameModule>(
         }
 
         let next_index = trace.steps.len() as u64 + 1;
+
+        // `Admin(Pause)` is the one hostile input that can change whether the
+        // match is drivable at all. A game declaring `pausable = false`
+        // rejects it and nothing happens; a game declaring `pausable = true`
+        // *accepts* it and then legitimately refuses every command until it is
+        // resumed — at which point the stall check below would report
+        // `BotProducedNoCommand` for a match behaving exactly as its
+        // capabilities say it should.
+        //
+        // So the harness undoes what the harness did: a hostile pause is
+        // always followed by a resume attempt. Games that reject `Pause`
+        // reject this too and simply record one more transactional rejection,
+        // which is why this needs no capability check and no game-specific
+        // branch (I-9).
+        if owed_resume {
+            owed_resume = false;
+            let failure = {
+                let mut context = ApplyContext {
+                    trace: &mut trace,
+                    timers: &mut timers,
+                    terminal_outcome: &mut terminal_outcome,
+                    roster: &setup.roster,
+                    check_projections: cfg.check_projections,
+                    latency: &mut latency,
+                    measure,
+                };
+                apply_one::<M::Rules>(
+                    &mut state,
+                    Input::Admin(AdminInput::Resume),
+                    now,
+                    InputIndex(next_index),
+                    seed,
+                    &mut context,
+                )
+            };
+            if let Some(failure) = failure {
+                return finish_execution::<M::Rules>(
+                    trace,
+                    &state,
+                    Some(failure),
+                    terminal_outcome.as_ref(),
+                    latency,
+                );
+            }
+            trace.terminal_outcome.clone_from(&terminal_outcome);
+            continue;
+        }
+
         let schedule = match next_bot_action::<M>(
             &state,
             now,
@@ -641,6 +690,7 @@ fn simulate<M: GameModule>(
                 &mut hostile_rng,
             );
             if let Some(input) = hostile {
+                owed_resume = matches!(input, Input::Admin(AdminInput::Pause));
                 let failure = {
                     let mut context = ApplyContext {
                         trace: &mut trace,

@@ -109,7 +109,7 @@ mod tests {
     };
     use tabula_testkit::GameTestFixture;
 
-    use crate::rules::{first_legal_placement, Command, Config, Event, Status};
+    use crate::rules::{first_legal_placement, Command, Config, Event, Status, TurnPhase};
     use crate::TilesModule;
 
     const SEED: [u8; 32] = [11u8; 32];
@@ -156,14 +156,25 @@ mod tests {
             if state.status() != Status::Playing {
                 break;
             }
-            let Some(kind) = state.drawn() else { break };
-            let Some((at, rotation)) = first_legal_placement(state.board(), kind) else {
-                break;
+            // The same "first legal placement, then claim greedily" driver the
+            // integration tests use. Claiming matters here: a trace with no
+            // followers on the board would still exercise the bag secret, but
+            // it would not exercise a `View` that carries follower positions.
+            let seat = state.turn();
+            let command = match state.phase() {
+                TurnPhase::PlaceTile => {
+                    let Some(kind) = state.drawn() else { break };
+                    let Some((at, rotation)) = first_legal_placement(state.board(), kind) else {
+                        break;
+                    };
+                    Command::PlaceTile { at, rotation }
+                }
+                TurnPhase::PlaceMeeple => match state.claimable_segments().first() {
+                    Some(segment) => Command::PlaceMeeple { segment: *segment },
+                    None => Command::SkipMeeple,
+                },
             };
-            let input = Input::Player {
-                seat: state.turn(),
-                command: Command::PlaceTile { at, rotation },
-            };
+            let input = Input::Player { seat, command };
             let index = InputIndex(step as u64 + 1);
             let mut rng = DetRng::for_input(seed, index);
             let mut ctx = Ctx {
@@ -173,7 +184,7 @@ mod tests {
                 budget: Budget::default(),
             };
             TilesRules::apply(&mut state, input.clone(), &mut ctx)
-                .expect("a first-legal placement is legal");
+                .expect("a driven input is legal");
             script.push(input);
         }
         (state, script)
@@ -279,7 +290,10 @@ mod tests {
         let (state, _) = drive(&MatchSeed::from_bytes(SEED), 3, 12);
         let scrambled = with_reversed_bag(&state);
         let event = Event::TileDrawn {
-            kind: state.drawn().expect("a playing match holds a drawn tile"),
+            kind: state
+                .drawn()
+                .or_else(|| state.board().get(state.last_placed()?).map(|t| t.kind))
+                .expect("the trace has drawn or placed at least one tile"),
         };
 
         for viewer in viewers() {
@@ -295,18 +309,27 @@ mod tests {
     }
 
     /// The positive control. Without it, a `project` that returned a constant
-    /// would satisfy every assertion above. Drawing a tile is a *public*
-    /// change — the count drops and a tile appears — so every viewer must be
-    /// able to see it.
+    /// would satisfy every assertion above. One more real turn is a *public*
+    /// change — a tile appears, the count drops, possibly a follower lands — so
+    /// every viewer must be able to tell the two states apart.
+    ///
+    /// The precondition is stated as "the canonical states actually differ"
+    /// rather than "the bag count dropped": whether input *n* is a placement or
+    /// a claim depends on the shuffle, and a control whose precondition is
+    /// accidentally false is not a control.
     #[test]
-    fn a_draw_is_public_and_every_viewer_can_tell_the_two_states_apart() {
+    fn a_public_change_is_visible_to_every_viewer() {
         let (before, _) = drive(&MatchSeed::from_bytes(SEED), 3, 4);
         let (after, _) = drive(&MatchSeed::from_bytes(SEED), 3, 5);
-        assert_ne!(before.bag_remaining(), after.bag_remaining());
+        assert_ne!(
+            canonical_encode(&before).unwrap(),
+            canonical_encode(&after).unwrap(),
+            "the two states must really differ, or this control proves nothing"
+        );
 
         for viewer in viewers() {
             assert_projection_differs::<TilesRules>(
-                "a placement and its draw are public",
+                "one more turn is public",
                 &before,
                 &after,
                 viewer,
@@ -319,7 +342,10 @@ mod tests {
     #[test]
     fn two_different_public_events_remain_distinguishable_to_every_viewer() {
         let (state, _) = drive(&MatchSeed::from_bytes(SEED), 3, 6);
-        let drawn = state.drawn().expect("a playing match holds a drawn tile");
+        let drawn = state
+            .drawn()
+            .or_else(|| state.board().get(state.last_placed()?).map(|t| t.kind))
+            .expect("the trace has drawn or placed at least one tile");
         let other = crate::rules::TileKind::all()
             .find(|kind| *kind != drawn)
             .expect("the tile set has more than one kind");

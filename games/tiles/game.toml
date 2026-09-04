@@ -43,7 +43,7 @@ durability         = "ack_after_persist"   # required by ranked (cross-field law
 # Measured, not estimated: see games/tiles/tests/state_size.rs. The design
 # expected `medium` (doc 02 §12.4); the measurement said otherwise and this
 # follows the measurement.
-state_size         = "tiny"
+state_size         = "small"
 
 [capabilities.chat]
 channels    = [{ key = "table", kind = "table" }]

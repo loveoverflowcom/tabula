@@ -12,7 +12,7 @@ mod support;
 
 use tabula_core::{MatchSeed, SeatRoster};
 use tabula_game_api::Input;
-use tabula_game_tiles::{Command, Config, Coord, Rotation, TilesModule};
+use tabula_game_tiles::{Command, Config, Coord, Rotation, TilesModule, TurnPhase};
 use tabula_testkit::{
     GameTestFixture, InvalidCommandScenario, RandomnessScenario, TerminalScenario,
 };
@@ -40,18 +40,41 @@ impl GameTestFixture for TilesFixture {
         MatchSeed::from_bytes(SEED)
     }
 
-    /// Twelve real placements: four full rounds of three seats, which is deep
-    /// enough that the board has branched in every direction and the state is
-    /// far from the opening position (what makes the hash-sensitivity and
-    /// ordered-events checks non-vacuous).
+    /// A dozen real inputs — several full turns of three seats, with tiles
+    /// placed in every direction and followers claimed along the way — ending
+    /// **in the claim step**.
+    ///
+    /// Ending there is deliberate. `conformance::commands::check_legal` only
+    /// inspects `Enumerated` results, and Tiles enumerates only in the claim
+    /// step; a script that happened to stop at a turn boundary would leave that
+    /// check silently vacuous, which this crate's own docs call out as a bug
+    /// class of its own.
     fn deterministic_script() -> Vec<Input<Command>> {
-        support::drive(&MatchSeed::from_bytes(SEED), SEATS, support::config(), 12).1
+        let (state, script) = support::drive_to_claim_phase(
+            &MatchSeed::from_bytes(SEED),
+            SEATS,
+            support::config(),
+            12,
+        );
+        assert_eq!(
+            state.phase(),
+            TurnPhase::PlaceMeeple,
+            "the fixture script must end in the claim step, or legal_commands              sanity never sees an enumeration"
+        );
+        assert!(
+            !state.features().followers().is_empty(),
+            "the fixture script must put at least one follower on the board, or              the security suite scans a View with no follower positions in it"
+        );
+        script
     }
 
     fn invalid_command() -> Option<InvalidCommandScenario<Command>> {
+        // Stop at a placement step so both the rejected command and the probe
+        // are placements: the R8 check applies the probe right after the
+        // rejection and needs it to be legal from the same state.
         let (state, setup) =
             support::drive(&MatchSeed::from_bytes(SEED), SEATS, support::config(), 2);
-        let probe = support::next_placement(&state).expect("the match is still in progress");
+        let probe = support::next_placement(&state).expect("the match is at a placement step");
         Some(InvalidCommandScenario {
             setup,
             // Far from the board, so it touches nothing: rejected for a reason

@@ -27,6 +27,10 @@ A drawn tile with no legal square anywhere is discarded publicly and another
 is drawn. The match ends when the bag is empty.
 ```
 
+Each turn is two steps: place the tile, then claim one of its features or
+decline. Claiming waits until after the placement because a follower placed now
+can still score a feature *this* tile completed.
+
 Edge terrains are **City**, **Road**, and **Field**; two tiles may sit side by
 side only where the terrains facing each other are equal.
 
@@ -35,6 +39,53 @@ and the tile edges it reaches. That is what distinguishes "one city passing
 through" from "two separate cities on opposite edges", which four edge letters
 could not express. Edge terrain is derived from the segments, so the two can
 never disagree.
+
+### Followers and scoring
+
+Each seat has seven followers. A follower may be placed only on a feature of
+the tile just placed, and only on a feature **nobody has claimed yet** — a
+feature gains a second owner by *merging* with an already-claimed one, never by
+being claimed twice.
+
+| Feature | Completed | Unfinished, at end of game |
+|---|---|---|
+| Road | 1 per tile | 1 per tile |
+| City | 2 per tile, +2 per pennant | 1 per tile, +1 per pennant |
+| Monastery | 9 (its own tile and all eight neighbours) | 1 + however many neighbours it has |
+
+Every seat holding the **most** followers on a feature scores its full value;
+ties share the value rather than splitting it. A completed feature scores
+immediately, returns its followers, and is retired — so it cannot be counted
+again at the end of the game. An unclaimed feature scores nothing and is
+retired just the same.
+
+Final standings rank seats by score, descending, with ties sharing a rank and
+ranks dense from zero (the platform's own requirement — see
+`MatchOutcomeError::NonContiguousRanks`).
+
+### The feature graph
+
+The design sketch said "incremental union-find". Implementation overturned the
+noun: `find` with path compression **mutates**, and `project` and
+`legal_commands` are read paths, so a compressing structure would make the
+encoded state depend on query history rather than on the input stream — and the
+graph lives in the state hash, where a representation that is not a function of
+the semantic state stops being a divergence detector and starts being a
+divergence source.
+
+Tiles uses an explicit component registry merged by **minimum id** instead.
+Reads never mutate; a component's contents are a set union and its id is a
+minimum, so both are independent of the order a tile's four sides are processed
+in; closure is a counter reaching zero. Only components adjacent to the new tile
+are ever touched.
+[`games/tiles/src/rules/feature.rs`](../../games/tiles/src/rules/feature.rs)
+records all four representations compared and what decided it.
+
+The whole-board flood fill that recomputes everything from scratch survives as
+the **differential oracle**, not as production code: it runs after every
+accepted input of complete matches at every seat count
+([`tests/features.rs`](../../games/tiles/tests/features.rs)), which is the
+honest place for "recompute from scratch".
 
 ### Deliberately out of scope
 
@@ -143,13 +194,24 @@ Declaring `true` would be an unverified claim.
 Doc 02 §12.4 estimated a full Tiles board at 30–120 KB and doc 03 §9.2 made
 Tiles the worked example for the `Medium` snapshot class on that basis.
 `games/tiles/tests/state_size.rs` plays complete matches at every supported seat
-count and measures the canonical encoding. **The estimate was wrong by two
-orders of magnitude**, and the declared class follows the measurement, not the
-estimate.
+count and measures the canonical encoding:
 
-The consequence for doc 03 §9.2 is recorded there: no game in the portfolio
-occupies `Medium` yet. A class nobody occupies is an honest row; a class
-assigned from a guess sets a snapshot cadence nobody measured.
+| Position | Canonical bytes |
+|---|---|
+| Opening (board of one, full bag) | ~150 |
+| Full board, no feature graph (Part 1 of this work) | ~307 |
+| Full board, with the feature graph and followers | **~1 677** |
+
+So Tiles is **`Small`**, two orders of magnitude below the estimate, and the
+declared class follows the measurement in both `src/lib.rs` and `game.toml`.
+The test asserts the declared class *is* the measured one, so a future tile-set
+or state-shape change cannot quietly leave the declaration stale.
+
+The consequence for doc 03 §9.2 is recorded there: **no game in the portfolio
+occupies `Medium` yet.** A class nobody occupies is an honest row; a class
+assigned from a guess sets a snapshot cadence nobody measured. What Tiles does
+still validate is the class as a *mechanism* — its state grows about fivefold
+over a match while chess's barely moves.
 
 ## Art direction
 
@@ -167,3 +229,10 @@ Phase-3 presenter depends on it.
 - Whether the turn deadline should skip the turn instead of auto-placing is a
   game-design decision; auto-placing was chosen because skipping rewards timing
   out. Revisit with real async play in Phase 9.
+- The deadline auto-resolution *declines* the claim rather than claiming
+  greedily. Declining is the neutral choice — a follower is a resource, and
+  spending one on a seat's behalf is a bigger decision than placing the tile it
+  was already required to place.
+- A follower may only be placed on the tile just laid, which is the classic
+  rule. It also means a seat that draws no claimable feature for several turns
+  simply banks its followers; no catch-up mechanism was added.
