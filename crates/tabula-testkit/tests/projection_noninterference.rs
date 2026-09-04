@@ -10,18 +10,22 @@
 //!
 //! # Why a reference model instead of a real game
 //!
-//! At the time of this PR, `games/cards` and `games/werewolf` are doc-comment
+//! At the time of this PR, `games/werewolf` and `games/tiles` are doc-comment
 //! sketches with zero `impl GameRules` (Phase 3 has not started; see
-//! `docs/architecture/07-phases-and-implementation-roadmap.md`). Chess and
-//! tic-tac-toe are perfect-information games and cannot exercise a secrecy
-//! property honestly — see `games/*/tests/projection_control.rs` for what
-//! *can* be said about them (projection determinism and a public-difference
-//! positive control, not secrecy).
+//! `docs/architecture/07-phases-and-implementation-roadmap.md`) — they are the
+//! reference games in the current portfolio (doc 09 §3, doc 08) with
+//! `hidden_information = true`. Chess, tic-tac-toe, and Caro are
+//! perfect-information games and cannot exercise a secrecy property honestly
+//! — see `games/*/tests/projection_control.rs` for what *can* be said about
+//! them (projection determinism and a public-difference positive control,
+//! not secrecy).
 //!
 //! So this file defines the smallest game that has real hidden information:
 //! a public round counter plus one hand of opaque "cards" per seat, dealt by
 //! a legal `Command::Deal`. It exists ONLY to exercise the harness; it is not
-//! a step toward implementing `games/cards`.
+//! a step toward implementing any specific game — "cards" here names the
+//! shape of the fixture (an opaque per-seat hand), not a game in the
+//! reference portfolio.
 //!
 //! `tabula-testkit` itself stays generic: this model lives in a test binary,
 //! not in `src/`, and nothing in `src/projection.rs` knows this type exists.
@@ -673,10 +677,11 @@ fn audit_legitimately_sees_every_hand_so_scrambling_is_expected_to_be_visible() 
 /// presence and content, not any card-game rule.
 ///
 /// **Hand *count* is public in this model** (`View::hand_counts`) — a
-/// deliberate design choice mirroring the real Tiến Lên sketch in
-/// `games/cards/src/lib.rs` (`hand_counts: [u8; 4], // public`). So a
-/// "scramble only the secret" generator must hold each seat's hand *length*
-/// fixed and vary only its *content* — this is what
+/// deliberate design choice mirroring a typical hidden-hand game, where the
+/// number of cards/tokens a seat holds is legitimately public even though
+/// their identity is not (doc 02 §7.1's `hand_counts: [u8; 4], // public`
+/// pattern). So a "scramble only the secret" generator must hold each seat's
+/// hand *length* fixed and vary only its *content* — this is what
 /// `rust-property-testing`'s "reachable vs arbitrary" split (and this PR's
 /// own §16) means by "invalid states are not generated merely to increase
 /// coverage": a pair whose count also happened to differ would be testing a

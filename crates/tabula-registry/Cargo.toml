@@ -22,7 +22,7 @@ thiserror       = { workspace = true }
 # subset (doc 02 §8.1).
 # tabula-game-tictactoe = { workspace = true, optional = true }
 # tabula-game-chess     = { workspace = true, optional = true }
-# tabula-game-cards     = { workspace = true, optional = true }
+# tabula-game-caro      = { workspace = true, optional = true }
 # tabula-game-werewolf  = { workspace = true, optional = true }
 # tabula-game-tiles     = { workspace = true, optional = true }
 

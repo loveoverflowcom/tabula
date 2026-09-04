@@ -515,7 +515,7 @@ Rules:
 ### 8.3 Ack policy per durability class
 
 ```text
-AckAfterPersist  (chess, cards, tiles — anything ranked or with stakes)
+AckAfterPersist  (chess, Caro, tiles — anything ranked or with stakes)
     apply → append → fsync-level commit → Ack → broadcast
     p95 target: 25 ms same-region (dominated by one Postgres round trip)
     loss window: none
@@ -554,12 +554,16 @@ interval, so worst-case recovery is a fixed small number of `apply` calls (micro
 | Class | Interval | Storage | Example |
 |---|---|---|---|
 | `Tiny` (< 1 KiB) | every 200 inputs + on end | Postgres `BYTEA` | chess, tictactoe |
-| `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` | cards, werewolf |
+| `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` | werewolf |
 | `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | Postgres `BYTEA`, zstd | tiles |
 | `Large` (≥ 256 KiB) | every 25 inputs + on hibernate | Object storage, pointer row in PG | future |
 
 Additional triggers: before drain, before hibernation, on `rules_version` boundary, and whenever
 `apply` exceeded its budget (so a slow match is cheap to recover).
+
+Caro's `StateSizeClass` remains `TBD` until its final board dimensions and canonical encoding are
+implemented and measured; the implementation then selects `Tiny` or `Small` from the encoded
+state size rather than from the placeholder design.
 
 ### 9.3 State hashes
 

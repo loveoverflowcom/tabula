@@ -44,7 +44,7 @@ use tabula_game_api::{AdminInput, Budget, Ctx, Effect, GameBot, GameModule, Game
 ///
 /// The generic runner deliberately does not invent a config or a roster. This
 /// keeps game-specific defaults in the game package or CLI while allowing the
-/// simulation core to work for future cards, tiles, and social games.
+/// simulation core to work for future games, tiles, and social games.
 #[derive(Clone)]
 pub struct SelfPlaySetup<R: GameRules> {
     pub config: R::Config,

@@ -774,7 +774,7 @@ mod tests {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Category {
     Abstract,
-    Cards, // xtask-allow-game-id: a genre, not the games/cards package
+    Cards, // xtask-allow-game-id: a catalog genre, not a specific game package
     SocialDeduction,
     TilePlacement,
     Party,

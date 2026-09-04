@@ -54,8 +54,8 @@ impl RuleError {
 /// Games use these; they do not define their own error enum, because the client
 /// shell needs to render rejections for a game it knows nothing about (I-9).
 ///
-/// TODO(phase 1): this list is from doc 02 §3.1 and is expected to grow as chess
-/// and cards are written. Additions are normal; **renames are not** — the client
+/// TODO(phase 1): this list is from doc 02 §3.1 and is expected to grow as
+/// additional games are written. Additions are normal; **renames are not** — the client
 /// localisation keys are derived from these names.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]

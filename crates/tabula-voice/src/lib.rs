@@ -53,7 +53,7 @@
 //!
 //! A muted client that stops sending audio is a UI feature. A participant the SFU
 //! will not forward is a *rule*. Phase 8's acceptance requires scope enforcement
-//! verified **at the SFU** (doc 08 §5.C).
+//! verified **at the SFU** (doc 08 §5).
 //!
 //! ## Signaling rides the platform WebSocket
 //!

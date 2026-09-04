@@ -75,7 +75,7 @@
 //!
 //! Doc 07's contract timeline: `GameRules` / `Input` / `Effect` / `Ctx` are
 //! introduced in Phase 0 and **locked after Phase 3**. Phase 1 (chess) and
-//! Phase 3 (cards, tiles, werewolf) exist specifically to shake this API out
+//! Phase 3 (Caro, Tiles, Werewolf) exist specifically to shake this API out
 //! before networking depends on it. Phase 3's exit criterion is literally "no
 //! change required to `tabula-core`/`tabula-game-api` in the final two weeks".
 //!

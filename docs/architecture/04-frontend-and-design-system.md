@@ -891,7 +891,7 @@ information survives even at zero duration.
 
 Orientation:
 
-- **Portrait** is the primary mobile target for hand-held games (cards, werewolf).
+- **Portrait** is the primary mobile target for hand-held games (Caro, Werewolf).
 - **Landscape** is primary for wide boards (chess is fine either way; tiles prefers landscape).
 - Each game declares `preferred_orientation` and `min_board_aspect` in its manifest; the runtime
   rotates/letterboxes accordingly and never distorts the board's aspect.

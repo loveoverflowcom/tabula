@@ -7,8 +7,20 @@
 
 ## 1. Why these four
 
-The reference games are chosen as **architecture tests that happen to be fun**, not as a product
-catalog. Each one is the cheapest game that stresses a dimension the platform claims to support.
+The reference-game portfolio is **four product/reference games plus one internal SDK fixture**:
+
+```text
+Game A — Chess               the correctness benchmark
+Game B — Caro                the simple-product / SDK-friction benchmark
+Game C — Tiles (Carcassonne-like)   the dynamic-spatial-state / RNG benchmark
+Game D — Werewolf            the hidden-information / social-scale benchmark
+Game 0 — Tic-tac-toe         the internal SDK smoke test and new-game template — NOT a reference game
+```
+
+They are chosen as **architecture tests that happen to be fun**, not as a product catalog. Each
+reference game is the cheapest game that stresses a dimension the platform claims to support.
+Tic-tac-toe is deliberately excluded from that list: it exists so that "does the platform work at
+all?" can be answered in seconds, not to validate any dimension beyond the most basic one.
 
 ```mermaid
 flowchart TB
@@ -23,44 +35,49 @@ flowchart TB
         D8["async turns"]
         D9["ranked & ratings"]
         D10["spectators"]
+        D11["SDK friction:<br/>a 2nd game added cheaply"]
     end
     A["Game A — Chess"] --> D1 & D2 & D9 & D10 & D8
-    B["Game B — Tiến Lên (cards)"] --> D3 & D4 & D10
-    C["Game C — Werewolf"] --> D3 & D5 & D6
-    E["Game D — Tiles"] --> D7 & D8 & D4
+    B["Game B — Caro"] --> D1 & D11
+    C["Game C — Tiles (Carcassonne-like)"] --> D4 & D7 & D8
+    E["Game D — Werewolf"] --> D3 & D5 & D6
     T["Game 0 — Tic-tac-toe"] --> D1
     style T fill:#3a3a3a,color:#fff
 ```
 
-Tic-tac-toe is the fifth, and it is not a product: it is the SDK's smoke test and template
+Tic-tac-toe is the fifth crate, and it is not a product: it is the SDK's smoke test and template
 (doc 02 §10). It exists so that "does the platform work?" and "does my new game work?" can be
-answered in seconds.
+answered in seconds. Caro is a *different* thing from tic-tac-toe even though both are simple and
+have no hidden information: Caro is a real product game, independently added *after* the platform
+already existed, and it is the one that answers "is adding a second game actually cheap?" —
+tic-tac-toe cannot answer that question because it was built alongside the platform itself.
 
 ### 1.1 Coverage matrix
 
-| Architecture assumption | A: Chess | B: Cards | C: Werewolf | D: Tiles |
+| Architecture assumption | A: Chess | B: Caro | C: Tiles | D: Werewolf |
 |---|---|---|---|---|
 | Rules are pure and deterministic | **primary** | yes | yes | yes |
-| Complex legality (move generation) | **primary** | yes (combination validity) | no | **primary** (placement validity) |
-| Timers own their meaning | **primary** (clocks) | yes (turn timer) | **primary** (phase timers) | yes (long deadlines) |
-| Server-side RNG, replayable | no | **primary** (shuffle) | yes (role assignment) | **primary** (tile bag) |
-| Hidden information / projections | no | **primary** (hands) | **primary** (roles + night actions) | partial (bag order) |
-| `view_event` degradation | no | **primary** (card backs) | yes | yes (drawn tile) |
-| `view_event` → `None` (event non-existence) | no | no | **primary** | no |
-| Many seats (6–20) | no | no | **primary** | no (2–5) |
-| Phases and simultaneous action | no | no | **primary** | no |
-| Game-scoped chat | no | no | **primary** | no |
-| Voice scoping | no | no | **primary** | no |
-| Large / growing state | no | no | no | **primary** |
-| Camera: pan, zoom, rotate | no | no | no | **primary** |
-| Asset volume | low | medium (52+ cards) | medium (roles, art) | **high** (tiles, meeples) |
-| Async turns | **primary** (correspondence) | no | no | **primary** |
-| Ranked ratings | **primary** (Elo) | yes (placement) | no | yes (placement) |
-| Spectators | **primary** (live) | yes (delayed) | **primary** (game-controlled: the dead) | yes (live) |
-| Bot substitution | yes | yes | **forbidden — validates the policy** | yes |
-| Reconnect semantics | **primary** (clock keeps burning) | yes (secrecy on resume) | yes (phase continues) | trivial (async) |
-| Drag & drop precision | **primary** | yes (fan selection) | no | **primary** (rotation + placement) |
-| Accessibility: keyboard board play | **primary** | yes (list-based hand) | **primary** (voting is list-based) | hard case (2D infinite grid) |
+| Complex legality (move generation) | **primary** | no (simple line detection) | **primary** (placement validity) | no |
+| Timers own their meaning | **primary** (clocks) | optional turn timer — `TBD` | yes (long deadlines) | **primary** (phase timers) |
+| Server-side RNG, replayable | no | no | **primary** (tile bag) | yes (role assignment) |
+| Hidden information / projections | no | no | **secondary** (bag order) | **primary** (roles + night actions) |
+| `view_event` degradation | no | no (nothing to degrade) | yes (drawn tile) | yes |
+| `view_event` → `None` (event non-existence) | no | no | no | **primary** |
+| Many seats (6–20) | no | no | no (2–5) | **primary** |
+| Phases and simultaneous action | no | no | no | **primary** |
+| Game-scoped chat | no | no | no | **primary** |
+| Voice scoping | no | no | no | **primary** |
+| Large / growing state | no | no (fixed, larger than tic-tac-toe) | **primary** | no |
+| Camera: pan, zoom, rotate | no | no | **primary** | no |
+| A second game added without game-specific platform behavior | no (built alongside the platform) | **primary** | yes | yes |
+| Asset volume | low | low | **high** (tiles, meeples) | medium (roles, art) |
+| Async turns | **primary** (correspondence) | `TBD` | **primary** | no |
+| Ranked ratings | **primary** (Elo) | `TBD` | yes (placement) | no |
+| Spectators | **primary** (live) | yes (live) | yes (live) | **primary** (game-controlled: the dead) |
+| Bot substitution | yes | yes | yes | **forbidden — validates the policy** |
+| Reconnect semantics | **primary** (clock keeps burning) | yes | trivial (async) | yes (phase continues) |
+| Drag & drop precision | **primary** | yes (tap/place on a larger grid) | **primary** (rotation + placement) | no |
+| Accessibility: keyboard board play | **primary** | yes (coordinate-based placement) | hard case (2D infinite grid) | **primary** (voting is list-based) |
 
 Every cell marked **primary** is a claim in doc 00 that would otherwise be untested.
 
@@ -129,144 +146,90 @@ motion.piece-move / motion.reveal(promotion) / motion.invalid, checkmate sequenc
 
 ---
 
-## 3. Game B — Tiến Lên (the hidden-information benchmark)
+## 3. Game B — Caro (the simple-product / SDK-friction benchmark)
 
 **Phase 3 (rules + presentation) → Phase 4 (multiplayer).**
 
-Tiến Lên (Vietnamese thirteen / Southern-style shedding game) is chosen over poker deliberately:
-four players, thirteen-card hidden hands, combination validity, no betting economy to build, and
-cultural fit with the first market. Big Two, Tiến Lên Miền Bắc, and simple poker variants reuse
-every primitive it establishes.
+Caro (a Gomoku / five-in-a-row family game) is **not tic-tac-toe renamed**. `games/tictactoe`
+remains the internal SDK smoke test and new-game template (doc 02 §10) — trivial by design, and
+built *alongside* the platform, so it cannot answer whether a game built *after* the platform
+exists is cheap to add. Caro exists specifically to answer that question: a real, independently
+playable product game, on a fixed board large enough that it is not a toy. The claim under test is
+that its implementation needs no changes to `tabula-core` or `tabula-game-api`, no game-specific
+platform behavior, and no changes under `services/`; only mechanically required
+manifest/workspace/registry registration is allowed.
+
+This document deliberately does **not** settle the exact rule variant (freestyle vs. a
+Renju-style restriction on the first player) or the final board dimensions. Those are game-design
+decisions for a future PR; see [`docs/games/caro.md`](../games/caro.md).
 
 ### 3.1 Scope
 
 ```text
-IN:  52-card deck, deal 13 each, lowest-card start, single/pair/triple/straight/
-     double-sequence combinations, beat-or-pass trick play, chop rules (2s and bombs),
-     finishing order → placement scoring, 20s turn timer with auto-pass,
-     deck commitment (hash at start, salt at end)
-OUT: betting/wagering, currency, tournament ladders
-OUT: regional rule variants beyond one configurable preset — Phase 9
+IN:  a fixed board (a larger board such as 15×15 is the expected direction; exact
+     dimensions TBD), alternating placement, row/column/diagonal win-line detection,
+     draw on a full board, local play now, online play later (Phase 4)
+OUT: the exact rule variant (freestyle vs. Renju-style restrictions) — a future
+     game-design decision, not settled by this document
+OUT: advanced tournament opening protocols (swap rules, restricted openings)
+OUT: an AI engine beyond a trivial/easy bot
 ```
 
 ### 3.2 What it validates
 
-| Claim | How cards tests it |
+| Claim | How Caro tests it |
 |---|---|
-| `project()` is a real security boundary | `View.your_hand` is the only hand present. There is no `Option<Vec<Card>>` anywhere to accidentally fill in. The `SecretModel` scan runs on every PR. |
-| `view_event` can *degrade* instead of hide | `Dealt{seat, cards}` → `DealtToOther{seat, count}`. The card-back animation is possible without leaking. This pattern is reused by every future hidden-information game. |
-| Server RNG is deterministic and replayable | `ctx.rng.stream(DOMAIN_SHUFFLE)` + pinned Fisher-Yates. The same match replays to the same deal in five years. |
-| Clients cannot influence randomness | The seed exists only server-side; the client learns the deal only through its own projection. |
-| Reconnect preserves secrecy | On resume, a player receives only their own hand. A reconnecting player must not be able to request an earlier state and learn more (the `Resync` is always *current*, never historical). |
-| Spectator delay is enforceable | `Delayed{30s}` spectators are buffered by the actor, which also exercises "project from a past snapshot". |
-| Fairness can be *proved*, not just asserted | The commitment scheme lets a suspicious player verify the shuffle after the match. **EXPERIMENT** — if it proves not worth the complexity, it is dropped with a written note, and the projection remains the security guarantee. |
+| A second product game is cheap to add | Caro is built using only published SDK types after the platform contract already exists. Its implementation must not change `tabula-core`, `tabula-game-api`, `services/`, or platform behavior; mechanically required manifest/workspace/registry registration is explicitly allowed. |
+| `legal_commands` works at a real (if still small) scale | Tic-tac-toe enumerates 9 cells; Caro enumerates up to a few hundred — still comfortably `Enumerated`, and the first test of that path before Tiles forces `Hints` instead. |
+| The three-rung SDK ladder is real | tic-tac-toe (tiny example) → Caro (simple product game) → chess (complex product game) is a claim about onboarding cost; Caro is the rung that proves the middle step exists and is not just "chess but smaller". |
+| Perfect-information games stay boring on the security axis | `hidden_information = false`; `View` ≈ `State` plus `legal_commands`, reusing the same pattern as tic-tac-toe and chess rather than inventing a new one. |
+
+Caro deliberately does **not** validate hidden information, RNG, large/growing state, or many
+seats — those are Werewolf's and Tiles' jobs (doc 08 §4, §5). Requiring Caro to prove any of them
+would blur which reference game owns which claim.
 
 ### 3.3 Presentation requirements
 
 ```text
-hand fan with overlap and selection lift, multi-select for combinations, validity preview
-(combination legal / illegal against the table), table pile with last play prominent,
-opponent hand-count indicators (card-back stacks), pass indicators, turn ring,
-motion.card-deal (staggered), motion.card-play, motion.reveal, turn timer ring,
-finishing-place banners
+board with coordinate labels, last-move highlight, legal-target hints for a large grid,
+win-line highlight on completion, optional turn-timer ring, motion.piece-place, motion.win-line,
+draw/终局 banner (finished-state summary)
 ```
 
 ### 3.4 Failure signals
 
-- The presenter needs to know a card the projection does not contain → the projection is wrong, or
-  the animation is trying to be authoritative.
-- The client needs the deck order to animate the deal → use `DealtToOther{count}`; the animation
-  does not need identities.
-- `SecretModel` cannot express a secret → the model needs extending (fine), or the state models
-  knowledge badly (more likely).
+- Adding Caro requires a change to `tabula-core` or `tabula-game-api`, a change under `services/`,
+  or game-specific behavior in a platform crate → the SDK-friction claim fails; find the missing
+  generalization rather than special-casing Caro. Mechanically required manifest/workspace/registry
+  registration is expected and does not fail the claim.
+- Win-line detection needs more than the state already tracks → the state model is probably fine
+  (board + last move); look for an accidental broadening of scope into a different variant first.
+- The board size becomes a platform concern (e.g. protocol frame size) → note it, but do not let
+  Caro's un-decided board size block this phase; Tiles is the game that stresses large state on
+  purpose.
 
 ### 3.5 Acceptance
 
 ```text
-[ ] combination validity fully tested, including chops and edge cases
-[ ] projection scan green for all four seats + live and delayed spectators
-[ ] a scripted "hostile client" test: request resync repeatedly, attach as spectator while
-    seated, attempt to attach to another seat — none reveal another hand
-[ ] shuffle replay exactness over 10k matches
-[ ] commitment verification test (and a deliberate tampering test that fails verification)
+[ ] win-line detection fully tested in all four directions, including edges and corners
+[ ] draw-on-full-board detection tested
+[ ] legal_commands enumeration matches apply()'s own legality decisions
 [ ] 100k bot self-play: terminates, no determinism failures
-[ ] delayed spectator sees nothing newer than the delay window (asserted at the socket)
+[ ] implementation requires no changes to tabula-core / tabula-game-api
+[ ] implementation adds no game-specific platform behavior and no changes under services/
+[ ] only mechanically required manifest/workspace/registry registration changes are needed
 ```
 
 ---
 
-## 4. Game C — Werewolf (the social/scale benchmark)
-
-**Phase 3 (rules, headless) → Phase 7 (full) → Phase 8 (voice).**
-
-### 4.1 Scope
-
-```text
-IN:  6–20 seats; roles: Villager, Werewolf, Seer, Doctor, Hunter, Witch (configurable preset sets
-     per seat count); phases: Night → Dawn → Day discussion → Vote → Dusk; night actions;
-     majority/plurality voting with configurable ties; death reveals role; win conditions
-     (wolves eliminated / wolves reach parity); dead players become spectators-with-full-vision;
-     chat scopes per phase; voice scopes per phase; per-phase timers; no bot substitution
-OUT: moderator-run mode, advanced roles (Cupid/lovers, Jester, Alpha), custom rulesets beyond
-     presets, cross-match reputation — Phase 9+
-```
-
-### 4.2 What it validates
-
-| Claim | How werewolf tests it |
-|---|---|
-| `view_event` can return `None` and hide *existence* | `NightActionSubmitted` must not be observable at all — even its timing leaks who acted. This is the only game that forces the platform to support "this event did not happen, for you". |
-| `Audience::ServerOnly` works | `RolesAssigned` is in the canonical log (needed for audit and replay) and reaches no client until deaths reveal roles. |
-| Phases are just timers | Five phases, each an `Effect::SetTimer` + scope update. The platform learns nothing about werewolf. |
-| Chat scoping is a game rule the platform enforces | Wolves-only night chat, dead-only chat, muted day-vote periods — all via `Effect::SetChatScopes`, enforced at the socket. |
-| Voice scoping works the same way | Phase 8's core test. |
-| Many seats scale | 20 seats × N matches exercises viewer-group fan-out and the vote burst pattern (doc 06 §2.4). |
-| `Viewer` needs a seat variant, not `Option<SeatId>` | Dead players are `Viewer::Seat(_)` with full vision; outside spectators are `Viewer::Spectator(_)` with public vision. An `Option<SeatId>` model could not express this. |
-| `SubstitutionPolicy::Forbidden` is meaningful | A seat carrying secret knowledge cannot be handed over. The platform must honor the policy rather than "helpfully" filling the seat. |
-| Simultaneous action model | Night is `TurnModel::Phased` with several seats acting concurrently — no "whose turn" concept applies. |
-
-### 4.3 Presentation requirements
-
-```text
-seat circle with avatars, alive/dead state (shape + label, not color alone), role card
-(own role, private), night overlay with role-specific action UI, vote markers flying to targets
-with live tallies, phase banner with countdown (skippable transition), scoped chat overlay
-showing WHICH channel you are in (unmissable), speaking indicators (Phase 8),
-death reveal choreography, win/loss summary with full role reveal
-```
-
-### 4.4 Failure signals
-
-- A villager's socket receives any frame derived from a night action → **critical**; the redaction
-  is wrong. This is why Phase 7's tests assert at the socket, not at the API.
-- Chat scope enforcement needs game knowledge in the chat module → the `ChatScopes` model is
-  insufficient; extend the model, never special-case the game.
-- Phase transitions need the platform to know phase names → leak of game concepts into the
-  platform; the platform only sees `TimerId` and scopes.
-
-### 4.5 Acceptance
-
-```text
-[ ] 20-seat golden integration match with per-seat projection assertions at every phase
-[ ] socket-level chat scope tests (a wolf message never appears on a villager socket)
-[ ] projection scan green at 6, 12, and 20 seats, for every role set
-[ ] disconnect during night, during vote, and during dawn — all behave per the ruleset
-[ ] vote-burst load scenario within latency SLO
-[ ] twelve-human playtest with a leak review by a second engineer
-[ ] dead-player vision correct; outside spectator vision correct; the two are different
-[ ] voice scope enforcement verified at the SFU (Phase 8)
-```
-
----
-
-## 5. Game D — Tiles (the state-and-camera benchmark)
+## 4. Game C — Tiles (Carcassonne-like) (the state-and-camera benchmark)
 
 **Phase 3 (rules + presentation) → Phase 9 (async polish).**
 
 A Carcassonne-like tile-placement game: draw a tile, place it legally adjacent, optionally place a
 follower, score completed features.
 
-### 5.1 Scope
+### 4.1 Scope
 
 ```text
 IN:  ~72-tile bag with a fixed distribution, rotation, adjacency legality, feature graph
@@ -275,9 +238,9 @@ IN:  ~72-tile bag with a fixed distribution, rotation, adjacency legality, featu
 OUT: expansions, rivers, custom boards, trading — later
 ```
 
-### 5.2 What it validates
+### 4.2 What it validates
 
-| Claim | How tiles tests it |
+| Claim | How Tiles tests it |
 |---|---|
 | `&mut State` and incremental structures are supported | The feature graph (union-find) must be part of state and part of the state hash. A naive recompute-per-turn design would be 100× slower — this game proves the contract accommodates real data-structure engineering. |
 | `StateSizeClass` drives real behavior | ~30–120 KB state changes snapshot cadence and storage encoding, and makes `Welcome` frames large enough to matter (protocol frame limits, doc 03 §3.2). |
@@ -288,7 +251,7 @@ OUT: expansions, rivers, custom boards, trading — later
 | Determinism with a large hidden ordered structure | The bag order is secret and consumed over time; replay must reproduce every draw. |
 | Accessibility on an unbounded 2D grid | The hardest a11y case we ship: the Board Reader must let a screen-reader user place a tile. Solution: coordinate-relative navigation ("north of the monastery at C4") plus a legal-placement list. This case defines the ambition level for `describe()`. |
 
-### 5.3 Presentation requirements
+### 4.3 Presentation requirements
 
 ```text
 infinite scrollable board with pan (drag / two-finger), zoom (wheel / pinch, clamped),
@@ -298,7 +261,7 @@ minimap or "recenter" affordance, motion.tile-place, motion.token-drop, motion.s
 end-of-game scoring walkthrough animation
 ```
 
-### 5.4 Failure signals
+### 4.4 Failure signals
 
 - The state hash becomes expensive because it hashes the whole board every input → introduce an
   incremental hash (the contract allows overriding `state_hash`), do not weaken hashing.
@@ -308,7 +271,7 @@ end-of-game scoring walkthrough animation
   *presentation-level* peer message, and it must not enter canonical state; if we ever want it, it
   goes through a platform side channel, explicitly marked non-authoritative.
 
-### 5.5 Acceptance
+### 4.5 Acceptance
 
 ```text
 [ ] placement legality fully tested, including all rotations and edge adjacency cases
@@ -324,6 +287,76 @@ end-of-game scoring walkthrough animation
 
 ---
 
+## 5. Game D — Werewolf (the social/scale benchmark)
+
+**Phase 3 (rules, headless) → Phase 7 (full) → Phase 8 (voice).**
+
+Before multiplayer and before any social presentation exists, Werewolf remains primarily a
+**headless rules/security benchmark**. Its social/presentation stack is explicitly out of scope for
+Phase 3 (doc 07 Phase 3, doc 09 §4).
+
+### 5.1 Scope
+
+```text
+IN:  6–20 seats; roles: Villager, Werewolf, Seer, Doctor, Hunter, Witch (configurable preset sets
+     per seat count); phases: Night → Dawn → Day discussion → Vote → Dusk; night actions;
+     majority/plurality voting with configurable ties; death reveals role; win conditions
+     (wolves eliminated / wolves reach parity); dead players become spectators-with-full-vision;
+     chat scopes per phase; voice scopes per phase; per-phase timers; no bot substitution
+OUT: moderator-run mode, advanced roles (Cupid/lovers, Jester, Alpha), custom rulesets beyond
+     presets, cross-match reputation — Phase 9+
+OUT (Phase 3 specifically): any UI/presentation, chat/voice transport — those are Phase 7/8
+```
+
+### 5.2 What it validates
+
+| Claim | How Werewolf tests it |
+|---|---|
+| `view_event` can return `None` and hide *existence* | `NightActionSubmitted` must not be observable at all — even its timing leaks who acted. This is the only game that forces the platform to support "this event did not happen, for you". |
+| `Audience::ServerOnly` works | `RolesAssigned` is in the canonical log (needed for audit and replay) and reaches no client until deaths reveal roles. |
+| Phases are just timers | Five phases, each an `Effect::SetTimer` + scope update. The platform learns nothing about werewolf. |
+| Chat scoping is a game rule the platform enforces | Wolves-only night chat, dead-only chat, muted day-vote periods — all via `Effect::SetChatScopes`, enforced at the socket. |
+| Voice scoping works the same way | Phase 8's core test. |
+| Many seats scale | 20 seats × N matches exercises viewer-group fan-out and the vote burst pattern (doc 06 §2.4). |
+| `Viewer` needs a seat variant, not `Option<SeatId>` | Dead players are `Viewer::Seat(_)` with full vision; outside spectators are `Viewer::Spectator(_)` with public vision. An `Option<SeatId>` model could not express this. |
+| `SubstitutionPolicy::Forbidden` is meaningful | A seat carrying secret knowledge cannot be handed over. The platform must honor the policy rather than "helpfully" filling the seat. |
+| Simultaneous action model | Night is `TurnModel::Phased` with several seats acting concurrently — no "whose turn" concept applies. |
+| Hidden information is a real security boundary | Werewolf is the primary benchmark for per-seat knowledge and secret event existence; Tiles is the secondary case for value secrecy in the remaining bag order. Both require `project()`/`view_event()` security coverage (doc 09 §5). |
+
+### 5.3 Presentation requirements (Phase 7)
+
+```text
+seat circle with avatars, alive/dead state (shape + label, not color alone), role card
+(own role, private), night overlay with role-specific action UI, vote markers flying to targets
+with live tallies, phase banner with countdown (skippable transition), scoped chat overlay
+showing WHICH channel you are in (unmissable), speaking indicators (Phase 8),
+death reveal choreography, win/loss summary with full role reveal
+```
+
+### 5.4 Failure signals
+
+- A villager's socket receives any frame derived from a night action → **critical**; the redaction
+  is wrong. This is why Phase 7's tests assert at the socket, not at the API.
+- Chat scope enforcement needs game knowledge in the chat module → the `ChatScopes` model is
+  insufficient; extend the model, never special-case the game.
+- Phase transitions need the platform to know phase names → leak of game concepts into the
+  platform; the platform only sees `TimerId` and scopes.
+
+### 5.5 Acceptance
+
+```text
+[ ] 20-seat golden integration match with per-seat projection assertions at every phase
+[ ] socket-level chat scope tests (a wolf message never appears on a villager socket)
+[ ] projection scan green at 6, 12, and 20 seats, for every role set
+[ ] disconnect during night, during vote, and during dawn — all behave per the ruleset
+[ ] vote-burst load scenario within latency SLO
+[ ] twelve-human playtest with a leak review by a second engineer
+[ ] dead-player vision correct; outside spectator vision correct; the two are different
+[ ] voice scope enforcement verified at the SFU (Phase 8)
+```
+
+---
+
 ## 6. What these four do NOT cover
 
 Honest gaps, with the future game that would close each. None of these justify adding a fifth
@@ -335,10 +368,11 @@ reference game now.
 | Real-time / continuous action | The platform is explicitly not built for it (doc 00 §1.2) | Never; a party game with a timed tap phase (Phase 9) probes the edge safely |
 | Simultaneous *commitment* then reveal | Rock-paper-scissors-like blind selection needs commit/reveal in the projection | A simple bidding game (Phase 9) |
 | Economy / persistent progression across matches | Cross-match state is a platform concern we have deferred | A campaign/roguelike mode — post-Phase 11 |
-| Team-vs-team ratings | `TeamElo` is declared but untested | A 2v2 card game (Phase 9) |
+| Team-vs-team ratings | `TeamElo` is declared but untested | A 2v2 game (Phase 9) |
 | Very long matches (weeks) with many participants | Hibernation + notification at scale | Async tiles at 5 seats already probes it; a play-by-mail wargame would push it |
-| Localization-heavy content | Rules text and card text in multiple languages | Any card game with text-on-card (Phase 9) — the asset pipeline needs per-locale atlases |
+| Localization-heavy content | Rules text in multiple languages | Any game with substantial text content (Phase 9) — the asset pipeline needs per-locale atlases |
 | Physics or continuous animation driving outcomes | Would violate determinism if it entered state | Never |
+| Deep hidden-hand combination logic (trick-taking, betting) | A card game with combination validity and a betting/no-betting economy decision | A future card game, if the product roadmap wants one — not required to validate the current contract, since Werewolf already owns the hidden-information/event-nonexistence claim |
 
 ---
 
@@ -348,9 +382,9 @@ reference game now.
 |---|---|---|---|---|---|
 | Tic-tac-toe | Phase 0 | Phase 2 (trivial) | Phase 4 | Phase 4 | hours — it is the template |
 | Chess | Phase 1 | Phase 2 | Phase 4 | Phase 4 | rules-heavy; perft is most of the work |
-| Tiến Lên | Phase 3 | Phase 3 | Phase 4 | Phase 5 | projection-heavy; combination logic is fiddly |
+| Caro | Phase 3 | Phase 3 | Phase 4 | Phase 4 | small — the SDK-friction measurement is the point |
+| Tiles (Carcassonne-like) | Phase 3 | Phase 3 | Phase 4 | Phase 9 | data-structure- and asset-heavy |
 | Werewolf | Phase 3 (headless) | Phase 7 | Phase 7 | Phase 8 | redaction- and UI-heavy; the social loop is the long pole |
-| Tiles | Phase 3 | Phase 3 | Phase 4 | Phase 9 | data-structure- and asset-heavy |
 
 ### 7.1 The per-game definition of done
 

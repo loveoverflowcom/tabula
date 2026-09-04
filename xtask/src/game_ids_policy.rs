@@ -17,12 +17,12 @@ use std::fmt;
 
 /// A line containing this token is exempt, no matter its zone or game id.
 /// For the rare case where a word coincides with a game id for an unrelated
-/// reason (e.g. `Category::Cards`, a genre — not the `games/cards` package),
-/// name it explicitly and visibly in review rather than widening the zone
-/// rules to quietly cover it:
+/// reason (e.g. `Category::Cards`, a catalog genre — not a specific game
+/// package), name it explicitly and visibly in review rather than widening
+/// the zone rules to quietly cover it:
 ///
 /// ```rust,ignore
-/// Cards, // xtask-allow-game-id: genre, not the games/cards package
+/// Cards, // xtask-allow-game-id: genre, not a specific game package
 /// ```
 pub const SUPPRESS_MARKER: &str = "xtask-allow-game-id";
 
@@ -233,7 +233,7 @@ mod tests {
     use super::*;
 
     fn ids() -> Vec<String> {
-        ["tictactoe", "chess", "cards", "werewolf", "tiles"]
+        ["tictactoe", "chess", "caro", "werewolf", "tiles"]
             .into_iter()
             .map(String::from)
             .collect()
@@ -243,7 +243,7 @@ mod tests {
     fn game_id_in_registry_passes() {
         let hits = scan_file(
             "crates/tabula-registry/src/lib.rs",
-            "register!(chess, cards, werewolf);",
+            "register!(chess, caro, werewolf);",
             &ids(),
         );
         assert!(hits.is_empty(), "registry may name any game, got {hits:?}");
@@ -266,11 +266,11 @@ mod tests {
     fn game_id_in_other_package_fails() {
         let hits = scan_file(
             "games/chess/src/lib.rs",
-            "use tabula_game_cards::Card;",
+            "use tabula_game_caro::Mark;",
             &ids(),
         );
         assert!(
-            hits.iter().any(|h| h.game_id == "cards"),
+            hits.iter().any(|h| h.game_id == "caro"),
             "one game naming another should fail, got {hits:?}"
         );
     }
@@ -308,7 +308,7 @@ mod tests {
         );
         assert!(
             hits.is_empty(),
-            "postcard/chessboard/utilities must not trigger cards/chess/tiles, got {hits:?}"
+            "postcard/chessboard/utilities must not trigger caro/chess/tiles, got {hits:?}"
         );
     }
 
@@ -357,7 +357,7 @@ mod tests {
     fn ci_workflow_files_are_exempt() {
         let hits = scan_file(
             ".github/workflows/nightly.yml",
-            "game: [tictactoe] # add chess (P1), cards/tiles/werewolf (P3)",
+            "game: [tictactoe] # add chess (P1), caro/tiles/werewolf (P3)",
             &ids(),
         );
         assert!(
@@ -370,7 +370,7 @@ mod tests {
     fn explicit_suppression_marker_is_honored() {
         let hits = scan_file(
             "crates/tabula-game-api/src/metadata.rs",
-            "    Cards, // xtask-allow-game-id: genre, not the games/cards package",
+            "    Cards, // xtask-allow-game-id: a catalog genre, not a specific game package",
             &ids(),
         );
         assert!(
