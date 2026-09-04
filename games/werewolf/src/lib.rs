@@ -9,9 +9,9 @@
 //!
 //! Werewolf is the game that forces three platform capabilities nothing else
 //! needs: **event non-existence**, **game-driven communication scoping**, and
-//! **6–20 seats with phases instead of turns**. (doc 08 §5.C)
+//! **6–20 seats with phases instead of turns**. (doc 08 §5)
 //!
-//! ## Scope (doc 08 §5.C)
+//! ## Scope (doc 08 §5)
 //!
 //! ```text
 //! IN:  6–20 seats; roles Villager, Werewolf, Seer, Doctor, Hunter, Witch
@@ -77,13 +77,13 @@
 //! `durability = AckAfterApply`: no ranked stakes, and snappy voting matters more
 //! than a 50 ms loss window that the phase timer recovers from anyway.
 //!
-//! ## Failure signals (doc 08 §5.C)
+//! ## Failure signals (doc 08 §5)
 //!
 //! - Any villager socket frame derived from a night action — **critical**.
 //! - Chat scope enforcement needing game knowledge.
 //! - The platform needing to know phase names.
 //!
-//! ## Acceptance (doc 08 §5.C)
+//! ## Acceptance (doc 08 §5)
 //!
 //! ```text
 //! [ ] 20-seat golden integration match with per-seat projection assertions at

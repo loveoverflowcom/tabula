@@ -370,15 +370,15 @@ Do **not** create all fifteen crates on day one. Create them when a phase needs 
 | `games/tictactoe` | Phase 0 |
 | `games/chess` | Phase 1 |
 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `apps/game-client` | Phase 2 |
-| `tabula-assets`, `games/caro` | Phase 3 |
+| `tabula-assets`, `games/caro`, `games/tiles` (rules + presentation), `games/werewolf` (rules/headless) | Phase 3 |
 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` | Phase 4 |
 | `tabula-lobby`, `apps/web`, `apps/admin` | Phase 5 |
-| `games/werewolf` | Phase 7 |
+| `games/werewolf` (presentation, social, and online) | Phase 7 |
 | `tabula-voice` | Phase 8 |
-| `games/tiles` | Phase 3 (rules) → Phase 9 (full) |
+| `games/tiles` (async polish) | Phase 9 |
 | `apps/desktop` (Tauri) | Phase 5, optional |
 
-Phase 0–3 therefore has **no server, no protocol, no database** — and four crates. That is
+Phase 0–3 therefore has **no server, no protocol, no database**. That is
 deliberate: the determinism and presentation contracts must be right before networking exists,
 because networking is much harder to change than to add.
 

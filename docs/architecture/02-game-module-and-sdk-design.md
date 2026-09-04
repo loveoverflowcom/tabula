@@ -702,7 +702,7 @@ secret and to whom:
 ```rust
 impl SecretModel for WerewolfRules {
     fn secrets(state: &State) -> Vec<Secret> {
-        let mut v = vec![Secret::nobody("night action resolution order", state.night_order.tokens())];
+        let mut v = Vec::new();
         for (seat, role) in state.roles.iter() {
             v.push(Secret::authorized(
                 &format!("seat {}'s role", seat.0),
@@ -1296,7 +1296,7 @@ capabilities (doc 08 §3 for Caro's open questions).
 | RNG usage | none | none | role assignment | tile bag shuffle |
 | Timers | per-move clock (Fischer/Bronstein) | optional per-turn timer — `TBD during implementation` | per-phase, long | per-turn 60 s, or 24 h async |
 | `spectators` | `Live` | `Live` | `GameControlled` (dead see all) | `Live` |
-| `voice` | `No` | `No` — `TBD` | **`Recommended`** | `Optional` |
+| `voice` | `No` | `No` | **`Recommended`** | `Optional` |
 | `chat.game_scoped` | false | false | **true** | false |
 | `async_turns` | true (correspondence) | `TBD during implementation` | false | **true** |
 | `ranked` | `Elo` | `TBD during implementation` | `No` (social) | `Placement` |

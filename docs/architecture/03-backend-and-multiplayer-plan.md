@@ -515,7 +515,7 @@ Rules:
 ### 8.3 Ack policy per durability class
 
 ```text
-AckAfterPersist  (chess, cards, tiles — anything ranked or with stakes)
+AckAfterPersist  (chess, Caro, tiles — anything ranked or with stakes)
     apply → append → fsync-level commit → Ack → broadcast
     p95 target: 25 ms same-region (dominated by one Postgres round trip)
     loss window: none
@@ -554,7 +554,7 @@ interval, so worst-case recovery is a fixed small number of `apply` calls (micro
 | Class | Interval | Storage | Example |
 |---|---|---|---|
 | `Tiny` (< 1 KiB) | every 200 inputs + on end | Postgres `BYTEA` | chess, tictactoe |
-| `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` | cards, werewolf |
+| `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` | Caro, werewolf |
 | `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | Postgres `BYTEA`, zstd | tiles |
 | `Large` (≥ 256 KiB) | every 25 inputs + on hibernate | Object storage, pointer row in PG | future |
 

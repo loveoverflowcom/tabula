@@ -13,9 +13,9 @@
 //! implement presentation + write tests" (doc 00 §1), on a board large enough
 //! that a naive win-check is not free. It is the cheapest **simple** game with
 //! perfect information and a large fixed board — the middle rung of the
-//! ladder between the tiny SDK example and chess's complex legality. (doc 08 §5.B)
+//! ladder between the tiny SDK example and chess's complex legality. (doc 08 §3)
 //!
-//! ## Scope (doc 08 §5.B)
+//! ## Scope (doc 08 §3)
 //!
 //! ```text
 //! IN:  a fixed, configurable-size square board (a larger board such as 15×15
@@ -62,14 +62,16 @@
 //!
 //! Caro has `hidden_information = false`; no `SecretModel` (doc 02 §7.3) is required.
 //!
-//! ## Acceptance (doc 08 §5.B)
+//! ## Acceptance (doc 08 §3)
 //!
 //! ```text
 //! [ ] win-line detection fully tested in all four directions, incl. edges/corners
 //! [ ] draw-on-full-board detection tested
 //! [ ] 100k bot self-play: terminates, no determinism failures
 //! [ ] legal_commands enumeration matches apply()'s own legality decisions
-//! [ ] added with zero changes to tabula-core / tabula-game-api (the SDK-friction claim)
+//! [ ] implementation requires no changes to tabula-core / tabula-game-api
+//! [ ] implementation adds no game-specific platform behavior and no services/ changes
+//! [ ] only mechanically required manifest/workspace/registry registration changes are needed
 //! ```
 
 #![forbid(unsafe_code)]

@@ -182,7 +182,7 @@ games/chess/src/ui.rs:       board, pieces, drag+tap interaction, clocks, move l
 
 ---
 
-## Phase 3 — Local playable games
+## Phase 3 — Local games and rules benchmarks
 
 **Read first:** 00, 02 (§12), 04, 08.
 
@@ -193,7 +193,7 @@ already-validated foundations, not as new work in this phase.
 
 | Field | Content |
 |---|---|
-| **Goal** | Three more games playable locally against bots: Caro (simple product game / SDK-friction), Tiles (Carcassonne-like), and a Werewolf *rules skeleton* — proving the contract absorbs a cheap second product game, RNG-backed dynamic state, and hidden/phased information, respectively. |
+| **Goal** | Caro and Tiles are playable locally against bots; Werewolf is executable headlessly as the secrecy/phased-rules benchmark — proving the contract absorbs a cheap second product game, RNG-backed dynamic state, and hidden/phased information, respectively. |
 | **Why now** | This is the cheapest possible place to discover a contract flaw. Every flaw found here costs a crate change; found after Phase 4 it costs a protocol change and a migration. |
 
 **Deliverables**
@@ -218,7 +218,7 @@ Local play driver:       bot opponents, seat selection, "replay this match" from
 | **Demo / acceptance** | One app, four reference games plus the tic-tac-toe smoke test in a local menu: play chess, Caro, and tiles against bots; run the werewolf rules headlessly with a text visualizer showing per-viewer projections side by side (**this side-by-side projection viewer is the demo that proves the security model**). |
 | **Risks** | (a) Werewolf's redaction is the hardest projection work in the product — do it now, headless, where it is inspectable. (b) Tiles' state size may push snapshot policy — measure and record. (c) Caro's exact rule variant (freestyle vs. Renju-style restrictions) is a game-design decision deferred past this phase — do not let it block the SDK-friction measurement. |
 | **Deferred** | Werewolf UI (Phase 7). Networking. Voice. Async turns. Caro's final rule-variant decision. |
-| **Exit criteria** | Chess remains green as the correctness control; tic-tac-toe remains green as the SDK smoke test; Caro passes conformance and was added with no platform changes; Tiles validates deterministic RNG + dynamic spatial state; Werewolf validates hidden information + projection/event secrecy; all Phase-3 games pass their conformance suites; projection-security checks are green for Werewolf; no game-specific branches were added to platform crates; **no change required to `tabula-core`/`tabula-game-api` in the final two weeks of the phase** (the contract has stopped moving — a meaningful freeze on the contract, not a calendar ritual). |
+| **Exit criteria** | Chess remains green as the correctness control; tic-tac-toe remains green as the SDK smoke test; Caro passes conformance without changes to `tabula-core`/`tabula-game-api`, game-specific platform behavior, or `services/` (apart from mechanically required registration); Tiles validates deterministic RNG + dynamic spatial state; Werewolf validates hidden information + projection/event secrecy; all Phase-3 games pass their conformance suites; projection-security checks are green for Werewolf; no game-specific branches were added to platform crates; **no change required to `tabula-core`/`tabula-game-api` in the final two weeks of the phase** (the contract has stopped moving — a meaningful freeze on the contract, not a calendar ritual). |
 
 ---
 

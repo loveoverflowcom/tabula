@@ -279,7 +279,7 @@ impl SecurityCoverage {
 /// [`HiddenInformationFixture`].
 ///
 /// ```rust,ignore
-/// tabula_testkit::projection_security!(CardsFixture);
+/// tabula_testkit::projection_security!(WerewolfFixture);
 /// ```
 ///
 /// Deliberately **not** part of [`crate::conformance!`] — see this module's

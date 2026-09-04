@@ -4,10 +4,10 @@
 //!
 //! Carcassonne-like: draw a tile, place it legally adjacent, optionally place a
 //! follower, score completed features. It is here to stress **large dynamic
-//! state**, **camera**, and **async turns** — the three things chess, cards, and
-//! werewolf all leave untested. (doc 08 §5.D)
+//! state**, **camera**, and **async turns** — the three things chess, Caro, and
+//! Werewolf all leave untested. (doc 08 §4)
 //!
-//! ## Scope (doc 08 §5.D)
+//! ## Scope (doc 08 §4)
 //!
 //! ```text
 //! IN:  ~72-tile bag with a fixed distribution, rotation, adjacency legality,
@@ -63,7 +63,7 @@
 //! C4" — plus a legal-placement list. Phase 9, and it is what will shape
 //! `A11yRegion` (doc 04 §10.4).
 //!
-//! ## Acceptance (doc 08 §5.D)
+//! ## Acceptance (doc 08 §4)
 //!
 //! ```text
 //! [ ] placement legality fully tested, all rotations and edge adjacency cases

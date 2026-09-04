@@ -66,10 +66,10 @@ tic-tac-toe cannot answer that question because it was built alongside the platf
 | Many seats (6–20) | no | no | no (2–5) | **primary** |
 | Phases and simultaneous action | no | no | no | **primary** |
 | Game-scoped chat | no | no | no | **primary** |
-| Voice scoping | no | no — `TBD` | no | **primary** |
+| Voice scoping | no | no | no | **primary** |
 | Large / growing state | no | no (fixed, larger than tic-tac-toe) | **primary** | no |
 | Camera: pan, zoom, rotate | no | no | **primary** | no |
-| A second game added with zero platform changes | no (built alongside the platform) | **primary** | yes | yes |
+| A second game added without game-specific platform behavior | no (built alongside the platform) | **primary** | yes | yes |
 | Asset volume | low | low | **high** (tiles, meeples) | medium (roles, art) |
 | Async turns | **primary** (correspondence) | `TBD` | **primary** | no |
 | Ranked ratings | **primary** (Elo) | `TBD` | yes (placement) | no |
@@ -154,8 +154,10 @@ Caro (a Gomoku / five-in-a-row family game) is **not tic-tac-toe renamed**. `gam
 remains the internal SDK smoke test and new-game template (doc 02 §10) — trivial by design, and
 built *alongside* the platform, so it cannot answer whether a game built *after* the platform
 exists is cheap to add. Caro exists specifically to answer that question: a real, independently
-playable product game, on a fixed board large enough that it is not a toy, added with (the claim
-under test) zero changes to `tabula-core` or `tabula-game-api`.
+playable product game, on a fixed board large enough that it is not a toy. The claim under test is
+that its implementation needs no changes to `tabula-core` or `tabula-game-api`, no game-specific
+platform behavior, and no changes under `services/`; only mechanically required
+manifest/workspace/registry registration is allowed.
 
 This document deliberately does **not** settle the exact rule variant (freestyle vs. a
 Renju-style restriction on the first player) or the final board dimensions. Those are game-design
@@ -177,7 +179,7 @@ OUT: an AI engine beyond a trivial/easy bot
 
 | Claim | How Caro tests it |
 |---|---|
-| A second product game is cheap to add | Caro is built entirely inside `games/caro`, using only published SDK types, after the platform contract already exists — the acceptance test is literally "zero diffs outside `games/caro`". |
+| A second product game is cheap to add | Caro is built using only published SDK types after the platform contract already exists. Its implementation must not change `tabula-core`, `tabula-game-api`, `services/`, or platform behavior; mechanically required manifest/workspace/registry registration is explicitly allowed. |
 | `legal_commands` works at a real (if still small) scale | Tic-tac-toe enumerates 9 cells; Caro enumerates up to a few hundred — still comfortably `Enumerated`, and the first test of that path before Tiles forces `Hints` instead. |
 | The three-rung SDK ladder is real | tic-tac-toe (tiny example) → Caro (simple product game) → chess (complex product game) is a claim about onboarding cost; Caro is the rung that proves the middle step exists and is not just "chess but smaller". |
 | Perfect-information games stay boring on the security axis | `hidden_information = false`; `View` ≈ `State` plus `legal_commands`, reusing the same pattern as tic-tac-toe and chess rather than inventing a new one. |
@@ -196,8 +198,10 @@ draw/终局 banner (finished-state summary)
 
 ### 3.4 Failure signals
 
-- Adding Caro requires a change to `tabula-core` or `tabula-game-api` → the SDK-friction claim
-  fails; find the missing generalization rather than special-casing Caro.
+- Adding Caro requires a change to `tabula-core` or `tabula-game-api`, a change under `services/`,
+  or game-specific behavior in a platform crate → the SDK-friction claim fails; find the missing
+  generalization rather than special-casing Caro. Mechanically required manifest/workspace/registry
+  registration is expected and does not fail the claim.
 - Win-line detection needs more than the state already tracks → the state model is probably fine
   (board + last move); look for an accidental broadening of scope into a different variant first.
 - The board size becomes a platform concern (e.g. protocol frame size) → note it, but do not let
@@ -211,7 +215,9 @@ draw/终局 banner (finished-state summary)
 [ ] draw-on-full-board detection tested
 [ ] legal_commands enumeration matches apply()'s own legality decisions
 [ ] 100k bot self-play: terminates, no determinism failures
-[ ] added with zero changes to tabula-core / tabula-game-api (the SDK-friction claim, checked by diff)
+[ ] implementation requires no changes to tabula-core / tabula-game-api
+[ ] implementation adds no game-specific platform behavior and no changes under services/
+[ ] only mechanically required manifest/workspace/registry registration changes are needed
 ```
 
 ---

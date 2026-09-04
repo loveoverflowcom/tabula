@@ -22,8 +22,10 @@ chess      — complex product game, proves the contract survives real depth
 
 Caro is **not** tic-tac-toe renamed, and it does not replace tic-tac-toe as
 the template. It exists specifically to measure whether adding an
-independent, real, product-shaped game requires any platform change — the
-claim in `AGENTS.md` §7 ("zero platform changes").
+independent, real, product-shaped game requires any platform behavior change.
+The implementation may make only mechanically required manifest/workspace/
+registry registration changes; it must not change `tabula-core`,
+`tabula-game-api`, `services/`, or add game-specific behavior to platform crates.
 
 ## Information model
 

@@ -24,8 +24,7 @@ pub struct MatchOutcome {
     kind: OutcomeKind,
 
     /// Full ordering, needed by the rating system. Rank 0 = winner; ties share a
-    /// rank. Placement-rated games (cards, tiles) use the whole ordering, not
-    /// just the winner.
+    /// rank. Placement-rated games use the whole ordering, not just the winner.
     standings: SmallVec<[Standing; 8]>,
 
     /// Free-form, game-defined summary for UI: "checkmate", "3 wolves remain".

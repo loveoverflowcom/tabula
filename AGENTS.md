@@ -99,7 +99,7 @@ permission to implement them early.
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin` |
 | 6 | `mobile/android`, `mobile/ios` |
-| 7 | werewolf + social |
+| 7 | `games/werewolf` (presentation, social, and online) |
 | 8 | `tabula-voice` |
 | 9+ | SDK stabilisation, scaling, third-party ecosystem |
 
