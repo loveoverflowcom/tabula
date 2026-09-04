@@ -68,7 +68,7 @@ tic-tac-toe cannot answer that question because it was built alongside the platf
 | Game-scoped chat | no | no | no | **primary** |
 | Voice scoping | no | no | no | **primary** |
 | Large / growing state | no | no (fixed, larger than tic-tac-toe) | **primary** | no |
-| Camera: pan, zoom, rotate | no | no | **primary** | no |
+| Camera: pan, zoom (rotate: see below) | no | no | **primary** | no |
 | A second game added without game-specific platform behavior | no (built alongside the platform) | **primary** | yes | yes |
 | Asset volume | low | low | **high** (tiles, meeples) | medium (roles, art) |
 | Async turns | **primary** (correspondence) | `TBD` | **primary** | no |
@@ -233,19 +233,27 @@ follower, score completed features.
 
 ```text
 IN:  ~72-tile bag with a fixed distribution, rotation, adjacency legality, feature graph
-     (roads, cities, fields, monasteries), follower placement and return, incremental scoring,
-     end-of-game scoring, 2–5 seats, 60s live turns OR 24h async turns
+     (roads, cities, monasteries), follower placement and return, incremental scoring,
+     end-of-game scoring, 2–5 seats, an optional per-turn deadline that works identically
+     for 60 s live turns and 24 h async turns
+OUT: farms/fields as a SCORABLE feature — deferred. Field stays an edge terrain for adjacency
+     matching. Scoring farms needs sub-edge granularity (two field corners per tile side),
+     which multiplies the graph's representation without exercising a contract that roads,
+     cities, and monasteries do not already exercise.
 OUT: expansions, rivers, custom boards, trading — later
 ```
+
+The tile distribution is Tabula's own, in the Carcassonne family. It is not a reproduction of any
+published set, and no acceptance criterion below depends on matching one.
 
 ### 4.2 What it validates
 
 | Claim | How Tiles tests it |
 |---|---|
-| `&mut State` and incremental structures are supported | The feature graph (union-find) must be part of state and part of the state hash. A naive recompute-per-turn design would be 100× slower — this game proves the contract accommodates real data-structure engineering. |
-| `StateSizeClass` drives real behavior | ~30–120 KB state changes snapshot cadence and storage encoding, and makes `Welcome` frames large enough to matter (protocol frame limits, doc 03 §3.2). |
+| `&mut State` and incremental structures are supported | The feature graph is part of state and therefore part of the state hash. Confirmed — with one correction to the design's wording: it is **not** a union-find. Path compression mutates on read, and `project`/`legal_commands` are read paths, so a compressing structure would make the encoded bytes depend on query history. Tiles uses an explicit component registry merged by minimum id instead; `games/tiles/src/rules/feature.rs` records the four representations compared and why canonical-serialization safety decided it. The whole-board recompute survives as the differential oracle rather than as production code. |
+| `StateSizeClass` drives real behavior | **Measured, and the estimate was wrong.** The design said ~30–120 KB and expected `Medium`; a full Tiles board encodes to ~1.7 KB, so Tiles is `Small` (`games/tiles/tests/state_size.rs`, which asserts the declared class *is* the measured one). The class is still validated as a *mechanism* — Tiles' state grows ~5× over a match where chess's does not — but no game in the portfolio occupies `Medium`, and doc 03 §9.2 now says so instead of naming Tiles there. `Welcome`-frame pressure is correspondingly not a Tiles concern. |
 | `LegalCommands::Hints` is necessary | Legal (position × rotation) pairs are numerous; enumerating commands is wasteful. The hint form must be enough for UI highlighting and a bot. |
-| Camera is presentation-only | Pan, zoom, and rotation live entirely in `P::Local`. Two players looking at the same board from different camera positions is not a desync. |
+| Camera is presentation-only | Pan and zoom live entirely in `P::Local`. Two players looking at the same board from different camera positions is not a desync. **Camera rotation is not implemented and is not currently representable**: `tabula_presentation::Camera2D` carries an origin and a zoom, and nothing else. A rotating board would go through `RenderCmd::PushTransform` in the presenter, still entirely presentation-local — but no game needs it yet, so nothing was added to the camera type for it. |
 | Asset volume is manageable | The largest asset pack; validates atlas packing, priority loading, and per-density variants. |
 | Async turns work end to end | A match spanning days, surviving deploys, with push notifications and hibernation. Phase 9's headline test. |
 | Determinism with a large hidden ordered structure | The bag order is secret and consumed over time; replay must reproduce every draw. |
@@ -254,12 +262,24 @@ OUT: expansions, rivers, custom boards, trading — later
 ### 4.3 Presentation requirements
 
 ```text
-infinite scrollable board with pan (drag / two-finger), zoom (wheel / pinch, clamped),
-snap-to-grid ghost tile with rotation (tap-rotate + keyboard R), legal/illegal target tinting,
+infinite scrollable board with pan (drag / two-finger), zoom (clamped),
+snap-to-grid ghost tile with rotation, legal/illegal target tinting,
 follower placement targets on the placed tile's features, score track, remaining-tiles counter,
-minimap or "recenter" affordance, motion.tile-place, motion.token-drop, motion.score-update,
-end-of-game scoring walkthrough animation
+"recenter" affordance, motion.tile-place, motion.token-drop, motion.score-update
 ```
+
+Delivered in Phase 3: pan (left drag past a threshold), clamped zoom and
+recenter (on-screen controls), the ghost tile with rotation (right click, Space,
+or an on-screen control), legal/illegal target tinting, follower slots on the
+tile just laid, the score track with per-seat follower counts, the
+remaining-tiles counter, and audio cues for place / token-drop / score-update.
+
+Deferred, and why: **wheel and pinch** are not in
+`tabula_presentation::InputEvent`, which carries pointer, key, and focus events
+only. Zoom is on-screen instead; adding a wheel variant would be a Phase-2
+contract change with no second consumer asking for it, and the game is fully
+playable without one. A **minimap** and the **end-of-game scoring walkthrough
+animation** are Phase 9 polish.
 
 ### 4.4 Failure signals
 
@@ -274,14 +294,31 @@ end-of-game scoring walkthrough animation
 ### 4.5 Acceptance
 
 ```text
-[ ] placement legality fully tested, including all rotations and edge adjacency cases
-[ ] scoring correct for every feature type, including end-of-game partial scoring
-[ ] state hash cost < 200 µs at full board; apply within budget
-[ ] snapshot size measured and StateSizeClass confirmed
-[ ] Welcome frame size for a full board within the 1 MiB outbound cap (with margin)
-[ ] async match survives 7 real days, 3 deploys, and 2 hibernation cycles
-[ ] camera never affects state (property: identical command sequences from different camera
-    positions produce identical hashes)
+[x] placement legality fully tested — exhaustive over every kind x every rotation x every
+    neighbour of the start tile, against an oracle written from the definition of adjacency,
+    plus a symmetry law over every pair of kinds
+[x] scoring correct for every implemented feature type (roads, cities, monasteries),
+    including end-of-game partial scoring, ties, and pennants
+[ ] state hash cost < 200 µs at full board; apply within budget — NOT MEASURED. A wall-clock
+    assertion needs `std::time::Instant`, which is a `disallowed-type` in a rules crate (I-3),
+    and belongs in the Phase-4 load test with the rest of the per-match cost model (doc 06 §2).
+    The size measurement below makes the cost implausibly large, but implausible is not measured.
+[x] snapshot size measured and StateSizeClass SET FROM the measurement — ~1.7 KB, so `Small`;
+    the design's `Medium` estimate was wrong by two orders of magnitude and doc 03 §9.2 now
+    says so rather than reconciling toward it
+[x] SecretModel + projection-security suite green across a reachable trace of real draws
+[x] bag-order noninterference: two permutations, both checked to leave a state the validator
+    still accepts, change no unauthorized projection or view event
+[ ] Welcome frame size for a full board within the 1 MiB outbound cap — Phase 4 (no protocol
+    yet). At ~1.7 KB of canonical state the projected View is nowhere near the cap.
+[ ] async match survives 7 real days, 3 deploys, and 2 hibernation cycles — Phase 4+ platform
+    work. Phase 3 owns only the rules half: the per-turn deadline is implemented and 60 s and
+    24 h take the same code path.
+[x] camera never affects state — property: one logical interaction driven from five camera
+    positions and zoom levels, each taking a different path through the pointer mapping,
+    produces byte-identical canonical state
+    (`games/tiles/src/presentation.rs::identical_play_from_different_cameras_produces_identical_state`),
+    with a negative control proving the render lists really did differ
 [ ] Board Reader allows completing a full turn with a screen reader
 ```
 

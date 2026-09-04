@@ -281,16 +281,75 @@ pub enum LegalCommands<C> {
     None,
 }
 
-/// A structured legality hint.
+/// A structured legality hint: a game-defined kind plus a canonically encoded
+/// game-defined payload.
 ///
-/// TODO(phase 3): shape is decided when tiles is written (doc 02 §12.4). The
-/// requirement is "enough for the client to highlight legal targets without
-/// enumerating commands". Do not design it before there is a second consumer.
-#[derive(Clone, Debug)]
-#[non_exhaustive]
+/// # Why the shape stayed opaque
+///
+/// The requirement is "enough for the client to highlight legal targets
+/// without enumerating commands", and doc 02 §12.4 deliberately deferred the
+/// shape until a game needed it. Tiles is that game (Phase 3), and writing it
+/// did **not** produce a reason to give this type game-shaped fields: tiles
+/// groups its legal (position × rotation) pairs into one hint per position,
+/// which the opaque `(kind, data)` pair already expresses. A second consumer
+/// may still justify structure here; one did not.
+///
+/// # What writing the first consumer did produce
+///
+/// The type was previously `#[non_exhaustive]` with public fields, which made
+/// it **unconstructible outside this crate** (E0639) — so
+/// [`LegalCommands::Hints`] could not be returned by any game at all. The
+/// fields are now private behind [`CommandHint::new`], which both fixes that
+/// and matches how every other refined type in this workspace is built:
+/// evolvable, and with exactly one place a value can come from.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandHint {
-    /// Game-defined kind discriminator, e.g. "place-tile".
-    pub kind: compact_str::CompactString,
-    /// Game-defined payload, canonically encoded.
-    pub data: Vec<u8>,
+    kind: compact_str::CompactString,
+    data: Vec<u8>,
+}
+
+impl CommandHint {
+    /// A hint of `kind` (e.g. `"place-tile"`) carrying `data`, which the game
+    /// is expected to have produced with [`tabula_core::canonical_encode`] so
+    /// that its own presentation and bots can decode it again.
+    ///
+    /// Infallible on purpose: hints are affordances, never authority
+    /// (see [`GameRules::legal_commands`]), so a malformed one degrades the
+    /// UI rather than the match, and a `Result` here would buy nothing.
+    #[must_use]
+    pub fn new(kind: impl Into<compact_str::CompactString>, data: Vec<u8>) -> Self {
+        Self {
+            kind: kind.into(),
+            data,
+        }
+    }
+
+    /// Game-defined kind discriminator.
+    #[must_use]
+    pub fn kind(&self) -> &str {
+        self.kind.as_str()
+    }
+
+    /// Game-defined canonically encoded payload.
+    #[must_use]
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CommandHint;
+
+    /// The accessors round-trip what `new` was given. The *cross-crate*
+    /// evidence that `LegalCommands::Hints` is usable at all lives in
+    /// `games/tiles/tests/rules.rs::legal_commands_hints_decode_to_exactly_the_accepted_placements`
+    /// — a same-crate test cannot observe the E0639 that made this type
+    /// unconstructible for every game.
+    #[test]
+    fn command_hint_exposes_the_kind_and_payload_it_was_built_from() {
+        let hint = CommandHint::new("place-tile", vec![7, 9]);
+        assert_eq!(hint.kind(), "place-tile");
+        assert_eq!(hint.data(), &[7, 9]);
+    }
 }

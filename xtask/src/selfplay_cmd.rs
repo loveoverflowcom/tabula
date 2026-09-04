@@ -5,6 +5,7 @@ use std::{env, fmt::Write as _};
 use tabula_core::{BotLevel, Occupant, SeatEntry, SeatId, SeatRoster};
 use tabula_game_chess::{ChessModule, ClockConfig, ClockControl, Config as ChessConfig};
 use tabula_game_tictactoe::{Config as TicTacToeConfig, TicTacToeModule};
+use tabula_game_tiles::{Config as TilesConfig, TilesModule};
 use tabula_testkit::selfplay::{SelfPlayConfig, SelfPlayReport, SelfPlaySetup};
 
 #[derive(Clone, Copy)]
@@ -40,6 +41,7 @@ pub(crate) fn run() -> Result<(), String> {
     let game = args.next().ok_or_else(|| usage("a game is required"))?;
     let mut cfg = SelfPlayConfig::default();
     let mut clock = ClockMode::Fischer;
+    let mut seats: u8 = 3;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -62,6 +64,11 @@ pub(crate) fn run() -> Result<(), String> {
             "--clock" if game == "chess" => {
                 clock = ClockMode::parse(&next_value(&mut args, "--clock")?)?;
             }
+            "--seats" if game == "tiles" => {
+                seats = next_value(&mut args, "--seats")?
+                    .parse()
+                    .map_err(|_| "--seats must be an unsigned integer".to_owned())?;
+            }
             "--no-projection-check" => cfg.check_projections = false,
             _ => return Err(usage(&format!("unknown argument {arg:?}"))),
         }
@@ -70,6 +77,7 @@ pub(crate) fn run() -> Result<(), String> {
     let report = match game.as_str() {
         "tictactoe" => run_tictactoe(&cfg)?,
         "chess" => run_chess(&cfg, clock)?,
+        "tiles" => run_tiles(&cfg, seats)?,
         _ => return Err(usage(&format!("unsupported game {game:?}"))),
     };
     print_report(&game, &cfg, clock, &report);
@@ -113,6 +121,29 @@ fn run_chess(cfg: &SelfPlayConfig, clock: ClockMode) -> Result<SelfPlayReport, S
         roster: bot_roster(2),
     };
     tabula_testkit::selfplay::run::<ChessModule>(&setup, cfg).map_err(|error| error.to_string())
+}
+
+/// Tiles self-play. `--seats` matters here in a way it does not for the
+/// two-seat games: turn order, follower supply, and majority ties all change
+/// with the seat count, so the nightly campaign should sweep it.
+fn run_tiles(cfg: &SelfPlayConfig, seats: u8) -> Result<SelfPlayReport, String> {
+    if !(tabula_game_tiles::rules::MIN_SEATS..=tabula_game_tiles::rules::MAX_SEATS).contains(&seats)
+    {
+        return Err(format!(
+            "--seats must be between {} and {}",
+            tabula_game_tiles::rules::MIN_SEATS,
+            tabula_game_tiles::rules::MAX_SEATS
+        ));
+    }
+    let setup = SelfPlaySetup::<tabula_game_tiles::TilesRules> {
+        config: TilesConfig {
+            // No deadline: the bots always answer, so a deadline would only
+            // ever fire as a side effect of the harness's own scheduling.
+            turn_deadline_ms: 0,
+        },
+        roster: bot_roster(seats),
+    };
+    tabula_testkit::selfplay::run::<TilesModule>(&setup, cfg).map_err(|error| error.to_string())
 }
 
 fn bot_roster(count: u8) -> SeatRoster {
@@ -208,6 +239,6 @@ fn format_seed(seed: &[u8; 32]) -> String {
 
 fn usage(reason: &str) -> String {
     format!(
-        "{reason}\nusage: cargo xtask selfplay <tictactoe|chess> [--matches N] [--seed N|HEX] [--match-index N] [--max-inputs N] [--clock fischer|bronstein|none]"
+        "{reason}\nusage: cargo xtask selfplay <tictactoe|chess|tiles> [--matches N] [--seed N|HEX] [--match-index N] [--max-inputs N] [--clock fischer|bronstein|none] [--seats N]"
     )
 }

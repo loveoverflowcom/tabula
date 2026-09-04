@@ -967,6 +967,7 @@ dependencies = [
  "tabula-game-api",
  "tabula-game-chess",
  "tabula-game-tictactoe",
+ "tabula-game-tiles",
  "tabula-presentation",
 ]
 
@@ -988,8 +989,11 @@ dependencies = [
 
 [[package]]
 name = "tabula-game-tiles"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
+ "blake3",
+ "glam 0.29.3",
+ "proptest",
  "serde",
  "smallvec",
  "tabula-assets",
@@ -998,6 +1002,7 @@ dependencies = [
  "tabula-game-api",
  "tabula-presentation",
  "tabula-testkit",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1364,6 +1369,7 @@ dependencies = [
  "tabula-game-api",
  "tabula-game-chess",
  "tabula-game-tictactoe",
+ "tabula-game-tiles",
  "tabula-presentation",
  "tabula-testkit",
  "tempfile",

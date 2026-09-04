@@ -119,7 +119,7 @@ pub use metadata::{
     DurationRangeError, GameMetadata, GameMetadataSpec, I18nKey, I18nKeyError,
 };
 pub use module::GameModule;
-pub use rules::{GameRules, Init, LegalCommands, Outcome};
+pub use rules::{CommandHint, GameRules, Init, LegalCommands, Outcome};
 
 // Re-exported so a game crate can `use tabula_game_api::*;` and have the whole
 // vocabulary, exactly as the worked example in doc 02 §10.2 does.

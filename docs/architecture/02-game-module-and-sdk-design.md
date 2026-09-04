@@ -333,6 +333,14 @@ pub enum LegalCommands<C> {
 }
 ```
 
+`CommandHint` stays an opaque `(kind, canonically encoded payload)` pair. Writing the first real
+consumer (Tiles, Phase 3) did not produce a reason to give it game-shaped fields — Tiles groups its
+legal `(position × rotation)` pairs into one hint per position, which the opaque pair already
+expresses. It *did* produce one contract fix: the type was `#[non_exhaustive]` with public fields,
+so no crate outside `tabula-game-api` could construct one (E0639) and `Hints` was returnable by no
+game at all. It now has a private representation with a `CommandHint::new` constructor and
+`kind()`/`data()` accessors, and is re-exported from the crate root.
+
 ### 3.2 Why validation is not a separate trait method
 
 The brief's sketch had `validate_command` and `apply_command`. **Rejected.** Two functions that
@@ -1301,7 +1309,7 @@ capabilities (doc 08 §3 for Caro's open questions, including its eventual state
 | `async_turns` | true (correspondence) | `TBD during implementation` | false | **true** |
 | `ranked` | `Elo` | `TBD during implementation` | `No` (social) | `Placement` |
 | `durability` | `AckAfterPersist` | `AckAfterPersist` | `AckAfterApply` | `AckAfterPersist` |
-| `state_size` | `Tiny` | `TBD during implementation` | `Small` | **`Medium`** |
+| `state_size` | `Tiny` | `TBD during implementation` | `Small` | `Small` — **measured**, against a `Medium` design estimate |
 | `substitution` | `BotOnly` | `BotOnly` | **`Forbidden`** | `BotOnly` |
 | `pausable` | false | false | false | true (async) |
 | Hardest contract stressed | clocks + `legal_commands` enumeration | `legal_commands` at scale + zero-platform-change addition | `view_event → None` + scopes | state size + snapshot cost + camera + bag-order secrecy |
@@ -1459,36 +1467,89 @@ Contract lessons:
 
 ### 12.4 Tiles (Carcassonne-like) — large dynamic state
 
+As implemented (`games/tiles/src/rules/state.rs`):
+
 ```rust
 struct State {
-    placed: BTreeMap<Coord, PlacedTile>,       // grows to ~72+ entries
-    bag: SmallVec<[TileKind; 72]>,             // SECRET order
-    drawn: Option<TileKind>,                   // public once drawn
-    meeples: BTreeMap<SeatId, u8>,
-    features: FeatureGraph,                    // incremental union-find for scoring
+    board: Board,                    // BTreeMap<Coord, PlacedTile>, grows to ~72
+    bag: Vec<TileKind>,              // SECRET order, public length
+    drawn: Option<TileKind>,         // public once drawn
+    discarded: Vec<TileKind>,        // unplaceable tiles, public
+    features: FeatureGraph,          // incremental components + followers
+    meeples: BTreeMap<SeatId, u8>,   // followers still in hand
     scores: BTreeMap<SeatId, i64>,
-    turn: SeatId, phase: TurnPhase,            // Draw | Place | Meeple | Score
+    seats: Vec<SeatId>, turn_index: u8,
+    phase: TurnPhase,                // PlaceTile | PlaceMeeple
+    status: Status, paused: bool,
+    turn_deadline_ms: u64,           // 0 = none; 60 s and 24 h take one code path
+    last_placed: Option<Coord>,
 }
-enum Command { PlaceTile { at: Coord, rot: Rotation }, SkipMeeple,
-               PlaceMeeple { on: FeatureSlot }, EndTurn }
+enum Command { PlaceTile { at: Coord, rotation: Rotation },
+               PlaceMeeple { segment: u8 }, SkipMeeple }
 ```
+
+Two differences from the sketch, both decided by writing it:
+
+- **`TurnPhase` has two variants, not four.** `Draw` and `Score` were phases no
+  player could occupy: the rules draw for the next seat as part of finishing a
+  turn, and scoring is a consequence of the claim decision rather than a
+  decision of its own. `EndTurn` disappeared with them — `SkipMeeple` already
+  ends the turn, and a second way to end it would be a second authority.
+- **`PlaceMeeple` names a segment of the tile just placed, not a `FeatureSlot`.**
+  The coordinate is not a parameter, so a follower cannot be placed anywhere but
+  the tile that was just put down, and there is no coordinate to forge.
+
+Scope note (Phase 3): Tiles implements **roads, cities, and monasteries**. **Farms/fields are
+deferred** — scoring them needs sub-edge field granularity (each tile side carries two field
+corners), which multiplies the graph's representation cost without exercising any contract the
+other three feature types do not already exercise. Field remains an *edge terrain* for adjacency
+matching; it is not a scorable feature. The tile distribution is Tabula's own, in the Carcassonne
+family; it is not a reproduction of any published set.
 
 Contract lessons:
 
-- **`state_size = Medium`** changes snapshot policy: snapshot every 50 inputs instead of every 200,
-  and store snapshots as compressed blobs (doc 03 §9).
+- **`state_size` is `Small`, measured, against a `Medium` estimate.** The design expected 30–120 KB,
+  which would have moved snapshot cadence from every 200 inputs to every 50 and stored snapshots as
+  compressed blobs (doc 03 §9). `games/tiles/tests/state_size.rs` plays complete matches at every
+  seat count and measures the canonical encoding: **a full board is about 1.7 KB**, two orders of
+  magnitude below the estimate. Roughly 300 bytes of that is the board and the discards; the rest
+  is the feature graph. The test asserts the declared class *is* the measured one, in both
+  `src/lib.rs` and `game.toml`, so the two cannot drift.
+  The honest consequence is recorded in doc 03 §9.2: **no game in the portfolio occupies `Medium`
+  yet.** Tiles is still the game that makes `StateSizeClass` a real capability — its state grows by
+  a factor of five over a match while chess's does not move — but it does not populate the class
+  the design assumed it would.
 - **`legal_commands` returns `Hints`, not `Enumerated`** — legal (position × rotation) pairs are
-  numerous; the hint form gives the client enough to highlight without enumerating commands.
+  numerous; the hint form gives the client enough to highlight without enumerating commands. This
+  is the game that found `CommandHint` to be unconstructible outside `tabula-game-api` (§3.1).
 - **`FeatureGraph` is an incremental structure**, which is why `apply` takes `&mut State`
-  (§3.3). Recomputing scoring from scratch each turn would be simpler but 100× slower on a large
-  board; the incremental structure must be included in the state hash so a divergence is caught.
+  (§3.3). It is a `State` field, so it is in the state hash by construction and a divergence in it
+  is caught rather than silently accumulating.
+  It is **not** a union-find, and the sketch's word for it was the one thing implementation
+  overturned. `find` with path compression *mutates*, and `project` and `legal_commands` are read
+  paths — so running them would change the encoded bytes and two runs of one input stream could
+  hash differently purely from how often something was queried. Turning compression off removes the
+  mutation and most of the benefit and still leaves parent pointers encoding union order rather
+  than membership. What Tiles uses instead is an explicit component registry merged by **minimum
+  id**: reads never mutate, a component's contents are a set union and its id a minimum (so both
+  are order-independent), and closure is a counter reaching zero.
+  `games/tiles/src/rules/feature.rs` records all four representations that were compared.
+  The reference model for it — a whole-board flood fill — is kept as the differential oracle
+  (`games/tiles/tests/features.rs` runs it after every input of complete matches at every seat
+  count), which is the honest place for "recompute from scratch": as the thing production is
+  checked against, not as production.
 - **Async turns are the natural mode.** `async_turns.supported = true` with a 24 h deadline; the
   match actor hibernates (doc 03 §11) and the platform sends push notifications. The rules are
   unchanged between live and async play — that is the payoff of `LogicalTime`.
-- **The bag is secret but its count is public.** `View` carries `bag_remaining: u8` and the drawn
-  tile, never the order. Because that order affects future draws, Tiles declares
-  `hidden_information = true` and must provide a `SecretModel` that marks the remaining order as
-  authorised to nobody; the Phase-3 projection scan covers reachable draws.
+- **The bag is secret but its count is public.** `View` carries a remaining-tile count and the
+  drawn tile, never the order. Because that order determines every future draw, Tiles declares
+  `hidden_information = true`, provides a `SecretModel` marking the remaining order as authorised
+  to **nobody**, and expands `projection_security!` alongside `conformance!`. Being the *secondary*
+  hidden-information benchmark (Werewolf owns per-seat knowledge and event non-existence) buys
+  Tiles no exemption from either obligation. Containment scanning alone is not sufficient evidence
+  for an *ordered* secret — a short remaining bag encodes to a token too small to be a leak
+  detector — so Tiles pairs the scan with a noninterference property over bag permutations
+  (§11.1), which is the oracle that actually covers the whole range.
 
 ### 12.5 What this comparison proves about the contract
 

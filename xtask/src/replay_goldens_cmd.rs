@@ -23,6 +23,7 @@ pub(crate) fn run() -> Result<(), String> {
     write_tictactoe(&replay_dir.join("tictactoe-golden.tbr"))?;
     write_chess(&replay_dir.join("chess-golden.tbr"))?;
     write_chess_clock(&replay_dir.join("chess-clock-golden.tbr"))?;
+    write_tiles(&replay_dir.join("tiles-golden.tbr"))?;
     println!("wrote replay goldens under {}", replay_dir.display());
     Ok(())
 }
@@ -104,6 +105,105 @@ fn write_chess_clock(path: &Path) -> Result<(), String> {
         vec![1_000, 6_000],
         MatchId(3),
     )
+}
+
+/// A whole Tiles match, so the golden pins the deterministic shuffle, every
+/// draw taken from it, the feature merges, completion scoring, follower
+/// returns, end-of-game partial scoring, and the final standings.
+///
+/// The input sequence is generated from the **rules** — first legal placement
+/// in canonical order, claiming and passing on alternate opportunities — and
+/// deliberately not from the bot: a golden that depended on bot policy would
+/// have to be regenerated every time the bot got smarter, which would defeat
+/// the point of having one.
+fn write_tiles(path: &Path) -> Result<(), String> {
+    use tabula_game_tiles::{
+        rules::first_legal_placement, Command, Config, Status, TilesRules, TurnPhase,
+    };
+
+    let config = Config {
+        turn_deadline_ms: 0,
+    };
+    let roster = placement_roster(3);
+    let seed = MatchSeed::from_bytes([0x44; 32]);
+
+    // Replay the match once to discover the input sequence, then hand that
+    // sequence to the shared writer, which replays it again from `create`.
+    // Writing it twice through two code paths is not redundancy for its own
+    // sake: if the sequence were not reproducible, the writer would reject it.
+    let mut rng = tabula_core::DetRng::for_input(&seed, InputIndex(0));
+    let mut ctx = context(&mut rng, InputIndex(0), LogicalTime::ZERO);
+    let init = TilesRules::create(&config, &roster, &mut ctx)
+        .map_err(|error| format!("tiles golden create failed: {error:?}"))?;
+    let mut state = init.state;
+
+    let mut inputs: Vec<Input<Command>> = Vec::new();
+    let mut times: Vec<u64> = Vec::new();
+    let mut claim_opportunities = 0usize;
+    while state.status() == Status::Playing {
+        let seat = state.turn();
+        let command = match state.phase() {
+            TurnPhase::PlaceTile => {
+                let Some(kind) = state.drawn() else { break };
+                let Some((at, rotation)) = first_legal_placement(state.board(), kind) else {
+                    break;
+                };
+                Command::PlaceTile { at, rotation }
+            }
+            TurnPhase::PlaceMeeple => {
+                claim_opportunities += 1;
+                match state.claimable_segments().first() {
+                    // Claim two out of three, so the golden carries both the
+                    // claim path and the pass path.
+                    Some(segment) if claim_opportunities % 3 != 0 => {
+                        Command::PlaceMeeple { segment: *segment }
+                    }
+                    _ => Command::SkipMeeple,
+                }
+            }
+        };
+        let input = Input::Player { seat, command };
+        let index = InputIndex(inputs.len() as u64 + 1);
+        let time = index.0 * 1_000;
+        let mut rng = tabula_core::DetRng::for_input(&seed, index);
+        let mut ctx = context(&mut rng, index, LogicalTime(time));
+        TilesRules::apply(&mut state, input.clone(), &mut ctx)
+            .map_err(|error| format!("tiles golden input {} rejected: {error:?}", index.0))?;
+        inputs.push(input);
+        times.push(time);
+    }
+    if state.status() != Status::Ended {
+        return Err(format!(
+            "tiles golden did not reach a terminal state (status {:?})",
+            state.status()
+        ));
+    }
+
+    write_replay::<tabula_game_tiles::TilesModule>(
+        path,
+        &config,
+        roster,
+        seed,
+        inputs,
+        times,
+        MatchId(4),
+    )
+}
+
+fn placement_roster(seats: u8) -> SeatRoster {
+    use tabula_core::{BotLevel, Occupant, SeatEntry, SeatId};
+    SeatRoster::new(
+        (0..seats)
+            .map(|index| SeatEntry {
+                seat: SeatId(index),
+                occupant: Occupant::Bot {
+                    level: BotLevel::Trivial,
+                },
+                team: None,
+            })
+            .collect(),
+    )
+    .expect("golden roster uses distinct seats")
 }
 
 fn chess_move(from: u8, to: u8) -> Input<tabula_game_chess::Command> {

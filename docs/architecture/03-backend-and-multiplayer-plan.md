@@ -555,7 +555,7 @@ interval, so worst-case recovery is a fixed small number of `apply` calls (micro
 |---|---|---|---|
 | `Tiny` (< 1 KiB) | every 200 inputs + on end | Postgres `BYTEA` | chess, tictactoe |
 | `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` | werewolf |
-| `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | Postgres `BYTEA`, zstd | tiles |
+| `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | Postgres `BYTEA`, zstd | (none yet) |
 | `Large` (≥ 256 KiB) | every 25 inputs + on hibernate | Object storage, pointer row in PG | future |
 
 Additional triggers: before drain, before hibernation, on `rules_version` boundary, and whenever
@@ -564,6 +564,19 @@ Additional triggers: before drain, before hibernation, on `rules_version` bounda
 Caro's `StateSizeClass` remains `TBD` until its final board dimensions and canonical encoding are
 implemented and measured; the implementation then selects `Tiny` or `Small` from the encoded
 state size rather than from the placeholder design.
+
+Tiles was the design's expected `Medium` example. Phase 3 measured it
+(`games/tiles/tests/state_size.rs`, over complete matches at every supported seat count): **a full
+Tiles board encodes to about 1.7 KB**, so Tiles is `Small`, and the `Medium` row above deliberately
+names no game rather than naming one on the strength of an estimate. A class that no shipped game
+occupies is an honest table entry; a class assigned from a guess sets a snapshot cadence nobody
+measured.
+
+What this does *not* mean is that `StateSizeClass` is idle. Tiles' state grows about fivefold over
+a match while chess's barely moves, which is the behaviour the class exists to describe; the
+absolute numbers simply came out smaller than the design guessed, because a `BTreeMap` of 72
+`(i16, i16) -> (u8, u8)` entries plus its feature graph is small. The trigger to revisit the
+`Medium` row is a game whose canonical state genuinely exceeds 16 KiB — not a re-estimate.
 
 ### 9.3 State hashes
 
