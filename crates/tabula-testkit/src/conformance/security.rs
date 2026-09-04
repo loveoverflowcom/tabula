@@ -5,8 +5,8 @@
 //! # Why this is not part of `conformance!`
 //!
 //! [`GameTestFixture`] is deliberately generic over every game, hidden
-//! information or not: Chess and `TicTacToe` must not need a fake
-//! [`SecretModel`] just to satisfy a macro (this PR's items 6 and 19). A
+//! information or not: Chess and other perfect-information games must not need a fake
+//! [`SecretModel`] just to satisfy a macro. A
 //! game's [`SecretModel`] only exists to answer one question —
 //! *what is secret, and to whom* — and only hidden-information games can
 //! answer it honestly. [`HiddenInformationFixture`] adds exactly the one

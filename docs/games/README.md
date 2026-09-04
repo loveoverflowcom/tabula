@@ -13,8 +13,8 @@ correctly, without owning the physical box. Cite the edition or variant.
 ### 2. The information model — **the part that matters**
 
 **Mandatory for every game with `hidden_information = true`** (doc 02 §7.1). In
-the current portfolio that includes `werewolf` and `tiles` — `tictactoe`,
-`chess`, and `caro` are perfect information. Werewolf is the primary
+the current portfolio that includes `werewolf` and `tiles` —
+`chess` and `caro` are perfect information. Werewolf is the primary
 hidden-information benchmark; Tiles is the secondary case for its secret
 tile-bag order and public count.
 
@@ -98,14 +98,14 @@ decision rather than an oversight.
 ## Files
 
 The **written** column says whether the file exists yet, not whether the game
-does: chess and tic-tac-toe are implemented and have no per-game doc, because
-neither has hidden information and doc 08 §7.1 only makes the file mandatory
+does: chess is implemented and has no per-game doc, because it has no
+hidden information and doc 08 §7.1 only makes the file mandatory
 before a game *ships*. A row without a file is an outstanding task, not a
-statement that the game has nothing to document.
+statement that the game has nothing to document. (For historical lessons from the
+retired Phase 0 prototype, see [`docs/legacy/tictactoe.md`](../legacy/tictactoe.md)).
 
 | Game | Written | Status |
 |---|---|---|
-| `tictactoe.md` | no | Phase 0 — internal SDK smoke test / template. Trivially: nothing is secret. Not a product/reference game. |
 | `chess.md` | no | Phase 1 — correctness benchmark: complex legality, clocks, deterministic replay. |
 | `caro.md` | yes | Phase 3 — design placeholder. Simple real product game, large fixed board, SDK-friction benchmark. Perfect information; no information model needed. |
 | `tiles.md` | yes | Phase 3 — **implemented.** Carcassonne-like: deterministic tile-bag RNG, dynamic spatial state, incremental scoring. Bag order secret, count public. |

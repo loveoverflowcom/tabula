@@ -4,7 +4,6 @@ use std::{env, fmt::Write as _};
 
 use tabula_core::{BotLevel, Occupant, SeatEntry, SeatId, SeatRoster};
 use tabula_game_chess::{ChessModule, ClockConfig, ClockControl, Config as ChessConfig};
-use tabula_game_tictactoe::{Config as TicTacToeConfig, TicTacToeModule};
 use tabula_game_tiles::{Config as TilesConfig, TilesModule};
 use tabula_testkit::selfplay::{SelfPlayConfig, SelfPlayReport, SelfPlaySetup};
 
@@ -75,7 +74,6 @@ pub(crate) fn run() -> Result<(), String> {
     }
 
     let report = match game.as_str() {
-        "tictactoe" => run_tictactoe(&cfg)?,
         "chess" => run_chess(&cfg, clock)?,
         "tiles" => run_tiles(&cfg, seats)?,
         _ => return Err(usage(&format!("unsupported game {game:?}"))),
@@ -86,16 +84,6 @@ pub(crate) fn run() -> Result<(), String> {
     } else {
         Err("one or more self-play matches failed".to_owned())
     }
-}
-
-fn run_tictactoe(cfg: &SelfPlayConfig) -> Result<SelfPlayReport, String> {
-    let setup = SelfPlaySetup::<tabula_game_tictactoe::TicTacToeRules> {
-        config: TicTacToeConfig {
-            move_timeout_ms: 5_000,
-        },
-        roster: bot_roster(2),
-    };
-    tabula_testkit::selfplay::run::<TicTacToeModule>(&setup, cfg).map_err(|error| error.to_string())
 }
 
 fn run_chess(cfg: &SelfPlayConfig, clock: ClockMode) -> Result<SelfPlayReport, String> {
@@ -239,6 +227,6 @@ fn format_seed(seed: &[u8; 32]) -> String {
 
 fn usage(reason: &str) -> String {
     format!(
-        "{reason}\nusage: cargo xtask selfplay <tictactoe|chess|tiles> [--matches N] [--seed N|HEX] [--match-index N] [--max-inputs N] [--clock fischer|bronstein|none] [--seats N]"
+        "{reason}\nusage: cargo xtask selfplay <chess|tiles> [--matches N] [--seed N|HEX] [--match-index N] [--max-inputs N] [--clock fischer|bronstein|none] [--seats N]"
     )
 }

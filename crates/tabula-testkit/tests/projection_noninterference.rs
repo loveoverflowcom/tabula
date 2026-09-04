@@ -14,7 +14,7 @@
 //! sketches with zero `impl GameRules` (Phase 3 has not started; see
 //! `docs/architecture/07-phases-and-implementation-roadmap.md`) — they are the
 //! reference games in the current portfolio (doc 09 §3, doc 08) with
-//! `hidden_information = true`. Chess, tic-tac-toe, and Caro are
+//! `hidden_information = true`. Chess and Caro are
 //! perfect-information games and cannot exercise a secrecy property honestly
 //! — see `games/*/tests/projection_control.rs` for what *can* be said about
 //! them (projection determinism and a public-difference positive control,

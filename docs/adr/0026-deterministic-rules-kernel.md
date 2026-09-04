@@ -73,8 +73,8 @@ cheap spelling — `fn apply(state: State, …) -> Result<Transition, (State, Ru
 moves rather than clones, but the game can still have mutated the moved-in `State`
 before returning `Err`, so it hands back a corrupted value and buys nothing. The
 version that genuinely makes corruption unrepresentable is `&State -> new State`,
-and that costs a full rebuild on every command, forever, in the hot path of the
-one gate Phase 0 is measured by (`selfplay tictactoe --matches 10000`).
+and that costs a full rebuild on every command, forever, in the hot path of
+selfplay benchmarks (`selfplay chess --matches 10000`).
 
 So Model B trades a real, permanent, per-command cost for an invariant that
 Model A gets from a test that runs on every game automatically. We keep Model A —

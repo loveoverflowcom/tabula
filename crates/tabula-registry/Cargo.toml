@@ -20,7 +20,6 @@ thiserror       = { workspace = true }
 # Phase 4: `register!` lists the game crates here, each behind a per-game
 # feature so a small mobile bundle or a dedicated tournament server can link a
 # subset (doc 02 §8.1).
-# tabula-game-tictactoe = { workspace = true, optional = true }
 # tabula-game-chess     = { workspace = true, optional = true }
 # tabula-game-caro      = { workspace = true, optional = true }
 # tabula-game-werewolf  = { workspace = true, optional = true }
@@ -28,7 +27,6 @@ thiserror       = { workspace = true }
 
 [features]
 default = []
-# game-tictactoe = ["dep:tabula-game-tictactoe"]
 # game-chess     = ["dep:tabula-game-chess"]
 
 [lints]

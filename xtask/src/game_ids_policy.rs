@@ -233,7 +233,7 @@ mod tests {
     use super::*;
 
     fn ids() -> Vec<String> {
-        ["tictactoe", "chess", "caro", "werewolf", "tiles"]
+        ["chess", "caro", "werewolf", "tiles"]
             .into_iter()
             .map(String::from)
             .collect()
@@ -357,7 +357,7 @@ mod tests {
     fn ci_workflow_files_are_exempt() {
         let hits = scan_file(
             ".github/workflows/nightly.yml",
-            "game: [tictactoe] # add chess (P1), caro/tiles/werewolf (P3)",
+            "game: [chess, tiles] # add caro/werewolf",
             &ids(),
         );
         assert!(

@@ -133,8 +133,7 @@ tabula/
 │   ├── chess/                     # tabula-game-chess      (Game A — doc 08)
 │   ├── caro/                      # tabula-game-caro       (Game B — doc 08)
 │   ├── tiles/                     # tabula-game-tiles      (Game C — Carcassonne-like)
-│   ├── werewolf/                  # tabula-game-werewolf   (Game D)
-│   └── tictactoe/                 # tabula-game-tictactoe  (internal SDK smoke test / template — not a reference game)
+│   └── werewolf/                  # tabula-game-werewolf   (Game D)
 │
 ├── apps/
 │   ├── game-client/               # Macroquad binary: native (desktop/mobile) + wasm target
@@ -367,7 +366,6 @@ Do **not** create all fifteen crates on day one. Create them when a phase needs 
 | Crate | Created in |
 |---|---|
 | `tabula-core`, `tabula-game-api`, `tabula-testkit` | Phase 0 |
-| `games/tictactoe` | Phase 0 |
 | `games/chess` | Phase 1 |
 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `apps/game-client` | Phase 2 |
 | `tabula-assets`, `games/caro`, `games/tiles` (rules + presentation), `games/werewolf` (rules/headless) | Phase 3 |

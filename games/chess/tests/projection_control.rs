@@ -1,8 +1,8 @@
 //! Projection control tests for a **perfect-information** game.
 //!
 //! Chess has no hidden information (`capabilities.hidden_information ==
-//! false`), so — like tic-tac-toe's `tests/projection_control.rs` — it cannot
-//! exercise the noninterference property this PR adds. See
+//! false`), so it cannot
+//! exercise the noninterference property. See
 //! `crates/tabula-testkit/tests/projection_noninterference.rs` for the real
 //! hidden-information exercise. What this file checks:
 //!

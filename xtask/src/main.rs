@@ -115,9 +115,7 @@ fn main() {
                 std::process::exit(2);
             }
         },
-        Some("new-game") => {
-            unimplemented_command("new-game", "doc 02 §10.1 — scaffold from games/tictactoe")
-        }
+        Some("new-game") => unimplemented_command("new-game", "doc 02 §10.1 — game crate scaffold"),
         Some("selfplay") => match selfplay_cmd::run() {
             Ok(()) => {}
             Err(err) => {
@@ -255,10 +253,10 @@ mod tests {
             "pack-assets is not available in Phase 2 (planned activation: Phase 3, doc 04 §12)"
         );
 
-        let msg = unimplemented_message("new-game", "doc 02 §10.1 — scaffold from games/tictactoe");
+        let msg = unimplemented_message("new-game", "doc 02 §10.1 — game crate scaffold");
         assert_eq!(
             msg,
-            "new-game is not yet implemented (doc 02 §10.1 — scaffold from games/tictactoe)"
+            "new-game is not yet implemented (doc 02 §10.1 — game crate scaffold)"
         );
     }
 }

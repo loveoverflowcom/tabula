@@ -58,8 +58,7 @@ fn the_committed_tiles_replay_reproduces_its_recorded_final_hash() {
     // passing a `is_verified()`-only assertion while no longer being evidence
     // that *this* rules build produced it. Asserting the verdict is what keeps
     // "regenerate the corpus when the rules change" enforced rather than
-    // remembered. The committed tic-tac-toe golden is currently in exactly
-    // that state; see the PR notes.
+    // remembered.
     assert_eq!(
         runner.check(),
         tabula_testkit::ReplayVerdict::Exact,

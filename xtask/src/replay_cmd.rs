@@ -61,20 +61,20 @@ pub(crate) fn run() -> Result<(), String> {
         .game_id
         .clone();
     match game_id.as_str() {
-        "com.tabula.tictactoe" => verify::<tabula_game_tictactoe::TicTacToeModule>(
-            path_ref,
-            at,
-            diagnose,
-            write_reproducer.as_deref(),
-        ),
         "com.tabula.chess" => verify::<tabula_game_chess::ChessModule>(
             path_ref,
             at,
             diagnose,
             write_reproducer.as_deref(),
         ),
+        "com.tabula.tiles" => verify::<tabula_game_tiles::TilesModule>(
+            path_ref,
+            at,
+            diagnose,
+            write_reproducer.as_deref(),
+        ),
         _ => Err(format!(
-            "{path}: unsupported game {game_id}; Phase 1 tooling supports tictactoe and chess"
+            "{path}: unsupported game {game_id}; tooling supports chess and tiles"
         )),
     }
 }

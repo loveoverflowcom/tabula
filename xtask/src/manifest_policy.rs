@@ -424,7 +424,7 @@ mod tests {
     fn valid_game_crate_manifest_passes() {
         let src = r#"
             [package]
-            name = "tabula-game-tictactoe"
+            name = "tabula-game-example"
             version = "0.1.0"
             edition.workspace = true
             rust-version.workspace = true
@@ -442,7 +442,7 @@ mod tests {
             serde = { version = "1", features = ["derive"] }
         "#;
         let violations =
-            validate_cargo_manifest("games/tictactoe/Cargo.toml", src, &crates()).unwrap();
+            validate_cargo_manifest("games/example/Cargo.toml", src, &crates()).unwrap();
         assert!(
             violations.is_empty(),
             "expected a clean manifest, got {violations:?}"
@@ -529,10 +529,10 @@ mod tests {
     #[test]
     fn valid_game_toml_passes() {
         let src = r#"
-            id = "com.tabula.tictactoe"
+            id = "com.tabula.example"
             version = "0.1.0"
             rules_version = 1
-            name_key = "game.tictactoe.name"
+            name_key = "game.example.name"
             categories = ["abstract"]
             estimated_minutes = [1, 3]
 
@@ -548,11 +548,11 @@ mod tests {
             state_size = "tiny"
 
             [assets]
-            pack = "tictactoe@0.1.0"
+            pack = "example@0.1.0"
             size_kb = 40
         "#;
         let violations =
-            validate_game_toml("games/tictactoe/game.toml", src, "com.tabula.tictactoe").unwrap();
+            validate_game_toml("games/example/game.toml", src, "com.tabula.example").unwrap();
         assert!(
             violations.is_empty(),
             "expected a clean game.toml, got {violations:?}"
@@ -562,11 +562,11 @@ mod tests {
     #[test]
     fn game_toml_missing_metadata_fails() {
         let src = r#"
-            id = "com.tabula.tictactoe"
+            id = "com.tabula.example"
             version = "0.1.0"
         "#;
         let violations =
-            validate_game_toml("games/tictactoe/game.toml", src, "com.tabula.tictactoe").unwrap();
+            validate_game_toml("games/example/game.toml", src, "com.tabula.example").unwrap();
         assert!(violations.iter().any(|v| v.field == "rules_version"));
         assert!(violations.iter().any(|v| v.field == "seats"));
         assert!(violations.iter().any(|v| v.field == "capabilities"));
@@ -576,10 +576,10 @@ mod tests {
     #[test]
     fn game_toml_invalid_capability_enum_fails() {
         let src = r#"
-            id = "com.tabula.tictactoe"
+            id = "com.tabula.example"
             version = "0.1.0"
             rules_version = 1
-            name_key = "game.tictactoe.name"
+            name_key = "game.example.name"
             categories = ["abstract"]
             estimated_minutes = [1, 3]
 
@@ -595,10 +595,10 @@ mod tests {
             state_size = "tiny"
 
             [assets]
-            pack = "tictactoe@0.1.0"
+            pack = "example@0.1.0"
         "#;
         let violations =
-            validate_game_toml("games/tictactoe/game.toml", src, "com.tabula.tictactoe").unwrap();
+            validate_game_toml("games/example/game.toml", src, "com.tabula.example").unwrap();
         assert!(violations
             .iter()
             .any(|v| v.field == "capabilities.turn_model"));
@@ -610,7 +610,7 @@ mod tests {
             id = "com.tabula.wrongname"
             version = "0.1.0"
             rules_version = 1
-            name_key = "game.tictactoe.name"
+            name_key = "game.example.name"
             categories = ["abstract"]
             estimated_minutes = [1, 3]
 
@@ -626,20 +626,20 @@ mod tests {
             state_size = "tiny"
 
             [assets]
-            pack = "tictactoe@0.1.0"
+            pack = "example@0.1.0"
         "#;
         let violations =
-            validate_game_toml("games/tictactoe/game.toml", src, "com.tabula.tictactoe").unwrap();
+            validate_game_toml("games/example/game.toml", src, "com.tabula.example").unwrap();
         assert!(violations.iter().any(|v| v.field == "id"));
     }
 
     #[test]
     fn seats_min_greater_than_max_fails() {
         let src = r#"
-            id = "com.tabula.tictactoe"
+            id = "com.tabula.example"
             version = "0.1.0"
             rules_version = 1
-            name_key = "game.tictactoe.name"
+            name_key = "game.example.name"
             categories = ["abstract"]
             estimated_minutes = [1, 3]
 
@@ -655,10 +655,10 @@ mod tests {
             state_size = "tiny"
 
             [assets]
-            pack = "tictactoe@0.1.0"
+            pack = "example@0.1.0"
         "#;
         let violations =
-            validate_game_toml("games/tictactoe/game.toml", src, "com.tabula.tictactoe").unwrap();
+            validate_game_toml("games/example/game.toml", src, "com.tabula.example").unwrap();
         assert!(violations.iter().any(|v| v.field == "seats"));
     }
 
@@ -738,16 +738,19 @@ mod tests {
             .expect("chess game.toml asset pack must be valid");
         assert_eq!(ChessPresentation::asset_pack(), manifest_pack);
 
-        let tictactoe_toml = include_str!("../../games/tictactoe/game.toml");
-        let violations = validate_game_toml(
-            "games/tictactoe/game.toml",
-            tictactoe_toml,
-            "com.tabula.tictactoe",
-        )
-        .unwrap();
+        let tiles_toml = include_str!("../../games/tiles/game.toml");
+        let violations =
+            validate_game_toml("games/tiles/game.toml", tiles_toml, "com.tabula.tiles").unwrap();
         assert!(
             violations.is_empty(),
-            "tictactoe game.toml must be valid: {violations:?}"
+            "tiles game.toml must be valid: {violations:?}"
         );
+        let doc: GameToml = toml::from_str(tiles_toml).unwrap();
+        let manifest_pack_str = doc
+            .assets
+            .as_ref()
+            .and_then(|a| a.pack.as_ref())
+            .expect("tiles game.toml must declare [assets].pack");
+        AssetPackRef::parse(manifest_pack_str).expect("tiles game.toml asset pack must be valid");
     }
 }

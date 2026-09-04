@@ -78,7 +78,6 @@
 //!     tabula_game_caro::CaroModule,
 //!     tabula_game_werewolf::WerewolfModule,
 //!     tabula_game_tiles::TilesModule,
-//!     tabula_game_tictactoe::TicTacToeModule,
 //! }
 //! ```
 //!

@@ -111,9 +111,6 @@ verification-install:
 kani-core:
     cargo kani -p tabula-core
 
-# Proves the real TicTacToe placement transition's rejection transactionality.
-kani-tictactoe:
-    cargo kani -Z stubbing -p tabula-game-tictactoe
 
 # Preview the mutation set for one named workspace package.
 mutants-list package:

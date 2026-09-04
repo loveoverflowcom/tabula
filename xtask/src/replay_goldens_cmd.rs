@@ -20,48 +20,11 @@ pub(crate) fn run() -> Result<(), String> {
     let replay_dir = root.join("tests/replays");
     fs::create_dir_all(&replay_dir).map_err(|error| error.to_string())?;
 
-    write_tictactoe(&replay_dir.join("tictactoe-golden.tbr"))?;
     write_chess(&replay_dir.join("chess-golden.tbr"))?;
     write_chess_clock(&replay_dir.join("chess-clock-golden.tbr"))?;
     write_tiles(&replay_dir.join("tiles-golden.tbr"))?;
     println!("wrote replay goldens under {}", replay_dir.display());
     Ok(())
-}
-
-fn write_tictactoe(path: &Path) -> Result<(), String> {
-    let inputs = vec![
-        Input::Player {
-            seat: tabula_core::SeatId(0),
-            command: tabula_game_tictactoe::Command::Place { cell: 0 },
-        },
-        Input::Player {
-            seat: tabula_core::SeatId(1),
-            command: tabula_game_tictactoe::Command::Place { cell: 3 },
-        },
-        Input::Player {
-            seat: tabula_core::SeatId(0),
-            command: tabula_game_tictactoe::Command::Place { cell: 1 },
-        },
-        Input::Player {
-            seat: tabula_core::SeatId(1),
-            command: tabula_game_tictactoe::Command::Place { cell: 4 },
-        },
-        Input::Player {
-            seat: tabula_core::SeatId(0),
-            command: tabula_game_tictactoe::Command::Place { cell: 2 },
-        },
-    ];
-    write_replay::<tabula_game_tictactoe::TicTacToeModule>(
-        path,
-        &tabula_game_tictactoe::Config {
-            move_timeout_ms: 5_000,
-        },
-        standard_roster(),
-        MatchSeed::from_bytes([0x11; 32]),
-        inputs,
-        vec![1_000, 2_000, 3_000, 4_000, 5_000],
-        MatchId(1),
-    )
 }
 
 fn write_chess(path: &Path) -> Result<(), String> {
