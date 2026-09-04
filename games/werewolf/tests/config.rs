@@ -1,11 +1,4 @@
 //! Focused constructor, boundary, deserialization barrier, and roster tests for Werewolf W1.
-//!
-//! @ai.role test-suite
-//! @ai.domain werewolf.tests.config
-//! @ai.evidence-level example-tested
-//! @ai.invariant classic-v1-table-exact
-//! @ai.invariant config-boundary-enforcement
-//! @ai.invariant deserialization-barrier-enforced
 
 use smallvec::smallvec;
 use tabula_core::{
@@ -352,13 +345,13 @@ fn deserialization_rejects_out_of_range_max_rounds() {
 #[test]
 fn deserialization_rejects_config_with_invalid_nested_durations() {
     let raw = RawConfig {
-        phase_durations: Some(RawPhaseDurations {
+        phase_durations: RawPhaseDurations {
             night_ms: 500, // invalid (< 1_000)
             dawn_ms: 2_000,
             day_ms: 120_000,
             vote_ms: 30_000,
             dusk_ms: 2_000,
-        }),
+        },
         ..Default::default()
     };
 
@@ -370,34 +363,19 @@ fn deserialization_rejects_config_with_invalid_nested_durations() {
     );
 
     let raw_over = RawConfig {
-        phase_durations: Some(RawPhaseDurations {
+        phase_durations: RawPhaseDurations {
             night_ms: 30_000,
             dawn_ms: 2_000,
             day_ms: 700_000, // invalid (> 600_000)
             vote_ms: 30_000,
             dusk_ms: 2_000,
-        }),
+        },
         ..Default::default()
     };
     let encoded_over = canonical_encode(&raw_over).unwrap();
     assert!(
         canonical_decode::<Config>(&encoded_over).is_err(),
         "must reject RawConfig with day_ms > 600_000"
-    );
-}
-
-#[test]
-fn deserialization_rejects_config_with_invalid_flat_durations() {
-    let raw = RawConfig {
-        phase_durations: None,
-        night_duration_ms: Some(999), // invalid
-        ..Default::default()
-    };
-
-    let encoded = canonical_encode(&raw).unwrap();
-    assert!(
-        canonical_decode::<Config>(&encoded).is_err(),
-        "must reject RawConfig with flat night_duration_ms < 1_000"
     );
 }
 

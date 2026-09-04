@@ -29,7 +29,7 @@
 //!
 //! ```rust,ignore
 //! struct State {
-//!     phase: Phase,                                 // Lobby, Night{n}, Dawn{n}, Day{n}, Vote{n}, Dusk{n}, Ended
+//!     phase: Phase,                                 // Night, Dawn, Day, Vote, Dusk, Ended
 //!     phase_ends_at: LogicalTime,
 //!     roles: BTreeMap<SeatId, Role>,                // SECRET
 //!     alive: BTreeSet<SeatId>,
@@ -104,9 +104,11 @@
 pub mod rules;
 
 pub use rules::{
-    Alignment, Config, ConfigValidationError, DurationError, MaxRounds, MaxRoundsError,
-    PhaseDuration, PhaseDurations, Preset, RawConfig, RawPhaseDurations, Role, RoleCounts,
-    SeatCount, SeatCountError, VoteMode, DEFAULT_DAWN_MS, DEFAULT_DAY_MS, DEFAULT_DUSK_MS,
-    DEFAULT_MAX_ROUNDS, DEFAULT_NIGHT_MS, DEFAULT_VOTE_MS, MAX_MAX_ROUNDS, MAX_PHASE_DURATION_MS,
-    MAX_SEATS, MIN_MAX_ROUNDS, MIN_PHASE_DURATION_MS, MIN_SEATS,
+    checked_deadline, create_initial_state, create_initial_state_from_seed, Alignment, Ballot,
+    Config, ConfigValidationError, DurationError, Event, MaxRounds, MaxRoundsError, NightChoice,
+    Phase, PhaseDuration, PhaseDurations, PlayerStatus, Preset, RawConfig, RawPhaseDurations,
+    RawState, Role, RoleCounts, SeatCount, SeatCountError, State, StateError, VoteMode,
+    WitchPotions, DEFAULT_DAWN_MS, DEFAULT_DAY_MS, DEFAULT_DUSK_MS, DEFAULT_MAX_ROUNDS,
+    DEFAULT_NIGHT_MS, DEFAULT_VOTE_MS, DOMAIN_ROLES, MAX_MAX_ROUNDS, MAX_PHASE_DURATION_MS,
+    MAX_SEATS, MIN_MAX_ROUNDS, MIN_PHASE_DURATION_MS, MIN_SEATS, RULES_HASH, RULES_VERSION,
 };
