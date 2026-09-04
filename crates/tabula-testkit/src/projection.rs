@@ -185,10 +185,11 @@ pub struct EventScanCoverage {
 pub struct Secret {
     /// Canonically-encoded fragments whose presence in a projection is a leak.
     ///
-    /// TODO(phase 3): decide the token granularity when cards is written. A card
-    /// is a token; a whole hand is a sequence of tokens. Too coarse and the scan
-    /// misses single-card leaks; too fine and it false-positives on legitimately
-    /// public cards. Cards is the game that will settle it.
+    /// TODO(phase 3): decide the token granularity when a real hidden-information
+    /// game is written. A single hidden fact (a role, a night action) is a
+    /// token; a whole secret is a sequence of tokens. Too coarse and the scan
+    /// misses a single-fact leak; too fine and it false-positives on
+    /// legitimately public facts. Werewolf is the game that will settle it.
     pub tokens: Vec<Vec<u8>>,
 
     /// Empty means **nobody** may see it — a deck order, or a salt before reveal.

@@ -12,17 +12,20 @@ correctly, without owning the physical box. Cite the edition or variant.
 
 ### 2. The information model — **the part that matters**
 
-**Mandatory for every game with `hidden_information = true`** (doc 02 §7.1).
+**Mandatory for every game with `hidden_information = true`** (doc 02 §7.1). In
+the current portfolio that is `werewolf` only — `tictactoe`, `chess`, and
+`caro` are perfect information, and `tiles` (Carcassonne-like) has only a
+secret tile-bag *order* with a public count.
 
-The `SecretModel` scanner catches *direct* leaks: a whole hand serialised into a
-spectator's view, a role map sent wholesale. It runs on every PR and it is good
-at what it does.
+The `SecretModel` scanner catches *direct* leaks: a whole role map serialised
+into a spectator's view, a secret night action sent wholesale. It runs on
+every PR and it is good at what it does.
 
 It cannot catch **derived** secrets — where two individually-public values
-combine to reveal a hidden one. The classic: exact deck count + all visible
-discards + your own hand = the opponent's hand, in a 52-card game.
+combine to reveal a hidden one. The classic, from a hidden-hand game: exact
+deck count + all visible discards + your own hand = the opponent's hand.
 
-So this section states, explicitly:
+So this section states, explicitly (werewolf example):
 
 ```markdown
 ## Information model
@@ -30,21 +33,22 @@ So this section states, explicitly:
 ### Secret, and from whom
 | Value | Hidden from | Revealed when |
 |---|---|---|
-| Deck order | everyone | match end (via salt reveal) |
-| Seat N's hand | every other seat, all spectators | cards are played |
-| Shuffle salt | everyone | match end |
+| Role assignment | every seat until death, all spectators | a seat dies and its role is revealed |
+| A night action's existence | every seat but the actor | never, unless the ruleset reveals it |
+| Doctor's `Saved` outcome | every seat but the doctor | dawn, if the ruleset reveals saves |
 
 ### Public
-Hand counts, the current trick, pass state, finishing order, the deck commitment.
+Phase, alive/dead seats, vote tallies (in most rulesets), revealed roles.
 
 ### Intentionally derivable
-A player who tracks every discard can narrow the remaining distribution. This is
-counting, it is part of the game, and it is not a leak.
+A player who tracks voting patterns and claims can build a suspicion model.
+This is deduction, it is part of the game, and it is not a leak.
 
 ### Deliberately NOT derivable
-Nothing in any projection distinguishes "seat 2 passed because they could not
-beat the trick" from "seat 2 passed by choice". Do not add a `could_have_played`
-hint to the view — it would.
+Nothing in any projection distinguishes "no night action happened" from "a
+night action happened but is not yet resolved" for an unauthorized viewer —
+`view_event` returns `None` for both. Do not add a `something_happened` hint
+to the view — it would.
 ```
 
 That last kind of entry is the valuable one. It records a decision that is
@@ -70,8 +74,8 @@ decision rather than an oversight.
 
 | Game | Status |
 |---|---|
-| `tictactoe.md` | Phase 0 — the template. Trivially: nothing is secret. |
-| `chess.md` | Phase 1 |
-| `cards.md` | Phase 3 — **the important one.** Hidden hands, server RNG, the deck commitment. |
-| `werewolf.md` | Phase 3 — roles, night actions, and event *non-existence*. |
-| `tiles.md` | Phase 3 — bag order secret, count public. |
+| `tictactoe.md` | Phase 0 — internal SDK smoke test / template. Trivially: nothing is secret. Not a product/reference game. |
+| `chess.md` | Phase 1 — correctness benchmark: complex legality, clocks, deterministic replay. |
+| `caro.md` | Phase 3 — design placeholder. Simple real product game, large fixed board, SDK-friction benchmark. Perfect information; no information model needed. |
+| `tiles.md` | Phase 3 — Carcassonne-like: deterministic tile-bag RNG, dynamic spatial state, incremental scoring. Bag order secret, count public. |
+| `werewolf.md` | Phase 3 (rules/headless) → Phase 7 (social) — **the important one.** Roles, night actions, and event *non-existence*. |

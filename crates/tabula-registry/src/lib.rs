@@ -75,7 +75,7 @@
 //! ```rust,ignore
 //! tabula_registry::register! {
 //!     tabula_game_chess::ChessModule,
-//!     tabula_game_cards::CardsModule,
+//!     tabula_game_caro::CaroModule,
 //!     tabula_game_werewolf::WerewolfModule,
 //!     tabula_game_tiles::TilesModule,
 //!     tabula_game_tictactoe::TicTacToeModule,

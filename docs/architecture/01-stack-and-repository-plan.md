@@ -131,10 +131,10 @@ tabula/
 │
 ├── games/
 │   ├── chess/                     # tabula-game-chess      (Game A — doc 08)
-│   ├── cards/                     # tabula-game-cards      (Game B)
-│   ├── werewolf/                  # tabula-game-werewolf   (Game C)
-│   ├── tiles/                     # tabula-game-tiles      (Game D)
-│   └── tictactoe/                 # tabula-game-tictactoe  (the SDK smoke test / template)
+│   ├── caro/                      # tabula-game-caro       (Game B — doc 08)
+│   ├── tiles/                     # tabula-game-tiles      (Game C — Carcassonne-like)
+│   ├── werewolf/                  # tabula-game-werewolf   (Game D)
+│   └── tictactoe/                 # tabula-game-tictactoe  (internal SDK smoke test / template — not a reference game)
 │
 ├── apps/
 │   ├── game-client/               # Macroquad binary: native (desktop/mobile) + wasm target
@@ -370,7 +370,7 @@ Do **not** create all fifteen crates on day one. Create them when a phase needs 
 | `games/tictactoe` | Phase 0 |
 | `games/chess` | Phase 1 |
 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `apps/game-client` | Phase 2 |
-| `tabula-assets`, `games/cards` | Phase 3 |
+| `tabula-assets`, `games/caro` | Phase 3 |
 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` | Phase 4 |
 | `tabula-lobby`, `apps/web`, `apps/admin` | Phase 5 |
 | `games/werewolf` | Phase 7 |
@@ -404,7 +404,7 @@ flowchart BT
     TK["tabula-testkit"]
 
     GCHESS["games/chess"]
-    GCARDS["games/cards"]
+    GCARO["games/caro"]
     GWW["games/werewolf"]
     GTILES["games/tiles"]
 
@@ -428,18 +428,18 @@ flowchart BT
     RMQ --> ASSETS
 
     GCHESS --> GAPI
-    GCARDS --> GAPI
+    GCARO --> GAPI
     GWW --> GAPI
     GTILES --> GAPI
     GCHESS -.->|presentation feature| PRES
-    GCARDS -.->|presentation feature| PRES
+    GCARO -.->|presentation feature| PRES
     GWW -.->|presentation feature| PRES
     GTILES -.->|presentation feature| PRES
 
     REG --> GAPI
     REG --> PROTO
     REG --> GCHESS
-    REG --> GCARDS
+    REG --> GCARO
     REG --> GWW
     REG --> GTILES
 

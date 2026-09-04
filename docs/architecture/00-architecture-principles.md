@@ -64,7 +64,7 @@ flowchart TB
     subgraph L1["Layer 1 — Deterministic Core (pure, sync, no I/O)"]
         CORE["tabula-core<br/>ids · DetRng · LogicalTime · Visibility · hashing"]
         GAPI["tabula-game-api<br/>GameRules · GameModule · Metadata · Capabilities"]
-        GAMES["games/*<br/>chess · cards · werewolf · tiles"]
+        GAMES["games/*<br/>chess · caro · werewolf · tiles (Carcassonne-like)"]
     end
     subgraph L2["Layer 2 — Contracts (pure, serializable)"]
         PROTO["tabula-protocol<br/>envelopes · versions · codecs"]
@@ -509,7 +509,7 @@ flowchart TB
 
     subgraph GAMES["Game modules (linked in)"]
         G1["chess"]
-        G2["cards"]
+        G2["caro"]
         G3["werewolf"]
         G4["tiles"]
     end
@@ -655,10 +655,12 @@ Rules for this boundary:
    session. It is authorized by an internal role, and access is logged.
 2. `Viewer::Spectator` may carry a delay for ranked/tournament play; the game decides what a
    delayed spectator sees, the platform enforces the delay by buffering.
-3. If a projection needs to hide something *and* prove something (e.g. "the deck really was
-   shuffled fairly"), use a commitment: publish `hash(deck_order || salt)` at match start and
-   reveal at match end. Verifiable, no secret leaked. **EXPERIMENT** — implement for cards in
-   Phase 3, generalize only if a second game needs it.
+3. If a projection needs to hide something *and* prove something later (e.g. "the shuffle really
+   was fair"), a commitment technique is available: publish `hash(secret || salt)` at match start
+   and reveal at match end. Verifiable, no secret leaked. **Not an active experiment** — it was
+   scoped for the now-removed Tiến Lên reference game (doc 09 §3.2); no game in the current
+   portfolio (chess, caro, tiles, werewolf) needs it. The technique remains available if a future
+   game's threat model requires it.
 
 ---
 
@@ -734,7 +736,6 @@ Tauri desktop shell value (Phase 5); Tauri mobile (post-Phase 6)
 voice provider: self-hosted SFU vs managed (Phase 8)
 snapshot cadence and event-log compaction policy (Phase 4, tune with data)
 sharded match executor vs task-per-match at high CCU (Phase 10)
-deck-commitment scheme for provable shuffles (Phase 3, cards)
 accessibility mirror ("Board Reader") depth (Phase 5)
 ```
 

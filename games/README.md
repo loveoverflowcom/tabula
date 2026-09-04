@@ -14,18 +14,24 @@ under 300 lines, with zero platform changes.**
 If adding a game requires editing anything under `crates/` or `services/`, that
 is a platform bug — report it rather than working around it.
 
-## The five reference games (doc 08)
+## The reference-game portfolio (doc 08)
 
-Each exists to stress a different dimension of the contract. They are not a
-product roadmap; they are a test matrix that happens to be playable.
+Four **product/reference games** stress a different dimension of the contract
+each; they are not a product catalog, they are a test matrix that happens to
+be playable. `tictactoe` is a fifth crate, but it is not one of the four — it
+is the SDK's internal smoke test and new-game template.
 
 | Game | Phase | What it proves | Hardest contract stressed |
 |---|---|---|---|
-| [`tictactoe`](tictactoe) | 0 | The SDK works at all. **The template.** | none — it is the smoke test |
+| [`tictactoe`](tictactoe) | 0 | The SDK works at all. **The template — not a reference game.** | none — it is the smoke test |
 | [`chess`](chess) | 1 | Complex legality, clocks, ratings, async turns | clocks + `legal_commands` enumeration |
-| [`cards`](cards) | 3 | Hidden hands, server RNG, delayed spectators | projection + RNG secrecy |
-| [`werewolf`](werewolf) | 3→7 | Phases, scoped chat, event **non-existence** | `view_event → None` + scopes |
-| [`tiles`](tiles) | 3→9 | Large dynamic state, camera, async turns | state size + snapshot cost |
+| [`caro`](caro) | 3 | Simple real product game, SDK-friction, a larger fixed board | `legal_commands` at scale, zero-platform-change addition |
+| [`tiles`](tiles) | 3→9 | Carcassonne-like: dynamic spatial state, deterministic tile-bag RNG, camera | state size + snapshot cost |
+| [`werewolf`](werewolf) | 3→7 | Phases, scoped chat, hidden information, event **non-existence** | `view_event → None` + scopes |
+
+`caro` is not `tictactoe` renamed: `tictactoe` stays the 3×3 smoke test,
+`caro` is a real (larger-board, Gomoku-style) product game — see
+[`docs/games/caro.md`](../docs/games/caro.md).
 
 ## What one contract absorbs (doc 02 §12.5)
 

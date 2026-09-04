@@ -68,7 +68,7 @@ renderer-headless   = { path = "crates/renderer-headless" }
 
 tabula-game-tictactoe = { path = "games/tictactoe", default-features = false }
 tabula-game-chess     = { path = "games/chess",     default-features = false }
-tabula-game-cards     = { path = "games/cards",     default-features = false }
+tabula-game-caro      = { path = "games/caro",      default-features = false }
 tabula-game-werewolf  = { path = "games/werewolf",  default-features = false }
 tabula-game-tiles     = { path = "games/tiles",     default-features = false }
 

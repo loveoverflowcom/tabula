@@ -926,7 +926,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tabula-game-cards"
+name = "tabula-game-caro"
 version = "0.0.0"
 dependencies = [
  "serde",

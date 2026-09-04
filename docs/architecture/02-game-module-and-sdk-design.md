@@ -700,13 +700,13 @@ Every game with `hidden_information = true` must provide a [`SecretModel`] descr
 secret and to whom:
 
 ```rust
-impl SecretModel for CardsRules {
+impl SecretModel for WerewolfRules {
     fn secrets(state: &State) -> Vec<Secret> {
-        let mut v = vec![Secret::nobody("deck order", state.deck.tokens())];
-        for (seat, hand) in state.hands.iter() {
+        let mut v = vec![Secret::nobody("night action resolution order", state.night_order.tokens())];
+        for (seat, role) in state.roles.iter() {
             v.push(Secret::authorized(
-                &format!("seat {}'s hand", seat.0),
-                hand.tokens(),
+                &format!("seat {}'s role", seat.0),
+                role.tokens(),
                 vec![Viewer::Seat(*seat)],
             ));
         }
@@ -728,9 +728,10 @@ for every secret S, for every viewer V not authorized for S:
             assert!( !canonical_encode(ve).contains_any_token_of(S) )
 ```
 
-Token-level containment scanning is coarse but catches the real bugs (a whole card list leaking,
+Token-level containment scanning is coarse but catches the real bugs (a whole hand list leaking,
 a role map serialized wholesale). It is the mandatory scan for every hidden-information game once
-that game exists (`games/cards`, `games/werewolf` — Phase 3); see §11.1 for the sibling
+that game exists (`games/werewolf` — Phase 3, the only reference game with `hidden_information =
+true`); see §11.1 for the sibling
 noninterference oracle this containment scan does not replace, and
 `crates/tabula-testkit/tests/projection_noninterference.rs` for a worked reference model exercising
 both against a real reachable trace.
@@ -835,7 +836,7 @@ Notes on this design:
 // crates/tabula-registry/src/lib.rs
 tabula_registry::register! {
     tabula_game_chess::ChessModule,
-    tabula_game_cards::CardsModule,
+    tabula_game_caro::CaroModule,
     tabula_game_werewolf::WerewolfModule,
     tabula_game_tiles::TilesModule,
     tabula_game_tictactoe::TicTacToeModule,
@@ -1277,28 +1278,33 @@ that alters historical behavior fails CI with a precise diff, forcing an explici
 
 ## 12. Four games, one contract
 
-This section shows the *contract usage* for four structurally different games. The gameplay/
-validation rationale is in [doc 08](./08-first-games-validation-plan.md).
+This section shows the *contract usage* for four structurally different games — the current
+reference-game portfolio: **Chess, Caro, Werewolf, and Tiles (Carcassonne-like)**. Tic-tac-toe is
+not in this comparison; it is the SDK's internal smoke test, not a reference game (doc 08 §1). The
+gameplay/validation rationale is in [doc 08](./08-first-games-validation-plan.md).
 
 ### 12.0 Comparison at a glance
 
-| | **Chess** | **Tiến Lên (cards)** | **Werewolf** | **Tiles (Carcassonne-like)** |
+Values marked `EXPERIMENT` or `TBD` are not yet decided; they are honest placeholders, not locked
+capabilities (doc 08 §3 for Caro's open questions).
+
+| | **Chess** | **Caro** | **Werewolf** | **Tiles (Carcassonne-like)** |
 |---|---|---|---|---|
-| Seats | 2, asymmetric | 4, symmetric | 6–20, role-asymmetric | 2–5, symmetric |
+| Seats | 2, asymmetric | 2, symmetric | 6–20, role-asymmetric | 2–5, symmetric |
 | `turn_model` | `StrictSequential` | `StrictSequential` | `Phased` | `StrictSequential` |
-| `hidden_information` | false | **true** (hands, deck) | **true** (roles, night actions) | partial (bag order) |
-| RNG usage | none | deck shuffle | role assignment | tile bag shuffle |
-| Timers | per-move clock (Fischer/Bronstein) | per-turn 20 s | per-phase, long | per-turn 60 s, or 24 h async |
-| `spectators` | `Live` | `Delayed{30s}` | `GameControlled` (dead see all) | `Live` |
-| `voice` | `No` | `Optional` | **`Recommended`** | `Optional` |
+| `hidden_information` | false | false | **true** (roles, night actions) | partial (bag order) |
+| RNG usage | none | none | role assignment | tile bag shuffle |
+| Timers | per-move clock (Fischer/Bronstein) | optional per-turn timer — `TBD during implementation` | per-phase, long | per-turn 60 s, or 24 h async |
+| `spectators` | `Live` | `Live` | `GameControlled` (dead see all) | `Live` |
+| `voice` | `No` | `No` — `TBD` | **`Recommended`** | `Optional` |
 | `chat.game_scoped` | false | false | **true** | false |
-| `async_turns` | true (correspondence) | false | false | **true** |
-| `ranked` | `Elo` | `Placement` | `No` (social) | `Placement` |
+| `async_turns` | true (correspondence) | `TBD during implementation` | false | **true** |
+| `ranked` | `Elo` | `TBD during implementation` | `No` (social) | `Placement` |
 | `durability` | `AckAfterPersist` | `AckAfterPersist` | `AckAfterApply` | `AckAfterPersist` |
-| `state_size` | `Tiny` | `Small` | `Small` | **`Medium`** |
+| `state_size` | `Tiny` | `Tiny` | `Small` | **`Medium`** |
 | `substitution` | `BotOnly` | `BotOnly` | **`Forbidden`** | `BotOnly` |
 | `pausable` | false | false | false | true (async) |
-| Hardest contract stressed | clocks + `legal_commands` enumeration | projection + RNG secrecy | `view_event → None` + scopes | state size + snapshot cost + camera |
+| Hardest contract stressed | clocks + `legal_commands` enumeration | `legal_commands` at scale + zero-platform-change addition | `view_event → None` + scopes | state size + snapshot cost + camera |
 
 ### 12.1 Chess — the simple case that must be perfect
 
@@ -1335,65 +1341,57 @@ Contract lessons:
 - **`legal_commands` fully enumerates** (~30 moves), which powers move highlighting, drag-drop
   legality, and a `Trivial` bot for free.
 
-### 12.2 Tiến Lên — hidden hands and server RNG
+### 12.2 Caro — a simple product game, and the SDK-friction benchmark
 
-(Chosen over poker deliberately: 4 players, hidden hands, trick-taking, no betting. Big Two, Tiến
-Lên Miền Nam, and simple poker variants reuse the same primitives.)
+(Not tic-tac-toe renamed. Tic-tac-toe stays the tiny internal smoke test; Caro is a real,
+independently-added product game whose only job is to prove the contract absorbs a *second* game
+cheaply. See [doc 08 §3](./08-first-games-validation-plan.md) and
+[`docs/games/caro.md`](../games/caro.md) — the exact rule variant and board size are open game-design
+decisions, not settled here.)
 
 ```rust
 struct State {
-    hands: [SmallVec<[Card; 13]>; 4],     // SECRET, per seat
-    deck_commit: [u8; 32],                // blake3(shuffled order || salt), published at start
-    salt: [u8; 16],                       // SECRET until match end
-    table: Option<Play>,                  // current trick requirement
-    lead: SeatId, turn: SeatId,
-    passed: [bool; 4],
-    finished: SmallVec<[SeatId; 4]>,      // finishing order = standings
-    scores: [i64; 4],
+    board: Grid<Option<Mark>>,    // fixed size, larger than tic-tac-toe's 3x3 (size: TBD)
+    turn: SeatId,
+    status: Status,
+    moves: u32,
 }
-enum Command { Play { cards: SmallVec<[Card; 5]> }, Pass }
+enum Command { Place { at: Coord }, Resign }
 enum Event {
-    Dealt { seat: SeatId, cards: SmallVec<[Card; 13]> },   // canonical: full info
-    Played { seat: SeatId, cards: SmallVec<[Card; 5]> },
-    Passed { seat: SeatId },
-    TrickWon { seat: SeatId },
-    Finished { seat: SeatId, place: u8 },
-    DeckRevealed { salt: [u8; 16] },                       // at match end, proves the shuffle
-    Ended { outcome: MatchOutcome },
+    Placed { seat: SeatId, at: Coord, mark: Mark },
+    Ended  { outcome: MatchOutcome },
 }
-#[derive(Serialize)]
+/// No hidden information: View ≈ State, plus legal_commands for the seat on turn.
+/// Still a distinct type (§7.1) — this is the pattern every perfect-information game reuses.
 struct View {
-    your_hand: SmallVec<[Card; 13]>,       // only ever your own
-    hand_counts: [u8; 4],                  // public
-    table: Option<Play>,
-    turn: SeatId, lead: SeatId,
-    passed: [bool; 4],
-    finished: SmallVec<[SeatId; 4]>,
-    deck_commit: [u8; 32],
+    board: Grid<Option<Mark>>,
+    turn: SeatId,
+    status: Status,
     you: Option<SeatId>,
 }
-enum ViewEvent {
-    DealtToYou { cards: SmallVec<[Card; 13]> },
-    DealtToOther { seat: SeatId, count: u8 },   // degraded, not hidden — the client animates backs
-    Played { seat, cards }, Passed { seat }, TrickWon { seat },
-    Finished { seat, place }, DeckRevealed { salt }, Ended { outcome },
-}
+type ViewEvent = Event;   // nothing is secret; nothing to degrade or hide
 ```
 
 Contract lessons:
 
-- **`view_event` degrades rather than hides**: `Dealt` → `DealtToOther{count}` for other seats. The
-  card-back animation is possible without leaking anything.
-- **RNG is drawn once, in `create`**, from `ctx.rng.stream(DOMAIN_SHUFFLE)`. The shuffle
-  algorithm is `DetRng::shuffle` (pinned Fisher-Yates), so a replay in two years reproduces the
-  same deal.
-- **The commitment scheme** (`deck_commit` published at start, `salt` revealed at end) lets any
-  player verify after the fact that the deck was not manipulated mid-match. **EXPERIMENT** — build
-  it here first because cards is where players suspect cheating.
-- **Spectators are delayed 30 s** so that a spectator cannot relay information to a player in real
-  time. The delay is enforced by the platform (buffering), declared by the capability.
-- **`SecretModel`** declares: deck order (nobody until end), each hand (its own seat only), salt
-  (nobody until end). The projection scanner then does the work.
+- **`hidden_information = false`.** Caro is deliberately boring on the security axis — like
+  tic-tac-toe and chess, `View` ≈ `State` and no `SecretModel` is needed. That is the point: the
+  *only* new variable this game introduces is "a second, independently-built game exists", which is
+  what makes the SDK-friction measurement honest (doc 08 §3.2).
+- **`legal_commands` at a real scale.** Tic-tac-toe enumerates 9 cells; a larger board (15×15 is the
+  expected direction, `TBD during implementation`) enumerates up to 225 — still comfortably
+  `Enumerated`, but the first real test of that path before Tiles forces `Hints` instead.
+- **Win-line detection is the interesting algorithm**, not a new contract shape: it exercises
+  whether the platform's `apply_budget` stays comfortable with a real (if still simple) rule
+  computation, without any of chess's move-generation complexity.
+- **No RNG, no hidden information, and (for now) no more than an optional turn timer.** Every other
+  axis is held constant so that friction found while adding Caro is SDK friction, not a symptom of
+  an unrelated axis of complexity.
+
+Why Caro in addition to tic-tac-toe and chess: tic-tac-toe is too trivial to prove "adding a game is
+cheap" (a 9-cell board with 8 win lines does not stress `legal_commands`, board-sized state, or a
+rules-heavy `apply`), and chess is too complex to isolate SDK friction from rules-implementation
+effort. Caro is the cheapest game that separates the two concerns.
 
 ### 12.3 Werewolf — phases, scoped chat, and event non-existence
 
