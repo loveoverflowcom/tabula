@@ -100,3 +100,13 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::float_arithmetic)]
+
+pub mod rules;
+
+pub use rules::{
+    Alignment, Config, ConfigValidationError, DurationError, MaxRounds, MaxRoundsError,
+    PhaseDuration, PhaseDurations, Preset, RawConfig, RawPhaseDurations, Role, RoleCounts,
+    SeatCount, SeatCountError, VoteMode, DEFAULT_DAWN_MS, DEFAULT_DAY_MS, DEFAULT_DUSK_MS,
+    DEFAULT_MAX_ROUNDS, DEFAULT_NIGHT_MS, DEFAULT_VOTE_MS, MAX_MAX_ROUNDS, MAX_PHASE_DURATION_MS,
+    MAX_SEATS, MIN_MAX_ROUNDS, MIN_PHASE_DURATION_MS, MIN_SEATS,
+};

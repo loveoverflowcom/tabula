@@ -25,6 +25,7 @@ tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
 serde           = { workspace = true }
 smallvec        = { workspace = true }
+thiserror       = { workspace = true }
 
 tabula-presentation = { workspace = true, optional = true }
 tabula-design       = { workspace = true, optional = true }
