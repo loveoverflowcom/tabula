@@ -550,11 +550,14 @@ mod tests {
     use renderer_macroquad::MacroquadRenderer;
     use std::panic::{catch_unwind, AssertUnwindSafe};
     use tabula_core::{Occupant, RulesVersion, SeatEntry, SeatRoster, UserId};
-    use tabula_game_api::{ChatScopes, CheckpointLabel, Init, Outcome, VoiceScopes};
+    use tabula_game_api::{
+        A11yDescription, ChatScopes, CheckpointLabel, Init, Outcome, VoiceScopes,
+    };
     use tabula_game_chess as local_game; // xtask-allow-game-id: direct Phase 2 local vertical slice test wiring.
     use tabula_game_tictactoe as second_game; // xtask-allow-game-id: proves the replay recorder is generic, not chess-shaped.
     use tabula_presentation::{
-        AudioCue, AudioSink, Dpi, PointerButton, PointerPhase, PointerPosition, Viewport,
+        AssetPackRef, AudioCue, AudioCues, AudioSink, Camera2D, Dpi, InputEvent, Intent,
+        PointerButton, PointerPhase, PointerPosition, RenderListBuilder, Viewport,
     };
 
     type ChessMatch = LocalMatch<ChessRules, ChessPresentation>;
@@ -646,7 +649,7 @@ mod tests {
     /// Deliberately smaller and independent, per `rust-replay-differential-testing`.
     ///
     /// Returns the final canonical hash and the terminal `MatchOutcome`, if
-    /// any accepted input's outcome carried `Effect::EndMatch`.
+    /// creation or an accepted input's outcome carried `Effect::EndMatch`.
     ///
     /// # Panics
     /// If a recorded input is rejected by fresh `apply` (every entry's own
@@ -667,6 +670,7 @@ mod tests {
         };
         let init = R::create(config, roster, &mut create_ctx)
             .expect("live create succeeded, so an independent reconstruction must too");
+        let mut terminal = terminal_from_effects(&init.effects);
         let mut state = init.state;
         assert_eq!(
             R::state_hash(&state),
@@ -675,8 +679,12 @@ mod tests {
              initial hash"
         );
 
-        let mut terminal = None;
         for entry in trace.accepted_inputs() {
+            assert!(
+                terminal.is_none(),
+                "replay input {:?} follows a terminal outcome",
+                entry.index()
+            );
             let mut rng = DetRng::for_input(seed, entry.index());
             let mut ctx = Ctx {
                 now: entry.now(),
@@ -693,14 +701,112 @@ mod tests {
                 "replay divergence at input index {:?}",
                 entry.index()
             );
-            for effect in &outcome.effects {
-                if let Effect::EndMatch { outcome } = effect {
-                    terminal = Some(outcome.clone());
-                }
+            if let Some(input_terminal) = terminal_from_effects(&outcome.effects) {
+                assert!(
+                    terminal.is_none(),
+                    "replay observed more than one terminal outcome"
+                );
+                terminal = Some(input_terminal);
             }
         }
 
         (R::state_hash(&state), terminal)
+    }
+
+    fn terminal_from_effects(effects: &[Effect]) -> Option<MatchOutcome> {
+        let mut terminal = None;
+        for effect in effects {
+            if let Effect::EndMatch { outcome } = effect {
+                assert!(
+                    terminal.is_none(),
+                    "replay observed multiple EndMatch effects in one effect list"
+                );
+                terminal = Some(outcome.clone());
+            }
+        }
+        terminal
+    }
+
+    fn create_terminal_outcome() -> MatchOutcome {
+        MatchOutcome::new(
+            tabula_core::OutcomeKind::Aborted {
+                reason: tabula_core::AbortReason::OperatorCancelled,
+            },
+            std::iter::empty().collect(),
+            "created terminal".into(),
+        )
+        .expect("the test terminal outcome is structurally valid")
+    }
+
+    struct CreateTerminalRules;
+
+    impl GameRules for CreateTerminalRules {
+        type State = u8;
+        type Command = ();
+        type Event = ();
+        type View = ();
+        type ViewEvent = ();
+        type Config = ();
+
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+
+        fn create(
+            _config: &(),
+            _roster: &SeatRoster,
+            _ctx: &mut Ctx<'_>,
+        ) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: 0,
+                events: std::iter::empty().collect(),
+                effects: std::iter::once(Effect::EndMatch {
+                    outcome: create_terminal_outcome(),
+                })
+                .collect(),
+            })
+        }
+
+        fn apply(
+            _state: &mut u8,
+            _input: Input<()>,
+            _ctx: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, RuleError> {
+            Ok(Outcome::empty())
+        }
+
+        fn project(_state: &u8, _viewer: Viewer) {}
+
+        fn view_event(_state_after: &u8, _event: &(), _viewer: Viewer) -> Option<()> {
+            None
+        }
+    }
+
+    struct CreateTerminalPresentation;
+
+    impl GamePresentation for CreateTerminalPresentation {
+        type Rules = CreateTerminalRules;
+        type Local = ();
+
+        fn asset_pack() -> AssetPackRef {
+            AssetPackRef::from_static("terminal", "0.0.0")
+        }
+
+        fn present(_view: &(), _local: &(), _frame: &FrameCtx) -> RenderList {
+            RenderListBuilder::new(Camera2D::default())
+                .finish()
+                .expect("the empty render list is valid")
+        }
+
+        fn on_view_event(_event: &(), _local: &mut (), _frame: &FrameCtx) -> AudioCues {
+            AudioCues::new()
+        }
+
+        fn on_input(_input: &InputEvent, _view: &(), _local: &mut ()) -> Option<Intent<()>> {
+            None
+        }
+
+        fn a11y(_view: &(), _local: &()) -> A11yDescription {
+            A11yDescription::default()
+        }
     }
 
     /// Deliberately minimal, RNG-sensitive `GameRules` used only to prove
@@ -954,6 +1060,43 @@ mod tests {
             match_.effects().last(),
             Some(LocalEffect::MatchEnded { .. })
         ));
+    }
+
+    #[test]
+    fn create_end_match_is_replayed_with_zero_accepted_inputs() {
+        let seed = MatchSeed::from_bytes([3; 32]);
+        let match_ = LocalMatch::<CreateTerminalRules, CreateTerminalPresentation>::new(
+            &(),
+            &roster(),
+            seed.clone(),
+            Viewer::Seat(SeatId(0)),
+        )
+        .expect("creation-terminal fixture is valid");
+        let live_terminal = match_
+            .ended()
+            .cloned()
+            .expect("create EndMatch is interpreted by the live shell");
+
+        assert!(match_.replay_trace().accepted_inputs().is_empty());
+        assert!(matches!(match_.effects(), [LocalEffect::MatchEnded { .. }]));
+
+        let (final_hash, replay_terminal) =
+            replay::<CreateTerminalRules>(&(), &roster(), &seed, match_.replay_trace());
+        assert_eq!(final_hash, match_.state_hash());
+        assert_eq!(replay_terminal, Some(live_terminal));
+    }
+
+    #[test]
+    #[should_panic(expected = "multiple EndMatch effects")]
+    fn replay_oracle_rejects_multiple_end_match_effects() {
+        let outcome = create_terminal_outcome();
+        let effects = [
+            Effect::EndMatch {
+                outcome: outcome.clone(),
+            },
+            Effect::EndMatch { outcome },
+        ];
+        let _ = terminal_from_effects(&effects);
     }
 
     #[test]

@@ -59,11 +59,11 @@ pub struct RecordedInput<C> {
 ///
 /// This is not a general-purpose DTO. It is evidence that a specific,
 /// trusted transition boundary (`LocalMatch::apply_canonical`) actually
-/// observed. Construction stays crate-private so nothing outside the
-/// accepting transition itself can assert a replay fact that was never
-/// actually accepted live — a proof barrier, not merely another struct. Read
-/// access is unrestricted: a caller may inspect every field to build a
-/// `.tbr` or any other export; it just cannot fabricate one with
+/// observed. Construction is restricted to the parent local-runtime module so
+/// sibling modules cannot assert a replay fact that was never actually
+/// accepted live — a proof barrier, not merely another struct. Read access is
+/// unrestricted: a caller may inspect every field to build a `.tbr` or any
+/// other export; it just cannot fabricate one with
 /// `AcceptedReplayInput::new(arbitrary_index, arbitrary_hash, ...)`.
 #[derive(Clone, Debug)]
 pub struct AcceptedReplayInput<C> {
@@ -74,7 +74,7 @@ pub struct AcceptedReplayInput<C> {
 }
 
 impl<C> AcceptedReplayInput<C> {
-    pub(crate) const fn new(
+    pub(super) const fn new(
         index: InputIndex,
         now: LogicalTime,
         input: Input<C>,
@@ -140,7 +140,7 @@ impl<C> LocalReplayTrace<C> {
         }
     }
 
-    pub(crate) fn record(&mut self, entry: AcceptedReplayInput<C>) {
+    pub(super) fn record(&mut self, entry: AcceptedReplayInput<C>) {
         self.accepted.push(entry);
     }
 
