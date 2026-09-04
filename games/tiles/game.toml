@@ -1,0 +1,78 @@
+# Source-of-truth catalog manifest. (doc 02 §4.3)
+#
+# Two representations exist on purpose: ops needs to read and diff capabilities
+# without compiling. `xtask check-manifests` validates this schema; the compiled
+# cross-check against src/lib.rs is deferred (see xtask/README.md).
+
+id            = "com.tabula.tiles"
+version       = "0.1.0"
+rules_version = 1
+
+name_key        = "game.tiles.name"
+tagline_key     = "game.tiles.tagline"
+description_key = "game.tiles.description"
+
+categories        = ["tile_placement"]
+complexity        = "medium"
+content_rating    = "everyone"
+estimated_minutes = [30, 60]
+tags              = ["placement", "family"]
+
+[seats]
+min            = 2
+max            = 5
+symmetric      = true       # every seat plays the same game; turn order is the only asymmetry
+fill_with_bots = true
+
+[capabilities]
+turn_model         = "strict_sequential"
+# The remaining bag order determines every future draw (doc 02 §12.4), so Tiles
+# carries a SecretModel and runs the projection-security suite. Tiles is the
+# SECONDARY hidden-information benchmark, and being secondary is not an
+# exemption from either obligation. See docs/games/README.md for which game is
+# the primary one.
+hidden_information = true
+spectators         = "live"
+voice              = "optional"
+ranked             = "placement"
+pausable           = true          # implemented: Admin(Pause) disarms the turn deadline
+# False deliberately: doc 02 §7.2 defines client_preview as "folding ViewEvents
+# onto a View lands where project() would", and no oracle for that exists yet.
+client_preview     = false
+durability         = "ack_after_persist"   # required by ranked (cross-field law)
+# Measured, not estimated: see games/tiles/tests/state_size.rs. The design
+# expected `medium` (doc 02 §12.4); the measurement said otherwise and this
+# follows the measurement.
+state_size         = "tiny"
+
+[capabilities.chat]
+channels    = [{ key = "table", kind = "table" }]
+game_scoped = false
+
+[capabilities.async_turns]
+supported     = true
+turn_deadline = 86400000     # 24 h; the rules take whatever Config says, incl. 0 = none
+
+[capabilities.reconnect]
+grace        = 60000
+notify_rules = false        # nothing to do about absence; the turn deadline handles it
+
+[capabilities.substitution]
+kind   = "bot_only"
+levels = ["trivial", "easy"]
+
+[capabilities.apply_budget]
+max_apply_micros     = 2000
+max_events_per_input = 16
+
+[assets]
+pack    = "tiles@0.1.0"
+size_kb = 240
+
+[rollout]
+enabled  = true
+audience = "staff"
+
+[theme]
+accent = "#7A9E5B"
+mood   = "calm"

@@ -84,7 +84,14 @@ forbidden_categories = ["rendering", "web_framework", "application", "persistenc
 # the client stack, and the server always builds with default-features = false.
 [crate."games/*"]
 tier    = "deterministic"
-allow   = ["tabula-core", "tabula-game-api", "serde", "smallvec", "compact_str", "thiserror", "blake3"]
+# `blake3` and `proptest` are here for the test/build halves, which this list
+# does not distinguish from the shipped half: `blake3` is every game's
+# build-dependency (the rules-source hash), and `proptest` is the workspace's
+# chosen property-test generator — already `tabula-testkit`'s own dependency,
+# already the technique `.agents/skills/rust-property-testing` prescribes, and
+# never in a shipped graph. The transitive-ban walk (I-1) is separately
+# dev-edge-aware, so neither can smuggle a banned crate into a server build.
+allow   = ["tabula-core", "tabula-game-api", "serde", "smallvec", "compact_str", "thiserror", "blake3", "proptest"]
 feature = { presentation = ["tabula-presentation", "tabula-design", "tabula-assets", "glam"], testkit = ["tabula-testkit"] }
 
 # -----------------------------------------------------------------------------
