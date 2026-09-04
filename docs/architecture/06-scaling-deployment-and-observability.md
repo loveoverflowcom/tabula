@@ -48,11 +48,11 @@ Knowing the unit costs turns capacity planning into arithmetic instead of anxiet
 
 | Component | Estimate | Notes |
 |---|---|---|
-| Canonical state | 0.5–4 KB (chess/Werewolf; Caro TBD), 30–120 KB (Tiles) | `StateSizeClass` |
+| Canonical state | 0.5–4 KB (chess/Werewolf; Caro TBD), Tiles TBD (design estimate 30–120 KB) | `StateSizeClass` |
 | Actor overhead | ~4 KB | task, timer heap, seat table, idempotency ring |
 | Mailbox (idle) | ~0.5 KB | tokio mpsc allocates in blocks, lazily |
 | Viewer bookkeeping | ~200 B × viewers | — |
-| **Total live match** | **~8 KB typical, ~130 KB for tiles** | 10,000 chess matches ≈ 80 MB |
+| **Total live match** | **~8 KB typical; tiles pending Phase-3 measurement** | 10,000 chess matches ≈ 80 MB |
 
 ### 2.2 Per-connection cost
 

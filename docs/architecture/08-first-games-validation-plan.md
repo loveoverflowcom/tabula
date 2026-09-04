@@ -68,7 +68,7 @@ tic-tac-toe cannot answer that question because it was built alongside the platf
 | Game-scoped chat | no | no | no | **primary** |
 | Voice scoping | no | no | no | **primary** |
 | Large / growing state | no | no (fixed, larger than tic-tac-toe) | **primary** | no |
-| Camera: pan, zoom, rotate | no | no | **primary** | no |
+| Camera: pan, zoom (rotate: see below) | no | no | **primary** | no |
 | A second game added without game-specific platform behavior | no (built alongside the platform) | **primary** | yes | yes |
 | Asset volume | low | low | **high** (tiles, meeples) | medium (roles, art) |
 | Async turns | **primary** (correspondence) | `TBD` | **primary** | no |
@@ -233,19 +233,27 @@ follower, score completed features.
 
 ```text
 IN:  ~72-tile bag with a fixed distribution, rotation, adjacency legality, feature graph
-     (roads, cities, fields, monasteries), follower placement and return, incremental scoring,
-     end-of-game scoring, 2–5 seats, 60s live turns OR 24h async turns
+     (roads, cities, monasteries), follower placement and return, incremental scoring,
+     end-of-game scoring, 2–5 seats, an optional per-turn deadline that works identically
+     for 60 s live turns and 24 h async turns
+OUT: farms/fields as a SCORABLE feature — deferred. Field stays an edge terrain for adjacency
+     matching. Scoring farms needs sub-edge granularity (two field corners per tile side),
+     which multiplies the graph's representation without exercising a contract that roads,
+     cities, and monasteries do not already exercise.
 OUT: expansions, rivers, custom boards, trading — later
 ```
+
+The tile distribution is Tabula's own, in the Carcassonne family. It is not a reproduction of any
+published set, and no acceptance criterion below depends on matching one.
 
 ### 4.2 What it validates
 
 | Claim | How Tiles tests it |
 |---|---|
 | `&mut State` and incremental structures are supported | The feature graph (union-find) must be part of state and part of the state hash. A naive recompute-per-turn design would be 100× slower — this game proves the contract accommodates real data-structure engineering. |
-| `StateSizeClass` drives real behavior | ~30–120 KB state changes snapshot cadence and storage encoding, and makes `Welcome` frames large enough to matter (protocol frame limits, doc 03 §3.2). |
+| `StateSizeClass` drives real behavior | **The claim under test, not an established fact.** The design estimated ~30–120 KB, which would change snapshot cadence and storage encoding and make `Welcome` frames large enough to matter (doc 03 §3.2). Phase 3 measures the canonical encoding of a full board and sets the declared class from the measurement. If the measurement lands in `Tiny`/`Small`, the honest conclusion is that no game in the portfolio yet exercises `Medium`, not that Tiles should be labelled `Medium` anyway. |
 | `LegalCommands::Hints` is necessary | Legal (position × rotation) pairs are numerous; enumerating commands is wasteful. The hint form must be enough for UI highlighting and a bot. |
-| Camera is presentation-only | Pan, zoom, and rotation live entirely in `P::Local`. Two players looking at the same board from different camera positions is not a desync. |
+| Camera is presentation-only | Pan and zoom live entirely in `P::Local`. Two players looking at the same board from different camera positions is not a desync. **Camera rotation is not implemented and is not currently representable**: `tabula_presentation::Camera2D` carries an origin and a zoom, and nothing else. A rotating board would go through `RenderCmd::PushTransform` in the presenter, still entirely presentation-local — but no game needs it yet, so nothing was added to the camera type for it. |
 | Asset volume is manageable | The largest asset pack; validates atlas packing, priority loading, and per-density variants. |
 | Async turns work end to end | A match spanning days, surviving deploys, with push notifications and hibernation. Phase 9's headline test. |
 | Determinism with a large hidden ordered structure | The bag order is secret and consumed over time; replay must reproduce every draw. |
@@ -275,9 +283,15 @@ end-of-game scoring walkthrough animation
 
 ```text
 [ ] placement legality fully tested, including all rotations and edge adjacency cases
-[ ] scoring correct for every feature type, including end-of-game partial scoring
+[ ] scoring correct for every implemented feature type (roads, cities, monasteries),
+    including end-of-game partial scoring
 [ ] state hash cost < 200 µs at full board; apply within budget
-[ ] snapshot size measured and StateSizeClass confirmed
+[ ] snapshot size measured and StateSizeClass SET FROM the measurement (confirming the
+    design estimate is one acceptable outcome; contradicting it is another, and both are
+    recorded rather than reconciled toward the estimate)
+[ ] SecretModel + projection-security suite green: the remaining bag order reaches no seat
+    and no spectator, in View and in ViewEvent, across a reachable trace of real draws
+[ ] bag-order noninterference: permuting the remaining bag changes no unauthorized projection
 [ ] Welcome frame size for a full board within the 1 MiB outbound cap (with margin)
 [ ] async match survives 7 real days, 3 deploys, and 2 hibernation cycles
 [ ] camera never affects state (property: identical command sequences from different camera

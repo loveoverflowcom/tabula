@@ -555,7 +555,7 @@ interval, so worst-case recovery is a fixed small number of `apply` calls (micro
 |---|---|---|---|
 | `Tiny` (< 1 KiB) | every 200 inputs + on end | Postgres `BYTEA` | chess, tictactoe |
 | `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` | werewolf |
-| `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | Postgres `BYTEA`, zstd | tiles |
+| `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | Postgres `BYTEA`, zstd | (none yet) |
 | `Large` (≥ 256 KiB) | every 25 inputs + on hibernate | Object storage, pointer row in PG | future |
 
 Additional triggers: before drain, before hibernation, on `rules_version` boundary, and whenever
@@ -564,6 +564,11 @@ Additional triggers: before drain, before hibernation, on `rules_version` bounda
 Caro's `StateSizeClass` remains `TBD` until its final board dimensions and canonical encoding are
 implemented and measured; the implementation then selects `Tiny` or `Small` from the encoded
 state size rather than from the placeholder design.
+
+Tiles was the design's expected `Medium` example. That expectation is also `TBD` until Phase 3
+measures the canonical encoding of a full board, and the row above deliberately names no game
+rather than naming one on the strength of an estimate. A class that no shipped game occupies is an
+honest table entry; a class assigned from a guess sets a snapshot cadence nobody measured.
 
 ### 9.3 State hashes
 

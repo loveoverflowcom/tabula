@@ -57,7 +57,9 @@ That last kind of entry is the valuable one. It records a decision that is
 invisible in the code and would otherwise be quietly undone by a future
 "helpful UI hint" PR.
 
-Tiles has a smaller information model, but it is still a real one:
+Tiles has a smaller information model, but it is still a real one — and it is
+implemented, so [`tiles.md`](tiles.md) carries the authoritative version of the
+block below rather than a sketch of one:
 
 ```markdown
 ## Information model
@@ -72,8 +74,10 @@ Bag count, the tile currently drawn, and all placed/drawn tiles.
 
 ### Verification
 `SecretModel` declares the remaining bag order as authorised to nobody. The
-Phase-3 projection scan must cover reachable draws while preserving the public
-count and the drawn tile.
+Phase-3 projection scan covers reachable draws while preserving the public count
+and the drawn tile. Containment scanning alone is not sufficient evidence for an
+*ordered* secret — see `tiles.md` for the token-granularity limit and the
+noninterference property that closes it.
 ```
 
 ### 3. Balance and configuration
@@ -93,10 +97,16 @@ decision rather than an oversight.
 
 ## Files
 
-| Game | Status |
-|---|---|
-| `tictactoe.md` | Phase 0 — internal SDK smoke test / template. Trivially: nothing is secret. Not a product/reference game. |
-| `chess.md` | Phase 1 — correctness benchmark: complex legality, clocks, deterministic replay. |
-| `caro.md` | Phase 3 — design placeholder. Simple real product game, large fixed board, SDK-friction benchmark. Perfect information; no information model needed. |
-| `tiles.md` | Phase 3 — design placeholder. Carcassonne-like: deterministic tile-bag RNG, dynamic spatial state, incremental scoring. Bag order secret, count public. |
-| `werewolf.md` | Phase 3 (rules/headless) → Phase 7 (social) — **the important one.** Roles, night actions, and event *non-existence*. |
+The **written** column says whether the file exists yet, not whether the game
+does: chess and tic-tac-toe are implemented and have no per-game doc, because
+neither has hidden information and doc 08 §7.1 only makes the file mandatory
+before a game *ships*. A row without a file is an outstanding task, not a
+statement that the game has nothing to document.
+
+| Game | Written | Status |
+|---|---|---|
+| `tictactoe.md` | no | Phase 0 — internal SDK smoke test / template. Trivially: nothing is secret. Not a product/reference game. |
+| `chess.md` | no | Phase 1 — correctness benchmark: complex legality, clocks, deterministic replay. |
+| `caro.md` | yes | Phase 3 — design placeholder. Simple real product game, large fixed board, SDK-friction benchmark. Perfect information; no information model needed. |
+| `tiles.md` | yes | Phase 3 — **implemented.** Carcassonne-like: deterministic tile-bag RNG, dynamic spatial state, incremental scoring. Bag order secret, count public. |
+| `werewolf.md` | no | Phase 3 (rules/headless) → Phase 7 (social) — **the important one.** Roles, night actions, and event *non-existence*. |
