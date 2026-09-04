@@ -48,7 +48,7 @@ Knowing the unit costs turns capacity planning into arithmetic instead of anxiet
 
 | Component | Estimate | Notes |
 |---|---|---|
-| Canonical state | 0.5–4 KB (chess/Caro/Werewolf), 30–120 KB (Tiles) | `StateSizeClass` |
+| Canonical state | 0.5–4 KB (chess/Werewolf; Caro TBD), 30–120 KB (Tiles) | `StateSizeClass` |
 | Actor overhead | ~4 KB | task, timer heap, seat table, idempotency ring |
 | Mailbox (idle) | ~0.5 KB | tokio mpsc allocates in blocks, lazily |
 | Viewer bookkeeping | ~200 B × viewers | — |

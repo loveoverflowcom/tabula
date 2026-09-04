@@ -230,7 +230,8 @@ Named so they can be watched.
 
 1. **A projection leak in a hidden-information game.** The highest-severity, hardest-to-detect
    failure. Mitigations: `SecretModel` scans on every PR, socket-level assertions in werewolf tests,
-   `View` types that cannot represent absent secrets, a second-engineer review of every
+   bag-order assertions in Tiles tests, `View` types that cannot represent absent secrets, a
+   second-engineer review of every
    `project`/`view_event`, and a leak bounty in the closed beta.
 2. **Silent determinism rot.** A `HashMap`, a float, an unordered iteration, or a behavior change
    without a `rules_version` bump. Mitigations: lints, `rules_hash`, state hashes in the log, and the

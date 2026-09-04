@@ -60,7 +60,7 @@ tic-tac-toe cannot answer that question because it was built alongside the platf
 | Complex legality (move generation) | **primary** | no (simple line detection) | **primary** (placement validity) | no |
 | Timers own their meaning | **primary** (clocks) | optional turn timer — `TBD` | yes (long deadlines) | **primary** (phase timers) |
 | Server-side RNG, replayable | no | no | **primary** (tile bag) | yes (role assignment) |
-| Hidden information / projections | no | no | partial (bag order) | **primary** (roles + night actions) |
+| Hidden information / projections | no | no | **secondary** (bag order) | **primary** (roles + night actions) |
 | `view_event` degradation | no | no (nothing to degrade) | yes (drawn tile) | yes |
 | `view_event` → `None` (event non-existence) | no | no | no | **primary** |
 | Many seats (6–20) | no | no | no (2–5) | **primary** |
@@ -321,7 +321,7 @@ OUT (Phase 3 specifically): any UI/presentation, chat/voice transport — those 
 | `Viewer` needs a seat variant, not `Option<SeatId>` | Dead players are `Viewer::Seat(_)` with full vision; outside spectators are `Viewer::Spectator(_)` with public vision. An `Option<SeatId>` model could not express this. |
 | `SubstitutionPolicy::Forbidden` is meaningful | A seat carrying secret knowledge cannot be handed over. The platform must honor the policy rather than "helpfully" filling the seat. |
 | Simultaneous action model | Night is `TurnModel::Phased` with several seats acting concurrently — no "whose turn" concept applies. |
-| Hidden information is a real security boundary | `project()`/`view_event()` are the only reference-portfolio functions that must hide a *fact*, not just a value — the reason this is the hidden-information benchmark rather than Caro or Tiles (doc 09 §5). |
+| Hidden information is a real security boundary | Werewolf is the primary benchmark for per-seat knowledge and secret event existence; Tiles is the secondary case for value secrecy in the remaining bag order. Both require `project()`/`view_event()` security coverage (doc 09 §5). |
 
 ### 5.3 Presentation requirements (Phase 7)
 

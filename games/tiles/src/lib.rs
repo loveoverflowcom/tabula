@@ -50,8 +50,11 @@
 //!    a 24 h deadline; the match actor hibernates (doc 03 §11.2) and the platform
 //!    sends push notifications. **The rules are unchanged between live and async
 //!    play — that is the payoff of `LogicalTime`.**
-//! 5. **The bag is secret but its count is public.** `View` carries
-//!    `bag_remaining: u8` and the drawn tile, never the order.
+//! 5. **The bag order is secret but its count is public.** Tiles declares
+//!    `hidden_information = true`; its `SecretModel` marks the remaining bag
+//!    order as authorised to nobody. `View` carries `bag_remaining: u8` and the
+//!    drawn tile, never the order. This is a secondary secrecy case; Werewolf
+//!    remains the primary benchmark for per-seat knowledge and event existence.
 //!
 //! Camera pan/zoom/rotate lives entirely in `P::Local`, never in canonical state
 //! (I-10). The property test that proves it: identical command sequences issued
@@ -70,6 +73,7 @@
 //! [ ] scoring correct for every feature type, incl. end-of-game partial scoring
 //! [ ] state hash cost < 200 µs at full board; apply within budget
 //! [ ] snapshot size measured and StateSizeClass confirmed
+//! [ ] SecretModel + projection scan prove remaining bag order is never exposed
 //! [ ] Welcome frame for a full board within the 1 MiB outbound cap, with margin
 //! [ ] async match survives 7 real days, 3 deploys, and 2 hibernation cycles
 //! [ ] camera never affects state (property test, see above)

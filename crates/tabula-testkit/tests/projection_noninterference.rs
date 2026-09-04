@@ -10,10 +10,10 @@
 //!
 //! # Why a reference model instead of a real game
 //!
-//! At the time of this PR, `games/werewolf` is a doc-comment sketch with zero
-//! `impl GameRules` (Phase 3 has not started; see
-//! `docs/architecture/07-phases-and-implementation-roadmap.md`) — it is the
-//! only reference game in the current portfolio (doc 09 §3, doc 08) with
+//! At the time of this PR, `games/werewolf` and `games/tiles` are doc-comment
+//! sketches with zero `impl GameRules` (Phase 3 has not started; see
+//! `docs/architecture/07-phases-and-implementation-roadmap.md`) — they are the
+//! reference games in the current portfolio (doc 09 §3, doc 08) with
 //! `hidden_information = true`. Chess, tic-tac-toe, and Caro are
 //! perfect-information games and cannot exercise a secrecy property honestly
 //! — see `games/*/tests/projection_control.rs` for what *can* be said about

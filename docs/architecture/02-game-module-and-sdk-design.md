@@ -730,8 +730,8 @@ for every secret S, for every viewer V not authorized for S:
 
 Token-level containment scanning is coarse but catches the real bugs (a whole hand list leaking,
 a role map serialized wholesale). It is the mandatory scan for every hidden-information game once
-that game exists (`games/werewolf` — Phase 3, the only reference game with `hidden_information =
-true`); see §11.1 for the sibling
+those games exist (`games/werewolf` and `games/tiles` — Phase 3 reference games with
+`hidden_information = true`); see §11.1 for the sibling
 noninterference oracle this containment scan does not replace, and
 `crates/tabula-testkit/tests/projection_noninterference.rs` for a worked reference model exercising
 both against a real reachable trace.
@@ -1286,13 +1286,13 @@ gameplay/validation rationale is in [doc 08](./08-first-games-validation-plan.md
 ### 12.0 Comparison at a glance
 
 Values marked `EXPERIMENT` or `TBD` are not yet decided; they are honest placeholders, not locked
-capabilities (doc 08 §3 for Caro's open questions).
+capabilities (doc 08 §3 for Caro's open questions, including its eventual state-size class).
 
 | | **Chess** | **Caro** | **Werewolf** | **Tiles (Carcassonne-like)** |
 |---|---|---|---|---|
 | Seats | 2, asymmetric | 2, symmetric | 6–20, role-asymmetric | 2–5, symmetric |
 | `turn_model` | `StrictSequential` | `StrictSequential` | `Phased` | `StrictSequential` |
-| `hidden_information` | false | false | **true** (roles, night actions) | partial (bag order) |
+| `hidden_information` | false | false | **true** (roles, night actions) | **true** (remaining bag order; count public) |
 | RNG usage | none | none | role assignment | tile bag shuffle |
 | Timers | per-move clock (Fischer/Bronstein) | optional per-turn timer — `TBD during implementation` | per-phase, long | per-turn 60 s, or 24 h async |
 | `spectators` | `Live` | `Live` | `GameControlled` (dead see all) | `Live` |
@@ -1301,10 +1301,10 @@ capabilities (doc 08 §3 for Caro's open questions).
 | `async_turns` | true (correspondence) | `TBD during implementation` | false | **true** |
 | `ranked` | `Elo` | `TBD during implementation` | `No` (social) | `Placement` |
 | `durability` | `AckAfterPersist` | `AckAfterPersist` | `AckAfterApply` | `AckAfterPersist` |
-| `state_size` | `Tiny` | `Tiny` | `Small` | **`Medium`** |
+| `state_size` | `Tiny` | `TBD during implementation` | `Small` | **`Medium`** |
 | `substitution` | `BotOnly` | `BotOnly` | **`Forbidden`** | `BotOnly` |
 | `pausable` | false | false | false | true (async) |
-| Hardest contract stressed | clocks + `legal_commands` enumeration | `legal_commands` at scale + zero-platform-change addition | `view_event → None` + scopes | state size + snapshot cost + camera |
+| Hardest contract stressed | clocks + `legal_commands` enumeration | `legal_commands` at scale + zero-platform-change addition | `view_event → None` + scopes | state size + snapshot cost + camera + bag-order secrecy |
 
 ### 12.1 Chess — the simple case that must be perfect
 
@@ -1486,7 +1486,9 @@ Contract lessons:
   match actor hibernates (doc 03 §11) and the platform sends push notifications. The rules are
   unchanged between live and async play — that is the payoff of `LogicalTime`.
 - **The bag is secret but its count is public.** `View` carries `bag_remaining: u8` and the drawn
-  tile, never the order.
+  tile, never the order. Because that order affects future draws, Tiles declares
+  `hidden_information = true` and must provide a `SecretModel` that marks the remaining order as
+  authorised to nobody; the Phase-3 projection scan covers reachable draws.
 
 ### 12.5 What this comparison proves about the contract
 
