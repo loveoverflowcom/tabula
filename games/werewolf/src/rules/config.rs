@@ -1,3 +1,5 @@
+#![allow(clippy::doc_markdown)] // `@ai.*` values are machine-readable paths.
+
 //! Validated configuration and boundary primitives for Werewolf. (doc 02 §10.2, doc 08 §5.1)
 //!
 //! # Proof barriers and validated types
@@ -14,6 +16,10 @@
 //! @ai.invariant phase-duration-bounds
 //! @ai.invariant max-rounds-bounds
 //! @ai.invariant validated-deserialization-barrier
+//! @ai.evidence tests::config::seat_count_boundaries
+//! @ai.evidence tests::config::phase_duration_boundaries
+//! @ai.evidence tests::config::max_rounds_boundaries
+//! @ai.evidence tests::config::deserialization_rejects_out_of_range_seat_count
 
 use serde::{Deserialize, Serialize};
 use tabula_core::{Millis, Occupant, SeatRoster};
@@ -412,12 +418,7 @@ pub struct RawConfig {
     #[serde(default)]
     pub vote_mode: VoteMode,
     #[serde(default)]
-    pub phase_durations: Option<RawPhaseDurations>,
-    pub night_duration_ms: Option<u64>,
-    pub dawn_duration_ms: Option<u64>,
-    pub day_duration_ms: Option<u64>,
-    pub vote_duration_ms: Option<u64>,
-    pub dusk_duration_ms: Option<u64>,
+    pub phase_durations: RawPhaseDurations,
     #[serde(default = "default_raw_max_rounds")]
     pub max_rounds: u32,
 }
@@ -431,12 +432,7 @@ impl Default for RawConfig {
         Self {
             preset: Preset::default(),
             vote_mode: VoteMode::default(),
-            phase_durations: Some(RawPhaseDurations::default()),
-            night_duration_ms: None,
-            dawn_duration_ms: None,
-            day_duration_ms: None,
-            vote_duration_ms: None,
-            dusk_duration_ms: None,
+            phase_durations: RawPhaseDurations::default(),
             max_rounds: DEFAULT_MAX_ROUNDS,
         }
     }
@@ -455,22 +451,7 @@ impl TryFrom<RawConfig> for Config {
     type Error = ConfigValidationError;
 
     fn try_from(raw: RawConfig) -> Result<Self, Self::Error> {
-        let raw_durations = raw.phase_durations.unwrap_or_default();
-
-        let night_ms = raw.night_duration_ms.unwrap_or(raw_durations.night_ms);
-        let dawn_ms = raw.dawn_duration_ms.unwrap_or(raw_durations.dawn_ms);
-        let day_ms = raw.day_duration_ms.unwrap_or(raw_durations.day_ms);
-        let vote_ms = raw.vote_duration_ms.unwrap_or(raw_durations.vote_ms);
-        let dusk_ms = raw.dusk_duration_ms.unwrap_or(raw_durations.dusk_ms);
-
-        let phase_durations = PhaseDurations {
-            night: PhaseDuration::from_millis(Millis(night_ms))?,
-            dawn: PhaseDuration::from_millis(Millis(dawn_ms))?,
-            day: PhaseDuration::from_millis(Millis(day_ms))?,
-            vote: PhaseDuration::from_millis(Millis(vote_ms))?,
-            dusk: PhaseDuration::from_millis(Millis(dusk_ms))?,
-        };
-
+        let phase_durations = PhaseDurations::try_from(raw.phase_durations)?;
         let max_rounds = MaxRounds::new(raw.max_rounds)?;
 
         Ok(Self {
@@ -487,12 +468,7 @@ impl From<Config> for RawConfig {
         Self {
             preset: cfg.preset,
             vote_mode: cfg.vote_mode,
-            phase_durations: Some(RawPhaseDurations::from(cfg.phase_durations)),
-            night_duration_ms: None,
-            dawn_duration_ms: None,
-            day_duration_ms: None,
-            vote_duration_ms: None,
-            dusk_duration_ms: None,
+            phase_durations: RawPhaseDurations::from(cfg.phase_durations),
             max_rounds: cfg.max_rounds.get(),
         }
     }

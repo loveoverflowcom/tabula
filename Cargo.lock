@@ -992,6 +992,8 @@ dependencies = [
 name = "tabula-game-werewolf"
 version = "0.0.0"
 dependencies = [
+ "blake3",
+ "proptest",
  "serde",
  "smallvec",
  "tabula-assets",

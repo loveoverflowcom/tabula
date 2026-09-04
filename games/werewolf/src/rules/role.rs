@@ -1,3 +1,5 @@
+#![allow(clippy::doc_markdown)] // `@ai.*` values are machine-readable paths.
+
 //! Werewolf roles, alignments, and preset distribution tables. (doc 02 §12.3, doc 08 §5.1)
 //!
 //! @ai.role domain-types
@@ -6,6 +8,9 @@
 //! @ai.invariant base-roles-closed
 //! @ai.invariant alignment-mapping-total
 //! @ai.invariant classic-v1-counts-sum-to-seats
+//! @ai.evidence tests::config::role_all_contains_all_six_roles_uniquely
+//! @ai.evidence tests::config::role_alignment_mapping_is_correct
+//! @ai.evidence tests::config::classic_v1_table_matches_pinned_specification_for_all_seat_counts
 
 use serde::{Deserialize, Serialize};
 
