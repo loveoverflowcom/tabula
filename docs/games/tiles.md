@@ -213,13 +213,57 @@ assigned from a guess sets a snapshot cadence nobody measured. What Tiles does
 still validate is the class as a *mechanism* — its state grows about fivefold
 over a match while chess's barely moves.
 
+## Presentation and controls
+
+Everything interactive is presentation-local (I-10): camera pan and zoom, the
+rotation of the tile being previewed, the keyboard cursor, hover, and the drag
+in progress. `tests/presentation.rs`'s camera property drives one logical
+interaction — "tap the first legal square" — from five different camera
+positions and zoom levels, so each takes a different path through the pointer
+mapping, and requires the resulting canonical state to be byte-identical.
+
+| Input | Does |
+|---|---|
+| Left drag | Pan (past a 6 px threshold; a release after a drag never places) |
+| Left click | Place at that square, or claim a follower slot on the tile just laid |
+| Right click | Rotate the tile in hand |
+| Arrows | Move the board cursor; the camera follows it off-screen |
+| Tab | Jump the cursor to the next square where the tile fits at this rotation |
+| Space | Rotate the tile in hand |
+| Enter | Place at the cursor, or claim |
+| Escape | Pass on a follower |
+| On-screen | Zoom in/out, recenter, rotate, pass |
+
+The whole placement step is reachable from the keyboard, which doc 04 §10.3
+makes mandatory rather than optional.
+
+### The camera, and the HUD
+
+`RenderList` carries exactly **one** camera, and the backend applies it to every
+draw after that draw's local transforms (doc 04 §5.3). A screen-fixed HUD
+therefore cannot be expressed by declining to use the camera — it has to undo
+it. Tiles emits board geometry in world units with the real camera on the list
+and wraps the HUD in a `PushTransform` of the camera's inverse; the composition
+is exactly the identity, so HUD text keeps its size at every zoom while board
+text scales with the board. `tests/presentation.rs` asserts the HUD occupies the
+same logical rectangle at every zoom level.
+
+This is worth recording because the alternative — leaving the camera at identity
+and transforming board geometry in the presenter — also works and is what a game
+without a HUD would do. Using the camera field for real is what makes Tiles the
+camera benchmark rather than a game that happens to draw a grid.
+
 ## Art direction
 
 `accent = "#7A9E5B"`, `mood = "calm"`. Tiles render procedurally from semantic
-design tokens — terrain fills, a pennant marker, and follower discs in seat
-colours — rather than from a sprite pack. The asset pack is declared
-(`tiles@0.1.0`) for the catalog and for Phase 9's real art, and nothing in the
-Phase-3 presenter depends on it.
+design tokens rather than from a sprite pack: a tile is a surface rectangle, a
+city edge a solid band against that border, a road edge a bar reaching the tile
+centre, a monastery a block in the middle, a pennant a dot, and a follower a
+disc in its seat's colour. Adjacency is therefore readable at a glance — a city
+that continues across two tiles looks continuous — which matters more for a
+Phase-3 slice than art does. The asset pack is declared (`tiles@0.1.0`) for the
+catalog and for Phase 9's real art, and nothing in the Phase-3 presenter depends
+on it.
 
 ## Open questions
 

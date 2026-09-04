@@ -114,6 +114,15 @@
 //!   yet. Tiles' `View` also carries feature-derived affordances (the legal
 //!   meeple slots) that a client would have to re-derive rather than fold.
 //!   Declaring `true` would be an unverified claim.
+//! - **Wheel and pinch zoom.** `tabula_presentation::InputEvent` carries
+//!   pointer, key, and focus events only. Zoom is on-screen instead. Adding a
+//!   wheel variant would be a Phase-2 contract change with no second consumer
+//!   asking for one, and the game is fully playable without it (doc 08 §4.3).
+//! - **`apply` and `state_hash` wall-clock budgets.** Doc 08 §4.5 asks for
+//!   them; `std::time::Instant` is a `disallowed-type` in a rules crate (I-3)
+//!   and a timing assertion in the per-PR tier is a flake generator. They
+//!   belong to the Phase-4 load test (doc 06 §2). `tests/state_size.rs`
+//!   measures size, which is what can be measured here honestly.
 //! - Board Reader (`describe`) beyond a status line: Phase 9, and it is what
 //!   will shape `A11yRegion` (doc 04 §10.4).
 //! - Async-turn *operations* — hibernation, push, surviving deploys — are Phase
@@ -133,7 +142,8 @@ pub mod rules;
 #[cfg(any(test, feature = "bots"))]
 pub mod bot;
 
-// `presentation` arrives with Part 3.
+#[cfg(feature = "presentation")]
+pub mod presentation;
 
 use std::sync::LazyLock;
 

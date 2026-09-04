@@ -8,6 +8,7 @@ use tabula_core::{
     InputIndex, LogicalTime, MatchSeed, Occupant, SeatEntry, SeatId, SeatRoster, TimerId, UserId,
     Viewer,
 };
+use tabula_game_api::GameModule;
 use tabula_game_api::Input;
 use tabula_game_chess::{
     presentation::{BoardLayout as ChessLayout, ChessPresentation},
@@ -18,8 +19,14 @@ use tabula_game_tictactoe::{
     presentation::{BoardLayout as TttLayout, TicTacToePresentation},
     Config as TttConfig, Mark, TicTacToeRules,
 };
+use tabula_game_tiles::{
+    presentation::{world_rect as tiles_world_rect, TilesLocal, TilesPresentation},
+    rules::legal_placements as tiles_legal_placements,
+    Config as TilesConfig, Coord as TilesCoord, Status as TilesStatus, TilesModule, TilesRules,
+    TurnPhase as TilesTurnPhase,
+};
 use tabula_presentation::{
-    Dpi, FrameCtx, InputEvent, PointerButton, PointerPhase, PointerPosition, Viewport,
+    Dpi, FrameCtx, InputEvent, Key, PointerButton, PointerPhase, PointerPosition, Viewport,
 };
 
 type ChessMatch = LocalMatch<ChessRules, ChessPresentation>;
@@ -210,4 +217,287 @@ fn tictactoe_presenter_produces_macroquad_supported_render_list() {
         MacroquadRenderer::preflight(&match_.present(&frame), &frame),
         Ok(())
     );
+}
+
+// ---------------------------------------------------------------------------
+// Tiles — the Phase 3 vertical slice, driven end to end through the same
+// generic `LocalMatch` the two Phase 2 games use.
+// ---------------------------------------------------------------------------
+
+type TilesMatch = LocalMatch<TilesRules, TilesPresentation>;
+
+fn tiles_roster(seats: u8) -> SeatRoster {
+    SeatRoster::new(
+        (0..seats)
+            .map(|index| SeatEntry {
+                seat: SeatId(index),
+                occupant: Occupant::Human(UserId(u128::from(index) + 1)),
+                team: None,
+            })
+            .collect(),
+    )
+    .expect("local seats are unique")
+}
+
+fn tiles_match(seats: u8) -> TilesMatch {
+    TilesMatch::new(
+        &TilesConfig {
+            turn_deadline_ms: 0,
+        },
+        &tiles_roster(seats),
+        MatchSeed::from_bytes([9; 32]),
+        Viewer::Seat(SeatId(0)),
+    )
+    .expect("the local tiles configuration is valid")
+}
+
+/// A click on the centre of a board square, in the coordinates that square
+/// currently occupies on screen.
+fn tiles_click(local: &TilesLocal, coord: TilesCoord) -> InputEvent {
+    let rect = tiles_world_rect(coord);
+    let world = rect.origin() + rect.size() * 0.5;
+    let screen = (world - local.camera().origin()) * local.camera().zoom();
+    InputEvent::Pointer {
+        position: PointerPosition::new(screen).expect("test pointer is finite"),
+        button: PointerButton::Primary,
+        phase: PointerPhase::Up,
+    }
+}
+
+fn tiles_key(key: Key) -> InputEvent {
+    InputEvent::Key { key, pressed: true }
+}
+
+/// **The Phase 3 acceptance test.** A whole Tiles match is played from match
+/// creation to `EndMatch` using only what a real client has: normalized
+/// pointer and keyboard input, the presenter, and the generic runtime.
+///
+/// Nothing here reaches for canonical state. Every decision is taken from the
+/// projection the presenter was handed, which is what makes this evidence that
+/// the game is *playable* rather than merely that `apply` accepts commands.
+#[test]
+fn a_whole_tiles_match_is_playable_through_pointer_and_keyboard_input() {
+    let frame = frame(0);
+    let mut match_ = tiles_match(3);
+    match_.local_mut().set_viewport(frame.viewport());
+    match_
+        .advance_frame(&frame)
+        .expect("frame time is accepted");
+
+    let mut placements = 0usize;
+    let mut claims = 0usize;
+    let mut passes = 0usize;
+
+    for _ in 0..400 {
+        if match_.ended().is_some() {
+            break;
+        }
+        // Hot seat: the runtime shows whoever is on turn, exactly as the shell
+        // does.
+        let on_turn = match_.view().turn;
+        match_.set_viewer(Viewer::Seat(on_turn));
+
+        match match_.view().phase {
+            TilesTurnPhase::PlaceTile => {
+                let kind = match_.view().drawn.expect("a playing match holds a tile");
+                let options = tiles_legal_placements(&match_.view().board, kind);
+                let (coord, rotations) = options
+                    .first()
+                    .cloned()
+                    .expect("a playing match always has somewhere to play");
+
+                // Rotate with the keyboard until the preview matches, then
+                // click the square — the real interaction, not a shortcut.
+                for _ in 0..4 {
+                    if rotations.contains(&match_.local_mut().preview_rotation()) {
+                        break;
+                    }
+                    match_
+                        .handle_presentation_input(&tiles_key(Key::Space), &frame)
+                        .expect("rotating is local only");
+                }
+                let event = tiles_click(match_.local_mut(), coord);
+                match_
+                    .handle_presentation_input(&event, &frame)
+                    .expect("a legal placement is accepted");
+                placements += 1;
+                assert_eq!(
+                    match_.view().last_placed,
+                    Some(coord),
+                    "the projection must show the tile the click placed"
+                );
+            }
+            TilesTurnPhase::PlaceMeeple => {
+                // Claim two turns out of three and pass on the third, so both
+                // paths are exercised. The rules never *offer* the claim step
+                // with no slots — a seat out of followers has its turn ended by
+                // the placement — so a driver that always claimed would leave
+                // the pass path untested.
+                let claim = (claims + passes) % 3 != 2 && !match_.view().meeple_slots.is_empty();
+                if claim {
+                    let last = match_.view().last_placed.expect("a tile was just placed");
+                    let event = tiles_click(match_.local_mut(), last);
+                    match_
+                        .handle_presentation_input(&event, &frame)
+                        .expect("clicking a claim slot claims it");
+                    claims += 1;
+                } else {
+                    match_
+                        .handle_presentation_input(&tiles_key(Key::Escape), &frame)
+                        .expect("passing is always available in the claim step");
+                    passes += 1;
+                }
+            }
+        }
+    }
+
+    let outcome = match_.ended().expect("the match reached a terminal state");
+    assert_eq!(placements, match_.view().board.len() - 1);
+    assert!(claims > 0, "no follower was ever claimed through the UI");
+    assert!(passes > 0, "the pass path was never exercised");
+    assert_eq!(match_.view().bag_remaining, 0);
+    assert_eq!(match_.view().status, TilesStatus::Ended);
+
+    // Somebody won on points, and the standings say so.
+    assert_eq!(outcome.standings().len(), 3);
+    assert!(
+        match_.view().scores.values().any(|score| *score > 0),
+        "a whole match that scored nothing is not a playable game"
+    );
+    for standing in outcome.standings() {
+        assert_eq!(
+            standing.score,
+            match_
+                .view()
+                .scores
+                .get(&standing.seat)
+                .copied()
+                .unwrap_or(0)
+        );
+    }
+
+    // Replay evidence was collected for every accepted input, and only those.
+    let trace = match_.replay_trace();
+    assert_eq!(
+        trace.accepted_inputs().len(),
+        match_.recorded_inputs().len()
+    );
+    assert!(trace.accepted_inputs().len() > 100);
+    assert!(matches!(
+        match_.effects().last(),
+        Some(LocalEffect::MatchEnded { .. })
+    ));
+}
+
+/// The camera is presentation-local, driven through the runtime rather than by
+/// poking `Local` directly: panning and zooming produce no canonical input at
+/// all, so no index is consumed and the state hash does not move.
+#[test]
+fn panning_and_zooming_through_the_runtime_consume_no_canonical_input() {
+    let frame = frame(0);
+    let mut match_ = tiles_match(2);
+    match_.local_mut().set_viewport(frame.viewport());
+    match_.advance_frame(&frame).expect("frame is accepted");
+    let before = match_.view().clone();
+    let camera_before = match_.local_mut().camera();
+
+    let drag = |point: Vec2, phase: PointerPhase| InputEvent::Pointer {
+        position: PointerPosition::new(point).expect("finite"),
+        button: PointerButton::Primary,
+        phase,
+    };
+    for event in [
+        drag(Vec2::new(400.0, 300.0), PointerPhase::Down),
+        drag(Vec2::new(300.0, 380.0), PointerPhase::Move),
+        drag(Vec2::new(200.0, 460.0), PointerPhase::Move),
+        drag(Vec2::new(200.0, 460.0), PointerPhase::Up),
+    ] {
+        match_
+            .handle_presentation_input(&event, &frame)
+            .expect("panning is local only");
+    }
+
+    assert!(
+        match_.recorded_inputs().is_empty(),
+        "a pan must not enter the canonical input stream"
+    );
+    assert_ne!(
+        match_.local_mut().camera().origin(),
+        camera_before.origin(),
+        "the drag did not actually pan, so this proves nothing"
+    );
+    assert_eq!(
+        &before,
+        match_.view(),
+        "the projection changed although no canonical input was applied"
+    );
+}
+
+#[test]
+fn the_tiles_presenter_produces_a_macroquad_supported_render_list() {
+    let frame = frame(0);
+    let mut match_ = tiles_match(4);
+    match_.local_mut().set_viewport(frame.viewport());
+    assert_eq!(
+        MacroquadRenderer::preflight(&match_.present(&frame), &frame),
+        Ok(())
+    );
+
+    // And after a real turn, when followers, hints, and the claim overlay are
+    // all on screen at once.
+    match_.advance_frame(&frame).expect("frame is accepted");
+    let kind = match_.view().drawn.expect("a tile is in hand");
+    let (coord, rotations) = tiles_legal_placements(&match_.view().board, kind)
+        .first()
+        .cloned()
+        .expect("something is playable");
+    for _ in 0..4 {
+        if rotations.contains(&match_.local_mut().preview_rotation()) {
+            break;
+        }
+        match_
+            .handle_presentation_input(&tiles_key(Key::Space), &frame)
+            .expect("rotating is local only");
+    }
+    let event = tiles_click(match_.local_mut(), coord);
+    match_
+        .handle_presentation_input(&event, &frame)
+        .expect("a legal placement is accepted");
+    assert_eq!(
+        MacroquadRenderer::preflight(&match_.present(&frame), &frame),
+        Ok(())
+    );
+}
+
+/// Bot seats reach `apply` through the ordinary player path, so a solo local
+/// match progresses without a human touching the other seats.
+#[test]
+fn a_local_bot_can_take_the_seats_nobody_is_sitting_at() {
+    let frame = frame(0);
+    let mut match_ = tiles_match(3);
+    match_.local_mut().set_viewport(frame.viewport());
+    match_.advance_frame(&frame).expect("frame is accepted");
+
+    let bot = TilesModule::bot(tabula_core::BotLevel::Easy).expect("tiles offers an easy bot");
+    let mut rng = tabula_core::DetRng::for_input(&MatchSeed::from_bytes([9; 32]), InputIndex(999));
+
+    for _ in 0..400 {
+        if match_.ended().is_some() {
+            break;
+        }
+        let seat = match_.view().turn;
+        match_.set_viewer(Viewer::Seat(seat));
+        let Some(command) = bot.choose(match_.view(), seat, &mut rng) else {
+            break;
+        };
+        match_
+            .submit_bot_move(seat, command, &frame)
+            .expect("the bot only proposes commands its own projection allows");
+    }
+
+    assert!(
+        match_.ended().is_some(),
+        "a bot-driven local match must reach a terminal state"
+    );
+    assert_eq!(match_.view().bag_remaining, 0);
 }

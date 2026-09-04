@@ -262,12 +262,24 @@ published set, and no acceptance criterion below depends on matching one.
 ### 4.3 Presentation requirements
 
 ```text
-infinite scrollable board with pan (drag / two-finger), zoom (wheel / pinch, clamped),
-snap-to-grid ghost tile with rotation (tap-rotate + keyboard R), legal/illegal target tinting,
+infinite scrollable board with pan (drag / two-finger), zoom (clamped),
+snap-to-grid ghost tile with rotation, legal/illegal target tinting,
 follower placement targets on the placed tile's features, score track, remaining-tiles counter,
-minimap or "recenter" affordance, motion.tile-place, motion.token-drop, motion.score-update,
-end-of-game scoring walkthrough animation
+"recenter" affordance, motion.tile-place, motion.token-drop, motion.score-update
 ```
+
+Delivered in Phase 3: pan (left drag past a threshold), clamped zoom and
+recenter (on-screen controls), the ghost tile with rotation (right click, Space,
+or an on-screen control), legal/illegal target tinting, follower slots on the
+tile just laid, the score track with per-seat follower counts, the
+remaining-tiles counter, and audio cues for place / token-drop / score-update.
+
+Deferred, and why: **wheel and pinch** are not in
+`tabula_presentation::InputEvent`, which carries pointer, key, and focus events
+only. Zoom is on-screen instead; adding a wheel variant would be a Phase-2
+contract change with no second consumer asking for it, and the game is fully
+playable without one. A **minimap** and the **end-of-game scoring walkthrough
+animation** are Phase 9 polish.
 
 ### 4.4 Failure signals
 
@@ -282,20 +294,31 @@ end-of-game scoring walkthrough animation
 ### 4.5 Acceptance
 
 ```text
-[ ] placement legality fully tested, including all rotations and edge adjacency cases
-[ ] scoring correct for every implemented feature type (roads, cities, monasteries),
-    including end-of-game partial scoring
-[ ] state hash cost < 200 µs at full board; apply within budget
-[ ] snapshot size measured and StateSizeClass SET FROM the measurement (confirming the
-    design estimate is one acceptable outcome; contradicting it is another, and both are
-    recorded rather than reconciled toward the estimate)
-[ ] SecretModel + projection-security suite green: the remaining bag order reaches no seat
-    and no spectator, in View and in ViewEvent, across a reachable trace of real draws
-[ ] bag-order noninterference: permuting the remaining bag changes no unauthorized projection
-[ ] Welcome frame size for a full board within the 1 MiB outbound cap (with margin)
-[ ] async match survives 7 real days, 3 deploys, and 2 hibernation cycles
-[ ] camera never affects state (property: identical command sequences from different camera
-    positions produce identical hashes)
+[x] placement legality fully tested — exhaustive over every kind x every rotation x every
+    neighbour of the start tile, against an oracle written from the definition of adjacency,
+    plus a symmetry law over every pair of kinds
+[x] scoring correct for every implemented feature type (roads, cities, monasteries),
+    including end-of-game partial scoring, ties, and pennants
+[ ] state hash cost < 200 µs at full board; apply within budget — NOT MEASURED. A wall-clock
+    assertion needs `std::time::Instant`, which is a `disallowed-type` in a rules crate (I-3),
+    and belongs in the Phase-4 load test with the rest of the per-match cost model (doc 06 §2).
+    The size measurement below makes the cost implausibly large, but implausible is not measured.
+[x] snapshot size measured and StateSizeClass SET FROM the measurement — ~1.7 KB, so `Small`;
+    the design's `Medium` estimate was wrong by two orders of magnitude and doc 03 §9.2 now
+    says so rather than reconciling toward it
+[x] SecretModel + projection-security suite green across a reachable trace of real draws
+[x] bag-order noninterference: two permutations, both checked to leave a state the validator
+    still accepts, change no unauthorized projection or view event
+[ ] Welcome frame size for a full board within the 1 MiB outbound cap — Phase 4 (no protocol
+    yet). At ~1.7 KB of canonical state the projected View is nowhere near the cap.
+[ ] async match survives 7 real days, 3 deploys, and 2 hibernation cycles — Phase 4+ platform
+    work. Phase 3 owns only the rules half: the per-turn deadline is implemented and 60 s and
+    24 h take the same code path.
+[x] camera never affects state — property: one logical interaction driven from five camera
+    positions and zoom levels, each taking a different path through the pointer mapping,
+    produces byte-identical canonical state
+    (`games/tiles/src/presentation.rs::identical_play_from_different_cameras_produces_identical_state`),
+    with a negative control proving the render lists really did differ
 [ ] Board Reader allows completing a full turn with a screen reader
 ```
 

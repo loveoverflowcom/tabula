@@ -1,0 +1,33 @@
+---
+source: games/tiles/src/presentation.rs
+expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
+---
+camera origin=(-1568.000, -1168.000) zoom=0.250
+commands (total 27):
+  0: rect [origin=(0.000, -64.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=1.000 color=#cac3ceff] layer=board(0) z=0
+  1: rect [origin=(0.000, 64.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=1.000 color=#cac3ceff] layer=board(0) z=0
+  2: rect [origin=(0.000, 0.000) size=(64.000, 64.000)] radii=uniform(1.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=pieces(10) z=0
+  3: rect [origin=(0.000, 0.000) size=(64.000, 14.080)] radii=uniform(0.000) fill=solid(#cfbcffff) border=none layer=pieces(10) z=1
+  4: rect [origin=(32.000, 28.800) size=(32.000, 6.400)] radii=uniform(0.000) fill=solid(#cac3ceff) border=none layer=pieces(10) z=1
+  5: rect [origin=(0.000, 28.800) size=(32.000, 6.400)] radii=uniform(0.000) fill=solid(#cac3ceff) border=none layer=pieces(10) z=1
+  6: rect [origin=(0.000, 0.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=2.000 color=#cfbcffff] layer=overlay(20) z=20
+  7: push-transform matrix=[4.000, 0.000, 0.000, 4.000, -1568.000, -1168.000] layer=hud(30) z=0
+  8: rect [origin=(0.000, 0.000) size=(800.000, 30.000)] radii=uniform(0.000) fill=solid(#2b282fff) border=none layer=hud(30) z=0
+  9: rect [origin=(6.000, 36.000) size=(34.000, 34.000)] radii=uniform(4.000) fill=solid(#2b282fff) border=[width=1.000 color=#938f99ff] layer=hud(30) z=0
+  10: rect [origin=(6.000, 76.000) size=(34.000, 34.000)] radii=uniform(4.000) fill=solid(#2b282fff) border=[width=1.000 color=#938f99ff] layer=hud(30) z=0
+  11: rect [origin=(6.000, 116.000) size=(34.000, 34.000)] radii=uniform(4.000) fill=solid(#2b282fff) border=[width=1.000 color=#938f99ff] layer=hud(30) z=0
+  12: rect [origin=(6.000, 156.000) size=(34.000, 34.000)] radii=uniform(4.000) fill=solid(#2b282fff) border=[width=1.000 color=#938f99ff] layer=hud(30) z=0
+  13: rect [origin=(6.000, 196.000) size=(34.000, 34.000)] radii=uniform(4.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=hud(30) z=0
+  14: text "Seat 0 to place the tile.  70 tiles left.  Space rotates, Enter commits, Tab finds a spot." at=(6.000, 6.000) style=LabelMd align=Start max_width=none color=#e7e1e5ff layer=hud(30) z=1
+  15: text "seat 0  0  (7 left)" at=(794.000, 36.000) style=LabelSm align=End max_width=none color=#73e2a3ff layer=hud(30) z=1
+  16: rect [origin=(782.000, 50.000) size=(10.000, 10.000)] radii=uniform(5.000) fill=solid(#66d9efff) border=none layer=hud(30) z=1
+  17: text "seat 1  0  (7 left)" at=(794.000, 76.000) style=LabelSm align=End max_width=none color=#cac3ceff layer=hud(30) z=1
+  18: rect [origin=(782.000, 90.000) size=(10.000, 10.000)] radii=uniform(5.000) fill=solid(#ffb86cff) border=none layer=hud(30) z=1
+  19: text "seat 2  0  (7 left)" at=(794.000, 116.000) style=LabelSm align=End max_width=none color=#cac3ceff layer=hud(30) z=1
+  20: rect [origin=(782.000, 130.000) size=(10.000, 10.000)] radii=uniform(5.000) fill=solid(#d6a5e8ff) border=none layer=hud(30) z=1
+  21: text "+" at=(23.000, 44.000) style=LabelMd align=Center max_width=none color=#e7e1e5ff layer=hud(30) z=1
+  22: text "-" at=(23.000, 84.000) style=LabelMd align=Center max_width=none color=#e7e1e5ff layer=hud(30) z=1
+  23: text "@" at=(23.000, 124.000) style=LabelMd align=Center max_width=none color=#e7e1e5ff layer=hud(30) z=1
+  24: text "R" at=(23.000, 164.000) style=LabelMd align=Center max_width=none color=#e7e1e5ff layer=hud(30) z=1
+  25: text "X" at=(23.000, 204.000) style=LabelMd align=Center max_width=none color=#cac3ceff layer=hud(30) z=1
+  26: pop-transform layer=hud(30) z=0

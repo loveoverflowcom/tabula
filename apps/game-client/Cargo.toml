@@ -32,6 +32,7 @@ glam                = { workspace = true }
 # this leaf dependency when the online runtime is introduced.
 tabula-game-chess   = { workspace = true, features = ["rules", "presentation"] }
 tabula-game-tictactoe = { workspace = true, features = ["rules", "presentation"] }
+tabula-game-tiles     = { workspace = true, features = ["rules", "presentation", "bots"] }
 # Phase 4+
 # tabula-protocol   = { workspace = true }
 # tabula-registry   = { workspace = true }
