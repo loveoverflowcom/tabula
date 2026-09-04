@@ -240,6 +240,12 @@ pub enum StateError {
     DeadSeatActedInNight { actor: SeatId },
     #[error("night choice target {target:?} is unknown")]
     UnknownNightTarget { target: SeatId },
+    #[error("night choice target {target:?} is not living")]
+    DeadNightTarget { target: SeatId },
+    #[error("night action actor {actor:?} cannot target self")]
+    SelfNightTarget { actor: SeatId },
+    #[error("werewolf target {target:?} is a werewolf")]
+    WerewolfTargetNotAllowed { target: SeatId },
     #[error("night choice {choice:?} is unauthorized for role {role:?}")]
     UnauthorizedNightChoice { role: Role, choice: NightChoice },
     #[error("Doctor target {target:?} is unknown")]
@@ -520,23 +526,23 @@ fn validate_night_choices(
         match choice {
             NightChoice::WolfTarget(target) => {
                 validate_choice_role(role, Role::Werewolf, *choice)?;
-                validate_optional_target(roster, *target)?;
+                validate_optional_non_wolf_target(roster, alive, roles, *target)?;
             }
             NightChoice::Investigate(target) => {
                 validate_choice_role(role, Role::Seer, *choice)?;
-                validate_required_target(roster, alive, actor, *target, true)?;
+                validate_other_living_target(roster, alive, actor, *target)?;
             }
             NightChoice::Protect(target) => {
                 validate_choice_role(role, Role::Doctor, *choice)?;
-                validate_optional_target(roster, *target)?;
+                validate_optional_living_target(roster, alive, *target)?;
             }
             NightChoice::WitchHeal(target) | NightChoice::WitchPoison(target) => {
                 validate_choice_role(role, Role::Witch, *choice)?;
-                validate_optional_target(roster, *target)?;
+                validate_optional_living_target(roster, alive, *target)?;
             }
             NightChoice::HunterMark(target) => {
                 validate_choice_role(role, Role::Hunter, *choice)?;
-                validate_optional_target(roster, *target)?;
+                validate_optional_other_living_target(roster, alive, actor, *target)?;
             }
             NightChoice::Pass => {
                 if role == Role::Villager {
@@ -566,30 +572,67 @@ fn validate_choice_role(
     }
 }
 
-fn validate_optional_target(roster: &[SeatId], target: Option<SeatId>) -> Result<(), StateError> {
+fn validate_optional_living_target(
+    roster: &[SeatId],
+    alive: &BTreeSet<SeatId>,
+    target: Option<SeatId>,
+) -> Result<(), StateError> {
     if let Some(target) = target {
-        if !roster.contains(&target) {
-            return Err(StateError::UnknownNightTarget { target });
+        validate_living_target(roster, alive, target)?;
+    }
+    Ok(())
+}
+
+fn validate_optional_non_wolf_target(
+    roster: &[SeatId],
+    alive: &BTreeSet<SeatId>,
+    roles: &BTreeMap<SeatId, Role>,
+    target: Option<SeatId>,
+) -> Result<(), StateError> {
+    if let Some(target) = target {
+        validate_living_target(roster, alive, target)?;
+        if roles[&target].is_wolf() {
+            return Err(StateError::WerewolfTargetNotAllowed { target });
         }
     }
     Ok(())
 }
 
-fn validate_required_target(
+fn validate_optional_other_living_target(
     roster: &[SeatId],
     alive: &BTreeSet<SeatId>,
     actor: SeatId,
+    target: Option<SeatId>,
+) -> Result<(), StateError> {
+    if let Some(target) = target {
+        validate_other_living_target(roster, alive, actor, target)?;
+    }
+    Ok(())
+}
+
+fn validate_living_target(
+    roster: &[SeatId],
+    alive: &BTreeSet<SeatId>,
     target: SeatId,
-    other_than_actor: bool,
 ) -> Result<(), StateError> {
     if !roster.contains(&target) {
         return Err(StateError::UnknownNightTarget { target });
     }
     if !alive.contains(&target) {
-        return Err(StateError::UnknownNightTarget { target });
+        return Err(StateError::DeadNightTarget { target });
     }
-    if other_than_actor && target == actor {
-        return Err(StateError::UnknownNightTarget { target });
+    Ok(())
+}
+
+fn validate_other_living_target(
+    roster: &[SeatId],
+    alive: &BTreeSet<SeatId>,
+    actor: SeatId,
+    target: SeatId,
+) -> Result<(), StateError> {
+    validate_living_target(roster, alive, target)?;
+    if target == actor {
+        return Err(StateError::SelfNightTarget { actor });
     }
     Ok(())
 }

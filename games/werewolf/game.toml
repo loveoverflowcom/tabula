@@ -23,13 +23,12 @@ fill_with_bots = false
 turn_model         = "phased"
 hidden_information = true
 spectators         = "game_controlled"
-voice              = "optional"
+voice              = "recommended"
 ranked             = "no"
 pausable           = false
 client_preview     = false
 durability         = "ack_after_apply"
 state_size         = "small"
-max_match_duration = 3600000
 
 [capabilities.chat]
 channels    = [

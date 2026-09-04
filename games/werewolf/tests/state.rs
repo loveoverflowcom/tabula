@@ -288,6 +288,166 @@ fn state_reconstruction_rejects_unauthorized_night_choice() {
     );
 }
 
+fn seat_with_role(raw: &RawState, role: Role) -> SeatId {
+    raw.roles
+        .iter()
+        .find(|(_, &assigned)| assigned == role)
+        .map(|(&seat, _)| seat)
+        .expect("test state contains the requested role")
+}
+
+fn mark_dead(raw: &mut RawState, seat: SeatId) {
+    raw.alive.remove(&seat);
+    raw.revealed.insert(seat, raw.roles[&seat]);
+}
+
+fn night_choice_error(raw: &mut RawState, actor: SeatId, choice: NightChoice) -> StateError {
+    raw.night_choices.insert(actor, choice);
+    let encoded = canonical_encode(raw).expect("corrupt RawState remains encodable");
+    assert!(
+        canonical_decode::<State>(&encoded).is_err(),
+        "State deserialization must reject invalid night choices"
+    );
+    State::try_from(raw.clone()).unwrap_err()
+}
+
+#[test]
+fn state_reconstruction_rejects_invalid_wolf_targets() {
+    let mut raw_dead = RawState::from(valid_initial_state(8));
+    let wolf = seat_with_role(&raw_dead, Role::Werewolf);
+    let dead_target = raw_dead
+        .roles
+        .iter()
+        .find(|(&seat, &role)| seat != wolf && !role.is_wolf())
+        .map(|(&seat, _)| seat)
+        .expect("8-seat state contains a non-wolf target");
+    mark_dead(&mut raw_dead, dead_target);
+    assert_eq!(
+        night_choice_error(
+            &mut raw_dead,
+            wolf,
+            NightChoice::WolfTarget(Some(dead_target)),
+        ),
+        StateError::DeadNightTarget {
+            target: dead_target
+        }
+    );
+
+    let raw_other_wolf = RawState::from(valid_initial_state(8));
+    let wolves: Vec<_> = raw_other_wolf
+        .roles
+        .iter()
+        .filter_map(|(&seat, &role)| role.is_wolf().then_some(seat))
+        .collect();
+    assert_eq!(wolves.len(), 2);
+    let mut raw_other_wolf = raw_other_wolf;
+    assert_eq!(
+        night_choice_error(
+            &mut raw_other_wolf,
+            wolves[0],
+            NightChoice::WolfTarget(Some(wolves[1])),
+        ),
+        StateError::WerewolfTargetNotAllowed { target: wolves[1] }
+    );
+}
+
+#[test]
+fn state_reconstruction_rejects_dead_doctor_and_witch_targets() {
+    let mut raw_doctor = RawState::from(valid_initial_state(10));
+    let doctor = seat_with_role(&raw_doctor, Role::Doctor);
+    let doctor_target = seat_with_role(&raw_doctor, Role::Villager);
+    mark_dead(&mut raw_doctor, doctor_target);
+    assert_eq!(
+        night_choice_error(
+            &mut raw_doctor,
+            doctor,
+            NightChoice::Protect(Some(doctor_target)),
+        ),
+        StateError::DeadNightTarget {
+            target: doctor_target
+        }
+    );
+
+    let mut raw_witch_heal = RawState::from(valid_initial_state(10));
+    let witch = seat_with_role(&raw_witch_heal, Role::Witch);
+    let witch_target = seat_with_role(&raw_witch_heal, Role::Villager);
+    mark_dead(&mut raw_witch_heal, witch_target);
+    assert_eq!(
+        night_choice_error(
+            &mut raw_witch_heal,
+            witch,
+            NightChoice::WitchHeal(Some(witch_target)),
+        ),
+        StateError::DeadNightTarget {
+            target: witch_target
+        }
+    );
+
+    let mut raw_witch_poison = RawState::from(valid_initial_state(10));
+    let witch = seat_with_role(&raw_witch_poison, Role::Witch);
+    let witch_target = seat_with_role(&raw_witch_poison, Role::Villager);
+    mark_dead(&mut raw_witch_poison, witch_target);
+    assert_eq!(
+        night_choice_error(
+            &mut raw_witch_poison,
+            witch,
+            NightChoice::WitchPoison(Some(witch_target)),
+        ),
+        StateError::DeadNightTarget {
+            target: witch_target
+        }
+    );
+}
+
+#[test]
+fn state_reconstruction_rejects_invalid_hunter_targets() {
+    let mut raw_self = RawState::from(valid_initial_state(10));
+    let hunter = seat_with_role(&raw_self, Role::Hunter);
+    assert_eq!(
+        night_choice_error(&mut raw_self, hunter, NightChoice::HunterMark(Some(hunter)),),
+        StateError::SelfNightTarget { actor: hunter }
+    );
+
+    let mut raw_dead = RawState::from(valid_initial_state(10));
+    let hunter = seat_with_role(&raw_dead, Role::Hunter);
+    let dead_target = seat_with_role(&raw_dead, Role::Villager);
+    mark_dead(&mut raw_dead, dead_target);
+    assert_eq!(
+        night_choice_error(
+            &mut raw_dead,
+            hunter,
+            NightChoice::HunterMark(Some(dead_target)),
+        ),
+        StateError::DeadNightTarget {
+            target: dead_target
+        }
+    );
+}
+
+#[test]
+fn state_reconstruction_accepts_role_specific_living_targets() {
+    let mut raw = RawState::from(valid_initial_state(10));
+    let wolf = seat_with_role(&raw, Role::Werewolf);
+    let seer = seat_with_role(&raw, Role::Seer);
+    let doctor = seat_with_role(&raw, Role::Doctor);
+    let witch = seat_with_role(&raw, Role::Witch);
+    let hunter = seat_with_role(&raw, Role::Hunter);
+    let villager = seat_with_role(&raw, Role::Villager);
+
+    raw.night_choices
+        .insert(wolf, NightChoice::WolfTarget(Some(villager)));
+    raw.night_choices
+        .insert(seer, NightChoice::Investigate(villager));
+    raw.night_choices
+        .insert(doctor, NightChoice::Protect(Some(doctor)));
+    raw.night_choices
+        .insert(witch, NightChoice::WitchHeal(Some(witch)));
+    raw.night_choices
+        .insert(hunter, NightChoice::HunterMark(Some(villager)));
+
+    assert!(State::try_from(raw).is_ok());
+}
+
 #[test]
 fn state_reconstruction_rejects_invalid_doctor_target() {
     let original = valid_initial_state(6);

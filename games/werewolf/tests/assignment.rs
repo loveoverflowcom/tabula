@@ -2,8 +2,9 @@
 
 //! Deterministic role assignment and initial match creation tests for Werewolf W2.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
+use proptest::prelude::*;
 use smallvec::smallvec;
 use tabula_core::{
     canonical_encode, LogicalTime, MatchSeed, Occupant, SeatEntry, SeatId, SeatRoster, UserId,
@@ -30,6 +31,19 @@ fn make_roster(seat_ids: &[u8]) -> SeatRoster {
 fn make_dense_roster(n: u8) -> SeatRoster {
     let ids: Vec<u8> = (0..n).collect();
     make_roster(&ids)
+}
+
+fn pinned_irregular_roles() -> BTreeMap<SeatId, Role> {
+    BTreeMap::from([
+        (SeatId(3), Role::Hunter),
+        (SeatId(5), Role::Doctor),
+        (SeatId(12), Role::Villager),
+        (SeatId(42), Role::Villager),
+        (SeatId(100), Role::Werewolf),
+        (SeatId(177), Role::Seer),
+        (SeatId(200), Role::Villager),
+        (SeatId(250), Role::Werewolf),
+    ])
 }
 
 // ---------------------------------------------------------------------------
@@ -152,6 +166,46 @@ fn role_assignment_works_with_non_contiguous_and_irregular_seat_ids() {
             Some(&PlayerStatus::Active),
             "seat {seat:?} must be Active"
         );
+    }
+}
+
+#[test]
+fn fixed_seed_and_roster_produce_pinned_assignment_vector() {
+    let roster = make_roster(&[200, 12, 42, 5, 177, 100, 3, 250]);
+    let seed = MatchSeed::from_bytes([7u8; 32]);
+    let (state, _) =
+        create_initial_state_from_seed(&Config::default(), &roster, LogicalTime::ZERO, &seed)
+            .expect("creation succeeds");
+    assert_eq!(state.roles(), &pinned_irregular_roles());
+}
+
+fn irregular_roster_permutation() -> impl Strategy<Value = Vec<u8>> {
+    Just(vec![200, 12, 42, 5, 177, 100, 3, 250]).prop_shuffle()
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 128,
+        failure_persistence: None,
+        ..ProptestConfig::default()
+    })]
+
+    #[test]
+    fn every_roster_permutation_preserves_assignment(
+        seat_ids in irregular_roster_permutation(),
+    ) {
+        let roster = make_roster(&seat_ids);
+        let config = Config::default();
+        let seed = MatchSeed::from_bytes([7u8; 32]);
+        let (state, _) = create_initial_state_from_seed(
+            &config,
+            &roster,
+            LogicalTime::ZERO,
+            &seed,
+        )
+        .expect("creation succeeds for every permutation");
+
+        prop_assert_eq!(state.roles(), &pinned_irregular_roles());
     }
 }
 
