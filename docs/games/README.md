@@ -109,4 +109,4 @@ retired Phase 0 prototype, see [`docs/legacy/tictactoe.md`](../legacy/tictactoe.
 | `chess.md` | no | Phase 1 — correctness benchmark: complex legality, clocks, deterministic replay. |
 | `caro.md` | yes | Phase 3 — design placeholder. Simple real product game, large fixed board, SDK-friction benchmark. Perfect information; no information model needed. |
 | `tiles.md` | yes | Phase 3 — **implemented.** Carcassonne-like: deterministic tile-bag RNG, dynamic spatial state, incremental scoring. Bag order secret, count public. |
-| `werewolf.md` | no | Phase 3 (rules/headless) → Phase 7 (social) — **the important one.** Roles, night actions, and event *non-existence*. |
+| `werewolf.md` | yes | Phase 3 (rules/headless) → Phase 7 (social) — **the important one.** Roles, night actions, and event *non-existence*. |

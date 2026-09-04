@@ -1000,6 +1000,7 @@ dependencies = [
  "tabula-game-api",
  "tabula-presentation",
  "tabula-testkit",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
