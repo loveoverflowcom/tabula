@@ -92,7 +92,16 @@
 //!    noninterference property over bag permutations, which is the oracle that
 //!    covers the whole range. (`tests/projection.rs`)
 //!
-//! 5. **Live and async are the same rules.** The per-turn deadline is a
+//! 5. **The one evidence class that survives a code change** is a committed
+//!    replay. The conformance suite, the replay property, and self-play all
+//!    compare the current code against itself, so all three stay green through
+//!    a rules change that silently alters historical behaviour.
+//!    `tests/replays/tiles-golden.tbr` is a complete match — the shuffle, all
+//!    71 draws, every merge, completion scoring, follower returns, end-of-game
+//!    partial scoring, and the standings — with its final state hash committed
+//!    as a literal in `tests/replay.rs` (doc 02 §11.4).
+//!
+//! 6. **Live and async are the same rules.** The per-turn deadline is a
 //!    `Config` value in milliseconds; `0` disables it. Whether that value is
 //!    60 s or 24 h changes nothing in `apply`, because `apply` only ever reads
 //!    `ctx.now`. That is the payoff of `LogicalTime`, and it is why the async

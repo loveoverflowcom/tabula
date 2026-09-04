@@ -135,6 +135,16 @@ field a later refactor could widen back into a sequence, and no ordering,
 length, or checksum anywhere in the projection changes when the bag is permuted.
 Do not add a "next tile preview" affordance — it would.
 
+### Replay evidence
+
+`tests/replays/tiles-golden.tbr` is a complete committed match. It is the only
+piece of replay evidence here that survives a *code change*: the conformance
+suite, the per-checkpoint replay property, and self-play all compare the current
+code against itself. The golden's final state hash is a literal in
+`games/tiles/tests/replay.rs`, so a rules change that alters the shuffle, a
+draw, a merge, a score, or the standings fails loudly and forces an explicit
+`RULES_VERSION` decision (doc 02 §11.4).
+
 ### Verification, and its honest limit
 
 Two oracles, because they catch different things.
