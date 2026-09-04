@@ -92,7 +92,7 @@ permission to implement them early.
 
 | Phase | Crates that become real |
 |---|---|
-| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `games/tictactoe`, `xtask` |
+| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `xtask` |
 | 1 | `games/chess` |
 | 2 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `renderer-headless`, `apps/game-client` |
 | 3 | `tabula-assets`, `games/caro`, `games/tiles` (Carcassonne-like), `games/werewolf` (rules only) |

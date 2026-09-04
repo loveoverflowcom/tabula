@@ -35,7 +35,6 @@ tabula-testkit = { workspace = true }
 smallvec     = { workspace = true }
 tabula-presentation = { workspace = true }
 tabula-game-chess = { workspace = true, features = ["rules", "bots", "presentation"] }
-tabula-game-tictactoe = { workspace = true, features = ["rules", "bots"] }
 tabula-game-tiles = { workspace = true, features = ["rules", "bots"] }
 
 [lints]

@@ -847,7 +847,6 @@ tabula_registry::register! {
     tabula_game_caro::CaroModule,
     tabula_game_werewolf::WerewolfModule,
     tabula_game_tiles::TilesModule,
-    tabula_game_tictactoe::TicTacToeModule,
 }
 ```
 
@@ -971,13 +970,13 @@ providing lobby, matchmaking, reconnect, spectators, replay, and chat for free.
 ### 10.1 The command
 
 ```bash
-cargo xtask new-game tictactoe --seats 2 --category abstract
+cargo xtask new-game <slug> --seats 2 --category abstract
 ```
 
 Scaffolds:
 
 ```text
-games/tictactoe/
+games/<slug>/
 ├── Cargo.toml            # features: rules (default), presentation, bots, testkit
 ├── game.toml             # manifest
 ├── src/
@@ -988,13 +987,15 @@ games/tictactoe/
 │   └── ui.rs             # #[cfg(feature = "presentation")]  impl GamePresentation
 ├── assets/               # optional pack sources
 └── tests/
-    └── conformance.rs    # tabula_testkit::conformance!(TicTacToeModule);
+    └── conformance.rs    # tabula_testkit::conformance!(YourFixture);
 ```
 
-### 10.2 The rules (complete, real code shape)
+### 10.2 The rules (illustrative minimal game shape)
+
+> **Historical note:** The minimal 3×3 game below illustrates the SDK contract shape using the retired Phase 0 prototype. For full historical lessons and verification notes, see [`docs/legacy/tictactoe.md`](../legacy/tictactoe.md).
 
 ```rust
-// games/tictactoe/src/rules/state.rs
+// games/<slug>/src/rules/state.rs
 use tabula_core::*;
 use serde::{Serialize, Deserialize};
 
@@ -1152,8 +1153,8 @@ static CAPABILITIES: GameCapabilities = tabula_game_api::capabilities_from_manif
 ```
 
 ```rust
-// games/tictactoe/tests/conformance.rs
-tabula_testkit::conformance!(tabula_game_tictactoe::TicTacToeModule);
+// games/<slug>/tests/conformance.rs
+tabula_testkit::conformance!(YourFixture);
 ```
 
 ### 10.3 What the developer did NOT write
@@ -1287,9 +1288,9 @@ that alters historical behavior fails CI with a precise diff, forcing an explici
 ## 12. Four games, one contract
 
 This section shows the *contract usage* for four structurally different games — the current
-reference-game portfolio: **Chess, Caro, Werewolf, and Tiles (Carcassonne-like)**. Tic-tac-toe is
-not in this comparison; it is the SDK's internal smoke test, not a reference game (doc 08 §1). The
-gameplay/validation rationale is in [doc 08](./08-first-games-validation-plan.md).
+reference-game portfolio: **Chess, Caro, Werewolf, and Tiles (Carcassonne-like)**. (Historical Phase 0
+lessons from the retired Tic-Tac-Toe prototype are preserved in [`docs/legacy/tictactoe.md`](../legacy/tictactoe.md)).
+The gameplay/validation rationale is in [doc 08](./08-first-games-validation-plan.md).
 
 ### 12.0 Comparison at a glance
 
@@ -1351,15 +1352,14 @@ Contract lessons:
 
 ### 12.2 Caro — a simple product game, and the SDK-friction benchmark
 
-(Not tic-tac-toe renamed. Tic-tac-toe stays the tiny internal smoke test; Caro is a real,
-independently-added product game whose only job is to prove the contract absorbs a *second* game
-cheaply. See [doc 08 §3](./08-first-games-validation-plan.md) and
+Caro is a real, independently-added product game whose job is to prove the contract absorbs a *second*
+simple product game cheaply. See [doc 08 §3](./08-first-games-validation-plan.md) and
 [`docs/games/caro.md`](../games/caro.md) — the exact rule variant and board size are open game-design
-decisions, not settled here.)
+decisions, not settled here.
 
 ```rust
 struct State {
-    board: Grid<Option<Mark>>,    // fixed size, larger than tic-tac-toe's 3x3 (size: TBD)
+    board: Grid<Option<Mark>>,    // fixed size (size: TBD)
     turn: SeatId,
     status: Status,
     moves: u32,
@@ -1383,10 +1383,10 @@ type ViewEvent = Event;   // nothing is secret; nothing to degrade or hide
 Contract lessons:
 
 - **`hidden_information = false`.** Caro is deliberately boring on the security axis — like
-  tic-tac-toe and chess, `View` ≈ `State` and no `SecretModel` is needed. That is the point: the
+  chess, `View` ≈ `State` and no `SecretModel` is needed. That is the point: the
   *only* new variable this game introduces is "a second, independently-built game exists", which is
   what makes the SDK-friction measurement honest (doc 08 §3.2).
-- **`legal_commands` at a real scale.** Tic-tac-toe enumerates 9 cells; a larger board (15×15 is the
+- **`legal_commands` at a real scale.** A larger board (15×15 is the
   expected direction, `TBD during implementation`) enumerates up to 225 — still comfortably
   `Enumerated`, but the first real test of that path before Tiles forces `Hints` instead.
 - **Win-line detection is the interesting algorithm**, not a new contract shape: it exercises
@@ -1396,9 +1396,7 @@ Contract lessons:
   axis is held constant so that friction found while adding Caro is SDK friction, not a symptom of
   an unrelated axis of complexity.
 
-Why Caro in addition to tic-tac-toe and chess: tic-tac-toe is too trivial to prove "adding a game is
-cheap" (a 9-cell board with 8 win lines does not stress `legal_commands`, board-sized state, or a
-rules-heavy `apply`), and chess is too complex to isolate SDK friction from rules-implementation
+Why Caro in addition to chess: chess is too complex to isolate SDK friction from rules-implementation
 effort. Caro is the cheapest game that separates the two concerns.
 
 ### 12.3 Werewolf — phases, scoped chat, and event non-existence

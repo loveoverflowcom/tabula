@@ -966,25 +966,8 @@ dependencies = [
  "tabula-design",
  "tabula-game-api",
  "tabula-game-chess",
- "tabula-game-tictactoe",
  "tabula-game-tiles",
  "tabula-presentation",
-]
-
-[[package]]
-name = "tabula-game-tictactoe"
-version = "0.2.0"
-dependencies = [
- "blake3",
- "serde",
- "smallvec",
- "tabula-assets",
- "tabula-core",
- "tabula-design",
- "tabula-game-api",
- "tabula-presentation",
- "tabula-testkit",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1368,7 +1351,6 @@ dependencies = [
  "tabula-core",
  "tabula-game-api",
  "tabula-game-chess",
- "tabula-game-tictactoe",
  "tabula-game-tiles",
  "tabula-presentation",
  "tabula-testkit",

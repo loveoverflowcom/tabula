@@ -5,15 +5,12 @@
 //! > Gate: chess is playable hot-seat on desktop and web from one codebase, and
 //! > the `RenderList` command set is locked. (doc 07 Phase 2 exit criteria)
 //!
-//! Caro (a Gomoku/five-in-a-row family game) is **not tic-tac-toe renamed**.
-//! `games/tictactoe` stays the internal SDK smoke test and new-game template
-//! (doc 02 §10); it exists to prove the platform works at all, in seconds.
-//! Caro exists to prove something tic-tac-toe cannot: that a second,
-//! independently-added, real product game costs *only* "implement rules +
-//! implement presentation + write tests" (doc 00 §1), on a board large enough
+//! Caro (a Gomoku/five-in-a-row family game) is the simple-product / SDK-friction benchmark.
+//! Caro exists to prove that adding an independent, real product game costs *only*
+//! "implement rules + implement presentation + write tests" (doc 00 §1), on a board large enough
 //! that a naive win-check is not free. It is the cheapest **simple** game with
 //! perfect information and a large fixed board — the middle rung of the
-//! ladder between the tiny SDK example and chess's complex legality. (doc 08 §3)
+//! ladder between the basic SDK contract and chess's complex legality. (doc 08 §3)
 //!
 //! ## Scope (doc 08 §3)
 //!
@@ -33,7 +30,7 @@
 //!
 //! ```rust,ignore
 //! struct State {
-//!     board: Grid<Option<Mark>>,   // fixed size, larger than tic-tac-toe's 3x3
+//!     board: Grid<Option<Mark>>,   // fixed size, e.g. 15x15
 //!     turn: SeatId,
 //!     status: Status,
 //!     moves: u32,
@@ -47,9 +44,8 @@
 //! 1. **`View` ≈ `State`.** No hidden information (`hidden_information = false`)
 //!    — like chess, but without the complex legality, so any SDK friction found
 //!    here is friction, not a symptom of chess's own complexity.
-//! 2. **`legal_commands` on a large board.** Unlike tic-tac-toe's nine cells,
-//!    a 15×15 board has up to 225 legal placements — still small enough to
-//!    fully `Enumerated`, but big enough to be a real test of that path before
+//! 2. **`legal_commands` on a large board.** A 15×15 board has up to 225 legal placements —
+//!    still small enough to fully `Enumerated`, but big enough to be a real test of that path before
 //!    tiles forces `Hints` instead (doc 02 §4's `LegalCommands`).
 //! 3. **Win-line detection is the interesting algorithm.** Four directions,
 //!    checked from the just-placed cell outward, is the cheap approach; this

@@ -12,9 +12,9 @@ corresponding constructor, decoding, or state-machine test.
 | Rating standings cover the authoritative roster | Public `MatchOutcome` fields; self-attested serialized roster | Private fields; intrinsic serde validation plus `validate_against(&SeatRoster)` scoped witness | Rank/duplicate/abort partitions and restored-outcome roster test |
 | Seat capabilities have one authoritative count representation | Duplicated `min`/`max` and nested range | `SeatCounts` constructor is the sole count representation | Range/exact partition and serde tests |
 | Capability combinations are meaningful | Public flag/`Option` and empty lists | Closed async enum, validated bot levels/team sizes, capability constructor | Constructor and decode-rejection tests |
-| Tic-tac-toe state is reachable | Public state fields and derived `Deserialize` | Private, validated state representation; moves derived from board and terminal-mover checks | Invalid-snapshot regressions and reachable-state exploration |
-| Tic-tac-toe seats are match-local identities | Numeric `SeatId(0/1)` assumption | State stores the two creation-roster seats | Arbitrary-seat and relabeling tests |
-| Rejected Tic-tac-toe input is a no-op | Mutable reducer could regress | Validate-before-commit rule plus generic conformance | Canonical-byte hostile-sequence tests |
+| Tic-tac-toe state is reachable (historical) | Public state fields and derived `Deserialize` | Private, validated state representation; moves derived from board and terminal-mover checks | Invalid-snapshot regressions and reachable-state exploration (retired; see `docs/legacy/tictactoe.md`) |
+| Tic-tac-toe seats are match-local identities (historical) | Numeric `SeatId(0/1)` assumption | State stores the two creation-roster seats | Arbitrary-seat and relabeling tests (retired; see `docs/legacy/tictactoe.md`) |
+| Rejected Tic-tac-toe input is a no-op (historical) | Mutable reducer could regress | Validate-before-commit rule plus generic conformance | Canonical-byte hostile-sequence tests (retired; see `docs/legacy/tictactoe.md`) |
 
 The document is a verification aid, not a new normative architecture source;
 [`00-architecture-principles.md`](../architecture/00-architecture-principles.md)

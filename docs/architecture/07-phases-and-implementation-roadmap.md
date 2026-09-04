@@ -96,18 +96,18 @@ crates/tabula-game-api:  GameRules, GameModule, Input, Outcome, Effect, Init, Ct
                          GameMetadata, GameCapabilities, LegalCommands, A11yDescription
 crates/tabula-testkit:   conformance! macro, determinism harness, proptest strategies,
                          in-memory fakes, replay reader/writer (format v1), self-play driver
-games/tictactoe:         the full worked example from doc 02 §10
 xtask:                   check-deps, check-no-game-ids, check-manifests
 CI:                      fmt, clippy (with rules-crate clippy.toml), nextest, deny,
                          no-default-features/all-features builds, deps matrix
-docs/:                   these documents committed; ADR process live
+docs/:                   these documents committed; ADR process live (Phase 0 prototype
+                         lessons preserved in docs/legacy/tictactoe.md)
 ```
 
 | Field | Content |
 |---|---|
 | **Contracts introduced** | `GameRules`, `GameModule`, `Input`, `Effect`, `Ctx`, `Viewer`, `DetRng`, replay format v1, the conformance suite. **These are the ones that must be right.** |
-| **Tests required** | Full conformance suite green for tictactoe; `xtask check-deps` fails on a deliberately-added forbidden dep (test the enforcement, not just the rule); determinism harness proven to catch a seeded `HashMap` iteration bug and a `SystemTime` call. |
-| **Demo / acceptance** | `cargo xtask selfplay tictactoe --matches 10000` runs in seconds, all matches terminate, all determinism and projection checks pass, and a `.tbr` replay round-trips. A one-page terminal report. |
+| **Tests required** | Full conformance suite green; `xtask check-deps` fails on a deliberately-added forbidden dep (test the enforcement, not just the rule); determinism harness proven to catch a seeded `HashMap` iteration bug and a `SystemTime` call. |
+| **Demo / acceptance** | Deterministic selfplay runs in seconds, all matches terminate, all determinism and projection checks pass, and a `.tbr` replay round-trips. A one-page terminal report. |
 | **Risks** | (a) Over-designing `GameCapabilities` before any game needs the fields — mitigate with doc 02 §5's consumer table, and delete any field without a consumer. (b) `DetRng` API churn later — mitigate by pinning the algorithm and the shuffle now. (c) `Ctx`/`Effect` shapes proving wrong — accepted; Phase 1 and 3 are allowed to change them, Phase 4 is not. |
 | **Deferred** | Everything else. No rendering, no protocol crate, no server, no database. |
 | **Exit criteria** | Conformance suite green; enforcement tests prove CI catches violations; `docs/architecture/*` matches the code; a second developer can scaffold a game with `xtask new-game` and get a passing suite. |
@@ -424,8 +424,8 @@ infra:                 coturn deployment, SFU deployment or provider account, ba
 
 ```text
 SDK:              `xtask new-game` templates for three archetypes (board / cards / phased);
-                  generated config forms from Config schema; a game-development guide with the
-                  tictactoe walkthrough; API docs with examples on every trait method;
+                  generated config forms from Config schema; a game-development guide with an
+                  example walkthrough; API docs with examples on every trait method;
                   a local dev harness (`xtask play <game>` with hot-reloading presentation)
 platform:         async turns + hibernation (doc 03 §11); durable timers; push notifications for
                   async; delayed spectators; replay viewer (projected replays, scrub, speed);
@@ -528,7 +528,7 @@ Phase C — untrusted third-party modules
 
 | Phase | New crates | Modified heavily |
 |---|---|---|
-| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `games/tictactoe`, `xtask` | — |
+| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `xtask` | — |
 | 1 | `games/chess` | `tabula-testkit`, `tabula-game-api` (last chance for churn) |
 | 2 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `renderer-headless`, `apps/game-client` | `games/chess` (+ui) |
 | 3 | `tabula-assets`, `games/caro`, `games/tiles`, `games/werewolf` (rules) | `tabula-presentation` |

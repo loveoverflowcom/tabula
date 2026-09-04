@@ -10,7 +10,7 @@ pub struct PackageNode {
     /// The crate name as it appears in `Cargo.toml` / on crates.io.
     pub name: String,
     /// Directory relative to the workspace root, using `/` separators
-    /// (e.g. `"crates/tabula-core"`, `"games/tictactoe"`, `"xtask"`).
+    /// (e.g. `"crates/tabula-core"`, `"games/chess"`, `"xtask"`).
     /// `None` for packages that are not workspace members.
     pub rel_path: Option<String>,
     /// Names of dependencies declared directly in this package's manifest

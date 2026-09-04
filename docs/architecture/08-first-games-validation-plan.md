@@ -7,20 +7,18 @@
 
 ## 1. Why these four
 
-The reference-game portfolio is **four product/reference games plus one internal SDK fixture**:
+The reference-game portfolio is **four product/reference games** (with historical Phase 0
+prototype lessons preserved in [`docs/legacy/tictactoe.md`](../legacy/tictactoe.md)):
 
 ```text
 Game A — Chess               the correctness benchmark
 Game B — Caro                the simple-product / SDK-friction benchmark
 Game C — Tiles (Carcassonne-like)   the dynamic-spatial-state / RNG benchmark
 Game D — Werewolf            the hidden-information / social-scale benchmark
-Game 0 — Tic-tac-toe         the internal SDK smoke test and new-game template — NOT a reference game
 ```
 
 They are chosen as **architecture tests that happen to be fun**, not as a product catalog. Each
 reference game is the cheapest game that stresses a dimension the platform claims to support.
-Tic-tac-toe is deliberately excluded from that list: it exists so that "does the platform work at
-all?" can be answered in seconds, not to validate any dimension beyond the most basic one.
 
 ```mermaid
 flowchart TB
@@ -41,16 +39,7 @@ flowchart TB
     B["Game B — Caro"] --> D1 & D11
     C["Game C — Tiles (Carcassonne-like)"] --> D4 & D7 & D8
     E["Game D — Werewolf"] --> D3 & D5 & D6
-    T["Game 0 — Tic-tac-toe"] --> D1
-    style T fill:#3a3a3a,color:#fff
 ```
-
-Tic-tac-toe is the fifth crate, and it is not a product: it is the SDK's smoke test and template
-(doc 02 §10). It exists so that "does the platform work?" and "does my new game work?" can be
-answered in seconds. Caro is a *different* thing from tic-tac-toe even though both are simple and
-have no hidden information: Caro is a real product game, independently added *after* the platform
-already existed, and it is the one that answers "is adding a second game actually cheap?" —
-tic-tac-toe cannot answer that question because it was built alongside the platform itself.
 
 ### 1.1 Coverage matrix
 
@@ -67,7 +56,7 @@ tic-tac-toe cannot answer that question because it was built alongside the platf
 | Phases and simultaneous action | no | no | no | **primary** |
 | Game-scoped chat | no | no | no | **primary** |
 | Voice scoping | no | no | no | **primary** |
-| Large / growing state | no | no (fixed, larger than tic-tac-toe) | **primary** | no |
+| Large / growing state | no | no (fixed grid) | **primary** | no |
 | Camera: pan, zoom (rotate: see below) | no | no | **primary** | no |
 | A second game added without game-specific platform behavior | no (built alongside the platform) | **primary** | yes | yes |
 | Asset volume | low | low | **high** (tiles, meeples) | medium (roles, art) |
@@ -150,13 +139,11 @@ motion.piece-move / motion.reveal(promotion) / motion.invalid, checkmate sequenc
 
 **Phase 3 (rules + presentation) → Phase 4 (multiplayer).**
 
-Caro (a Gomoku / five-in-a-row family game) is **not tic-tac-toe renamed**. `games/tictactoe`
-remains the internal SDK smoke test and new-game template (doc 02 §10) — trivial by design, and
-built *alongside* the platform, so it cannot answer whether a game built *after* the platform
-exists is cheap to add. Caro exists specifically to answer that question: a real, independently
-playable product game, on a fixed board large enough that it is not a toy. The claim under test is
-that its implementation needs no changes to `tabula-core` or `tabula-game-api`, no game-specific
-platform behavior, and no changes under `services/`; only mechanically required
+Caro (a Gomoku / five-in-a-row family game) is the simple-product / SDK-friction benchmark.
+Caro exists specifically to answer: is adding an independent, real product game cheap?
+It is a real, independently playable product game, on a fixed board large enough that it is not a toy.
+The claim under test is that its implementation needs no changes to `tabula-core` or `tabula-game-api`,
+no game-specific platform behavior, and no changes under `services/`; only mechanically required
 manifest/workspace/registry registration is allowed.
 
 This document deliberately does **not** settle the exact rule variant (freestyle vs. a
@@ -180,9 +167,9 @@ OUT: an AI engine beyond a trivial/easy bot
 | Claim | How Caro tests it |
 |---|---|
 | A second product game is cheap to add | Caro is built using only published SDK types after the platform contract already exists. Its implementation must not change `tabula-core`, `tabula-game-api`, `services/`, or platform behavior; mechanically required manifest/workspace/registry registration is explicitly allowed. |
-| `legal_commands` works at a real (if still small) scale | Tic-tac-toe enumerates 9 cells; Caro enumerates up to a few hundred — still comfortably `Enumerated`, and the first test of that path before Tiles forces `Hints` instead. |
-| The three-rung SDK ladder is real | tic-tac-toe (tiny example) → Caro (simple product game) → chess (complex product game) is a claim about onboarding cost; Caro is the rung that proves the middle step exists and is not just "chess but smaller". |
-| Perfect-information games stay boring on the security axis | `hidden_information = false`; `View` ≈ `State` plus `legal_commands`, reusing the same pattern as tic-tac-toe and chess rather than inventing a new one. |
+| `legal_commands` works at a real (if still small) scale | Caro enumerates up to a few hundred legal placements — still comfortably `Enumerated`, and the first test of that path before Tiles forces `Hints` instead. |
+| The SDK ladder is real | Caro (simple product game) → chess (complex product game) is a claim about onboarding cost; Caro is the rung that proves a simple game addition is truly cheap and not just "chess but smaller". |
+| Perfect-information games stay boring on the security axis | `hidden_information = false`; `View` ≈ `State` plus `legal_commands`, reusing the same pattern as chess rather than inventing a new one. |
 
 Caro deliberately does **not** validate hidden information, RNG, large/growing state, or many
 seats — those are Werewolf's and Tiles' jobs (doc 08 §4, §5). Requiring Caro to prove any of them
@@ -417,7 +404,6 @@ reference game now.
 
 | Game | Rules | Presentation | Online | Full | Rough effort shape |
 |---|---|---|---|---|---|
-| Tic-tac-toe | Phase 0 | Phase 2 (trivial) | Phase 4 | Phase 4 | hours — it is the template |
 | Chess | Phase 1 | Phase 2 | Phase 4 | Phase 4 | rules-heavy; perft is most of the work |
 | Caro | Phase 3 | Phase 3 | Phase 4 | Phase 4 | small — the SDK-friction measurement is the point |
 | Tiles (Carcassonne-like) | Phase 3 | Phase 3 | Phase 4 | Phase 9 | data-structure- and asset-heavy |

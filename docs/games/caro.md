@@ -8,24 +8,9 @@
 
 ## Architectural role
 
-Caro is the **simple real product game and SDK-friction benchmark**. It sits
-between `tictactoe` (a tiny internal SDK smoke test) and `chess` (the complex
-correctness benchmark) on a three-rung ladder:
+Caro is the **simple real product game and SDK-friction benchmark**. It complements `chess` (the complex correctness benchmark) by validating that a simple, perfect-information board game with a large fixed grid is cheap to add.
 
-```text
-tictactoe  — tiny example, proves the SDK works at all
-    ↓
-caro       — simple product game, proves a second real game is cheap to add
-    ↓
-chess      — complex product game, proves the contract survives real depth
-```
-
-Caro is **not** tic-tac-toe renamed, and it does not replace tic-tac-toe as
-the template. It exists specifically to measure whether adding an
-independent, real, product-shaped game requires any platform behavior change.
-The implementation may make only mechanically required manifest/workspace/
-registry registration changes; it must not change `tabula-core`,
-`tabula-game-api`, `services/`, or add game-specific behavior to platform crates.
+Caro exists specifically to measure whether adding an independent, real, product-shaped game requires any platform behavior change. The implementation may make only mechanically required manifest/workspace/registry registration changes; it must not change `tabula-core`, `tabula-game-api`, `services/`, or add game-specific behavior to platform crates.
 
 ## Information model
 

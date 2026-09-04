@@ -553,7 +553,7 @@ interval, so worst-case recovery is a fixed small number of `apply` calls (micro
 
 | Class | Interval | Storage | Example |
 |---|---|---|---|
-| `Tiny` (< 1 KiB) | every 200 inputs + on end | Postgres `BYTEA` | chess, tictactoe |
+| `Tiny` (< 1 KiB) | every 200 inputs + on end | Postgres `BYTEA` | chess |
 | `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` | werewolf |
 | `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | Postgres `BYTEA`, zstd | (none yet) |
 | `Large` (≥ 256 KiB) | every 25 inputs + on hibernate | Object storage, pointer row in PG | future |

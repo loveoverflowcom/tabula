@@ -42,28 +42,13 @@ workspace dependencies.
 
 ```bash
 just kani-core
-just kani-tictactoe
 ```
 
 These invoke Kani against the real packages:
 
 ```bash
 cargo kani -p tabula-core
-cargo kani -Z stubbing -p tabula-game-tictactoe
 ```
-
-The TicTacToe command enables Kani's opt-in stubbing feature. Its transactional proof harnesses
-execute the production `place` validation for every symbolic `SeatId`/cell pair and install a
-total verifier-only replacement for the accepted outcome builder. Rejected calls return before
-the replacement; accepted calls get the modeled board/turn transition without making CBMC model
-the outcome's unrelated `SmallVec` destruction. The concrete
-`concrete_opening_place_is_accepted` harness also exercises the real outcome builder for that
-opening move.
-
-Because `build.rs` hashes every `.rs` byte under `games/tictactoe/src/rules`, these `#[cfg(kani)]`
-harnesses intentionally change `RULES_HASH`. A replay with the old hash and the same
-`RULES_VERSION` is therefore classified as `CompatibleVersion`, not `Exact`, as designed by the
-replay architecture. No architecture change is needed for this proof baseline.
 
 Preview or run mutation testing for a package:
 
@@ -123,50 +108,6 @@ not a suppressed score or a claim that all seven generated mutations are product
 - What is not proved: the shell's monotonic timestamp construction.
 - Command: `cargo kani -p tabula-core`.
 
-### Field-level R2: rejected initial TicTacToe placement is transactional
-
-- Invariant: a rejected placement leaves every modeled canonical state field unchanged (field-level R2 evidence).
-- Harness: `crate::rules::verification::rejected_initial_place_preserves_state`.
-- Input domain: every raw `u8` `SeatId` value and every raw `u8` cell against a valid initial state
-  with seats `SeatId(7)` and `SeatId(42)`.
-- Assumptions: the initial state is constructed through `State::new`; the production `place` call
-  receives every symbolic input and the assertion is conditional on its actual `Err` result; the
-  total verifier-only commit replacement models accepted calls only. Exhaustive state
-  destructuring covers all current canonical fields. This is not a serialized-byte proof.
-- What is proved: every actual `Err` returned by `place` over the modeled `u8`/`u8` domain preserves
-  board, seats, turn, status, and timeout, without duplicating the legality predicate.
-- What is not proved: all arbitrary reachable TicTacToe prefixes, or canonical encoding bytes.
-- Command: `cargo kani -Z stubbing -p tabula-game-tictactoe`.
-
-### Field-level R2: rejected TicTacToe placement after one valid move is transactional
-
-- Invariant: a rejected placement remains a no-op across every modeled canonical state field after a valid opening move (field-level R2 evidence).
-- Harness: `crate::rules::verification::rejected_second_place_preserves_state`.
-- Input domain: every raw `u8` `SeatId` value and every raw `u8` cell after the known-valid prefix
-  `SeatId(7)` places at cell `0`.
-- Assumptions: the initial state is constructed through `State::new`; the production `place` call
-  for the fixed prefix is modeled by the total verifier-only commit replacement, whose state
-  update is asserted immediately; the symbolic second call is also the production `place` call
-  and the assertion is conditional on its actual `Err` result. The separate
-  `concrete_opening_place_is_accepted` harness checks that the real commit path accepts the same
-  prefix and advances the real state. Exhaustive state destructuring covers all current canonical
-  fields; this is not a serialized-byte proof.
-- What is proved: every actual `Err` returned by the second `place` call over the modeled `u8`/`u8`
-  domain preserves board, seats, turn, status, and timeout, without duplicating the legality
-  predicate.
-- What is not proved: R2 for every arbitrary reachable state or every `Input` variant.
-- Command: `cargo kani -Z stubbing -p tabula-game-tictactoe`.
-
-### Supporting concrete TicTacToe opening transition
-
-- Invariant: the known-valid opening placement is accepted and advances the real state.
-- Harness: `crate::rules::verification::concrete_opening_place_is_accepted`.
-- Input domain: one canonical initial state, `SeatId(7)`, and cell `0`.
-- Assumptions: none beyond the constructor's checked initial-state fixture.
-- What is proved: the real `place()` outcome-building path accepts the opening and sets cell `0`
-  to `Mark::X` while handing the turn to `SeatId(42)`.
-- What is not proved: arbitrary accepted placements or their complete event/effect contents.
-- Command: `cargo kani -Z stubbing -p tabula-game-tictactoe --harness concrete_opening_place_is_accepted`.
 
 ## Adoption rules
 

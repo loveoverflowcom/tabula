@@ -257,15 +257,16 @@ For the first agent or developer to pick this up:
 1. Read 00-architecture-principles.md fully. It is the contract.
 2. Read 07 §"Phase 0" and 01 §2–§6.
 3. Create the workspace exactly as in doc 01 §2.2, but ONLY the Phase-0 crates
-   (tabula-core, tabula-game-api, tabula-testkit, games/tictactoe, xtask).
+   (tabula-core, tabula-game-api, tabula-testkit, xtask).
 4. Write the enforcement FIRST: deps.toml + xtask check-deps + clippy.toml + CI.
    Then deliberately add a forbidden dependency and confirm CI fails. Remove it.
 5. Implement tabula-core exactly as sketched in doc 02 §2. Pin DetRng's algorithm and
    shuffle implementation; write the test that proves shuffle output is stable.
 6. Implement tabula-game-api exactly as sketched in doc 02 §3–§4.
-7. Implement games/tictactoe from doc 02 §10 (the code is nearly complete there).
+7. Implement initial game verification against the conformance suite (historical Phase 0
+   prototype lessons preserved in docs/legacy/tictactoe.md).
 8. Implement tabula-testkit's conformance! suite from doc 02 §11.1.
-9. Run `xtask selfplay tictactoe --matches 10000`. It must pass.
+9. Run `xtask selfplay chess --matches 10000`. It must pass.
 10. Only then proceed to Phase 1.
 ```
 

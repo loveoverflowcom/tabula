@@ -1,6 +1,6 @@
 //! Macroquad platform entry point for local hot-seat gameplay wiring.
 //!
-//! # One loop, three games
+//! # One generic loop, multiple games
 //!
 //! [`run_local`] is generic over `(GameRules, GamePresentation)` and contains no
 //! game-specific behaviour: it resolves the viewport, advances logical time,
@@ -26,10 +26,6 @@ use tabula_game_chess::{ // xtask-allow-game-id: direct Phase 2 local vertical s
 };
 use tabula_game_client::{resolve_display_geometry, LocalMatch, LocalMatchError};
 #[rustfmt::skip]
-use tabula_game_tictactoe::{ // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-    presentation::TicTacToePresentation, Config as TicTacToeConfig, TicTacToeRules,
-};
-#[rustfmt::skip]
 use tabula_game_tiles::{ // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
     presentation::TilesPresentation,
     rules::{MAX_SEATS as MAX_PLACEMENT_SEATS, MIN_SEATS as MIN_PLACEMENT_SEATS},
@@ -41,8 +37,7 @@ use tabula_presentation::{AudioSink, GamePresentation, Renderer};
 enum SelectedGame {
     #[default]
     Chess, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-    TicTacToe, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-    Tiles,     // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
+    Tiles, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
 }
 
 /// How the local shell fills the seats nobody is sitting at.
@@ -78,7 +73,6 @@ async fn main() {
     // suppression marker instead of the whole block sharing one.
     match options.game {
         SelectedGame::Chess => run_chess(&mut renderer, &mut audio, &theme).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-        SelectedGame::TicTacToe => run_tictactoe(&mut renderer, &mut audio, &theme).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
         SelectedGame::Tiles => run_tiles(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
     }
 }
@@ -109,33 +103,6 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
         audio,
         theme,
         |view| view.turn.seat(),
-        None,
-        &[],
-    )
-    .await;
-}
-
-#[rustfmt::skip]
-async fn run_tictactoe( // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-    renderer: &mut MacroquadRenderer,
-    audio: &mut MacroquadAudioSink,
-    theme: &tabula_design::Theme,
-) {
-    let local_match = LocalMatch::<TicTacToeRules, TicTacToePresentation>::new(
-        &TicTacToeConfig {
-            move_timeout_ms: 30_000,
-        },
-        &human_roster(2),
-        MatchSeed::from_bytes([0; 32]),
-        Viewer::Seat(SeatId(0)),
-    )
-    .expect("the fixed local configuration is valid");
-    run_local(
-        local_match,
-        renderer,
-        audio,
-        theme,
-        |view| view.turn,
         None,
         &[],
     )
@@ -316,13 +283,6 @@ impl SetViewport for tabula_game_chess::presentation::ChessLocal { // xtask-allo
 }
 
 #[rustfmt::skip]
-impl SetViewport for tabula_game_tictactoe::presentation::TicTacToeLocal { // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-    fn set_viewport(&mut self, viewport: tabula_presentation::Viewport) {
-        Self::set_viewport(self, viewport);
-    }
-}
-
-#[rustfmt::skip]
 impl SetViewport for tabula_game_tiles::presentation::TilesLocal { // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
     fn set_viewport(&mut self, viewport: tabula_presentation::Viewport) {
         Self::set_viewport(self, viewport);
@@ -368,7 +328,6 @@ fn parse_options() -> Options {
 fn parse_game(name: &str) -> SelectedGame {
     match name.to_ascii_lowercase().as_str() {
         "chess" => SelectedGame::Chess, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-        "tictactoe" | "tic-tac-toe" => SelectedGame::TicTacToe, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
         "tiles" => SelectedGame::Tiles, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
         other => {
             eprintln!("unknown game '{other}', defaulting to the first entry");

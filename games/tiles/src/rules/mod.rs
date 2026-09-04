@@ -2,8 +2,8 @@
 //!
 //! # Shape
 //!
-//! The same **validate fully, then mutate** structure tic-tac-toe demonstrates
-//! (doc 02 §10.2), scaled up: every command has a `validate_*` half returning a
+//! The standard **validate fully, then mutate** structure (doc 02 §10.2):
+//! every command has a `validate_*` half returning a
 //! witness of what it proved, and a `commit_*` half that cannot be reached
 //! without one. Contract R2 is therefore structural rather than remembered.
 //!

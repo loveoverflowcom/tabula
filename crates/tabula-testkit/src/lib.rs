@@ -16,14 +16,14 @@
 //!
 //! ```rust,ignore
 //! // games/<slug>/tests/conformance.rs
-//! struct TicTacToeFixture;
+//! struct ChessFixture;
 //!
-//! impl GameTestFixture for TicTacToeFixture {
-//!     type Module = tabula_game_tictactoe::TicTacToeModule;
+//! impl GameTestFixture for ChessFixture {
+//!     type Module = tabula_game_chess::ChessModule;
 //!     // ... config(), roster(), seed(), deterministic_script() ...
 //! }
 //!
-//! tabula_testkit::conformance!(TicTacToeFixture);
+//! tabula_testkit::conformance!(ChessFixture);
 //! ```
 //!
 //! That one line expands to the full suite documented in [`conformance`].

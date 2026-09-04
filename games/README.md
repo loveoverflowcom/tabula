@@ -18,20 +18,15 @@ is a platform bug — report it rather than working around it.
 
 Four **product/reference games** stress a different dimension of the contract
 each; they are not a product catalog, they are a test matrix that happens to
-be playable. `tictactoe` is a fifth crate, but it is not one of the four — it
-is the SDK's internal smoke test and new-game template.
+be playable. (Historical Phase 0 lessons from the retired Tic-Tac-Toe prototype
+are preserved in [`docs/legacy/tictactoe.md`](../docs/legacy/tictactoe.md)).
 
 | Game | Phase | What it proves | Hardest contract stressed |
 |---|---|---|---|
-| [`tictactoe`](tictactoe) | 0 | The SDK works at all. **The template — not a reference game.** | none — it is the smoke test |
 | [`chess`](chess) | 1 | Complex legality, clocks, ratings, async turns | clocks + `legal_commands` enumeration |
 | [`caro`](caro) | 3 | Simple real product game, SDK-friction, a larger fixed board | `legal_commands` at scale, zero-platform-change addition |
 | [`tiles`](tiles) | 3→9 | Carcassonne-like: dynamic spatial state, deterministic tile-bag RNG, camera | state size + snapshot cost |
 | [`werewolf`](werewolf) | 3→7 | Phases, scoped chat, hidden information, event **non-existence** | `view_event → None` + scopes |
-
-`caro` is not `tictactoe` renamed: `tictactoe` stays the 3×3 smoke test,
-`caro` is a real (larger-board, Gomoku-style) product game — see
-[`docs/games/caro.md`](../docs/games/caro.md).
 
 ## What one contract absorbs (doc 02 §12.5)
 

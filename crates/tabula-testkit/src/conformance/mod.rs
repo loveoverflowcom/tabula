@@ -13,18 +13,18 @@
 //! [`conformance!`] expands that into the mandatory invariant suite:
 //!
 //! ```rust,ignore
-//! struct TicTacToeFixture;
+//! struct ChessFixture;
 //!
-//! impl GameTestFixture for TicTacToeFixture {
-//!     type Module = TicTacToeModule;
+//! impl GameTestFixture for ChessFixture {
+//!     type Module = ChessModule;
 //!
-//!     fn config() -> Config { Config { move_timeout_ms: 30_000 } }
+//!     fn config() -> Config { Config::default() }
 //!     fn roster() -> SeatRoster { /* two seats */ }
 //!     fn seed() -> MatchSeed { MatchSeed::from_bytes([42; 32]) }
 //!     fn deterministic_script() -> Vec<Input<Command>> { /* a full game */ }
 //! }
 //!
-//! tabula_testkit::conformance!(TicTacToeFixture);
+//! tabula_testkit::conformance!(ChessFixture);
 //! ```
 //!
 //! That one line expands to one `#[test]` per invariant below. A failure
@@ -70,7 +70,7 @@
 //! [`security`] is deliberately **not** part of [`conformance!`]'s
 //! expansion. A game either has hidden information or it does not; forcing
 //! every game to implement `SecretModel` to satisfy one macro would mean
-//! Chess and `TicTacToe` carry a fake secret model for no reason. A game with
+//! Chess and other perfect-information games carry a fake secret model for no reason. A game with
 //! `hidden_information = true` additionally implements
 //! [`security::HiddenInformationFixture`] and expands
 //! [`crate::projection_security!`] alongside `conformance!`; a
@@ -151,7 +151,7 @@ pub trait GameTestFixture {
 
     /// An alternate seed, used only to demonstrate that determinism holds
     /// independently of *which* seed is used. `None` for a game that never
-    /// draws from `ctx.rng` at all — tic-tac-toe is the reference case.
+    /// draws from `ctx.rng` at all — Chess is the reference case.
     fn randomness() -> Option<RandomnessScenario> {
         None
     }
@@ -201,7 +201,7 @@ pub(crate) fn scenario<F: GameTestFixture>(
 /// Expand the mandatory conformance suite for a [`GameTestFixture`].
 ///
 /// ```rust,ignore
-/// tabula_testkit::conformance!(TicTacToeFixture);
+/// tabula_testkit::conformance!(ChessFixture);
 /// ```
 ///
 /// Emits one `#[test]` per row of the table in the module documentation.

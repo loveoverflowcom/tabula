@@ -1,24 +1,20 @@
-//! Integration tests for [`LocalMatch`] driving both Chess and Tic-tac-toe.
+//! Integration tests for [`LocalMatch`] driving both Chess and Tiles.
 
 #![allow(clippy::doc_markdown)]
 
 use glam::Vec2;
 use renderer_macroquad::MacroquadRenderer;
 use tabula_core::{
-    InputIndex, LogicalTime, MatchSeed, Occupant, SeatEntry, SeatId, SeatRoster, TimerId, UserId,
-    Viewer,
+    InputIndex, LogicalTime, MatchSeed, Millis, Occupant, SeatEntry, SeatId, SeatRoster, TimerId,
+    UserId, Viewer,
 };
 use tabula_game_api::GameModule;
 use tabula_game_api::Input;
 use tabula_game_chess::{
     presentation::{BoardLayout as ChessLayout, ChessPresentation},
-    ChessRules, Config as ChessConfig, PieceKind, Square,
+    ChessRules, ClockConfig, ClockControl, Color, Config as ChessConfig, PieceKind, Square,
 };
 use tabula_game_client::{LocalEffect, LocalMatch, RecordedInput};
-use tabula_game_tictactoe::{
-    presentation::{BoardLayout as TttLayout, TicTacToePresentation},
-    Config as TttConfig, Mark, TicTacToeRules,
-};
 use tabula_game_tiles::{
     presentation::{world_rect as tiles_world_rect, TilesLocal, TilesPresentation},
     rules::legal_placements as tiles_legal_placements,
@@ -30,7 +26,6 @@ use tabula_presentation::{
 };
 
 type ChessMatch = LocalMatch<ChessRules, ChessPresentation>;
-type TicTacToeMatch = LocalMatch<TicTacToeRules, TicTacToePresentation>;
 
 fn frame(now_ms: u64) -> FrameCtx {
     FrameCtx::new(
@@ -71,6 +66,23 @@ fn chess_match() -> ChessMatch {
     .expect("standard local rules configuration is valid")
 }
 
+fn chess_match_with_clock(initial_ms: u64) -> ChessMatch {
+    ChessMatch::new(
+        &ChessConfig {
+            clock: Some(ClockConfig {
+                initial: Millis(initial_ms),
+                control: ClockControl::Fischer {
+                    increment: Millis::ZERO,
+                },
+            }),
+        },
+        &roster(),
+        MatchSeed::from_bytes([0; 32]),
+        Viewer::Seat(SeatId(0)),
+    )
+    .expect("standard local chess configuration is valid")
+}
+
 fn chess_click(layout: ChessLayout, square: u8) -> InputEvent {
     let square = Square::new(square).expect("test square is valid");
     let rect = layout
@@ -84,30 +96,8 @@ fn chess_click(layout: ChessLayout, square: u8) -> InputEvent {
     }
 }
 
-fn ttt_match(timeout_ms: u64) -> TicTacToeMatch {
-    TicTacToeMatch::new(
-        &TttConfig {
-            move_timeout_ms: timeout_ms,
-        },
-        &roster(),
-        MatchSeed::from_bytes([0; 32]),
-        Viewer::Seat(SeatId(0)),
-    )
-    .expect("standard local tictactoe configuration is valid")
-}
-
-fn ttt_click(layout: TttLayout, cell: u8) -> InputEvent {
-    let rect = layout.cell_rect(cell).expect("test cell has geometry");
-    InputEvent::Pointer {
-        position: PointerPosition::new(rect.origin() + rect.size() * 0.5)
-            .expect("test pointer is finite"),
-        button: PointerButton::Primary,
-        phase: PointerPhase::Up,
-    }
-}
-
 #[test]
-fn shared_runtime_drives_both_chess_and_tictactoe_without_game_specific_branches() {
+fn shared_runtime_drives_both_chess_and_tiles_without_game_specific_branches() {
     let frame = frame(0);
 
     // 1. Chess drives pawn move through generic LocalMatch
@@ -126,26 +116,39 @@ fn shared_runtime_drives_both_chess_and_tictactoe_without_game_specific_branches
     assert_eq!(chess.recorded_inputs()[0].index, InputIndex(1));
     assert_eq!(chess.view().board[28].unwrap().kind, PieceKind::Pawn);
 
-    // 2. TicTacToe drives mark placement through identical generic LocalMatch
-    let ttt_layout = TttLayout::from_viewport(frame.viewport());
-    let mut ttt = ttt_match(30_000);
-    ttt.local_mut().set_viewport(frame.viewport());
-    ttt.advance_frame(&frame).expect("frame is accepted");
+    // 2. Tiles drives tile placement through identical generic LocalMatch
+    let mut tiles = tiles_match(2);
+    tiles.local_mut().set_viewport(frame.viewport());
+    tiles.advance_frame(&frame).expect("frame is accepted");
 
-    ttt.handle_presentation_input(&ttt_click(ttt_layout, 0), &frame)
-        .expect("tictactoe placement is accepted");
+    let kind = tiles.view().drawn.expect("tiles match drawn tile");
+    let (coord, rotations) = tiles_legal_placements(&tiles.view().board, kind)
+        .first()
+        .cloned()
+        .expect("legal placement available");
+    for _ in 0..4 {
+        if rotations.contains(&tiles.local_mut().preview_rotation()) {
+            break;
+        }
+        tiles
+            .handle_presentation_input(&tiles_key(Key::Space), &frame)
+            .expect("rotating is local only");
+    }
+    let event = tiles_click(tiles.local_mut(), coord);
+    tiles
+        .handle_presentation_input(&event, &frame)
+        .expect("tiles placement is accepted");
 
-    assert_eq!(ttt.recorded_inputs().len(), 1);
-    assert_eq!(ttt.recorded_inputs()[0].index, InputIndex(1));
-    assert_eq!(ttt.view().board[0], Some(Mark::X));
-    assert_eq!(ttt.view().turn, SeatId(1));
+    assert_eq!(tiles.recorded_inputs().len(), 1);
+    assert_eq!(tiles.recorded_inputs()[0].index, InputIndex(1));
+    assert_eq!(tiles.view().last_placed, Some(coord));
 }
 
 #[test]
-fn tictactoe_pointer_input_and_presentation_workflow() {
+fn chess_pointer_input_and_presentation_workflow() {
     let frame = frame(0);
-    let layout = TttLayout::from_viewport(frame.viewport());
-    let mut match_ = ttt_match(30_000);
+    let layout = ChessLayout::from_viewport(frame.viewport());
+    let mut match_ = chess_match();
     match_.local_mut().set_viewport(frame.viewport());
     match_.advance_frame(&frame).expect("frame is accepted");
 
@@ -160,30 +163,36 @@ fn tictactoe_pointer_input_and_presentation_workflow() {
         .expect("outside click produces no command");
     assert!(match_.recorded_inputs().is_empty());
 
-    // First move: X plays cell 0
+    // First move: White plays e2-e4 (square 12 to 28)
     match_
-        .handle_presentation_input(&ttt_click(layout, 0), &frame)
+        .handle_presentation_input(&chess_click(layout, 12), &frame)
+        .expect("selection is local only");
+    match_
+        .handle_presentation_input(&chess_click(layout, 28), &frame)
         .expect("move 1 accepted");
     assert_eq!(match_.recorded_inputs().len(), 1);
-    assert_eq!(match_.view().board[0], Some(Mark::X));
-    assert_eq!(match_.view().turn, SeatId(1));
+    assert_eq!(match_.view().board[28].unwrap().kind, PieceKind::Pawn);
+    assert_eq!(match_.view().turn, Color::Black);
 
     // Switch viewer to seat 1 (hot-seat)
     match_.set_viewer(Viewer::Seat(SeatId(1)));
     assert_eq!(match_.viewer(), Viewer::Seat(SeatId(1)));
 
-    // Second move: O plays cell 4
+    // Second move: Black plays e7-e5 (square 52 to 36)
     match_
-        .handle_presentation_input(&ttt_click(layout, 4), &frame)
+        .handle_presentation_input(&chess_click(layout, 52), &frame)
+        .expect("selection is local only");
+    match_
+        .handle_presentation_input(&chess_click(layout, 36), &frame)
         .expect("move 2 accepted");
     assert_eq!(match_.recorded_inputs().len(), 2);
-    assert_eq!(match_.view().board[4], Some(Mark::O));
-    assert_eq!(match_.view().turn, SeatId(0));
+    assert_eq!(match_.view().board[36].unwrap().kind, PieceKind::Pawn);
+    assert_eq!(match_.view().turn, Color::White);
 }
 
 #[test]
-fn tictactoe_timer_deadline_terminates_match_canonically() {
-    let mut match_ = ttt_match(5_000);
+fn chess_timer_deadline_terminates_match_canonically() {
+    let mut match_ = chess_match_with_clock(5_000);
     assert_eq!(match_.recorded_inputs().len(), 0);
     assert!(match_.ended().is_none());
 
@@ -210,8 +219,8 @@ fn tictactoe_timer_deadline_terminates_match_canonically() {
 }
 
 #[test]
-fn tictactoe_presenter_produces_macroquad_supported_render_list() {
-    let match_ = ttt_match(30_000);
+fn chess_presenter_produces_macroquad_supported_render_list() {
+    let match_ = chess_match();
     let frame = frame(0);
     assert_eq!(
         MacroquadRenderer::preflight(&match_.present(&frame), &frame),

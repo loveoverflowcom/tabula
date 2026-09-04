@@ -538,7 +538,7 @@ where
 // R5's independence comes from using a separate, deliberately smaller
 // reconstruction path (`replay`, below) — never `LocalMatch` itself, never
 // its timer scheduler, never its own replay-capture code — not from a
-// second `GameRules` implementation of chess or tic-tac-toe.
+// second `GameRules` implementation of chess or tiles.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -554,7 +554,7 @@ mod tests {
         A11yDescription, ChatScopes, CheckpointLabel, Init, Outcome, VoiceScopes,
     };
     use tabula_game_chess as local_game; // xtask-allow-game-id: direct Phase 2 local vertical slice test wiring.
-    use tabula_game_tictactoe as second_game; // xtask-allow-game-id: proves the replay recorder is generic, not chess-shaped.
+    use tabula_game_tiles as second_game; // xtask-allow-game-id: proves the replay recorder is generic, not chess-shaped.
     use tabula_presentation::{
         AssetPackRef, AudioCue, AudioCues, AudioSink, Camera2D, Dpi, InputEvent, Intent,
         PointerButton, PointerPhase, PointerPosition, RenderListBuilder, Viewport,
@@ -1563,40 +1563,41 @@ mod tests {
         // exact same `LocalMatch<R, P>` and `replay` code.
         let frame = frame(0);
         let mut match_ = LocalMatch::<
-            second_game::TicTacToeRules,
-            second_game::presentation::TicTacToePresentation,
+            second_game::TilesRules,
+            second_game::presentation::TilesPresentation,
         >::new(
-            &second_game::Config::default(),
+            &second_game::Config {
+                turn_deadline_ms: 0,
+            },
             &roster(),
             MatchSeed::from_bytes([7; 32]),
             Viewer::Seat(SeatId(0)),
         )
         .expect("the second game's standard local configuration is valid");
 
+        let kind = match_
+            .view()
+            .drawn
+            .expect("a playing match holds a drawn tile");
+        let (at, rotation) = second_game::rules::first_legal_placement(&match_.view().board, kind)
+            .expect("legal placement exists");
         match_
             .submit_input(
                 Input::Player {
                     seat: SeatId(0),
-                    command: second_game::Command::Place { cell: 4 },
+                    command: second_game::Command::PlaceTile { at, rotation },
                 },
                 &frame,
             )
-            .expect("the center cell is legal");
-        match_
-            .submit_input(
-                Input::Player {
-                    seat: SeatId(1),
-                    command: second_game::Command::Place { cell: 0 },
-                },
-                &frame,
-            )
-            .expect("a corner cell is legal");
+            .expect("tile placement is legal");
 
         let trace = match_.replay_trace();
-        assert_eq!(trace.accepted_inputs().len(), 2);
+        assert_eq!(trace.accepted_inputs().len(), 1);
 
-        let (final_hash, _) = replay::<second_game::TicTacToeRules>(
-            &second_game::Config::default(),
+        let (final_hash, _) = replay::<second_game::TilesRules>(
+            &second_game::Config {
+                turn_deadline_ms: 0,
+            },
             &roster(),
             &MatchSeed::from_bytes([7; 32]),
             trace,
