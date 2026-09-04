@@ -2,7 +2,7 @@
 
 use serde::{de::DeserializeOwned, Serialize};
 use smallvec::SmallVec;
-use tabula_core::{canonical_hash, RuleError, RulesVersion, SeatId, SeatRoster, StateHash, Viewer};
+use tabula_core::{state_hash, RuleError, RulesVersion, SeatId, SeatRoster, StateHash, Viewer};
 
 use crate::{
     a11y::A11yDescription,
@@ -28,18 +28,47 @@ use crate::{
 /// | **R5** | `project` never returns information the viewer is not authorised to know | `projection_hides_secrets` |
 /// | **R6** | `view_event` is the only path from `Event` to a client | `view_event_never_bypasses` |
 /// | **R7** | All iteration that affects output is over ordered collections | I-2, clippy `disallowed_types` |
+/// | **R8** | A rejected input is a **total no-op**: state, `state_version`, and the RNG stream are all unaffected | `error_is_transactional`, `rejection_does_not_disturb_rng` |
 ///
 /// R2 is the one people get wrong. **Validate fully, then mutate.** A rejection
 /// that has already half-applied corrupts the match, and the corruption is
 /// invisible until a replay diverges weeks later.
 ///
+/// # The transition, precisely
+///
+/// ```text
+/// State  ×  Input<Command>  ×  Ctx { now, index, rng }
+///                    ↓
+///     Ok(Outcome { events, effects })   — state mutated in place, events ORDERED
+///     Err(RuleError)                    — state byte-identical to before (R2)
+/// ```
+///
+/// Event order is part of the contract, not an implementation detail: `events` is
+/// a `SmallVec` written to the log verbatim and replayed in that order. Never
+/// build it by iterating an unordered collection (R7).
+///
 /// # Why `&mut State` rather than returning a new state
 ///
-/// Carcassonne-style boards and 20-seat werewolf states are large enough that
-/// clone-per-command is wasteful, and `&mut` lets games keep incremental
-/// structures (union-find feature graphs, zobrist hashes). Purity is preserved
-/// by contract plus tests rather than by types; in debug builds the testkit wraps
-/// `apply` with clone-and-compare so an R2 violation fails loudly. (doc 02 §3.3)
+/// Both shapes were re-evaluated in ADR-026 §1 rather than inherited. The
+/// deciding point: a pure `apply(&State, ..) -> Result<Transition, _>` gives R2
+/// for free, but only in the spelling that rebuilds the whole state per command —
+/// the cheap move-based spelling lets a game mutate the moved-in value before
+/// returning `Err` and so buys nothing. Carcassonne-style boards and 20-seat
+/// werewolf states make that rebuild a permanent per-command cost, and it defeats
+/// the incremental structures (union-find feature graphs, zobrist hashes) that
+/// `&mut` exists to allow.
+///
+/// So purity is preserved by contract plus tests rather than by types — and the
+/// testkit's R2 check is **not opt-in**: `conformance!` wires
+/// `assert_transactional_on_error` into every game, comparing the canonical
+/// encoding before and after every rejected input. (doc 02 §3.3, ADR-026 §1)
+///
+/// # Why there is no `is_terminal`
+///
+/// Terminality is already expressed by [`Effect::EndMatch`]. A second,
+/// independently computed answer to "is this match over" is a divergence source:
+/// a game could report `false` after emitting `EndMatch` and the platform would
+/// have two authorities. Self-play observes the effect. (ADR-026 §1)
 pub trait GameRules: Sized + Send + Sync + 'static {
     /// Canonical, full-information state. **Server-only. Never serialised to a
     /// client** (I-5). The wire has no representation for this type.
@@ -76,6 +105,15 @@ pub trait GameRules: Sized + Send + Sync + 'static {
     /// Bumped on **any** change to `State`/`Event` encoding or to rule behaviour.
     /// Stored per match; a match runs one version for its whole life. (doc 02 §9.2)
     const RULES_VERSION: RulesVersion;
+
+    /// Build-derived identity of the rules-half source for replay compatibility.
+    ///
+    /// A zero value means that this game has not supplied an authoritative
+    /// identity yet; replay tooling must not call that an exact match. Real
+    /// game crates override this with the hash produced by their build script
+    /// over their canonical rules-source subtree and [`Self::RULES_VERSION`].
+    /// (doc 05 §6.2)
+    const RULES_HASH: [u8; 32] = [0; 32];
 
     /// Build the initial state. May draw randomness (shuffle, role assignment)
     /// from `ctx.rng` — this is the one place most games use RNG at all.
@@ -149,13 +187,28 @@ pub trait GameRules: Sized + Send + Sync + 'static {
         LegalCommands::Unknown
     }
 
+    /// The canonical semantic hash of `state`. **The only mechanism that detects
+    /// determinism drift in production.** (doc 05 §7.2)
+    ///
+    /// ```text
+    /// blake3( b"tabula.state.v1" ‖ RULES_VERSION_le ‖ ENCODING_VERSION_le ‖ postcard(state) )
+    /// ```
+    ///
+    /// The rules version is supplied by the default from `Self::RULES_VERSION`,
+    /// not by the author, so it cannot be omitted — two rules versions of one
+    /// game can never collide on a structurally identical state. (ADR-026 §2)
+    ///
+    /// What is hashed is **authoritative semantic state and nothing else**.
+    /// `GameId` and `Config` are deliberately excluded (ADR-026 §2); presentation,
+    /// animation, and camera state are excluded because I-10 keeps them out of
+    /// `State` entirely. A derived cache held *inside* `State` does participate,
+    /// and should: a divergent cache is a divergence.
+    ///
     /// Override only for huge states where an incremental structural hash pays
     /// for itself (tiles' feature graph — doc 02 §12.4). The incremental
     /// structure must be part of the hash so divergence is still caught.
     fn state_hash(state: &Self::State) -> StateHash {
-        // TODO(phase 0): the tag must encode RULES_VERSION so two versions cannot
-        // collide. See `RulesVersion::as_u32` and doc 05 §7.2.
-        canonical_hash("state", state)
+        state_hash(Self::RULES_VERSION, state)
     }
 
     /// Accessibility mirror: a text/tree description for screen readers and the
@@ -228,16 +281,75 @@ pub enum LegalCommands<C> {
     None,
 }
 
-/// A structured legality hint.
+/// A structured legality hint: a game-defined kind plus a canonically encoded
+/// game-defined payload.
 ///
-/// TODO(phase 3): shape is decided when tiles is written (doc 02 §12.4). The
-/// requirement is "enough for the client to highlight legal targets without
-/// enumerating commands". Do not design it before there is a second consumer.
-#[derive(Clone, Debug)]
-#[non_exhaustive]
+/// # Why the shape stayed opaque
+///
+/// The requirement is "enough for the client to highlight legal targets
+/// without enumerating commands", and doc 02 §12.4 deliberately deferred the
+/// shape until a game needed it. Tiles is that game (Phase 3), and writing it
+/// did **not** produce a reason to give this type game-shaped fields: tiles
+/// groups its legal (position × rotation) pairs into one hint per position,
+/// which the opaque `(kind, data)` pair already expresses. A second consumer
+/// may still justify structure here; one did not.
+///
+/// # What writing the first consumer did produce
+///
+/// The type was previously `#[non_exhaustive]` with public fields, which made
+/// it **unconstructible outside this crate** (E0639) — so
+/// [`LegalCommands::Hints`] could not be returned by any game at all. The
+/// fields are now private behind [`CommandHint::new`], which both fixes that
+/// and matches how every other refined type in this workspace is built:
+/// evolvable, and with exactly one place a value can come from.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandHint {
-    /// Game-defined kind discriminator, e.g. "place-tile".
-    pub kind: compact_str::CompactString,
-    /// Game-defined payload, canonically encoded.
-    pub data: Vec<u8>,
+    kind: compact_str::CompactString,
+    data: Vec<u8>,
+}
+
+impl CommandHint {
+    /// A hint of `kind` (e.g. `"place-tile"`) carrying `data`, which the game
+    /// is expected to have produced with [`tabula_core::canonical_encode`] so
+    /// that its own presentation and bots can decode it again.
+    ///
+    /// Infallible on purpose: hints are affordances, never authority
+    /// (see [`GameRules::legal_commands`]), so a malformed one degrades the
+    /// UI rather than the match, and a `Result` here would buy nothing.
+    #[must_use]
+    pub fn new(kind: impl Into<compact_str::CompactString>, data: Vec<u8>) -> Self {
+        Self {
+            kind: kind.into(),
+            data,
+        }
+    }
+
+    /// Game-defined kind discriminator.
+    #[must_use]
+    pub fn kind(&self) -> &str {
+        self.kind.as_str()
+    }
+
+    /// Game-defined canonically encoded payload.
+    #[must_use]
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CommandHint;
+
+    /// The accessors round-trip what `new` was given. The *cross-crate*
+    /// evidence that `LegalCommands::Hints` is usable at all lives in
+    /// `games/tiles/tests/rules.rs::legal_commands_hints_decode_to_exactly_the_accepted_placements`
+    /// — a same-crate test cannot observe the E0639 that made this type
+    /// unconstructible for every game.
+    #[test]
+    fn command_hint_exposes_the_kind_and_payload_it_was_built_from() {
+        let hint = CommandHint::new("place-tile", vec![7, 9]);
+        assert_eq!(hint.kind(), "place-tile");
+        assert_eq!(hint.data(), &[7, 9]);
+    }
 }

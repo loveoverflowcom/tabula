@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 8. Separation is LOCKED (ADR-016); the PROVIDER is an experiment
 # decided by measurement in Phase 8.

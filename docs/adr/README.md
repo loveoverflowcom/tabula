@@ -2,7 +2,7 @@
 
 Most decisions live as **short-form rows** in
 [`docs/architecture/00-architecture-principles.md` §10](../architecture/00-architecture-principles.md#10-adr-register)
-— ADR-001 through ADR-025. Each row states the decision, its status, why, and the
+— ADR-001 through ADR-027. Each row states the decision, its status, why, and the
 trigger that would make us revisit it.
 
 This directory is for the cases where a row is not enough: a long argument, a

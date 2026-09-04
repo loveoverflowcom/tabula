@@ -1,13 +1,14 @@
 # Verification strategy catalog
 
-Use this reference to choose a method after naming the invariant. Do not add all tools.
+Use this reference to choose a method after naming the invariant. Do not add all tools. Sections 1–3
+are shared technique; sections 4–5 route to the specialized skills rather than duplicating them.
 
 ## Contents
 
 1. Edge-case derivation
 2. Property and metamorphic patterns
 3. Stateful systems
-4. Specialized tools
+4. Specialized tools — where the detail lives
 5. Selection matrix
 
 ## 1. Edge-case derivation
@@ -100,59 +101,41 @@ commands. Verify:
 - projections/events expose no unauthorized secret;
 - terminal states reject or explicitly define subsequent inputs.
 
-## 4. Specialized tools
+## 4. Specialized tools — where the detail lives
 
-### Fuzzing
+This catalog no longer duplicates per-tool guidance. Each tool has its own skill; open the one the
+router sent you to, and use the table below only to confirm you are in the right place.
 
-Use for parser/decoder robustness, untrusted bytes, command sequences, and no-panic claims. Add
-resource bounds or size limits; “does not panic” is insufficient if a tiny input causes enormous
-allocation or time.
+| Tool | Skill | One-line scope | Cannot tell you |
+|---|---|---|---|
+| proptest (+ state machine) | `rust-property-testing` | a law holds over sampled inputs, with shrinking | anything about inputs the generator never reaches |
+| reference models, published data, exhaustive enumeration, replay, cross-target | `rust-replay-differential-testing` | the implementation agrees with an independent oracle | anything the oracle also gets wrong |
+| cargo-mutants | `rust-mutation-testing` | your assertions kill plausible defects | whether the specification you asserted is right |
+| Kani (CBMC) | `rust-kani` | a proposition holds over a symbolic domain, under stated assumptions and bounds | anything outside the domain, the assumptions, or the bound |
+| cargo-fuzz / libFuzzer | `rust-fuzzing` | arbitrary bytes cause no panic, hang, or unbounded allocation | whether correct input is accepted, or output is right |
+| Loom | not yet — see the router's *Not yet* section | a synchronization property holds over enumerated interleavings | anything without concurrent code to model |
+| Miri | not applicable under `forbid(unsafe_code)` with no FFI — see the router | UB on executed paths | domain behaviour; unexecuted paths; FFI |
+| Flux / Verus / Creusot / Aeneas+Lean | none yet | deductive contracts and inductive invariants | anything outside the annotated boundary |
 
-### Loom
-
-Use for small synchronization primitives and schedule-sensitive code. Reduce the model: few
-threads, bounded operations, no unrelated I/O. State the synchronization property before writing
-the model.
-
-### Miri and sanitizers
-
-Use Miri for aliasing and undefined-behavior checks in supported code; sanitizers for memory,
-thread, or address issues across larger native executions. They are complementary, not proofs of
-domain behavior.
-
-### Kani
-
-Use for bounded exhaustive checks where the state/input bounds are small and meaningful. Record
-the bounds in the property name/docs; a proof for length `<= 4` is not a proof for arbitrary
-length.
-
-### Flux, Verus, and Creusot
-
-Use when function contracts, arithmetic, or inductive preservation are important enough to carry
-annotations and toolchain cost. Separate verified kernels from unverified adapters.
-
-### Aeneas and Lean
-
-Use when the key value is a theorem maintained in Lean or connection to a larger formal model.
-Keep the translation boundary small, avoid unsupported Rust features, and document correspondence
-between executable code and theorem artifacts.
-
-### Mutation testing and coverage
-
-Mutation testing asks whether assertions kill plausible defects; coverage asks what executed.
-Neither proves correctness. Use mutation testing selectively on stable pure cores. Use coverage to
-find blind spots, not as a target percentage detached from risk.
+Coverage is not on this list. Coverage says what executed; it does not say what was checked. Use it
+to find blind spots, never as a target.
 
 ## 5. Selection matrix
 
-| Risk/shape | First choice | Escalate when |
+Compute the size of the space **before** choosing. Most escalations are avoidable.
+
+| Risk / shape | First choice | Escalate when |
 |---|---|---|
 | Small pure rule | table tests | input partition is large → property tests |
-| Algebraic transform | property tests | no oracle → metamorphic/differential |
-| Parser/decoder | tables + round trip | hostile bytes → fuzzing |
-| Reducer/state machine | sequence properties/model | small critical state → Kani |
-| Replay/canonical bytes | fixtures + differential runs | cross-target risk → CI matrix |
+| **Finite reachable space** (thousands of states) | **enumerate all of it** | it stops being finite |
+| Algebraic transform | property tests | no oracle → metamorphic or reference model |
+| A standard exists (a published corpus, an RFC vector set) | **use the published data** | it does not cover the hard cases → add a reference model |
+| Parser / decoder of trusted input | tables + round trip | — |
+| Parser / decoder of **untrusted bytes** | tables + round trip | hostile bytes, hangs, allocation → fuzzing |
+| Reducer / state machine | sequence properties over **reachable** states | small critical state and unbounded domain → Kani |
+| Unbounded arithmetic | property tests | must hold for *every* value → Kani |
+| Replay / canonical bytes | committed fixtures + live-vs-replay | cross-target risk → cross-target hash comparison |
+| Secrecy / redaction | containment scan | derived leaks → noninterference property |
 | Synchronization primitive | focused tests | schedule risk → Loom |
-| Unsafe/FFI | safety invariants + Miri | broader native risk → sanitizers |
-| Critical arithmetic/refinement | properties | assurance gap remains → Flux/Verus/Creusot |
-| Formal domain theorem | executable checks | theorem reuse justifies → Aeneas+Lean |
+| Unsafe / FFI | safety invariants + Miri | broader native risk → sanitizers |
+| "Are our tests any good?" | — | pure, stable module → mutation testing |

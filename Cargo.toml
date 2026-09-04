@@ -31,6 +31,13 @@ rust-version = "1.85"
 license      = "AGPL-3.0-or-later OR LicenseRef-Commercial" # TODO: confirm before first public release
 repository   = "https://github.com/tabula-games/tabula"     # TODO: set real org
 authors      = ["Tabula contributors"]
+# Every crate in this workspace is proprietary product code, not an OSS
+# library — none of it is meant to reach crates.io. `publish = false` makes
+# an accidental `cargo publish` fail loudly, and lets `deny.toml`'s
+# `licenses.private.ignore` exempt these crates from the third-party license
+# allow-list: the dual AGPL/commercial header is a notice to contributors,
+# not a license this repo redistributes under the OSS terms in that list.
+publish      = false
 
 # =============================================================================
 # Shared dependency versions.
@@ -57,10 +64,10 @@ tabula-net-client   = { path = "crates/tabula-net-client" }
 tabula-voice        = { path = "crates/tabula-voice" }
 tabula-testkit      = { path = "crates/tabula-testkit" }
 renderer-macroquad  = { path = "crates/renderer-macroquad" }
+renderer-headless   = { path = "crates/renderer-headless" }
 
-tabula-game-tictactoe = { path = "games/tictactoe", default-features = false }
 tabula-game-chess     = { path = "games/chess",     default-features = false }
-tabula-game-cards     = { path = "games/cards",     default-features = false }
+tabula-game-caro      = { path = "games/caro",      default-features = false }
 tabula-game-werewolf  = { path = "games/werewolf",  default-features = false }
 tabula-game-tiles     = { path = "games/tiles",     default-features = false }
 
@@ -76,6 +83,7 @@ thiserror   = "1"
 smallvec    = { version = "1", features = ["serde", "union", "const_generics"] }
 compact_str = { version = "0.8", features = ["serde"] }
 glam        = { version = "0.29", features = ["serde"] }
+tiny-skia   = "0.11"
 
 # --- shell tier (FORBIDDEN in rules crates — I-1) --------------------------
 # Declared here so versions live in one place. A crate opts in by referencing
@@ -114,6 +122,8 @@ directories   = "5"
 proptest         = "1"
 insta            = { version = "1", features = ["json"] }
 wasm-bindgen-test = "0.3"
+crc32fast        = "1"
+ruzstd           = "0.9"
 
 # =============================================================================
 # Lints — consistency without debate (doc 01 §1.4).
@@ -124,6 +134,7 @@ wasm-bindgen-test = "0.3"
 unsafe_code                   = "forbid"   # ADR-021
 missing_debug_implementations = "warn"
 rust_2018_idioms              = { level = "warn", priority = -1 }
+unexpected_cfgs               = { level = "warn", check-cfg = ['cfg(kani)'] }
 
 [workspace.lints.clippy]
 all      = { level = "deny", priority = -1 }

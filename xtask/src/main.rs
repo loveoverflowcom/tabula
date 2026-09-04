@@ -18,12 +18,13 @@
 //!
 //! | Command | Purpose | Phase |
 //! |---|---|---|
-//! | `check-deps` | Resolve cargo metadata, assert the `deps.toml` matrix, regenerate the doc 00 §8.1 table and fail if it differs | 0 |
-//! | `check-no-game-ids` | Grep `crates/` + `services/` for game id literals and `games::` imports outside the registry | 0 |
-//! | `check-manifests` | `game.toml` == compiled `GameMetadata`/`GameCapabilities` | 0 |
+//! | `check` | Run every gate below (plus fmt/clippy/test/cargo-deny) in fail-fast order — the one command a PR needs to be confident in | 0 |
+//! | `check-deps` | Walk the resolved cargo metadata graph, assert the `deps.toml` matrix (I-1, I-15) | 0 |
+//! | `check-no-game-ids` | Scan the tree for game id literals outside their game package, the registry, tests, manifests, and docs (I-9) | 0 |
+//! | `check-manifests` | Validate workspace `Cargo.toml`s (inheritance, no wildcard versions, `{ workspace = true }` over duplicated paths, game feature shape) and `game.toml` schemas | 0 |
 //! | `new-game <slug>` | Scaffold a game crate from the template (doc 02 §10.1) | 0 |
 //! | `selfplay <game>` | Bot-vs-bot matches with full invariant checking | 0 |
-//! | `replay <file>` | Replay a `.tbr` locally and print the first divergence | 0 |
+//! | `replay <file>` | Replay a `.tbr` locally; `--diagnose` prints evidence strength | 0 |
 //! | `perft <depth>` | Chess move-generation counts | 1 |
 //! | `gen-tokens` | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json` | 2 |
 //! | `check-no-raw-colors` | No hex literals or `Color::new(` outside `tabula-design` | 2 |
@@ -62,46 +63,200 @@
 //! Print the *path* — "tabula-core → foo → tokio" — not just the violation.
 //! Without the path, the next step is a twenty-minute `cargo tree` session.
 
+mod check_cmd;
+mod colors_cmd;
+mod deps_cmd;
+mod deps_policy;
+mod game_ids_cmd;
+mod game_ids_policy;
+mod graph;
+mod manifest_cmd;
+mod manifest_policy;
+mod pack_assets_cmd;
+mod perft_cmd;
+mod replay_cmd;
+mod replay_goldens_cmd;
+mod selfplay_cmd;
+mod tokens_cmd;
+mod wasm_stage_cmd;
+mod workspace;
+
+#[allow(clippy::too_many_lines)]
 fn main() {
     let cmd = std::env::args().nth(1);
 
     match cmd.as_deref() {
-        // TODO(phase 0): implement in this order, per doc 09 §7 step 4.
-        // check-deps first: it is the one that proves the whole enforcement idea
-        // works, and it is the one that guards every later crate.
-        Some("check-deps") => todo!("doc 00 §8.2 — walk the RESOLVED graph against deps.toml"),
-        Some("check-no-game-ids") => {
-            todo!("I-9 — grep crates/ and services/, exempting tabula-registry")
+        Some("check") => {
+            if !check_cmd::run() {
+                std::process::exit(1);
+            }
         }
-        Some("check-manifests") => todo!("doc 02 §4.3 — game.toml vs compiled metadata"),
-        Some("new-game") => todo!("doc 02 §10.1 — scaffold from games/tictactoe"),
-        Some("selfplay") => todo!("doc 02 §11.3 — the acceptance gate for Phase 0"),
-        Some("replay") => todo!("doc 05 §8.3 — ReplayRunner::verify, print first divergence"),
+        Some("check-deps") => match deps_cmd::run() {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(1),
+            Err(err) => {
+                eprintln!("check-deps: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("check-no-game-ids") => match game_ids_cmd::run() {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(1),
+            Err(err) => {
+                eprintln!("check-no-game-ids: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("check-manifests") => match manifest_cmd::run() {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(1),
+            Err(err) => {
+                eprintln!("check-manifests: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("new-game") => unimplemented_command("new-game", "doc 02 §10.1 — game crate scaffold"),
+        Some("selfplay") => match selfplay_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("selfplay: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("replay") => match replay_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("replay: {err}");
+                std::process::exit(1);
+            }
+        },
+        Some("replay-goldens") => match replay_goldens_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("replay-goldens: {err}");
+                std::process::exit(1);
+            }
+        },
+
+        // Phase 1
+        Some("perft") => match perft_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("perft: {err}");
+                std::process::exit(2);
+            }
+        },
 
         // Phase 2+
-        Some("gen-tokens") => todo!("doc 04 §8.1"),
-        Some("check-no-raw-colors") => todo!("doc 04 §8.2"),
-        Some("pack-assets") => todo!("doc 04 §12"),
+        Some("gen-tokens") => match tokens_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("gen-tokens: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("check-no-raw-colors") => match colors_cmd::run() {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(1),
+            Err(err) => {
+                eprintln!("check-no-raw-colors: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("pack-assets") => match pack_assets_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("pack-assets: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("stage-wasm-game" | "stage-wasm") => {
+            let args: Vec<String> = std::env::args().skip(2).collect();
+            match wasm_stage_cmd::run(&args) {
+                Ok(_) => {}
+                Err(err) => {
+                    eprintln!("stage-wasm-game: {err}");
+                    std::process::exit(1);
+                }
+            }
+        }
 
         // Phase 4+
-        Some("gen-protocol-vectors" | "check-protocol") => todo!("doc 05 §9.2 — I-13 version gate"),
-        Some("db") => todo!("sqlx migrate / reset"),
-        Some("load") => todo!("doc 06 §10 — scenarios L1..L8"),
-
-        other => {
-            if let Some(c) = other {
-                eprintln!("unknown command: {c}\n");
-            }
-            eprintln!(
-                "usage: cargo xtask <command>\n\n\
-                 phase 0:  check-deps  check-no-game-ids  check-manifests\n\
-                           new-game <slug>  selfplay <game>  replay <file>\n\
-                 phase 2:  gen-tokens  check-no-raw-colors\n\
-                 phase 3:  pack-assets <game>\n\
-                 phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\
-                 See xtask/README.md and docs/architecture/01-stack-and-repository-plan.md §6.3."
-            );
-            std::process::exit(2);
+        Some("gen-protocol-vectors") => {
+            future_command("gen-protocol-vectors", 4, "doc 05 §9.2 — I-13 version gate")
         }
+        Some("check-protocol") => {
+            future_command("check-protocol", 4, "doc 05 §9.2 — I-13 version gate")
+        }
+        Some("db") => future_command("db", 4, "doc 06 §3 — sqlx migrate / reset"),
+        Some("load") => future_command("load", 4, "doc 06 §10 — scenarios L1..L8"),
+
+        other => print_usage_and_exit(other),
+    }
+}
+
+fn print_usage_and_exit(other: Option<&str>) -> ! {
+    if let Some(c) = other {
+        eprintln!("unknown command: {c}\n");
+    }
+    eprintln!(
+        "usage: cargo xtask <command>\n\n\
+         local gate:  check   (fmt, clippy, test, check-deps, check-no-game-ids,\n\
+                                check-manifests, cargo-deny, in that order)\n\n\
+         phase 0:  check-deps  check-no-game-ids  check-manifests\n\
+                   new-game <slug>  selfplay <game>  replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]\n\
+                   replay-goldens (intentional fixture regeneration)\n\
+         phase 1:  perft chess [depth]\n\
+         phase 2:  gen-tokens  check-no-raw-colors  stage-wasm-game\n\
+         phase 3:  pack-assets <game>\n\
+         phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\
+         See xtask/README.md and docs/architecture/01-stack-and-repository-plan.md §6.3."
+    );
+    std::process::exit(2);
+}
+
+pub fn unavailable_message(command: &str, planned_phase: u8, doc_ref: &str) -> String {
+    format!(
+        "{command} is not available in Phase 2 (planned activation: Phase {planned_phase}, {doc_ref})"
+    )
+}
+
+pub fn unimplemented_message(command: &str, doc_ref: &str) -> String {
+    format!("{command} is not yet implemented ({doc_ref})")
+}
+
+fn future_command(command: &str, planned_phase: u8, doc_ref: &str) -> ! {
+    eprintln!("{}", unavailable_message(command, planned_phase, doc_ref));
+    std::process::exit(2);
+}
+
+fn unimplemented_command(command: &str, doc_ref: &str) -> ! {
+    eprintln!("{}", unimplemented_message(command, doc_ref));
+    std::process::exit(2);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn future_commands_produce_intentional_messages_without_panic() {
+        let msg = unavailable_message("check-protocol", 4, "doc 05 §9.2 — I-13 version gate");
+        assert_eq!(
+            msg,
+            "check-protocol is not available in Phase 2 (planned activation: Phase 4, doc 05 §9.2 — I-13 version gate)"
+        );
+
+        let msg = unavailable_message("pack-assets", 3, "doc 04 §12");
+        assert_eq!(
+            msg,
+            "pack-assets is not available in Phase 2 (planned activation: Phase 3, doc 04 §12)"
+        );
+
+        let msg = unimplemented_message("new-game", "doc 02 §10.1 — game crate scaffold");
+        assert_eq!(
+            msg,
+            "new-game is not yet implemented (doc 02 §10.1 — game crate scaffold)"
+        );
     }
 }

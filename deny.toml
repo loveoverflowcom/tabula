@@ -18,7 +18,31 @@ all-features = false
 [advisories]
 version = 2
 yanked  = "deny"
-# ignore = ["RUSTSEC-0000-0000"]   # only with a dated comment and an owner
+ignore = [
+  # RUSTSEC-2025-0035: Multiple soundness issues in `macroquad` 0.4.16.
+  #
+  # Temporary acceptance:
+  # - Confined to renderer-macroquad and tabula-game-client via the replaceable renderer seam (doc 04 §6.3).
+  # - No deterministic rules code (tabula-core, tabula-game-api, games/* rules) depends on Macroquad.
+  # - No patched upstream release is available as of 2026-09-01.
+  # - Exposed: native/WASM client presentation rendering backend.
+  # - Not exposed: deterministic rules, match runtime, server, protocol, replay.
+  # - Review trigger: upstream Macroquad release with soundness fixes or renderer backend migration.
+  # - Removal condition: upstream fixed release or renderer backend migration.
+  { id = "RUSTSEC-2025-0035", reason = "Confined to renderer-macroquad/tabula-game-client presentation backend; no rules code exposed; no upstream fix available" },
+
+  # RUSTSEC-2026-0192: `ttf-parser` 0.25.1 is unmaintained (transitive dependency of macroquad via fontdue).
+  #
+  # Temporary acceptance:
+  # - Confined to macroquad font rendering in renderer-macroquad and tabula-game-client.
+  # - No deterministic rules code depends on ttf-parser or fontdue.
+  # - No patched upstream release in fontdue/macroquad is available as of 2026-09-01.
+  # - Exposed: client font rendering in Macroquad presentation backend.
+  # - Not exposed: deterministic rules, match runtime, server, core crates.
+  # - Review trigger: upstream macroquad/fontdue migration to skrifa or renderer backend migration.
+  # - Removal condition: upstream update or renderer backend migration.
+  { id = "RUSTSEC-2026-0192", reason = "Confined to macroquad fontdue transitive dep in presentation backend; no rules code exposed; no upstream fix available" },
+]
 
 [licenses]
 version = 2
@@ -31,13 +55,26 @@ confidence-threshold = 0.9
 # We ship an AGPL/commercial dual licence. Anything copyleft-viral beyond MPL-2.0
 # in a linked dependency would constrain the commercial arm — so it is denied,
 # not merely reviewed.
+#
+# The `allow` list above is a THIRD-PARTY policy. It must not also have to
+# accept our own crates' declared license: every workspace member sets
+# `license = "AGPL-3.0-or-later OR LicenseRef-Commercial"` (via
+# `license.workspace = true`), and `LicenseRef-Commercial` is a private
+# reference, not an SPDX id anything external would recognize. Every crate in
+# this workspace also sets `publish = false` (Cargo.toml, workspace-inherited)
+# because none of it is meant to reach crates.io — so `private.ignore` exempts
+# exactly those crates from this check, rather than adding our own private
+# license notice to a list that is supposed to describe what we accept from
+# others.
+private = { ignore = true }
 
 [bans]
 # Duplicate versions cost binary size, which is a hard constraint for the WASM
 # game bundle (< 6 MB gzipped, doc 01 §7). `warn` now; escalate to `deny` once
 # the tree stabilises in Phase 4.
-multiple-versions = "warn"
-wildcards         = "deny"
+multiple-versions    = "warn"
+wildcards            = "deny"
+allow-wildcard-paths = true
 
 deny = [
   # Prefer rustls; openssl is a cross-compilation and mobile-packaging tax.
@@ -48,7 +85,12 @@ deny = [
   { name = "chrono", wrappers = [] },
   # I-4: rules must not reach OS entropy. Listed here as a second net; the real
   # enforcement is per-crate in deps.toml.
-  { name = "getrandom", wrappers = ["rand_core", "uuid", "blake3", "ring", "rustls"] },
+  #
+  # `tempfile` and `rand_core` are wrappers: `tabula-testkit`'s test tooling
+  # pulls `proptest` and `insta` (via tempfile/rand_core), which need OS randomness.
+  # That path is test/dev tooling behind an unconstrained tier (`tabula-testkit`,
+  # tier = "test" in deps.toml) — it never ships in rules.
+  { name = "getrandom", wrappers = ["rand_core", "tempfile"] },
 ]
 
 skip-tree = []

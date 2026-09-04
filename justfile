@@ -28,9 +28,17 @@ client *ARGS:
     cargo run -p tabula-game-client {{ARGS}}
 
 # ------------------------------------------------------------------ the gate
-# Everything CI runs, in the order that fails fastest first.
+# Authoritative portable local core gate (doc 01 §1.4). Runs the fast,
+# deterministic checks: fmt, clippy, test, check-deps, check-no-game-ids,
+# check-manifests, token freshness, check-no-raw-colors, and cargo deny.
+#
+# CI runs these same gates, plus the workspace feature matrix (`features`) and
+# target-specific WASM compilation checks (`wasm`).
+check:
+    cargo xtask check
 
-check: fmt-check lint deps no-game-ids test
+# Runs the local core gate plus workspace feature matrix checks.
+check-all: check features
 
 fmt:
     cargo fmt --all
@@ -61,6 +69,15 @@ features:
     cargo check --workspace --no-default-features
     cargo check --workspace --all-features
 
+# No raw colors outside tabula-design. (doc 04 §8.1)
+colors:
+    cargo xtask check-no-raw-colors
+
+# Design tokens generation check.
+tokens-check:
+    cargo xtask gen-tokens
+    git diff --exit-code -- apps/web/style/tokens.css crates/tabula-design/src/generated.rs docs/ui/tokens.json
+
 audit:
     cargo deny check
 
@@ -71,13 +88,38 @@ audit:
 selfplay game matches="10000":
     cargo xtask selfplay {{game}} --matches {{matches}}
 
-# Replay a golden or production .tbr and print the first divergence. (doc 05 §8.3)
+# Replay a golden or production .tbr; diagnostic mode reports evidence strength. (doc 05 §8.3)
 replay file:
     cargo xtask replay {{file}}
 
 # I-8 over the whole committed corpus. Nightly in CI, on demand here.
 replay-all:
     cargo xtask replay --all
+
+# ------------------------------------------------------------ verification
+# Development-only, opt-in verification tools. They are deliberately outside
+# `cargo xtask check` until real proof harnesses / a mutation budget justify CI.
+
+verification-install:
+    cargo install --locked kani-verifier --version 0.67.0
+    cargo kani setup
+    cargo install --locked cargo-nextest --version 0.9.143
+    cargo install --locked cargo-mutants --version 27.1.0
+
+# Proves the real logical-time arithmetic in tabula-core over its symbolic u64
+# domains. Kani is opt-in and is not part of the normal workspace gate.
+kani-core:
+    cargo kani -p tabula-core
+
+
+# Preview the mutation set for one named workspace package.
+mutants-list package:
+    cargo mutants --package {{package}} --list
+
+# Run mutation testing for one named workspace package. `.cargo/mutants.toml`
+# selects Nextest so this follows the repository's ordinary test runner policy.
+mutants package:
+    cargo mutants --package {{package}}
 
 # --------------------------------------------------------------- generation
 # All of these are committed outputs. CI fails if they are stale.
@@ -111,6 +153,12 @@ sqlx-prepare:
 
 wasm-game:
     cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+    cargo xtask stage-wasm-game
+
+# Serve the staged Macroquad gameplay client in a local browser.
+wasm-serve port="8000": wasm-game
+    @echo "Serving Tabula gameplay client at http://localhost:{{port}}"
+    python3 -m http.server {{port}} --directory target/tabula-web-game
 
 server-release:
     cargo build -p tabula-server --profile release-server

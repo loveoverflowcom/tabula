@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Replay & Differential Testing"
+  short_description: "Independent oracles: reference models, published data, replay, cross-target"
+  default_prompt: "Use $rust-replay-differential-testing to build an independent oracle — a reference model, published reference data, replay equivalence, or a cross-target comparison."

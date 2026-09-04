@@ -1,0 +1,18 @@
+[package]
+name        = "renderer-headless"
+version     = "0.0.0"
+description = "Headless RenderList recorder and CPU rasterizer for presentation verification."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+publish.workspace      = true
+
+[dependencies]
+tabula-presentation = { workspace = true }
+tabula-design       = { workspace = true }
+tiny-skia           = { workspace = true }
+glam                = { workspace = true }
+
+[lints]
+workspace = true

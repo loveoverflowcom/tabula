@@ -178,7 +178,11 @@ For every introduced or changed refined type, verify:
 - equality, ordering, hashing, and canonical serialization match the domain meaning;
 - unchecked constructors have a documented and tested producer obligation.
 
-Use `rust-verification-testing` to choose examples, properties, model checks, or formal tools.
+Use `rust-verification-testing` — the router — to choose examples, properties, model checks, or
+formal tools. Two boundaries have a default answer: a validated newtype's constructor deserves a
+property test against a naive reference validator (`rust-property-testing`), and a proof-carrying
+witness whose constructor is private deserves a mutation campaign to confirm the check it guards is
+actually asserted (`rust-mutation-testing`).
 Use `rust-ai-doc-contracts` when the invariant or witness is a high-value API boundary that future
 agents should discover without opening implementation files.
 

@@ -320,9 +320,37 @@ rules_version      the game's State/Command/Event encoding and behavior (game-ow
 
 ### 6.2 `rules_hash` as the safety net
 
-`rules_hash = blake3(RULES_VERSION tag ‖ hash of the rules-half source files)`, computed by
-`xtask` at build time and stored on every match. If someone changes `apply` without bumping
-`rules_version`:
+Each game crate's `build.rs` computes `rules_hash` at compile time and the rules implementation
+exposes it through `GameRules::RULES_HASH`. The source boundary is both physical and a Rust module
+ownership boundary: every `.rs` file recursively under `games/<game>/src/rules/` is canonical
+rules source, and that module tree may not depend on crate-root package, bot, or presentation
+source. Those noncanonical sources may depend on rules, but are not part of the identity. The
+build script is the owner of this compile-time identity; `xtask` and game tests may verify it
+independently, including the no-upward-dependency policy.
+
+The Phase 1 source-identity preimage is:
+
+```text
+blake3(
+    b"tabula.rules.source.v2"
+    ‖ rules_version.to_le_bytes()
+    ‖ sorted(
+        u64_le(relative_path_utf8_with_forward_slashes.len())
+        ‖ relative_path_utf8_with_forward_slashes
+        ‖ u64_le(file_bytes.len())
+        ‖ file_bytes
+      for every `.rs` file under `src/rules/`,
+      with paths relative to that directory
+    )
+)
+```
+
+Filesystem iteration is sorted before hashing. Absolute paths, timestamps, `target/`, `OUT_DIR`,
+compiler artifacts, and unordered iteration do not participate. `v2` deliberately replaces the
+old `tabula.rules.v1` all-`src/**/*.rs` preimage with the mechanically owned rules subtree; this
+source-identity correction does not by itself bump `rules_version`.
+
+If someone changes `apply` without bumping `rules_version`:
 
 - New matches record a different `rules_hash` for the same `rules_version`.
 - The nightly replay job detects that stored replays with the old hash no longer reproduce, and
@@ -338,12 +366,22 @@ most insidious failure mode in a deterministic system.
 ### 7.1 Canonical encoding
 
 ```text
-canonical(x) = postcard(x) with:
+canonical(x) = ENCODING_VERSION.to_le_bytes() ‖ postcard(x)
+
+   ENCODING_VERSION: u16 = 1, little-endian (one endianness in the whole kernel)
    - the type's derived Serialize (no custom human-friendly impls on canonical types)
-   - a 2-byte encoding-version prefix
    - all maps as BTreeMap (sorted keys) — HashMap is banned in these types (I-2)
    - no floats in canonical types (doc 00 §5.1)
 ```
+
+The prefix is **checked on read**, not skipped: a blob written under a different
+`ENCODING_VERSION` fails loudly rather than deserializing into a plausible wrong
+state. That is the difference between an honest "unreplayable" (§10.2) and a fake
+replay.
+
+Postcard has no key-ordering or float-formatting freedom of its own, but it does
+serialize a map in *iteration order* — which is why the `HashMap` ban above is
+load-bearing and is enforced by `clippy.toml` rather than by the encoder.
 
 Used for: `match_inputs.payload`, `match_events.payload`, `match_snapshots.payload`, replay files,
 and everything hashed.
@@ -362,16 +400,21 @@ StateHash = blake3( b"tabula.state.v1" ‖ rules_version_le ‖ canonical(state)
 
 When a replay's recomputed hash differs from the stored hash:
 
-```text
-1. The replay job records (match_id, input_index, expected, actual, rules_hash, build).
-2. The affected rules_version is flagged: no NEW matches may be created on it (feature flag),
-   existing ones continue.
-3. Sev-2 alert with the minimal reproducing input prefix, auto-committed to
-   tests/replays/<game>/divergence/.
-4. The fix is either a rules_version bump (behavior legitimately changed) or a real determinism
-   bug (HashMap, float, unordered iteration) — both are found quickly because the failing input
-   index is known.
-```
+1. The replay job records `(match_id, input_index, expected, actual, rules_hash, build)`.
+2. The Phase 1 diagnostic scans stored checkpoint claims in execution order. It reports the
+   first failing stored claim, not automatically the first divergent transition.
+3. If the failing claim immediately follows a matching checkpoint, the transition is localized
+   exactly. Otherwise the diagnostic reports a window: `after_verified < first divergent
+   transition <= at_or_before`, where `at_or_before` is the failing checkpoint's input index.
+   A later checkpoint matching again does not invalidate the earlier failure; checkpoint
+   divergence is not assumed to be monotonic.
+4. When a checkpoint failure has enough evidence, the verifier can produce an in-memory,
+   validated replay prefix through that claim. `xtask` may write it to an explicitly different
+   path. Final-hash-only and terminal-outcome failures remain final evidence and are not shrunk
+   into a misleading transition reproducer.
+5. The affected `rules_version` is flagged: no NEW matches may be created on it (feature flag),
+   existing ones continue. The fix is either a `rules_version` bump (behavior legitimately
+   changed) or a real determinism bug (HashMap, float, unordered iteration).
 
 ---
 
@@ -381,6 +424,13 @@ When a replay's recomputed hash differs from the stored hash:
 
 A replay is **the input stream plus enough metadata to re-run it**. Events are *not* required
 (they are derivable) but a checkpoint hash list is included for verification.
+
+For the Phase 1 canonical artifact, the input stream is the ordered set of inputs
+that the live runtime accepted into its canonical log. Rejected hostile inputs are
+not replay frames: a rejection while replaying a stored frame is therefore a
+divergence/corruption error, never a successful no-op. The runtime may choose a
+different audit log policy later, but the live and replay input-index assignment
+must remain identical (ADR-026 §5).
 
 ```text
 .tbr file layout (Tabula Binary Replay)
@@ -429,17 +479,35 @@ seed, so nothing is lost.
 ### 8.3 Replay playback
 
 ```rust
-// crates/tabula-testkit/src/replay.rs  (also used by ops tooling and the client)
-pub struct ReplayRunner { /* ... */ }
+// crates/tabula-testkit/src/replay.rs  (also used by ops tooling)
+// Phase 1 keeps the replay boundary typed. It never links the registry or erases
+// the selected game's rules implementation.
+pub struct ReplayRunner<R: GameRules> { /* ... */ }
 
-impl ReplayRunner {
-    pub fn open(path: &Path, registry: &Registry) -> Result<Self, ReplayError>;
-    /// Verifies rules_hash availability; returns Unreplayable if no linked version matches.
+impl<R: GameRules> ReplayRunner<R> {
+    pub fn open(path: &Path, identity: ReplayIdentity) -> Result<Self, ReplayError>;
+    pub fn from_bytes(bytes: &[u8], identity: ReplayIdentity) -> Result<Self, ReplayError>;
+    /// Verifies rules_hash availability; returns Unreplayable if no authoritative identity exists.
     pub fn check(&self) -> ReplayVerdict;
     pub fn step(&mut self) -> Result<Option<StepResult>, ReplayError>;
-    pub fn seek(&mut self, to: StateVersion) -> Result<(), ReplayError>;
-    /// Re-runs everything, comparing every checkpoint. The nightly job's entry point.
+    /// Replays through `to` and returns stored checkpoint evidence, or an explicit
+    /// reconstructed position when no checkpoint was encountered.
+    pub fn seek(&mut self, to: StateVersion) -> Result<PrefixPosition, ReplayError>;
+    /// Re-runs everything, comparing checkpoints, final state hash, and terminal outcome.
     pub fn verify(&mut self) -> Result<VerifyReport, ReplayError>;
+}
+impl VerifyReport {
+    /// Classifies the strongest location supported by the stored evidence.
+    pub fn diagnoses(&self) -> Vec<ReplayDiagnosis>;
+}
+impl<R: GameRules> ReplayRunner<R> {
+    /// Produces a validated in-memory prefix for a checkpoint diagnosis when
+    /// the failure can be reproduced without inventing evidence.
+    pub fn reproducer(&self, diagnosis: &ReplayDiagnosis) -> ReproducerAvailability;
+}
+pub enum PrefixPosition {
+    Verified(PositionEvidence),
+    Reconstructed(PositionEvidence),
 }
 pub enum ReplayVerdict {
     Exact,                                  // rules_hash matches a linked build
@@ -448,6 +516,11 @@ pub enum ReplayVerdict {
     Unreplayable { reason: String },
 }
 ```
+
+Phase 4 may use the registry at the tooling or runtime edge to select and erase the concrete
+`GameRules` implementation. That selection does not change the Phase 1 evidence contract: a
+position is only `Verified` when the traversed stored checkpoints agree, and a complete
+verification also checks the final state hash and the terminal outcome.
 
 Client-side playback (the replay viewer, Phase 9) uses **projected** replays and drives the normal
 presenter with the recorded `ViewEvent` stream and `logical_ms` timings — so replay looks exactly
@@ -563,7 +636,7 @@ costs more than it saves.
 | `xtask ws` | A CLI client: authenticates, attaches to a match, pretty-prints frames with color, sends commands from a JSON file or interactively. Speaks both codecs. |
 | `xtask decode <hex\|file>` | Decodes any captured Postcard frame given its type name; used for reading production logs and crash dumps. |
 | `xtask trace <match_id>` | Reconstructs a match's full timeline from the log: inputs, events, effects, timings, and per-viewer frames. The primary support tool. |
-| `xtask replay <file> [--verify] [--at N]` | Replays locally, prints divergence with the exact input index. |
+| `xtask replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]` | Replays locally and, in diagnostic mode, prints exact/window/final-only/terminal evidence classification. A checkpoint diagnosis may be written as a validated smaller prefix to an explicitly different path. |
 | Browser devtools | Text frames for JSON mode; binary frames show length and hex (paste into `xtask decode`). |
 | `websocat` recipe | Documented in `docs/dev/protocol-debugging.md`, including how to mint a dev session token. |
 | OpenTelemetry | Every command is a span carrying `corr`, `match_id`, `game_id`, `seat`, `state_version`, apply duration, persist duration, fan-out size (doc 06 §9). |

@@ -27,12 +27,14 @@ xtask = "run --package xtask --"
 
 | Command | What it does |
 |---|---|
-| `check-deps` | Walks the **resolved** cargo metadata graph per crate and asserts the `deps.toml` matrix. Also regenerates the doc 00 §8.1 table and fails if the committed docs differ. Enforces I-1 and I-15. |
-| `check-no-game-ids` | Greps `crates/` and `services/` for game id literals and `games::` imports. `tabula-registry` is the only exemption. Enforces I-9. |
-| `check-manifests` | Asserts `game.toml` equals the compiled `GameMetadata`/`GameCapabilities`. |
-| `new-game <slug> [--seats N] [--category C]` | Scaffolds a game crate from the `games/tictactoe` template, including `clippy.toml` and `tests/conformance.rs`. |
-| `selfplay <game> [--matches N]` | Bot-vs-bot matches with determinism, projection, and termination checking. Failing seeds are written to `tests/replays/<game>/regressions/`. |
-| `replay <file> \| --all [--verify]` | Replays a `.tbr` and prints the first divergence with its input index. |
+| `check` | Runs `fmt`, `clippy`, `test`, `check-deps`, `check-no-game-ids`, `check-manifests`, token freshness check, `check-no-raw-colors`, then `cargo deny check`, in that order, stopping at the first failure. The authoritative portable local core gate (CI additionally verifies the feature matrix and WASM targets); see AGENTS.md §5. |
+| `check-deps` | Walks the **resolved** cargo metadata graph per crate and asserts the `deps.toml` matrix: direct dependencies come from the crate's allow-list, banned/forbidden-category crates cannot be reached transitively (with the path printed), and dependency direction respects the tier ordering. Enforces I-1 and I-15. |
+| `check-no-game-ids` | Scans the tree for a game id appearing as a whole word (case-insensitive, `_`/`-` count as separators) outside its own game package, `tabula-registry`, `xtask`, test fixtures, manifests, or docs/comments. Enforces I-9. |
+| `check-manifests` | Validates every workspace `Cargo.toml` (workspace-field inheritance, no wildcard registry versions, internal crates referenced via `{ workspace = true }`, the `rules`/`presentation`/`bots`/`testkit` feature shape for game crates) and, for games that have one, `game.toml`'s schema (required fields, the `com.tabula.<id>` convention, enum-valued capabilities). Does **not** yet cross-check against the compiled `GameMetadata`/`GameCapabilities` statics — that needs the `metadata_from_manifest!` proc macro (doc 02 §10.2), which does not exist yet. |
+| `new-game <slug> [--seats N] [--category C]` | Scaffolds a game crate template, including `clippy.toml` and `tests/conformance.rs`. |
+| `selfplay <game> [--matches N] [--seed N\|HEX] [--match-index N] [--max-inputs N] [--clock fischer\|bronstein\|none] [--seats N]` | Deterministic bot-vs-bot matches with projection, timer, transactional, and termination checks. Failures print reproducible seed/match/input coordinates; the command does not mutate the repository. |
+| `replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]` | Verifies a canonical `.tbr`, compares every checkpoint and the final hash, and prints the first failing evidence. `--diagnose` classifies it as exact, windowed, final-only, or terminal-outcome evidence; `--write-reproducer` writes a safe derived prefix to an explicit different path. `--at N` seeks to an accepted-input state version. |
+| `replay-goldens` | Intentionally regenerates the committed Phase 1 corpus under `tests/replays/`; ordinary tests never rewrite it. |
 
 ### Phase 1+
 
@@ -40,12 +42,13 @@ xtask = "run --package xtask --"
 |---|---|---|
 | `perft <depth>` | 1 | Chess move-generation node counts, against published positions |
 | `gen-tokens` | 2 | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json`. Outputs are committed; CI fails if stale. |
-| `check-no-raw-colors` | 2 | No hex literals or `Color::new(` outside `tabula-design` |
-| `pack-assets <game>` | 3 | Builds, hashes, and writes a pack manifest |
-| `gen-protocol-vectors --bump minor\|major` | 4 | Regenerates golden wire vectors, bumps `PROTOCOL_VERSION`, appends to `protocol-changelog.md` |
-| `check-protocol` | 4 | Golden vectors round-trip; the I-13 version gate |
-| `db reset` / `db migrate` | 4 | Local Postgres lifecycle |
-| `load --scenario L1..L8` | 4 | Load scenarios against the committed baseline |
+| `check-no-raw-colors` | 2 | No hex literals or `Color::rgb`/`Color::rgba`/`Color::new` constructors outside `tabula-design` |
+| `stage-wasm-game` | 2 | Stages the checked-in HTML host, pinned JS bootstrap, and wasm-release binary into `target/tabula-web-game/` |
+| `pack-assets <game>` | 3 | Reads pack.source.toml, builds deterministic full-BLAKE3 content-addressed files, validates and verifies a staged pack, then publishes it under target/asset-packs/ |
+| `gen-protocol-vectors --bump minor\|major` | 4 | Regenerates golden wire vectors, bumps `PROTOCOL_VERSION`, appends to `protocol-changelog.md` (planned Phase 4) |
+| `check-protocol` | 4 | Golden vectors round-trip; the I-13 version gate (planned Phase 4) |
+| `db reset` / `db migrate` | 4 | Local Postgres lifecycle (planned Phase 4) |
+| `load --scenario L1..L8` | 4 | Load scenarios against the committed baseline (planned Phase 4) |
 
 ## Design notes
 

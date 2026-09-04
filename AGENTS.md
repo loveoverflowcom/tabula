@@ -92,14 +92,14 @@ permission to implement them early.
 
 | Phase | Crates that become real |
 |---|---|
-| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `games/tictactoe`, `xtask` |
+| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `xtask` |
 | 1 | `games/chess` |
 | 2 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `renderer-headless`, `apps/game-client` |
-| 3 | `tabula-assets`, `games/cards`, `games/tiles`, `games/werewolf` (rules only) |
+| 3 | `tabula-assets`, `games/caro`, `games/tiles` (Carcassonne-like), `games/werewolf` (rules only) |
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin` |
 | 6 | `mobile/android`, `mobile/ios` |
-| 7 | werewolf + social |
+| 7 | `games/werewolf` (presentation, social, and online) |
 | 8 | `tabula-voice` |
 | 9+ | SDK stabilisation, scaling, third-party ecosystem |
 
@@ -114,7 +114,9 @@ If you believe a phase gate is wrong, write an ADR — do not quietly cross it.
 ## 5. Before you open a pull request
 
 ```bash
-just check          # fmt + clippy + deps + no-game-ids + nextest, in that order
+just check          # cargo xtask check: fmt, clippy, test, check-deps, check-no-game-ids,
+                    # check-manifests, generated design tokens current, check-no-raw-colors,
+                    # cargo deny check — in that order, stops at the first failure
 ```
 
 Or individually:
@@ -124,14 +126,18 @@ cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask check-deps            # the deps.toml matrix (I-1, I-15)
 cargo xtask check-no-game-ids     # I-9
-cargo xtask check-manifests       # game.toml == compiled metadata
+cargo xtask check-manifests       # game.toml/Cargo.toml schema and feature-shape validation
+cargo xtask check-no-raw-colors   # doc 04 §8.1 semantic design tokens
 cargo nextest run --workspace
 cargo deny check
 ```
 
+`just check` (or `cargo xtask check`) is the authoritative portable local core gate.
+CI additionally checks the full workspace feature matrix (`cargo check --workspace --no-default-features` and `--all-features`) and target-specific WASM compilation (`wasm32-unknown-unknown`). You can test the feature matrix locally with `just check-all` or `just features`.
+
 A change to a game crate additionally needs its conformance suite green
-(`tabula_testkit::conformance!(YourModule)` — doc 02 §11.1) and, if the game has hidden
-information, a `SecretModel` with the projection scan passing.
+(`tabula_testkit::conformance!(YourFixture)` against a `GameTestFixture` impl — doc 02 §11.1)
+and, if the game has hidden information, a `SecretModel` with the projection scan passing.
 
 ---
 

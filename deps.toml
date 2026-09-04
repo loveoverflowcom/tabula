@@ -27,21 +27,71 @@ crates = [
 # `std::time` is banned by clippy `disallowed_types` instead — see clippy.toml.
 
 # -----------------------------------------------------------------------------
+# Tiers — dependency direction (doc 00 §7: "arrows point down, always").
+#
+# A crate may depend on another workspace crate at the SAME OR A LOWER rank,
+# never a higher one. `test` and `tooling` are unconstrained by design: a test
+# harness exercises everything below it, and tooling is never shipped.
+# `xtask check-deps` reads this list positionally — index is rank.
+# -----------------------------------------------------------------------------
+[tiers]
+order         = ["deterministic", "contract", "client", "runtime", "binary"]
+unconstrained = ["test", "tooling"]
+
+# -----------------------------------------------------------------------------
+# Categories — named, reusable groups of forbidden dependencies for the
+# architecture-boundary checks in `xtask check-deps` (avoids hard-coded
+# `if crate_name == "foo"` policy logic in Rust).
+#
+# `by_name` lists external or internal crates by their package name.
+# `by_path_prefix` classifies an INTERNAL crate by the directory it lives in
+# (relative to the workspace root), so a newly added `games/*` or `apps/*`
+# crate is covered automatically with no edit here.
+# -----------------------------------------------------------------------------
+[categories.by_name]
+rendering     = ["macroquad", "miniquad", "wgpu", "renderer-macroquad", "tabula-presentation"]
+ui_framework  = ["leptos", "leptos_router", "tauri"]
+web_framework = ["axum", "tower", "tower-http", "tower-governor", "leptos", "tauri"]
+networking    = ["tokio", "tokio-tungstenite", "reqwest", "tabula-net-client"]
+persistence   = ["sqlx", "tabula-storage"]
+
+[categories.by_path_prefix]
+application   = ["apps", "services"]
+game_specific = ["games"]
+
+# -----------------------------------------------------------------------------
 # Deterministic core tier — I-1 applies. Adding a line here needs an ADR.
 # -----------------------------------------------------------------------------
 [crate."tabula-core"]
 tier  = "deterministic"
 allow = ["serde", "postcard", "rand_chacha", "rand_core", "blake3", "thiserror", "smallvec", "compact_str"]
+# The one crate the whole product depends on: reject every layer above it,
+# direct or transitive.
+forbidden_categories = [
+  "rendering", "ui_framework", "web_framework", "networking",
+  "persistence", "application", "game_specific",
+]
 
 [crate."tabula-game-api"]
 tier  = "deterministic"
 allow = ["tabula-core", "serde", "thiserror", "smallvec", "compact_str"]
+# The game contract: renderers, app shells, server implementations, storage,
+# and specific games would all make it recompile/re-version for the wrong
+# reasons.
+forbidden_categories = ["rendering", "web_framework", "application", "persistence", "game_specific"]
 
 # Game rules halves. The `presentation` feature is the ONLY way a game may see
 # the client stack, and the server always builds with default-features = false.
 [crate."games/*"]
 tier    = "deterministic"
-allow   = ["tabula-core", "tabula-game-api", "serde", "smallvec", "compact_str", "thiserror"]
+# `blake3` and `proptest` are here for the test/build halves, which this list
+# does not distinguish from the shipped half: `blake3` is every game's
+# build-dependency (the rules-source hash), and `proptest` is the workspace's
+# chosen property-test generator — already `tabula-testkit`'s own dependency,
+# already the technique `.agents/skills/rust-property-testing` prescribes, and
+# never in a shipped graph. The transitive-ban walk (I-1) is separately
+# dev-edge-aware, so neither can smuggle a banned crate into a server build.
+allow   = ["tabula-core", "tabula-game-api", "serde", "smallvec", "compact_str", "thiserror", "blake3", "proptest"]
 feature = { presentation = ["tabula-presentation", "tabula-design", "tabula-assets", "glam"], testkit = ["tabula-testkit"] }
 
 # -----------------------------------------------------------------------------
@@ -73,7 +123,7 @@ feature = { leptos-adapter = ["leptos"] }
 # -----------------------------------------------------------------------------
 [crate."tabula-assets"]
 tier    = "client"
-allow   = ["tabula-core", "serde", "blake3", "toml", "thiserror"]
+allow   = ["tabula-core", "tabula-game-api", "serde", "blake3", "toml", "thiserror"]
 feature = { http = ["reqwest"], web = ["web-sys", "wasm-bindgen"] }
 
 [crate."tabula-presentation"]
@@ -84,6 +134,10 @@ allow = ["tabula-core", "tabula-game-api", "tabula-design", "tabula-assets", "gl
 [crate."renderer-macroquad"]
 tier  = "client"
 allow = ["macroquad", "tabula-presentation", "tabula-design", "tabula-assets", "tabula-core", "glam"]
+
+[crate."renderer-headless"]
+tier  = "client"
+allow = ["tabula-presentation", "tabula-design", "tiny-skia", "glam"]
 
 [crate."tabula-net-client"]
 tier    = "client"
@@ -118,7 +172,7 @@ feature = { livekit = [], managed = [] }
 [crate."tabula-testkit"]
 tier  = "test"
 # Everything except axum/sqlx. It is a dev-dependency of every game crate.
-allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-presentation", "proptest", "insta", "serde", "postcard", "blake3", "thiserror", "smallvec"]
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-presentation", "proptest", "insta", "serde", "postcard", "blake3", "thiserror", "smallvec", "crc32fast", "ruzstd"]
 
 # -----------------------------------------------------------------------------
 # Binaries. Nothing depends on these — services and apps are leaves.
@@ -129,7 +183,8 @@ allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "t
 
 [crate."apps/game-client"]
 tier    = "binary"
-allow   = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-presentation", "tabula-assets", "tabula-net-client", "renderer-macroquad", "macroquad"]
+allow   = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-presentation", "tabula-assets", "tabula-net-client", "renderer-macroquad", "macroquad", "glam"]
+allow_games = true # Phase 2 local vertical slice; Phase 4 moves selection behind registry.
 feature = { native = ["tokio"], web = ["web-sys", "wasm-bindgen"] }
 # I-15: `leptos` must NEVER appear in this graph, native or wasm.
 forbid  = ["leptos", "tauri"]

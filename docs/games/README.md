@@ -12,17 +12,22 @@ correctly, without owning the physical box. Cite the edition or variant.
 
 ### 2. The information model — **the part that matters**
 
-**Mandatory for every game with `hidden_information = true`** (doc 02 §7.1).
+**Mandatory for every game with `hidden_information = true`** (doc 02 §7.1). In
+the current portfolio that includes `werewolf` and `tiles` —
+`chess` and `caro` are perfect information. Werewolf is the primary
+hidden-information benchmark; Tiles is the secondary case for its secret
+tile-bag order and public count.
 
-The `SecretModel` scanner catches *direct* leaks: a whole hand serialised into a
-spectator's view, a role map sent wholesale. It runs on every PR and it is good
-at what it does.
+The `SecretModel` scanner catches *direct* leaks: a whole role map serialised
+into a spectator's view, a secret night action sent wholesale, or the remaining
+Tiles bag order sent to a player. It runs on every PR and it is good at what it
+does.
 
 It cannot catch **derived** secrets — where two individually-public values
-combine to reveal a hidden one. The classic: exact deck count + all visible
-discards + your own hand = the opponent's hand, in a 52-card game.
+combine to reveal a hidden one. The classic, from a hidden-hand game: exact
+deck count + all visible discards + your own hand = the opponent's hand.
 
-So this section states, explicitly:
+So this section states, explicitly (werewolf example):
 
 ```markdown
 ## Information model
@@ -30,26 +35,50 @@ So this section states, explicitly:
 ### Secret, and from whom
 | Value | Hidden from | Revealed when |
 |---|---|---|
-| Deck order | everyone | match end (via salt reveal) |
-| Seat N's hand | every other seat, all spectators | cards are played |
-| Shuffle salt | everyone | match end |
+| Role assignment | every seat until death, all spectators | a seat dies and its role is revealed |
+| A night action's existence | every seat but the actor | never, unless the ruleset reveals it |
+| Doctor's `Saved` outcome | every seat but the doctor | dawn, if the ruleset reveals saves |
 
 ### Public
-Hand counts, the current trick, pass state, finishing order, the deck commitment.
+Phase, alive/dead seats, vote tallies (in most rulesets), revealed roles.
 
 ### Intentionally derivable
-A player who tracks every discard can narrow the remaining distribution. This is
-counting, it is part of the game, and it is not a leak.
+A player who tracks voting patterns and claims can build a suspicion model.
+This is deduction, it is part of the game, and it is not a leak.
 
 ### Deliberately NOT derivable
-Nothing in any projection distinguishes "seat 2 passed because they could not
-beat the trick" from "seat 2 passed by choice". Do not add a `could_have_played`
-hint to the view — it would.
+Nothing in any projection distinguishes "no night action happened" from "a
+night action happened but is not yet resolved" for an unauthorized viewer —
+`view_event` returns `None` for both. Do not add a `something_happened` hint
+to the view — it would.
 ```
 
 That last kind of entry is the valuable one. It records a decision that is
 invisible in the code and would otherwise be quietly undone by a future
 "helpful UI hint" PR.
+
+Tiles has a smaller information model, but it is still a real one — and it is
+implemented, so [`tiles.md`](tiles.md) carries the authoritative version of the
+block below rather than a sketch of one:
+
+```markdown
+## Information model
+
+### Secret, and from whom
+| Value | Hidden from | Revealed when |
+|---|---|---|
+| Remaining tile-bag order | every player and spectator | never; only the next drawn tile is revealed |
+
+### Public
+Bag count, the tile currently drawn, and all placed/drawn tiles.
+
+### Verification
+`SecretModel` declares the remaining bag order as authorised to nobody. The
+Phase-3 projection scan covers reachable draws while preserving the public count
+and the drawn tile. Containment scanning alone is not sufficient evidence for an
+*ordered* secret — see `tiles.md` for the token-granularity limit and the
+noninterference property that closes it.
+```
 
 ### 3. Balance and configuration
 
@@ -68,10 +97,16 @@ decision rather than an oversight.
 
 ## Files
 
-| Game | Status |
-|---|---|
-| `tictactoe.md` | Phase 0 — the template. Trivially: nothing is secret. |
-| `chess.md` | Phase 1 |
-| `cards.md` | Phase 3 — **the important one.** Hidden hands, server RNG, the deck commitment. |
-| `werewolf.md` | Phase 3 — roles, night actions, and event *non-existence*. |
-| `tiles.md` | Phase 3 — bag order secret, count public. |
+The **written** column says whether the file exists yet, not whether the game
+does: chess is implemented and has no per-game doc, because it has no
+hidden information and doc 08 §7.1 only makes the file mandatory
+before a game *ships*. A row without a file is an outstanding task, not a
+statement that the game has nothing to document. (For historical lessons from the
+retired Phase 0 prototype, see [`docs/legacy/tictactoe.md`](../legacy/tictactoe.md)).
+
+| Game | Written | Status |
+|---|---|---|
+| `chess.md` | no | Phase 1 — correctness benchmark: complex legality, clocks, deterministic replay. |
+| `caro.md` | yes | Phase 3 — design placeholder. Simple real product game, large fixed board, SDK-friction benchmark. Perfect information; no information model needed. |
+| `tiles.md` | yes | Phase 3 — **implemented.** Carcassonne-like: deterministic tile-bag RNG, dynamic spatial state, incremental scoring. Bag order secret, count public. |
+| `werewolf.md` | yes | Phase 3 (rules/headless) → Phase 7 (social) — **the important one.** Roles, night actions, and event *non-existence*. |

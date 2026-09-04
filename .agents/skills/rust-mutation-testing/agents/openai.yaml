@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Mutation Testing"
+  short_description: "Measure assertion strength; classify every survivor"
+  default_prompt: "Use $rust-mutation-testing to scope a cargo-mutants campaign, classify survivors, and convert the real ones into regression tests."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Fuzzing"
+  short_description: "Untrusted bytes: targets, corpora, minimisation, bounds"
+  default_prompt: "Use $rust-fuzzing to decide whether a decoder needs a fuzz target, and to build one with a corpus, resource bounds, and deterministic regressions."

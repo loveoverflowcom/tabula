@@ -64,7 +64,7 @@ flowchart TB
     subgraph L1["Layer 1 — Deterministic Core (pure, sync, no I/O)"]
         CORE["tabula-core<br/>ids · DetRng · LogicalTime · Visibility · hashing"]
         GAPI["tabula-game-api<br/>GameRules · GameModule · Metadata · Capabilities"]
-        GAMES["games/*<br/>chess · cards · werewolf · tiles"]
+        GAMES["games/*<br/>chess · caro · werewolf · tiles (Carcassonne-like)"]
     end
     subgraph L2["Layer 2 — Contracts (pure, serializable)"]
         PROTO["tabula-protocol<br/>envelopes · versions · codecs"]
@@ -509,7 +509,7 @@ flowchart TB
 
     subgraph GAMES["Game modules (linked in)"]
         G1["chess"]
-        G2["cards"]
+        G2["caro"]
         G3["werewolf"]
         G4["tiles"]
     end
@@ -655,10 +655,12 @@ Rules for this boundary:
    session. It is authorized by an internal role, and access is logged.
 2. `Viewer::Spectator` may carry a delay for ranked/tournament play; the game decides what a
    delayed spectator sees, the platform enforces the delay by buffering.
-3. If a projection needs to hide something *and* prove something (e.g. "the deck really was
-   shuffled fairly"), use a commitment: publish `hash(deck_order || salt)` at match start and
-   reveal at match end. Verifiable, no secret leaked. **EXPERIMENT** — implement for cards in
-   Phase 3, generalize only if a second game needs it.
+3. If a projection needs to hide something *and* prove something later (e.g. "the shuffle really
+   was fair"), a commitment technique is available: publish `hash(secret || salt)` at match start
+   and reveal at match end. Verifiable, no secret leaked. **Not an active experiment** — it was
+   scoped for the now-removed Tiến Lên reference game (doc 09 §3.2); no game in the current
+   portfolio (chess, caro, tiles, werewolf) needs it. The technique remains available if a future
+   game's threat model requires it.
 
 ---
 
@@ -686,7 +688,7 @@ Longer discussion lives in the linked document.
 | **015** | Modular monolith: one repo, one workspace, few binaries, strong crate boundaries. | LOCK NOW | A solo/small team cannot afford distributed-systems overhead; crate boundaries preserve the split seams. | Split a service out when its scaling curve or deploy cadence genuinely diverges. Doc 06 §7. |
 | **016** | Voice is a separate plane: WebRTC + Opus, coturn, managed/proven SFU behind a `VoiceService` trait. | LOCK NOW (separation + trait) / EXPERIMENT (provider) | Media traffic must never share the game WebSocket's ordering or backpressure characteristics. | Provider choice is measured in Phase 8. Never write our own SFU for MVP. |
 | **017** | Assets ship as versioned, hashed **asset packs** per game, delivered from CDN and cached locally; not bundled into app releases. | LOCK NOW | Otherwise every app release grows with every game — fatal for mobile. Doc 04 §12. | Small games may inline a tiny pack; the mechanism stays. |
-| **018** | Design tokens are defined once in Rust (`tabula-design`) and adapted to CSS variables (Leptos) and a `Theme` struct (Macroquad). | LOCK NOW | One semantic language across DOM and canvas is the only way the product feels like one product. | Never; the adapters may change. |
+| **018** | Design tokens are defined once in Rust (`tabula-design`) and adapted to CSS variables (Leptos) and a `Theme` struct (Macroquad). | SUPERSEDED by ADR-027 (representation only) | One semantic language across DOM and canvas is the only way the product feels like one product. | See ADR-027; the semantic-authority intent remains locked. |
 | **019** | Tauri is optional and never required for gameplay on any platform. | LOCK NOW | Gameplay must not depend on a WebView. Tauri earns its place only for launcher/updater/native integration. | Evaluate Tauri desktop in Phase 5, Tauri mobile shell no earlier than Phase 6 exit. |
 | **020** | No Kubernetes, Kafka, NATS, service mesh, or microservices before a measured need. | LOCK NOW | Each adds an operational tax that a small team pays daily and benefits from rarely. | Doc 06 lists the specific symptom for each. |
 | **021** | Rules crates are `#![forbid(unsafe_code)]`; state hashing uses a canonical encoding, not `serde_json`. | LOCK NOW | Determinism and audit integrity. Doc 05 §7. | Never. |
@@ -694,6 +696,8 @@ Longer discussion lives in the linked document.
 | **023** | Matchmaking is a platform service consuming only `GameCapabilities` + seat requirements; it never reads game state. | LOCK NOW | Keeps matchmaking generic across all games. Doc 03 §15. | Game-specific matchmaking hints may be added as declarative capability fields, never as code. |
 | **024** | Ratings are computed by the platform from game-emitted `MatchOutcome` events. Games never compute ratings. | LOCK NOW | Ladder integrity must be uniform across games. | Never. |
 | **025** | `tabula-testkit` is a first-class crate; every game crate must pass its conformance suite. | LOCK NOW | Determinism and projection safety cannot be checked by review alone. Doc 02 §11. | Never. |
+| **026** | The deterministic rules kernel: `&mut State` reducer kept; `state_hash` takes a typed `RulesVersion`, not a `&str` tag; `DetRng` derivation pinned with committed stability vectors; a rejected input is a total no-op (R8). Long form: [`docs/adr/0026-deterministic-rules-kernel.md`](../adr/0026-deterministic-rules-kernel.md). | LOCK NOW | Resolves three places where docs 02 and 05 specified the state hash differently, and pins the algorithms doc 09 §4 freezes forever. | The `&mut` reducer is revisited only if the mechanical R2 check proves insufficient in practice; the frozen algorithms need a superseding ADR plus an `ENCODING_VERSION` bump. |
+| **027** | One semantic design-token authority: `tokens.toml` is authored; `tabula-design` is the generated typed Rust runtime; CSS and JSON are generated adapters. Long form: [`docs/adr/0027-authored-design-token-source.md`](../adr/0027-authored-design-token-source.md). | LOCK NOW | Resolves ADR-018's source-of-truth ambiguity without weakening the shared DOM/canvas semantic contract. | A different authored format requires a new superseding ADR preserving typed validation and deterministic adapters. |
 
 ---
 
@@ -715,7 +719,7 @@ opaque tagged game payloads on the wire
 one Tokio task per match, single-writer
 PostgreSQL as the only Stage-0 datastore
 one repo / one workspace / modular monolith
-design tokens defined once in Rust
+one authored design-token contract (`tokens.toml`), generated into a typed Rust runtime and adapters (ADR-027)
 voice on a separate plane behind a trait
 asset packs are per-game, versioned, hashed
 Rust-first
@@ -732,7 +736,6 @@ Tauri desktop shell value (Phase 5); Tauri mobile (post-Phase 6)
 voice provider: self-hosted SFU vs managed (Phase 8)
 snapshot cadence and event-log compaction policy (Phase 4, tune with data)
 sharded match executor vs task-per-match at high CCU (Phase 10)
-deck-commitment scheme for provable shuffles (Phase 3, cards)
 accessibility mirror ("Board Reader") depth (Phase 5)
 ```
 

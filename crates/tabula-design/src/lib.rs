@@ -1,110 +1,695 @@
-//! # `tabula-design` — semantic design tokens
+//! Semantic, renderer-neutral design tokens. (doc 04 §7–§8)
 //!
-//! > ## PHASE 2
-//!
-//! One semantic language across DOM and canvas is the only way the product feels
-//! like one product (ADR-018). Tokens are defined **once, in Rust**, and adapted
-//! to CSS custom properties (Leptos) and a resolved `Theme` struct (Macroquad).
-//!
-//! ## Generation, not duplication (doc 04 §8.1)
-//!
-//! ```text
-//! tokens.toml  ──xtask gen-tokens──┬─→ crates/tabula-design/src/generated.rs  (const Theme)
-//!  (source of                      ├─→ apps/web/style/tokens.css             (:root --sys-*)
-//!   truth, root)                   └─→ docs/ui/tokens.json                   (design tools)
-//! ```
-//!
-//! All three outputs are **committed**, and CI fails if they are stale.
-//! Four themes are generated: `light`, `dark`, `hc-light`, `hc-dark`.
-//!
-//! **No hex literals anywhere outside this crate.** `xtask check-no-raw-colors`
-//! greps for hex literals and `Color::new(` in `apps/` and `games/`.
-//!
-//! ## Three tiers (doc 04 §7.2)
-//!
-//! ```text
-//! Tier 1 — reference     raw values; NOBODY uses these directly
-//!                        ref.palette.warm.40, ref.type.display.size.3
-//! Tier 2 — system        what code and design use
-//!                        sys.color.surface, sys.color.turn-active, sys.shape.card
-//! Tier 3 — component     only where a component must deviate, with a written reason
-//!                        comp.button.container-color
-//! ```
-//!
-//! ## The token set (doc 04 §7.3)
-//!
-//! ```rust,ignore
-//! pub struct Theme {
-//!     pub color: ColorTokens, pub type_: TypeTokens, pub shape: ShapeTokens,
-//!     pub space: SpaceTokens, pub elevation: ElevationTokens, pub motion: MotionTokens,
-//!     pub state: StateLayerTokens, pub density: Density, pub focus: FocusTokens,
-//! }
-//! ```
-//!
-//! `ColorTokens` has the usual surface/brand/feedback roles **plus the ones that
-//! make a board legible** — these are the tokens that justify building a design
-//! system for a game platform rather than reusing a web one:
-//!
-//! ```rust,ignore
-//! pub turn_active: Color,    // whose turn it is
-//! pub turn_waiting: Color,
-//! pub legal_target: Color,   // a legal destination
-//! pub illegal_target: Color,
-//! pub selected: Color,
-//! pub last_action: Color,    // "the opponent just did this"
-//! pub threat: Color,         // check, danger, being voted
-//! pub hidden: Color,         // card backs, fog, unknown role
-//! pub team: [Color; 8],      // colorblind-safe set
-//! pub seat_marker: [Color; 8],
-//! ```
-//!
-//! Scales: space `0,2,4,8,12,16,20,24,32,40,48,64`; shape
-//! `none/xs/sm/md/lg/xl/full` plus semantic `card/board/token/sheet/button/chip`.
-//! Type roles: `display|headline|title|body|label` × `lg/md/sm`, plus `mono.md/sm`
-//! with **tabular figures required** — clocks that reflow while ticking are
-//! unreadable.
-//!
-//! ## Motion is semantic, not numeric (doc 04 §9.2)
-//!
-//! Presenters ask for `motion.piece-move`, never for `280ms ease-out`. The token
-//! carries a spring, a duration, an easing, and a stagger:
-//!
-//! ```text
-//! motion.piece-move    spring_weighty, slight arc, 0.94→1.0 scale on land
-//! motion.card-deal     spring_standard, dur_medium, 40 ms stagger per card
-//! motion.reveal        dur_long, two-phase lift + flip with a highlight sweep
-//! motion.phase-change  dur_long tonal wash + title card — MUST be skippable
-//! motion.invalid       120 ms 3-cycle shake + danger flash — NEVER a modal
-//! motion.win / .lose   dur_xlong choreographed, always skippable by tap
-//! ```
-//!
-//! `ReducedMotion` is a first-class token group, not an afterthought:
-//! `duration_scale`, `prefer_fade`, `disable_ambient`, and `keep_informative`
-//! (default **true** — a piece move carries information, so it is shortened
-//! rather than removed).
-//!
-//! ## Per-game accent (doc 04 §8.4)
-//!
-//! ```toml
-//! # games/chess/game.toml
-//! [theme]
-//! accent      = "#3E7B5A"   # tonal palette DERIVED AT BUILD TIME
-//! board_light = "sys.surface.container-lowest"
-//! mood        = "calm"      # calm | lively | tense — selects a motion profile
-//! ```
-//!
-//! Precomputing the tonal palette at build time is why this crate stays
-//! dependency-free: no runtime HCT colour maths. A game may supply source
-//! colours; it may **not** override semantic roles.
-//!
-//! ## Module layout when this becomes real
-//!
-//! ```text
-//! src/tokens.rs     Theme + every *Tokens struct  (hand-written, the schema)
-//! src/generated.rs  const Theme values, 4 schemes (GENERATED — do not edit)
-//! src/css.rs        #[cfg(feature = "css")]     CSS custom-property emitter
-//! src/runtime.rs    #[cfg(feature = "runtime")] resolved theme for the canvas
-//! src/color.rs      Color type + the small amount of maths we allow
-//! ```
+//! `tokens.toml` is validated and deterministically resolved into the generated
+//! themes in [`generated`]. Presentation consumes these semantic roles, never
+//! palette literals, font handles, or arbitrary visual constants.
 
 #![forbid(unsafe_code)]
+
+use serde::{Deserialize, Serialize};
+
+/// An sRGB colour used by semantic tokens and render commands.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Color {
+    red: u8,
+    green: u8,
+    blue: u8,
+    alpha: u8,
+}
+
+impl Color {
+    #[must_use]
+    pub const fn rgb(red: u8, green: u8, blue: u8) -> Self {
+        Self {
+            red,
+            green,
+            blue,
+            alpha: u8::MAX,
+        }
+    }
+
+    #[must_use]
+    pub const fn rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
+        Self {
+            red,
+            green,
+            blue,
+            alpha,
+        }
+    }
+
+    #[must_use]
+    pub const fn red(self) -> u8 {
+        self.red
+    }
+    #[must_use]
+    pub const fn green(self) -> u8 {
+        self.green
+    }
+    #[must_use]
+    pub const fn blue(self) -> u8 {
+        self.blue
+    }
+    #[must_use]
+    pub const fn alpha(self) -> u8 {
+        self.alpha
+    }
+}
+
+/// A finite, non-negative logical visual measurement established by token validation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct NonNegative(f32);
+
+impl NonNegative {
+    /// Constructs a bounded logical measurement.
+    pub fn new(value: f32) -> Result<Self, TokenValueError> {
+        (value.is_finite() && value >= 0.0)
+            .then_some(Self(value))
+            .ok_or(TokenValueError::NonNegative)
+    }
+    /// Used only by generated themes after `xtask` has validated the source.
+    #[must_use]
+    pub(crate) const fn generated(value: f32) -> Self {
+        assert!(value.is_finite() && value >= 0.0);
+        Self(value)
+    }
+    #[must_use]
+    pub const fn get(self) -> f32 {
+        self.0
+    }
+}
+
+/// A finite, strictly positive logical visual measurement established by token validation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Positive(f32);
+
+impl Positive {
+    /// Constructs a positive logical measurement.
+    pub fn new(value: f32) -> Result<Self, TokenValueError> {
+        (value.is_finite() && value > 0.0)
+            .then_some(Self(value))
+            .ok_or(TokenValueError::Positive)
+    }
+    /// Used only by generated themes after `xtask` has validated the source.
+    #[must_use]
+    pub(crate) const fn generated(value: f32) -> Self {
+        assert!(value.is_finite() && value > 0.0);
+        Self(value)
+    }
+    #[must_use]
+    pub const fn get(self) -> f32 {
+        self.0
+    }
+}
+
+/// An inclusive percentage, used for state layers and reduced-motion duration scaling.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Percent(u8);
+
+impl Percent {
+    /// Constructs a percentage in `0..=100`.
+    pub fn new(value: u8) -> Result<Self, TokenValueError> {
+        (value <= 100)
+            .then_some(Self(value))
+            .ok_or(TokenValueError::Percent)
+    }
+    /// Used only by generated themes after `xtask` has validated the source.
+    #[must_use]
+    pub(crate) const fn generated(value: u8) -> Self {
+        assert!(value <= 100);
+        Self(value)
+    }
+    #[must_use]
+    pub const fn get(self) -> u8 {
+        self.0
+    }
+}
+
+/// A token-value constructor rejected an invalid value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TokenValueError {
+    NonNegative,
+    Positive,
+    Percent,
+}
+
+impl core::fmt::Display for TokenValueError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_str(match self {
+            Self::NonNegative => "token value must be finite and non-negative",
+            Self::Positive => "token value must be finite and positive",
+            Self::Percent => "token percentage must be in 0..=100",
+        })
+    }
+}
+
+impl std::error::Error for TokenValueError {}
+
+/// The four supported accessibility-aware colour schemes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ThemeKind {
+    Light,
+    Dark,
+    HighContrastLight,
+    HighContrastDark,
+}
+
+/// The complete resolved semantic theme. It is cheap data, not a renderer handle. (I-10)
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Theme {
+    pub kind: ThemeKind,
+    pub color: ColorTokens,
+    pub type_: TypographyTokens,
+    pub shape: ShapeTokens,
+    pub space: SpaceTokens,
+    pub elevation: ElevationTokens,
+    pub motion: MotionTokens,
+    pub state: StateLayerTokens,
+    pub density: Density,
+    pub focus: FocusTokens,
+}
+
+impl Theme {
+    #[must_use]
+    pub const fn by_kind(kind: ThemeKind) -> Self {
+        match kind {
+            ThemeKind::Light => generated::LIGHT,
+            ThemeKind::Dark => generated::DARK,
+            ThemeKind::HighContrastLight => generated::HIGH_CONTRAST_LIGHT,
+            ThemeKind::HighContrastDark => generated::HIGH_CONTRAST_DARK,
+        }
+    }
+    /// Resolves the intentionally closed presentation text-style vocabulary.
+    #[must_use]
+    pub const fn text_style(self, token: TextStyleToken) -> TextStyle {
+        match token {
+            TextStyleToken::DisplayLg => self.type_.display.lg,
+            TextStyleToken::DisplayMd => self.type_.display.md,
+            TextStyleToken::DisplaySm => self.type_.display.sm,
+            TextStyleToken::HeadlineLg => self.type_.headline.lg,
+            TextStyleToken::HeadlineMd => self.type_.headline.md,
+            TextStyleToken::HeadlineSm => self.type_.headline.sm,
+            TextStyleToken::TitleLg => self.type_.title.lg,
+            TextStyleToken::TitleMd => self.type_.title.md,
+            TextStyleToken::TitleSm => self.type_.title.sm,
+            TextStyleToken::BodyLg => self.type_.body.lg,
+            TextStyleToken::BodyMd => self.type_.body.md,
+            TextStyleToken::BodySm => self.type_.body.sm,
+            TextStyleToken::LabelLg => self.type_.label.lg,
+            TextStyleToken::LabelMd => self.type_.label.md,
+            TextStyleToken::LabelSm => self.type_.label.sm,
+            TextStyleToken::MonoMd => self.type_.mono.md,
+            TextStyleToken::MonoSm => self.type_.mono.sm,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ColorTokens {
+    pub surface: Color,
+    pub surface_container: Color,
+    pub surface_container_high: Color,
+    pub on_surface: Color,
+    pub on_surface_variant: Color,
+    pub outline: Color,
+    pub primary: Color,
+    pub on_primary: Color,
+    pub success: Color,
+    pub on_success: Color,
+    pub danger: Color,
+    pub on_danger: Color,
+    pub turn_active: Color,
+    pub turn_waiting: Color,
+    pub legal_target: Color,
+    pub illegal_target: Color,
+    pub selected: Color,
+    pub last_action: Color,
+    pub threat: Color,
+    pub hidden: Color,
+    pub team: [Color; 8],
+    pub seat_marker: [Color; 8],
+}
+
+/// Renderer-neutral font-family roles, not font files or handles.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FontFamilyRole {
+    Display,
+    Text,
+    Mono,
+}
+
+/// One resolved semantic text style in logical units.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextStyle {
+    family: FontFamilyRole,
+    size: Positive,
+    line_height: Positive,
+    weight: FontWeight,
+    letter_spacing: LetterSpacing,
+    tabular_figures: bool,
+}
+
+impl TextStyle {
+    /// Constructs a text style after checking all metrics at the API boundary.
+    ///
+    /// @ai.role proof-constructor
+    /// @ai.domain design.typography
+    /// @ai.invariant valid-text-metrics
+    /// @ai.evidence tests::text_style_constructor_closes_metric_bypass
+    #[allow(clippy::doc_markdown)]
+    pub fn new(
+        family: FontFamilyRole,
+        size: Positive,
+        line_height: Positive,
+        weight: u16,
+        letter_spacing: f32,
+        tabular_figures: bool,
+    ) -> Result<Self, TextStyleError> {
+        Ok(Self {
+            family,
+            size,
+            line_height,
+            weight: FontWeight::new(weight)?,
+            letter_spacing: LetterSpacing::new(letter_spacing)?,
+            tabular_figures,
+        })
+    }
+
+    /// Used only by generated themes after source validation.
+    pub(crate) const fn generated(
+        family: FontFamilyRole,
+        size: f32,
+        line_height: f32,
+        weight: u16,
+        letter_spacing: f32,
+        tabular_figures: bool,
+    ) -> Self {
+        Self {
+            family,
+            size: Positive::generated(size),
+            line_height: Positive::generated(line_height),
+            weight: FontWeight::generated(weight),
+            letter_spacing: LetterSpacing::generated(letter_spacing),
+            tabular_figures,
+        }
+    }
+
+    #[must_use]
+    pub const fn family(self) -> FontFamilyRole {
+        self.family
+    }
+    #[must_use]
+    pub const fn size(self) -> Positive {
+        self.size
+    }
+    #[must_use]
+    pub const fn line_height(self) -> Positive {
+        self.line_height
+    }
+    #[must_use]
+    pub const fn weight(self) -> FontWeight {
+        self.weight
+    }
+    #[must_use]
+    pub const fn letter_spacing(self) -> LetterSpacing {
+        self.letter_spacing
+    }
+    #[must_use]
+    pub const fn tabular_figures(self) -> bool {
+        self.tabular_figures
+    }
+}
+
+/// A positive font weight accepted by a semantic text style.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FontWeight(u16);
+
+impl FontWeight {
+    pub fn new(value: u16) -> Result<Self, TextStyleError> {
+        (value > 0)
+            .then_some(Self(value))
+            .ok_or(TextStyleError::InvalidWeight)
+    }
+    pub(crate) const fn generated(value: u16) -> Self {
+        assert!(value > 0);
+        Self(value)
+    }
+    #[must_use]
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+}
+
+/// A finite tracking value; negative values are valid for display typography.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LetterSpacing(f32);
+
+impl LetterSpacing {
+    pub fn new(value: f32) -> Result<Self, TextStyleError> {
+        value
+            .is_finite()
+            .then_some(Self(value))
+            .ok_or(TextStyleError::NonFiniteLetterSpacing)
+    }
+    pub(crate) const fn generated(value: f32) -> Self {
+        assert!(value.is_finite());
+        Self(value)
+    }
+    #[must_use]
+    pub const fn get(self) -> f32 {
+        self.0
+    }
+}
+
+/// Failure while constructing a semantic text style.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextStyleError {
+    InvalidWeight,
+    NonFiniteLetterSpacing,
+}
+
+impl core::fmt::Display for TextStyleError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidWeight => "font weight must be positive",
+            Self::NonFiniteLetterSpacing => "letter spacing must be finite",
+        })
+    }
+}
+
+impl std::error::Error for TextStyleError {}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextSizes {
+    pub lg: TextStyle,
+    pub md: TextStyle,
+    pub sm: TextStyle,
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MonoTextSizes {
+    pub md: TextStyle,
+    pub sm: TextStyle,
+}
+/// Typography tokens chosen by semantic role and size. (doc 04 §7.4)
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TypographyTokens {
+    pub display: TextSizes,
+    pub headline: TextSizes,
+    pub title: TextSizes,
+    pub body: TextSizes,
+    pub label: TextSizes,
+    pub mono: MonoTextSizes,
+}
+
+/// The stable semantic text vocabulary accepted by normal presentation code.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextStyleToken {
+    DisplayLg,
+    DisplayMd,
+    DisplaySm,
+    HeadlineLg,
+    HeadlineMd,
+    HeadlineSm,
+    TitleLg,
+    TitleMd,
+    TitleSm,
+    BodyLg,
+    BodyMd,
+    BodySm,
+    LabelLg,
+    LabelMd,
+    LabelSm,
+    MonoMd,
+    MonoSm,
+}
+
+/// Reference and semantic shape roles; values are logical radii.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShapeTokens {
+    pub none: NonNegative,
+    pub xs: NonNegative,
+    pub sm: NonNegative,
+    pub md: NonNegative,
+    pub lg: NonNegative,
+    pub xl: NonNegative,
+    pub full: NonNegative,
+    pub card: NonNegative,
+    pub board: NonNegative,
+    pub token: NonNegative,
+    pub sheet: NonNegative,
+    pub button: NonNegative,
+    pub chip: NonNegative,
+}
+
+/// Complete named logical spacing scale; consumers never index an arbitrary array.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SpaceTokens {
+    pub none: u16,
+    pub xxs: u16,
+    pub xs: u16,
+    pub sm: u16,
+    pub md: u16,
+    pub lg: u16,
+    pub xl: u16,
+    pub xxl: u16,
+    pub xxxl: u16,
+    pub xxxxl: u16,
+    pub xxxxxl: u16,
+    pub xxxxxxl: u16,
+}
+
+/// Abstract elevation levels. Each renderer maps them to appropriate shadows or assets.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ElevationTokens {
+    pub low: u8,
+    pub medium: u8,
+    pub high: u8,
+}
+
+/// Motion tokens consumed by the presentation motion runtime. (I-10)
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MotionTokens {
+    pub instant: MotionDuration,
+    pub short: MotionDuration,
+    pub medium: MotionDuration,
+    pub long: MotionDuration,
+    pub xlong: MotionDuration,
+    pub stagger: MotionDuration,
+    pub spring_snappy: Spring,
+    pub spring_standard: Spring,
+    pub spring_weighty: Spring,
+    pub spring_bouncy: Spring,
+    pub reduced: ReducedMotion,
+    pub piece_move: MotionProfile,
+    pub card_deal: MotionProfile,
+    pub card_play: MotionProfile,
+    pub tile_place: MotionProfile,
+    pub token_drop: MotionProfile,
+    pub reveal: MotionProfile,
+    pub phase_change: MotionProfile,
+    pub turn_change: MotionProfile,
+    pub vote: MotionProfile,
+    pub score_update: MotionProfile,
+    pub win: MotionProfile,
+    pub lose: MotionProfile,
+    pub invalid: MotionProfile,
+    pub enter: MotionProfile,
+    pub exit: MotionProfile,
+    pub drag_lift: MotionProfile,
+    pub drag_drop: MotionProfile,
+}
+
+/// A non-negative duration in milliseconds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MotionDuration(u16);
+impl MotionDuration {
+    #[must_use]
+    pub const fn from_millis(value: u16) -> Self {
+        Self(value)
+    }
+
+    #[must_use]
+    pub const fn milliseconds(self) -> u16 {
+        self.0
+    }
+    #[must_use]
+    pub(crate) const fn generated(value: u16) -> Self {
+        Self(value)
+    }
+}
+
+/// Validated finite spring parameters. All components are strictly positive.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Spring {
+    pub stiffness: Positive,
+    pub damping: Positive,
+    pub mass: Positive,
+}
+
+/// A semantic reference to one generated spring family.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SpringKind {
+    Snappy,
+    Standard,
+    Weighty,
+    Bouncy,
+}
+/// Whether a profile communicates game state or is ambient/decorative.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MotionCategory {
+    Informative,
+    Ambient,
+}
+/// A compact, resolved semantic motion request. It is not an animation timeline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MotionProfile {
+    pub duration: MotionDuration,
+    pub spring: SpringKind,
+    pub stagger: MotionDuration,
+    pub category: MotionCategory,
+}
+
+/// A first-class policy for reducing motion without erasing informative changes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ReducedMotion {
+    pub duration_scale: Percent,
+    pub prefer_fade: bool,
+    pub disable_ambient: bool,
+    pub keep_informative: bool,
+}
+
+/// State-layer opacities. Percent prevents an invalid opacity entering a resolved theme.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StateLayerTokens {
+    pub hover: Percent,
+    pub focus: Percent,
+    pub press: Percent,
+    pub drag: Percent,
+    pub disabled_content: Percent,
+    pub disabled_container: Percent,
+}
+
+/// Logical density and accessibility target metrics, never physical pixels.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Density {
+    pub scale: Positive,
+    pub min_target: Positive,
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FocusTokens {
+    pub ring_width: Positive,
+    pub ring_color: Color,
+}
+
+pub mod generated;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[allow(clippy::float_arithmetic)]
+    fn ratio(a: Color, b: Color) -> f32 {
+        fn channel(value: u8) -> f32 {
+            let linear = f32::from(value) / 255.0;
+            if linear <= 0.04045 {
+                linear / 12.92
+            } else {
+                ((linear + 0.055) / 1.055).powf(2.4)
+            }
+        }
+        fn luminance(color: Color) -> f32 {
+            0.2126 * channel(color.red())
+                + 0.7152 * channel(color.green())
+                + 0.0722 * channel(color.blue())
+        }
+        let (a, b) = (luminance(a), luminance(b));
+        (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    #[test]
+    fn named_semantic_accessibility_pairs_meet_their_thresholds() {
+        for kind in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            let theme = Theme::by_kind(kind);
+            let c = theme.color;
+            for (name, foreground, background, minimum) in [
+                ("on-surface/surface", c.on_surface, c.surface, 4.5),
+                ("on-primary/primary", c.on_primary, c.primary, 4.5),
+                ("on-success/success", c.on_success, c.success, 4.5),
+                ("on-danger/danger", c.on_danger, c.danger, 4.5),
+                ("legal-target/surface", c.legal_target, c.surface, 3.0),
+                ("selected/surface", c.selected, c.surface, 3.0),
+                ("threat/surface", c.threat, c.surface, 3.0),
+                ("turn-active/surface", c.turn_active, c.surface, 3.0),
+                ("focus/surface", theme.focus.ring_color, c.surface, 3.0),
+            ] {
+                assert!(ratio(foreground, background) >= minimum, "{kind:?}: {name}");
+            }
+        }
+    }
+
+    #[test]
+    fn high_contrast_strengthens_critical_surface_pairs() {
+        for (standard, high_contrast) in [
+            (ThemeKind::Light, ThemeKind::HighContrastLight),
+            (ThemeKind::Dark, ThemeKind::HighContrastDark),
+        ] {
+            let normal = Theme::by_kind(standard);
+            let hc = Theme::by_kind(high_contrast);
+            assert!(
+                ratio(hc.color.on_surface, hc.color.surface)
+                    >= ratio(normal.color.on_surface, normal.color.surface)
+            );
+            assert!(
+                ratio(hc.focus.ring_color, hc.color.surface)
+                    >= ratio(normal.focus.ring_color, normal.color.surface)
+            );
+        }
+    }
+
+    #[test]
+    fn mono_styles_require_tabular_figures() {
+        let theme = Theme::by_kind(ThemeKind::Light);
+        assert!(theme.text_style(TextStyleToken::MonoMd).tabular_figures());
+        assert!(theme.text_style(TextStyleToken::MonoSm).tabular_figures());
+    }
+
+    #[test]
+    fn bounded_token_values_reject_invalid_boundaries() {
+        assert_eq!(Percent::new(101), Err(TokenValueError::Percent));
+        assert_eq!(NonNegative::new(-0.1), Err(TokenValueError::NonNegative));
+        assert_eq!(Positive::new(0.0), Err(TokenValueError::Positive));
+        assert_eq!(Positive::new(f32::NAN), Err(TokenValueError::Positive));
+    }
+
+    #[test]
+    fn generated_measurements_reject_non_finite_values() {
+        assert!(std::panic::catch_unwind(|| NonNegative::generated(f32::INFINITY)).is_err());
+        assert!(std::panic::catch_unwind(|| Positive::generated(f32::INFINITY)).is_err());
+    }
+
+    #[test]
+    fn text_style_constructor_closes_metric_bypass() {
+        let size = Positive::new(16.0).unwrap();
+        let line_height = Positive::new(24.0).unwrap();
+        assert_eq!(
+            TextStyle::new(FontFamilyRole::Text, size, line_height, 0, 0.0, false),
+            Err(TextStyleError::InvalidWeight)
+        );
+        assert_eq!(
+            TextStyle::new(
+                FontFamilyRole::Text,
+                size,
+                line_height,
+                400,
+                f32::NAN,
+                false
+            ),
+            Err(TextStyleError::NonFiniteLetterSpacing)
+        );
+    }
+}

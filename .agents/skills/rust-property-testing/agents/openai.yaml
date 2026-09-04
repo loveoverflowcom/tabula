@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Property Testing"
+  short_description: "Laws, generators, shrinking, and reachable state"
+  default_prompt: "Use $rust-property-testing to design generative, state-machine, metamorphic, or noninterference properties with honest generators and useful shrinking."

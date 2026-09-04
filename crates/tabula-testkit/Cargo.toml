@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 [dependencies]
 tabula-core     = { workspace = true }
@@ -16,6 +17,8 @@ blake3          = { workspace = true }
 thiserror       = { workspace = true }
 smallvec        = { workspace = true }
 proptest        = { workspace = true }
+crc32fast       = { workspace = true }
+ruzstd          = { workspace = true }
 
 # Phase-gated. The dependency graph in doc 01 §4 has testkit depending on
 # registry/match/presentation, but those crates do not become real until Phases 4

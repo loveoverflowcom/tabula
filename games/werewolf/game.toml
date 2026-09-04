@@ -1,0 +1,65 @@
+# Source-of-truth catalog manifest. (doc 02 §4.3)
+id            = "com.tabula.werewolf"
+version       = "0.1.0"
+rules_version = 1
+
+name_key        = "game.werewolf.name"
+tagline_key     = "game.werewolf.tagline"
+description_key = "game.werewolf.description"
+
+categories        = ["social_deduction"]
+complexity        = "medium"
+content_rating    = "everyone"
+estimated_minutes = [15, 45]
+tags              = ["social", "deduction", "hidden_role"]
+
+[seats]
+min            = 6
+max            = 20
+symmetric      = false
+fill_with_bots = false
+
+[capabilities]
+turn_model         = "phased"
+hidden_information = true
+spectators         = "game_controlled"
+voice              = "recommended"
+ranked             = "no"
+pausable           = false
+client_preview     = false
+durability         = "ack_after_apply"
+state_size         = "small"
+
+[capabilities.chat]
+channels    = [
+    { key = "table", kind = "table" },
+    { key = "wolves", kind = "team" },
+    { key = "dead", kind = "dead" },
+]
+game_scoped = true
+
+[capabilities.async_turns]
+supported = false
+
+[capabilities.reconnect]
+grace        = 60000
+notify_rules = true
+
+[capabilities.substitution]
+kind = "forbidden"
+
+[capabilities.apply_budget]
+max_apply_micros     = 2000
+max_events_per_input = 64
+
+[assets]
+pack    = "werewolf@0.1.0"
+size_kb = 0
+
+[rollout]
+enabled  = false
+audience = "staff"
+
+[theme]
+accent = "#8B1E1E"
+mood   = "tense"

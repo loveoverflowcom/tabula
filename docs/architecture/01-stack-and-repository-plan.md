@@ -131,10 +131,9 @@ tabula/
 │
 ├── games/
 │   ├── chess/                     # tabula-game-chess      (Game A — doc 08)
-│   ├── cards/                     # tabula-game-cards      (Game B)
-│   ├── werewolf/                  # tabula-game-werewolf   (Game C)
-│   ├── tiles/                     # tabula-game-tiles      (Game D)
-│   └── tictactoe/                 # tabula-game-tictactoe  (the SDK smoke test / template)
+│   ├── caro/                      # tabula-game-caro       (Game B — doc 08)
+│   ├── tiles/                     # tabula-game-tiles      (Game C — Carcassonne-like)
+│   └── werewolf/                  # tabula-game-werewolf   (Game D)
 │
 ├── apps/
 │   ├── game-client/               # Macroquad binary: native (desktop/mobile) + wasm target
@@ -367,18 +366,17 @@ Do **not** create all fifteen crates on day one. Create them when a phase needs 
 | Crate | Created in |
 |---|---|
 | `tabula-core`, `tabula-game-api`, `tabula-testkit` | Phase 0 |
-| `games/tictactoe` | Phase 0 |
 | `games/chess` | Phase 1 |
 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `apps/game-client` | Phase 2 |
-| `tabula-assets`, `games/cards` | Phase 3 |
+| `tabula-assets`, `games/caro`, `games/tiles` (rules + presentation), `games/werewolf` (rules/headless) | Phase 3 |
 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` | Phase 4 |
 | `tabula-lobby`, `apps/web`, `apps/admin` | Phase 5 |
-| `games/werewolf` | Phase 7 |
+| `games/werewolf` (presentation, social, and online) | Phase 7 |
 | `tabula-voice` | Phase 8 |
-| `games/tiles` | Phase 3 (rules) → Phase 9 (full) |
+| `games/tiles` (async polish) | Phase 9 |
 | `apps/desktop` (Tauri) | Phase 5, optional |
 
-Phase 0–3 therefore has **no server, no protocol, no database** — and four crates. That is
+Phase 0–3 therefore has **no server, no protocol, no database**. That is
 deliberate: the determinism and presentation contracts must be right before networking exists,
 because networking is much harder to change than to add.
 
@@ -404,7 +402,7 @@ flowchart BT
     TK["tabula-testkit"]
 
     GCHESS["games/chess"]
-    GCARDS["games/cards"]
+    GCARO["games/caro"]
     GWW["games/werewolf"]
     GTILES["games/tiles"]
 
@@ -428,18 +426,18 @@ flowchart BT
     RMQ --> ASSETS
 
     GCHESS --> GAPI
-    GCARDS --> GAPI
+    GCARO --> GAPI
     GWW --> GAPI
     GTILES --> GAPI
     GCHESS -.->|presentation feature| PRES
-    GCARDS -.->|presentation feature| PRES
+    GCARO -.->|presentation feature| PRES
     GWW -.->|presentation feature| PRES
     GTILES -.->|presentation feature| PRES
 
     REG --> GAPI
     REG --> PROTO
     REG --> GCHESS
-    REG --> GCARDS
+    REG --> GCARO
     REG --> GWW
     REG --> GTILES
 
@@ -640,7 +638,7 @@ disallowed-methods = [
 | `xtask gen-protocol-vectors` | Regenerate golden wire vectors (requires an explicit `--bump` with a version) |
 | `xtask pack-assets <game>` | Build, hash, and manifest a game's asset pack |
 | `xtask new-game <slug>` | Scaffold a game crate from the template (doc 02 §10) |
-| `xtask replay <file>` | Replay a golden or production replay locally and print divergence |
+| `xtask replay <file> [--diagnose]` | Replay a golden or production replay locally; optionally print evidence-strength diagnostics |
 | `xtask db reset` / `db migrate` | Local Postgres lifecycle |
 
 ---

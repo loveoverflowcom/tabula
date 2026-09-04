@@ -110,7 +110,7 @@ update in the same PR (doc 00 §7.1).
 | Modular monolith, one repo, one workspace | 015 | doc 01 §2, doc 06 §7 | A small team cannot afford distribution |
 | Voice on a separate plane behind a trait | 016 | `tabula-voice` | Media must never share the game socket's semantics |
 | Per-game versioned, hashed asset packs | 017 | `tabula-assets`, manifest | Otherwise app size grows with the catalog |
-| Design tokens defined once in Rust, adapted to CSS and Theme | 018 | `xtask gen-tokens`, no-raw-colors lint | One product feel across DOM and canvas |
+| One semantic design-token authority: authored `tokens.toml`, generated Rust runtime, CSS and JSON adapters | 018 → 027 | `xtask gen-tokens`, freshness gate, no-raw-colors lint | One product feel across DOM and canvas without ambiguous or hand-edited sources |
 | Tauri never required for gameplay | 019 | I-15, dependency matrix | Gameplay must not sit in a WebView |
 | No k8s/Kafka/NATS/mesh/microservices before a measured need | 020 | doc 06 §1.1 triggers | Operational tax paid daily, benefit received rarely |
 | `#![forbid(unsafe_code)]` in rules; canonical hashing | 021 | workspace lints | Determinism and audit integrity |
@@ -134,7 +134,6 @@ Direction chosen, details unproven. Build behind the seam; let measurement decid
 | Voice provider (self-hosted LiveKit vs managed) | Phase 8 | Cost per participant-minute, quality, ops burden | Swap adapters |
 | Snapshot cadence and log compaction policy | Phase 4→10 | Measure rehydration time and storage growth | Tune per `StateSizeClass` |
 | Sharded executor vs task-per-match | Phase 10 | Benchmark at 30k+ matches/process | Stay with task-per-match; add processes |
-| Deck commitment scheme for provable shuffles | Phase 3 | Does anyone care? Is verification usable? | Drop it; projection remains the guarantee |
 | Generated config forms from `Config` schema | Phase 5 | Try it for four games | Hand-written form per game |
 | Board Reader depth (status/actions vs full regions) | Phase 5 / 9 | Screen-reader user testing | Ship status+actions only |
 | Audio backend (Macroquad vs kira) | Phase 3 | Do we need buses/ducking for voice? | Adopt kira in the backend |
@@ -215,7 +214,7 @@ refinements, each with a reason.
 | `services/{gateway, game-server, matchmaking, ...}` from day one | **One `tabula-server` binary** composed of crates with the right seams; the gateway/worker split is Stage 2 with a written trigger | Three binaries triple the operational cost at Stage 0 for zero benefit; the split we will actually want is gateway↔worker, not per-feature (doc 01 §2.3) |
 | Games as one crate each | **One crate per game with a feature split** (`rules` / `presentation` / `bots`) | The server must compile a game without a renderer; this is I-1 in practice (doc 02 §1) |
 | Presentation abstraction justified by future renderer replacement | Also justified **immediately** by `renderer-headless`, which enables `RenderList` and golden-image tests in CI with no GPU | An abstraction whose only justification is a hypothetical future gets skipped or done badly (doc 04 §6.1) |
-| Poker/generic card game as reference Game B | **Tiến Lên** | Same architectural coverage (hidden hands, shuffle, projections) without building a betting economy; also fits the first market |
+| Poker/generic card game as reference Game B | **Caro** (simple product game / SDK-friction), with hidden-information coverage moved to **Werewolf** | A hidden-hand card game (originally Tiến Lên) was superseded in the reference portfolio: Werewolf already owns hidden information, event non-existence, and phased/many-seat validation more thoroughly than a card game would, and a second product game that is *not* hidden-information (Caro) is a more honest test of "is a second game cheap to add" than a game that reuses Werewolf's own dimension |
 | "Redis optional initially" | Redis deferred with **two explicit conditions**, and a Postgres placement table as the intermediate step | "Optional" tends to become "added anyway"; a numeric trigger plus a cheaper intermediate keeps it honest (doc 06 §4.3, §4.4) |
 | Accessibility as a design-system concern | Accessibility is **part of the game contract** (`describe()`), because a canvas is otherwise unreadable to assistive technology | Retrofitting a11y onto a canvas game is not possible; a per-game function is the only mechanism that works (doc 04 §10.4) |
 | Snapshot/event-log strategy | Store **both inputs and events**, with a stated 2× cost and three concrete reasons | Events are read far more often than replays run, and storing both is what makes production determinism drift *detectable* (doc 03 §9.5) |
@@ -231,7 +230,8 @@ Named so they can be watched.
 
 1. **A projection leak in a hidden-information game.** The highest-severity, hardest-to-detect
    failure. Mitigations: `SecretModel` scans on every PR, socket-level assertions in werewolf tests,
-   `View` types that cannot represent absent secrets, a second-engineer review of every
+   bag-order assertions in Tiles tests, `View` types that cannot represent absent secrets, a
+   second-engineer review of every
    `project`/`view_event`, and a leak bounty in the closed beta.
 2. **Silent determinism rot.** A `HashMap`, a float, an unordered iteration, or a behavior change
    without a `rules_version` bump. Mitigations: lints, `rules_hash`, state hashes in the log, and the
@@ -257,15 +257,16 @@ For the first agent or developer to pick this up:
 1. Read 00-architecture-principles.md fully. It is the contract.
 2. Read 07 §"Phase 0" and 01 §2–§6.
 3. Create the workspace exactly as in doc 01 §2.2, but ONLY the Phase-0 crates
-   (tabula-core, tabula-game-api, tabula-testkit, games/tictactoe, xtask).
+   (tabula-core, tabula-game-api, tabula-testkit, xtask).
 4. Write the enforcement FIRST: deps.toml + xtask check-deps + clippy.toml + CI.
    Then deliberately add a forbidden dependency and confirm CI fails. Remove it.
 5. Implement tabula-core exactly as sketched in doc 02 §2. Pin DetRng's algorithm and
    shuffle implementation; write the test that proves shuffle output is stable.
 6. Implement tabula-game-api exactly as sketched in doc 02 §3–§4.
-7. Implement games/tictactoe from doc 02 §10 (the code is nearly complete there).
+7. Implement initial game verification against the conformance suite (historical Phase 0
+   prototype lessons preserved in docs/legacy/tictactoe.md).
 8. Implement tabula-testkit's conformance! suite from doc 02 §11.1.
-9. Run `xtask selfplay tictactoe --matches 10000`. It must pass.
+9. Run `xtask selfplay chess --matches 10000`. It must pass.
 10. Only then proceed to Phase 1.
 ```
 

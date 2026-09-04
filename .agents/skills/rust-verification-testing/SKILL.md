@@ -1,175 +1,192 @@
 ---
 name: rust-verification-testing
-description: Turn Rust invariants and failure modes into reproducible evidence using semantic unit tests, edge partitions, property and state-machine tests, replay/determinism checks, fuzzing, differential or metamorphic tests, concurrency tools, and justified formal verification. Use when implementing or reviewing nontrivial Rust behavior, fixing regressions, testing hostile input, enumerating edge cases, proving rejected operations are transactional, validating parsers/serialization/migrations, checking deterministic state machines, replacing mock-heavy tests, or deciding whether proptest, fuzzing, Loom, Miri, Kani, Flux, Verus, Creusot, or Lean is warranted.
+description: Router and strategy skill for Rust verification. Turn a named invariant into the cheapest adequate evidence — semantic unit tests, edge partitions, property or state-machine tests, differential and replay oracles, fuzzing, mutation testing, bounded model checking, or concurrency tools — and report what remains unverified using precise evidence levels instead of the word "verified". Use when implementing or reviewing nontrivial Rust behavior, fixing a regression, testing hostile input, enumerating edge cases, proving rejected operations are transactional, validating parsers/serialization/migrations, checking deterministic state machines, replacing mock-heavy tests, or deciding which verification tool is warranted. Start here, then follow the router to a specialized skill.
 ---
 
-# Rust verification testing
+# Rust verification testing — the router
 
 Produce evidence for named claims, not a large count of tests. Read the nearest `AGENTS.md`, the
 repository's normative architecture, and its required commands before editing tests or manifests.
+
+This skill decides **what evidence a claim needs**. Five sibling skills say **how to produce it**:
+
+```text
+rust-property-testing              laws, generators, state machines, noninterference
+rust-replay-differential-testing   reference models, published data, exhaustive enumeration,
+                                   replay equivalence, cross-target comparison
+rust-mutation-testing              whether your assertions actually kill defects
+rust-kani                          bounded model checking, with an honest scope statement
+rust-fuzzing                       untrusted bytes: panics, hangs, resource exhaustion
+```
+
+and two prevention skills: `rust-types-as-proofs` (make the invalid state unrepresentable) and
+`rust-functional-core` (architecture that makes all of the above cheap).
 
 ## Start with a verification ledger
 
 Before implementation, write a small working table:
 
-| Claim/invariant | Failure mode | Cheapest oracle | Test level |
+| Claim/invariant | Failure mode | Cheapest oracle | Evidence level |
 |---|---|---|---|
-| rejected command preserves state | partial mutation | canonical bytes before/after | property |
+| rejected command preserves state | partial mutation | canonical bytes before/after | property over reachable states |
 | normalization is stable | repeated changes | `normalize(normalize(x)) == normalize(x)` | property |
-| projection hides secrets | unauthorized derivation | per-viewer secret scan | property/security |
+| move generation is legal | illegal games, divergence | published node counts | differential |
+| projection hides secrets | unauthorized derivation | noninterference under secret scrambling | property |
 
-Keep this table in working notes unless the repository has a durable location for it. Every added
-test must map to a claim. Every high-impact changed claim must have evidence or an explicit gap.
+Every added test maps to a claim. Every high-impact changed claim has evidence or a stated gap.
+
+## Never collapse evidence levels into "verified"
+
+These detect different failure classes and are **not** substitutes for one another. Name the level
+you actually have:
+
+```text
+documented              a sentence in a doc or comment
+type-enforced           the compiler refuses the alternative
+statically checked      a lint, a grep, or a repo gate refuses it
+example-tested          fixed inputs, hand-written expectations
+property-tested         generated inputs against a law, with shrinking
+differentially-tested   compared against an INDEPENDENT implementation or published data
+mutation-tested         plausible defects are demonstrably killed by the assertions
+bounded-model-checked   exhaustive over a symbolic domain, under stated assumptions and bounds
+cross-target-tested     identical results on another architecture or target
+production-observed     seen to hold on real traffic
+```
+
+Two rules that follow:
+
+- A claim with a *strong* level in one column and nothing elsewhere is not broadly verified. Say
+  which column.
+- Never write "crate X is formally verified". Write *"harness H proves proposition P over domain D
+  under assumptions A with bound B"*.
+
+## The router
+
+Answer in order; take the first row that matches.
+
+| If the claim is about… | and… | go to |
+|---|---|---|
+| an impossible state | you can change the type | `rust-types-as-proofs` — prevention beats detection |
+| a small pure rule | the input partition is small | plain table tests (below); no skill needed |
+| a **finite** state or input space | you can enumerate all of it | `rust-replay-differential-testing` §exhaustive — walk it; do not sample, do not model-check |
+| a specification that lives **outside** the code | published data or a standard exists | `rust-replay-differential-testing` §published data |
+| an optimised implementation | a slow obvious twin is writable | `rust-replay-differential-testing` §reference model |
+| a universal law over a large space | you can state the law without calling the code under test | `rust-property-testing` |
+| a reducer or state machine | sequences matter more than single states | `rust-property-testing` §state machines |
+| what an output does **not** depend on (secrecy) | — | `rust-property-testing` §noninterference |
+| deterministic replay, migration, or cross-platform equality | — | `rust-replay-differential-testing` §self-differential |
+| untrusted **bytes** and the risk is panic/hang/allocation | — | `rust-fuzzing` |
+| unbounded arithmetic or a domain too large to enumerate | an independent oracle exists inside the harness | `rust-kani` |
+| whether the tests you already have are strong | the module is pure and stable | `rust-mutation-testing` |
+| interleavings of concurrent operations | the concurrent code exists | Loom — see *Not yet* below |
+| undefined behaviour | there is `unsafe` or FFI | Miri — see *Not applicable* below |
+
+### Not applicable / not yet
+
+- **Miri** detects UB — out-of-bounds access, use-after-free, invalid values, aliasing violations,
+  data races — but only on executed paths, with no FFI, and its own documentation notes that for
+  pure safe Rust the compiler's type system already provides the guarantee. In a workspace that
+  forbids `unsafe` and has no FFI, Miri is ceremony. **Trigger to revisit:** an approved `unsafe`
+  exception, or a C/system dependency entering the graph.
+- **Loom** enumerates interleavings for small synchronization primitives. It needs concurrent code
+  to exist. **Trigger to revisit:** the first real actor/mailbox/cache with shared state — model
+  the cache and the drain interaction, with two threads and bounded operations, and state the
+  synchronization property before writing the model.
+- **Flux / Verus / Creusot / Aeneas+Lean** are worth their annotation and toolchain cost only when
+  a function contract or an inductive invariant is important enough to maintain in a proof
+  language. Record the proposition, the trusted base, and what simpler techniques failed first.
 
 ## Workflow
 
-1. Read public types, invariant comments/module docs, and existing tests before implementation.
-   Search by symbol and theorem-like test names; do not load an entire workspace by default.
-2. State the changed invariant and define the oracle independently of the new implementation.
-3. Partition inputs into valid, invalid, and boundary classes. Include hostile and degenerate
-   cases relevant to the type.
-4. Add the smallest deterministic regression/example test. For a bug, make it fail first when
-   practical and preserve the minimized counterexample.
-5. Add one property, model, replay, or differential check when examples cannot cover the space.
+1. Read public types, invariant comments/module docs, and existing tests before implementing.
+   Search by symbol and by theorem-like test name; do not load a whole workspace.
+2. State the changed invariant. Define the oracle **independently of the implementation**.
+3. Partition inputs: valid, invalid, boundary, hostile, degenerate.
+4. Add the smallest deterministic regression test. For a bug, make it fail first and keep the
+   minimized counterexample.
+5. Add one property, model, replay, or differential check where examples cannot cover the space.
 6. Implement or fix the behavior.
-7. Run the single test, then the module/crate suite, then repository checks in required order.
-8. Report exact commands/results and classify what remains unverified.
+7. Run targeted → module/crate → the repository's required gate, in the required order.
+8. Report exact commands and results, and classify what remains unverified.
 
 Do not add a test dependency or verification tool unless repository policy and phase gates allow
 it. Prefer existing harnesses. A planned future tool is not evidence.
-
-## Choose the cheapest adequate evidence
-
-Escalate only as needed:
-
-1. **Type checking and exhaustive matches** — impossible states and missing cases.
-2. **Semantic unit/table tests** — examples, exact errors, and boundary values.
-3. **Property/state-machine tests** — laws and long transition spaces.
-4. **Metamorphic/differential tests** — no simple oracle, but relations/reference exist.
-5. **Fuzzing** — hostile bytes, parsers, decoders, command sequences, no-panic claims.
-6. **Replay/cross-build checks** — determinism and compatibility.
-7. **Loom/Miri/sanitizers** — concurrency schedules or semantic/UB bugs.
-8. **Kani/Flux/Verus/Creusot/Aeneas+Lean** — critical bounded or deductive proof obligations.
-
-Read `references/strategy-catalog.md` only when choosing beyond ordinary unit tests or when the
-edge space is unclear.
 
 ## Design semantic tests
 
 - Assert structured outputs or exact domain error variants, not only `is_err()`.
 - Name tests like theorem statements: `legal_move_preserves_piece_count`.
-- Keep arrange/act/assert data small enough to inspect in one screen.
+- Keep arrange/act/assert small enough to inspect on one screen.
 - Prefer pure `#[test]` for rules. Use mocks only for adapter contracts.
-- Avoid asserting internal call counts unless ordering/call count is itself the contract.
-- Snapshot stable, reviewable output—not business truth that deserves structural assertions.
-- Treat human-readable error text separately from structured error semantics.
+- Do not assert internal call counts unless ordering or call count *is* the contract.
+- Snapshot stable reviewable output — never business truth that deserves a structural assertion.
+- **A check that can silently no-op is worse than no check.** `let Ok(x) = setup() else { return };`
+  in a conformance helper turns a failing invariant into a green tick. Panic instead.
 
 ## Edge-case partition
 
-Select only relevant classes, but inspect each category:
+Select the relevant classes; inspect each category:
 
 - empty, singleton, minimal valid, typical, maximal valid;
-- just below/at/just above each numeric, size, time, or version boundary;
+- just below / at / just above every numeric, size, time, or version boundary;
 - duplicates, permutations, unstable ordering, ties;
-- malformed/truncated/extra/unknown fields and invalid encodings;
-- integer overflow/underflow and allocation/length limits;
-- every enum/state transition, including terminal and repeated commands;
-- unauthorized viewers/actors and cross-resource witness reuse;
-- retries, duplicate delivery, cancellation, timeout, and recovery;
+- malformed, truncated, extra, unknown fields; invalid encodings;
+- integer overflow/underflow; allocation and length limits;
+- every enum and state transition, including terminal and repeated commands;
+- unauthorized viewers/actors; cross-resource witness reuse;
+- retries, duplicate delivery, cancellation, timeout, recovery;
 - old/new schema versions and migration failure;
-- Unicode normalization, byte/UTF-8/UTF-16 offsets when text is involved;
-- identical seed/input replay across relevant targets/build modes.
+- Unicode normalization and byte/UTF-8 offsets when text is involved;
+- identical seed/input replay across relevant targets and build modes.
 
-Do not manufacture irrelevant cases. Derive partitions from constructors, state enums, protocol
-versions, and security boundaries.
+Derive partitions from constructors, state enums, protocol versions, and security boundaries — not
+from imagination.
 
-## Test laws, not generated noise
-
-High-value property shapes:
-
-| Law | Shape |
-|---|---|
-| Round trip | `decode(encode(x)) == x` for supported values |
-| Idempotence | `f(f(x)) == f(x)` |
-| Invariant preservation | `valid(s) && ok(step) => valid(s')` |
-| Transactional rejection | `Err(step) => bytes(s') == bytes(s)` |
-| Determinism | same state/input/context gives identical outcome and bytes |
-| Replay equivalence | live evolution equals replayed ordered facts |
-| Projection noninterference | changing hidden data does not change unauthorized view |
-| Symmetry | relabeling equivalent actors transforms results consistently |
-| Model agreement | optimized implementation equals a small reference model |
-
-Build valid generators through public constructors. Generate raw invalid inputs separately. Ensure
-shrinkers preserve validity; otherwise minimized failures may be meaningless.
-
-## State transitions and hostile input
-
-For reducers/game rules, generate action sequences, not just isolated states. At every accepted
-step assert invariants; at every rejected step assert state byte identity and absence of emitted
-facts/effects unless the contract explicitly says otherwise. Include repeated terminal actions,
-out-of-turn actors, invalid identifiers/indices, duplicate sequence numbers, and timer/admin/seat
-inputs where the state machine supports them.
-
-For parsers/decoders, combine:
-
-- table tests for grammar and diagnostics;
-- round-trip properties for canonical values;
-- arbitrary-byte fuzzing for no panic and bounded resource behavior;
-- fixture tests for every supported schema/protocol version.
+Read `references/strategy-catalog.md` when the edge space is unclear or when choosing between
+oracle shapes.
 
 ## Keep the oracle independent
 
-Do not compute expected output by calling the implementation under test through a second path.
-Use one of:
+Never compute the expected output by calling the implementation through a second path. Use:
 
 - a simpler obviously-correct reference model;
 - an algebraic relation;
-- a canonical fixture generated by a separately reviewed process;
-- a previous compatible version for differential tests;
+- a canonical fixture produced by a separately reviewed process;
+- published external data;
+- a previous compatible version;
 - a domain invariant checked without duplicating the transition algorithm.
 
-When a property fails, record seed/input and preserve the minimized counterexample as a focused
-regression test before broad refactoring.
-
-## Verification commands
-
-Run targeted-to-broad and keep output attributable:
-
-```text
-single test → module/crate tests → property/replay/fuzz check → crate lint/check → workspace gate
-```
-
-For Tabula, use the commands required by `AGENTS.md`; game changes also require the conformance
-and secret projection checks. Do not reorder or skip a mandated gate silently. If a slow or
-unavailable tool was not run, say so precisely.
+When a property fails, record the seed and preserve the minimized counterexample **as a committed
+regression test** before refactoring.
 
 ## Formal verification discipline
 
-Formal tools need a written proof target, model boundary, and assumptions. Before adopting one,
-record:
+Before adopting any formal tool, record: the proposition and the impact if false; the modeled
+input/state size and the excluded behavior; trusted code and toolchain assumptions; the
+reproduction command and expected artifact; CI or scheduled ownership; and which simpler techniques
+were insufficient. Tool names alone do not strengthen confidence. See `rust-kani` for the bounded
+case.
 
-- proposition and impact if false;
-- modeled inputs/state size and excluded behavior;
-- trusted code/toolchain assumptions;
-- reproduction command and expected artifact;
-- CI or scheduled ownership;
-- simpler techniques that were insufficient.
+## Where each check belongs
 
-Kani is useful for bounded state exploration; Flux for refinement contracts; Verus/Creusot for
-deductive Rust-like proofs; Aeneas+Lean when Lean-level reasoning is worth the translation cost.
-Tool names alone do not strengthen confidence.
+| Tier | Contains | Rule |
+|---|---|---|
+| **Every PR** | fmt, lints, unit + table tests, conformance, architecture gates, compile-fail tests, small property suites with pinned case counts, fast published-data oracles, cross-target *builds* | cheap, deterministic, attributable |
+| **Nightly** | large property runs, long randomized/self-play campaigns, mutation campaigns, fuzz runs, model-checking harnesses, deep reference-data levels, cross-target *hash comparison* | bounded, scheduled, owned |
+| **Phase exit / release** | manual scenario scripts, full corpus re-verification, full mutation campaign with every survivor classified, security/projection audit, migration checks, load tests | gates, not habits |
+
+Do not put research-grade verification in the per-PR tier. Equally, do not demote a fast oracle
+that is the *only* detector for an important defect class — measure before moving anything.
 
 ## Completion report
 
-Return a concise ledger:
-
 ```text
-Invariant: ...
-Evidence: test/property/tool → command → pass/fail
+Invariant:            ...
+Evidence level:       <from the list above>  (never the bare word "verified")
+Evidence:             test/property/tool → exact command → pass/fail
 Edge classes covered: ...
-Not run / residual risk: ...
+Not run / residual:   ...
 ```
 
 Use `rust-ai-doc-contracts` only when a durable law-to-test link will materially reduce future
-discovery cost. Keep ordinary test explanations in theorem-like names and assertions.
-
+discovery cost. Keep ordinary explanations in theorem-like test names and assertions.
