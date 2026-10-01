@@ -24,11 +24,22 @@ Expressive contract for issue #49: screen 13 owns user settings, while screen 22
 the component showcase. Its editable preview consumes the generated CSS tokens and
 contains sample data only; runtime work still follows the phase gates.
 
-## Screens to specify (Phase 5)
+Issue #50's [discovery/setup contract](screens/discovery.md) specifies screen 01
+(resume-first home and Library), 02 (game detail), and 03 (new match setup).
+[Source availability](screens/discovery-availability.md) separates current local
+launch paths from proposed catalog/configuration adapters; the
+[verification ledger](screens/discovery-verification.md) tracks documented and
+executed evidence separately. The Phase-4 registry and Phase-5 shell gates remain
+required for runtime implementation.
+
+## Phase-5 screen coverage
+
+Home/catalog, detail/setup and settings now have specifications in the screen
+index. Their presence does not establish running routes. The remaining shell
+screen inventory from doc 04 is:
 
 ```text
-home  login  register  catalog  game-detail  room-browser  room-detail
-queue  match-result  profile  friends  settings
+login  register  room-browser  room-detail  queue  match-result  profile  friends
 ```
 
 Plus the in-canvas screens the game runtime owns (doc 04 §3.4): branded loader,
