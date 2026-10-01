@@ -1,0 +1,22 @@
+[
+  {
+    "id": "17-rooms",
+    "title": "Phòng chơi",
+    "file": "screens/17-rooms.svg"
+  },
+  {
+    "id": "18-room",
+    "title": "Phòng chờ",
+    "file": "screens/18-room.svg"
+  },
+  {
+    "id": "19-queue",
+    "title": "Ghép trận",
+    "file": "screens/19-queue.svg"
+  },
+  {
+    "id": "mobile-states",
+    "title": "Mobile & trạng thái",
+    "file": "screens/mobile-states.svg"
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "08-xiangqi",
+    "title": "Xiangqi Chơi",
+    "file": "screens/08-xiangqi.svg"
+  },
+  {
+    "id": "12-learn",
+    "title": "Xiangqi Gia sư",
+    "file": "screens/12-learn.svg"
+  },
+  {
+    "id": "14-resources",
+    "title": "Tài nguyên",
+    "file": "screens/14-resources.svg"
+  },
+  {
+    "id": "11-xiangqi-analysis",
+    "title": "Xiangqi Phân tích",
+    "file": "screens/11-xiangqi-analysis.svg"
+  },
+  {
+    "id": "mobile-states",
+    "title": "Mobile & trạng thái",
+    "file": "screens/mobile-states.svg"
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "13-settings",
+    "title": "Cài đặt",
+    "file": "screens/13-settings.svg"
+  },
+  {
+    "id": "22-design-system",
+    "title": "Bộ thành phần",
+    "file": "screens/22-design-system.svg"
+  },
+  {
+    "id": "mobile-states",
+    "title": "Mobile & trạng thái",
+    "file": "screens/mobile-states.svg"
+  },
+  {
+    "id": "23-theme-parity",
+    "title": "Four canonical schemes",
+    "file": "screens/23-theme-parity.svg"
+  }
+]

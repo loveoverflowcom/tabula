@@ -1,0 +1,54 @@
+{
+  "source_commit": "44f6b74e07648abc7191363d7582efc1fceab262",
+  "min_target_dp": 44,
+  "focus_ring_dp": 3,
+  "focus_color": "primary",
+  "components": {
+    "ActionButton": [
+      "default",
+      "hover",
+      "pressed",
+      "disabled",
+      "focused",
+      "busy"
+    ],
+    "CapabilityBadge": [
+      "current",
+      "planned",
+      "unavailable",
+      "stale"
+    ],
+    "Field": [
+      "default",
+      "focus",
+      "validating",
+      "invalid",
+      "disabled"
+    ],
+    "CompactRow": [
+      "default",
+      "selected",
+      "focus"
+    ],
+    "DialogSheet": [
+      "open",
+      "busy",
+      "error",
+      "focus_restore"
+    ],
+    "BoardStatus": [
+      "turn_active",
+      "turn_waiting",
+      "selected",
+      "legal_target",
+      "last_action",
+      "offline"
+    ]
+  },
+  "owners": {
+    "theme": "tokens.toml + xtask",
+    "web_shell": "Leptos after Phase5 gate",
+    "gameplay": "Macroquad + RenderList",
+    "game_state": "GameRules authority, never local mockcontroller"
+  }
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "15-login",
+    "title": "Đăng nhập",
+    "file": "screens/15-login.svg"
+  },
+  {
+    "id": "16-register",
+    "title": "Tạo tài khoản",
+    "file": "screens/16-register.svg"
+  },
+  {
+    "id": "20-profile",
+    "title": "Hồ sơ",
+    "file": "screens/20-profile.svg"
+  },
+  {
+    "id": "21-friends",
+    "title": "Bạn bè",
+    "file": "screens/21-friends.svg"
+  },
+  {
+    "id": "mobile-states",
+    "title": "Mobile & trạng thái",
+    "file": "screens/mobile-states.svg"
+  }
+]

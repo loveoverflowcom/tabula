@@ -1,0 +1,1 @@
+Read-only snapshots of audited tokens.toml/generated CSS/JSON@44f6b74e07648abc7191363d7582efc1fceab262. Product SSOT remains repository-root tokens.toml. Boardart/compactlayout are reference extensions, not generatedtokens. Focus3dp/minTarget44dp; any componenttokenproposal needs an actualconsumer and writtenreason.

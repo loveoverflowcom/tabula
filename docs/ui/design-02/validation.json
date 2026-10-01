@@ -1,0 +1,73 @@
+{
+  "svg_parse": "passed: all 31 SVG sources parse (24 desktop, 7 mobile)",
+  "png_dimensions": "passed: all 21 PNG previews are 1440×1000; exactly 3 per pack",
+  "references": "passed: all 31 screen-index referenced paths exist; embedded viewer indexes match",
+  "visual_review": "passed: final Material 3 Expressive static visual QA approved for all 21 PNG previews and all 31 SVG sources (24 desktop, including supplemental theme parity; 7 mobile)",
+  "runtime": "not run",
+  "browser": "not run",
+  "production_changes": "none",
+  "packs": [
+    {
+      "pack": "01-foundation",
+      "screen_sources": 4,
+      "desktop_screen_sources": 3,
+      "mobile_screen_sources": 1,
+      "png_previews": 3
+    },
+    {
+      "pack": "02-discovery",
+      "screen_sources": 4,
+      "desktop_screen_sources": 3,
+      "mobile_screen_sources": 1,
+      "png_previews": 3
+    },
+    {
+      "pack": "03-gameplay",
+      "screen_sources": 5,
+      "desktop_screen_sources": 4,
+      "mobile_screen_sources": 1,
+      "png_previews": 3
+    },
+    {
+      "pack": "04-replay",
+      "screen_sources": 4,
+      "desktop_screen_sources": 3,
+      "mobile_screen_sources": 1,
+      "png_previews": 3
+    },
+    {
+      "pack": "05-xiangqi",
+      "screen_sources": 5,
+      "desktop_screen_sources": 4,
+      "mobile_screen_sources": 1,
+      "png_previews": 3
+    },
+    {
+      "pack": "06-accounts",
+      "screen_sources": 5,
+      "desktop_screen_sources": 4,
+      "mobile_screen_sources": 1,
+      "png_previews": 3
+    },
+    {
+      "pack": "07-lobby",
+      "screen_sources": 4,
+      "desktop_screen_sources": 3,
+      "mobile_screen_sources": 1,
+      "png_previews": 3
+    }
+  ],
+  "visual_revision": "Approved Material 3 Expressive revision finalized across 24 desktop and 7 mobile SVG sources; all 21 PNG previews passed final static visual QA",
+  "offline_navigator": "Inline classic JS mirrors editable viewer.mjs; no module fetch required",
+  "source_syntax": "passed: node --check for all 14 MJS files",
+  "rust": "not run",
+  "totals": {
+    "svg_sources": 31,
+    "desktop_svg_sources": 24,
+    "mobile_svg_sources": 7,
+    "png_previews": 21,
+    "png_width": 1440,
+    "png_height": 1000,
+    "mjs_syntax_checks": 14
+  }
+}

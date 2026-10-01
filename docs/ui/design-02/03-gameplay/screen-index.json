@@ -1,0 +1,27 @@
+[
+  {
+    "id": "04-chess",
+    "title": "Chess HUD",
+    "file": "screens/04-chess.svg"
+  },
+  {
+    "id": "05-caro",
+    "title": "Caro / Werewolf / Recovery",
+    "file": "screens/05-caro.svg"
+  },
+  {
+    "id": "06-tiles",
+    "title": "Tiles HUD",
+    "file": "screens/06-tiles.svg"
+  },
+  {
+    "id": "07-werewolf",
+    "title": "Ma sói adapter",
+    "file": "screens/07-werewolf.svg"
+  },
+  {
+    "id": "mobile-states",
+    "title": "Mobile & trạng thái",
+    "file": "screens/mobile-states.svg"
+  }
+]

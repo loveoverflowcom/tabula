@@ -1,0 +1,22 @@
+[
+  {
+    "id": "01-library",
+    "title": "Thư viện game",
+    "file": "screens/01-library.svg"
+  },
+  {
+    "id": "02-game-detail",
+    "title": "Chi tiết Cờ vua",
+    "file": "screens/02-game-detail.svg"
+  },
+  {
+    "id": "03-new-match",
+    "title": "Thiết lập local",
+    "file": "screens/03-new-match.svg"
+  },
+  {
+    "id": "mobile-states",
+    "title": "Mobile & trạng thái",
+    "file": "screens/mobile-states.svg"
+  }
+]

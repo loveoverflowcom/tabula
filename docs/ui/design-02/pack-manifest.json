@@ -1,0 +1,131 @@
+[
+  {
+    "pack": "01-foundation",
+    "zip_path": "packages/01-foundation.zip",
+    "zip_bytes": 388034,
+    "sha256": "be886a95a875ca8c3920659572f74a306207c557de345e27bdf95de1ec567fc2",
+    "sources": 4,
+    "screen_files": [
+      "screens/13-settings.svg",
+      "screens/22-design-system.svg",
+      "screens/23-theme-parity.svg",
+      "screens/mobile-states.svg"
+    ],
+    "preview_files": [
+      "previews/13-settings.png",
+      "previews/22-design-system.png",
+      "previews/mobile-states.png"
+    ]
+  },
+  {
+    "pack": "02-discovery",
+    "zip_path": "packages/02-discovery.zip",
+    "zip_bytes": 377035,
+    "sha256": "dbc747ed5e3044bb43c4a123037401fb19cca92bc4201803c19820fe888a5c8c",
+    "sources": 4,
+    "screen_files": [
+      "screens/01-library.svg",
+      "screens/02-game-detail.svg",
+      "screens/03-new-match.svg",
+      "screens/mobile-states.svg"
+    ],
+    "preview_files": [
+      "previews/01-library.png",
+      "previews/02-game-detail.png",
+      "previews/mobile-states.png"
+    ]
+  },
+  {
+    "pack": "03-gameplay",
+    "zip_path": "packages/03-gameplay.zip",
+    "zip_bytes": 364555,
+    "sha256": "55fe90002b5215721f7b438db581c3dc9c1b769a7060fa74d20eb13a4fac868a",
+    "sources": 5,
+    "screen_files": [
+      "screens/04-chess.svg",
+      "screens/05-caro.svg",
+      "screens/06-tiles.svg",
+      "screens/07-werewolf.svg",
+      "screens/mobile-states.svg"
+    ],
+    "preview_files": [
+      "previews/04-chess.png",
+      "previews/06-tiles.png",
+      "previews/mobile-states.png"
+    ]
+  },
+  {
+    "pack": "04-replay",
+    "zip_path": "packages/04-replay.zip",
+    "zip_bytes": 328408,
+    "sha256": "0a9b8857673c7e0e919aca5c5d6ecaa7855278fc2c190100c10e78ca800bd70b",
+    "sources": 4,
+    "screen_files": [
+      "screens/09-result.svg",
+      "screens/10-history.svg",
+      "screens/11-analysis.svg",
+      "screens/mobile-states.svg"
+    ],
+    "preview_files": [
+      "previews/09-result.png",
+      "previews/10-history.png",
+      "previews/mobile-states.png"
+    ]
+  },
+  {
+    "pack": "05-xiangqi",
+    "zip_path": "packages/05-xiangqi.zip",
+    "zip_bytes": 427313,
+    "sha256": "ec742370ac7d10e4cf5818753877ad32749d8fed1da9a17421f0a5f9f2e5abfa",
+    "sources": 5,
+    "screen_files": [
+      "screens/08-xiangqi.svg",
+      "screens/11-xiangqi-analysis.svg",
+      "screens/12-learn.svg",
+      "screens/14-resources.svg",
+      "screens/mobile-states.svg"
+    ],
+    "preview_files": [
+      "previews/08-xiangqi.png",
+      "previews/11-xiangqi-analysis.png",
+      "previews/mobile-states.png"
+    ]
+  },
+  {
+    "pack": "06-accounts",
+    "zip_path": "packages/06-accounts.zip",
+    "zip_bytes": 301231,
+    "sha256": "c92bb12b9b5cf149b52a00f383061361c5c34a80761cb569b354d0db02374a16",
+    "sources": 5,
+    "screen_files": [
+      "screens/15-login.svg",
+      "screens/16-register.svg",
+      "screens/20-profile.svg",
+      "screens/21-friends.svg",
+      "screens/mobile-states.svg"
+    ],
+    "preview_files": [
+      "previews/15-login.png",
+      "previews/20-profile.png",
+      "previews/mobile-states.png"
+    ]
+  },
+  {
+    "pack": "07-lobby",
+    "zip_path": "packages/07-lobby.zip",
+    "zip_bytes": 330855,
+    "sha256": "399da8327450813ed2f15a9ca9954a5ae18a4bdbbe680bbd4d8c67c44b520505",
+    "sources": 4,
+    "screen_files": [
+      "screens/17-rooms.svg",
+      "screens/18-room.svg",
+      "screens/19-queue.svg",
+      "screens/mobile-states.svg"
+    ],
+    "preview_files": [
+      "previews/17-rooms.png",
+      "previews/18-room.png",
+      "previews/mobile-states.png"
+    ]
+  }
+]

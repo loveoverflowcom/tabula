@@ -1,0 +1,140 @@
+[
+  {
+    "input_screen": "01-library",
+    "pack": "02-discovery",
+    "design_source": "02-discovery/screens/01-library.svg",
+    "title": "Thư viện game"
+  },
+  {
+    "input_screen": "02-game-detail",
+    "pack": "02-discovery",
+    "design_source": "02-discovery/screens/02-game-detail.svg",
+    "title": "Chi tiết Cờ vua"
+  },
+  {
+    "input_screen": "03-new-match",
+    "pack": "02-discovery",
+    "design_source": "02-discovery/screens/03-new-match.svg",
+    "title": "Thiết lập local"
+  },
+  {
+    "input_screen": "04-chess",
+    "pack": "03-gameplay",
+    "design_source": "03-gameplay/screens/04-chess.svg",
+    "title": "Chess HUD"
+  },
+  {
+    "input_screen": "05-caro",
+    "pack": "03-gameplay",
+    "design_source": "03-gameplay/screens/05-caro.svg",
+    "title": "Caro / Werewolf / Recovery"
+  },
+  {
+    "input_screen": "06-tiles",
+    "pack": "03-gameplay",
+    "design_source": "03-gameplay/screens/06-tiles.svg",
+    "title": "Tiles HUD"
+  },
+  {
+    "input_screen": "07-werewolf",
+    "pack": "03-gameplay",
+    "design_source": "03-gameplay/screens/07-werewolf.svg",
+    "title": "Ma sói adapter"
+  },
+  {
+    "input_screen": "08-xiangqi",
+    "pack": "05-xiangqi",
+    "design_source": "05-xiangqi/screens/08-xiangqi.svg",
+    "title": "Xiangqi Chơi"
+  },
+  {
+    "input_screen": "09-result",
+    "pack": "04-replay",
+    "design_source": "04-replay/screens/09-result.svg",
+    "title": "Kết quả ván"
+  },
+  {
+    "input_screen": "10-history",
+    "pack": "04-replay",
+    "design_source": "04-replay/screens/10-history.svg",
+    "title": "Ván của tôi"
+  },
+  {
+    "input_screen": "11-analysis",
+    "pack": "04-replay",
+    "design_source": "04-replay/screens/11-analysis.svg",
+    "title": "Replay core"
+  },
+  {
+    "input_screen": "12-learn",
+    "pack": "05-xiangqi",
+    "design_source": "05-xiangqi/screens/12-learn.svg",
+    "title": "Xiangqi Gia sư"
+  },
+  {
+    "input_screen": "13-settings",
+    "pack": "01-foundation",
+    "design_source": "01-foundation/screens/13-settings.svg",
+    "title": "Cài đặt"
+  },
+  {
+    "input_screen": "14-resources",
+    "pack": "05-xiangqi",
+    "design_source": "05-xiangqi/screens/14-resources.svg",
+    "title": "Tài nguyên"
+  },
+  {
+    "input_screen": "15-login",
+    "pack": "06-accounts",
+    "design_source": "06-accounts/screens/15-login.svg",
+    "title": "Đăng nhập"
+  },
+  {
+    "input_screen": "16-register",
+    "pack": "06-accounts",
+    "design_source": "06-accounts/screens/16-register.svg",
+    "title": "Tạo tài khoản"
+  },
+  {
+    "input_screen": "17-rooms",
+    "pack": "07-lobby",
+    "design_source": "07-lobby/screens/17-rooms.svg",
+    "title": "Phòng chơi"
+  },
+  {
+    "input_screen": "18-room",
+    "pack": "07-lobby",
+    "design_source": "07-lobby/screens/18-room.svg",
+    "title": "Phòng chờ"
+  },
+  {
+    "input_screen": "19-queue",
+    "pack": "07-lobby",
+    "design_source": "07-lobby/screens/19-queue.svg",
+    "title": "Ghép trận"
+  },
+  {
+    "input_screen": "20-profile",
+    "pack": "06-accounts",
+    "design_source": "06-accounts/screens/20-profile.svg",
+    "title": "Hồ sơ"
+  },
+  {
+    "input_screen": "21-friends",
+    "pack": "06-accounts",
+    "design_source": "06-accounts/screens/21-friends.svg",
+    "title": "Bạn bè"
+  },
+  {
+    "input_screen": "22-design-system",
+    "pack": "01-foundation",
+    "design_source": "01-foundation/screens/22-design-system.svg",
+    "title": "Bộ thành phần"
+  },
+  {
+    "input_screen": "11-xiangqi-analysis",
+    "pack": "05-xiangqi",
+    "design_source": "05-xiangqi/screens/11-xiangqi-analysis.svg",
+    "title": "Xiangqi Phân tích"
+  }
+]

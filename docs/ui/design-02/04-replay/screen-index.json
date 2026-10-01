@@ -1,0 +1,22 @@
+[
+  {
+    "id": "09-result",
+    "title": "Kết quả ván",
+    "file": "screens/09-result.svg"
+  },
+  {
+    "id": "10-history",
+    "title": "Ván của tôi",
+    "file": "screens/10-history.svg"
+  },
+  {
+    "id": "11-analysis",
+    "title": "Replay core",
+    "file": "screens/11-analysis.svg"
+  },
+  {
+    "id": "mobile-states",
+    "title": "Mobile & trạng thái",
+    "file": "screens/mobile-states.svg"
+  }
+]
