@@ -19,6 +19,11 @@ One file per screen: layout at each breakpoint (`compact` <600dp, `medium`
 600–904, `expanded` 905–1439, `large` ≥1440), states (loading, empty, error,
 success), the keyboard path, and the a11y announcements.
 
+The [foundation and screen index](screens/README.md) defines the compact Material 3
+Expressive contract for issue #49: screen 13 owns user settings, while screen 22 is
+the component showcase. Its editable preview consumes the generated CSS tokens and
+contains sample data only; runtime work still follows the phase gates.
+
 ## Screens to specify (Phase 5)
 
 ```text

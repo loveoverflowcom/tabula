@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tabula · Foundation design preview</title>
+  <link rel="stylesheet" href="../../../apps/web/style/tokens.css">
+  <style>
+    /* Design-only adapter. Colors and semantic metrics come from generated tokens. */
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--sys-color-surface); color: var(--sys-color-on-surface);
+      font: var(--sys-type-body-md-size)/var(--sys-type-body-md-line-height) var(--sys-type-family-text);
+      --panel-padding: var(--sys-space-xxl); --gap: var(--sys-space-lg); }
+    body[data-density="compact"] { --panel-padding: var(--sys-space-lg); --gap: var(--sys-space-sm); }
+    a { color: var(--sys-color-primary); }
+    header, main { max-width: 1200px; margin: auto; padding: var(--sys-space-xxl); }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sys-space-lg); }
+    header strong { font-size: var(--sys-type-title-lg-size); }
+    header nav { display: flex; flex-wrap: wrap; gap: var(--sys-space-sm); }
+    nav a { display: inline-flex; align-items: center; min-height: var(--sys-density-min-target); padding: var(--sys-space-sm); }
+    h1 { margin: 0 0 var(--sys-space-sm); font-size: var(--sys-type-headline-lg-size); line-height: var(--sys-type-headline-lg-line-height); }
+    h2 { margin: 0 0 var(--sys-space-lg); font-size: var(--sys-type-title-lg-size); line-height: var(--sys-type-title-lg-line-height); }
+    h3 { font-size: var(--sys-type-title-md-size); line-height: var(--sys-type-title-md-line-height);
+      font-weight: var(--sys-type-title-md-weight); letter-spacing: var(--sys-type-title-md-letter-spacing); }
+    p { margin: var(--sys-space-sm) 0 var(--sys-space-lg); }
+    .support { color: var(--sys-color-on-surface-variant); }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sys-space-xxl); }
+    section { min-width: 0; margin-top: var(--sys-space-xxl); }
+    .panel { padding: var(--panel-padding); border-radius: var(--sys-shape-sheet); background: var(--sys-color-container); min-width: 0; }
+    .controls { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; }
+    label { display: inline-flex; align-items: center; gap: var(--sys-space-sm); min-height: var(--sys-density-min-target); }
+    select, input, button { font: inherit; accent-color: var(--sys-color-primary); }
+    select { min-height: var(--sys-density-min-target); max-width: 100%; padding: var(--sys-space-sm);
+      background: var(--sys-color-container-high); color: var(--sys-color-on-surface); border: 1px solid var(--sys-color-outline); border-radius: var(--sys-shape-sm); }
+    :focus-visible { outline: var(--sys-focus-ring-width) solid var(--sys-focus-ring-color); outline-offset: var(--sys-space-xxs); }
+    .actions { display: flex; flex-wrap: wrap; gap: var(--sys-space-sm); align-items: center; }
+    button, .sample { position: relative; display: inline-flex; justify-content: center; align-items: center;
+      min-height: 48px; min-width: var(--sys-density-min-target); max-width: 100%; padding: var(--sys-space-md) var(--sys-space-xxl);
+      border: 0; border-radius: var(--sys-shape-full); font-size: var(--sys-type-label-lg-size);
+      line-height: var(--sys-type-label-lg-line-height); font-weight: var(--sys-type-label-lg-weight);
+      letter-spacing: var(--sys-type-label-lg-letter-spacing);
+      background: var(--sys-color-container-high); color: var(--sys-color-on-surface); text-align: center; }
+    button { cursor: pointer; }
+    button::after, .sample::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+      background: currentColor; opacity: 0; pointer-events: none; }
+    button:hover::after, .sample[data-state="hover"]::after { opacity: var(--sys-state-hover); }
+    button:focus-visible::after, .sample[data-state="focus"]::after { opacity: var(--sys-state-focus); }
+    button:active::after, .sample[data-state="pressed"]::after { opacity: var(--sys-state-press); }
+    button:active, .sample[data-state="pressed"] { border-radius: var(--sys-shape-button); }
+    .primary { background: var(--sys-color-primary); color: var(--sys-color-on-primary); }
+    .prominent { min-height: 64px; flex: 2 1 12rem; }
+    .square { border-radius: var(--sys-shape-button); }
+    .sample[data-state="focus"] { outline: var(--sys-focus-ring-width) solid var(--sys-focus-ring-color); outline-offset: var(--sys-space-xxs); }
+    button:disabled { cursor: default; color: var(--sys-color-on-surface); background: transparent; }
+    button:disabled span { opacity: var(--sys-state-disabled-content); }
+    button:disabled::after { opacity: var(--sys-state-disabled-container); }
+    .reason { color: var(--sys-color-on-surface-variant); font-size: var(--sys-type-body-sm-size); line-height: var(--sys-type-body-sm-line-height); }
+    fieldset { border: 0; margin: var(--sys-space-lg) 0; padding: 0; min-width: 0; }
+    legend { font-weight: var(--sys-type-title-md-weight); margin-bottom: var(--sys-space-sm); }
+    .connected { display: flex; gap: var(--sys-space-xxs); }
+    .option { flex: 1; position: relative; min-width: 0; }
+    .option input { position: absolute; opacity: 0; }
+    .option label { position: relative; width: 100%; padding: var(--sys-space-md); justify-content: center;
+      background: var(--sys-color-container-high); border-radius: var(--sys-shape-sm); text-align: center; cursor: pointer; }
+    .option:first-child label { border-radius: var(--sys-shape-full) var(--sys-shape-sm) var(--sys-shape-sm) var(--sys-shape-full); }
+    .option:last-child label { border-radius: var(--sys-shape-sm) var(--sys-shape-full) var(--sys-shape-full) var(--sys-shape-sm); }
+    .option input:checked + label { background: var(--sys-color-primary); color: var(--sys-color-on-primary); }
+    .option input:checked + label::before { content: "✓ "; white-space: pre; }
+    .option label::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0; pointer-events: none; }
+    .option label:hover::after { opacity: var(--sys-state-hover); }
+    .option input:focus-visible + label::after { opacity: var(--sys-state-focus); }
+    .option label:active::after { opacity: var(--sys-state-press); }
+    .option input:focus-visible + label { outline: var(--sys-focus-ring-width) solid var(--sys-focus-ring-color); outline-offset: var(--sys-space-xxs); }
+    .rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sys-space-xxs); }
+    .rows li { background: var(--sys-color-container-high); border-radius: var(--sys-shape-md); padding: var(--sys-space-sm) var(--sys-space-lg); }
+    .rows li:first-child { border-top-left-radius: var(--sys-shape-card); border-top-right-radius: var(--sys-shape-card); }
+    .rows li:last-child { border-bottom-left-radius: var(--sys-shape-card); border-bottom-right-radius: var(--sys-shape-card); }
+    .row { display: flex; justify-content: space-between; width: 100%; gap: var(--gap); min-height: 48px; }
+    .row input { flex-shrink: 0; width: 20px; height: 20px; }
+    .row strong, .row small { display: block; }
+    .row small { color: var(--sys-color-on-surface-variant); }
+    .mono { font-family: var(--sys-type-family-mono); font-variant-numeric: tabular-nums;
+      font-size: var(--sys-type-mono-md-size); line-height: var(--sys-type-mono-md-line-height);
+      font-weight: var(--sys-type-mono-md-weight); letter-spacing: var(--sys-type-mono-md-letter-spacing); }
+    .status { display: inline-block; padding: var(--sys-space-sm) var(--sys-space-md); border-radius: var(--sys-shape-chip); background: var(--sys-color-container-high); }
+    .error { color: var(--sys-color-danger); }
+    .success { color: var(--sys-color-success); }
+    .field { display: grid; gap: var(--sys-space-xs); }
+    .field input { width: 100%; min-width: 0; min-height: 48px; padding: var(--sys-space-md);
+      color: var(--sys-color-on-surface); background: var(--sys-color-container-high); border: 1px solid var(--sys-color-outline);
+      border-bottom: 2px solid var(--sys-color-danger); border-radius: var(--sys-shape-sm) var(--sys-shape-sm) 0 0; }
+    progress { width: 100%; height: var(--sys-space-lg); accent-color: var(--sys-color-primary); }
+    .states { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: var(--sys-space-sm); padding: var(--sys-space-sm); border-radius: var(--sys-shape-card); background: var(--sys-color-container-high); }
+    .toolbar button { background: var(--sys-color-surface); padding: var(--sys-space-md); }
+    .toolbar .primary { background: var(--sys-color-primary); }
+    @media (min-width: 600px) { body:not([data-motion="reduced"]) button { transition: border-radius var(--sys-motion-instant) ease; } }
+    @media (prefers-reduced-motion: reduce) { button { transition: none !important; } }
+    @media (max-width: 904px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+    @media (max-width: 599px) { header, main { padding: var(--sys-space-lg); } h1 { font-size: var(--sys-type-headline-sm-size); line-height: var(--sys-type-headline-sm-line-height); } }
+    @media (max-width: 359px) { .states { grid-template-columns: minmax(0, 1fr); }
+      .connected { flex-direction: column; }
+      .option:first-child label { border-radius: var(--sys-shape-full) var(--sys-shape-full) var(--sys-shape-sm) var(--sys-shape-sm); }
+      .option:last-child label { border-radius: var(--sys-shape-sm) var(--sys-shape-sm) var(--sys-shape-full) var(--sys-shape-full); } }
+  </style>
+</head>
+<body data-density="normal" data-motion="reduced">
+  <header><strong>Tabula · Foundation</strong><nav aria-label="Design sections"><a href="#settings">13 · Settings</a><a href="#showcase">22 · Showcase</a><a href="foundation.md">Specification</a></nav></header>
+  <main>
+    <h1>Useful space. Clear actions.</h1>
+    <p class="support">Stage A design preview · sample data · controls update this preview only. Runtime components and preference storage follow their phase gates.</p>
+    <div class="controls" aria-label="Review variants">
+      <label>Scheme <select id="scheme"><option value="light">Light</option><option value="dark">Dark</option><option value="hc-light">High contrast light</option><option value="hc-dark">High contrast dark</option></select></label>
+      <label>Density <select id="density"><option value="normal">Normal</option><option value="compact">Compact</option></select></label>
+      <label><input id="reduce" type="checkbox" checked> Reduce motion</label>
+    </div>
+    <section id="settings" aria-labelledby="settings-title">
+      <h2 id="settings-title">13 · Settings</h2>
+      <div class="grid">
+        <div class="panel"><h3>Appearance and accessibility</h3>
+          <fieldset><legend>Appearance · sample choice</legend><div class="connected">
+            <div class="option"><input id="system" type="radio" name="appearance" checked><label for="system">System</label></div>
+            <div class="option"><input id="light" type="radio" name="appearance"><label for="light">Light</label></div>
+            <div class="option"><input id="dark" type="radio" name="appearance"><label for="dark">Dark</label></div>
+          </div></fieldset>
+          <fieldset><legend>Contrast · sample choice</legend><div class="connected">
+            <div class="option"><input id="contrast-system" type="radio" name="contrast" checked><label for="contrast-system">System</label></div>
+            <div class="option"><input id="standard" type="radio" name="contrast"><label for="standard">Standard</label></div>
+            <div class="option"><input id="high" type="radio" name="contrast"><label for="high">High</label></div>
+          </div></fieldset>
+          <ul class="rows">
+            <li><label class="row"><span><strong>Reduce motion</strong><small>OS reduction also applies at runtime.</small></span><input type="checkbox" checked></label></li>
+            <li><label class="row"><span><strong>Sound</strong><small>Presentation preference; game state is unaffected.</small></span><input type="checkbox"></label></li>
+            <li><label class="row"><span><strong>Compact spacing</strong><small>Labels and 44 dp targets stay intact.</small></span><input type="checkbox"></label></li>
+          </ul>
+          <p class="reason">Storage adapter is not connected in this design preview. Sample choices are not saved.</p>
+        </div>
+        <div class="panel"><h3>Preview</h3><p class="status">Your turn · sample</p><p class="mono">09:42 · 12 points</p>
+          <div class="actions"><span class="sample primary prominent" data-state="focus">Start match · sample</span></div>
+          <p class="support">3 dp focus ring + 2 dp gap. The settings page and component showcase have separate owners.</p>
+          <h3>In-match settings</h3><p>A bounded canvas overlay shares supported preferences. Closing restores focus to the board. This preview supplies no overlay controller.</p>
+        </div>
+      </div>
+    </section>
+    <section id="showcase" aria-labelledby="showcase-title"><h2 id="showcase-title">22 · Component showcase</h2>
+      <div class="grid">
+        <div class="panel"><h3>One principal action</h3><div class="actions"><button class="primary prominent" type="button">Start · sample</button><button class="square" type="button">Configure · sample</button></div><p class="support">Filled action, quieter related action. Labels stay visible.</p>
+          <div class="states"><span class="sample primary">Default</span><span class="sample primary" data-state="hover">Hover</span><span class="sample primary" data-state="pressed">Pressed</span><span class="sample primary" data-state="focus">Focus</span><button disabled aria-describedby="disabled-reason"><span>Unavailable</span></button><span class="sample">Working…</span></div>
+          <p class="reason" id="disabled-reason">Unavailable: runtime adapter is gated. Working is a static busy sample, not a pending request.</p>
+        </div>
+        <div class="panel"><h3>Contextual toolbar</h3><div class="toolbar" role="group" aria-label="Sample board actions"><button type="button" aria-label="Rotate left">↶</button><button type="button" aria-label="Rotate right">↷</button><button class="primary" type="button">Place · sample</button><button type="button">Deselect</button></div><p class="support">Related controls, clear names, stable targets. This static example has no board authority.</p>
+          <h3>Contained rows</h3><ul class="rows"><li><label class="row"><span><strong>Informative motion</strong><small>Immediate feedback in reduced mode.</small></span><input type="checkbox" checked></label></li><li><label class="row"><span><strong>Audio cues</strong><small>Every cue has a visual equivalent.</small></span><input type="checkbox"></label></li></ul>
+        </div>
+        <div class="panel"><h3>Field and validation</h3><label class="field" for="room">Room code · sample<input id="room" value="TB-XX" aria-invalid="true" aria-describedby="room-error"></label><p class="error" id="room-error">Invalid code · static error sample. Check the code and try again.</p><p class="support">A persistent label, functional boundary, and error text. No auth or room lookup executes.</p></div>
+        <div class="panel"><h3>Honest feedback</h3><p class="success">Saved · success state sample</p><label for="progress">Measured progress · sample 60%</label><progress id="progress" value="60" max="100">60%</progress><p class="status">Offline · sample data may be stale</p><p>Nothing here yet. A real consumer supplies the next action.</p><p class="error">Write failed · static error sample</p><button type="button">Retry · sample</button></div>
+      </div>
+    </section>
+    <p class="support">Review at 320–1440 dp and 200% zoom. Four schemes come from tokens.toml through generated CSS. This document is editable design source, not runtime accessibility certification.</p>
+  </main>
+  <script>
+    // Variant controls only: no storage, network, game state, or shell routing.
+    document.querySelector('#scheme').addEventListener('change', event => {
+      document.documentElement.dataset.theme = event.target.value;
+    });
+    document.querySelector('#density').addEventListener('change', event => {
+      document.body.dataset.density = event.target.value;
+    });
+    document.querySelector('#reduce').addEventListener('change', event => {
+      document.body.dataset.motion = event.target.checked ? 'reduced' : 'normal';
+    });
+  </script>
+</body>
+</html>

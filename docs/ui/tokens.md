@@ -61,10 +61,13 @@ position; contrast tests cover the roles that are actually placed on surfaces.
 | Reference palette values are validated | `tokens_cmd::tests::malformed_sources_fail_at_the_typed_boundary` (`ref.palette.primary-source`) |
 | Runtime value bounds are preserved, including finite proof | `tabula_design::tests::bounded_token_values_reject_invalid_boundaries`; `generated_measurements_reject_non_finite_values` |
 | Accessibility pairs and HC strength hold | named design-crate contrast tests |
+| Foundation text, supporting text, actions, errors, success, control boundaries, and focus work on three tonal surfaces in all four schemes | `foundation_tonal_surface_pairs_meet_their_thresholds` |
+| Filled/tonal action labels remain readable under hover/focus/press layers in all four schemes | `foundation_action_state_layers_preserve_text_contrast` |
 | Presentation uses closed semantic typography | design/presentation crate compilation and `mono_styles_require_tabular_figures` |
 
 ## Phase status
 
-This contract and verification hardening does not claim the Phase 2 exit. Phase-1
-Chess rules and the Phase-2 playable chess presentation remain outstanding; this
-change adds no game rules, networking, assets, or unrelated protocol work.
+This contract does not certify a phase exit. Current Chess/Tiles presentations
+consume the generated themes; the [foundation specification](screens/foundation.md)
+records the compact component mapping. DOM shell/settings implementation still
+requires the Phase-4 exit and opened Phase-5 gate (doc 07).

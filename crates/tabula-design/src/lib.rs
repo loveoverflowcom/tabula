@@ -651,6 +651,86 @@ mod tests {
         }
     }
 
+    /// The foundation uses tonal containment instead of ornamental outlines.
+    /// Its text and functional boundaries must work on every supported surface.
+    #[test]
+    fn foundation_tonal_surface_pairs_meet_their_thresholds() {
+        for kind in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            let theme = Theme::by_kind(kind);
+            let c = theme.color;
+            for (surface_name, background) in [
+                ("surface", c.surface),
+                ("container", c.surface_container),
+                ("container-high", c.surface_container_high),
+            ] {
+                for (name, foreground, minimum) in [
+                    ("text", c.on_surface, 4.5),
+                    ("supporting-text", c.on_surface_variant, 4.5),
+                    ("action-label", c.primary, 4.5),
+                    ("error-text", c.danger, 4.5),
+                    ("success-text", c.success, 4.5),
+                    ("control-boundary", c.outline, 3.0),
+                    ("focus-ring", theme.focus.ring_color, 3.0),
+                ] {
+                    assert!(
+                        ratio(foreground, background) >= minimum,
+                        "{kind:?}: {name}/{surface_name}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// On-color hover/focus/press overlays must not obscure active action labels.
+    #[test]
+    fn foundation_action_state_layers_preserve_text_contrast() {
+        fn composite(layer: Color, background: Color, opacity: Percent) -> Color {
+            let alpha = u16::from(opacity.get());
+            let channel = |front: u8, back: u8| {
+                let rounded =
+                    (u16::from(front) * alpha + u16::from(back) * (100 - alpha) + 50) / 100;
+                u8::try_from(rounded).expect("a convex mixture of two u8 channels fits u8")
+            };
+            Color::rgb(
+                channel(layer.red(), background.red()),
+                channel(layer.green(), background.green()),
+                channel(layer.blue(), background.blue()),
+            )
+        }
+        for kind in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            let theme = Theme::by_kind(kind);
+            for (name, foreground, background) in [
+                ("filled", theme.color.on_primary, theme.color.primary),
+                (
+                    "tonal",
+                    theme.color.on_surface,
+                    theme.color.surface_container_high,
+                ),
+            ] {
+                for (state, opacity) in [
+                    ("hover", theme.state.hover),
+                    ("focus", theme.state.focus),
+                    ("press", theme.state.press),
+                ] {
+                    assert!(
+                        ratio(foreground, composite(foreground, background, opacity)) >= 4.5,
+                        "{kind:?}: {name}/{state}"
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn mono_styles_require_tabular_figures() {
         let theme = Theme::by_kind(ThemeKind::Light);
