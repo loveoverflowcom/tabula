@@ -3,7 +3,7 @@ source: games/chess/src/presentation/mod.rs
 expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
 ---
 camera origin=(0.000, 0.000) zoom=1.000
-commands (total 77):
+commands (total 89):
   0: rect [origin=(24.000, 566.000) size=(74.000, 74.000)] radii=uniform(0.000) fill=solid(#eae3edff) border=none layer=board(0) z=0
   1: rect [origin=(98.000, 566.000) size=(74.000, 74.000)] radii=uniform(0.000) fill=solid(#f4edf7ff) border=none layer=board(0) z=1
   2: rect [origin=(172.000, 566.000) size=(74.000, 74.000)] radii=uniform(0.000) fill=solid(#eae3edff) border=none layer=board(0) z=2
@@ -72,12 +72,24 @@ commands (total 77):
   65: text "P" at=(357.000, 137.000) style=DisplaySm align=Center max_width=none color=#1e1c21ff layer=pieces(10) z=52
   66: text "k" at=(61.000, 63.000) style=DisplaySm align=Center max_width=none color=#4b4650ff layer=pieces(10) z=56
   67: text "Your turn — White" at=(320.000, 10.000) style=TitleLg align=Center max_width=none color=#1e1c21ff layer=hud(30) z=0
-  68: rect [origin=(168.300, 303.300) size=(303.400, 81.400)] radii=uniform(12.000) fill=solid(#f4edf7ff) border=[width=3.000 color=#79747eff] layer=modal(40) z=0
-  69: rect [origin=(175.700, 310.700) size=(66.600, 66.600)] radii=uniform(8.000) fill=solid(#5634beff) border=[width=3.000 color=#5634beff] layer=modal(40) z=1
-  70: rect [origin=(249.700, 310.700) size=(66.600, 66.600)] radii=uniform(8.000) fill=solid(#eae3edff) border=[width=3.000 color=#5634beff] layer=modal(40) z=2
-  71: rect [origin=(323.700, 310.700) size=(66.600, 66.600)] radii=uniform(8.000) fill=solid(#eae3edff) border=[width=3.000 color=#5634beff] layer=modal(40) z=3
-  72: rect [origin=(397.700, 310.700) size=(66.600, 66.600)] radii=uniform(8.000) fill=solid(#eae3edff) border=[width=3.000 color=#5634beff] layer=modal(40) z=4
-  73: text "Q" at=(209.000, 330.000) style=TitleLg align=Center max_width=none color=#ffffffff layer=modal(40) z=5
-  74: text "R" at=(283.000, 330.000) style=TitleLg align=Center max_width=none color=#1e1c21ff layer=modal(40) z=6
-  75: text "B" at=(357.000, 330.000) style=TitleLg align=Center max_width=none color=#1e1c21ff layer=modal(40) z=7
-  76: text "N" at=(431.000, 330.000) style=TitleLg align=Center max_width=none color=#1e1c21ff layer=modal(40) z=8
+  68: rect [origin=(171.800, 232.700) size=(296.400, 174.600)] radii=uniform(24.000) fill=solid(#f4edf7ff) border=none layer=modal(40) z=0
+  69: text "Choose promotion" at=(183.800, 244.700) style=TitleMd align=Start max_width=272.400 color=#1e1c21ff layer=modal(40) z=0
+  70: rect [origin=(183.800, 276.700) size=(66.600, 66.600)] radii=(tl=33.300, tr=8.000, br=8.000, bl=33.300) fill=solid(#5634beff) border=none layer=modal(40) z=0
+  71: push-opacity opacity=0.120 layer=modal(40) z=0
+  72: rect [origin=(183.800, 276.700) size=(66.600, 66.600)] radii=(tl=33.300, tr=8.000, br=8.000, bl=33.300) fill=solid(#ffffffff) border=none layer=modal(40) z=0
+  73: pop-opacity layer=modal(40) z=0
+  74: text "Q" at=(217.100, 287.000) style=TitleLg align=Center max_width=50.600 color=#ffffffff layer=modal(40) z=0
+  75: text "queen" at=(217.100, 317.000) style=LabelMd align=Center max_width=50.600 color=#ffffffff layer=modal(40) z=0
+  76: rect [origin=(252.400, 276.700) size=(66.600, 66.600)] radii=uniform(8.000) fill=solid(#eae3edff) border=none layer=modal(40) z=0
+  77: text "R" at=(285.700, 287.000) style=TitleLg align=Center max_width=50.600 color=#1e1c21ff layer=modal(40) z=0
+  78: text "rook" at=(285.700, 317.000) style=LabelMd align=Center max_width=50.600 color=#1e1c21ff layer=modal(40) z=0
+  79: rect [origin=(321.000, 276.700) size=(66.600, 66.600)] radii=uniform(8.000) fill=solid(#eae3edff) border=none layer=modal(40) z=0
+  80: text "B" at=(354.300, 287.000) style=TitleLg align=Center max_width=50.600 color=#1e1c21ff layer=modal(40) z=0
+  81: text "bishop" at=(354.300, 317.000) style=LabelMd align=Center max_width=50.600 color=#1e1c21ff layer=modal(40) z=0
+  82: rect [origin=(389.600, 276.700) size=(66.600, 66.600)] radii=(tl=8.000, tr=33.300, br=33.300, bl=8.000) fill=solid(#eae3edff) border=none layer=modal(40) z=0
+  83: text "N" at=(422.900, 287.000) style=TitleLg align=Center max_width=50.600 color=#1e1c21ff layer=modal(40) z=0
+  84: text "knight" at=(422.900, 317.000) style=LabelMd align=Center max_width=50.600 color=#1e1c21ff layer=modal(40) z=0
+  85: rect [origin=(183.800, 351.300) size=(272.400, 44.000)] radii=uniform(14.000) fill=solid(#eae3edff) border=none layer=modal(40) z=0
+  86: text "Cancel" at=(320.000, 363.300) style=LabelLg align=Center max_width=256.400 color=#1e1c21ff layer=modal(40) z=0
+  87: rect [origin=(180.300, 273.200) size=(73.600, 73.600)] radii=(tl=36.800, tr=11.500, br=11.500, bl=36.800) fill=none border=[width=3.000 color=#5634beff] layer=modal(40) z=1
+  88: rect [origin=(182.800, 275.700) size=(68.600, 68.600)] radii=(tl=34.300, tr=9.000, br=9.000, bl=34.300) fill=none border=[width=2.000 color=#fffbffff] layer=modal(40) z=1

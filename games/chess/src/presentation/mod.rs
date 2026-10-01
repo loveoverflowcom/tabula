@@ -10,10 +10,11 @@ use glam::Vec2;
 use tabula_design::{Color as SemanticTint, Theme};
 use tabula_game_api::{A11yAction, A11yDescription, A11yItem, A11yRegion, ActionId, GameRules};
 use tabula_presentation::{
-    handle_navigation, lerp_vec2, Align, AssetPackRef, AudioCue, AudioCues, Border, Camera2D,
-    Corners, FocusGraph, FocusId, FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation,
-    InputEvent, Intent, Layer, MotionMode, MotionTimeline, NavigationAction, Paint, PointerButton,
-    PointerPhase, PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError,
+    handle_navigation, lerp_vec2, ActionButton, Align, AssetPackRef, AudioCue, AudioCues, Border,
+    ButtonInteraction, ButtonShape, ButtonTone, Camera2D, Corners, FocusGraph, FocusId,
+    FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation, InputEvent, Intent, Layer,
+    MotionMode, MotionTimeline, NavigationAction, Paint, PointerButton, PointerPhase,
+    PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError,
     TextStyleToken, Viewport,
 };
 
@@ -28,6 +29,7 @@ const PROMOTION_CHOICES: [PromotionChoice; 4] = [
     PromotionChoice::Knight,
 ];
 const PROMOTION_BASE_FOCUS_ID: u32 = 100;
+const PROMOTION_CANCEL_FOCUS_ID: FocusId = FocusId::new(104);
 const STATUS_HEIGHT_FRACTION: f32 = 0.12;
 const STATUS_MAX_HEIGHT: f32 = 48.0;
 const IN_TRANSIT_PIECE_Z: i16 = 100;
@@ -112,11 +114,16 @@ fn chess_promotion_focus_graph(layout: BoardLayout) -> FocusGraph {
     let mut nodes = Vec::with_capacity(4);
     for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
         let id = promotion_choice_focus_id(choice);
-        let rect = promotion_choice_rect(layout, index).expect("valid choice geometry");
+        let Some(rect) = promotion_choice_rect(layout, index) else {
+            continue;
+        };
         let left = (index > 0).then(|| promotion_choice_focus_id(PROMOTION_CHOICES[index - 1]));
         let right = (index + 1 < PROMOTION_CHOICES.len())
             .then(|| promotion_choice_focus_id(PROMOTION_CHOICES[index + 1]));
         nodes.push(FocusNode::with_neighbors(id, rect, None, None, left, right));
+    }
+    if let Some(rect) = promotion_cancel_rect(layout) {
+        nodes.push(FocusNode::new(PROMOTION_CANCEL_FOCUS_ID, rect));
     }
     FocusGraph::new(nodes).expect("promotion focus graph topology is valid")
 }
@@ -138,6 +145,7 @@ fn chess_promotion_focus_graph(layout: BoardLayout) -> FocusGraph {
 /// @ai.evidence tests::square_mapping_round_trips_centers_and_rejects_edges_outside_the_board
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoardLayout {
+    viewport: Viewport,
     board: Rect,
     status: Rect,
     square_size: f32,
@@ -159,6 +167,7 @@ impl BoardLayout {
         let board = Rect::new(board_origin, Vec2::splat(side))
             .expect("a finite positive viewport produces finite board geometry");
         Self {
+            viewport,
             board,
             status,
             square_size: side / 8.0,
@@ -322,6 +331,7 @@ pub struct ChessLocal {
     hover: Option<Square>,
     last_move: Option<(Square, Square)>,
     focus: FocusState,
+    promotion_buttons: ButtonInteraction,
     move_animation: Option<ChessMoveAnimation>,
     viewport: Viewport,
 }
@@ -333,6 +343,7 @@ impl Default for ChessLocal {
             hover: None,
             last_move: None,
             focus: FocusState::new(Some(FocusId::new(0)), FocusModality::Pointer, true),
+            promotion_buttons: ButtonInteraction::default(),
             move_animation: None,
             viewport: Viewport::new(Vec2::splat(1.0)).expect("unit viewport is valid"),
         }
@@ -389,6 +400,7 @@ impl ChessLocal {
 
     pub fn clear_interaction(&mut self) {
         self.interaction = Interaction::Idle;
+        self.promotion_buttons = ButtonInteraction::default();
     }
 }
 
@@ -470,6 +482,46 @@ impl GamePresentation for ChessPresentation {
         local: &mut ChessLocal,
     ) -> Option<Intent<Command>> {
         let layout = BoardLayout::from_viewport(local.viewport);
+        if let Interaction::Promotion { from, to, selected } = local.interaction {
+            let graph = chess_promotion_focus_graph(layout);
+            if !local.focus.current().is_some_and(|id| graph.contains(id)) {
+                local
+                    .focus
+                    .set_current(Some(promotion_choice_focus_id(selected)));
+            }
+            let buttons = promotion_buttons(view, local, layout);
+            let action =
+                local
+                    .promotion_buttons
+                    .on_input(input, &buttons, &graph, &mut local.focus);
+            return match action {
+                NavigationAction::Activate(PROMOTION_CANCEL_FOCUS_ID)
+                | NavigationAction::Cancel => {
+                    local.clear_interaction();
+                    local
+                        .focus
+                        .set_current(Some(FocusId::new(u32::from(from.0))));
+                    None
+                }
+                NavigationAction::Activate(id) => {
+                    let choice = focus_id_to_promotion_choice(id)?;
+                    local.clear_interaction();
+                    local.focus.set_current(Some(FocusId::new(u32::from(to.0))));
+                    Some(promotion_intent(from, to, choice))
+                }
+                NavigationAction::FocusChanged(id) => {
+                    if let Some(choice) = focus_id_to_promotion_choice(id) {
+                        local.interaction = Interaction::Promotion {
+                            from,
+                            to,
+                            selected: choice,
+                        };
+                    }
+                    None
+                }
+                NavigationAction::None => None,
+            };
+        }
         match input {
             InputEvent::Pointer {
                 position,
@@ -611,7 +663,7 @@ impl GamePresentation for ChessPresentation {
                                 None
                             } else if let Some(to) = square {
                                 local.interaction = Interaction::Selected { square: from };
-                                click_square(view, local, layout, Some(to), Some(*position))
+                                click_square(view, local, Some(to))
                             } else {
                                 local.clear_interaction();
                                 None
@@ -619,66 +671,36 @@ impl GamePresentation for ChessPresentation {
                         }
                         Interaction::Idle
                         | Interaction::Selected { .. }
-                        | Interaction::Promotion { .. } => {
-                            click_square(view, local, layout, square, Some(*position))
-                        }
+                        | Interaction::Promotion { .. } => click_square(view, local, square),
                     }
                 }
                 PointerPhase::Up => None,
             },
             InputEvent::Key { .. } | InputEvent::Focus(_) => {
-                let is_promotion = matches!(local.interaction, Interaction::Promotion { .. });
-                let graph = if is_promotion {
-                    chess_promotion_focus_graph(layout)
-                } else {
-                    chess_board_focus_graph(layout)
-                };
-
-                // Reconcile focus if active mode switched or current focus is invalid for this graph
-                if local.focus.current().is_none()
-                    || !graph.contains(local.focus.current().unwrap())
-                {
-                    let default_id =
-                        if let Interaction::Promotion { selected, .. } = local.interaction {
-                            promotion_choice_focus_id(selected)
-                        } else {
-                            graph.first_id().unwrap_or(FocusId::new(0))
-                        };
-                    local.focus.set_current(Some(default_id));
+                let graph = chess_board_focus_graph(layout);
+                if !local.focus.current().is_some_and(|id| graph.contains(id)) {
+                    local.focus.set_current(graph.first_id());
                 }
 
-                match handle_navigation(&graph, &mut local.focus, input) {
-                    NavigationAction::None => None,
+                let result = match handle_navigation(&graph, &mut local.focus, input) {
+                    NavigationAction::None | NavigationAction::FocusChanged(_) => None,
                     NavigationAction::Cancel => {
                         local.clear_interaction();
                         None
                     }
-                    NavigationAction::FocusChanged(focus_id) => {
-                        if let Interaction::Promotion { from, to, .. } = local.interaction {
-                            if let Some(choice) = focus_id_to_promotion_choice(focus_id) {
-                                local.interaction = Interaction::Promotion {
-                                    from,
-                                    to,
-                                    selected: choice,
-                                };
-                            }
-                        }
-                        None
-                    }
                     NavigationAction::Activate(focus_id) => {
-                        if let Interaction::Promotion { from, to, selected } = local.interaction {
-                            let choice = focus_id_to_promotion_choice(focus_id).unwrap_or(selected);
-                            local.clear_interaction();
-                            Some(promotion_intent(from, to, choice))
-                        } else if let Some(square) =
-                            u8::try_from(focus_id.get()).ok().and_then(Square::new)
-                        {
-                            click_square(view, local, layout, Some(square), None)
-                        } else {
-                            None
-                        }
+                        let square = u8::try_from(focus_id.get()).ok().and_then(Square::new);
+                        click_square(view, local, square)
+                    }
+                };
+                if matches!(local.interaction, Interaction::Promotion { .. }) {
+                    if let InputEvent::Key { key, pressed: true } = input {
+                        local
+                            .promotion_buttons
+                            .suppress_activation_until_release(*key);
                     }
                 }
+                result
             }
         }
     }
@@ -698,29 +720,8 @@ fn one_cue(id: &'static str) -> AudioCues {
 fn click_square(
     view: &View,
     local: &mut ChessLocal,
-    layout: BoardLayout,
     square: Option<Square>,
-    pointer: Option<PointerPosition>,
 ) -> Option<Intent<Command>> {
-    if let Interaction::Promotion { from, to, .. } = local.interaction {
-        let selected_promotion = pointer.and_then(|position| {
-            PROMOTION_CHOICES
-                .iter()
-                .copied()
-                .enumerate()
-                .find_map(|(index, choice)| {
-                    let rect = promotion_choice_rect(layout, index)?;
-                    rect.contains(position.get()).then_some(choice)
-                })
-        });
-        if let Some(promotion) = selected_promotion {
-            local.clear_interaction();
-            return Some(promotion_intent(from, to, promotion));
-        }
-        local.clear_interaction();
-        return None;
-    }
-
     let Some(square) = square else {
         local.clear_interaction();
         return None;
@@ -805,28 +806,142 @@ fn has_promotion_command(view: &View, from: Square, to: Square) -> bool {
     })
 }
 
-#[allow(clippy::cast_precision_loss, clippy::float_arithmetic)]
-fn promotion_choice_rect(layout: BoardLayout, index: usize) -> Option<Rect> {
-    if index >= PROMOTION_CHOICES.len() || layout.square_size() <= 0.0 {
-        return None;
-    }
-    let button_size = layout.square_size() * 0.9;
-    let gap = layout.square_size() * 0.1;
-    let total_width = button_size * 4.0 + gap * 3.0;
-    let origin = layout.board().origin()
-        + (layout.board().size() - Vec2::new(total_width, button_size)) * 0.5
-        + Vec2::new((button_size + gap) * index as f32, 0.0);
-    Rect::new(origin, Vec2::splat(button_size)).ok()
+/// Fixed hit geometry shared by promotion input, focus, and drawing.
+/// Modal layout uses the viewport, so a short board cannot hide its controls.
+struct PromotionLayout {
+    panel: Rect,
+    choices: [Rect; 4],
+    cancel: Rect,
 }
 
-#[allow(clippy::float_arithmetic)]
+impl PromotionLayout {
+    #[allow(clippy::float_arithmetic)]
+    fn new(layout: BoardLayout) -> Option<Self> {
+        // Spatial tokens are common to all schemes. Input geometry is independent
+        // of scheme color, while retaining the authored accessibility metrics.
+        let metrics = Theme::by_kind(tabula_design::ThemeKind::Light);
+        let padding = f32::from(metrics.space.md);
+        let gap = f32::from(metrics.space.xxs);
+        let section_gap = f32::from(metrics.space.sm);
+        let minimum = metrics.density.min_target.get();
+        let viewport = layout.viewport.size();
+        let heading_height = metrics
+            .text_style(TextStyleToken::TitleMd)
+            .line_height()
+            .get();
+        let button_size = (layout.square_size() * 0.9)
+            .max(minimum + f32::from(metrics.space.lg))
+            .min((viewport.x - padding * 2.0 - gap * 3.0) / 4.0)
+            .min(viewport.y - padding * 2.0 - heading_height - section_gap * 2.0 - minimum);
+        if button_size < minimum {
+            return None;
+        }
+        let group_width = button_size * 4.0 + gap * 3.0;
+        let panel_size = Vec2::new(
+            group_width + padding * 2.0,
+            padding * 2.0 + heading_height + section_gap * 2.0 + button_size + minimum,
+        );
+        let panel = Rect::new((viewport - panel_size) * 0.5, panel_size).ok()?;
+        let first = panel.origin() + Vec2::new(padding, padding + heading_height + section_gap);
+        let choice = |x| {
+            Rect::new(
+                first + Vec2::new(x * (button_size + gap), 0.0),
+                Vec2::splat(button_size),
+            )
+            .ok()
+        };
+        let choices = [choice(0.0)?, choice(1.0)?, choice(2.0)?, choice(3.0)?];
+        let cancel = Rect::new(
+            first + Vec2::new(0.0, button_size + section_gap),
+            Vec2::new(group_width, minimum),
+        )
+        .ok()?;
+        Some(Self {
+            panel,
+            choices,
+            cancel,
+        })
+    }
+}
+
+fn promotion_choice_rect(layout: BoardLayout, index: usize) -> Option<Rect> {
+    PromotionLayout::new(layout)?.choices.get(index).copied()
+}
+
 fn promotion_panel_rect(layout: BoardLayout) -> Option<Rect> {
-    let first = promotion_choice_rect(layout, 0)?;
-    let last = promotion_choice_rect(layout, 3)?;
-    let gap = layout.square_size() * 0.1;
-    let origin = first.origin() - Vec2::splat(gap);
-    let far_corner = last.origin() + last.size() + Vec2::splat(gap);
-    Rect::new(origin, far_corner - origin).ok()
+    Some(PromotionLayout::new(layout)?.panel)
+}
+
+fn promotion_cancel_rect(layout: BoardLayout) -> Option<Rect> {
+    Some(PromotionLayout::new(layout)?.cancel)
+}
+
+fn promotion_choice_enabled(
+    view: &View,
+    from: Square,
+    to: Square,
+    choice: PromotionChoice,
+) -> bool {
+    matches!(view.status, Status::Playing)
+        && view.you == Some(view.turn)
+        && view
+            .legal_moves
+            .contains(&promotion_intent(from, to, choice).into_command())
+}
+
+fn promotion_buttons(
+    view: &View,
+    local: &ChessLocal,
+    layout: BoardLayout,
+) -> Vec<ActionButton<'static>> {
+    let metrics = Theme::by_kind(tabula_design::ThemeKind::Light);
+    let Interaction::Promotion { from, to, selected } = local.interaction else {
+        return Vec::new();
+    };
+    let mut buttons: Vec<_> = PROMOTION_CHOICES
+        .iter()
+        .copied()
+        .enumerate()
+        .filter_map(|(index, choice)| {
+            let rect = promotion_choice_rect(layout, index)?;
+            let enabled = promotion_choice_enabled(view, from, to, choice);
+            Some(
+                ActionButton::new(
+                    promotion_choice_focus_id(choice),
+                    rect,
+                    piece_name(choice.piece_kind()),
+                    metrics.density.min_target,
+                )
+                .ok()?
+                .with_icon(piece_glyph(Piece {
+                    color: view.turn,
+                    kind: choice.piece_kind(),
+                }))
+                .tone(if choice == selected {
+                    ButtonTone::Filled
+                } else {
+                    ButtonTone::Tonal
+                })
+                .shape(match index {
+                    0 => ButtonShape::ConnectedStart,
+                    3 => ButtonShape::ConnectedEnd,
+                    _ => ButtonShape::ConnectedMiddle,
+                })
+                .enabled(enabled),
+            )
+        })
+        .collect();
+    if let Some(rect) = promotion_cancel_rect(layout) {
+        if let Ok(button) = ActionButton::new(
+            PROMOTION_CANCEL_FOCUS_ID,
+            rect,
+            "Cancel",
+            metrics.density.min_target,
+        ) {
+            buttons.push(button.shape(ButtonShape::Square));
+        }
+    }
+    buttons
 }
 
 #[cfg(test)]
@@ -1116,77 +1231,43 @@ fn build_render_list(
     }
 
     if is_promotion {
-        let promotion_color = view.turn;
+        let buttons = promotion_buttons(view, local, layout);
         if let Some(panel) = promotion_panel_rect(layout) {
             builder.push(RenderCmd::Rect {
                 rect: panel,
-                radii: Corners::uniform(theme.shape.md.get())?,
+                radii: Corners::uniform(theme.shape.sheet.get())?,
                 fill: Some(Paint::Solid(theme.color.surface_container)),
-                border: Some(Border::new(
-                    theme.focus.ring_width.get(),
-                    theme.color.outline,
-                )?),
+                border: None,
+                layer: Layer::MODAL,
+                z: 0,
+            })?;
+            builder.push(RenderCmd::Text {
+                text: if buttons.iter().all(|button| button.is_enabled()) {
+                    "Choose promotion"
+                } else {
+                    "Unavailable: position changed"
+                }
+                .to_owned(),
+                at: panel.origin() + Vec2::splat(f32::from(theme.space.md)),
+                style: TextStyleToken::TitleMd,
+                align: Align::Start,
+                max_width: Some(
+                    tabula_design::Positive::new(panel.size().x - f32::from(theme.space.md) * 2.0)
+                        .map_err(|_| RenderListError::InvalidGeometry)?,
+                ),
+                color: theme.color.on_surface,
                 layer: Layer::MODAL,
                 z: 0,
             })?;
         }
-        let selected = match local.interaction {
-            Interaction::Promotion { selected, .. } => selected,
-            _ => PromotionChoice::Queen,
-        };
-        for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
-            let Some(rect) = promotion_choice_rect(layout, index) else {
-                continue;
-            };
-            let is_selected = choice == selected;
-            let is_focused = local.focus.is_focus_visible()
-                && local.focus.current() == Some(promotion_choice_focus_id(choice));
-            let border_color = if is_focused {
-                theme.focus.ring_color
-            } else if is_selected {
-                theme.color.selected
-            } else {
-                theme.color.primary
-            };
-            builder.push(RenderCmd::Rect {
-                rect,
-                radii: Corners::uniform(theme.shape.sm.get())?,
-                fill: Some(Paint::Solid(if is_selected {
-                    theme.color.primary
-                } else {
-                    theme.color.surface_container_high
-                })),
-                border: Some(Border::new(theme.focus.ring_width.get(), border_color)?),
-                layer: Layer::MODAL,
-                z: i16::try_from(index + 1).map_err(|_| RenderListError::InvalidGeometry)?,
-            })?;
-            builder.push(RenderCmd::Text {
-                text: piece_glyph(Piece {
-                    color: promotion_color,
-                    kind: choice.piece_kind(),
-                })
-                .to_owned(),
-                at: rect.origin()
-                    + Vec2::new(
-                        rect.size().x * 0.5,
-                        rect.size().y * 0.5
-                            - theme
-                                .text_style(TextStyleToken::TitleLg)
-                                .line_height()
-                                .get()
-                                * 0.5,
-                    ),
-                style: TextStyleToken::TitleLg,
-                align: Align::Center,
-                max_width: None,
-                color: if is_selected {
-                    theme.color.on_primary
-                } else {
-                    theme.color.on_surface
-                },
-                layer: Layer::MODAL,
-                z: i16::try_from(index + 5).map_err(|_| RenderListError::InvalidGeometry)?,
-            })?;
+        for button in buttons {
+            button.draw(
+                &mut builder,
+                &theme,
+                &local.promotion_buttons,
+                &local.focus,
+                Layer::MODAL,
+            )?;
         }
     }
 
@@ -1307,7 +1388,7 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
         }],
     };
 
-    if let Interaction::Promotion { selected, .. } = local.interaction {
+    if let Interaction::Promotion { from, to, selected } = local.interaction {
         description.status = format!(
             "{} — choose promotion, {} selected",
             description.status,
@@ -1322,12 +1403,15 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
                 .map(|(index, choice)| A11yItem {
                     label: format!("Promote to {}", piece_name(choice.piece_kind())),
                     position: format!("choice {}", index + 1),
-                    state: if choice == selected {
+                    state: if !promotion_choice_enabled(view, from, to, choice) {
+                        String::from("unavailable: position changed")
+                    } else if choice == selected {
                         String::from("selected")
                     } else {
                         String::from("available")
                     },
-                    activates: Some(ActionId(String::from(choice.action_id()))),
+                    activates: promotion_choice_enabled(view, from, to, choice)
+                        .then(|| ActionId(String::from(choice.action_id()))),
                 })
                 .collect(),
         });
@@ -1336,10 +1420,17 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
             .extend(PROMOTION_CHOICES.iter().copied().map(|choice| A11yAction {
                 id: ActionId(String::from(choice.action_id())),
                 label: format!("Promote to {}", piece_name(choice.piece_kind())),
-                enabled: true,
+                enabled: promotion_choice_enabled(view, from, to, choice),
             }));
     }
 
+    if matches!(local.interaction, Interaction::Promotion { .. }) {
+        description.actions.push(A11yAction {
+            id: ActionId(String::from("cancel-promotion")),
+            label: String::from("Cancel promotion and return to the board"),
+            enabled: true,
+        });
+    }
     description
 }
 
@@ -1471,6 +1562,15 @@ mod tests {
         };
         local.set_viewport(viewport);
         ChessPresentation::on_input(&event, view, local)
+    }
+
+    fn press_promotion_choice(view: &View, local: &mut ChessLocal, position: PointerPosition) {
+        let press = InputEvent::Pointer {
+            position,
+            button: PointerButton::Primary,
+            phase: PointerPhase::Down,
+        };
+        assert!(ChessPresentation::on_input(&press, view, local).is_none());
     }
 
     fn legal_apply(
@@ -1895,6 +1995,7 @@ mod tests {
             phase: PointerPhase::Up,
         };
         local.set_viewport(viewport(640.0, 640.0));
+        press_promotion_choice(&view, &mut local, clicked_center(choice));
         let intent = ChessPresentation::on_input(&event, &view, &mut local)
             .expect("promotion selection emits one command");
         assert_eq!(
@@ -1997,6 +2098,198 @@ mod tests {
     }
 
     #[test]
+    fn promotion_controls_retain_44_dp_targets_on_compact_viewports() {
+        for (width, height) in [
+            (320.0, 640.0),
+            (390.0, 844.0),
+            (640.0, 320.0),
+            (320.0, 300.0),
+            (640.0, 280.0),
+        ] {
+            let layout = BoardLayout::from_viewport(viewport(width, height));
+            for index in 0..PROMOTION_CHOICES.len() {
+                let rect = promotion_choice_rect(layout, index).unwrap();
+                assert!(rect.size().x >= 44.0 && rect.size().y >= 44.0);
+                assert!(rect.origin().x >= 0.0 && rect.origin().y >= 0.0);
+                assert!(rect.origin().x + rect.size().x <= width);
+                assert!(rect.origin().y + rect.size().y <= height);
+            }
+            let panel = promotion_panel_rect(layout).unwrap();
+            assert!(panel.origin().x >= 0.0 && panel.origin().y >= 0.0);
+            assert!(panel.origin().x + panel.size().x <= width);
+            assert!(panel.origin().y + panel.size().y <= height);
+            let cancel = promotion_cancel_rect(layout).unwrap();
+            assert!(cancel.size().x >= 44.0 && cancel.size().y >= 44.0);
+        }
+    }
+
+    #[test]
+    fn promotion_release_without_a_press_never_activates_a_choice() {
+        let (view, layout, mut local) = promotion_fixture();
+        let event = InputEvent::Pointer {
+            position: clicked_center(promotion_choice_rect(layout, 0).unwrap()),
+            button: PointerButton::Primary,
+            phase: PointerPhase::Up,
+        };
+        assert!(ChessPresentation::on_input(&event, &view, &mut local).is_none());
+        assert!(matches!(local.interaction(), Interaction::Promotion { .. }));
+    }
+
+    #[test]
+    fn promotion_window_focus_loss_blocks_activation() {
+        let (view, _layout, mut local) = promotion_fixture();
+        assert!(
+            ChessPresentation::on_input(&InputEvent::Focus(false), &view, &mut local).is_none()
+        );
+        assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).is_none());
+        assert!(matches!(local.interaction(), Interaction::Promotion { .. }));
+    }
+
+    #[test]
+    fn promotion_pointer_cancellation_and_outside_release_preserve_the_modal() {
+        for phase in [PointerPhase::Cancel, PointerPhase::Up] {
+            let (view, layout, mut local) = promotion_fixture();
+            let position = clicked_center(promotion_choice_rect(layout, 0).unwrap());
+            press_promotion_choice(&view, &mut local, position);
+            let event = InputEvent::Pointer {
+                position: PointerPosition::new(Vec2::ZERO).unwrap(),
+                button: PointerButton::Primary,
+                phase,
+            };
+            assert!(ChessPresentation::on_input(&event, &view, &mut local).is_none());
+            assert!(matches!(local.interaction(), Interaction::Promotion { .. }));
+            assert!(ChessPresentation::on_input(&key(Key::Escape), &view, &mut local).is_none());
+            assert_eq!(local.cursor(), Square(52));
+        }
+    }
+
+    #[test]
+    fn promotion_choices_disable_when_the_projection_no_longer_permits_them() {
+        let (mut view, layout, mut local) = promotion_fixture();
+        let position = clicked_center(promotion_choice_rect(layout, 0).unwrap());
+        press_promotion_choice(&view, &mut local, position);
+        view.legal_moves.clear();
+        let release = InputEvent::Pointer {
+            position,
+            button: PointerButton::Primary,
+            phase: PointerPhase::Up,
+        };
+        assert!(ChessPresentation::on_input(&release, &view, &mut local).is_none());
+        assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).is_none());
+        let description = ChessPresentation::a11y(&view, &local);
+        assert!(description
+            .actions
+            .iter()
+            .filter(|action| action.id.0.starts_with("promote-"))
+            .all(|action| !action.enabled));
+        let list = ChessPresentation::present(&view, &local, &frame(640.0, 640.0));
+        assert!(list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, layer: Layer::MODAL, .. }
+                if text == "Unavailable: position changed")));
+    }
+
+    #[test]
+    fn keyboard_opening_press_cannot_repeat_into_a_promotion_action() {
+        let state = crate::State::from_fen("k7/4P3/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let view = view(&state);
+        let before = canonical_encode(&state).unwrap();
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport(640.0, 640.0));
+        local.focus.set_keyboard_focus(Some(FocusId::new(52)));
+        assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).is_none());
+        let release = InputEvent::Key {
+            key: Key::Enter,
+            pressed: false,
+        };
+        assert!(ChessPresentation::on_input(&release, &view, &mut local).is_none());
+        local.focus.set_keyboard_focus(Some(FocusId::new(60)));
+        assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).is_none());
+        assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).is_none());
+        assert!(matches!(local.interaction(), Interaction::Promotion { .. }));
+        assert!(ChessPresentation::on_input(&release, &view, &mut local).is_none());
+        let intent = ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).unwrap();
+        assert_eq!(
+            intent.into_command(),
+            Command::Move {
+                from: 52,
+                to: 60,
+                promotion: Some(PieceKind::Queen)
+            }
+        );
+        assert_eq!(local.cursor(), Square(60));
+        assert_eq!(canonical_encode(&state).unwrap(), before);
+    }
+
+    #[test]
+    fn promotion_cancel_is_available_to_pointer_and_keyboard_when_choices_are_disabled() {
+        for keyboard in [false, true] {
+            let (mut view, layout, mut local) = promotion_fixture();
+            view.legal_moves.clear();
+            if keyboard {
+                assert!(ChessPresentation::on_input(&key(Key::Tab), &view, &mut local).is_none());
+                assert_eq!(local.focus.current(), Some(PROMOTION_CANCEL_FOCUS_ID));
+                assert!(ChessPresentation::on_input(&key(Key::Space), &view, &mut local).is_none());
+            } else {
+                let position = clicked_center(promotion_cancel_rect(layout).unwrap());
+                press_promotion_choice(&view, &mut local, position);
+                assert!(ChessPresentation::on_input(
+                    &InputEvent::Pointer {
+                        position,
+                        button: PointerButton::Primary,
+                        phase: PointerPhase::Up,
+                    },
+                    &view,
+                    &mut local
+                )
+                .is_none());
+            }
+            assert_eq!(local.interaction(), Interaction::Idle);
+            assert_eq!(local.cursor(), Square(52));
+        }
+    }
+
+    #[test]
+    fn promotion_widgets_use_semantic_themes_and_keep_reduced_motion_immediate() {
+        let state = crate::State::from_fen("k7/4P3/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let before = canonical_encode(&state).unwrap();
+        let (view, layout, mut local) = promotion_fixture();
+        local
+            .focus
+            .set_keyboard_focus(Some(promotion_choice_focus_id(PromotionChoice::Queen)));
+        for kind in [
+            tabula_design::ThemeKind::Light,
+            tabula_design::ThemeKind::Dark,
+            tabula_design::ThemeKind::HighContrastLight,
+            tabula_design::ThemeKind::HighContrastDark,
+        ] {
+            let mut theme = Theme::by_kind(kind);
+            let list = ChessPresentation::present(
+                &view,
+                &local,
+                &frame_with_theme(640.0, 640.0, 0, &theme),
+            );
+            for name in ["queen", "rook", "bishop", "knight"] {
+                assert!(list.commands().iter().any(|command| matches!(command,
+                    RenderCmd::Text { text, style: TextStyleToken::LabelMd, layer: Layer::MODAL, .. }
+                        if text == name)));
+            }
+            assert!(list.commands().iter().any(|command| matches!(command,
+                RenderCmd::Rect { rect, fill: Some(Paint::Solid(color)), border: None, layer: Layer::MODAL, .. }
+                    if *rect == promotion_choice_rect(layout, 0).unwrap() && *color == theme.color.primary)));
+            theme.motion.reduced.duration_scale = tabula_design::Percent::new(0).unwrap();
+            assert_eq!(
+                list,
+                ChessPresentation::present(
+                    &view,
+                    &local,
+                    &frame_with_theme(640.0, 640.0, 100, &theme)
+                )
+            );
+        }
+        assert_eq!(canonical_encode(&state).unwrap(), before);
+    }
+
+    #[test]
     fn every_pointer_promotion_choice_emits_the_matching_command() {
         for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
             let (view, layout, mut local) = promotion_fixture();
@@ -2006,6 +2299,11 @@ mod tests {
                 phase: PointerPhase::Up,
             };
             local.set_viewport(viewport(640.0, 640.0));
+            press_promotion_choice(
+                &view,
+                &mut local,
+                clicked_center(promotion_choice_rect(layout, index).unwrap()),
+            );
             assert_eq!(
                 ChessPresentation::on_input(&event, &view, &mut local)
                     .expect("pointer promotion choice emits a command")
@@ -2090,6 +2388,11 @@ mod tests {
             phase: PointerPhase::Up,
         };
         pointer_local.set_viewport(viewport(640.0, 640.0));
+        press_promotion_choice(
+            &view,
+            &mut pointer_local,
+            clicked_center(promotion_choice_rect(layout, 2).unwrap()),
+        );
         let pointer_command =
             ChessPresentation::on_input(&pointer_event, &view, &mut pointer_local)
                 .unwrap()
@@ -2883,7 +3186,11 @@ mod tests {
         assert!(choices.items[1..]
             .iter()
             .all(|item| item.state == "available"));
-        assert_eq!(description.actions.len(), 1 + PROMOTION_CHOICES.len());
+        assert_eq!(description.actions.len(), 2 + PROMOTION_CHOICES.len());
+        assert!(description
+            .actions
+            .iter()
+            .any(|action| action.id.0 == "cancel-promotion" && action.enabled));
         assert!(description.actions[1..].iter().all(|action| action.enabled));
     }
 
@@ -3723,6 +4030,7 @@ mod tests {
             );
 
             let choice_pos = clicked_center(promotion_choice_rect(layout, index).unwrap());
+            press_promotion_choice(&view, &mut choice_local, choice_pos);
             let intent = ChessPresentation::on_input(
                 &InputEvent::Pointer {
                     position: choice_pos,

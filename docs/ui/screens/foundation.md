@@ -177,3 +177,32 @@ Review any changed render snapshot deliberately; do not auto-regenerate goldens.
 must prove the gate, wire real preferences/persistence, and exercise 320–1440 dp, 200% zoom,
 deep links/back, drawer/bottom navigation, focus restoration, and theme parity. Static preview
 interaction does not establish these runtime claims.
+
+## Implemented Stage B slice
+
+The first runtime consumer is Chess's promotion chooser. Shared
+[`ActionButton` and `ButtonInteraction`](../../../crates/tabula-presentation/src/button.rs)
+own semantic filled/tonal appearance, standalone/connected shape, fixed ≥44 dp targets,
+exterior keyboard focus, and pointer/key cancellation. Chess owns the four upgrade intents,
+projected legality, modal capture, labels, and focus restoration. Cancel remains available
+when the projection disables every upgrade. Interaction stays in `ChessLocal` (I-10);
+the helper neither knows a game id nor reads canonical state. Existing render commands and
+opacity scopes suffice; no renderer, token-schema, or dependency extension is required.
+
+| Claim / owner | Oracle and scope | Executed evidence |
+|---|---|---|
+| Stable targets / shared widget and Chess layout | 44 dp floor, unchanged hit bounds during press; portrait 320×640/390×844 and short 640×320/320×300/640×280 viewports | Widget target/connected-corner assertions and `promotion_controls_retain_44_dp_targets_on_compact_viewports` |
+| Safe activation / shared local input | Same-target primary down/up, leaving/cancel, missing/disabled controls, focus loss, once per Enter/Space press, disabled-node traversal | Widget interaction tests; three pre-change Chess regressions reproduced the undersized-target, release-only, and focus-loss defects |
+| Modal intent and cancellation / Chess | Projected legal upgrades only; no board input through modal; Cancel/Escape restore source focus without a command; opening-key repeat suppressed | Chess promotion presenter tests, including unavailable choices and pointer/keyboard Cancel |
+| Theme and motion / I-10 | Semantic fills/labels in all four schemes; immediate feedback under reduced motion; canonical bytes unaffected | Widget/theme and Chess presenter assertions; headless command evidence, not rendered pixels |
+| Deliberate render change / presenter | Promotion snapshot commands 0–67 (board, pieces, HUD) remain identical; only modal geometry, labels, state/focus scopes, and Cancel change | Reviewed one promotion snapshot; other six presenter goldens retained |
+
+Local checks passed: `just check`, `just features`,
+`cargo test -p tabula-game-chess --features bots,presentation` (144 passed; one explicitly
+ignored depth-five perft test), and
+`cargo check -p tabula-game-client --target wasm32-unknown-unknown` (compilation only).
+Screen-reader/native/browser visual interaction remains platform verification: the available
+automation session exposed no browser surface. Render-list tests and WASM compilation do not establish font wrapping,
+rendered focus contrast, or assistive-technology behavior. The supported compact width is
+≥320 dp; below the modal's 206×152 dp geometric minimum it emits no controls and Escape can
+still cancel. Stage C remains deferred at the phase gate described above.

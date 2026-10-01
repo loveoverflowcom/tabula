@@ -80,7 +80,7 @@ impl GameModule for ChessModule {
 static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| {
     GameMetadata::from(GameMetadataSpec {
         id: GameId::new("com.tabula.chess").expect("literal is a valid game id"),
-        version: GameVersion::new("0.1.0").expect("literal is valid SemVer"),
+        version: GameVersion::new("0.1.1").expect("literal is valid SemVer"),
         rules_version: ChessRules::RULES_VERSION,
         name_key: I18nKey::new("game.chess.name").expect("literal is a valid i18n key"),
         tagline_key: I18nKey::new("game.chess.tagline").expect("literal is a valid i18n key"),

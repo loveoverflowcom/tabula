@@ -1,6 +1,6 @@
 # Source-of-truth catalog manifest. (doc 02 §4.3)
 id            = "com.tabula.chess"
-version       = "0.1.0"
+version       = "0.1.1"
 rules_version = 3
 name_key        = "game.chess.name"
 tagline_key     = "game.chess.tagline"
