@@ -12,6 +12,8 @@ Read [foundation](foundation.md), [availability evidence](discovery-availability
 [03 New match](03-new-match.md) together. Doc 00, doc 02 §4–§9, doc 04 §2–§4 and
 §10, and doc 07 remain authoritative. This specification introduces no Rust API,
 wire type, running route, game registration, or new token.
+The [verification ledger](discovery-verification.md) separates this stage's
+source/document checks from later runtime acceptance.
 
 ## Behavior and phase boundary
 
