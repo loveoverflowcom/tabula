@@ -518,7 +518,7 @@ where
 }
 
 // Verification ledger for the replay-evidence properties this file proves
-// (`rust-verification-testing`, `rust-replay-differential-testing`):
+// (engineering `verification-testing.md`, `replay-differential-testing.md`):
 //
 // R1  attempt ordering: every canonical attempt gets one unique monotonic
 //     InputIndex, accepted or rejected                         (example-tested; preexisting)
@@ -646,7 +646,7 @@ mod tests {
     /// checkpoint, using ONLY the deterministic core `LocalMatch` is built
     /// on top of (`GameRules::create`/`apply`, `DetRng::for_input`) — never
     /// `LocalMatch` itself, its timer scheduler, or its replay-capture code.
-    /// Deliberately smaller and independent, per `rust-replay-differential-testing`.
+    /// Deliberately smaller and independent, per engineering `replay-differential-testing.md`.
     ///
     /// Returns the final canonical hash and the terminal `MatchOutcome`, if
     /// creation or an accepted input's outcome carried `Effect::EndMatch`.

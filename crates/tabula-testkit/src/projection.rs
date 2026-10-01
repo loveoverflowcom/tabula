@@ -486,7 +486,7 @@ fn digest(bytes: &[u8]) -> String {
 /// [`crate::projection`] module docs for the residual gap this leaves
 /// (derived leaks this exact pair of states does not happen to exercise) and
 /// pair single examples with a property test that generates many pairs, as
-/// the sibling `rust-property-testing` skill describes.
+/// the engineering `property-testing.md` reference describes.
 ///
 /// # Panics
 /// If the two projections encode to different canonical bytes. The message

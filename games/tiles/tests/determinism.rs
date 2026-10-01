@@ -5,7 +5,7 @@
 //! themselves built from `create` and legal placements — because these are
 //! semantic laws. Asserting a rule over a board assembled field-by-field would
 //! prove nothing and would fail for reasons that are not bugs
-//! (`rust-property-testing` §"Reachable state vs arbitrary state").
+//! (engineering `property-testing.md` §"Reachable state vs arbitrary state").
 //!
 //! The *inputs* fed to those states are the opposite: deliberately arbitrary,
 //! including coordinates far off the board, seats that do not exist, and
@@ -39,7 +39,7 @@ fn proptest_config() -> ProptestConfig {
 ///
 /// The prefix is weighted toward *longer* games on purpose: short prefixes are
 /// cheap to generate and are exactly where the interesting transitions are not
-/// (`rust-property-testing` §generators — "watch the bias").
+/// (engineering `property-testing.md` §generators — "watch the bias").
 fn reachable(seed_byte: u8, seats: u8, steps: usize) -> State {
     let seed = MatchSeed::from_bytes([seed_byte; 32]);
     let mut state = create(&seed, seats, config());

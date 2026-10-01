@@ -17,7 +17,8 @@
 #   channel      = what we build and test with (recent, moves deliberately)
 #   rust-version = what we promise game authors will compile (conservative)
 #
-# Bump procedure: bump here, run `cargo xtask replay --all` (the I-8 check), then
+# Bump procedure: bump here, verify each committed tests/replays/*.tbr with
+# `cargo xtask replay PATH --verify` (I-8; --all is not implemented), then
 # decide separately whether the MSRV should move.
 [toolchain]
 channel    = "1.96"

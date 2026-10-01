@@ -31,8 +31,8 @@ xtask = "run --package xtask --"
 | `check-deps` | Walks the **resolved** cargo metadata graph per crate and asserts the `deps.toml` matrix: direct dependencies come from the crate's allow-list, banned/forbidden-category crates cannot be reached transitively (with the path printed), and dependency direction respects the tier ordering. Enforces I-1 and I-15. |
 | `check-no-game-ids` | Scans the tree for a game id appearing as a whole word (case-insensitive, `_`/`-` count as separators) outside its own game package, `tabula-registry`, `xtask`, test fixtures, manifests, or docs/comments. Enforces I-9. |
 | `check-manifests` | Validates every workspace `Cargo.toml` (workspace-field inheritance, no wildcard registry versions, internal crates referenced via `{ workspace = true }`, the `rules`/`presentation`/`bots`/`testkit` feature shape for game crates) and, for games that have one, `game.toml`'s schema (required fields, the `com.tabula.<id>` convention, enum-valued capabilities). Does **not** yet cross-check against the compiled `GameMetadata`/`GameCapabilities` statics — that needs the `metadata_from_manifest!` proc macro (doc 02 §10.2), which does not exist yet. |
-| `new-game <slug> [--seats N] [--category C]` | Scaffolds a game crate template, including `clippy.toml` and `tests/conformance.rs`. |
-| `selfplay <game> [--matches N] [--seed N\|HEX] [--match-index N] [--max-inputs N] [--clock fischer\|bronstein\|none] [--seats N]` | Deterministic bot-vs-bot matches with projection, timer, transactional, and termination checks. Failures print reproducible seed/match/input coordinates; the command does not mutate the repository. |
+| `new-game <slug> [--seats N] [--category C]` | Planned scaffold; **not implemented**. Dispatch reports an intentional error and exits; use doc 02 §14 and an existing crate manually. |
+| `selfplay <chess\|tiles> [--matches N] [--seed N\|HEX] [--match-index N] [--max-inputs N] [--clock fischer\|bronstein\|none] [--seats N]` | Deterministic bot-vs-bot matches with projection, transactional, and termination checks. Chess supports clock modes; Tiles supports seat counts and currently disables turn deadlines, so test Tiles timers separately. Failures print seed/match/input coordinates; retain every flag for reproduction (including Tiles seats/max-inputs). The command does not mutate the repository. |
 | `replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]` | Verifies a canonical `.tbr`, compares every checkpoint and the final hash, and prints the first failing evidence. `--diagnose` classifies it as exact, windowed, final-only, or terminal-outcome evidence; `--write-reproducer` writes a safe derived prefix to an explicit different path. `--at N` seeks to an accepted-input state version. |
 | `replay-goldens` | Intentionally regenerates the committed Phase 1 corpus under `tests/replays/`; ordinary tests never rewrite it. |
 
@@ -40,7 +40,7 @@ xtask = "run --package xtask --"
 
 | Command | Phase | What it does |
 |---|---|---|
-| `perft <depth>` | 1 | Chess move-generation node counts, against published positions |
+| `perft chess [depth]` | 1 | Chess move-generation node counts, against published positions |
 | `gen-tokens` | 2 | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json`. Outputs are committed; CI fails if stale. |
 | `check-no-raw-colors` | 2 | No hex literals or `Color::rgb`/`Color::rgba`/`Color::new` constructors outside `tabula-design` |
 | `stage-wasm-game` | 2 | Stages the checked-in HTML host, pinned JS bootstrap, and wasm-release binary into `target/tabula-web-game/` |

@@ -22,10 +22,10 @@
 //! | `check-deps` | Walk the resolved cargo metadata graph, assert the `deps.toml` matrix (I-1, I-15) | 0 |
 //! | `check-no-game-ids` | Scan the tree for game id literals outside their game package, the registry, tests, manifests, and docs (I-9) | 0 |
 //! | `check-manifests` | Validate workspace `Cargo.toml`s (inheritance, no wildcard versions, `{ workspace = true }` over duplicated paths, game feature shape) and `game.toml` schemas | 0 |
-//! | `new-game <slug>` | Scaffold a game crate from the template (doc 02 §10.1) | 0 |
+//! | `new-game <slug>` | Planned scaffold; not implemented (doc 02 §10.1) | 0 |
 //! | `selfplay <game>` | Bot-vs-bot matches with full invariant checking | 0 |
 //! | `replay <file>` | Replay a `.tbr` locally; `--diagnose` prints evidence strength | 0 |
-//! | `perft <depth>` | Chess move-generation counts | 1 |
+//! | `perft chess [depth]` | Chess move-generation counts | 1 |
 //! | `gen-tokens` | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json` | 2 |
 //! | `check-no-raw-colors` | No hex literals or `Color::new(` outside `tabula-design` | 2 |
 //! | `pack-assets <game>` | Build, hash, and manifest a game's asset pack | 3 |

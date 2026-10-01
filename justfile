@@ -57,7 +57,7 @@ deps:
 no-game-ids:
     cargo xtask check-no-game-ids
 
-# game.toml must equal the compiled GameMetadata/GameCapabilities.
+# Schema/feature validation; compiled metadata cross-check is not implemented.
 manifests:
     cargo xtask check-manifests
 
@@ -92,7 +92,8 @@ selfplay game matches="10000":
 replay file:
     cargo xtask replay {{file}}
 
-# I-8 over the whole committed corpus. Nightly in CI, on demand here.
+# Planned I-8 corpus shortcut; the current replay CLI rejects --all.
+# Audit existing .tbr files with explicit `cargo xtask replay PATH --verify`.
 replay-all:
     cargo xtask replay --all
 
@@ -133,6 +134,7 @@ protocol-vectors bump:
 pack game:
     cargo xtask pack-assets {{game}}
 
+# Planned scaffold; xtask currently reports "not yet implemented".
 new-game slug *ARGS:
     cargo xtask new-game {{slug}} {{ARGS}}
 

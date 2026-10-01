@@ -1,0 +1,500 @@
+Issue 47 bounded local pilot; collected 2026-10-01T13:31:35.262346+00:00
+Source ref: 44f6b74e07648abc7191363d7582efc1fceab262
+Cwd: /home/manhpd/Projects/tabula
+Native x86_64-unknown-linux-gnu, rustc/cargo 1.96.1, nextest 0.9.143
+Dirty scope: skill/docs/CI migration and comment-only reference updates; no game behavior changes
+
+=== chess-tiles-nextest.log ===
+Command: PROPTEST_RNG_SEED=47 CARGO_NET_OFFLINE=true cargo nextest run -p tabula-game-chess -p tabula-game-tiles --features bots,presentation
+Exit code: 0
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling find-msvc-tools v0.1.11
+   Compiling shlex v2.0.1
+   Compiling libc v0.2.189
+   Compiling cpufeatures v0.3.1
+   Compiling zerocopy v0.8.56
+   Compiling arrayvec v0.7.8
+   Compiling thiserror v2.0.20
+   Compiling rustversion v1.0.23
+   Compiling thiserror v1.0.69
+   Compiling hashbrown v0.17.1
+   Compiling rand_core v0.6.4
+   Compiling itoa v1.0.18
+   Compiling ryu v1.0.23
+   Compiling static_assertions v1.1.0
+   Compiling getrandom v0.3.4
+   Compiling equivalent v1.0.2
+   Compiling constant_time_eq v0.4.2
+   Compiling toml_write v0.1.2
+   Compiling rustix v1.1.4
+   Compiling getrandom v0.4.3
+   Compiling cc v1.4.4
+   Compiling winnow v0.7.15
+   Compiling bitflags v2.13.1
+   Compiling linux-raw-sys v0.12.1
+   Compiling fastrand v2.5.0
+   Compiling autocfg v1.5.1
+   Compiling once_cell v1.21.4
+   Compiling bit-vec v0.8.0
+   Compiling fnv v1.0.7
+   Compiling quick-error v1.2.3
+   Compiling crc32fast v1.5.1
+   Compiling similar v2.7.0
+   Compiling regex-syntax v0.8.11
+   Compiling twox-hash v2.1.4
+   Compiling unarray v0.1.4
+   Compiling bit-set v0.8.0
+   Compiling indexmap v2.14.1
+   Compiling ruzstd v0.9.0
+   Compiling num-traits v0.2.19
+   Compiling syn v3.0.4
+   Compiling syn v2.0.119
+   Compiling castaway v0.2.4
+   Compiling wait-timeout v0.2.1
+   Compiling console v0.16.4
+   Compiling rand_core v0.9.5
+   Compiling rand_xorshift v0.4.0
+   Compiling rand v0.9.5
+   Compiling tempfile v3.27.0
+   Compiling rusty-fork v0.3.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling blake3 v1.8.7
+   Compiling rand_chacha v0.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling proptest v1.11.0
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.20
+   Compiling thiserror-impl v1.0.69
+   Compiling tabula-game-chess v0.1.0 (/home/manhpd/Projects/tabula/games/chess)
+   Compiling tabula-game-tiles v0.1.0 (/home/manhpd/Projects/tabula/games/tiles)
+   Compiling cobs v0.3.0
+   Compiling compact_str v0.8.2
+   Compiling smallvec v1.15.2
+   Compiling postcard v1.1.3
+   Compiling toml_datetime v0.6.11
+   Compiling serde_spanned v0.6.9
+   Compiling glam v0.29.3
+   Compiling tabula-design v0.0.0 (/home/manhpd/Projects/tabula/crates/tabula-design)
+   Compiling insta v1.48.0
+   Compiling toml_edit v0.22.27
+   Compiling tabula-core v0.1.0 (/home/manhpd/Projects/tabula/crates/tabula-core)
+   Compiling tabula-game-api v0.1.0 (/home/manhpd/Projects/tabula/crates/tabula-game-api)
+   Compiling toml v0.8.23
+   Compiling tabula-assets v0.0.0 (/home/manhpd/Projects/tabula/crates/tabula-assets)
+   Compiling tabula-presentation v0.0.0 (/home/manhpd/Projects/tabula/crates/tabula-presentation)
+   Compiling tabula-testkit v0.1.0 (/home/manhpd/Projects/tabula/crates/tabula-testkit)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 27.19s
+────────────
+ Nextest run ID d2e21de2-c8e7-4ab6-b68b-2b90e5801c1b with nextest profile: default
+    Starting 284 tests across 15 binaries (1 test skipped)
+        PASS [   0.011s] (  1/284) tabula-game-chess presentation::tests::chess_declares_typed_asset_pack_matching_metadata
+        PASS [   0.011s] (  2/284) tabula-game-chess presentation::tests::clock_updates_are_silent
+        PASS [   0.011s] (  3/284) tabula-game-chess presentation::tests::drag_outside_board_is_total_and_has_no_target
+        PASS [   0.011s] (  4/284) tabula-game-chess presentation::tests::a11y_describes_the_active_promotion_selection
+        PASS [   0.012s] (  5/284) tabula-game-chess presentation::tests::clocked_presentation_visibly_counts_down_from_authoritative_clock_state
+        PASS [   0.012s] (  6/284) tabula-game-chess presentation::tests::chess_move_animation_has_a_real_in_flight_sample
+        PASS [   0.011s] (  7/284) tabula-game-chess presentation::tests::black_promotion_chooser_uses_black_piece_glyphs
+        PASS [   0.012s] (  8/284) tabula-game-chess presentation::tests::board_boundaries_clamp_directional_arrows
+        PASS [   0.012s] (  9/284) tabula-game-chess presentation::tests::drag_source_identity_never_changes
+        PASS [   0.013s] ( 10/284) tabula-game-chess presentation::tests::a11y_describes_every_square_from_the_projection
+        PASS [   0.013s] ( 11/284) tabula-game-chess presentation::tests::chess_animation_never_mutates_authoritative_state
+        PASS [   0.013s] ( 12/284) tabula-game-chess presentation::tests::chess_final_render_is_identical_after_sparse_or_dense_sampling
+        PASS [   0.013s] ( 13/284) tabula-game-chess presentation::tests::chess_move_animation_is_driven_by_view_event
+        PASS [   0.015s] ( 14/284) tabula-game-chess presentation::tests::accepted_projected_move_emits_one_cue_without_mutating_canonical_state
+        PASS [   0.015s] ( 15/284) tabula-game-chess presentation::tests::active_animation_does_not_gate_drag
+        PASS [   0.015s] ( 16/284) tabula-game-chess presentation::tests::drag_and_tap_and_keyboard_converge_on_the_same_move_command
+        PASS [   0.014s] ( 17/284) tabula-game-chess presentation::tests::drag_does_not_enable_keyboard_focus_visible
+        PASS [   0.017s] ( 18/284) tabula-game-chess presentation::tests::chess_board_focus_uses_shared_directional_navigation
+        PASS [   0.017s] ( 19/284) tabula-game-chess presentation::tests::board_is_64_square_square_and_fits_both_viewport_orientations
+        PASS [   0.017s] ( 20/284) tabula-game-chess presentation::tests::animation_does_not_gate_input_or_intent_creation
+        PASS [   0.009s] ( 21/284) tabula-game-chess presentation::tests::every_pointer_promotion_choice_emits_the_matching_command
+        PASS [   0.009s] ( 22/284) tabula-game-chess presentation::tests::end_to_end_projection_presentation_intent_and_rules_apply
+        PASS [   0.010s] ( 23/284) tabula-game-chess presentation::tests::escape_cancels_promotion_without_emitting_a_command
+        PASS [   0.009s] ( 24/284) tabula-game-chess presentation::tests::invalid_drop_emits_no_intent_and_restores_source_selection
+        PASS [   0.011s] ( 25/284) tabula-game-chess presentation::tests::initial_position_renders_all_board_squares_and_pieces_deterministically
+        PASS [   0.010s] ( 26/284) tabula-game-chess presentation::tests::legal_drag_emits_exact_move_intent
+        PASS [   0.008s] ( 27/284) tabula-game-chess presentation::tests::movement_above_drag_threshold_enters_dragging
+        PASS [   0.009s] ( 28/284) tabula-game-chess presentation::tests::movement_below_drag_threshold_remains_tap_candidate
+        PASS [   0.014s] ( 29/284) tabula-game-chess presentation::tests::keyboard_opened_promotion_uses_keyboard_modality_and_shows_focus_ring
+        PASS [   0.017s] ( 30/284) tabula-game-chess presentation::tests::focus_is_local_and_never_mutates_authoritative_state
+        PASS [   0.014s] ( 31/284) tabula-game-chess presentation::tests::keyboard_focus_renders_semantic_focus_ring
+        PASS [   0.009s] ( 32/284) tabula-game-chess presentation::tests::pointer_and_keyboard_activation_build_the_same_move
+        PASS [   0.012s] ( 33/284) tabula-game-chess presentation::tests::piece_in_transit_is_not_double_rendered
+        PASS [   0.008s] ( 34/284) tabula-game-chess presentation::tests::pointer_cancel_during_drag_emits_no_intent_and_clears_drag
+        PASS [   0.015s] ( 35/284) tabula-game-chess presentation::tests::keyboard_promotion_navigation_is_clamped_and_commits_the_selected_piece
+        PASS [   0.008s] ( 36/284) tabula-game-chess presentation::tests::pointer_down_on_movable_piece_enters_pressed_state
+        PASS [   0.010s] ( 37/284) tabula-game-chess presentation::tests::pointer_and_keyboard_promotion_selection_share_command_construction
+        PASS [   0.008s] ( 38/284) tabula-game-chess presentation::tests::pointer_opened_promotion_keeps_pointer_modality_and_hides_focus_ring
+        PASS [   0.032s] ( 39/284) tabula-game-chess presentation::tests::cue_identity_is_frame_independent_and_present_is_audio_free
+        PASS [   0.009s] ( 40/284) tabula-game-chess presentation::tests::pointer_selection_is_local_and_valid_destination_emits_one_command
+        PASS [   0.010s] ( 41/284) tabula-game-chess presentation::tests::promotion_animation_moves_a_pawn_and_finishes_as_the_promoted_piece
+        PASS [   0.012s] ( 42/284) tabula-game-chess presentation::tests::projected_capture_emits_capture_not_move
+        PASS [   0.009s] ( 43/284) tabula-game-chess presentation::tests::promotion_drag_regression
+        PASS [   0.009s] ( 44/284) tabula-game-chess presentation::tests::promotion_choice_type_contains_exactly_the_four_upgrade_pieces
+        PASS [   0.010s] ( 45/284) tabula-game-chess presentation::tests::promotion_choice_comes_from_the_canonical_legal_move_projection
+        PASS [   0.010s] ( 46/284) tabula-game-chess presentation::tests::real_opening_e2_to_e4_drag_drop_sequence
+        PASS [   0.010s] ( 47/284) tabula-game-chess presentation::tests::square_mapping_round_trips_centers_and_rejects_edges_outside_the_board
+        PASS [   0.012s] ( 48/284) tabula-game-chess presentation::tests::resize_mid_drag_remains_total
+        PASS [   0.013s] ( 49/284) tabula-game-chess presentation::tests::rendering_proves_no_duplicate_piece_during_drag
+        PASS [   0.011s] ( 50/284) tabula-game-chess presentation::tests::terminal_projection_renders_result_and_disables_input
+        PASS [   0.011s] ( 51/284) tabula-game-chess presentation::tests::terminal_projected_events_preserve_move_then_game_end_cue_order
+        PASS [   0.017s] ( 52/284) tabula-game-chess presentation::tests::resizing_between_clicks_keeps_hit_testing_on_the_current_board
+        PASS [   0.010s] ( 53/284) tabula-game-chess rules::clock::tests::timer_budget_matches_control_semantics_at_boundaries
+        PASS [   0.011s] ( 54/284) tabula-game-chess rules::clock::tests::fischer_near_limit_repeated_zero_elapsed_moves_are_deterministic
+        PASS [   0.010s] ( 55/284) tabula-game-chess::bot easy_bot_is_deterministic_for_identical_view_and_rng
+        PASS [   0.014s] ( 56/284) tabula-game-chess rules::clock::tests::fischer_charge_matches_bounded_reference_model
+        PASS [   0.014s] ( 57/284) tabula-game-chess rules::clock::tests::fischer_increment_caps_at_the_explicit_finite_domain_limit
+        PASS [   0.010s] ( 58/284) tabula-game-chess::bot easy_returns_none_for_the_wrong_seat_or_when_no_moves_are_projected
+        PASS [   0.023s] ( 59/284) tabula-game-chess presentation::tests::tab_navigation_traverses_all_board_squares
+        PASS [   0.024s] ( 60/284) tabula-game-chess rules::clock::tests::bronstein_charge_matches_bounded_reference_model
+        PASS [   0.010s] ( 61/284) tabula-game-chess::bot trivial_bot_remains_deterministic_and_legal_for_a_fixed_seed
+        PASS [   0.018s] ( 62/284) tabula-game-chess::bot easy_equal_score_ties_use_rng_but_stay_with_the_best_moves
+        PASS [   0.010s] ( 63/284) tabula-game-chess::clocks bronstein_delay_is_refunded_without_resetting_the_turn
+        PASS [   0.011s] ( 64/284) tabula-game-chess::clocks admin_cancel_cancels_clock_timer
+        PASS [   0.010s] ( 65/284) tabula-game-chess::clocks bronstein_move_past_delay_consumes_only_excess
+        PASS [   0.012s] ( 66/284) tabula-game-chess::clocks bronstein_move_inside_delay_consumes_no_clock
+        PASS [   0.054s] ( 67/284) tabula-game-chess presentation::tests::golden_chess_move_animation_midflight
+        PASS [   0.054s] ( 68/284) tabula-game-chess presentation::tests::golden_chess_drag_e2_to_e4_midflight_dark
+        PASS [   0.054s] ( 69/284) tabula-game-chess presentation::tests::golden_chess_initial_640x640_light
+        PASS [   0.055s] ( 70/284) tabula-game-chess presentation::tests::golden_chess_initial_320x640_responsive
+        PASS [   0.021s] ( 71/284) tabula-game-chess::bot easy_uses_piece_square_positioning_when_material_is_equal
+        PASS [   0.010s] ( 72/284) tabula-game-chess::clocks clock_timer_rearms_for_new_side_after_move
+        PASS [   0.009s] ( 73/284) tabula-game-chess::clocks clocked_creation_initializes_and_arms_the_white_clock
+        PASS [   0.057s] ( 74/284) tabula-game-chess presentation::tests::golden_chess_promotion_chooser_modal
+        PASS [   0.018s] ( 75/284) tabula-game-chess::clocks bronstein_exact_timeout_boundary_flags
+        PASS [   0.027s] ( 76/284) tabula-game-chess::bot easy_treats_a_terminal_draw_as_neutral_utility
+        PASS [   0.058s] ( 77/284) tabula-game-chess presentation::tests::golden_chess_terminal_checkmate_hud
+        PASS [   0.013s] ( 78/284) tabula-game-chess::clocks clock_config_is_validated_before_match_creation
+        PASS [   0.012s] ( 79/284) tabula-game-chess::clocks early_timer_rearms_instead_of_ending_match
+        PASS [   0.009s] ( 80/284) tabula-game-chess::clocks fischer_exact_zero_flags_before_move
+        PASS [   0.010s] ( 81/284) tabula-game-chess::clocks fischer_increment_is_not_granted_to_flagged_player
+        PASS [   0.011s] ( 82/284) tabula-game-chess::clocks expired_clock_preempts_valid_non_move_commands
+        PASS [   0.010s] ( 83/284) tabula-game-chess::clocks fischer_move_decrements_elapsed_and_adds_increment
+        PASS [   0.065s] ( 84/284) tabula-game-chess presentation::tests::golden_chess_selected_focus_overlay_dark
+        PASS [   0.009s] ( 85/284) tabula-game-chess::clocks out_of_turn_move_does_not_consume_clock
+        PASS [   0.018s] ( 86/284) tabula-game-chess::clocks clocked_script_is_deterministic_in_state_events_and_effects
+        PASS [   0.011s] ( 87/284) tabula-game-chess::clocks fischer_one_millisecond_before_deadline_survives
+        PASS [   0.010s] ( 88/284) tabula-game-chess::clocks terminal_move_cancels_clock_timer
+        PASS [   0.012s] ( 89/284) tabula-game-chess::clocks seat_disconnect_does_not_pause_clock
+        PASS [   0.011s] ( 90/284) tabula-game-chess::clocks timeout_is_a_draw_when_the_surviving_side_has_only_a_king
+        PASS [   0.015s] ( 91/284) tabula-game-chess::clocks fischer_near_limit_repeated_zero_elapsed_moves_never_wrap
+        PASS [   0.013s] ( 92/284) tabula-game-chess::clocks illegal_move_does_not_consume_clock
+        PASS [   0.013s] ( 93/284) tabula-game-chess::clocks rejected_draw_command_does_not_consume_clock
+        PASS [   0.013s] ( 94/284) tabula-game-chess::clocks timeout_ignores_flagged_side_material_when_survivor_is_bare_king
+        PASS [   0.010s] ( 95/284) tabula-game-chess::clocks timer_at_exact_deadline_flags_side_to_move
+        PASS [   0.011s] ( 96/284) tabula-game-chess::clocks timeout_with_mating_material_is_decisive_and_does_not_mutate_board
+        PASS [   0.017s] ( 97/284) tabula-game-chess::clocks resignation_cancels_clock_timer
+        PASS [   0.010s] ( 98/284) tabula-game-chess::conformance tabula_conformance_deterministic_initialization
+        PASS [   0.015s] ( 99/284) tabula-game-chess::clocks timeout_material_edges_distinguish_minor_and_mating_combinations
+        PASS [   0.012s] (100/284) tabula-game-chess::clocks unknown_timer_is_harmless
+        PASS [   0.010s] (101/284) tabula-game-chess::conformance tabula_conformance_deterministic_rng
+        PASS [   0.013s] (102/284) tabula-game-chess::conformance tabula_conformance_deterministic_command_execution
+        PASS [   0.011s] (103/284) tabula-game-chess::conformance tabula_conformance_invalid_command_safety
+        PASS [   0.009s] (104/284) tabula-game-chess::conformance tabula_conformance_stable_identity
+        PASS [   0.014s] (105/284) tabula-game-chess::conformance tabula_conformance_state_hash_sensitivity
+        PASS [   0.018s] (106/284) tabula-game-chess::conformance tabula_conformance_deterministic_replay
+        PASS [   0.014s] (107/284) tabula-game-chess::conformance tabula_conformance_serialization_roundtrip
+        PASS [   0.014s] (108/284) tabula-game-chess::conformance tabula_conformance_ordered_events
+        PASS [   0.009s] (109/284) tabula-game-chess::replay canonical_source_mutation_changes_oracle_hash
+        PASS [   0.011s] (110/284) tabula-game-chess::projection_control a_move_changes_the_board_which_is_public_to_every_viewer
+        PASS [   0.015s] (111/284) tabula-game-chess::conformance tabula_conformance_terminal_behavior
+        PASS [   0.008s] (112/284) tabula-game-chess::replay rules_hash_matches_independent_rules_subtree_oracle
+        PASS [   0.011s] (113/284) tabula-game-chess::replay all_rules_subtree_files_are_discovered_recursively
+        PASS [   0.012s] (114/284) tabula-game-chess::projection_control projection_is_deterministic_for_a_fixed_reachable_state
+        PASS [   0.019s] (115/284) tabula-game-chess::conformance tabula_conformance_legal_commands_sanity
+        PASS [   0.012s] (116/284) tabula-game-chess::replay canonical_tree_rejects_noncanonical_feature_sources
+        PASS [   0.010s] (117/284) tabula-game-chess::rules a_draw_offer_is_answered_by_the_other_seat_without_changing_turn
+        PASS [   0.016s] (118/284) tabula-game-chess::replay committed_chess_replay_reproduces_its_independent_final_hash
+        PASS [   0.019s] (119/284) tabula-game-chess::replay canonical_rules_do_not_depend_on_crate_root_sources
+        PASS [   0.011s] (120/284) tabula-game-chess::rules draw_offer_before_both_players_move_is_rejected
+        PASS [   0.011s] (121/284) tabula-game-chess::rules fen_rejects_unrepresentable_positions
+        PASS [   0.012s] (122/284) tabula-game-chess::rules repetition_key_omits_an_unavailable_en_passant_target
+        PASS [   0.014s] (123/284) tabula-game-chess::rules all_promotion_choices_are_legal_and_change_the_piece
+        PASS [   0.012s] (124/284) tabula-game-chess::rules resigning_from_a_dead_position_is_a_draw_and_can_happen_off_turn
+        PASS [   0.022s] (125/284) tabula-game-chess::replay committed_chess_clock_replay_contains_a_recorded_timer_input
+        PASS [   0.014s] (126/284) tabula-game-chess::rules fifty_move_rule_is_claimable_and_seventy_five_move_rule_is_automatic
+        PASS [   0.012s] (127/284) tabula-game-chess::rules threefold_repetition_is_claimable_but_not_automatic
+        PASS [   0.010s] (128/284) tabula-game-tiles bot::tests::the_module_offers_a_bot_for_the_levels_it_declares
+        PASS [   0.015s] (129/284) tabula-game-chess::rules illegal_moves_are_byte_identical_noops
+        PASS [   0.012s] (130/284) tabula-game-tiles bot::tests::the_bot_declines_when_it_is_not_its_turn_or_the_match_is_over
+        PASS [   0.016s] (131/284) tabula-game-chess::rules legal_commands_are_stably_ordered_and_all_authoritative
+        PASS [   0.017s] (132/284) tabula-game-chess::rules fivefold_repetition_is_automatic
+        PASS [   0.010s] (133/284) tabula-game-tiles presentation::tests::a_view_event_updates_only_local_state_and_emits_a_cue
+        PASS [   0.014s] (134/284) tabula-game-tiles presentation::tests::a_pointer_maps_back_to_the_square_it_was_taken_from
+        PASS [   0.013s] (135/284) tabula-game-tiles presentation::tests::a_tap_on_a_legal_square_asks_to_place_and_an_illegal_one_does_not
+        PASS [   0.010s] (136/284) tabula-game-tiles presentation::tests::escape_passes_on_a_follower_only_in_the_claim_step
+        PASS [   0.011s] (137/284) tabula-game-tiles presentation::tests::arrows_move_the_cursor_and_tab_finds_a_legal_square
+        PASS [   0.010s] (138/284) tabula-game-tiles presentation::tests::dragging_pans_the_camera_and_does_not_place_on_release
+        PASS [   0.015s] (139/284) tabula-game-tiles presentation::tests::a_press_below_the_drag_threshold_is_still_a_tap
+        PASS [   0.085s] (140/284) tabula-game-chess::bot easy_chooses_the_materially_superior_capture
+        PASS [   0.013s] (141/284) tabula-game-tiles presentation::tests::space_and_the_rotate_control_both_turn_the_preview
+        PASS [   0.009s] (142/284) tabula-game-tiles presentation::tests::the_opening_view_is_centred_on_the_start_tile
+        PASS [   0.013s] (143/284) tabula-game-tiles presentation::tests::the_asset_pack_matches_the_manifest
+        PASS [   0.009s] (144/284) tabula-game-tiles presentation::tests::the_zoom_and_recenter_controls_change_only_the_camera
+        PASS [   0.010s] (145/284) tabula-game-tiles presentation::tests::the_whole_placement_step_is_reachable_from_the_keyboard
+        PASS [   0.011s] (146/284) tabula-game-tiles presentation::tests::the_hud_keeps_its_logical_geometry_at_every_zoom
+        PASS [   0.010s] (147/284) tabula-game-tiles presentation::tests::zoom_is_clamped_at_both_ends
+        PASS [   0.024s] (148/284) tabula-game-tiles presentation::tests::losing_focus_disarms_a_drag_in_progress
+        PASS [   0.011s] (149/284) tabula-game-tiles rules::coord::tests::neighbour_and_opposite_side_are_mutually_inverse
+        PASS [   0.027s] (150/284) tabula-game-tiles presentation::tests::different_cameras_really_do_produce_different_render_lists
+        PASS [   0.012s] (151/284) tabula-game-tiles rules::coord::tests::coord_rejects_positions_outside_the_playable_space
+        PASS [   0.015s] (152/284) tabula-game-tiles rules::coord::tests::coord_deserialization_cannot_bypass_the_playable_space_check
+        PASS [   0.008s] (153/284) tabula-game-tiles rules::coord::tests::rotation_next_cycles_through_all_four_orientations
+        PASS [   0.009s] (154/284) tabula-game-tiles rules::coord::tests::opposite_is_an_involution_and_never_the_identity
+        PASS [   0.009s] (155/284) tabula-game-tiles rules::coord::tests::raw_index_constructors_are_total_over_every_byte
+        PASS [   0.025s] (156/284) tabula-game-tiles presentation::tests::the_a11y_description_names_the_cursor_and_gates_its_actions
+        PASS [   0.010s] (157/284) tabula-game-tiles rules::coord::tests::rotating_a_side_four_times_is_the_identity
+        PASS [   0.009s] (158/284) tabula-game-tiles rules::feature::tests::a_completed_feature_reports_no_open_edges
+        PASS [   0.013s] (159/284) tabula-game-tiles rules::coord::tests::neighbour_is_total_at_the_boundary_instead_of_overflowing
+        PASS [   0.009s] (160/284) tabula-game-tiles rules::feature::tests::a_graph_that_merged_two_unconnected_roads_is_rejected
+        PASS [   0.009s] (161/284) tabula-game-tiles rules::feature::tests::a_lone_start_tile_has_one_city_and_one_road_both_open
+        PASS [   0.009s] (162/284) tabula-game-tiles rules::feature::tests::a_monastery_closes_only_when_all_eight_neighbours_are_filled
+        PASS [   0.008s] (163/284) tabula-game-tiles rules::feature::tests::a_pennant_travels_with_the_city_it_belongs_to
+        PASS [   0.012s] (164/284) tabula-game-tiles rules::feature::tests::a_graph_that_forgot_a_segment_is_rejected
+        PASS [   0.009s] (165/284) tabula-game-tiles rules::feature::tests::a_segment_reference_rejects_an_index_no_tile_could_have
+        PASS [   0.011s] (166/284) tabula-game-tiles rules::feature::tests::a_graph_with_a_wrong_open_edge_count_is_rejected
+        PASS [   0.010s] (167/284) tabula-game-tiles rules::feature::tests::merging_two_claimed_components_keeps_both_owners
+        PASS [   0.012s] (168/284) tabula-game-tiles rules::feature::tests::a_segment_can_only_be_claimed_once_and_a_retired_one_never
+        PASS [   0.011s] (169/284) tabula-game-tiles rules::feature::tests::side_helper_names_stay_used
+        PASS [   0.109s] (170/284) tabula-game-chess::bot easy_searches_the_opponent_reply_before_taking_poisoned_material
+        PASS [   0.041s] (171/284) tabula-game-tiles presentation::tests::identical_play_from_different_cameras_produces_identical_state
+        PASS [   0.009s] (172/284) tabula-game-tiles rules::placement::tests::a_square_touching_nothing_is_refused_however_well_it_would_match
+        PASS [   0.009s] (173/284) tabula-game-tiles rules::placement::tests::a_mismatched_shared_edge_is_refused_and_names_the_side
+        PASS [   0.017s] (174/284) tabula-game-tiles rules::feature::tests::merging_is_independent_of_the_order_sides_are_processed
+        PASS [   0.012s] (175/284) tabula-game-tiles rules::placement::tests::an_occupied_square_is_refused_before_anything_else_is_checked
+        PASS [   0.011s] (176/284) tabula-game-tiles rules::placement::tests::every_tile_kind_is_placeable_next_to_the_opening_position
+        PASS [   0.013s] (177/284) tabula-game-tiles rules::placement::tests::a_square_between_two_tiles_must_match_both_of_them
+        PASS [   0.011s] (178/284) tabula-game-tiles rules::placement::tests::legality_is_exhaustively_symmetric_over_every_kind_and_rotation
+        PASS [   0.010s] (179/284) tabula-game-tiles rules::placement::tests::the_first_tile_has_nowhere_to_go_on_an_empty_board
+        PASS [   0.010s] (180/284) tabula-game-tiles rules::scoring::tests::a_clear_majority_takes_it_all
+        PASS [   0.021s] (181/284) tabula-game-tiles rules::feature::tests::the_incremental_graph_agrees_with_a_whole_board_recomputation
+        PASS [   0.012s] (182/284) tabula-game-tiles rules::placement::tests::the_frontier_is_exactly_the_free_squares_touching_the_board
+        PASS [   0.011s] (183/284) tabula-game-tiles rules::scoring::tests::a_completed_city_pays_two_a_tile_and_two_a_pennant
+        PASS [   0.017s] (184/284) tabula-game-tiles rules::placement::tests::enumeration_agrees_with_the_predicate
+        PASS [   0.010s] (185/284) tabula-game-tiles rules::scoring::tests::a_completed_road_pays_one_a_tile
+        PASS [   0.009s] (186/284) tabula-game-tiles rules::scoring::tests::an_unclaimed_feature_awards_nothing_to_anybody
+        PASS [   0.021s] (187/284) tabula-game-tiles rules::placement::tests::adjacency_compatibility_is_symmetric_between_the_two_tiles
+        PASS [   0.009s] (188/284) tabula-game-tiles rules::scoring::tests::tied_majorities_both_score_the_full_value
+        PASS [   0.015s] (189/284) tabula-game-tiles rules::scoring::tests::a_completed_monastery_pays_nine_and_an_unfinished_one_pays_what_it_has
+        PASS [   0.011s] (190/284) tabula-game-tiles rules::secret::tests::a_bag_too_short_to_tokenise_declares_no_containment_secret
+        PASS [   0.012s] (191/284) tabula-game-tiles rules::secret::tests::permuting_the_bag_changes_no_projection_for_any_viewer
+        PASS [   0.015s] (192/284) tabula-game-tiles rules::secret::tests::a_projection_that_carried_the_bag_would_be_caught_by_the_declared_tokens
+        PASS [   0.014s] (193/284) tabula-game-tiles rules::secret::tests::a_public_change_is_visible_to_every_viewer
+        PASS [   0.011s] (194/284) tabula-game-tiles rules::secret::tests::the_module_declares_the_hidden_information_it_actually_has
+        PASS [   0.011s] (195/284) tabula-game-tiles rules::secret::tests::two_different_public_events_remain_distinguishable_to_every_viewer
+        PASS [   0.011s] (196/284) tabula-game-tiles rules::state::tests::a_board_without_the_start_tile_at_the_origin_is_rejected
+        PASS [   0.013s] (197/284) tabula-game-tiles rules::secret::tests::secrets_is_total_across_every_bag_length
+        PASS [   0.010s] (198/284) tabula-game-tiles rules::state::tests::a_disconnected_board_is_rejected
+        PASS [   0.015s] (199/284) tabula-game-tiles rules::secret::tests::tabula_hidden_information_security_suite
+        PASS [   0.010s] (200/284) tabula-game-tiles rules::state::tests::a_finished_match_cannot_be_paused_and_a_stray_last_square_is_rejected
+        PASS [   0.018s] (201/284) tabula-game-tiles rules::secret::tests::the_declared_secret_is_the_bag_order_and_is_authorised_to_nobody
+        PASS [   0.021s] (202/284) tabula-game-tiles rules::secret::tests::permuting_the_bag_changes_no_view_event_for_any_viewer
+        PASS [   0.072s] (203/284) tabula-game-tiles presentation::tests::golden_tiles_opening_zoomed_out_dark
+        PASS [   0.013s] (204/284) tabula-game-tiles rules::state::tests::a_graph_that_does_not_describe_the_board_is_rejected
+        PASS [   0.011s] (205/284) tabula-game-tiles rules::state::tests::a_state_that_lost_a_follower_is_rejected
+        PASS [   0.010s] (206/284) tabula-game-tiles rules::state::tests::an_edge_inconsistent_board_is_rejected
+        PASS [   0.010s] (207/284) tabula-game-tiles rules::state::tests::scores_and_hands_must_name_exactly_the_seated_players
+        PASS [   0.010s] (208/284) tabula-game-tiles rules::state::tests::seat_and_turn_shapes_are_checked
+        PASS [   0.010s] (209/284) tabula-game-tiles rules::state::tests::the_phase_the_hand_and_the_status_must_agree
+        PASS [   0.013s] (210/284) tabula-game-tiles rules::state::tests::deserialization_cannot_bypass_the_validator
+        PASS [   0.019s] (211/284) tabula-game-tiles rules::state::tests::a_state_that_duplicated_a_tile_is_rejected
+        PASS [   0.013s] (212/284) tabula-game-tiles rules::state::tests::the_opening_position_is_valid_and_self_consistent
+        PASS [   0.013s] (213/284) tabula-game-tiles rules::state::tests::the_validator_and_the_placement_rule_agree_about_shared_edges
+        PASS [   0.018s] (214/284) tabula-game-tiles rules::state::tests::a_state_that_lost_a_tile_is_rejected
+        PASS [   0.014s] (215/284) tabula-game-tiles rules::state::tests::turn_deadline_config_partitions
+        PASS [   0.010s] (216/284) tabula-game-tiles rules::tile::tests::rotating_a_tile_permutes_its_edge_terrain
+        PASS [   0.010s] (217/284) tabula-game-tiles rules::tile::tests::every_tile_definition_is_structurally_well_formed
+        PASS [   0.010s] (218/284) tabula-game-tiles rules::tile::tests::the_start_tile_offers_every_edge_terrain_to_its_neighbours
+        PASS [   0.011s] (219/284) tabula-game-tiles rules::tile::tests::the_bag_and_the_full_set_are_the_documented_sizes
+        PASS [   0.086s] (220/284) tabula-game-tiles presentation::tests::golden_tiles_claim_step_light
+        PASS [   0.011s] (221/284) tabula-game-tiles rules::tile::tests::segment_lookup_by_world_side_is_the_inverse_of_segment_edges
+        PASS [   0.087s] (222/284) tabula-game-tiles presentation::tests::golden_tiles_opening_800x600_light
+        PASS [   0.010s] (223/284) tabula-game-tiles rules::tile::tests::tile_kind_rejects_indices_outside_the_table_including_from_the_wire
+        PASS [   0.016s] (224/284) tabula-game-tiles rules::state::tests::turn_order_wraps_through_every_seat_in_roster_order
+        PASS [   0.017s] (225/284) tabula-game-tiles rules::tile::tests::edge_terrain_agrees_with_the_segment_that_reaches_that_edge
+        PASS [   0.014s] (226/284) tabula-game-tiles rules::tile::tests::the_start_tile_shows_one_city_edge_and_a_road_through
+        PASS [   0.011s] (227/284) tabula-game-tiles::conformance tabula_conformance_deterministic_initialization
+        PASS [   0.013s] (228/284) tabula-game-tiles::conformance tabula_conformance_invalid_command_safety
+        PASS [   0.017s] (229/284) tabula-game-tiles::conformance tabula_conformance_deterministic_command_execution
+        PASS [   0.014s] (230/284) tabula-game-tiles::conformance tabula_conformance_deterministic_rng
+        PASS [   0.015s] (231/284) tabula-game-tiles::conformance tabula_conformance_ordered_events
+        PASS [   0.171s] (232/284) tabula-game-chess::bot easy_bot_always_returns_a_legal_projected_command
+        PASS [   0.016s] (233/284) tabula-game-tiles::conformance tabula_conformance_serialization_roundtrip
+        PASS [   0.011s] (234/284) tabula-game-tiles::features a_claim_is_refused_when_the_feature_is_taken_or_the_hand_is_empty
+        PASS [   0.017s] (235/284) tabula-game-tiles::conformance tabula_conformance_state_hash_sensitivity
+        PASS [   0.021s] (236/284) tabula-game-tiles::conformance tabula_conformance_legal_commands_sanity
+        PASS [   0.016s] (237/284) tabula-game-tiles::determinism the_extreme_coordinate_that_once_panicked_is_rejected
+        PASS [   0.021s] (238/284) tabula-game-tiles::conformance tabula_conformance_stable_identity
+        PASS [   0.013s] (239/284) tabula-game-tiles::replay a_change_to_canonical_rules_source_changes_the_hash
+        PASS [   0.012s] (240/284) tabula-game-tiles::replay every_rules_subtree_file_is_discovered_recursively_and_in_order
+        PASS [   0.015s] (241/284) tabula-game-tiles::replay the_committed_tiles_replay_covers_placements_claims_and_passes
+        PASS [   0.042s] (242/284) tabula-game-tiles::conformance tabula_conformance_deterministic_replay
+        PASS [   0.017s] (243/284) tabula-game-tiles::replay the_bot_and_presentation_halves_live_outside_the_hashed_subtree
+        PASS [   0.013s] (244/284) tabula-game-tiles::replay the_golden_stream_shows_a_claim_decision_by_the_seat_that_just_placed
+        PASS [   0.026s] (245/284) tabula-game-tiles::replay canonical_rules_do_not_depend_on_the_bot_or_presentation_halves
+        PASS [   0.014s] (246/284) tabula-game-tiles::replay the_rules_hash_matches_an_independent_recomputation_over_the_rules_subtree
+        PASS [   0.016s] (247/284) tabula-game-tiles::rules a_placement_enters_the_claim_step_and_only_then_hands_the_turn_on
+        PASS [   0.018s] (248/284) tabula-game-tiles::rules a_deadline_that_fires_while_paused_changes_nothing
+        PASS [   0.014s] (249/284) tabula-game-tiles::rules a_seat_that_cannot_act_gets_no_hints
+        PASS [   0.055s] (250/284) tabula-game-tiles::determinism an_accepted_input_leaves_a_state_the_validator_still_accepts
+        PASS [   0.013s] (251/284) tabula-game-tiles::rules a_seat_that_is_not_on_turn_is_rejected
+        PASS [   0.058s] (252/284) tabula-game-tiles::determinism a_rejected_input_leaves_the_canonical_encoding_byte_identical
+        PASS [   0.020s] (253/284) tabula-game-tiles::rules a_seat_that_is_not_in_the_match_is_rejected_before_anything_else
+        PASS [   0.028s] (254/284) tabula-game-tiles::rules a_rotation_whose_edges_do_not_match_is_an_illegal_move
+        PASS [   0.012s] (255/284) tabula-game-tiles::rules a_timer_this_version_never_set_is_ignored_rather_than_rejected
+        PASS [   0.014s] (256/284) tabula-game-tiles::rules create_opens_with_the_start_tile_placed_and_one_tile_in_hand
+        PASS [   0.018s] (257/284) tabula-game-tiles::rules an_operator_cancel_ends_the_match_and_later_input_is_refused
+        PASS [   0.071s] (258/284) tabula-game-tiles::determinism every_command_legal_commands_advertises_is_accepted_by_apply
+        PASS [   0.017s] (259/284) tabula-game-tiles::rules every_rejected_command_leaves_the_state_byte_identical
+        PASS [   0.013s] (260/284) tabula-game-tiles::rules placing_on_an_occupied_or_unreachable_square_is_an_illegal_move
+        PASS [   0.014s] (261/284) tabula-game-tiles::rules pausing_stops_play_and_resuming_restores_it
+        PASS [   0.019s] (262/284) tabula-game-tiles::rules no_input_after_create_consumes_randomness
+        PASS [   0.021s] (263/284) tabula-game-tiles::rules legal_commands_hints_decode_to_exactly_the_accepted_placements
+        PASS [   0.012s] (264/284) tabula-game-tiles::rules the_create_seed_does_change_the_shuffle
+        PASS [   0.068s] (265/284) tabula-game-tiles::replay the_committed_tiles_replay_reproduces_its_recorded_final_hash
+        PASS [   0.016s] (266/284) tabula-game-tiles::rules turn_order_cycles_through_every_seat_once_per_turn
+        PASS [   0.018s] (267/284) tabula-game-tiles::rules the_turn_deadline_resolves_the_turn_deterministically
+        PASS [   0.291s] (268/284) tabula-game-chess bot::tests::easy_bot_cannot_distinguish_unprojected_repetition_history
+        PASS [   0.043s] (269/284) tabula-game-tiles::rules a_seat_with_no_followers_left_skips_the_claim_step_entirely
+        PASS [   0.103s] (270/284) tabula-game-tiles::determinism the_same_script_run_twice_produces_identical_canonical_state
+        PASS [   0.096s] (271/284) tabula-game-tiles::features the_final_standings_rank_the_seats_by_the_scores_they_earned
+        PASS [   0.107s] (272/284) tabula-game-tiles::determinism replaying_the_recorded_inputs_reproduces_every_checkpoint
+        PASS [   0.103s] (273/284) tabula-game-tiles::features scores_are_monotonic_and_match_the_points_the_events_reported
+        PASS [   0.107s] (274/284) tabula-game-tiles::features every_completed_feature_is_scored_exactly_once_across_a_whole_match
+        PASS [   0.113s] (275/284) tabula-game-tiles::features followers_are_conserved_after_every_input_and_returned_when_a_feature_scores
+        PASS [   0.138s] (276/284) tabula-game-tiles::conformance tabula_conformance_terminal_behavior
+        PASS [   0.069s] (277/284) tabula-game-tiles::state_size the_state_grows_substantially_between_the_opening_and_a_full_board
+        PASS [   0.082s] (278/284) tabula-game-tiles::rules the_match_ends_when_the_bag_runs_dry_with_every_tile_accounted_for
+        PASS [   0.612s] (279/284) tabula-game-tiles::state_size a_full_board_is_far_smaller_than_the_design_estimate
+        PASS [   0.613s] (280/284) tabula-game-tiles::state_size the_declared_state_size_class_is_the_measured_one
+        PASS [   0.985s] (281/284) tabula-game-tiles::features the_incremental_graph_agrees_with_recomputation_after_every_input_of_a_full_match
+        PASS [   1.139s] (282/284) tabula-game-chess::perft published_positions_match_through_practical_depths
+        PASS [  14.186s] (283/284) tabula-game-tiles bot::tests::self_play_terminates_deterministically_at_every_seat_count
+        PASS [  24.203s] (284/284) tabula-game-chess::bot phase_one_bot_pairings_self_play_without_illegal_or_nondeterministic_moves
+────────────
+     Summary [  24.253s] 284 tests run: 284 passed, 1 skipped
+
+=== selfplay-chess.log ===
+Command: CARGO_NET_OFFLINE=true cargo xtask selfplay chess --matches 10 --seed 47 --match-index 0 --max-inputs 2000 --clock fischer
+Exit code: 0
+   Compiling serde_core v1.0.229
+   Compiling thiserror v2.0.20
+   Compiling once_cell v1.21.4
+   Compiling zmij v1.0.23
+   Compiling camino v1.2.5
+   Compiling serde_json v1.0.151
+   Compiling memchr v2.8.3
+   Compiling tabula-game-chess v0.1.0 (/home/manhpd/Projects/tabula/games/chess)
+   Compiling tabula-game-tiles v0.1.0 (/home/manhpd/Projects/tabula/games/tiles)
+   Compiling tempfile v3.27.0
+   Compiling rusty-fork v0.3.1
+   Compiling proptest v1.11.0
+   Compiling cobs v0.3.0
+   Compiling serde v1.0.229
+   Compiling semver v1.0.28
+   Compiling compact_str v0.8.2
+   Compiling smallvec v1.15.2
+   Compiling postcard v1.1.3
+   Compiling toml_datetime v0.6.11
+   Compiling serde_spanned v0.6.9
+   Compiling glam v0.29.3
+   Compiling tabula-design v0.0.0 (/home/manhpd/Projects/tabula/crates/tabula-design)
+   Compiling cargo-platform v0.1.9
+   Compiling toml_edit v0.22.27
+   Compiling tabula-core v0.1.0 (/home/manhpd/Projects/tabula/crates/tabula-core)
+   Compiling cargo_metadata v0.19.2
+   Compiling tabula-game-api v0.1.0 (/home/manhpd/Projects/tabula/crates/tabula-game-api)
+   Compiling toml v0.8.23
+   Compiling tabula-assets v0.0.0 (/home/manhpd/Projects/tabula/crates/tabula-assets)
+   Compiling tabula-testkit v0.1.0 (/home/manhpd/Projects/tabula/crates/tabula-testkit)
+   Compiling tabula-presentation v0.0.0 (/home/manhpd/Projects/tabula/crates/tabula-presentation)
+   Compiling xtask v0.1.0 (/home/manhpd/Projects/tabula/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 15.03s
+     Running `target/debug/xtask selfplay chess --matches 10 --seed 47 --match-index 0 --max-inputs 2000 --clock fischer`
+Game: chess
+Matches: 10 / 10
+Inputs: 3927
+Terminated: 10
+Failures: 0
+Determinism: OK
+
+=== selfplay-tiles.log ===
+Command: CARGO_NET_OFFLINE=true cargo xtask selfplay tiles --matches 10 --seed 47 --match-index 0 --max-inputs 2000 --seats 5
+Exit code: 0
+    Blocking waiting for file lock on build directory
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running `target/debug/xtask selfplay tiles --matches 10 --seed 47 --match-index 0 --max-inputs 2000 --seats 5`
+Game: tiles
+Matches: 10 / 10
+Inputs: 1347
+Terminated: 10
+Failures: 0
+Determinism: OK
+
+=== replay.log ===
+Command: CARGO_NET_OFFLINE=true cargo xtask replay --all --verify --diagnose
+Exit code: 1
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running `target/debug/xtask replay --all --verify --diagnose`
+replay: --all: io: No such file or directory (os error 2)
+
+=== replay-chess.log ===
+Command: CARGO_NET_OFFLINE=true cargo xtask replay tests/replays/chess-golden.tbr --verify --diagnose
+Exit code: 0
+    Blocking waiting for file lock on build directory
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running `target/debug/xtask replay tests/replays/chess-golden.tbr --verify --diagnose`
+file: tests/replays/chess-golden.tbr
+inputs: 4
+checkpoints checked: 4
+final state hash: 730ec3dc4db8fc3bda3f2c8fc87aa74d552d88bc63e50b10f3f47d4a75f6b38b
+final hash checked: true
+terminal outcome expected: Some(MatchOutcome { kind: Decisive, standings: [Standing { seat: SeatId(1), rank: 0, score: 1 }, Standing { seat: SeatId(0), rank: 1, score: 0 }], summary: "checkmate" })
+terminal outcome actual: Some(MatchOutcome { kind: Decisive, standings: [Standing { seat: SeatId(1), rank: 0, score: 1 }, Standing { seat: SeatId(0), rank: 1, score: 0 }], summary: "checkmate" })
+terminal outcome checked: true
+evidence: state checkpoints, final state hash, terminal outcome
+verdict: EXACT
+status: VERIFIED
+diagnosis: NONE (all stored replay evidence agrees)
+
+=== replay-clock.log ===
+Command: CARGO_NET_OFFLINE=true cargo xtask replay tests/replays/chess-clock-golden.tbr --verify --diagnose
+Exit code: 0
+    Blocking waiting for file lock on build directory
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running `target/debug/xtask replay tests/replays/chess-clock-golden.tbr --verify --diagnose`
+file: tests/replays/chess-clock-golden.tbr
+inputs: 2
+checkpoints checked: 2
+final state hash: bd610f6d0ab84f3bb025a14bcf1dded1107e1385839a8d590b11f0b84e9664ed
+final hash checked: true
+terminal outcome expected: Some(MatchOutcome { kind: Decisive, standings: [Standing { seat: SeatId(0), rank: 0, score: 1 }, Standing { seat: SeatId(1), rank: 1, score: 0 }], summary: "timeout" })
+terminal outcome actual: Some(MatchOutcome { kind: Decisive, standings: [Standing { seat: SeatId(0), rank: 0, score: 1 }, Standing { seat: SeatId(1), rank: 1, score: 0 }], summary: "timeout" })
+terminal outcome checked: true
+evidence: state checkpoints, final state hash, terminal outcome
+verdict: EXACT
+status: VERIFIED
+diagnosis: NONE (all stored replay evidence agrees)
+
+=== replay-tiles.log ===
+Command: CARGO_NET_OFFLINE=true cargo xtask replay tests/replays/tiles-golden.tbr --verify --diagnose
+Exit code: 0
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running `target/debug/xtask replay tests/replays/tiles-golden.tbr --verify --diagnose`
+file: tests/replays/tiles-golden.tbr
+inputs: 102
+checkpoints checked: 102
+final state hash: e0fdeeb32ab5f66f1c31de8dd41f35e274ae9a7ae3abafd02489b050ff7a7cab
+final hash checked: true
+terminal outcome expected: Some(MatchOutcome { kind: Decisive, standings: [Standing { seat: SeatId(0), rank: 0, score: 20 }, Standing { seat: SeatId(1), rank: 1, score: 17 }, Standing { seat: SeatId(2), rank: 2, score: 10 }], summary: "bag exhausted" })
+terminal outcome actual: Some(MatchOutcome { kind: Decisive, standings: [Standing { seat: SeatId(0), rank: 0, score: 20 }, Standing { seat: SeatId(1), rank: 1, score: 17 }, Standing { seat: SeatId(2), rank: 2, score: 10 }], summary: "bag exhausted" })
+terminal outcome checked: true
+evidence: state checkpoints, final state hash, terminal outcome
+verdict: EXACT
+status: VERIFIED
+diagnosis: NONE (all stored replay evidence agrees)

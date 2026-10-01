@@ -25,6 +25,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # One maintained skill tree, working metadata/links/helpers, and failure fixtures.
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 -m pip install PyYAML==6.0.3
+      - run: python3 .agents/skills/tabula-engineering/scripts/check_skills.py
+      - run: python3 .agents/skills/tabula-engineering/scripts/test_check_skills.py
+      - run: python3 .agents/skills/tabula-engineering/scripts/test_ai_doc_contracts.py
+
   # ---------------------------------------------------------------- fast gates
   fmt-clippy:
     runs-on: ubuntu-latest
@@ -60,8 +72,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask check-no-game-ids
 
-  # game.toml is the ops-readable source of truth for the catalog; it must equal
-  # the compiled GameMetadata/GameCapabilities. (doc 02 §4.3)
+  # game.toml schema and Cargo feature shape. A future compiled-metadata
+  # cross-check is not implemented by check-manifests yet. (doc 02 §4.3)
   manifests:
     runs-on: ubuntu-latest
     steps:

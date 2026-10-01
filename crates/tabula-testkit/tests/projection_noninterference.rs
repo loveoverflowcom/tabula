@@ -32,7 +32,7 @@
 //!
 //! # Every state here is reachable, not merely representable
 //!
-//! `rust-property-testing`'s reachable-vs-arbitrary split is explicit that a
+//! The engineering `property-testing.md` reachable-vs-arbitrary split is explicit that a
 //! semantic law like noninterference needs states produced by the game's own
 //! legal transitions, not a struct literal: "generate reachable states...
 //! reachable — produced only by the system's own legal transitions." A
@@ -682,7 +682,7 @@ fn audit_legitimately_sees_every_hand_so_scrambling_is_expected_to_be_visible() 
 /// their identity is not (doc 02 §7.1's `hand_counts: [u8; 4], // public`
 /// pattern). So a "scramble only the secret" generator must hold each seat's
 /// hand *length* fixed and vary only its *content* — this is what
-/// `rust-property-testing`'s "reachable vs arbitrary" split (and this PR's
+/// The engineering `property-testing.md` "reachable vs arbitrary" split (and this PR's
 /// own §16) means by "invalid states are not generated merely to increase
 /// coverage": a pair whose count also happened to differ would be testing a
 /// different, false proposition (that count is secret too), not the one this
@@ -773,7 +773,7 @@ proptest! {
 // ---------------------------------------------------------------------------
 // Oracle sanity: the noninterference check must be able to FAIL.
 //
-// A property with no failing mutant is decoration (rust-property-testing
+// A property with no failing mutant is decoration (engineering property-testing.md
 // skill). This deliberately leaky variant proves the assertion actually
 // catches a violation, in the same style as
 // `conformance_catches_violations.rs`: build a broken game, assert the check

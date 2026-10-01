@@ -4,9 +4,9 @@ One crate per game. Each is feature-split into `rules` / `bots` / `presentation`
 so the server compiles a game with no renderer and the client compiles it with no
 database (doc 01 §5.1 rule 3).
 
-```bash
-cargo xtask new-game <slug> --seats 2 --category abstract
-```
+The planned `cargo xtask new-game <slug> --seats 2 --category abstract` scaffold is **not
+implemented**; its dispatch exits with an error. Follow doc 02 §14 and an existing game's
+crate layout manually until it lands, within the current phase and dependency matrix.
 
 **The target: a playable, networked, spectatable, replayable game in one crate,
 under 300 lines, with zero platform changes.**
