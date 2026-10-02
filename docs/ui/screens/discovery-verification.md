@@ -4,8 +4,14 @@ Stage A of [issue #50](https://github.com/loveoverflowcom/tabula/issues/50).
 The [shared contract](discovery.md) pins source and reference versions; the
 [availability inventory](discovery-availability.md) links inspected owners.
 Evidence vocabulary follows [Tabula engineering](../../../.agents/skills/tabula-engineering/SKILL.md).
-Documentation is the deliverable here. A specified layout or check is not an
-executed runtime result; the issue's full runtime acceptance remains open.
+Documentation was the deliverable of Stage A. A specified layout or check is not
+an executed runtime result.
+
+**Stage B has since landed**, ahead of the Phase 4 and Phase 5 gates, as a
+recorded owner decision: [ADR-0028](../../adr/0028-discovery-shell-ahead-of-phase-gate.md).
+Its evidence is in [Stage B evidence](#stage-b-evidence) below; the
+[Stage A evidence](#stage-a-evidence) and acceptance table are kept as the
+record of what the specification alone established.
 
 ## Stage A evidence
 
@@ -41,7 +47,48 @@ does not establish the runtime claims below.
 | Local flow avoids inappropriate auth gating | Route/action contract and mode readiness; existing local driver | Source-read/documented; shell auth-return flow NOT_IMPLEMENTED |
 | 320/390/768/1440, 200%, targets ≥44 dp, useful keyboard/focus | Per-screen breakpoint and keyboard sections; foundation | Documented; platform reflow/interaction/AT tests NOT_IMPLEMENTED |
 
-## Separate Stage B after the gates
+## Stage B evidence
+
+Implemented at `feat/issue-50-discovery-shell`, on top of `develop` merge
+`a4ec52c`. Scope: a runtime catalog in `tabula-registry` and the `/`, `/games`,
+`/games/:id` (+ `?setup=1`) routes in `apps/web`. The gate crossing, and the
+part of Phase 4/5 that is deliberately still missing, are in ADR-0028.
+
+| Claim / invariant | Owner and failure mode | Oracle / scope | Check and status | Residual scope |
+|---|---|---|---|---|
+| No platform or shell crate names a game (I-9) | Registry is the only game-naming zone; a shell branch on a game id, or a shell-held game message key, would be the defect | `xtask check-no-game-ids` zone policy over the whole workspace | `cargo xtask check-no-game-ids` — PASS (331 files, 4 game ids). Game copy reaches the shell only as data from `Catalog::messages` | A future locale file placed in `apps/web` would reintroduce the risk; it must stay in the adapters |
+| Dependency direction and I-15 hold | `deps.toml` matrix over the resolved graph | `cargo xtask check-deps` | PASS, 25 crates. `leptos` is in `apps/web` only; `apps/game-client` still forbids it | `deps.toml` is unchanged by this slice |
+| A game's own validator decides every configuration | `Adapter<S>`; a form that accepted what the rules reject, or clamped silently, is the defect | The games' own `validate_config`, clock validator and deadline floor | `cargo nextest run -p tabula-registry` — PASS, 24 tests: zero initial clock rejected through the module; 4,999 ms deadline rejected and mapped to the seconds field; 0/1/3/6-seat plans; `5.5`, `-1`, `five`, `5 min`, empty and `601` rejected without clamping | Only the two linked games are covered; a third adapter is unproven |
+| Increment and delay never summarize identically | Summary rendering; flattening both into one label is the named failure | Distinct `SummaryValue::TimeControl` variants per control | `example-tested` PASS (`chess_untimed_and_timed_configurations_normalize_distinctly`) plus `screenshot-inspected` on the running shell | Other games' summary wording is unwritten |
+| Readiness never outlives its draft | `SetupState`; a start carrying a configuration the player changed is the defect | Revision-scoped validation results | `cargo nextest run -p tabula-web` — PASS, 17 tests: late result for a retired revision discarded, edit retires readiness, pending refuses a second submission and every field edit, rejection preserves input | Asynchronous validation is not exercised: the registry answers in-process |
+| An unreadable filter is reported, never silently reinterpreted | `query::parse`; a wrong but plausible result set is the defect | Every axis, with invalid, zero and empty values | `example-tested` PASS (6 tests), including `players=0` as an error rather than a removal | — |
+| Every key the catalog hands the shell exists in en and vi | Message tables; an untranslated key shown as product copy | Keys collected from metadata, forms, choices, modes, reasons, bot levels and rejections | `example-tested` PASS (`every_key_the_catalog_hands_the_shell_exists_in_both_locales`) | The shell's own table is not covered by that test; a missing key renders as a labeled fallback, not as a bare key |
+| No raw colour outside `tabula-design` | `app.scss`; a literal would break theming | `xtask check-no-raw-colors` over `.rs`/`.css`/`.scss` | PASS | — |
+| The shell builds and runs in a browser | Trunk/wasm build and the rendered routes | `trunk build` then `trunk serve` at `http://localhost:8080` | `compiled` PASS (`wasm32-unknown-unknown`, 3.6 MB dev wasm) and `interaction-tested` PASS: home, library, detail, setup; clock choice revealing its fields; validation to Ready; a rejected deadline; the locale switch changing platform *and* game copy | A dev-profile bundle; no production size, Lighthouse, or performance measurement |
+| A start that cannot happen says so | `launch::resolve`; a claimed match that does not exist is the defect | Unbound runtime binding | `example-tested` and `interaction-tested` PASS: Start moves to Unavailable with reason, recovery, and the exact refused summary retained | The bound path builds a URL and navigates; **no gameplay document has been handed off end to end** |
+| The workspace stays green | Repository | The authoritative ordered local gate | `just check` — PASS (fmt, clippy `-D warnings`, 832 tests, check-deps, check-no-game-ids, check-manifests, token freshness, check-no-raw-colors, cargo-deny), plus `cargo check --workspace --no-default-features`, `--all-features`, and `cargo check -p tabula-web --target wasm32-unknown-unknown` | — |
+| The supply-chain policy still describes what we accept | `deny.toml`; a blanket allowance would make the gate meaningless | `cargo deny check` over the Leptos tree | FAIL on first run, four findings, all from Leptos: `BSL-1.0` (`xxhash-rust`), banned `getrandom` (via `uuid` in the `leptos_macro` proc macro), and the unmaintained `paste` / `proc-macro-error2` build-time macros. Each is now a **scoped, documented exception** with a removal condition; re-run PASS | This is a real widening of the third-party policy, accepted with the slice. `deps.toml` still forbids `leptos` outside `apps/web` and `apps/admin`, so none of it reaches rules, runtime or server crates |
+| `check-no-raw-colors` reads source, not build output | xtask; a developer who ran `trunk build` failed on trunk's content-hashed copy of the generated `tokens.css` | The scanner's own walk | Reproduced (FAIL), fixed by skipping `target`, `dist`, `node_modules`, `.git` — the set `check-no-game-ids` already skips — then PASS | Verified by running the command before and after; no unit test covers the walk, which has none for any directory rule |
+
+### What Stage B does not establish
+
+- **No match is ever created.** There is no match runtime, no authority, and no
+  server. `TABULA_PLAY_BASE_URL` is unset in every build here, so the Start
+  action's only reachable outcome is the unavailable reason above.
+- **No resume, room, queue, auth, rating, ranked, async, voice or asset
+  delivery** exists. Each is rendered as unavailable with a reason.
+- **Accessibility is not verified.** Native labels, `aria-describedby`,
+  `aria-invalid`, live regions, focus order and the 3 dp focus ring are
+  implemented and were read in the accessibility tree; no screen reader, no
+  keyboard-only completion run, and no contrast measurement was performed.
+- **Responsive behavior was checked at two widths** (1024 and 375 logical px)
+  in one browser. 320, 390, 768, 1440 and 200% zoom were not each measured, and
+  no touch-target measurement was taken.
+- **Only the light and dark schemes were seen.** `hc-light`/`hc-dark` are
+  reachable through `prefers-contrast` but were not rendered.
+- **Golden images, performance budgets and bundle size** are unmeasured.
+
+## Stage B conditions recorded before implementation
 
 Re-pin `develop` and prove registry Phase-4 and shell Phase-5 gates before
 implementation. Select one actually playable module through erased interfaces;

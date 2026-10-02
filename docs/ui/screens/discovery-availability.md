@@ -7,6 +7,17 @@ This inventory records source reads; it does not claim tests, playtests, builds,
 Use it with [the discovery contract](discovery.md) and [screen 03](03-new-match.md).
 Architecture [doc 00](../../architecture/00-architecture-principles.md) remains authoritative.
 
+> **Updated for Stage B.** The rows below describe the source base this
+> inventory was taken at. Since then the registry catalog, the erased setup
+> dispatch and the `/`, `/games`, `/games/:id` routes are implemented ahead of
+> their phase gates ([ADR-0028](../../adr/0028-discovery-shell-ahead-of-phase-gate.md)).
+> What that changes: Chess and Tiles now have working catalog, detail and setup
+> screens with validated configuration and a confirmed bot mode. What it does
+> not change: no match is created anywhere, no online service exists, and no
+> gameplay document is handed off — the Start action resolves to a reason, not
+> a session. Caro, Werewolf and Xiangqi are unchanged and are not in the
+> catalog.
+
 ## Availability is scoped to a launch path
 
 A manifest entry, compiled rules, a presenter, a bot factory, a working launcher, and an

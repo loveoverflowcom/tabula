@@ -24,15 +24,22 @@ ruzstd          = { workspace = true }
 # registry/match/presentation, but those crates do not become real until Phases 4
 # and 2. Keeping them optional means a Phase-0 checkout builds and tests in
 # seconds, and turning the feature on later is a one-line change.
-tabula-registry     = { workspace = true, optional = true }
-tabula-match        = { workspace = true, optional = true }
+#
+# `tabula-registry` and `tabula-match` are NOT listed any more, even optionally:
+# the registry now links game crates, every game crate links this crate for its
+# conformance suite, and cargo rejects the resulting package cycle regardless of
+# which features are selected. They return when the match runtime is real and
+# the fakes below are implemented against its ports; today the `runtime` feature
+# they backed enabled no code at all (see `src/fakes.rs`).
 tabula-presentation = { workspace = true, optional = true }
 insta               = { workspace = true, optional = true }
 
 [features]
 default = []
 # Phase 4: replay against the real registry, fakes for the match runtime ports.
-runtime = ["dep:tabula-registry", "dep:tabula-match"]
+# The feature stays so the gate it marks keeps its name, but it can no longer
+# pull those crates in: see the dependency note above.
+runtime = []
 # Phase 2: RenderList golden comparison.
 presentation = ["dep:tabula-presentation", "dep:insta"]
 
