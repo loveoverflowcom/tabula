@@ -1,6 +1,14 @@
 //! # `tabula-registry` — the catalog and the only bridge to games
 //!
-//! > ## PHASE 4 — DO NOT IMPLEMENT BEFORE PHASE 3 EXITS
+//! > ## PHASE 4 — partially implemented ahead of the Phase 3 exit
+//! >
+//! > The discovery/setup slice below (catalog, erased setup dispatch, config
+//! > forms, availability) was implemented for issue #50 before Phase 3 exited.
+//! > That gate crossing was an explicit, recorded owner decision, not an
+//! > oversight: see `docs/ui/screens/discovery-verification.md`. Everything the
+//! > phase gate protects that is **not** listed here — `ErasedMatch`, codecs,
+//! > match creation, rollout tables, multi-version resolution, `register!` —
+//! > remains unimplemented and still waits for its gate.
 //!
 //! This is the **only** crate that knows the set of games exists. That
 //! containment is what makes I-9 mechanically checkable: every platform crate
@@ -125,5 +133,70 @@
 //! src/rollout.rs   enable/disable, audience filtering
 //! src/macros.rs    register!
 //! ```
+//!
+//! ## What exists today
+//!
+//! ```text
+//! src/erased.rs        ErasedGame + the one blanket Adapter<S> impl
+//! src/catalog.rs       Catalog, CatalogQuery, the localized search policy
+//! src/config.rs        ConfigForm/ConfigDraft/NormalizedConfig descriptors
+//! src/parse.rs         strict draft parsing shared by adapters
+//! src/availability.rs  LaunchMode and evidence-backed mode support
+//! src/launch.rs        ADR-011 handoff resolution
+//! src/games/           the ONLY place a game is named
+//! ```
 
 #![forbid(unsafe_code)]
+
+pub mod availability;
+pub mod catalog;
+pub mod config;
+pub mod erased;
+pub mod games;
+pub mod i18n;
+pub mod launch;
+mod parse;
+
+#[cfg(all(test, feature = "game-chess", feature = "game-tiles"))]
+mod tests;
+
+use std::sync::Arc;
+
+pub use availability::{LaunchMode, ModeState, ModeSupport, UnavailableReason};
+pub use catalog::{Catalog, CatalogEntry, CatalogQuery, Localizer};
+// Re-exported so a shell can name the catalog's own vocabulary without
+// depending on `tabula-game-api` directly: the game contract is below the
+// catalog boundary, and only the catalog may carry it upward (deps.toml).
+pub use config::{
+    ChoiceSpec, ConfigDraft, ConfigForm, ConfigRejection, FieldKind, FieldSpec, NormalizedConfig,
+    RejectionReason, SummaryLine, SummaryValue, TimeControlKind,
+};
+pub use erased::{bot_level_label_key, Adapter, ErasedGame, GameSetup, SetupRequest};
+pub use i18n::{platform_messages, Locale, Messages};
+pub use launch::{resolve as resolve_launch, LaunchHandoff, RuntimeBinding};
+pub use tabula_core::{BotLevel, GameId};
+pub use tabula_game_api::{
+    metadata::{Category, Complexity, ContentRating, DurationRange, I18nKey},
+    GameCapabilities, GameMetadata,
+};
+
+/// Every game this build links, in registration order.
+///
+/// Each game is behind its own cargo feature so a small bundle can link a
+/// subset (doc 02 §8.1); a build with no game features has an empty catalog and
+/// the Library says so rather than inventing an entry.
+#[must_use]
+pub fn registered_games() -> Vec<Arc<dyn ErasedGame>> {
+    vec![
+        #[cfg(feature = "game-chess")]
+        Arc::new(Adapter::<games::chess::ChessSetup>::new()),
+        #[cfg(feature = "game-tiles")]
+        Arc::new(Adapter::<games::tiles::TilesSetup>::new()),
+    ]
+}
+
+/// The catalog for this build, ordered for the supplied locale.
+#[must_use]
+pub fn catalog(localizer: &dyn Localizer) -> Catalog {
+    Catalog::new(registered_games(), localizer)
+}

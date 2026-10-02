@@ -29,13 +29,20 @@ Issue #50's [discovery/setup contract](screens/discovery.md) specifies screen 01
 [Source availability](screens/discovery-availability.md) separates current local
 launch paths from proposed catalog/configuration adapters; the
 [verification ledger](screens/discovery-verification.md) tracks documented and
-executed evidence separately. The Phase-4 registry and Phase-5 shell gates remain
-required for runtime implementation.
+executed evidence separately.
+
+Screens 01–03 are **implemented** in `apps/web`, against the runtime catalog in
+`tabula-registry`. Both crates were built ahead of their Phase-4 and Phase-5
+gates as a recorded decision:
+[ADR-0028](../adr/0028-discovery-shell-ahead-of-phase-gate.md) states what the
+slice contains and what the gates still hold back. Running these screens
+requires `trunk serve` in `apps/web`; no match can be created from them.
 
 ## Phase-5 screen coverage
 
-Home/catalog, detail/setup and settings now have specifications in the screen
-index. Their presence does not establish running routes. The remaining shell
+Home/catalog, detail/setup and settings have specifications in the screen index.
+Home, catalog and detail/setup also have running routes; settings does not, and
+a specification alone never establishes one. The remaining shell
 screen inventory from doc 04 is:
 
 ```text

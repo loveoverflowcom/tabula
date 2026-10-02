@@ -14,17 +14,17 @@ publish.workspace      = true
 # Built with `trunk`. Ships as static files behind the CDN.
 
 [dependencies]
-tabula-core = { workspace = true }
+tabula-registry = { workspace = true }
+leptos          = { workspace = true }
+leptos_router   = { workspace = true }
+# Only for the media queries that select a generated scheme; the shell reads no
+# other browser API directly.
+web-sys         = { workspace = true, features = ["Window", "MediaQueryList"] }
 
-# Phase 5 — uncomment with the first route.
+# Phase 5 — uncomment with the first networked route.
 # tabula-protocol   = { workspace = true }
-# tabula-registry   = { workspace = true }
-# tabula-design     = { workspace = true }
 # tabula-assets     = { workspace = true }
 # tabula-net-client = { workspace = true, features = ["web"] }
-# leptos            = { workspace = true }
-# leptos_router     = { workspace = true }
-# web-sys           = { workspace = true }
 # wasm-bindgen      = { workspace = true }
 # serde             = { workspace = true }
 # serde_json        = { workspace = true }

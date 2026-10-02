@@ -5,6 +5,12 @@ use std::path::{Path, PathBuf};
 const ROOTS: [&str; 3] = ["apps", "games", "crates/tabula-presentation"];
 const ALLOWED_GENERATED: [&str; 1] = ["apps/web/style/tokens.css"];
 
+/// Build output, not source. `dist/` holds trunk's content-hashed copy of the
+/// generated `tokens.css`, so a developer who has run `trunk build` would
+/// otherwise fail this check on a file nobody wrote. `check-no-game-ids` skips
+/// the same set.
+const SKIP_DIRS: [&str; 4] = ["target", "dist", "node_modules", ".git"];
+
 #[derive(Debug, thiserror::Error)]
 pub enum ColorCheckError {
     #[error("walking {path}: {source}")]
@@ -73,7 +79,10 @@ fn walk(root: &Path, dir: &Path, violations: &mut Vec<String>) -> Result<(), Col
             })?
             .is_dir()
         {
-            if path.file_name().is_some_and(|name| name == "target") {
+            if path
+                .file_name()
+                .is_some_and(|name| SKIP_DIRS.iter().any(|skip| name == *skip))
+            {
                 continue;
             }
             walk(root, &path, violations)?;

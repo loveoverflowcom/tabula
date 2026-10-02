@@ -14,10 +14,621 @@
 //   - the focus ring is 3px, always, and is NEVER removed
 //   - a disabled control must also be EXPLAINED (tooltip / aria), because a
 //     greyed-out button with no reason is a dead end
+//
+// Hierarchy follows the compact Material 3 Expressive foundation
+// (docs/ui/screens/foundation.md): grouping is tonal, not decorative. There is
+// no ornamental border or shadow anywhere below. An outline appears only where
+// it carries meaning — focus, selection, or error.
 
-// .btn--filled {
-//   background: var(--sys-color-primary);
-//   color: var(--sys-color-on-primary);
-//   border-radius: var(--sys-shape-button);
-// }
-// .btn--filled[data-state="hover"]::after { opacity: var(--sys-state-hover); }
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--sys-color-surface);
+  color: var(--sys-color-on-surface);
+  font-family: var(--sys-type-body-md-family);
+  font-size: var(--sys-type-body-md-size);
+  line-height: var(--sys-type-body-md-line-height);
+}
+
+// ---------------------------------------------------------------- scaffolding
+
+.skip-link {
+  position: absolute;
+  left: var(--sys-space-sm);
+  top: calc(var(--sys-space-sm) * -8);
+  z-index: 2;
+  padding: var(--sys-space-md) var(--sys-space-lg);
+  border-radius: var(--sys-shape-button);
+  background: var(--sys-color-primary);
+  color: var(--sys-color-on-primary);
+  text-decoration: none;
+
+  &:focus-visible {
+    top: var(--sys-space-sm);
+  }
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-lg);
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: var(--sys-space-sm) var(--sys-space-lg);
+  background: var(--sys-color-container);
+}
+
+.topbar__nav {
+  display: flex;
+  gap: var(--sys-space-xxs);
+}
+
+.topbar__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sys-density-min-target);
+  padding: 0 var(--sys-space-lg);
+  border-radius: var(--sys-shape-full);
+  color: var(--sys-color-on-surface);
+  text-decoration: none;
+
+  &[aria-current="page"] {
+    background: var(--sys-color-primary);
+    color: var(--sys-color-on-primary);
+  }
+}
+
+.topbar__locale {
+  display: flex;
+  gap: var(--sys-space-sm);
+  align-items: center;
+}
+
+.main {
+  padding: var(--sys-space-lg);
+}
+
+.section {
+  margin: 0 auto;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-lg);
+}
+
+.section > .btn,
+.setup > .btn,
+.banner .btn {
+  align-self: flex-start;
+}
+
+.section__title {
+  margin: 0;
+  font-family: var(--sys-type-headline-lg-family);
+  font-size: var(--sys-type-headline-lg-size);
+  line-height: var(--sys-type-headline-lg-line-height);
+  font-weight: var(--sys-type-headline-lg-weight);
+}
+
+.section__subtitle {
+  margin: 0;
+  font-family: var(--sys-type-title-lg-family);
+  font-size: var(--sys-type-title-lg-size);
+  line-height: var(--sys-type-title-lg-line-height);
+  font-weight: var(--sys-type-title-lg-weight);
+}
+
+.section__lead {
+  margin: 0;
+  font-size: var(--sys-type-title-md-size);
+  line-height: var(--sys-type-title-md-line-height);
+  color: var(--sys-color-on-surface-variant);
+}
+
+.section__body,
+.meta {
+  margin: 0;
+  color: var(--sys-color-on-surface-variant);
+}
+
+.meta {
+  font-size: var(--sys-type-body-sm-size);
+}
+
+// --------------------------------------------------------------------- fields
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-xs);
+  min-width: 160px;
+}
+
+.field__label {
+  font-size: var(--sys-type-label-lg-size);
+  line-height: var(--sys-type-label-lg-line-height);
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.field__control {
+  min-height: var(--sys-density-min-target);
+  padding: 0 var(--sys-space-md);
+  border: 0;
+  border-radius: var(--sys-shape-sm);
+  background: var(--sys-color-container-high);
+  color: var(--sys-color-on-surface);
+  font: inherit;
+}
+
+.field__hint {
+  margin: 0;
+  font-size: var(--sys-type-body-sm-size);
+  color: var(--sys-color-on-surface-variant);
+}
+
+.field__error {
+  margin: 0;
+  font-size: var(--sys-type-body-sm-size);
+  font-weight: var(--sys-type-label-lg-weight);
+  color: var(--sys-color-danger);
+}
+
+// The error outline is functional, not decoration: it survives a flattened
+// tonal surface in the high-contrast schemes.
+.field[data-state="invalid"] .field__control {
+  outline: var(--sys-focus-ring-width) solid var(--sys-color-danger);
+  outline-offset: var(--sys-space-xxs);
+}
+
+// --------------------------------------------------------------------- toolbar
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-lg);
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-lg);
+  align-items: flex-end;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.filters__legend {
+  padding: 0;
+  font-size: var(--sys-type-label-lg-size);
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.results__count {
+  margin: 0;
+  color: var(--sys-color-on-surface-variant);
+}
+
+// ----------------------------------------------------------------------- cards
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sys-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "art text"
+    "action action";
+  gap: var(--sys-space-md);
+  align-items: start;
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.card__art {
+  grid-area: art;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--sys-shape-md);
+  background: var(--sys-color-container-high);
+}
+
+.card__text {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-xs);
+}
+
+.card__action {
+  grid-area: action;
+  justify-self: start;
+}
+
+.card__title {
+  margin: 0;
+  font-size: var(--sys-type-title-md-size);
+  line-height: var(--sys-type-title-md-line-height);
+  font-weight: var(--sys-type-title-md-weight);
+}
+
+.card__tagline {
+  margin: 0;
+  color: var(--sys-color-on-surface-variant);
+}
+
+// Passive labels. They carry meaning in text and are deliberately not shaped
+// like the chips that act.
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.badge {
+  padding: var(--sys-space-xxs) var(--sys-space-sm);
+  border-radius: var(--sys-shape-chip);
+  background: var(--sys-color-container-high);
+  color: var(--sys-color-on-surface-variant);
+  font-size: var(--sys-type-label-md-size);
+}
+
+.badge--mode {
+  color: var(--sys-color-on-surface);
+}
+
+// --------------------------------------------------------- rows, facts, groups
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-xxs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A contained list: the group is one tonal shape, so only its outer corners
+// are large.
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-xs);
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-xs);
+  background: var(--sys-color-container);
+
+  &:first-child {
+    border-start-start-radius: var(--sys-shape-card);
+    border-start-end-radius: var(--sys-shape-card);
+  }
+
+  &:last-child {
+    border-end-start-radius: var(--sys-shape-card);
+    border-end-end-radius: var(--sys-shape-card);
+  }
+}
+
+.row__label {
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.row__body {
+  color: var(--sys-color-on-surface-variant);
+}
+
+// A disabled row dims its own content, never its reason.
+.row[data-state="disabled"] .row__label,
+.row[data-state="disabled"] .row__body,
+.group__option[data-state="disabled"] .group__label,
+.group__option[data-state="disabled"] .group__body {
+  opacity: var(--sys-state-disabled-content);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--sys-space-sm) var(--sys-space-lg);
+  margin: 0;
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.facts dt {
+  color: var(--sys-color-on-surface-variant);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.facts__static {
+  margin: 0;
+  padding: var(--sys-space-md) var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+// A connected selection group: 2 dp gaps, small inner corners, rounded ends.
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-xxs);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group__legend {
+  padding: 0 0 var(--sys-space-sm);
+  font-size: var(--sys-type-label-lg-size);
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.group__option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sys-space-xs) var(--sys-space-md);
+  align-items: center;
+  min-height: var(--sys-density-min-target);
+  padding: var(--sys-space-md) var(--sys-space-lg);
+  border-radius: var(--sys-shape-sm);
+  background: var(--sys-color-container);
+
+  &:first-of-type {
+    border-start-start-radius: var(--sys-shape-xl);
+    border-start-end-radius: var(--sys-shape-xl);
+  }
+
+  &:last-of-type {
+    border-end-start-radius: var(--sys-shape-xl);
+    border-end-end-radius: var(--sys-shape-xl);
+  }
+
+  // Selection is tonal AND marked: the native radio stays visible so the
+  // choice is not carried by colour alone.
+  &:has(.group__input:checked) {
+    background: var(--sys-color-primary);
+    color: var(--sys-color-on-primary);
+  }
+}
+
+.group__input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--sys-color-selected);
+}
+
+.group__label {
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.group__body,
+.reason {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.group__body {
+  font-size: var(--sys-type-body-sm-size);
+}
+
+// A reason is readable text at full contrast, never a faded tooltip.
+.reason {
+  color: var(--sys-color-on-surface);
+  font-size: var(--sys-type-body-sm-size);
+}
+
+.reason__why {
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.group__option:has(.group__input:checked) .group__body,
+.group__option:has(.group__input:checked) .reason {
+  color: var(--sys-color-on-primary);
+}
+
+// ------------------------------------------------------------- banners, status
+
+.banner {
+  margin: 0;
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container-high);
+}
+
+.banner--error {
+  outline: var(--sys-focus-ring-width) solid var(--sys-color-danger);
+  outline-offset: calc(var(--sys-space-xxs) * -1);
+  color: var(--sys-color-on-surface);
+}
+
+.status {
+  margin: 0;
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.status[data-phase="ready"] {
+  color: var(--sys-color-success);
+}
+
+.status[data-phase="rejected"],
+.status[data-phase="unavailable"] {
+  color: var(--sys-color-danger);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-md);
+  align-items: flex-start;
+}
+
+// ------------------------------------------------------------------- buttons
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--sys-density-min-target);
+  min-width: var(--sys-density-min-target);
+  padding: 0 var(--sys-space-xxl);
+  border: 0;
+  border-radius: var(--sys-shape-full);
+  font: inherit;
+  font-weight: var(--sys-type-label-lg-weight);
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.btn--filled {
+  background: var(--sys-color-primary);
+  color: var(--sys-color-on-primary);
+}
+
+.btn--tonal {
+  background: var(--sys-color-container-high);
+  color: var(--sys-color-on-surface);
+}
+
+// One strongest action per task, taller when there is room for it.
+.btn--principal {
+  min-height: 56px;
+  font-size: var(--sys-type-title-md-size);
+}
+
+// State layers are one on-colour overlay, expressed once.
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.btn:hover::after {
+  opacity: var(--sys-state-hover);
+}
+
+.btn:active::after {
+  opacity: var(--sys-state-press);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: var(--sys-state-disabled-content);
+}
+
+// The focus ring is never removed, and keeps its own gap from the control.
+:focus-visible {
+  outline: var(--sys-focus-ring-width) solid var(--sys-focus-ring-color);
+  outline-offset: var(--sys-space-xxs);
+}
+
+// --------------------------------------------------------------- setup screen
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-lg);
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-sm);
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.summary__title {
+  margin: 0;
+  font-size: var(--sys-type-title-md-size);
+  font-weight: var(--sys-type-title-md-weight);
+}
+
+.summary .facts {
+  padding: 0;
+  background: transparent;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-md);
+}
+
+// ------------------------------------------------------------------ responsive
+//
+// Compact is the base. Each larger step adds columns rather than shrinking
+// type, so 200% zoom simply lands back on the compact layout.
+
+@media (min-width: 600px) {
+  .main {
+    padding: var(--sys-space-xxl);
+  }
+
+  .card {
+    grid-template-areas: "art text action";
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+
+  .card__action {
+    justify-self: end;
+  }
+
+  .actions {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (min-width: 905px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .toolbar {
+    flex-direction: row;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 1440px) {
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

@@ -125,6 +125,13 @@ games have not yet validated is a contract that can no longer move.
 
 If you believe a phase gate is wrong, write an ADR — do not quietly cross it.
 
+**One gate has been crossed, on purpose and on the record.** The discovery/setup
+slice of `tabula-registry` (Phase 4) and `apps/web` (Phase 5) is implemented
+ahead of the Phase 3 exit: [ADR-0028](docs/adr/0028-discovery-shell-ahead-of-phase-gate.md)
+states exactly what it contains and what both phases still hold back. Treat the
+rest of those crates as gated as before, and do not read the slice as evidence
+that Phase 3, 4 or 5 is complete.
+
 ---
 
 ## 5. Before you open a pull request
