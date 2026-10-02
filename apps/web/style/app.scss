@@ -385,6 +385,7 @@ body {
 }
 
 .group__option {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--sys-space-xs) var(--sys-space-md);
@@ -421,6 +422,18 @@ body {
 
 .group__label {
   font-weight: var(--sys-type-label-lg-weight);
+
+  // The whole row is the pointer target. The native radio is 20px, which is
+  // what a radio should look like, but 20px is not a target anyone can hit
+  // reliably: doc 04 section 9.4 asks for at least 44dp. The label already
+  // activates its own input, so stretching it over the row is the target
+  // without a second control. Transparent: it changes nothing that is drawn.
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
 }
 
 .group__body,

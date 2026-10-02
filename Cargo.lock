@@ -2332,6 +2332,7 @@ dependencies = [
  "leptos",
  "leptos_router",
  "tabula-registry",
+ "wasm-bindgen",
  "web-sys",
 ]
 

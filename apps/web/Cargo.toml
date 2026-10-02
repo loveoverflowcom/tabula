@@ -17,15 +17,15 @@ publish.workspace      = true
 tabula-registry = { workspace = true }
 leptos          = { workspace = true }
 leptos_router   = { workspace = true }
-# Only for the media queries that select a generated scheme; the shell reads no
-# other browser API directly.
-web-sys         = { workspace = true, features = ["Window", "MediaQueryList"] }
+# Only for the media queries that select a generated scheme, and the change
+# listeners that keep it current; the shell reads no other browser API directly.
+web-sys         = { workspace = true, features = ["Window", "MediaQueryList", "EventTarget"] }
+wasm-bindgen    = { workspace = true }
 
 # Phase 5 — uncomment with the first networked route.
 # tabula-protocol   = { workspace = true }
 # tabula-assets     = { workspace = true }
 # tabula-net-client = { workspace = true, features = ["web"] }
-# wasm-bindgen      = { workspace = true }
 # serde             = { workspace = true }
 # serde_json        = { workspace = true }
 
