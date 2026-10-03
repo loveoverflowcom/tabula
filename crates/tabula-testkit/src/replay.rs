@@ -40,7 +40,10 @@
 //! outer framing is deliberately fixed-width and length-prefixed so the reader
 //! can reject truncation and oversized declarations before allocating for a
 //! frame. Replays contain only inputs that were accepted into the canonical log;
-//! a replay-time rejection is therefore a divergence/corruption error.
+//! a replay-time rejection is therefore a divergence/corruption error. Original
+//! attempt indices are strictly increasing and nonzero, but may have rejection
+//! gaps. Accepted-frame ordinals count transitions; they never replace those
+//! RNG-root indices.
 
 #![allow(clippy::doc_markdown)]
 
@@ -144,6 +147,8 @@ impl fmt::Debug for ReplayHeader {
 /// bytes; projected playback is intentionally deferred to the client phase.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReplayFrame {
+    /// The original live input/RNG-root index. Nonzero and strictly increasing,
+    /// with gaps permitted when the attempt audit contained rejected inputs.
     pub input_index: InputIndex,
     pub logical_time: LogicalTime,
     pub input: Vec<u8>,
@@ -490,6 +495,14 @@ impl<R: GameRules> ReplayRunner<R> {
         }
     }
 
+    fn replayable_verdict(&self) -> Result<ReplayVerdict, ReplayError> {
+        let verdict = self.check();
+        if matches!(verdict, ReplayVerdict::Unreplayable { .. }) {
+            return Err(ReplayError::Unreplayable(format!("{verdict:?}")));
+        }
+        Ok(verdict)
+    }
+
     /// Apply the next accepted input and compare its optional checkpoint.
     ///
     /// An unexpected rejection is an error, never a successful step: canonical
@@ -557,13 +570,16 @@ impl<R: GameRules> ReplayRunner<R> {
 
     /// Re-run from the initial state through the requested accepted-input
     /// state version. State versions count replay frames, because rejected
-    /// inputs are not part of a canonical replay.
+    /// inputs are not part of a canonical replay. Like [`Self::verify`], seek
+    /// requires a nonzero authoritative rules identity before reconstruction.
     ///
     /// @ai.role verifier
     /// @ai.domain replay.seek
     /// @ai.invariant verified-seek-never-hides-divergence
     /// @ai.evidence crate::replay::tests::seek_never_hides_checkpoint_divergence
+    /// @ai.evidence crate::replay::tests::seek_requires_the_same_authoritative_rules_identity_as_verify
     pub fn seek(&mut self, to: StateVersion) -> Result<PrefixPosition, ReplayError> {
+        self.replayable_verdict()?;
         if to.0 > self.replay.frames.len() as u64 {
             return Err(ReplayError::SeekOutOfRange(to));
         }
@@ -627,10 +643,7 @@ impl<R: GameRules> ReplayRunner<R> {
     /// @ai.evidence crate::replay::tests::end_match_from_create_is_verified
     pub fn verify(&mut self) -> Result<VerifyReport, ReplayError> {
         self.reset()?;
-        let verdict = self.check();
-        if matches!(verdict, ReplayVerdict::Unreplayable { .. }) {
-            return Err(ReplayError::Unreplayable(format!("{verdict:?}")));
-        }
+        let verdict = self.replayable_verdict()?;
 
         let mut report = VerifyReport {
             replay_scope: self.replay.diagnosis_scope()?,
@@ -653,6 +666,7 @@ impl<R: GameRules> ReplayRunner<R> {
                 report.checkpoints_checked += 1;
                 report.checkpoint_evidence.push(CheckpointEvidence {
                     input_index: InputIndex(result.input_index),
+                    state_version: result.state_version,
                     expected,
                     actual: result.state_hash,
                 });
@@ -905,14 +919,13 @@ fn validate_parts(
     }
 
     let mut previous_time = LogicalTime::ZERO;
-    for (position, frame) in frames.iter().enumerate() {
-        let expected_index = InputIndex(
-            u64::try_from(position + 1)
-                .map_err(|_| ReplayError::Corrupt("frame index overflow".to_owned()))?,
-        );
-        if frame.input_index != expected_index {
+    let mut previous_index = InputIndex(0);
+    for frame in &frames {
+        // Comparison alone permits a final u64::MAX index without allocating
+        // or adding one to the original attempt domain. Frame count is separate.
+        if frame.input_index <= previous_index {
             return Err(ReplayError::Corrupt(
-                "frame input indices must be contiguous starting at one".to_owned(),
+                "frame input indices must be nonzero and strictly increasing".to_owned(),
             ));
         }
         if frame.logical_time < previous_time {
@@ -928,6 +941,7 @@ fn validate_parts(
         if matches!(header.kind, ReplayKind::Canonical) {
             validate_canonical_marker(&frame.input, "input")?;
         }
+        previous_index = frame.input_index;
         previous_time = frame.logical_time;
     }
 
@@ -1144,6 +1158,9 @@ pub struct Divergence {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckpointEvidence {
     input_index: InputIndex,
+    // An accepted-frame witness, independent of the original attempt index.
+    // Kept private: only verification can establish transition adjacency.
+    state_version: StateVersion,
     expected: StateHash,
     actual: StateHash,
 }
@@ -1610,6 +1627,381 @@ mod tests {
 
     struct CounterRules;
 
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    enum RngCommand {
+        Reject,
+        Sample,
+        End,
+    }
+
+    /// This fixture makes original indices observable independently of the
+    /// replay reader: live transitions record both the RNG draw and its root.
+    struct RngEvidenceRules;
+
+    impl GameRules for RngEvidenceRules {
+        type State = Vec<(u64, u32)>;
+        type Command = RngCommand;
+        type Event = ();
+        type View = ();
+        type ViewEvent = ();
+        type Config = ();
+
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+        const RULES_HASH: [u8; 32] = [6; 32];
+
+        fn create((): &(), _: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: Vec::new(),
+                events: smallvec::SmallVec::new(),
+                effects: smallvec::SmallVec::new(),
+            })
+        }
+
+        fn apply(
+            state: &mut Self::State,
+            input: Input<RngCommand>,
+            ctx: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, tabula_core::RuleError> {
+            let Input::Player { command, .. } = input else {
+                return Ok(Outcome::empty());
+            };
+            // Rejections deliberately draw before returning Err: replay must
+            // preserve later per-input RNG roots without replaying this attempt.
+            let sample = ctx.rng.next_u32();
+            if matches!(command, RngCommand::Reject) {
+                return Err(tabula_core::RuleError::code(
+                    tabula_core::RuleErrorCode::IllegalMove,
+                ));
+            }
+            state.push((ctx.index.0, sample));
+            Ok(Outcome {
+                events: smallvec::SmallVec::new(),
+                effects: if matches!(command, RngCommand::End) {
+                    smallvec![Effect::EndMatch {
+                        outcome: counter_outcome("rng ended"),
+                    }]
+                } else {
+                    smallvec::SmallVec::new()
+                },
+            })
+        }
+
+        fn project(_: &Self::State, _: Viewer) {}
+
+        fn view_event(_: &Self::State, (): &(), _: Viewer) -> Option<()> {
+            None
+        }
+    }
+
+    fn rng_identity() -> ReplayIdentity {
+        ReplayIdentity {
+            game_id: GameId::new("com.example.rngevidence").unwrap(),
+            rules_version: RngEvidenceRules::RULES_VERSION,
+            rules_hash: RngEvidenceRules::RULES_HASH,
+        }
+    }
+
+    /// A separate live create/apply path; no ReplayRunner, seek, or capture
+    /// helper supplies indices or computes its authority checkpoints.
+    fn gapped_rng_draft() -> ReplayDraft {
+        let seed = MatchSeed::from_bytes([42; 32]);
+        let roster = counter_roster();
+        let mut create_rng = tabula_core::DetRng::for_input(&seed, InputIndex(0));
+        let mut create_ctx = Ctx {
+            now: LogicalTime::ZERO,
+            index: InputIndex(0),
+            rng: &mut create_rng,
+            budget: Budget::default(),
+        };
+        let mut state = RngEvidenceRules::create(&(), &roster, &mut create_ctx)
+            .unwrap()
+            .state;
+        let attempts = [
+            (1, 10, RngCommand::Reject),
+            (2, 20, RngCommand::Sample),
+            (3, 30, RngCommand::Reject),
+            (4, 40, RngCommand::Reject),
+            (5, 50, RngCommand::Sample),
+            (u64::MAX, 60, RngCommand::End),
+        ];
+        let mut frames = Vec::new();
+        let mut terminal = None;
+        for (index, time, command) in attempts {
+            let input = Input::Player {
+                seat: SeatId(0),
+                command,
+            };
+            let index = InputIndex(index);
+            let now = LogicalTime(time);
+            let mut rng = tabula_core::DetRng::for_input(&seed, index);
+            let mut ctx = Ctx {
+                now,
+                index,
+                rng: &mut rng,
+                budget: Budget::default(),
+            };
+            let before = canonical_encode(&state).unwrap();
+            match RngEvidenceRules::apply(&mut state, input.clone(), &mut ctx) {
+                Ok(outcome) => {
+                    terminal = first_terminal_outcome(&outcome.effects).or(terminal);
+                    frames.push(ReplayFrame {
+                        input_index: index,
+                        logical_time: now,
+                        input: canonical_encode(&input).unwrap(),
+                        checkpoint: Some(RngEvidenceRules::state_hash(&state)),
+                    });
+                }
+                Err(error) => {
+                    assert_eq!(error.code, tabula_core::RuleErrorCode::IllegalMove);
+                    assert_eq!(canonical_encode(&state).unwrap(), before);
+                }
+            }
+        }
+        let identity = rng_identity();
+        ReplayDraft {
+            header: ReplayHeader {
+                match_id: MatchId(101),
+                game_id: identity.game_id,
+                game_version: GameVersion::new("1.0.0").unwrap(),
+                rules_version: identity.rules_version,
+                rules_hash: identity.rules_hash,
+                config: canonical_encode(&()).unwrap(),
+                roster,
+                seed: Some(seed),
+                initial_snapshot: None,
+                started_at: 0,
+                duration_ms: 60,
+                outcome: terminal,
+                kind: ReplayKind::Canonical,
+            },
+            frames,
+            final_state_hash: RngEvidenceRules::state_hash(&state),
+        }
+    }
+
+    #[test]
+    fn accepted_rng_replay_preserves_gaps_and_maximum_original_index() {
+        let draft = gapped_rng_draft();
+        let original_indices = vec![InputIndex(2), InputIndex(5), InputIndex(u64::MAX)];
+        let bytes = draft
+            .to_bytes()
+            .expect("accepted original indices are valid");
+        let validated = ValidatedReplay::from_bytes(&bytes).unwrap();
+        assert_eq!(
+            validated
+                .frames()
+                .iter()
+                .map(|frame| frame.input_index)
+                .collect::<Vec<_>>(),
+            original_indices
+        );
+        assert_eq!(validated.to_bytes().unwrap(), bytes);
+
+        let mut runner =
+            ReplayRunner::<RngEvidenceRules>::from_bytes(&bytes, rng_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        assert_eq!(report.verdict(), &ReplayVerdict::Exact);
+        assert!(report.is_verified());
+        assert_eq!(report.inputs_replayed(), 3);
+        assert_eq!(report.checkpoints_checked(), 3);
+        assert_eq!(report.actual_final_state_hash(), draft.final_state_hash);
+        assert_eq!(report.actual_outcome(), draft.header.outcome.as_ref());
+
+        // Cursor ordinals count accepted transitions, not original attempt IDs.
+        for cursor in [0, 3, 1, 2, 0, 3] {
+            let position = runner.seek(StateVersion(cursor)).unwrap();
+            assert_eq!(
+                matches!(position, PrefixPosition::Verified(_)),
+                cursor > 0,
+                "only prefixes with stored checkpoints have verified evidence"
+            );
+            let evidence = match position {
+                PrefixPosition::Verified(evidence) | PrefixPosition::Reconstructed(evidence) => {
+                    evidence
+                }
+            };
+            assert_eq!(evidence.state_version, StateVersion(cursor));
+            assert_eq!(evidence.checkpoints_checked, cursor);
+            if cursor > 0 {
+                assert_eq!(
+                    evidence.state_hash,
+                    draft.frames[usize::try_from(cursor - 1).unwrap()]
+                        .checkpoint
+                        .unwrap()
+                );
+            }
+            if cursor < 3 {
+                let step = runner.step().unwrap().unwrap();
+                assert_eq!(
+                    step.input_index,
+                    original_indices[usize::try_from(cursor).unwrap()].0
+                );
+                assert_eq!(step.state_version, StateVersion(cursor + 1));
+                assert_eq!(step.checkpoint_matched, Some(true));
+            } else {
+                assert!(runner.step().unwrap().is_none());
+            }
+        }
+        assert!(matches!(
+            runner.seek(StateVersion(4)),
+            Err(ReplayError::SeekOutOfRange(StateVersion(4)))
+        ));
+
+        // Negative control: a compacting exporter still parses, but cannot
+        // reproduce either the observed RNG draws or their canonical roots.
+        let mut renumbered = draft;
+        for (position, frame) in renumbered.frames.iter_mut().enumerate() {
+            frame.input_index = InputIndex(u64::try_from(position + 1).unwrap());
+        }
+        let mut mutant = ReplayRunner::<RngEvidenceRules>::from_bytes(
+            &renumbered.to_bytes().unwrap(),
+            rng_identity(),
+        )
+        .unwrap();
+        let report = mutant.verify().unwrap();
+        assert!(!report.is_verified());
+        assert!(report
+            .checkpoint_evidence()
+            .iter()
+            .all(|claim| !claim.matched()));
+        assert_ne!(
+            report.actual_final_state_hash(),
+            report.expected_final_state_hash()
+        );
+    }
+
+    #[test]
+    fn writer_and_hostile_reader_reject_zero_duplicate_and_decreasing_original_indices() {
+        for indices in [
+            [0, 5, u64::MAX],
+            [2, 0, u64::MAX],
+            [2, 2, u64::MAX],
+            [5, 2, u64::MAX],
+        ] {
+            let mut draft = gapped_rng_draft();
+            for (frame, index) in draft.frames.iter_mut().zip(indices) {
+                frame.input_index = InputIndex(index);
+            }
+            assert!(matches!(draft.to_bytes(), Err(ReplayError::Corrupt(_))));
+            // The bytes carry a correct CRC and legal framing, so the reader
+            // must reach semantic ordering validation independently of writer.
+            let hostile = unchecked_bytes(&draft);
+            assert!(matches!(
+                ValidatedReplay::from_bytes(&hostile),
+                Err(ReplayError::Corrupt(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn gapped_checkpoint_diagnosis_and_reproducer_preserve_accepted_adjacency() {
+        let mut draft = gapped_rng_draft();
+        draft.frames[1].checkpoint = Some(StateHash([77; 32]));
+        let bytes = draft.to_bytes().unwrap();
+        let mut runner =
+            ReplayRunner::<RngEvidenceRules>::from_bytes(&bytes, rng_identity()).unwrap();
+        let report = runner.verify().unwrap();
+        let diagnosis = report.diagnosis().unwrap();
+        assert!(matches!(
+            diagnosis.location(),
+            DivergenceLocation::Exact(exact)
+                if exact.input_index() == InputIndex(5)
+                    && exact.previous_verified() == InputIndex(2)
+        ));
+        assert_eq!(diagnosis.evidence().previous_checkpoint, Some(2));
+        assert_eq!(diagnosis.evidence().next_checkpoint, Some(u64::MAX));
+        assert!(matches!(
+            runner.seek(StateVersion(2)),
+            Err(ReplayError::PrefixDivergence { divergence }) if divergence.input_index == 5
+        ));
+        let ReproducerAvailability::Available(prefix) = runner.reproducer(&diagnosis) else {
+            panic!("a gapped failing checkpoint can retain its original prefix");
+        };
+        assert_eq!(
+            prefix
+                .frames()
+                .iter()
+                .map(|frame| frame.input_index)
+                .collect::<Vec<_>>(),
+            vec![InputIndex(2), InputIndex(5)]
+        );
+        let mut replayed_prefix = ReplayRunner::<RngEvidenceRules>::from_bytes(
+            &prefix.to_bytes().unwrap(),
+            rng_identity(),
+        )
+        .unwrap();
+        let prefix_diagnosis = replayed_prefix.verify().unwrap().diagnosis().unwrap();
+        assert_eq!(prefix_diagnosis.location(), diagnosis.location());
+        assert_eq!(prefix_diagnosis.evidence().input_index, 5);
+
+        let mut sparse = gapped_rng_draft();
+        sparse.frames[1].checkpoint = None;
+        sparse.frames[2].checkpoint = Some(StateHash([77; 32]));
+        let mut runner = ReplayRunner::<RngEvidenceRules>::from_bytes(
+            &sparse.to_bytes().unwrap(),
+            rng_identity(),
+        )
+        .unwrap();
+        let diagnosis = runner.verify().unwrap().diagnosis().unwrap();
+        assert!(matches!(
+            diagnosis.location(),
+            DivergenceLocation::Window(window)
+                if window.after_verified() == Some(InputIndex(2))
+                    && window.at_or_before() == InputIndex(u64::MAX)
+        ));
+        assert!(matches!(
+            runner.reproducer(&diagnosis),
+            ReproducerAvailability::OriginalReplayIsMinimal
+        ));
+    }
+
+    #[test]
+    fn gapped_final_hash_and_terminal_diagnoses_use_original_last_index() {
+        for terminal_mismatch in [false, true] {
+            let mut draft = gapped_rng_draft();
+            if terminal_mismatch {
+                draft.header.outcome = Some(counter_outcome("wrong terminal result"));
+            } else {
+                draft.final_state_hash = StateHash([77; 32]);
+            }
+            let mut runner = ReplayRunner::<RngEvidenceRules>::from_bytes(
+                &draft.to_bytes().unwrap(),
+                rng_identity(),
+            )
+            .unwrap();
+            let report = runner.verify().unwrap();
+            assert_eq!(report.inputs_replayed(), 3);
+            let diagnosis = report.diagnosis().unwrap();
+            assert_eq!(diagnosis.evidence().input_index, u64::MAX);
+            assert!(matches!(
+                diagnosis.location(),
+                DivergenceLocation::FinalEvidenceOnly(final_only)
+                    if final_only.after_verified() == Some(InputIndex(u64::MAX))
+                        && final_only.final_input() == Some(InputIndex(u64::MAX))
+            ));
+        }
+    }
+
+    /// Test-only hostile transport construction: bypasses domain validation
+    /// while preserving byte framing and integrity. Never used by live writer.
+    fn unchecked_bytes(draft: &ReplayDraft) -> Vec<u8> {
+        let header = postcard::to_allocvec(&draft.header).unwrap();
+        let mut logical = Vec::new();
+        logical.extend_from_slice(MAGIC);
+        logical.extend_from_slice(&REPLAY_FORMAT_VERSION.to_le_bytes());
+        logical.extend_from_slice(&u32::try_from(header.len()).unwrap().to_le_bytes());
+        logical.extend_from_slice(&header);
+        for frame in &draft.frames {
+            let bytes = postcard::to_allocvec(frame).unwrap();
+            logical.extend_from_slice(&u32::try_from(bytes.len()).unwrap().to_le_bytes());
+            logical.extend_from_slice(&bytes);
+        }
+        logical.extend_from_slice(&u64::try_from(draft.frames.len()).unwrap().to_le_bytes());
+        logical.extend_from_slice(&draft.final_state_hash.0);
+        logical.extend_from_slice(&crc32(&logical).to_le_bytes());
+        encode_for_test(&logical)
+    }
+
     impl GameRules for CounterRules {
         type State = CounterState;
         type Command = CounterCommand;
@@ -1905,6 +2297,34 @@ mod tests {
         let runner = ReplayRunner::<CounterRules>::from_bytes(&bytes, identity).unwrap();
 
         assert_eq!(runner.check(), ReplayVerdict::CompatibleVersion);
+    }
+
+    #[test]
+    fn seek_requires_the_same_authoritative_rules_identity_as_verify() {
+        let (draft, _) = counter_draft(&[CounterCommand::Add(1)]);
+        let bytes = draft.to_bytes().unwrap();
+        let mut identity = counter_identity();
+        identity.rules_hash = [0; 32];
+        let mut runner = ReplayRunner::<CounterRules>::from_bytes(&bytes, identity).unwrap();
+        assert!(matches!(runner.check(), ReplayVerdict::Unreplayable { .. }));
+        assert!(matches!(runner.verify(), Err(ReplayError::Unreplayable(_))));
+        for cursor in [0, 1] {
+            assert!(matches!(
+                runner.seek(StateVersion(cursor)),
+                Err(ReplayError::Unreplayable(_))
+            ));
+        }
+
+        // A linked version with a different nonzero hash retains its explicit
+        // CompatibleVersion disposition; checkpoint verification is still real.
+        let mut compatible = counter_identity();
+        compatible.rules_hash[0] ^= 1;
+        let mut runner = ReplayRunner::<CounterRules>::from_bytes(&bytes, compatible).unwrap();
+        assert_eq!(runner.check(), ReplayVerdict::CompatibleVersion);
+        assert!(matches!(
+            runner.seek(StateVersion(1)),
+            Ok(PrefixPosition::Verified(_))
+        ));
     }
 
     #[test]
@@ -2469,7 +2889,7 @@ mod tests {
         let bytes = encode_for_test(&logical);
         assert!(matches!(
             ValidatedReplay::from_bytes(&bytes),
-            Err(ReplayError::Corrupt(message)) if message.contains("contiguous")
+            Err(ReplayError::Corrupt(message)) if message.contains("strictly increasing")
         ));
     }
 

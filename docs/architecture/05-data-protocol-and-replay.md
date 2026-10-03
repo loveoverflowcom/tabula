@@ -403,9 +403,11 @@ When a replay's recomputed hash differs from the stored hash:
 1. The replay job records `(match_id, input_index, expected, actual, rules_hash, build)`.
 2. The Phase 1 diagnostic scans stored checkpoint claims in execution order. It reports the
    first failing stored claim, not automatically the first divergent transition.
-3. If the failing claim immediately follows a matching checkpoint, the transition is localized
-   exactly. Otherwise the diagnostic reports a window: `after_verified < first divergent
-   transition <= at_or_before`, where `at_or_before` is the failing checkpoint's input index.
+3. If the failing claim immediately follows a matching checkpoint in accepted-frame order, the
+   transition is localized exactly. Original input-index gaps left by rejected attempts do not
+   add accepted transitions. Otherwise the diagnostic reports a window:
+   `after_verified < first divergent transition <= at_or_before`, where
+   `at_or_before` is the failing checkpoint's input index.
    A later checkpoint matching again does not invalidate the earlier failure; checkpoint
    divergence is not assumed to be monotonic.
 4. When a checkpoint failure has enough evidence, the verifier can produce an in-memory,
@@ -431,6 +433,14 @@ not replay frames: a rejection while replaying a stored frame is therefore a
 divergence/corruption error, never a successful no-op. The runtime may choose a
 different audit log policy later, but the live and replay input-index assignment
 must remain identical (ADR-026 §5).
+
+Original `InputIndex` values are strictly increasing and nonzero, but need not
+start at one or be contiguous: a live runtime may allocate an index for each
+attempt and omit rejected attempts from accepted replay evidence. Preserve
+those gaps; compacting indices changes the per-input RNG root. Both `StateVersion`
+and the replay trailer's input count measure accepted frames, independently of
+the original attempt indices. Seek positions use that accepted-frame ordinal;
+checkpoint/final diagnostics and derived reproducers retain the original indices.
 
 ```text
 .tbr file layout (Tabula Binary Replay)
@@ -521,6 +531,9 @@ Phase 4 may use the registry at the tooling or runtime edge to select and erase 
 `GameRules` implementation. That selection does not change the Phase 1 evidence contract: a
 position is only `Verified` when the traversed stored checkpoints agree, and a complete
 verification also checks the final state hash and the terminal outcome.
+Both `seek` and `verify` refuse reconstruction without a nonzero authoritative
+linked rules identity. A different nonzero hash at the linked rules version
+keeps the explicit `CompatibleVersion` verdict and still requires hash checks.
 
 Client-side playback (the replay viewer, Phase 9) uses **projected** replays and drives the normal
 presenter with the recorded `ViewEvent` stream and `logical_ms` timings — so replay looks exactly

@@ -251,7 +251,7 @@ impl VerifyReport {
             diagnoses.push(ReplayDiagnosis {
                 replay_scope: self.replay_scope.clone(),
                 kind: ReplayDiagnosisKind::FinalStateHashOnly,
-                location: final_evidence_location(self),
+                location: final_evidence_location(self, evidence),
                 evidence: evidence.clone(),
             });
         }
@@ -264,7 +264,7 @@ impl VerifyReport {
             diagnoses.push(ReplayDiagnosis {
                 replay_scope: self.replay_scope.clone(),
                 kind: ReplayDiagnosisKind::TerminalOutcome,
-                location: final_evidence_location(self),
+                location: final_evidence_location(self, evidence),
                 evidence: evidence.clone(),
             });
         }
@@ -400,38 +400,37 @@ fn checkpoint_location(
         .iter()
         .filter(|claim| claim.input_index() < failing.input_index())
         .rev()
-        .find(|claim| claim.matched())
-        .map(CheckpointEvidence::input_index);
+        .find(|claim| claim.matched());
     let adjacent = previous_verified.is_some_and(|previous| {
         previous
+            .state_version
             .0
             .checked_add(1)
-            .is_some_and(|next| next == failing.input_index().0)
+            .is_some_and(|next| next == failing.state_version.0)
     });
 
     if let Some(previous_verified) = previous_verified.filter(|_| adjacent) {
         DivergenceLocation::Exact(ExactDivergence {
             input_index: failing.input_index(),
-            previous_verified,
+            previous_verified: previous_verified.input_index(),
         })
     } else {
         DivergenceLocation::Window(DivergenceWindow {
-            after_verified: previous_verified,
+            after_verified: previous_verified.map(CheckpointEvidence::input_index),
             at_or_before: failing.input_index(),
             first_failing_evidence: failing.input_index(),
         })
     }
 }
 
-fn final_evidence_location(report: &VerifyReport) -> DivergenceLocation {
+fn final_evidence_location(report: &VerifyReport, evidence: &Divergence) -> DivergenceLocation {
     let after_verified = report
         .checkpoint_evidence
         .iter()
         .rev()
         .find(|claim| claim.matched())
         .map(CheckpointEvidence::input_index);
-    let final_input =
-        (report.inputs_replayed() > 0).then_some(InputIndex(report.inputs_replayed()));
+    let final_input = (report.inputs_replayed() > 0).then_some(InputIndex(evidence.input_index));
     DivergenceLocation::FinalEvidenceOnly(FinalEvidenceOnly {
         after_verified,
         final_input,

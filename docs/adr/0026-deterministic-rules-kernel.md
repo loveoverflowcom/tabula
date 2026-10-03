@@ -241,21 +241,28 @@ discipline. It holds only because RNG is derived per-input; it would *not* hold
 for a single match-long RNG stream, which is the design this rules out.
 
 Consequence for the runtime (Phase 4, recorded here because this contract
-constrains it). The runtime is free to choose **either** scheme:
+constrains it). The runtime is free to choose an audit policy while preserving
+the original index of every accepted input:
 
 | Scheme | `InputIndex` assigned | Replay sees rejections |
 |---|---|---|
 | A — log rejections (audit, abuse counting) | to every input, accepted or not | yes; they reject again identically |
 | B — drop rejections | only on acceptance | no; they were no-ops |
+| C — attempt audit plus accepted replay evidence | to every input, accepted or not | accepted replay omits rejections and preserves original index gaps |
 
-Both are sound. The single binding requirement is that **replay assigns the same
+All are sound. The single binding requirement is that **replay assigns the same
 index to the same input as the live run did** — because the RNG stream is derived
-from that index. Mixing the two (assigning an index optimistically, then dropping
-the row) is the one combination that breaks: later inputs would draw from
-different streams on replay than they did live.
+from that index. Dropping a rejected attempt becomes unsound only when the
+consumer renumbers the remaining inputs: later inputs then draw from different
+streams on replay than they did live. A preserved gap is valid evidence, not a
+missing accepted transition.
 
-`tabula-testkit`'s reference runner implements scheme A. Whichever Phase 4 picks,
-a rejection must never advance `state_version` (I-7).
+`tabula-testkit`'s self-play comparison trace includes rejected attempts (A).
+The canonical `.tbr` runner accepts only accepted frames (doc 05 §8.1), including
+the original-index gaps produced by `LocalMatch`'s separate attempt audit and
+accepted replay trace (C). Its seek cursor and `state_version` count accepted
+transitions; neither is an `InputIndex`. Whichever Phase 4 picks, a rejection
+must never advance `state_version` (I-7).
 
 ## Consequences
 
