@@ -38,6 +38,13 @@ gates as a recorded decision:
 slice contains and what the gates still hold back. Running these screens
 requires `trunk serve` in `apps/web`; no match can be created from them.
 
+Issue #52's [shared boundary](screens/results-replay.md) and screen 09–11
+specifications cover results, match history and generic replay. The existing
+local driver can start a fresh game after a rules-owned terminal outcome;
+canonical `.tbr` tooling preserves gapped original input indices. These do not
+implement persisted history, user replay export or a projected scrub viewer.
+See [verification and residual gates](screens/results-replay-verification.md).
+
 ## Phase-5 screen coverage
 
 Home/catalog, detail/setup and settings have specifications in the screen index.
