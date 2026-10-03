@@ -1,0 +1,8 @@
+$ python3 -m unittest discover -s tools/renderer-embedding-spike -p test_stage.py -v
+test_exact_snapshot_has_native_blake3_receipt (test_stage.StageAtlasIntegrity.test_exact_snapshot_has_native_blake3_receipt) ... ok
+test_same_size_atlas_corruption_is_rejected_before_staging_identity (test_stage.StageAtlasIntegrity.test_same_size_atlas_corruption_is_rejected_before_staging_identity) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.012s
+
+OK

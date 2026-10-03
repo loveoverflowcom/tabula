@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running `/tmp/tabula60-target/debug/xtask check-no-game-ids`
+check-no-game-ids: 467 files scanned for 4 game id(s) — all clear

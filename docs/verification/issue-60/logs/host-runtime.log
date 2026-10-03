@@ -1,0 +1,86 @@
+{"kind": "host-ready", "origin": "http://127.0.0.1:8060", "scope": "isolated-local-fixture", "authority_pid": 1176}
+127.0.0.1 - - [03/Oct/2026 20:19:22] "GET /macroquad.html HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:19:22] "GET /tokens.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:19:22] "GET /macroquad.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:19:22] "GET /mq_js_bundle.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:19:22] "GET /bridge.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:19:22] "GET /boundary.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:19:22] "GET /tabula-game-client.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:19:22] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 20:19:34] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 20:19:45] "GET /macroquad.mjs HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:19:45] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /leptos.html HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /tokens.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /spike.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /host.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /leptos/renderer_embedding_shell.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /bridge.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /adapter.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /boundary.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /pixi-backend.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /runtime-assets.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /fixture.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /leptos/renderer_embedding_shell_bg.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /render-contract.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /macroquad.html HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /mq_js_bundle.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /macroquad.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:36:48] "GET /tabula-game-client.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:00] "GET /leptos/renderer_embedding_shell.js HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:00] "GET /bridge.mjs HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:00] "GET /runtime-assets.json HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:00] "GET /leptos/renderer_embedding_shell_bg.wasm HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:00] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 20:37:12] "GET /host.mjs HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:12] "GET /leptos/renderer_embedding_shell.js HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:12] "GET /bridge.mjs HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:12] "GET /runtime-assets.json HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:12] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 20:37:12] "GET /leptos/renderer_embedding_shell_bg.wasm HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:12] "GET /macroquad.mjs HTTP/1.1" 304 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /leptos.html HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /spike.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /host.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /tokens.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /leptos/renderer_embedding_shell.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /boundary.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /bridge.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /adapter.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /pixi-backend.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /fixture.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /render-contract.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /leptos/renderer_embedding_shell_bg.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /runtime-assets.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:55] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 20:37:56] "GET /node_modules/pixi.js/dist/pixi.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:56] "GET /tiles/0.1.0/tiles@1x.b3-7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac.png HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:56] "GET /tiles/0.1.0/tiles@2x.b3-b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b.png HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:56] "GET /fonts/ProggyClean.ttf HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:37:56] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 181, "response_bytes": 18248, "wall_ms": 4.624042005161755}
+127.0.0.1 - - [03/Oct/2026 20:37:56] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 2.1882090004510246}
+127.0.0.1 - - [03/Oct/2026 20:37:56] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 3.409999997529667}
+127.0.0.1 - - [03/Oct/2026 20:38:03] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 96, "response_bytes": 136, "wall_ms": 1.1518750034156255}
+127.0.0.1 - - [03/Oct/2026 20:38:03] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 20:38:03] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 181, "response_bytes": 18248, "wall_ms": 4.8250000036205165}
+127.0.0.1 - - [03/Oct/2026 20:38:03] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 1.8231249996460974}
+127.0.0.1 - - [03/Oct/2026 20:38:03] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 2.1823330025654286}
+127.0.0.1 - - [03/Oct/2026 20:38:10] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 96, "response_bytes": 136, "wall_ms": 0.3367079989402555}
+127.0.0.1 - - [03/Oct/2026 20:38:10] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 20:38:10] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 181, "response_bytes": 18248, "wall_ms": 4.289667005650699}
+127.0.0.1 - - [03/Oct/2026 20:38:10] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 2.0795829987036996}
+127.0.0.1 - - [03/Oct/2026 20:38:10] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 2.492291998350993}
+127.0.0.1 - - [03/Oct/2026 20:38:17] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 96, "response_bytes": 136, "wall_ms": 0.19287499890197068}

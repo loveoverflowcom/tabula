@@ -35,7 +35,11 @@ tabula-testkit = { workspace = true }
 smallvec     = { workspace = true }
 tabula-presentation = { workspace = true }
 tabula-game-chess = { workspace = true, features = ["rules", "bots", "presentation"] }
-tabula-game-tiles = { workspace = true, features = ["rules", "bots"] }
+tabula-game-tiles = { workspace = true, features = ["rules", "bots", "presentation"] }
+# Issue-60 isolated native authority/RenderList fixture; tooling is never shipped.
+tabula-game-client = { workspace = true }
+tabula-design = { workspace = true }
+glam = { workspace = true }
 
 [lints]
 workspace = true

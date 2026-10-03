@@ -1,0 +1,1 @@
+$ node --check tools/renderer-embedding-spike/browser-checks.mjs

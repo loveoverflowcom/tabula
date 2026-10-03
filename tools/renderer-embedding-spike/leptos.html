@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tabula #60 isolated Leptos renderer shell</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="spike.css">
+</head>
+<body data-shell="leptos-example">
+<script type="module" src="host.mjs"></script>
+<script type="module">
+  import init from './leptos/renderer_embedding_shell.js';
+  await init();
+</script>
+</body>
+</html>

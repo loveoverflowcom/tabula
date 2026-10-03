@@ -1,0 +1,95 @@
+{
+  "scope": "isolated wrapper/Leptos staging subtask; runtime execution belongs to parent evidence",
+  "base_commit": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+  "source_files": {
+    "apps/web/examples/renderer_embedding_shell.rs": {
+      "sha256": "b1202b3df01e8ad2239875a39293e282f1de9fa3c412f20274abc8f9ecb13f5e",
+      "bytes": 2152
+    },
+    "tools/renderer-embedding-spike/host.mjs": {
+      "sha256": "210d3549267f028ed031397cf91bdd25d97af1d83118d84fa45cbc8ca3ef7e70",
+      "bytes": 25353
+    },
+    "tools/renderer-embedding-spike/macroquad.mjs": {
+      "sha256": "87358f6abed85dd5c42f2fce0382f85db2d1533e486468018c89bf250db03e86",
+      "bytes": 9420
+    },
+    "tools/renderer-embedding-spike/bridge.mjs": {
+      "sha256": "e560383ea35daa353d6dc6f59a18aa90dfc17ece7cf2a2e6a0639b0090ba54e9",
+      "bytes": 5558
+    },
+    "tools/renderer-embedding-spike/stage.py": {
+      "sha256": "da970be877aeff1d8341031ecefd95b1c464c05ba9f06fec27ff879506060024",
+      "bytes": 9089
+    },
+    "tools/renderer-embedding-spike/fixtures/fixture.json": {
+      "sha256": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b",
+      "bytes": 179950
+    },
+    "tools/renderer-embedding-spike/fixtures/render-contract.json": {
+      "sha256": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78",
+      "bytes": 1259
+    }
+  },
+  "checks": [
+    {
+      "command": "CARGO_TARGET_DIR=/tmp/tabula60-target cargo build --offline -p tabula-web --example renderer_embedding_shell --target wasm32-unknown-unknown --profile wasm-release",
+      "status": "PASS",
+      "kind": "compiled"
+    },
+    {
+      "command": "CARGO_TARGET_DIR=/tmp/tabula60-target cargo clippy --offline -p tabula-web --example renderer_embedding_shell -- -D warnings",
+      "status": "PASS",
+      "kind": "statically-checked"
+    },
+    {
+      "command": "npm --prefix tools/renderer-embedding-spike test",
+      "status": "PASS",
+      "executed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "kind": "example-tested; mock lifecycle and actual Pixi geometry separately named in TAP"
+    },
+    {
+      "command": "TABULA60_AUTHORITY_TOOL=/tmp/tabula60-target/debug/examples/embedding_fixture python3 -m unittest discover -s tools/renderer-embedding-spike -p test_stage.py -v",
+      "status": "PASS",
+      "executed": 2,
+      "failed": 0,
+      "kind": "integration-tested real Rust atlas verifier; same-size corruption negative"
+    },
+    {
+      "command": "node --check tools/renderer-embedding-spike/host.mjs; node --check tools/renderer-embedding-spike/macroquad.mjs",
+      "status": "PASS",
+      "kind": "statically-checked"
+    },
+    {
+      "command": "CARGO_TARGET_DIR=/tmp/tabula60-target cargo xtask check-no-raw-colors",
+      "status": "PASS",
+      "kind": "statically-checked"
+    },
+    {
+      "command": "CARGO_TARGET_DIR=/tmp/tabula60-target cargo xtask check-no-game-ids",
+      "status": "PASS",
+      "scanned": 432,
+      "kind": "statically-checked"
+    },
+    {
+      "command": "python3 tools/renderer-embedding-spike/stage.py --destination /tmp/tabula-issue-60-spike --target-dir /tmp/tabula60-target --wasm-bindgen /tmp/wasm-bindgen-0.2.129-aarch64-apple-darwin/wasm-bindgen",
+      "status": "PASS",
+      "files": 29,
+      "atlases": 2,
+      "leptos_built": true,
+      "kind": "compiled/staged; no browser execution implied"
+    }
+  ],
+  "runtime_receipt": "/tmp/tabula-issue-60-spike/runtime-assets.json",
+  "limits": [
+    "Same-origin trusted iframe is not a security sandbox",
+    "Macroquad anonymous engine listeners end with browsing-context destruction; no engine dispose API",
+    "Process/GPU reclamation not established by owned DOM/RAF counts",
+    "Prototype native HTTP authority cleanup must be awaited via settled before closing automated page; host termination clears remaining shim sessions",
+    "Audio/network resume/native embedding/production routing unimplemented",
+    "Actual Chromium/Safari/native runtime results are recorded by parent, not asserted by this subtask"
+  ],
+  "followup": "Queued callback checkpoint admission guard added; actual same-frame burst runtime evidence belongs to parent."
+}

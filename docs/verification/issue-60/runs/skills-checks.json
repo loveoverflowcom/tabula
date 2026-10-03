@@ -1,0 +1,44 @@
+[
+  {
+    "argv": [
+      "python3",
+      ".agents/skills/tabula-engineering/scripts/check_skills.py"
+    ],
+    "environment": {
+      "PYTHONPATH": "/tmp/tabula60-python-pydeps"
+    },
+    "dependency_setup": "python3 -m pip install --target /tmp/tabula60-python-pydeps PyYAML==6.0.3",
+    "status": "PASS",
+    "exit_code": 0,
+    "log": "docs/verification/issue-60/logs/skills-1.log",
+    "summary": "Skill drift check passed: 2 canonical entrypoints, local resources, and Claude bridge\n"
+  },
+  {
+    "argv": [
+      "python3",
+      ".agents/skills/tabula-engineering/scripts/test_check_skills.py"
+    ],
+    "environment": {
+      "PYTHONPATH": "/tmp/tabula60-python-pydeps"
+    },
+    "dependency_setup": "python3 -m pip install --target /tmp/tabula60-python-pydeps PyYAML==6.0.3",
+    "status": "PASS",
+    "exit_code": 0,
+    "log": "docs/verification/issue-60/logs/skills-2.log",
+    "summary": "................................\n----------------------------------------------------------------------\nRan 32 tests in 0.187s\n\nOK\n"
+  },
+  {
+    "argv": [
+      "python3",
+      ".agents/skills/tabula-engineering/scripts/test_ai_doc_contracts.py"
+    ],
+    "environment": {
+      "PYTHONPATH": "/tmp/tabula60-python-pydeps"
+    },
+    "dependency_setup": "python3 -m pip install --target /tmp/tabula60-python-pydeps PyYAML==6.0.3",
+    "status": "PASS",
+    "exit_code": 0,
+    "log": "docs/verification/issue-60/logs/skills-3.log",
+    "summary": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.002s\n\nOK\n"
+  }
+]

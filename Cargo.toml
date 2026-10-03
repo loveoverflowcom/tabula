@@ -65,6 +65,8 @@ tabula-voice        = { path = "crates/tabula-voice" }
 tabula-testkit      = { path = "crates/tabula-testkit" }
 renderer-macroquad  = { path = "crates/renderer-macroquad" }
 renderer-headless   = { path = "crates/renderer-headless" }
+# Tooling-only reuse of the local authority/presentation owner in issue 60.
+tabula-game-client  = { path = "apps/game-client" }
 
 tabula-game-chess     = { path = "games/chess",     default-features = false }
 tabula-game-caro      = { path = "games/caro",      default-features = false }

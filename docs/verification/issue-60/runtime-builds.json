@@ -1,0 +1,273 @@
+{
+  "authority": {
+    "path": "/tmp/tabula60-runtime-authority",
+    "sha256": "42e5718df2de59844e5d4a420a07621bc211755e93cf420504bd22fc33234312",
+    "bytes": 6382144,
+    "snapshot_from": "/tmp/tabula60-target/debug/examples/embedding_fixture"
+  },
+  "runtime_assets": {
+    "schema_version": 1,
+    "source_git_sha": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+    "fixture_source_revision": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+    "assets": [
+      {
+        "name": "tiles@1x.atlas",
+        "path": "tiles/0.1.0/tiles@1x.b3-7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac.png",
+        "sha256": "c585ec81de45781f6703457bb1392ef29999ded4422acb07637041bf7378981c",
+        "bytes": 4587,
+        "width": 432,
+        "height": 288,
+        "blake3": "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac",
+        "blake3_provenance": "Rust fixed-scope verifier checks this exact staged byte snapshot against the canonical pack"
+      },
+      {
+        "name": "tiles@2x.atlas",
+        "path": "tiles/0.1.0/tiles@2x.b3-b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b.png",
+        "sha256": "2746adb6bddfdc2760284ac592951c5831bf5c5b382c07a78f47c5a5c257c276",
+        "bytes": 12943,
+        "width": 864,
+        "height": 576,
+        "blake3": "b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b",
+        "blake3_provenance": "Rust fixed-scope verifier checks this exact staged byte snapshot against the canonical pack"
+      }
+    ],
+    "font": {
+      "url": "fonts/ProggyClean.ttf",
+      "sha256": "527d2a443ce051f93f7e77b855609722b8cb220a9f104b4aa037be5c90b71324",
+      "bytes": 41208,
+      "family": "TabulaSpikeProggy",
+      "license": "licenses/ProggyClean-MIT.txt",
+      "source": "Pinned macroquad 0.4.16 src/ProggyClean.ttf; same default font as #59"
+    },
+    "leptos": {
+      "wasm_bindgen_version": "wasm-bindgen 0.2.129",
+      "input_wasm_sha256": "3b13dceed5cf2a27eaaf4c9c1e050954acbfb41c28b49c3fb5d99eed65345ed2",
+      "output_files": [
+        {
+          "path": "leptos/renderer_embedding_shell.d.ts",
+          "sha256": "06677fc658f3119eaacb67c3ed3ec8538fc2ffe6186ce3601bc3b1d75863c97a",
+          "bytes": 3968
+        },
+        {
+          "path": "leptos/renderer_embedding_shell.js",
+          "sha256": "7c2fe12871feda80dc96229316bc27824511f9218b067a840a17b79d3062fe34",
+          "bytes": 26609
+        },
+        {
+          "path": "leptos/renderer_embedding_shell_bg.wasm",
+          "sha256": "17815ddbb153a94b19c8e6306f774242d38b74ef2114cae0f82652f3dc80e819",
+          "bytes": 112184
+        },
+        {
+          "path": "leptos/renderer_embedding_shell_bg.wasm.d.ts",
+          "sha256": "87a3b4f984fc435862141de1e9786709800f06ae8fdb108da815de70a268e864",
+          "bytes": 2042
+        }
+      ]
+    },
+    "atlas_verification": {
+      "files": [
+        {
+          "bytes": 4587,
+          "density": 1,
+          "hash": "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac",
+          "name": "tiles@1x.atlas",
+          "path": "tiles/0.1.0/tiles@1x.b3-7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac.png",
+          "source_file": "tiles@1x.png"
+        },
+        {
+          "bytes": 12943,
+          "density": 2,
+          "hash": "b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b",
+          "name": "tiles@2x.atlas",
+          "path": "tiles/0.1.0/tiles@2x.b3-b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b.png",
+          "source_file": "tiles@2x.png"
+        }
+      ],
+      "pack": "tiles@0.1.0",
+      "status": "PASS"
+    },
+    "native_verifier": {
+      "path": "/private/tmp/tabula60-target/debug/examples/embedding_fixture",
+      "sha256": "42e5718df2de59844e5d4a420a07621bc211755e93cf420504bd22fc33234312",
+      "bytes": 6382144
+    },
+    "files": [
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/adapter.mjs",
+        "path": "/private/tmp/tabula-issue-60-spike/adapter.mjs",
+        "sha256": "af5f79ebe47681aeb2d74e7c14e8c780b7b6508ed661e73a9fc1d9d9982168b8",
+        "bytes": 8885
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/boundary.mjs",
+        "path": "/private/tmp/tabula-issue-60-spike/boundary.mjs",
+        "sha256": "bcd7396c64dca2e396805713c83a47d117e0e4104dcff67c2be1d1cd88453eef",
+        "bytes": 8870
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/bridge.mjs",
+        "path": "/private/tmp/tabula-issue-60-spike/bridge.mjs",
+        "sha256": "e560383ea35daa353d6dc6f59a18aa90dfc17ece7cf2a2e6a0639b0090ba54e9",
+        "bytes": 5558
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/browser-runtime.mjs",
+        "path": "/private/tmp/tabula-issue-60-spike/browser-runtime.mjs",
+        "sha256": "dfb06e6cb79cfac8adfea19d68bd9700300b5f3d7b6b770e8504c2a1d28c92a2",
+        "bytes": 10222
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/check-dependencies.mjs",
+        "path": "/private/tmp/tabula-issue-60-spike/check-dependencies.mjs",
+        "sha256": "96cfc8691f03a596eaba5995e7acf87c22744b6de23c7eaafc7bdf56e66a6b9e",
+        "bytes": 2095
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/host.mjs",
+        "path": "/private/tmp/tabula-issue-60-spike/host.mjs",
+        "sha256": "210d3549267f028ed031397cf91bdd25d97af1d83118d84fa45cbc8ca3ef7e70",
+        "bytes": 25353
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/index.html",
+        "path": "/private/tmp/tabula-issue-60-spike/index.html",
+        "sha256": "c4c41059dddf0783cc82fc3373f64bcd8c37392ca806ded1dd7b0057f5853e5d",
+        "bytes": 1450
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/leptos.html",
+        "path": "/private/tmp/tabula-issue-60-spike/leptos.html",
+        "sha256": "1ccb5f0b3d1d89154b2e8e6a0676d11626312277feb9a2c00a585494c3ff0444",
+        "bytes": 495
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/macroquad.html",
+        "path": "/private/tmp/tabula-issue-60-spike/macroquad.html",
+        "sha256": "43d0c178ca6965202886ee1b9dcebb6151e90082eff166ad476d0ed49c97ef8a",
+        "bytes": 676
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/macroquad.mjs",
+        "path": "/private/tmp/tabula-issue-60-spike/macroquad.mjs",
+        "sha256": "87358f6abed85dd5c42f2fce0382f85db2d1533e486468018c89bf250db03e86",
+        "bytes": 9420
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/pixi-backend.mjs",
+        "path": "/private/tmp/tabula-issue-60-spike/pixi-backend.mjs",
+        "sha256": "e598ae80f17bb505a7a533c3a41188c4514c1ea0e8d674bab59ee72286929498",
+        "bytes": 13173
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/spike.css",
+        "path": "/private/tmp/tabula-issue-60-spike/spike.css",
+        "sha256": "86383f33f9aae9a00e078c5e83d03dccd9e2d22bfde9e0241aa8623247c7e722",
+        "bytes": 1503
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/apps/web/style/tokens.css",
+        "path": "/private/tmp/tabula-issue-60-spike/tokens.css",
+        "sha256": "8126175d4a113aec47609a65a902e4c26a12032853eeb07341de74877d0132e3",
+        "bytes": 41931
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/apps/game-client/web/mq_js_bundle.js",
+        "path": "/private/tmp/tabula-issue-60-spike/mq_js_bundle.js",
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8",
+        "bytes": 37828
+      },
+      {
+        "source": "/private/tmp/tabula60-target/wasm32-unknown-unknown/wasm-release/examples/tiles_renderer_baseline.wasm",
+        "path": "/private/tmp/tabula-issue-60-spike/tabula-game-client.wasm",
+        "sha256": "511f59a3208fad9e6deb0ac85c8dee3840769e3f7ee342a2dcecffe00c87d777",
+        "bytes": 1297234
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/fixtures/fixture.json",
+        "path": "/private/tmp/tabula-issue-60-spike/fixture.json",
+        "sha256": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b",
+        "bytes": 179950
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/fixtures/render-contract.json",
+        "path": "/private/tmp/tabula-issue-60-spike/render-contract.json",
+        "sha256": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78",
+        "bytes": 1259
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/assets/packs/tiles/tiles@1x.png",
+        "path": "/private/tmp/tabula-issue-60-spike/tiles/0.1.0/tiles@1x.b3-7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac.png",
+        "sha256": "c585ec81de45781f6703457bb1392ef29999ded4422acb07637041bf7378981c",
+        "bytes": 4587
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/assets/packs/tiles/tiles@2x.png",
+        "path": "/private/tmp/tabula-issue-60-spike/tiles/0.1.0/tiles@2x.b3-b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b.png",
+        "sha256": "2746adb6bddfdc2760284ac592951c5831bf5c5b382c07a78f47c5a5c257c276",
+        "bytes": 12943
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/assets/packs/tiles/LICENSE",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/tiles-LICENSE",
+        "sha256": "4aaa1bd57db3c24183621045606d327e8c32324198166a22fe53786de84a7f12",
+        "bytes": 627
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/node_modules/pixi.js/dist/pixi.mjs",
+        "path": "/private/tmp/tabula-issue-60-spike/node_modules/pixi.js/dist/pixi.mjs",
+        "sha256": "8c7c745f667a9b352574044d6ce8d8e76705a6932c79b6bcb53db34a5e22ea76",
+        "bytes": 2200191
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/node_modules/pixi.js/LICENSE",
+        "path": "/private/tmp/tabula-issue-60-spike/node_modules/pixi.js/LICENSE",
+        "sha256": "5ce7447bc57f7349ffc48338782fbcabe613696e00712b20d66bc58e780f9473",
+        "bytes": 1092
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/node_modules/pixi.js/package.json",
+        "path": "/private/tmp/tabula-issue-60-spike/node_modules/pixi.js/package.json",
+        "sha256": "2bb6b7570ca5f4a062609b34fd16fecfa2a76e8c3599c67a5b996a276eabaa32",
+        "bytes": 12404
+      },
+      {
+        "source": "/Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/macroquad-0.4.16/src/ProggyClean.ttf",
+        "path": "/private/tmp/tabula-issue-60-spike/fonts/ProggyClean.ttf",
+        "sha256": "527d2a443ce051f93f7e77b855609722b8cb220a9f104b4aa037be5c90b71324",
+        "bytes": 41208
+      },
+      {
+        "source": "/Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/macroquad-0.4.16/LICENSE-MIT",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/macroquad-LICENSE-MIT",
+        "sha256": "523a23956d188905ef010091f7cf81cff3a8a9873c067d02850ccc1068de5ad4",
+        "bytes": 1085
+      },
+      {
+        "source": "/Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/macroquad-0.4.16/LICENSE-APACHE",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/macroquad-LICENSE-APACHE",
+        "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "bytes": 10847
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/licenses/ProggyClean-MIT.txt",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/ProggyClean-MIT.txt",
+        "sha256": "fe61d069df303c697e04200f5f8232c2cb09dd3572f4357b323469f7d592d142",
+        "bytes": 1078
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/licenses/colord-MIT.txt",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/colord-MIT.txt",
+        "sha256": "7613d4594ee8b6163926af3435dae61c9e3d5a27cd137bd76a543ba40002d8fc",
+        "bytes": 1083
+      },
+      {
+        "source": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/licenses/npm-NOTICES.txt",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/npm-NOTICES.txt",
+        "sha256": "e69f7a1adac440a4c53451951ecc10d2ab6267b555d572f133e3ac66b5e98a03",
+        "bytes": 14275
+      }
+    ],
+    "distribution": "loopback staging only; not a production artifact"
+  }
+}

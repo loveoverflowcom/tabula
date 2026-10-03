@@ -1,0 +1,14 @@
+$ /tmp/tabula60-target/debug/examples/embedding_fixture --export /var/folders/75/8r6wfgxj0kx4vfxv2cwzqrh00000gn/T/tabula60-final-fixture-drift-kfr5cgcv
+
+{
+  "fixture.json": {
+    "equal_bytes": true,
+    "committed_sha256": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b",
+    "exported_sha256": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b"
+  },
+  "render-contract.json": {
+    "equal_bytes": true,
+    "committed_sha256": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78",
+    "exported_sha256": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78"
+  }
+}

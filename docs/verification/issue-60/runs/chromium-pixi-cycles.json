@@ -1,0 +1,3060 @@
+{
+  "status": "PASS",
+  "kind": "pixi",
+  "requested": 50,
+  "completed": 50,
+  "browser": "154.0.8037.97",
+  "shell": "actual isolated Leptos",
+  "frame_count_kind": "Exact callback count for settled Rust revision",
+  "cycles": [
+    {
+      "cycle": 1,
+      "generation": 1,
+      "boot_ms": 67.5,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 1,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 2,
+      "generation": 2,
+      "boot_ms": 18.30000000447035,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 2,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 3,
+      "generation": 3,
+      "boot_ms": 27.899999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 3,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 4,
+      "generation": 4,
+      "boot_ms": 24.5,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 4,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 5,
+      "generation": 5,
+      "boot_ms": 18.600000001490116,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 5,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 6,
+      "generation": 6,
+      "boot_ms": 24.400000005960464,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 6,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 7,
+      "generation": 7,
+      "boot_ms": 18.600000001490116,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 7,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 8,
+      "generation": 8,
+      "boot_ms": 19.200000002980232,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 8,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 9,
+      "generation": 9,
+      "boot_ms": 19.30000000447035,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 9,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 10,
+      "generation": 10,
+      "boot_ms": 18.100000001490116,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 10,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 11,
+      "generation": 11,
+      "boot_ms": 35.5,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 11,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 3,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 3,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 12,
+      "generation": 12,
+      "boot_ms": 34.399999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 12,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 3,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 3,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 13,
+      "generation": 13,
+      "boot_ms": 20,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 13,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 14,
+      "generation": 14,
+      "boot_ms": 19,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 14,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 15,
+      "generation": 15,
+      "boot_ms": 19.19999999552965,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 15,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 16,
+      "generation": 16,
+      "boot_ms": 33.399999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 16,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 3,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 3,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 17,
+      "generation": 17,
+      "boot_ms": 26.899999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 17,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 18,
+      "generation": 18,
+      "boot_ms": 25.69999999552965,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 18,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 19,
+      "generation": 19,
+      "boot_ms": 26.69999999552965,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 19,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 20,
+      "generation": 20,
+      "boot_ms": 25.30000000447035,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 20,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 21,
+      "generation": 21,
+      "boot_ms": 19.399999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 21,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 22,
+      "generation": 22,
+      "boot_ms": 18.899999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 22,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 23,
+      "generation": 23,
+      "boot_ms": 19.399999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 23,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 24,
+      "generation": 24,
+      "boot_ms": 18.899999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 24,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 25,
+      "generation": 25,
+      "boot_ms": 17.799999997019768,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 25,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 26,
+      "generation": 26,
+      "boot_ms": 24,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 26,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 27,
+      "generation": 27,
+      "boot_ms": 25.69999999552965,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 27,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 28,
+      "generation": 28,
+      "boot_ms": 19.100000001490116,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 28,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 29,
+      "generation": 29,
+      "boot_ms": 18.400000005960464,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 29,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 30,
+      "generation": 30,
+      "boot_ms": 18.80000000447035,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 30,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 31,
+      "generation": 31,
+      "boot_ms": 35.29999999701977,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 31,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 3,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 3,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 32,
+      "generation": 32,
+      "boot_ms": 33.80000000447035,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 32,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 3,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 3,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 33,
+      "generation": 33,
+      "boot_ms": 33.900000005960464,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 33,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 3,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 3,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 34,
+      "generation": 34,
+      "boot_ms": 19.600000001490116,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 34,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 35,
+      "generation": 35,
+      "boot_ms": 18.399999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 35,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 36,
+      "generation": 36,
+      "boot_ms": 34.5,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 36,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 3,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 3,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 37,
+      "generation": 37,
+      "boot_ms": 33.70000000298023,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 37,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 3,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 3,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 38,
+      "generation": 38,
+      "boot_ms": 35.100000001490116,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 38,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 3,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 3,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 39,
+      "generation": 39,
+      "boot_ms": 20.69999999552965,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 39,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 40,
+      "generation": 40,
+      "boot_ms": 19.399999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 40,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 41,
+      "generation": 41,
+      "boot_ms": 19,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 41,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 42,
+      "generation": 42,
+      "boot_ms": 17.80000000447035,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 42,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 43,
+      "generation": 43,
+      "boot_ms": 19.19999999552965,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 43,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 44,
+      "generation": 44,
+      "boot_ms": 18.69999999552965,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 44,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 45,
+      "generation": 45,
+      "boot_ms": 19.100000001490116,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 45,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 46,
+      "generation": 46,
+      "boot_ms": 23.799999997019768,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 46,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 2,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 2,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 47,
+      "generation": 47,
+      "boot_ms": 19.200000002980232,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 47,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 48,
+      "generation": 48,
+      "boot_ms": 18.899999998509884,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 48,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 49,
+      "generation": 49,
+      "boot_ms": 18.80000000447035,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 49,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    },
+    {
+      "cycle": 50,
+      "generation": 50,
+      "boot_ms": 18.200000002980232,
+      "ready": {
+        "renderer": "pixi",
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+      },
+      "frames_before_dispose": 1,
+      "frame_count_kind": "exact_settled_revision_adapter_callbacks",
+      "controller_after": {
+        "status": "disposed",
+        "session_id": "82ebef8a-abce-4b39-b401-21357445b0c6",
+        "generation": 50,
+        "revision": 1,
+        "listeners": 0,
+        "pending_raf": 0,
+        "frames": 1,
+        "inputs": 0,
+        "dropped_inputs": 1,
+        "errors": 0,
+        "manual_suspended": false,
+        "visibility_suspended": false,
+        "modal": false,
+        "audio_supported": false,
+        "preferences": {
+          "reduced_motion": false,
+          "audio_enabled": false,
+          "volume": 0,
+          "modal": false
+        },
+        "viewport": {
+          "width": 900,
+          "height": 720,
+          "dpi": 1
+        },
+        "resources": {
+          "renderer": "pixi-webgl",
+          "version": "8.22.0",
+          "disposed": true,
+          "mounted": true,
+          "draw_count": 1,
+          "commands": 95,
+          "textures": 0,
+          "sources": 0,
+          "font_loaded": false,
+          "canvas_width": 0,
+          "canvas_height": 0
+        }
+      },
+      "bridge_after": null,
+      "host_listeners_after": 0,
+      "host_observers_after": 0,
+      "host_motion_timers_after": 0,
+      "host_ready_timers_after": 0,
+      "canvases_after": 0,
+      "iframes_after": 0
+    }
+  ],
+  "memory_curve": [
+    {
+      "cycle": 1,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 9596144,
+        "shell": "leptos-example",
+        "elapsed_ms": 135.10000000149012
+      },
+      "rss_kib_sum": 907952,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 5,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 10161316,
+        "shell": "leptos-example",
+        "elapsed_ms": 328.6000000014901
+      },
+      "rss_kib_sum": 939776,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 10,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 10720795,
+        "shell": "leptos-example",
+        "elapsed_ms": 550
+      },
+      "rss_kib_sum": 945776,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 15,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 11005337,
+        "shell": "leptos-example",
+        "elapsed_ms": 809.9000000059605
+      },
+      "rss_kib_sum": 954480,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 20,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 12588512,
+        "shell": "leptos-example",
+        "elapsed_ms": 1082.4000000059605
+      },
+      "rss_kib_sum": 960864,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 25,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 11352510,
+        "shell": "leptos-example",
+        "elapsed_ms": 1299.3000000044703
+      },
+      "rss_kib_sum": 963872,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 30,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 11414436,
+        "shell": "leptos-example",
+        "elapsed_ms": 1529.5
+      },
+      "rss_kib_sum": 967136,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 35,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 11484060,
+        "shell": "leptos-example",
+        "elapsed_ms": 1809.1000000014901
+      },
+      "rss_kib_sum": 970848,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 40,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 11573808,
+        "shell": "leptos-example",
+        "elapsed_ms": 2087.7000000029802
+      },
+      "rss_kib_sum": 977696,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 45,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 11649950,
+        "shell": "leptos-example",
+        "elapsed_ms": 2299.5
+      },
+      "rss_kib_sum": 981056,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    },
+    {
+      "cycle": 50,
+      "environment": {
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "device_pixel_ratio": 1,
+        "js_heap_bytes": 11765790,
+        "shell": "leptos-example",
+        "elapsed_ms": 2519.60000000149
+      },
+      "rss_kib_sum": 982944,
+      "process_count": 7,
+      "caveat": "RSS sum double-counts shared pages; includes browser/GPU/shell; not GPU allocation"
+    }
+  ],
+  "uncaught_errors": [],
+  "console_diagnostics": [],
+  "failure": null,
+  "cleanup_claim": "Owned DOM/listener/RAF/font/texture-source handles are zero. No forced GC, no exact process/GPU reclamation claim. Harness history keeps at most100 diagnostic snapshots."
+}

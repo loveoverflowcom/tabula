@@ -129,6 +129,7 @@ Direction chosen, details unproven. Build behind the seam; let measurement decid
 | Macroquad UI widgets vs our own `RenderList` widgets | Phase 2 | Implement ~20 widgets ourselves; measure effort | Use Macroquad's UI for internal tools only |
 | Postcard vs alternatives for the game payload | Phase 4 | Measure size and CPU under load L1/L2 | Protobuf for the payload only |
 | Leptos ↔ Macroquad handoff UX | Phase 5 | Time-to-first-frame at `/play/:id`; user testing | Single-bundle integration spike, or a lighter shell |
+| Renderer vs containment for DOM-heavy gameplay | Isolated tooling now (ADR-029); production remains gated | [Issue-60 RFC](../rfcs/issue-60-renderer-embedding.md): identical Macroquad document/iframe control, minimal PixiJS adapter, lifecycle/interop and target-specific runtime evidence | Keep Macroquad and ADR-011 separate-document handoff; production choice deferred |
 | Tauri desktop value (launcher/updater/notifications) | Phase 5 | Spike; compare with `cargo-dist` alone | Ship without Tauri |
 | Tauri mobile for shell screens | post-Phase 6 | Only if native shell screens prove painful | Keep native shell |
 | Voice provider (self-hosted LiveKit vs managed) | Phase 8 | Cost per participant-minute, quality, ops burden | Swap adapters |

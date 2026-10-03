@@ -1,0 +1,16 @@
+/* Isolated #60 harness. Colors and typography use generated semantic tokens. */
+html, body { margin: 0; background: var(--sys-color-surface); color: var(--sys-color-on-surface); font-family: var(--sys-type-family-text); }
+main { padding: var(--sys-space-lg); }
+h1 { font-family: var(--sys-type-family-display); margin: 0 0 var(--sys-space-md); }
+p { max-width: 75ch; }
+.controls { display: flex; gap: var(--sys-space-sm); flex-wrap: wrap; margin-bottom: var(--sys-space-md); }
+button, a { font: inherit; }
+button { padding: var(--sys-space-sm) var(--sys-space-md); border: 1px solid var(--sys-color-outline); border-radius: var(--sys-shape-sm); background: var(--sys-color-container); color: var(--sys-color-on-surface); cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--sys-color-primary); outline-offset: 2px; }
+a { color: var(--sys-color-primary); }
+#renderer-container { width: 900px; height: 720px; overflow: hidden; position: relative; background: var(--sys-color-container); border: 1px solid var(--sys-color-outline); }
+#renderer-container iframe, #renderer-container canvas { border: 0; width: 100%; height: 100%; display: block; }
+#spike-status { display: block; white-space: pre-wrap; margin: var(--sys-space-md) 0; }
+#spike-modal { position: fixed; inset: 0; z-index: 5; background: var(--sys-color-surface); color: var(--sys-color-on-surface); padding: var(--sys-space-xxxl); }
+#spike-modal[hidden] { display: none; }
+.measure { font-family: monospace; }

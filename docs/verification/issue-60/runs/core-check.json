@@ -1,0 +1,20 @@
+{
+  "command": "CARGO_TARGET_DIR=/tmp/tabula60-target cargo xtask check",
+  "kind": "authoritative portable core gate; exact implementation of just check (just absent)",
+  "status": "PASS",
+  "executed_tests": 923,
+  "failed": 0,
+  "ignored": 21,
+  "log": "logs/core-check.log",
+  "gates": [
+    "fmt",
+    "all-feature all-target clippy",
+    "workspace tests",
+    "check-deps",
+    "check-no-game-ids",
+    "check-manifests",
+    "tokens freshness",
+    "check-no-raw-colors",
+    "cargo deny"
+  ]
+}

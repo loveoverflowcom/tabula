@@ -1,0 +1,554 @@
+{
+  "status": "FAIL",
+  "kind": "document",
+  "run": 1,
+  "error": "Unexpected browser warnings/errors: [{\"type\":\"error\",\"message\":\"Failed to load resource: the server responded with a status of 404 (File not found)\"}]",
+  "receipts": [
+    {
+      "observed_ms": 1088,
+      "value": {
+        "kind": "ready",
+        "commit": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+        "build": "wasm-release",
+        "target": "wasm32",
+        "backend": "macroquad-0.4.16/miniquad-0.4.11",
+        "pack": "tiles@0.1.0",
+        "asset_hashes": [
+          "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac",
+          "b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b"
+        ],
+        "seed_byte": 47,
+        "seats": 3,
+        "initial_inputs": 24,
+        "fixture_hash": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "scenario": "static",
+        "theme": "Light",
+        "motion": "full",
+        "primitive_control": false,
+        "sprite_probe": false,
+        "viewport": [
+          900,
+          720
+        ],
+        "dpi": 1,
+        "warmup_ms": 3000,
+        "samples": 300,
+        "interval_ms": 750,
+        "scripted_inputs": 20,
+        "cache_state": "fresh-renderer-instance",
+        "preload_ms": 8,
+        "decodes": 2,
+        "uploads": 2,
+        "estimated_resident_rgba_bytes": 2488320,
+        "resident_textures": 2
+      }
+    },
+    {
+      "observed_ms": 12138,
+      "value": {
+        "kind": "measurement",
+        "samples": 300,
+        "submit_end_cpu_us": {
+          "mean": 903.353,
+          "p50": 999.928,
+          "p95": 1999.855,
+          "max": 2000.093
+        },
+        "frame_interval_ms": {
+          "mean": 27.023,
+          "p50": 26,
+          "p95": 32,
+          "max": 106
+        },
+        "elapsed_ms": 11046,
+        "accepted_inputs": 24,
+        "placements": 12,
+        "claims": 6,
+        "skips": 6,
+        "scripted_steps": 0,
+        "script_complete": true,
+        "uncontrolled_input_events": 0,
+        "final_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "board_cells": 13,
+        "decodes": 2,
+        "uploads": 2,
+        "decodes_after_preload": 0,
+        "uploads_after_preload": 0,
+        "estimated_resident_rgba_bytes": 2488320,
+        "resident_textures": 2,
+        "viewport": [
+          900,
+          720
+        ],
+        "dpi": 1
+      }
+    }
+  ],
+  "mounted": null,
+  "final": {
+    "embedded": false,
+    "ready": true,
+    "started": true,
+    "disposed": false,
+    "suspended": false,
+    "pauses": 0,
+    "resumes": 0,
+    "rejected": 0,
+    "identity": {
+      "session_id": "6538fcbd-eb08-419e-8a01-424db67a5163",
+      "generation": 0
+    },
+    "receipts": [
+      {
+        "kind": "ready",
+        "commit": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+        "build": "wasm-release",
+        "target": "wasm32",
+        "backend": "macroquad-0.4.16/miniquad-0.4.11",
+        "pack": "tiles@0.1.0",
+        "asset_hashes": [
+          "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac",
+          "b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b"
+        ],
+        "seed_byte": 47,
+        "seats": 3,
+        "initial_inputs": 24,
+        "fixture_hash": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "scenario": "static",
+        "theme": "Light",
+        "motion": "full",
+        "primitive_control": false,
+        "sprite_probe": false,
+        "viewport": [
+          900,
+          720
+        ],
+        "dpi": 1,
+        "warmup_ms": 3000,
+        "samples": 300,
+        "interval_ms": 750,
+        "scripted_inputs": 20,
+        "cache_state": "fresh-renderer-instance",
+        "preload_ms": 8,
+        "decodes": 2,
+        "uploads": 2,
+        "estimated_resident_rgba_bytes": 2488320,
+        "resident_textures": 2
+      },
+      {
+        "kind": "measurement",
+        "samples": 300,
+        "submit_end_cpu_us": {
+          "mean": 903.353,
+          "p50": 999.928,
+          "p95": 1999.855,
+          "max": 2000.093
+        },
+        "frame_interval_ms": {
+          "mean": 27.023,
+          "p50": 26,
+          "p95": 32,
+          "max": 106
+        },
+        "elapsed_ms": 11046,
+        "accepted_inputs": 24,
+        "placements": 12,
+        "claims": 6,
+        "skips": 6,
+        "scripted_steps": 0,
+        "script_complete": true,
+        "uncontrolled_input_events": 0,
+        "final_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "board_cells": 13,
+        "decodes": 2,
+        "uploads": 2,
+        "decodes_after_preload": 0,
+        "uploads_after_preload": 0,
+        "estimated_resident_rgba_bytes": 2488320,
+        "resident_textures": 2,
+        "viewport": [
+          900,
+          720
+        ],
+        "dpi": 1
+      }
+    ],
+    "observations": [
+      {
+        "elapsed_ms": 1053,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 1799115,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 1177,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2535787,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 2002.2999999970198,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2477163,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 3002.10000000149,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2638927,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 4002.7000000029802,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2725327,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 5002.20000000298,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2843407,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 6002.60000000149,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2980927,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 7000.60000000149,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2253647,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 8002.20000000298,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2419875,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 9000.60000000149,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2617875,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 10001.5,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2764111,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 11001.5,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2979303,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      },
+      {
+        "elapsed_ms": 12000.60000000149,
+        "viewport": [
+          900,
+          720
+        ],
+        "canvas_pixels": [
+          900,
+          720
+        ],
+        "device_pixel_ratio": 1,
+        "wasm_linear_memory_bytes": 9371648,
+        "js_heap_bytes": 2409691,
+        "js_heap_available": true,
+        "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "visible": true,
+        "focused": true,
+        "suspended": false,
+        "wasm_download_duration_ms": 4.100000001490116,
+        "wasm_download_transfer_bytes": 1297534,
+        "wasm_download_encoded_bytes": 1297234
+      }
+    ],
+    "errors": [],
+    "bridge": null,
+    "audio_fixture": false,
+    "match_sockets": 0
+  },
+  "consoleErrors": [
+    {
+      "type": "error",
+      "message": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    }
+  ],
+  "pageErrors": [],
+  "observation": {
+    "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "dpr": 1,
+    "visibility": "visible",
+    "focused": true,
+    "js_heap_bytes": 3131902,
+    "resources": [
+      {
+        "name": "/macroquad.mjs",
+        "duration_ms": 6.600000001490116,
+        "transfer_bytes": 8724,
+        "encoded_bytes": 8424,
+        "decoded_bytes": 8424
+      },
+      {
+        "name": "/tokens.css",
+        "duration_ms": 7.5,
+        "transfer_bytes": 42231,
+        "encoded_bytes": 41931,
+        "decoded_bytes": 41931
+      },
+      {
+        "name": "/mq_js_bundle.js",
+        "duration_ms": 6.9000000059604645,
+        "transfer_bytes": 38128,
+        "encoded_bytes": 37828,
+        "decoded_bytes": 37828
+      },
+      {
+        "name": "/bridge.mjs",
+        "duration_ms": 1.3000000044703484,
+        "transfer_bytes": 5585,
+        "encoded_bytes": 5285,
+        "decoded_bytes": 5285
+      },
+      {
+        "name": "/boundary.mjs",
+        "duration_ms": 1.8999999985098839,
+        "transfer_bytes": 9170,
+        "encoded_bytes": 8870,
+        "decoded_bytes": 8870
+      },
+      {
+        "name": "/tabula-game-client.wasm",
+        "duration_ms": 4.100000001490116,
+        "transfer_bytes": 1297534,
+        "encoded_bytes": 1297234,
+        "decoded_bytes": 1297234
+      },
+      {
+        "name": "/favicon.ico",
+        "duration_ms": 2,
+        "transfer_bytes": 635,
+        "encoded_bytes": 335,
+        "decoded_bytes": 335
+      }
+    ],
+    "navigation": [
+      {
+        "duration_ms": 22.100000001490116,
+        "dom_content_loaded_ms": 22.100000001490116,
+        "load_ms": 22.100000001490116
+      }
+    ]
+  }
+}
