@@ -6,7 +6,7 @@
 //! cursor, hover, and the drag in progress all live in [`TilesLocal`] and none
 //! of them is ever an input to `apply` (I-10). Two players looking at the same
 //! board from different camera positions is not a desync, and
-//! `tests/presentation.rs` proves it by driving one command sequence from
+//! the presentation tests prove it by driving one command sequence from
 //! several camera positions and comparing state hashes.
 //!
 //! # The camera, and why the HUD compensates for it
@@ -23,14 +23,17 @@
 //!
 //! That is the honest use of the contract rather than a workaround: it is what
 //! makes Tiles the camera benchmark instead of a game that happens to draw a
-//! grid. `tests/presentation.rs` asserts the HUD occupies the same logical
+//! grid. The presentation tests assert the HUD occupies the same logical
 //! rectangle at every zoom level.
 //!
 //! # Keyboard play is mandatory (doc 04 §10.3)
 //!
 //! Arrows move a cursor over board squares (not the camera — a keyboard player
 //! expects to move *on* the board), Tab jumps to the next legal square, Space
-//! rotates the tile, Enter places or claims, Escape declines a claim. The
+//! rotates the tile, Enter places or claims, Escape declines a claim. During
+//! the claim step Tab cycles the permitted features, each visibly numbered.
+//! Activation keys require a fresh press; blur and pointer cancellation clear
+//! gestures without producing a command. The
 //! camera follows the cursor when it would leave the viewport, so a
 //! keyboard-only player never loses the tile they are placing.
 //!
@@ -46,13 +49,14 @@
 
 use core::fmt::Write as _;
 
-use tabula_design::Theme;
+use tabula_design::{Positive, Theme};
 use tabula_game_api::{A11yAction, A11yDescription, ActionId, GameRules};
 use tabula_presentation::{
-    Affine2, Align, AssetPackRef, AudioCue, AudioCues, Border, Camera2D, Corners, FrameCtx,
-    GamePresentation, InputEvent, Intent, Key, Layer, Paint, PointerButton, PointerPhase,
-    PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError,
-    TextStyleToken, Vec2, Viewport,
+    ActionButton, Affine2, Align, AssetPackRef, AudioCue, AudioCues, Border, ButtonInteraction,
+    ButtonShape, ButtonTone, Camera2D, Corners, FocusGraph, FocusId, FocusNode, FocusState,
+    FrameCtx, GamePresentation, InputEvent, Intent, Key, Layer, NavigationAction, Paint,
+    PointerButton, PointerPhase, PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder,
+    RenderListError, TextStyleToken, Vec2, Viewport,
 };
 
 use crate::rules::{
@@ -76,12 +80,13 @@ const ZOOM_STEP: f32 = 1.25;
 const DRAG_THRESHOLD: f32 = 6.0;
 
 /// HUD button height and the gap between buttons, in logical units.
-const HUD_BUTTON: f32 = 34.0;
-const HUD_GAP: f32 = 6.0;
+const HUD_BUTTON: f32 = 56.0;
+const HUD_GAP: f32 = 8.0;
+const CONNECTED_GAP: f32 = 2.0;
 /// Height of the status strip along the top.
-const HUD_STATUS_HEIGHT: f32 = 30.0;
+const HUD_STATUS_HEIGHT: f32 = 64.0;
 
-/// The screen-fixed controls, in the order they are laid out down the left edge.
+/// Screen-fixed camera and turn actions, grouped by their meaning.
 ///
 /// An enum rather than a list of rectangles: adding a control that nothing
 /// handles becomes a compile error in [`TilesLocal::apply_control`] rather than
@@ -92,48 +97,103 @@ pub enum Control {
     ZoomOut,
     Recenter,
     Rotate,
+    Confirm,
     Skip,
 }
 
 impl Control {
     /// Every control, in layout order.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::ZoomIn,
         Self::ZoomOut,
         Self::Recenter,
         Self::Rotate,
+        Self::Confirm,
         Self::Skip,
     ];
 
-    const fn label(self) -> &'static str {
+    const fn label(self, phase: TurnPhase) -> &'static str {
         match self {
-            Self::ZoomIn => "+",
-            Self::ZoomOut => "-",
-            Self::Recenter => "@",
-            Self::Rotate => "R",
-            Self::Skip => "X",
+            Self::ZoomIn => "Zoom in",
+            Self::ZoomOut => "Zoom out",
+            Self::Recenter => "Center",
+            Self::Rotate => "Rotate",
+            Self::Confirm if matches!(phase, TurnPhase::PlaceTile) => "Place tile",
+            Self::Confirm => "Claim follower",
+            Self::Skip => "Pass",
         }
     }
 
-    const fn action(self) -> &'static str {
+    const fn action(self, phase: TurnPhase) -> &'static str {
         match self {
             Self::ZoomIn => "zoom-in",
             Self::ZoomOut => "zoom-out",
             Self::Recenter => "recenter",
             Self::Rotate => "rotate",
+            Self::Confirm if matches!(phase, TurnPhase::PlaceTile) => "place-tile",
+            Self::Confirm => "claim-follower",
             Self::Skip => "skip-follower",
+        }
+    }
+
+    const fn id(self) -> FocusId {
+        FocusId::new(match self {
+            Self::ZoomIn => 0,
+            Self::ZoomOut => 1,
+            Self::Recenter => 2,
+            Self::Rotate => 3,
+            Self::Confirm => 4,
+            Self::Skip => 5,
+        })
+    }
+
+    fn enabled(self, view: &View, local: &TilesLocal) -> bool {
+        match self {
+            Self::ZoomIn | Self::ZoomOut | Self::Recenter => true,
+            Self::Rotate => on_turn(view) && view.phase == TurnPhase::PlaceTile,
+            Self::Confirm => act_on_square(view, local, local.cursor).is_some(),
+            Self::Skip => on_turn(view) && view.phase == TurnPhase::PlaceMeeple,
         }
     }
 
     /// Where this control sits, in **logical** (screen) coordinates.
     fn rect(self, viewport: Viewport) -> Option<Rect> {
-        let index = Self::ALL.iter().position(|control| *control == self)?;
-        let step = u16::try_from(index).ok().map(f32::from)?;
-        let top = HUD_STATUS_HEIGHT + HUD_GAP + (HUD_BUTTON + HUD_GAP) * step;
-        if top + HUD_BUTTON > viewport.size().y {
+        let (index, camera) = match self {
+            Self::ZoomIn => (0u16, true),
+            Self::ZoomOut => (1, true),
+            Self::Recenter => (2, true),
+            Self::Rotate => (0, false),
+            Self::Confirm => (1, false),
+            Self::Skip => (2, false),
+        };
+        let gap = if camera { CONNECTED_GAP } else { HUD_GAP };
+        let width = ((viewport.size().x - HUD_GAP * 2.0 - gap * 2.0) / 3.0).min(if camera {
+            96.0
+        } else {
+            160.0
+        });
+        let top = if camera {
+            HUD_STATUS_HEIGHT + HUD_GAP
+        } else {
+            viewport.size().y - HUD_GAP - HUD_BUTTON
+        };
+        if width < 44.0
+            || top + HUD_BUTTON > viewport.size().y
+            || (!camera && top < HUD_STATUS_HEIGHT + HUD_GAP * 2.0 + HUD_BUTTON + 32.0)
+        {
             return None;
         }
-        Rect::new(Vec2::new(HUD_GAP, top), Vec2::new(HUD_BUTTON, HUD_BUTTON)).ok()
+        let group_width = width * 3.0 + gap * 2.0;
+        let left = if camera {
+            HUD_GAP
+        } else {
+            (viewport.size().x - group_width) * 0.5
+        };
+        Rect::new(
+            Vec2::new(left + (width + gap) * f32::from(index), top),
+            Vec2::new(width, HUD_BUTTON),
+        )
+        .ok()
     }
 
     /// The control under a logical pointer position, if any.
@@ -175,6 +235,12 @@ pub struct TilesLocal {
     /// on the start tile without `Default` having to guess a screen size.
     centred: bool,
     last_placed: Option<Coord>,
+    /// Claim selection is an affordance from `View`, never a canonical follower.
+    claim: Option<u8>,
+    buttons: ButtonInteraction,
+    button_focus: FocusState,
+    /// Normalized key events can repeat; activation needs a fresh key press.
+    activation_held: [bool; 3],
 }
 
 impl Default for TilesLocal {
@@ -188,6 +254,10 @@ impl Default for TilesLocal {
             viewport: Viewport::new(Vec2::splat(1.0)).expect("unit viewport is valid"),
             centred: false,
             last_placed: None,
+            claim: None,
+            buttons: ButtonInteraction::default(),
+            button_focus: FocusState::default(),
+            activation_held: [false; 3],
         }
     }
 }
@@ -215,6 +285,14 @@ impl TilesLocal {
 
     /// The shell calls this every frame with the measured viewport.
     pub fn set_viewport(&mut self, viewport: Viewport) {
+        if self.viewport != viewport {
+            // A press uses the geometry at Down. A resized toolbar cannot
+            // inherit it and activate a different action on Up.
+            self.press = None;
+            self.hover = None;
+            self.buttons = ButtonInteraction::default();
+            self.button_focus.set_current(None);
+        }
         self.viewport = viewport;
         if !self.centred {
             self.centred = true;
@@ -222,15 +300,16 @@ impl TilesLocal {
         }
     }
 
-    /// Put the cursor's square in the middle of the viewport.
+    /// Put the cursor's square in the middle of the available map.
     pub fn recenter(&mut self) {
         self.look_at(self.cursor);
     }
 
     fn look_at(&mut self, coord: Coord) {
         let centre = world_centre(coord);
-        let half = self.viewport.size() * 0.5 / self.camera.zoom();
-        self.set_origin(centre - half);
+        let (minimum, maximum) = board_screen_bounds(self.viewport);
+        let focus = (minimum + maximum) * 0.5 / self.camera.zoom();
+        self.set_origin(centre - focus);
     }
 
     fn set_origin(&mut self, origin: Vec2) {
@@ -241,12 +320,14 @@ impl TilesLocal {
 
     fn set_zoom(&mut self, zoom: f32) {
         let clamped = zoom.clamp(MIN_ZOOM, MAX_ZOOM);
-        // Zoom about the middle of the viewport so the thing being looked at
-        // stays put.
-        let focus = self.local_to_world(self.viewport.size() * 0.5);
+        // Keep the viewed map point stationary; the viewport centre can be
+        // inside the HUD on short screens.
+        let (minimum, maximum) = board_screen_bounds(self.viewport);
+        let screen_focus = (minimum + maximum) * 0.5;
+        let focus = self.local_to_world(screen_focus);
         if let Ok(camera) = Camera2D::new(self.camera.origin(), clamped) {
             self.camera = camera;
-            let half = self.viewport.size() * 0.5 / clamped;
+            let half = screen_focus / clamped;
             self.set_origin(focus - half);
         }
     }
@@ -282,26 +363,34 @@ impl TilesLocal {
         let rect = world_rect(self.cursor);
         let zoom = self.camera.zoom();
         let origin = self.camera.origin();
-        let view = self.viewport.size() / zoom;
+        let (minimum, maximum) = board_screen_bounds(self.viewport);
+        let minimum = minimum / zoom;
+        let maximum = maximum / zoom;
         let mut next = origin;
-        if rect.origin().x < origin.x {
-            next.x = rect.origin().x;
-        } else if rect.origin().x + TILE_SIZE > origin.x + view.x {
-            next.x = rect.origin().x + TILE_SIZE - view.x;
+        if TILE_SIZE > maximum.x - minimum.x {
+            next.x = world_centre(self.cursor).x - (minimum.x + maximum.x) * 0.5;
+        } else if rect.origin().x < origin.x + minimum.x {
+            next.x = rect.origin().x - minimum.x;
+        } else if rect.origin().x + TILE_SIZE > origin.x + maximum.x {
+            next.x = rect.origin().x + TILE_SIZE - maximum.x;
         }
-        if rect.origin().y < origin.y {
-            next.y = rect.origin().y;
-        } else if rect.origin().y + TILE_SIZE > origin.y + view.y {
-            next.y = rect.origin().y + TILE_SIZE - view.y;
+        if TILE_SIZE > maximum.y - minimum.y {
+            next.y = world_centre(self.cursor).y - (minimum.y + maximum.y) * 0.5;
+        } else if rect.origin().y < origin.y + minimum.y {
+            next.y = rect.origin().y - minimum.y;
+        } else if rect.origin().y + TILE_SIZE > origin.y + maximum.y {
+            next.y = rect.origin().y + TILE_SIZE - maximum.y;
         }
         if next != origin {
             self.set_origin(next);
         }
     }
 
-    /// Apply a screen-fixed control. Returns an intent only for the one control
-    /// that is a game command rather than a camera change.
+    /// Map the shared button's activation to game meaning or local camera work.
     fn apply_control(&mut self, control: Control, view: &View) -> Option<Intent<Command>> {
+        if !control.enabled(view, self) {
+            return None;
+        }
         match control {
             Control::ZoomIn => {
                 self.set_zoom(self.camera.zoom() * ZOOM_STEP);
@@ -319,9 +408,8 @@ impl TilesLocal {
                 self.preview = self.preview.next();
                 None
             }
-            Control::Skip => {
-                (view.phase == TurnPhase::PlaceMeeple).then(|| Intent::new(Command::SkipMeeple))
-            }
+            Control::Confirm => act_on_square(view, self, self.cursor),
+            Control::Skip => Some(Intent::new(Command::SkipMeeple)),
         }
     }
 }
@@ -414,9 +502,15 @@ impl GamePresentation for TilesPresentation {
         _frame: &FrameCtx,
     ) -> AudioCues {
         let mut cues = AudioCues::new();
+        // A release cannot reuse an affordance from the previous projection.
+        local.press = None;
+        local.buttons = ButtonInteraction::default();
         match event {
             Event::TilePlaced { at, .. } => {
                 local.last_placed = Some(*at);
+                local.cursor = *at;
+                local.claim = None;
+                local.press = None;
                 // The next tile gets a fresh orientation rather than inheriting
                 // the last one, which is what a player at a table does.
                 local.preview = Rotation::R0;
@@ -449,16 +543,45 @@ impl GamePresentation for TilesPresentation {
                 phase,
             } => on_pointer(*position, *button, *phase, view, local),
             InputEvent::Key { key, pressed } => {
-                if *pressed {
-                    on_key(*key, view, local)
-                } else {
-                    None
+                let activation = match key {
+                    Key::Enter => Some(0),
+                    Key::Space => Some(1),
+                    Key::Escape => Some(2),
+                    _ => None,
+                };
+                if !local.button_focus.is_window_focused() {
+                    if !pressed {
+                        if let Some(index) = activation {
+                            local.activation_held[index] = false;
+                        }
+                    }
+                    return None;
                 }
+                if let Some(index) = activation {
+                    let repeated = local.activation_held[index];
+                    local.activation_held[index] = *pressed;
+                    if repeated || !pressed {
+                        return None;
+                    }
+                }
+                if *pressed {
+                    local.press = None;
+                    local.buttons = ButtonInteraction::default();
+                }
+                (*pressed && local.button_focus.is_window_focused())
+                    .then(|| on_key(*key, view, local))
+                    .flatten()
             }
-            InputEvent::Focus(_) => {
+            InputEvent::Focus(focused) => {
                 // Losing focus mid-drag must not leave a phantom pan armed.
                 local.press = None;
                 local.hover = None;
+                local.button_focus.set_window_focused(*focused);
+                local.buttons = ButtonInteraction::default();
+                if !focused {
+                    // The OS may deliver the release to another window.
+                    local.activation_held = [false; 3];
+                }
                 None
             }
         }
@@ -480,13 +603,46 @@ fn on_pointer(
     view: &View,
     local: &mut TilesLocal,
 ) -> Option<Intent<Command>> {
+    if !local.button_focus.is_window_focused() {
+        return None;
+    }
     let point = position.get();
+    let buttons = hud_buttons(view, local, local.viewport, Positive::new(44.0).ok()?).ok()?;
+    let graph = FocusGraph::new(
+        buttons
+            .iter()
+            .map(|button| FocusNode::new(button.id(), button.rect()))
+            .collect(),
+    )
+    .ok()?;
+    let action = local.buttons.on_input(
+        &InputEvent::Pointer {
+            position,
+            button,
+            phase,
+        },
+        &buttons,
+        &graph,
+        &mut local.button_focus,
+    );
+    if let NavigationAction::Activate(id) = action {
+        local.press = None;
+        let control = Control::ALL
+            .into_iter()
+            .find(|control| control.id() == id)?;
+        return local.apply_control(control, view);
+    }
     match phase {
         PointerPhase::Down => {
+            local.press = None;
             if button == PointerButton::Secondary {
                 // Right-click rotates: the fastest possible rotate control, and
                 // it needs no screen real estate.
-                local.preview = local.preview.next();
+                local.buttons = ButtonInteraction::default();
+                return local.apply_control(Control::Rotate, view);
+            }
+            if button != PointerButton::Primary || hud_contains(view, local.viewport, point) {
+                local.hover = None;
                 return None;
             }
             local.press = Some(Press {
@@ -498,7 +654,9 @@ fn on_pointer(
             None
         }
         PointerPhase::Move => {
-            local.hover = local.coord_at(position);
+            local.hover = (!hud_contains(view, local.viewport, point))
+                .then(|| local.coord_at(position))
+                .flatten();
             let press = local.press.as_mut()?;
             let travelled = (point - press.from).length();
             if travelled >= DRAG_THRESHOLD {
@@ -518,20 +676,25 @@ fn on_pointer(
             None
         }
         PointerPhase::Up => {
-            let press = local.press.take();
+            let press = local.press.take()?;
             if button != PointerButton::Primary {
                 return None;
             }
             // A pan is not a tap: releasing after dragging the board must not
             // also place a tile.
-            if press.is_some_and(|press| press.moved) {
+            if press.moved
+                || (point - press.from).length() >= DRAG_THRESHOLD
+                || hud_contains(view, local.viewport, point)
+            {
                 return None;
-            }
-            if let Some(control) = Control::at(local.viewport, point) {
-                return local.apply_control(control, view);
             }
             let coord = local.coord_at(position)?;
             local.cursor = coord;
+            if view.phase == TurnPhase::PlaceMeeple && view.last_placed == Some(coord) {
+                let tile = view.board.get(coord)?;
+                local.claim =
+                    nearest_claimable_segment(view, coord, tile, local.local_to_world(point));
+            }
             act_on_square(view, local, coord)
         }
     }
@@ -539,6 +702,9 @@ fn on_pointer(
 
 /// What tapping a board square means, which depends only on the phase.
 fn act_on_square(view: &View, local: &TilesLocal, coord: Coord) -> Option<Intent<Command>> {
+    if !on_turn(view) {
+        return None;
+    }
     match view.phase {
         TurnPhase::PlaceTile => {
             let kind = view.drawn?;
@@ -557,35 +723,22 @@ fn act_on_square(view: &View, local: &TilesLocal, coord: Coord) -> Option<Intent
             if last != coord {
                 return None;
             }
-            let tile = view.board.get(last)?;
-            let segment = nearest_claimable_segment(view, local, last, tile)?;
+            let segment = selected_claim(view, local)?;
             Some(Intent::new(Command::PlaceMeeple { segment }))
         }
     }
 }
 
-/// Of the segments the seat may claim on `coord`, the one whose drawn position
-/// is nearest the cursor's square centre.
+/// Of the segments the seat may claim on `coord`, the one nearest the tap.
 ///
 /// Tapping a tile with several claimable features has to pick one; "nearest the
 /// tap" is the only choice a player can predict.
 fn nearest_claimable_segment(
     view: &View,
-    local: &TilesLocal,
     coord: Coord,
     tile: PlacedTile,
+    reference: Vec2,
 ) -> Option<u8> {
-    let target = local.local_to_world(
-        local
-            .hover
-            .map_or(local.viewport.size() * 0.5, |_| local.viewport.size() * 0.5),
-    );
-    let reference = if view.meeple_slots.len() == 1 {
-        // One option: no need to be clever.
-        return view.meeple_slots.first().copied();
-    } else {
-        target
-    };
     view.meeple_slots.iter().copied().min_by(|left, right| {
         let a = segment_centre(coord, tile, *left).distance_squared(reference);
         let b = segment_centre(coord, tile, *right).distance_squared(reference);
@@ -593,6 +746,17 @@ fn nearest_claimable_segment(
             .unwrap_or(core::cmp::Ordering::Equal)
             .then(left.cmp(right))
     })
+}
+
+fn on_turn(view: &View) -> bool {
+    view.you == Some(view.turn) && view.status == crate::rules::Status::Playing && !view.paused
+}
+
+fn selected_claim(view: &View, local: &TilesLocal) -> Option<u8> {
+    local
+        .claim
+        .filter(|segment| view.meeple_slots.contains(segment))
+        .or_else(|| view.meeple_slots.first().copied())
 }
 
 fn on_key(key: Key, view: &View, local: &mut TilesLocal) -> Option<Intent<Command>> {
@@ -613,11 +777,20 @@ fn on_key(key: Key, view: &View, local: &mut TilesLocal) -> Option<Intent<Comman
             local.move_cursor(Side::East);
             None
         }
-        Key::Space => {
-            local.preview = local.preview.next();
-            None
-        }
+        Key::Space => local.apply_control(Control::Rotate, view),
         Key::Tab => {
+            if view.phase == TurnPhase::PlaceMeeple {
+                let next = selected_claim(view, local)
+                    .and_then(|current| view.meeple_slots.iter().position(|slot| *slot == current))
+                    .and_then(|index| view.meeple_slots.get(index + 1))
+                    .or_else(|| view.meeple_slots.first());
+                local.claim = next.copied();
+                if let Some(last) = view.last_placed {
+                    local.cursor = last;
+                    local.keep_cursor_visible();
+                }
+                return None;
+            }
             // Jump to the next square where the tile would actually fit at the
             // current rotation, so a keyboard player is never hunting.
             if let Some(next) = next_legal_square(view, local) {
@@ -626,9 +799,7 @@ fn on_key(key: Key, view: &View, local: &mut TilesLocal) -> Option<Intent<Comman
             }
             None
         }
-        Key::Escape => {
-            (view.phase == TurnPhase::PlaceMeeple).then(|| Intent::new(Command::SkipMeeple))
-        }
+        Key::Escape => local.apply_control(Control::Skip, view),
         Key::Enter => {
             let cursor = local.cursor;
             act_on_square(view, local, cursor)
@@ -712,6 +883,16 @@ fn draw_targets(
             border: Some(Border::new(if fits_now { 2.0 } else { 1.0 }, colour)?),
             layer: Layer::BOARD,
             z: 0,
+        })?;
+        builder.push(RenderCmd::Text {
+            text: if fits_now { "Place" } else { "Rotate" }.to_owned(),
+            at: rect.origin() + Vec2::new(TILE_SIZE * 0.5, TILE_SIZE * 0.5 - 8.0),
+            style: TextStyleToken::LabelSm,
+            align: Align::Center,
+            max_width: Positive::new(TILE_SIZE - 8.0).ok(),
+            color: theme.color.on_surface_variant,
+            layer: Layer::BOARD,
+            z: 1,
         })?;
     }
     Ok(())
@@ -921,24 +1102,70 @@ fn draw_overlays(
                         rect: Rect::new(centre - size * 0.5, size)?,
                         radii: Corners::uniform(size.x * 0.5)?,
                         fill: None,
-                        border: Some(Border::new(2.0, theme.color.legal_target)?),
+                        border: Some(Border::new(
+                            if selected_claim(view, local) == Some(*index) {
+                                3.0
+                            } else {
+                                2.0
+                            },
+                            theme.color.legal_target,
+                        )?),
                         layer: Layer::OVERLAY,
                         z: 8,
+                    })?;
+                    builder.push(RenderCmd::Text {
+                        text: (index + 1).to_string(),
+                        at: centre - Vec2::new(0.0, 8.0),
+                        style: TextStyleToken::LabelSm,
+                        align: Align::Center,
+                        max_width: Positive::new(size.x).ok(),
+                        color: theme.color.on_surface,
+                        layer: Layer::OVERLAY,
+                        z: 9,
                     })?;
                 }
             }
         }
     }
 
+    draw_cursor(builder, local, theme)
+}
+
+fn draw_cursor(
+    builder: &mut RenderListBuilder,
+    local: &TilesLocal,
+    theme: &Theme,
+) -> Result<(), RenderListError> {
     // The cursor, always visible so keyboard play has a focus indicator.
     builder.push(RenderCmd::Rect {
         rect: world_rect(local.cursor),
         radii: Corners::uniform(2.0)?,
         fill: None,
-        border: Some(Border::new(2.0, theme.focus.ring_color)?),
+        border: Some(Border::new(
+            theme.focus.ring_width.get(),
+            theme.focus.ring_color,
+        )?),
         layer: Layer::OVERLAY,
         z: 20,
     })?;
+    let (minimum, maximum) = board_screen_bounds(local.viewport);
+    if TILE_SIZE * local.camera.zoom() > (maximum - minimum).min_element() {
+        // When the square is larger than an available axis, its perimeter
+        // may sit beneath the HUD. Retain a small, unfilled focus marker at
+        // the centred cursor, with a stable logical size at every zoom.
+        let size = Vec2::splat(16.0 / local.camera.zoom());
+        builder.push(RenderCmd::Rect {
+            rect: Rect::new(world_centre(local.cursor) - size * 0.5, size)?,
+            radii: Corners::uniform(2.0 / local.camera.zoom())?,
+            fill: None,
+            border: Some(Border::new(
+                theme.focus.ring_width.get() / local.camera.zoom(),
+                theme.focus.ring_color,
+            )?),
+            layer: Layer::OVERLAY,
+            z: 21,
+        })?;
+    }
     Ok(())
 }
 
@@ -972,87 +1199,57 @@ fn draw_hud(
     })?;
     builder.push(RenderCmd::Text {
         text: status_line(view),
-        at: Vec2::new(HUD_GAP, 6.0),
-        style: TextStyleToken::LabelMd,
+        at: Vec2::new(HUD_GAP, 8.0),
+        style: TextStyleToken::TitleMd,
         align: Align::Start,
-        max_width: None,
+        max_width: Positive::new(viewport.size().x - HUD_GAP * 2.0).ok(),
         color: theme.color.on_surface,
         layer: Layer::HUD,
         z: 1,
     })?;
+    builder.push(RenderCmd::Text {
+        text: selection_line(view, local),
+        at: Vec2::new(HUD_GAP, 38.0),
+        style: TextStyleToken::LabelMd,
+        align: Align::Start,
+        max_width: Positive::new(viewport.size().x - HUD_GAP * 2.0).ok(),
+        color: theme.color.on_surface_variant,
+        layer: Layer::HUD,
+        z: 1,
+    })?;
 
-    // Scores down the right edge, the seat on turn highlighted.
-    for (index, seat) in view.seats.iter().enumerate() {
-        let step = u16::try_from(index).map_or(0.0, f32::from);
-        let y = HUD_STATUS_HEIGHT + HUD_GAP + (HUD_BUTTON + HUD_GAP) * step;
-        if y + HUD_BUTTON > viewport.size().y {
-            break;
-        }
-        let colour = if *seat == view.turn {
-            theme.color.turn_active
-        } else {
-            theme.color.on_surface_variant
-        };
-        builder.push(RenderCmd::Text {
-            text: format!(
-                "seat {}  {}  ({} left)",
-                seat.0,
-                view.scores.get(seat).copied().unwrap_or(0),
-                view.meeples_in_hand.get(seat).copied().unwrap_or(0)
-            ),
-            at: Vec2::new(viewport.size().x - HUD_GAP, y),
-            style: TextStyleToken::LabelSm,
-            align: Align::End,
-            max_width: None,
-            color: colour,
-            layer: Layer::HUD,
-            z: 1,
-        })?;
-        // A swatch, so the followers on the board can be matched to a seat.
-        builder.push(RenderCmd::Rect {
-            rect: Rect::new(
-                Vec2::new(viewport.size().x - HUD_GAP - 12.0, y + 14.0),
-                Vec2::splat(10.0),
-            )?,
-            radii: Corners::uniform(5.0)?,
-            fill: Some(Paint::Solid(seat_colour(view, *seat, theme))),
-            border: None,
-            layer: Layer::HUD,
-            z: 1,
-        })?;
-    }
+    draw_scores(builder, view, viewport, theme)?;
 
-    for control in Control::ALL {
-        let Some(rect) = control.rect(viewport) else {
-            continue;
-        };
-        let enabled = control != Control::Skip || view.phase == TurnPhase::PlaceMeeple;
+    if let Some(rect) = turn_toolbar_rect(viewport) {
         builder.push(RenderCmd::Rect {
             rect,
-            radii: Corners::uniform(4.0)?,
-            fill: Some(Paint::Solid(if enabled {
-                theme.color.surface_container_high
-            } else {
-                theme.color.surface_container
-            })),
-            border: Some(Border::new(1.0, theme.color.outline)?),
+            radii: Corners::uniform(theme.shape.card.get())?,
+            fill: Some(Paint::Solid(theme.color.surface_container)),
+            border: None,
             layer: Layer::HUD,
             z: 0,
         })?;
-        builder.push(RenderCmd::Text {
-            text: control.label().to_owned(),
-            at: rect.origin() + Vec2::new(rect.size().x * 0.5, 8.0),
-            style: TextStyleToken::LabelMd,
-            align: Align::Center,
-            max_width: None,
-            color: if enabled {
-                theme.color.on_surface
-            } else {
-                theme.color.on_surface_variant
-            },
-            layer: Layer::HUD,
-            z: 1,
-        })?;
+        if viewport.size().y >= 400.0 {
+            builder.push(RenderCmd::Text {
+                text: action_hint(view, local),
+                at: rect.origin() + Vec2::new(HUD_GAP, HUD_GAP),
+                style: TextStyleToken::LabelSm,
+                align: Align::Start,
+                max_width: Positive::new(rect.size().x - HUD_GAP * 2.0).ok(),
+                color: theme.color.on_surface_variant,
+                layer: Layer::HUD,
+                z: 1,
+            })?;
+        }
+    }
+    for button in hud_buttons(view, local, viewport, theme.density.min_target)? {
+        button.draw(
+            builder,
+            theme,
+            &local.buttons,
+            &local.button_focus,
+            Layer::HUD,
+        )?;
     }
 
     builder.push(RenderCmd::PopTransform {
@@ -1060,6 +1257,242 @@ fn draw_hud(
         z: 0,
     })?;
     Ok(())
+}
+
+fn draw_scores(
+    builder: &mut RenderListBuilder,
+    view: &View,
+    viewport: Viewport,
+    theme: &Theme,
+) -> Result<(), RenderListError> {
+    // A contained score list on wide boards; a compact row leaves mobile maps
+    // their width. Seat labels carry meaning independently of marker colours.
+    let compact = viewport.size().x < 600.0 || viewport.size().y < 400.0;
+    if let Some(rect) = scores_rect(view, viewport) {
+        builder.push(RenderCmd::Rect {
+            rect,
+            radii: Corners::uniform(theme.shape.card.get())?,
+            fill: Some(Paint::Solid(theme.color.surface_container)),
+            border: None,
+            layer: Layer::HUD,
+            z: 0,
+        })?;
+    }
+    for (index, seat) in view.seats.iter().enumerate() {
+        let Some(scores) = scores_rect(view, viewport) else {
+            break;
+        };
+        let step = u16::try_from(index).map_or(0.0, f32::from);
+        let y = scores.origin().y + HUD_GAP + if compact { 0.0 } else { 40.0 * step };
+        let count = u16::try_from(view.seats.len())
+            .map_or(1.0, f32::from)
+            .max(1.0);
+        let x = if compact {
+            HUD_GAP + viewport.size().x / count * step
+        } else {
+            scores.origin().x + HUD_GAP
+        };
+        let active =
+            *seat == view.turn && view.status == crate::rules::Status::Playing && !view.paused;
+        let colour = if active {
+            theme.color.turn_active
+        } else {
+            theme.color.on_surface_variant
+        };
+        builder.push(RenderCmd::Text {
+            text: if compact {
+                format!(
+                    "S{}: {}",
+                    seat.0,
+                    view.scores.get(seat).copied().unwrap_or(0)
+                )
+            } else {
+                format!(
+                    "Seat {}: {} points",
+                    seat.0,
+                    view.scores.get(seat).copied().unwrap_or(0)
+                )
+            },
+            at: Vec2::new(x, y),
+            style: TextStyleToken::LabelSm,
+            align: Align::Start,
+            max_width: Positive::new(if compact {
+                viewport.size().x / count - HUD_GAP
+            } else {
+                scores.size().x - HUD_GAP * 2.0
+            })
+            .ok(),
+            color: colour,
+            layer: Layer::HUD,
+            z: 1,
+        })?;
+        if !compact {
+            builder.push(RenderCmd::Rect {
+                rect: Rect::new(Vec2::new(x, y + 20.0), Vec2::splat(10.0))?,
+                radii: Corners::uniform(5.0)?,
+                fill: Some(Paint::Solid(seat_colour(view, *seat, theme))),
+                border: None,
+                layer: Layer::HUD,
+                z: 1,
+            })?;
+        }
+        builder.push(RenderCmd::Text {
+            text: format!(
+                "{} followers{}",
+                view.meeples_in_hand.get(seat).copied().unwrap_or(0),
+                if active && !compact { ". On turn" } else { "" }
+            ),
+            at: Vec2::new(x + if compact { 0.0 } else { 16.0 }, y + 18.0),
+            style: TextStyleToken::LabelSm,
+            align: Align::Start,
+            max_width: Positive::new(if compact {
+                viewport.size().x / count - HUD_GAP
+            } else {
+                scores.size().x - 32.0
+            })
+            .ok(),
+            color: theme.color.on_surface_variant,
+            layer: Layer::HUD,
+            z: 1,
+        })?;
+    }
+
+    Ok(())
+}
+
+fn hud_buttons<'a>(
+    view: &View,
+    local: &TilesLocal,
+    viewport: Viewport,
+    min_target: Positive,
+) -> Result<Vec<ActionButton<'a>>, RenderListError> {
+    Control::ALL
+        .into_iter()
+        .filter_map(|control| control.rect(viewport).map(|rect| (control, rect)))
+        .map(|(control, rect)| {
+            let mut button =
+                ActionButton::new(control.id(), rect, control.label(view.phase), min_target)?
+                    .enabled(control.enabled(view, local));
+            button = match control {
+                Control::ZoomIn => button.with_icon("+").shape(ButtonShape::ConnectedStart),
+                Control::ZoomOut => button.with_icon("-").shape(ButtonShape::ConnectedMiddle),
+                Control::Recenter => button.with_icon("@").shape(ButtonShape::ConnectedEnd),
+                Control::Rotate => button.with_icon("R"),
+                Control::Confirm => button.tone(ButtonTone::Filled),
+                Control::Skip => button,
+            };
+            Ok(button)
+        })
+        .collect()
+}
+
+fn turn_toolbar_rect(viewport: Viewport) -> Option<Rect> {
+    let first = Control::Rotate.rect(viewport)?;
+    let last = Control::Skip.rect(viewport)?;
+    let heading = if viewport.size().y < 400.0 {
+        HUD_GAP
+    } else {
+        32.0
+    };
+    Rect::new(
+        first.origin() - Vec2::new(HUD_GAP, heading),
+        Vec2::new(
+            last.origin().x + last.size().x - first.origin().x + HUD_GAP * 2.0,
+            HUD_BUTTON + heading + HUD_GAP,
+        ),
+    )
+    .ok()
+}
+
+fn scores_rect(view: &View, viewport: Viewport) -> Option<Rect> {
+    if viewport.size().x < 600.0 || viewport.size().y < 400.0 {
+        if viewport.size().y < 320.0 {
+            return None;
+        }
+        return Rect::new(
+            Vec2::new(0.0, HUD_STATUS_HEIGHT + HUD_BUTTON + HUD_GAP * 2.0),
+            Vec2::new(viewport.size().x, 48.0),
+        )
+        .ok();
+    }
+    let count = u16::try_from(view.seats.len()).ok().map(f32::from)?;
+    let height = count * 40.0 + HUD_GAP * 2.0;
+    let top = HUD_STATUS_HEIGHT + HUD_GAP;
+    if top + height > viewport.size().y - HUD_BUTTON - 48.0 {
+        return None;
+    }
+    Rect::new(
+        Vec2::new(viewport.size().x - 192.0 - HUD_GAP, top),
+        Vec2::new(192.0, height),
+    )
+    .ok()
+}
+
+fn board_screen_bounds(viewport: Viewport) -> (Vec2, Vec2) {
+    let row_scores =
+        (viewport.size().x < 600.0 || viewport.size().y < 400.0) && viewport.size().y >= 320.0;
+    let top = HUD_STATUS_HEIGHT + HUD_BUTTON + HUD_GAP * 2.0 + if row_scores { 48.0 } else { 0.0 };
+    let bottom = viewport.size().y
+        - HUD_BUTTON
+        - if viewport.size().y < 400.0 {
+            HUD_GAP * 2.0
+        } else {
+            40.0
+        };
+    let right = if viewport.size().x >= 600.0 && viewport.size().y >= 400.0 {
+        viewport.size().x - 200.0
+    } else {
+        viewport.size().x
+    };
+    (
+        Vec2::new(0.0, top),
+        Vec2::new(right.max(1.0), bottom.max(top + 1.0)),
+    )
+}
+
+fn hud_contains(view: &View, viewport: Viewport, point: Vec2) -> bool {
+    point.y < HUD_STATUS_HEIGHT
+        || Control::at(viewport, point).is_some()
+        || turn_toolbar_rect(viewport).is_some_and(|rect| rect.contains(point))
+        || scores_rect(view, viewport).is_some_and(|rect| rect.contains(point))
+}
+
+fn selection_line(view: &View, local: &TilesLocal) -> String {
+    match view.phase {
+        TurnPhase::PlaceTile => format!(
+            "{} / {:?} / Cursor {},{}",
+            view.drawn.map_or("No tile", |kind| kind.def().name),
+            local.preview,
+            local.cursor.x(),
+            local.cursor.y()
+        ),
+        TurnPhase::PlaceMeeple => selected_claim(view, local).map_or_else(
+            || "No claimable feature. Pass to finish the turn.".to_owned(),
+            |segment| format!("Feature {} / Tab changes feature.", segment + 1),
+        ),
+    }
+}
+
+fn action_hint(view: &View, local: &TilesLocal) -> String {
+    if view.status != crate::rules::Status::Playing {
+        return "Match finished. Camera controls remain available.".to_owned();
+    }
+    if view.paused {
+        return "Paused. Placement and claims are unavailable.".to_owned();
+    }
+    if view.you != Some(view.turn) {
+        return "Waiting for the active seat. Camera controls remain available.".to_owned();
+    }
+    match view.phase {
+        TurnPhase::PlaceTile if !Control::Confirm.enabled(view, local) => {
+            "Choose a valid square (Tab). Space rotates.".to_owned()
+        }
+        TurnPhase::PlaceTile => "Enter places the tile. Space rotates.".to_owned(),
+        TurnPhase::PlaceMeeple if view.meeple_slots.is_empty() => {
+            "No claimable feature. Pass (Esc) finishes the turn.".to_owned()
+        }
+        TurnPhase::PlaceMeeple => "Tab chooses. Enter claims. Esc passes.".to_owned(),
+    }
 }
 
 /// The affine that undoes the camera, so a HUD scope composes to the identity.
@@ -1088,27 +1521,16 @@ fn seat_colour(view: &View, seat: tabula_core::SeatId, theme: &Theme) -> tabula_
 
 fn status_line(view: &View) -> String {
     match view.status {
-        crate::rules::Status::Ended => format!(
-            "Match over.  {}",
-            view.seats
-                .iter()
-                .map(|seat| format!(
-                    "seat {}: {}",
-                    seat.0,
-                    view.scores.get(seat).copied().unwrap_or(0)
-                ))
-                .collect::<Vec<_>>()
-                .join("   ")
-        ),
+        crate::rules::Status::Ended => "Match over.".to_owned(),
         crate::rules::Status::Aborted => "Match cancelled.".to_owned(),
         crate::rules::Status::Playing if view.paused => "Paused.".to_owned(),
         crate::rules::Status::Playing => {
             let step = match view.phase {
-                TurnPhase::PlaceTile => "place the tile",
-                TurnPhase::PlaceMeeple => "place a follower or pass (Esc)",
+                TurnPhase::PlaceTile => "Place tile",
+                TurnPhase::PlaceMeeple => "Claim or pass",
             };
             format!(
-                "Seat {} to {step}.  {} tiles left.  Space rotates, Enter commits, Tab finds a spot.",
+                "Seat {}: {step}. {} tiles left.",
                 view.turn.0, view.bag_remaining
             )
         }
@@ -1127,10 +1549,23 @@ fn describe(view: &View, local: &TilesLocal) -> A11yDescription {
         local.cursor.x(),
         local.cursor.y()
     );
+    let _ = write!(
+        description.status,
+        " {} {}",
+        selection_line(view, local),
+        action_hint(view, local)
+    );
+    for seat in &view.seats {
+        let _ = write!(
+            description.status,
+            " Seat {}: {} points, {} followers.",
+            seat.0,
+            view.scores.get(seat).copied().unwrap_or(0),
+            view.meeples_in_hand.get(seat).copied().unwrap_or(0)
+        );
+    }
 
-    let on_turn =
-        view.you == Some(view.turn) && view.status == crate::rules::Status::Playing && !view.paused;
-    let can_place = on_turn
+    let can_place = on_turn(view)
         && view.phase == TurnPhase::PlaceTile
         && view.drawn.is_some_and(|kind| {
             crate::rules::is_legal_placement(
@@ -1140,6 +1575,22 @@ fn describe(view: &View, local: &TilesLocal) -> A11yDescription {
             )
         });
 
+    description.actions.push(A11yAction {
+        id: ActionId("claim-follower".to_owned()),
+        label: selected_claim(view, local).map_or_else(
+            || "Claim a follower (no claimable feature)".to_owned(),
+            |segment| {
+                format!(
+                    "Claim follower feature {} (Enter; Tab changes feature)",
+                    segment + 1
+                )
+            },
+        ),
+        enabled: on_turn(view)
+            && view.phase == TurnPhase::PlaceMeeple
+            && local.cursor == view.last_placed.unwrap_or(Coord::ORIGIN)
+            && selected_claim(view, local).is_some(),
+    });
     description.actions.push(A11yAction {
         id: ActionId("place-tile".to_owned()),
         label: format!(
@@ -1153,16 +1604,16 @@ fn describe(view: &View, local: &TilesLocal) -> A11yDescription {
     description.actions.push(A11yAction {
         id: ActionId("skip-follower".to_owned()),
         label: "Pass on placing a follower".to_owned(),
-        enabled: on_turn && view.phase == TurnPhase::PlaceMeeple,
+        enabled: Control::Skip.enabled(view, local),
     });
     for control in Control::ALL {
-        if control == Control::Skip {
+        if matches!(control, Control::Skip | Control::Confirm) {
             continue;
         }
         description.actions.push(A11yAction {
-            id: ActionId(control.action().to_owned()),
-            label: control.action().replace('-', " "),
-            enabled: true,
+            id: ActionId(control.action(view.phase).to_owned()),
+            label: control.label(view.phase).to_owned(),
+            enabled: control.enabled(view, local),
         });
     }
     description
@@ -1202,7 +1653,11 @@ mod tests {
     }
 
     fn opening() -> (crate::rules::State, View) {
-        let seed = MatchSeed::from_bytes([21u8; 32]);
+        opening_with_seed(21)
+    }
+
+    fn opening_with_seed(byte: u8) -> (crate::rules::State, View) {
+        let seed = MatchSeed::from_bytes([byte; 32]);
         let mut rng = DetRng::for_input(&seed, InputIndex(0));
         let mut ctx = Ctx {
             now: LogicalTime::ZERO,
@@ -1237,11 +1692,65 @@ mod tests {
         }
     }
 
+    fn tap(point: Vec2, view: &View, local: &mut TilesLocal) -> Option<Intent<Command>> {
+        assert!(
+            TilesPresentation::on_input(&click(point, PointerPhase::Down), view, local).is_none()
+        );
+        TilesPresentation::on_input(&click(point, PointerPhase::Up), view, local)
+    }
+
+    fn key_tap(key: Key, view: &View, local: &mut TilesLocal) -> Option<Intent<Command>> {
+        TilesPresentation::on_input(
+            &InputEvent::Key {
+                key,
+                pressed: false,
+            },
+            view,
+            local,
+        );
+        TilesPresentation::on_input(&InputEvent::Key { key, pressed: true }, view, local)
+    }
+
+    fn claim_step_with_seed(byte: u8) -> (crate::rules::State, View) {
+        let (mut state, _) = opening_with_seed(byte);
+        let (at, rotation) = crate::rules::first_legal_placement(
+            state.board(),
+            state.drawn().expect("opening tile"),
+        )
+        .expect("opening has a placement");
+        let seed = MatchSeed::from_bytes([byte; 32]);
+        let mut rng = DetRng::for_input(&seed, InputIndex(1));
+        let mut ctx = Ctx {
+            now: LogicalTime::ZERO,
+            index: InputIndex(1),
+            rng: &mut rng,
+            budget: Budget::default(),
+        };
+        let seat = state.turn();
+        TilesRules::apply(
+            &mut state,
+            Input::Player {
+                seat,
+                command: Command::PlaceTile { at, rotation },
+            },
+            &mut ctx,
+        )
+        .expect("legal placement");
+        let view = TilesRules::project(&state, Viewer::Seat(seat));
+        assert_eq!(view.phase, TurnPhase::PlaceMeeple);
+        assert!(
+            !view.meeple_slots.is_empty(),
+            "claim fixture must exercise the claim branch"
+        );
+        (state, view)
+    }
+
     #[test]
     fn the_opening_view_is_centred_on_the_start_tile() {
         let frame = frame(0);
         let local = local_for(&frame);
-        let centre = local.local_to_world(frame.viewport().size() * 0.5);
+        // Wide HUD reserves 200dp for scores; the map spans y136..504.
+        let centre = local.local_to_world(Vec2::new(300.0, 320.0));
         assert!((centre - world_centre(Coord::ORIGIN)).length() < 0.001);
     }
 
@@ -1353,8 +1862,7 @@ mod tests {
         local.preview = rotations[0];
 
         let screen = (world_centre(coord) - local.camera.origin()) * local.camera.zoom();
-        let intent =
-            TilesPresentation::on_input(&click(screen, PointerPhase::Up), &view, &mut local);
+        let intent = tap(screen, &view, &mut local);
         assert_eq!(
             intent.map(Intent::into_command),
             Some(Command::PlaceTile {
@@ -1365,10 +1873,7 @@ mod tests {
 
         // The origin square is occupied, so tapping it asks for nothing.
         let occupied = (world_centre(Coord::ORIGIN) - local.camera.origin()) * local.camera.zoom();
-        assert!(
-            TilesPresentation::on_input(&click(occupied, PointerPhase::Up), &view, &mut local)
-                .is_none()
-        );
+        assert!(tap(occupied, &view, &mut local).is_none());
     }
 
     /// Dragging the board pans it and must **not** also place a tile on release
@@ -1455,11 +1960,7 @@ mod tests {
         let rect = Control::Rotate
             .rect(frame.viewport())
             .expect("the rotate control fits");
-        TilesPresentation::on_input(
-            &click(rect.origin() + rect.size() * 0.5, PointerPhase::Up),
-            &view,
-            &mut local,
-        );
+        tap(rect.origin() + rect.size() * 0.5, &view, &mut local);
         assert_eq!(local.preview_rotation(), Rotation::R180);
 
         // A key release must not rotate again.
@@ -1481,11 +1982,7 @@ mod tests {
         let (_, view) = opening();
         for control in [Control::ZoomIn, Control::ZoomOut, Control::Recenter] {
             let rect = control.rect(frame.viewport()).expect("the control fits");
-            let intent = TilesPresentation::on_input(
-                &click(rect.origin() + rect.size() * 0.5, PointerPhase::Up),
-                &view,
-                &mut local,
-            );
+            let intent = tap(rect.origin() + rect.size() * 0.5, &view, &mut local);
             assert!(
                 intent.is_none(),
                 "{control:?} must not produce a game command"
@@ -1531,11 +2028,11 @@ mod tests {
         // Rotate until the tile fits where Tab put the cursor.
         let mut intent = None;
         for _ in 0..4 {
-            intent = TilesPresentation::on_input(&key(Key::Enter), &view, &mut local);
+            intent = key_tap(Key::Enter, &view, &mut local);
             if intent.is_some() {
                 break;
             }
-            TilesPresentation::on_input(&key(Key::Space), &view, &mut local);
+            key_tap(Key::Space, &view, &mut local);
         }
         assert!(
             matches!(
@@ -1585,8 +2082,7 @@ mod tests {
         assert_eq!(claim_view.phase, TurnPhase::PlaceMeeple);
 
         assert_eq!(
-            TilesPresentation::on_input(&key(Key::Escape), &claim_view, &mut local)
-                .map(Intent::into_command),
+            key_tap(Key::Escape, &claim_view, &mut local).map(Intent::into_command),
             Some(Command::SkipMeeple)
         );
 
@@ -1595,11 +2091,7 @@ mod tests {
             let tile = claim_view.board.get(at).expect("the tile is on the board");
             let centre = segment_centre(at, tile, slot);
             let screen = (centre - local.camera.origin()) * local.camera.zoom();
-            let intent = TilesPresentation::on_input(
-                &click(screen, PointerPhase::Up),
-                &claim_view,
-                &mut local,
-            );
+            let intent = tap(screen, &claim_view, &mut local);
             assert!(matches!(
                 intent.map(Intent::into_command),
                 Some(Command::PlaceMeeple { .. })
@@ -1741,20 +2233,9 @@ mod tests {
                         local.recenter();
                         let screen =
                             (world_centre(at) - local.camera.origin()) * local.camera.zoom();
-                        TilesPresentation::on_input(
-                            &click(screen, PointerPhase::Up),
-                            &view,
-                            &mut local,
-                        )
+                        tap(screen, &view, &mut local)
                     }
-                    TurnPhase::PlaceMeeple => TilesPresentation::on_input(
-                        &InputEvent::Key {
-                            key: Key::Escape,
-                            pressed: true,
-                        },
-                        &view,
-                        &mut local,
-                    ),
+                    TurnPhase::PlaceMeeple => key_tap(Key::Escape, &view, &mut local),
                 };
                 let Some(intent) = intent else {
                     break;
@@ -1890,5 +2371,416 @@ mod tests {
             TilesPresentation::asset_pack(),
             AssetPackRef::from_static("tiles", "0.1.0")
         );
+    }
+
+    #[test]
+    fn every_hud_action_has_a_labeled_44_dp_target_and_compact_primary_reach() {
+        let (_, view) = opening();
+        for size in [
+            Vec2::new(320.0, 568.0),
+            Vec2::new(390.0, 844.0),
+            Vec2::new(800.0, 600.0),
+            Vec2::new(1440.0, 1000.0),
+        ] {
+            let viewport = Viewport::new(size).unwrap();
+            let mut local = TilesLocal::default();
+            local.set_viewport(viewport);
+            let buttons =
+                hud_buttons(&view, &local, viewport, Positive::new(44.0).unwrap()).unwrap();
+            assert_eq!(buttons.len(), Control::ALL.len());
+            for control in Control::ALL {
+                let rect = control
+                    .rect(viewport)
+                    .expect("control must fit a supported viewport");
+                assert!(rect.size().min_element() >= 44.0, "{control:?} at {size:?}");
+                assert!(rect.origin().min_element() >= 0.0);
+                assert!((rect.origin() + rect.size()).cmple(size).all());
+                assert_eq!(
+                    Control::at(viewport, rect.origin() + Vec2::splat(1.0)),
+                    Some(control)
+                );
+            }
+            if size.x < 600.0 {
+                assert!(Control::Confirm.rect(viewport).unwrap().origin().y >= size.y * 2.0 / 3.0);
+            }
+            for kind in [
+                ThemeKind::Light,
+                ThemeKind::Dark,
+                ThemeKind::HighContrastLight,
+                ThemeKind::HighContrastDark,
+            ] {
+                let frame =
+                    FrameCtx::new(viewport, Dpi::new(1.0).unwrap(), 0, Theme::by_kind(kind));
+                let list = build(&view, &local, &frame).expect("all theme layouts are valid");
+                for label in [
+                    "Zoom in",
+                    "Zoom out",
+                    "Center",
+                    "Rotate",
+                    "Place tile",
+                    "Pass",
+                ] {
+                    assert!(list.commands().iter().any(|command| matches!(command,
+                        RenderCmd::Text { text, layer: Layer::HUD, .. } if text == label)));
+                }
+                // No ornamental action borders; the principal action uses the
+                // same semantic colour in all four generated schemes.
+                let (at, rotation) =
+                    crate::rules::first_legal_placement(&view.board, view.drawn.unwrap()).unwrap();
+                local.cursor = at;
+                local.preview = rotation;
+                let rect = Control::Confirm.rect(viewport).unwrap();
+                let list = build(&view, &local, &frame).unwrap();
+                assert!(list.commands().iter().any(|command| matches!(command,
+                    RenderCmd::Rect { rect: drawn, fill: Some(Paint::Solid(color)), border: None, layer: Layer::HUD, .. }
+                    if *drawn == rect && *color == frame.theme().color.primary)));
+            }
+        }
+    }
+
+    #[test]
+    fn cancelled_blurred_resized_and_repeated_releases_do_not_activate() {
+        let (_, view) = opening();
+        for interruption in 0..4 {
+            let mut local = local_for(&frame(0));
+            let point = Control::Rotate.rect(local.viewport).unwrap().origin() + Vec2::splat(1.0);
+            TilesPresentation::on_input(&click(point, PointerPhase::Down), &view, &mut local);
+            match interruption {
+                0 => {
+                    TilesPresentation::on_input(
+                        &click(point, PointerPhase::Cancel),
+                        &view,
+                        &mut local,
+                    );
+                }
+                1 => {
+                    TilesPresentation::on_input(&InputEvent::Focus(false), &view, &mut local);
+                    TilesPresentation::on_input(&InputEvent::Focus(true), &view, &mut local);
+                }
+                2 => local.set_viewport(Viewport::new(Vec2::new(390.0, 844.0)).unwrap()),
+                _ => {
+                    TilesPresentation::on_view_event(&Event::Paused, &mut local, &frame(1));
+                }
+            }
+            assert!(TilesPresentation::on_input(
+                &click(point, PointerPhase::Up),
+                &view,
+                &mut local
+            )
+            .is_none());
+            assert_eq!(
+                local.preview,
+                Rotation::R0,
+                "interruption {interruption} activated a stale button"
+            );
+            let rect = Control::Rotate.rect(local.viewport).unwrap();
+            let point = rect.origin() + Vec2::splat(1.0);
+            tap(point, &view, &mut local);
+            assert_eq!(local.preview, Rotation::R90, "fresh press still works");
+            TilesPresentation::on_input(&click(point, PointerPhase::Up), &view, &mut local);
+            assert_eq!(
+                local.preview,
+                Rotation::R90,
+                "duplicate Up must not activate"
+            );
+        }
+        let mut local = local_for(&frame(0));
+        let (at, rotation) =
+            crate::rules::first_legal_placement(&view.board, view.drawn.unwrap()).unwrap();
+        local.cursor = at;
+        local.preview = rotation;
+        let point = (world_centre(local.cursor) - local.camera.origin()) * local.camera.zoom();
+        assert!(
+            tap(point, &view, &mut local).is_some(),
+            "the board target is reachable"
+        );
+        assert!(
+            TilesPresentation::on_input(&click(point, PointerPhase::Up), &view, &mut local)
+                .is_none()
+        );
+        TilesPresentation::on_input(&click(point, PointerPhase::Down), &view, &mut local);
+        TilesPresentation::on_input(&click(point, PointerPhase::Cancel), &view, &mut local);
+        assert!(
+            TilesPresentation::on_input(&click(point, PointerPhase::Up), &view, &mut local)
+                .is_none()
+        );
+        TilesPresentation::on_input(&click(point, PointerPhase::Down), &view, &mut local);
+        assert!(
+            TilesPresentation::on_input(
+                &click(point + Vec2::new(20.0, 0.0), PointerPhase::Up),
+                &view,
+                &mut local
+            )
+            .is_none(),
+            "missing Move events cannot turn a drag into a placement"
+        );
+    }
+
+    #[test]
+    fn activation_key_repeats_are_suppressed_and_blur_does_not_latch_a_key() {
+        let (_, view) = opening();
+        let mut local = local_for(&frame(0));
+        let down = |key| InputEvent::Key { key, pressed: true };
+        TilesPresentation::on_input(&down(Key::Space), &view, &mut local);
+        TilesPresentation::on_input(&down(Key::Space), &view, &mut local);
+        assert_eq!(local.preview, Rotation::R90);
+        TilesPresentation::on_input(&InputEvent::Focus(false), &view, &mut local);
+        TilesPresentation::on_input(&down(Key::Space), &view, &mut local);
+        assert_eq!(local.preview, Rotation::R90, "unfocused input is ignored");
+        TilesPresentation::on_input(&InputEvent::Focus(true), &view, &mut local);
+        TilesPresentation::on_input(&down(Key::Space), &view, &mut local);
+        assert_eq!(
+            local.preview,
+            Rotation::R180,
+            "keyup may have been delivered outside the app"
+        );
+        key_tap(Key::Space, &view, &mut local);
+        local.cursor = next_legal_square(&view, &local).unwrap();
+        // The square may require another rotation; each fresh press is explicit.
+        for _ in 0..4 {
+            if act_on_square(&view, &local, local.cursor).is_some() {
+                break;
+            }
+            key_tap(Key::Space, &view, &mut local);
+        }
+        assert!(
+            act_on_square(&view, &local, local.cursor).is_some(),
+            "a legal square has at least one of four rotations"
+        );
+        assert!(TilesPresentation::on_input(&down(Key::Enter), &view, &mut local).is_some());
+        assert!(TilesPresentation::on_input(&down(Key::Enter), &view, &mut local).is_none());
+        assert!(key_tap(Key::Enter, &view, &mut local).is_some());
+    }
+
+    #[test]
+    fn gameplay_actions_are_gated_for_paused_terminal_and_other_viewers() {
+        let (_, original) = opening();
+        for case in 0..4 {
+            let mut view = original.clone();
+            match case {
+                0 => view.paused = true,
+                1 => view.you = None,
+                2 => view.you = Some(SeatId(1)),
+                _ => view.status = crate::rules::Status::Ended,
+            }
+            let before = view.clone();
+            let mut local = local_for(&frame(0));
+            local.cursor = next_legal_square(&view, &local).unwrap();
+            assert!(key_tap(Key::Enter, &view, &mut local).is_none());
+            key_tap(Key::Space, &view, &mut local);
+            assert_eq!(local.preview, Rotation::R0);
+            for control in [Control::Rotate, Control::Confirm, Control::Skip] {
+                let rect = control.rect(local.viewport).unwrap();
+                assert!(tap(rect.origin() + rect.size() * 0.5, &view, &mut local).is_none());
+            }
+            let description = describe(&view, &local);
+            for action in &description.actions {
+                if ["place-tile", "claim-follower", "rotate", "skip-follower"]
+                    .contains(&action.id.0.as_str())
+                {
+                    assert!(
+                        !action.enabled,
+                        "{} exposed an unavailable action",
+                        action.id.0
+                    );
+                }
+            }
+            let rect = Control::ZoomIn.rect(local.viewport).unwrap();
+            tap(rect.origin() + rect.size() * 0.5, &view, &mut local);
+            assert!(
+                local.camera.zoom() > 1.0,
+                "camera is still usable in case {case}"
+            );
+            assert_eq!(view, before, "local UI never writes the projection");
+        }
+    }
+
+    #[test]
+    fn every_reachable_claim_is_selectable_by_keyboard_and_by_its_pointer_position() {
+        let (byte, (state, view)) = (0..64u8)
+            .map(|byte| (byte, claim_step_with_seed(byte)))
+            .find(|(_, (_, view))| {
+                if view.meeple_slots.len() < 2 {
+                    return false;
+                }
+                let at = view.last_placed.unwrap();
+                let tile = view.board.get(at).unwrap();
+                view.meeple_slots.iter().enumerate().all(|(index, slot)| {
+                    view.meeple_slots.iter().skip(index + 1).all(|other| {
+                        segment_centre(at, tile, *slot)
+                            .distance_squared(segment_centre(at, tile, *other))
+                            > 1.0
+                    })
+                })
+            })
+            .expect("a real multi-feature claim must be reached");
+        let at = view.last_placed.unwrap();
+        let tile = view.board.get(at).unwrap();
+        let mut local = local_for(&frame(0));
+        local.cursor = at;
+        let first = selected_claim(&view, &local).unwrap();
+        let mut visited = Vec::new();
+        for _ in 0..view.meeple_slots.len() {
+            let segment = selected_claim(&view, &local).unwrap();
+            visited.push(segment);
+            let command = key_tap(Key::Enter, &view, &mut local)
+                .expect("selected claim is active")
+                .into_command();
+            assert_eq!(command, Command::PlaceMeeple { segment });
+            let mut state = state.clone();
+            let seed = MatchSeed::from_bytes([byte; 32]);
+            let mut rng = DetRng::for_input(&seed, InputIndex(2));
+            let mut ctx = Ctx {
+                now: LogicalTime::ZERO,
+                index: InputIndex(2),
+                rng: &mut rng,
+                budget: Budget::default(),
+            };
+            TilesRules::apply(
+                &mut state,
+                Input::Player {
+                    seat: view.turn,
+                    command,
+                },
+                &mut ctx,
+            )
+            .expect("advertised claim must be accepted");
+            key_tap(Key::Tab, &view, &mut local);
+        }
+        assert_eq!(visited, view.meeple_slots);
+        assert_eq!(
+            selected_claim(&view, &local),
+            Some(first),
+            "Tab wraps claim selection"
+        );
+        for slot in &view.meeple_slots {
+            let point =
+                (segment_centre(at, tile, *slot) - local.camera.origin()) * local.camera.zoom();
+            assert_eq!(
+                tap(point, &view, &mut local).map(Intent::into_command),
+                Some(Command::PlaceMeeple { segment: *slot })
+            );
+        }
+        let confirm = Control::Confirm.rect(local.viewport).unwrap();
+        let description = describe(&view, &local);
+        assert!(description
+            .actions
+            .iter()
+            .any(|action| action.id.0 == "claim-follower" && action.enabled));
+        assert!(matches!(
+            tap(confirm.origin() + confirm.size() * 0.5, &view, &mut local)
+                .map(Intent::into_command),
+            Some(Command::PlaceMeeple { .. })
+        ));
+        assert_eq!(
+            key_tap(Key::Escape, &view, &mut local).map(Intent::into_command),
+            Some(Command::SkipMeeple)
+        );
+    }
+
+    #[test]
+    fn short_and_compact_results_keep_every_score_and_follower_label() {
+        let (_, original) = opening();
+        for count in 2..=5usize {
+            let mut view = original.clone();
+            view.status = crate::rules::Status::Ended;
+            view.seats = [0, 64, 128, 192, 255]
+                .into_iter()
+                .take(count)
+                .map(SeatId)
+                .collect();
+            for (index, seat) in view.seats.iter().enumerate() {
+                view.scores
+                    .insert(*seat, 100 + i64::try_from(index).unwrap());
+                view.meeples_in_hand.insert(*seat, 7);
+            }
+            for size in [Vec2::new(320.0, 568.0), Vec2::new(640.0, 320.0)] {
+                let viewport = Viewport::new(size).unwrap();
+                let frame = FrameCtx::new(
+                    viewport,
+                    Dpi::new(1.0).unwrap(),
+                    0,
+                    Theme::by_kind(ThemeKind::Light),
+                );
+                let mut local = local_for(&frame);
+                local.cursor = Coord::ORIGIN;
+                let scores = scores_rect(&view, viewport)
+                    .expect("supported short layouts must retain scores");
+                assert!((scores.size().y - 48.0).abs() < f32::EPSILON);
+                let list = build(&view, &local, &frame).unwrap();
+                let description = describe(&view, &local);
+                for seat in &view.seats {
+                    let score = view.scores[seat];
+                    assert!(description
+                        .status
+                        .contains(&format!("Seat {}: {score} points, 7 followers.", seat.0)));
+                    let text = format!("S{}: {score}", seat.0);
+                    assert!(list.commands().iter().any(|command| matches!(command,
+                        RenderCmd::Text { text: drawn, at, max_width: Some(width), layer: Layer::HUD, .. }
+                        if *drawn == text && width.get() >= 56.0 && scores.contains(*at))));
+                }
+                let followers = list.commands().iter().filter(|command| matches!(command,
+                    RenderCmd::Text { text, at, max_width: Some(width), layer: Layer::HUD, .. }
+                    if text == "7 followers" && width.get() >= 56.0
+                        && at.y + frame.theme().text_style(TextStyleToken::LabelSm).line_height().get() <= scores.origin().y + scores.size().y)).count();
+                assert_eq!(
+                    followers, count,
+                    "every seat's counters need a bounded second line"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn maximum_zoom_keeps_the_short_map_cursor_and_focus_marker_visible() {
+        let viewport = Viewport::new(Vec2::new(640.0, 320.0)).unwrap();
+        let frame = FrameCtx::new(
+            viewport,
+            Dpi::new(1.0).unwrap(),
+            0,
+            Theme::by_kind(ThemeKind::Light),
+        );
+        let (_, view) = opening();
+        let mut local = local_for(&frame);
+        local.set_zoom(MAX_ZOOM);
+        let centre = (world_centre(local.cursor) - local.camera.origin()) * local.camera.zoom();
+        assert!(
+            (centre - Vec2::new(320.0, 216.0)).length() < 0.001,
+            "zoom must preserve the map centre, outside the HUD"
+        );
+        for key in [
+            Key::ArrowRight,
+            Key::ArrowUp,
+            Key::ArrowLeft,
+            Key::ArrowDown,
+            Key::Tab,
+        ] {
+            key_tap(key, &view, &mut local);
+            let centre = (world_centre(local.cursor) - local.camera.origin()) * local.camera.zoom();
+            assert!(
+                (centre.y - 216.0).abs() < 0.001,
+                "an oversized tile must be centred in the available axis"
+            );
+            assert!(centre.x > 0.0 && centre.x < 640.0);
+            assert!(!hud_contains(&view, viewport, centre));
+            let list = build(&view, &local, &frame).unwrap();
+            let marker = list
+                .commands()
+                .iter()
+                .find_map(|command| match command {
+                    RenderCmd::Rect {
+                        rect,
+                        layer: Layer::OVERLAY,
+                        z: 21,
+                        border: Some(border),
+                        ..
+                    } if border.color() == frame.theme().focus.ring_color => Some(*rect),
+                    _ => None,
+                })
+                .expect("the oversized cursor needs a visible centre marker");
+            let from = (marker.origin() - local.camera.origin()) * local.camera.zoom();
+            let to = from + marker.size() * local.camera.zoom();
+            assert!(from.x >= 0.0 && to.x <= 640.0 && from.y >= 184.0 && to.y <= 248.0);
+        }
     }
 }
