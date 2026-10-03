@@ -218,6 +218,300 @@ fn chess_timer_deadline_terminates_match_canonically() {
 }
 
 #[test]
+fn terminal_local_match_offers_restart_without_changing_its_result_or_trace() {
+    let frame = frame(10);
+    let mut match_ = chess_match_with_clock(10);
+    match_.advance_frame(&frame).unwrap();
+    let outcome = match_.ended().unwrap().clone();
+    let view = match_.view().clone();
+    let accepted = match_.replay_trace().accepted_inputs().len();
+    let mut feedback = LocalFeedback::default();
+
+    assert_eq!(
+        feedback.route_input(&mut match_, &tiles_key(Key::Tab), &frame),
+        FeedbackInput::Consumed
+    );
+    assert!(feedback.present(&frame).unwrap().commands().iter().any(
+        |command| matches!(command, RenderCmd::Text { text, .. } if text == "Local game ended")
+    ));
+    assert_eq!(
+        feedback.route_input(&mut match_, &tiles_key(Key::Enter), &frame),
+        FeedbackInput::NewLocalGame
+    );
+    assert_eq!(match_.ended(), Some(&outcome));
+    assert_eq!(match_.view().board, view.board);
+    assert_eq!(match_.view().status, view.status);
+    assert_eq!(match_.view().turn, view.turn);
+    assert_eq!(match_.replay_trace().accepted_inputs().len(), accepted);
+    assert_eq!(match_.recorded_inputs().len(), 1);
+}
+
+#[test]
+fn completion_repeats_and_interrupted_restart_require_a_fresh_activation() {
+    let frame = frame(10);
+    let mut match_ = chess_match_with_clock(10);
+    match_.advance_frame(&frame).unwrap();
+    let mut feedback = LocalFeedback::default();
+    feedback.sync_match(&match_);
+    // Simulate the key that produced the terminal effect, as the real loop does.
+    feedback.suppress_opening_input(&tiles_key(Key::Enter));
+    feedback.route_input(&mut match_, &tiles_key(Key::Tab), &frame);
+    for _ in 0..3 {
+        feedback.sync_match(&match_);
+        assert_eq!(
+            feedback.route_input(&mut match_, &tiles_key(Key::Enter), &frame),
+            FeedbackInput::Consumed
+        );
+    }
+    assert_eq!(
+        feedback.route_input(&mut match_, &tiles_key(Key::Escape), &frame),
+        FeedbackInput::PassThrough
+    );
+    feedback.sync_match(&match_);
+    assert_eq!(feedback.message(), Some("Final result shown on board."));
+    feedback.note_accepted_input();
+    feedback.note_error(&LocalMatchError::MatchEnded);
+    assert_eq!(feedback.message(), Some("Final result shown on board."));
+    feedback.route_input(
+        &mut match_,
+        &InputEvent::Key {
+            key: Key::Enter,
+            pressed: false,
+        },
+        &frame,
+    );
+    feedback.route_input(&mut match_, &tiles_key(Key::Tab), &frame);
+    feedback.sync_match(&match_);
+    assert_eq!(
+        feedback.route_input(&mut match_, &tiles_key(Key::Enter), &frame),
+        FeedbackInput::NewLocalGame,
+        "repeated completion sync must preserve keyboard focus"
+    );
+    assert_eq!(
+        feedback.route_input(&mut match_, &tiles_key(Key::Enter), &frame),
+        FeedbackInput::Consumed
+    );
+
+    let action_at = feedback
+        .present(&frame)
+        .unwrap()
+        .commands()
+        .iter()
+        .find_map(|command| match command {
+            RenderCmd::Text { text, at, .. } if text == "New local game" => Some(*at),
+            _ => None,
+        })
+        .unwrap();
+    for interruption in [
+        feedback_pointer(Vec2::ZERO, PointerPhase::Move),
+        feedback_pointer(action_at, PointerPhase::Cancel),
+        InputEvent::Focus(false),
+    ] {
+        feedback.route_input(
+            &mut match_,
+            &feedback_pointer(action_at, PointerPhase::Down),
+            &frame,
+        );
+        feedback.route_input(&mut match_, &interruption, &frame);
+        feedback.route_input(&mut match_, &InputEvent::Focus(true), &frame);
+        assert_ne!(
+            feedback.route_input(
+                &mut match_,
+                &feedback_pointer(action_at, PointerPhase::Up),
+                &frame
+            ),
+            FeedbackInput::NewLocalGame
+        );
+    }
+    feedback.route_input(
+        &mut match_,
+        &feedback_pointer(action_at, PointerPhase::Down),
+        &frame,
+    );
+    assert_eq!(
+        feedback.route_input(
+            &mut match_,
+            &feedback_pointer(action_at, PointerPhase::Up),
+            &frame
+        ),
+        FeedbackInput::NewLocalGame
+    );
+    assert_eq!(match_.recorded_inputs().len(), 1);
+    assert_eq!(match_.replay_trace().accepted_inputs().len(), 1);
+}
+
+#[test]
+fn completion_release_while_hidden_and_resize_during_press_do_not_leave_a_restart_latch() {
+    let full = frame(10);
+    let resized = FrameCtx::new(
+        Viewport::new(Vec2::new(568.0, 320.0)).unwrap(),
+        full.dpi(),
+        full.now_ms(),
+        full.theme(),
+    );
+    let tiny = FrameCtx::new(
+        Viewport::new(Vec2::new(320.0, 320.0)).unwrap(),
+        full.dpi(),
+        full.now_ms(),
+        full.theme(),
+    );
+    let mut match_ = chess_match_with_clock(10);
+    match_.advance_frame(&full).unwrap();
+    let mut feedback = LocalFeedback::default();
+    assert!(feedback.sync_match(&match_));
+    feedback.suppress_opening_input(&tiles_key(Key::Enter));
+    feedback.route_input(
+        &mut match_,
+        &InputEvent::Key {
+            key: Key::Enter,
+            pressed: false,
+        },
+        &tiny,
+    );
+    feedback.route_input(&mut match_, &tiles_key(Key::Tab), &full);
+    assert_eq!(
+        feedback.route_input(&mut match_, &tiles_key(Key::Enter), &full),
+        FeedbackInput::NewLocalGame
+    );
+
+    let action_at = |feedback: &LocalFeedback, frame: &FrameCtx| {
+        feedback
+            .present(frame)
+            .unwrap()
+            .commands()
+            .iter()
+            .find_map(|command| match command {
+                RenderCmd::Text { text, at, .. } if text == "New local game" => Some(*at),
+                _ => None,
+            })
+            .unwrap()
+    };
+    let old_at = action_at(&feedback, &full);
+    let new_at = action_at(&feedback, &resized);
+    feedback.route_input(
+        &mut match_,
+        &feedback_pointer(old_at, PointerPhase::Down),
+        &full,
+    );
+    assert_ne!(
+        feedback.route_input(
+            &mut match_,
+            &feedback_pointer(new_at, PointerPhase::Up),
+            &resized
+        ),
+        FeedbackInput::NewLocalGame,
+        "resizing the action cancels an earlier pointer press"
+    );
+    feedback.route_input(
+        &mut match_,
+        &feedback_pointer(new_at, PointerPhase::Down),
+        &resized,
+    );
+    feedback.route_input(&mut match_, &tiles_key(Key::ArrowLeft), &tiny);
+    assert_ne!(
+        feedback.route_input(
+            &mut match_,
+            &feedback_pointer(new_at, PointerPhase::Up),
+            &resized
+        ),
+        FeedbackInput::NewLocalGame
+    );
+    feedback.route_input(
+        &mut match_,
+        &feedback_pointer(new_at, PointerPhase::Down),
+        &resized,
+    );
+    assert_eq!(
+        feedback.route_input(
+            &mut match_,
+            &feedback_pointer(new_at, PointerPhase::Up),
+            &resized
+        ),
+        FeedbackInput::NewLocalGame
+    );
+    assert_eq!(match_.recorded_inputs().len(), 1);
+    assert_eq!(match_.replay_trace().accepted_inputs().len(), 1);
+}
+
+#[test]
+fn completion_never_comes_from_a_rejection_and_reserves_the_final_chess_hud() {
+    let mut match_ = chess_match_with_clock(10);
+    let mut feedback = LocalFeedback::default();
+    feedback.note_error(&LocalMatchError::Rejected(RuleError::code(
+        RuleErrorCode::MatchOver,
+    )));
+    feedback.sync_match(&match_);
+    assert!(feedback
+        .present(&frame(0))
+        .unwrap()
+        .commands()
+        .iter()
+        .any(|command| matches!(command, RenderCmd::Text { text, .. } if text == "Move rejected")));
+    assert!(feedback.allows_gameplay(false));
+    match_.advance_frame(&frame(10)).unwrap();
+    feedback.sync_match(&match_);
+
+    for kind in [
+        tabula_design::ThemeKind::Light,
+        tabula_design::ThemeKind::Dark,
+        tabula_design::ThemeKind::HighContrastLight,
+        tabula_design::ThemeKind::HighContrastDark,
+    ] {
+        for size in [
+            Vec2::new(320.0, 568.0),
+            Vec2::new(568.0, 320.0),
+            Vec2::new(900.0, 720.0),
+        ] {
+            let full = FrameCtx::new(
+                Viewport::new(size).unwrap(),
+                Dpi::new(2.0).unwrap(),
+                10,
+                tabula_design::Theme::by_kind(kind),
+            );
+            let board = feedback.board_frame(&full);
+            match_.local_mut().set_viewport(board.viewport());
+            assert_eq!(board.dpi(), full.dpi());
+            assert_eq!(board.now_ms(), full.now_ms());
+            assert_eq!(board.theme(), full.theme());
+            let dock = feedback.present(&full).unwrap();
+            assert_eq!(MacroquadRenderer::preflight(&dock, &full), Ok(()));
+            let panel = dock
+                .commands()
+                .iter()
+                .find_map(|command| match command {
+                    RenderCmd::Rect {
+                        rect,
+                        fill: Some(tabula_presentation::Paint::Solid(color)),
+                        ..
+                    } if *color == full.theme().color.surface_container_high => Some(*rect),
+                    _ => None,
+                })
+                .unwrap();
+            let status = ChessLayout::from_viewport(board.viewport()).status();
+            assert!(
+                status.origin().y + status.size().y <= panel.origin().y
+                    || status.origin().x + status.size().x <= panel.origin().x
+            );
+            assert!(match_.present(&board).commands().iter().any(
+                |command| matches!(command, RenderCmd::Text { text, at, .. } if text.starts_with("Game over") && status.contains(*at))
+            ));
+            assert!(dock.commands().iter().any(|command| matches!(command,
+                RenderCmd::Rect { rect, fill: Some(tabula_presentation::Paint::Solid(color)), .. }
+                    if *color == full.theme().color.primary && rect.size().min_element() >= 44.0)));
+        }
+    }
+    let tiny = FrameCtx::new(
+        Viewport::new(Vec2::new(320.0, 320.0)).unwrap(),
+        Dpi::new(1.0).unwrap(),
+        10,
+        tabula_design::Theme::by_kind(tabula_design::ThemeKind::Light),
+    );
+    assert_eq!(feedback.board_frame(&tiny), tiny);
+    assert!(feedback.present(&tiny).unwrap().commands().is_empty());
+    assert!(!feedback.allows_gameplay(true));
+}
+
+#[test]
 fn chess_presenter_produces_macroquad_supported_render_list() {
     let match_ = chess_match();
     let frame = frame(0);
@@ -357,7 +651,9 @@ fn route_tiles_feedback(
 ) -> FeedbackInput {
     let routed = feedback.route_input(match_, event, frame);
     if routed == FeedbackInput::PassThrough {
-        match_.handle_presentation_input(event, frame).unwrap();
+        let board = feedback.board_frame(frame);
+        match_.local_mut().set_viewport(board.viewport());
+        match_.handle_presentation_input(event, &board).unwrap();
     }
     routed
 }
@@ -619,9 +915,14 @@ fn assert_terminal_tiles_inspection(match_: &mut TilesMatch, frame: &FrameCtx) {
     let terminal_view = match_.view().clone();
     let attempts = match_.recorded_inputs().len();
     let accepted = match_.replay_trace().accepted_inputs().len();
+    let outcome = match_.ended().unwrap().clone();
+    let mut feedback = LocalFeedback::default();
+    feedback.sync_match(match_);
+    let board_frame = feedback.board_frame(frame);
+    match_.local_mut().set_viewport(board_frame.viewport());
     let camera_before = match_.local_mut().camera();
     let zoom_at = match_
-        .present(frame)
+        .present(&board_frame)
         .commands()
         .iter()
         .find_map(|command| match command {
@@ -638,9 +939,10 @@ fn assert_terminal_tiles_inspection(match_: &mut TilesMatch, frame: &FrameCtx) {
         pointer(zoom_at, PointerPhase::Down),
         pointer(zoom_at, PointerPhase::Up),
     ] {
-        match_
-            .handle_presentation_input(&event, frame)
-            .expect("terminal zoom is local only");
+        assert_eq!(
+            route_tiles_feedback(match_, &mut feedback, &event, frame),
+            FeedbackInput::PassThrough
+        );
     }
     assert_ne!(
         match_.local_mut().camera().zoom().to_bits(),
@@ -655,15 +957,56 @@ fn assert_terminal_tiles_inspection(match_: &mut TilesMatch, frame: &FrameCtx) {
         tiles_key(Key::Enter),
         tiles_key(Key::Space),
     ] {
-        match_
-            .handle_presentation_input(&event, frame)
-            .expect("terminal inspection stays available");
+        assert_eq!(
+            route_tiles_feedback(match_, &mut feedback, &event, frame),
+            FeedbackInput::PassThrough
+        );
     }
     assert_ne!(
         match_.local_mut().camera().origin(),
         zoomed.origin(),
         "pan must actually change"
     );
+    assert_eq!(match_.view(), &terminal_view);
+    assert_eq!(match_.recorded_inputs().len(), attempts);
+    assert_eq!(match_.replay_trace().accepted_inputs().len(), accepted);
+    assert_eq!(match_.ended(), Some(&outcome));
+
+    for kind in [
+        tabula_design::ThemeKind::Light,
+        tabula_design::ThemeKind::Dark,
+        tabula_design::ThemeKind::HighContrastLight,
+        tabula_design::ThemeKind::HighContrastDark,
+    ] {
+        for size in [
+            Vec2::new(320.0, 568.0),
+            Vec2::new(568.0, 320.0),
+            Vec2::new(900.0, 720.0),
+        ] {
+            let full = FrameCtx::new(
+                Viewport::new(size).unwrap(),
+                Dpi::new(1.0).unwrap(),
+                0,
+                tabula_design::Theme::by_kind(kind),
+            );
+            let board = feedback.board_frame(&full);
+            match_.local_mut().set_viewport(board.viewport());
+            assert!(board.viewport().size().y >= 320.0);
+            let scene = match_.present(&board);
+            assert_eq!(MacroquadRenderer::preflight(&scene, &full), Ok(()));
+            for seat in &match_.view().seats {
+                let score = match_.view().scores[seat];
+                assert!(scene.commands().iter().any(|command| matches!(command,
+                    RenderCmd::Text { text, .. } if text == &format!("S{}: {score}", seat.0) || text.starts_with(&format!("Seat {}: {score}", seat.0)))));
+            }
+            assert!(scene.commands().iter().any(|command| matches!(command,
+                RenderCmd::Text { text, .. } if text.starts_with("Match over"))));
+            assert_eq!(
+                MacroquadRenderer::preflight(&feedback.present(&full).unwrap(), &full),
+                Ok(())
+            );
+        }
+    }
     assert_eq!(match_.view(), &terminal_view);
     assert_eq!(match_.recorded_inputs().len(), attempts);
     assert_eq!(match_.replay_trace().accepted_inputs().len(), accepted);

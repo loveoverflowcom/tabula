@@ -1,6 +1,7 @@
 //! Honest feedback for the synchronous local shell. (doc 04 §4, §10)
 //!
-//! This adapter consumes stable error classes, never state or error details.
+//! This adapter consumes stable error classes and the local executor's terminal
+//! fact, never state, outcome details, standings, or replay payloads.
 //! It has no pending/network/loading state: local inputs finish synchronously.
 //! Recovery starts a fresh local match; it never claims to resume a stopped one.
 
@@ -13,7 +14,7 @@ use tabula_presentation::{
     ActionButton, Align, ButtonInteraction, ButtonTone, Camera2D, Corners, FocusGraph, FocusId,
     FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation, InputEvent, Key, Layer,
     NavigationAction, Paint, PointerButton, PointerPhase, Rect, RenderCmd, RenderList,
-    RenderListBuilder, RenderListError, TextStyleToken, Vec2,
+    RenderListBuilder, RenderListError, TextStyleToken, Vec2, Viewport,
 };
 
 use crate::{LocalMatch, LocalMatchError};
@@ -24,6 +25,7 @@ const RECOVERY: FocusId = FocusId::new(1);
 enum Feedback {
     Rejected(RuleErrorCode),
     CannotSubmit,
+    Completed,
     Stopped(StopReason),
 }
 
@@ -64,9 +66,45 @@ pub struct LocalFeedback {
     focus: FocusState,
     activation_guard: [bool; 2],
     pointer_owners: [PointerOwner; 3],
+    pointer_button_bounds: Option<Rect>,
 }
 
 impl LocalFeedback {
+    /// Shows local completion only after the executor accepted an end effect.
+    ///
+    /// The game's projection retains the result. This compact action dock does
+    /// not copy canonical outcomes or infer completion from rejected moves.
+    /// Fatal errors remain latched even when a conflicting effect left an
+    /// earlier outcome in `ended()` (I-5/I-10; doc 04 §3.4).
+    /// Returns true only when the completion dock first opens, so the native
+    /// shell can suppress activation keys held when a timer or bot ended play.
+    pub fn sync_match<R, P>(&mut self, local_match: &LocalMatch<R, P>) -> bool
+    where
+        R: GameRules,
+        P: GamePresentation<Rules = R>,
+    {
+        if local_match.ended().is_some() && !self.is_stopped() && !self.is_completed() {
+            self.set(Feedback::Completed);
+            return true;
+        }
+        false
+    }
+
+    /// Reserves a separate completion dock without covering the game's final HUD.
+    ///
+    /// Input and rendering must use this same frame and viewport. The dock uses
+    /// the original full frame; the board retains its screen-space origin. Small
+    /// surfaces keep the complete board until a usable dock fits (doc 04 §10).
+    #[must_use]
+    pub fn board_frame(&self, frame: &FrameCtx) -> FrameCtx {
+        self.layout(frame)
+            .and_then(|layout| layout.board_size)
+            .and_then(|size| Viewport::new(size).ok())
+            .map_or(*frame, |viewport| {
+                FrameCtx::new(viewport, frame.dpi(), frame.now_ms(), frame.theme())
+            })
+    }
+
     /// Records a stable class without copying developer detail into visible UI.
     ///
     /// A terminal rejection is not a fatal runtime failure. Stopped sessions stay
@@ -78,7 +116,7 @@ impl LocalFeedback {
             LocalMatchError::InputIndexExhausted => Feedback::Stopped(StopReason::InputLimit),
             LocalMatchError::MultipleEndMatch => Feedback::Stopped(StopReason::InvalidEffects),
             LocalMatchError::MatchEnded => {
-                if !self.is_stopped() {
+                if !self.is_stopped() && !self.is_completed() {
                     self.clear();
                 }
                 return;
@@ -103,7 +141,7 @@ impl LocalFeedback {
 
     /// Clears a recoverable warning only after the shell observes real rules acceptance.
     pub fn note_accepted_input(&mut self) {
-        if !self.is_stopped() {
+        if !self.is_stopped() && !self.is_completed() {
             self.clear();
         }
     }
@@ -120,6 +158,7 @@ impl LocalFeedback {
         self.feedback.map(|feedback| match feedback {
             Feedback::Rejected(code) => rejection_message(code),
             Feedback::CannotSubmit => "This viewer cannot send moves. Choose a player seat.",
+            Feedback::Completed => "Final result shown on board.",
             Feedback::Stopped(StopReason::InputLimit) => {
                 "This local session reached its input limit."
             }
@@ -152,6 +191,7 @@ impl LocalFeedback {
         R: GameRules,
         P: GamePresentation<Rules = R>,
     {
+        self.sync_match(local_match);
         let routed = self.on_input(input, frame);
         if let (
             FeedbackInput::CancelGameplayPointer,
@@ -168,34 +208,21 @@ impl LocalFeedback {
     /// Handles one real recovery control using shared pointer/keyboard mechanics.
     ///
     /// Tab enters a nonmodal banner; Escape dismisses it. Pointer input outside
-    /// it returns to the board. Fatal feedback consumes all gameplay input and
-    /// Escape never resumes it. Focus loss and canceled presses cannot activate.
+    /// it returns to the board. Completion keeps its dock visible; Escape returns
+    /// keyboard focus to the board. Fatal feedback consumes all gameplay input
+    /// and Escape never resumes it. Interrupted presses cannot activate.
     pub fn on_input(&mut self, input: &InputEvent, frame: &FrameCtx) -> FeedbackInput {
-        if let InputEvent::Focus(focused) = input {
-            self.focus.set_window_focused(*focused);
-        }
-        if matches!(input, InputEvent::Focus(false)) {
-            // A release may occur outside the focused surface. A fresh press on
-            // return must remain usable; the unfocused graph still cannot act.
-            self.interaction = ButtonInteraction::default();
-            self.activation_guard = [false; 2];
-            self.pointer_owners = [PointerOwner::Idle; 3];
-        }
-        if !self.focus.is_window_focused() && !matches!(input, InputEvent::Focus(_)) {
+        if self.blocks_unfocused_or_held_input(input) {
             return FeedbackInput::Consumed;
-        }
-        if let InputEvent::Key { key, pressed } = input {
-            if let Some(index) = activation_index(*key) {
-                if self.activation_guard[index] {
-                    if *pressed {
-                        return FeedbackInput::Consumed;
-                    }
-                    self.activation_guard[index] = false;
-                }
-            }
         }
         let pointer_route = self.pointer_route(input, frame);
         let Some(layout) = self.layout(frame) else {
+            // An unavailable control still observes release/cancel. Otherwise
+            // a held key or pointer can stay latched through a tiny resize.
+            let graph = FocusGraph::new(Vec::new()).expect("an empty graph is valid");
+            self.interaction
+                .on_input(input, &[], &graph, &mut self.focus);
+            self.pointer_button_bounds = None;
             if let Some(routed) = pointer_route {
                 return routed;
             }
@@ -209,9 +236,21 @@ impl LocalFeedback {
         let button = self.button(layout, frame);
         let graph = FocusGraph::new(vec![FocusNode::new(RECOVERY, layout.button)])
             .expect("one recovery node is a valid graph");
+        self.track_pointer_press(input, button, &graph);
         let keyboard_focus =
             self.focus.current().is_some() && self.focus.modality() == FocusModality::Keyboard;
         let consume = match input {
+            InputEvent::Key {
+                key: Key::Escape,
+                pressed: true,
+            } if self.is_completed() => {
+                self.focus.set_current(None);
+                // Let the shared control cancel its press and let the presenter
+                // clear any local keyboard state. Completion stays visible.
+                self.interaction
+                    .on_input(input, &[button], &graph, &mut self.focus);
+                return FeedbackInput::PassThrough;
+            }
             InputEvent::Key {
                 key: Key::Escape,
                 pressed: true,
@@ -263,7 +302,7 @@ impl LocalFeedback {
         }
         if consume && matches!(action, NavigationAction::Activate(RECOVERY)) {
             self.suppress_opening_input(input);
-            if stopped {
+            if stopped || self.is_completed() {
                 return FeedbackInput::NewLocalGame;
             }
             self.clear();
@@ -273,6 +312,72 @@ impl LocalFeedback {
             FeedbackInput::Consumed
         } else {
             FeedbackInput::PassThrough
+        }
+    }
+
+    fn blocks_unfocused_or_held_input(&mut self, input: &InputEvent) -> bool {
+        if let InputEvent::Focus(focused) = input {
+            self.focus.set_window_focused(*focused);
+        }
+        if matches!(input, InputEvent::Focus(false)) {
+            // A release may occur outside the focused surface. A fresh press on
+            // return must remain usable; the unfocused graph still cannot act.
+            self.interaction = ButtonInteraction::default();
+            self.activation_guard = [false; 2];
+            self.pointer_owners = [PointerOwner::Idle; 3];
+            self.pointer_button_bounds = None;
+        }
+        if !self.focus.is_window_focused() && !matches!(input, InputEvent::Focus(_)) {
+            return true;
+        }
+        if let InputEvent::Key { key, pressed } = input {
+            if let Some(index) = activation_index(*key) {
+                if self.activation_guard[index] {
+                    if *pressed {
+                        return true;
+                    }
+                    self.activation_guard[index] = false;
+                }
+            }
+        }
+        false
+    }
+
+    fn track_pointer_press(
+        &mut self,
+        input: &InputEvent,
+        button: ActionButton<'_>,
+        graph: &FocusGraph,
+    ) {
+        if let InputEvent::Pointer {
+            position,
+            button: PointerButton::Primary,
+            phase,
+        } = input
+        {
+            if self
+                .pointer_button_bounds
+                .is_some_and(|bounds| bounds != button.rect())
+            {
+                self.interaction.on_input(
+                    &InputEvent::Pointer {
+                        position: *position,
+                        button: PointerButton::Primary,
+                        phase: PointerPhase::Cancel,
+                    },
+                    &[button],
+                    graph,
+                    &mut self.focus,
+                );
+            }
+            self.pointer_button_bounds = match phase {
+                PointerPhase::Down => button
+                    .rect()
+                    .contains(position.get())
+                    .then_some(button.rect()),
+                PointerPhase::Up | PointerPhase::Cancel => None,
+                PointerPhase::Move => self.pointer_button_bounds,
+            };
         }
     }
 
@@ -318,7 +423,8 @@ impl LocalFeedback {
     /// Draws feedback with the default screen camera, independently of the board camera.
     ///
     /// Fatal feedback fills the screen and stays visible; recoverable feedback
-    /// leaves the HUD and the rest of the board available. (doc 04 §5, §10)
+    /// leaves the HUD and the rest of the board available. Completion reserves
+    /// its own dock through `board_frame`, preserving the final HUD. (doc 04 §5, §10)
     pub fn present(&self, frame: &FrameCtx) -> Result<RenderList, RenderListError> {
         let mut builder = RenderListBuilder::new(Camera2D::default());
         let Some(layout) = self.layout(frame) else {
@@ -347,13 +453,27 @@ impl LocalFeedback {
         let width = Positive::new(layout.panel.size().x - padding * 2.0)
             .map_err(|_| RenderListError::InvalidGeometry)?;
         let top = layout.panel.origin() + Vec2::splat(padding);
-        let (title, message_at) = if self.is_stopped() {
-            ("Local game stopped", top + Vec2::new(0.0, 32.0))
+        let (title, message_at, title_color) = if self.is_stopped() {
+            (
+                "Local game stopped",
+                top + Vec2::new(0.0, 32.0),
+                theme.color.danger,
+            )
+        } else if self.is_completed() {
+            (
+                "Local game ended",
+                top + Vec2::new(0.0, 28.0),
+                theme.color.on_surface,
+            )
         } else {
-            ("Move rejected", top + Vec2::new(0.0, 28.0))
+            (
+                "Move rejected",
+                top + Vec2::new(0.0, 28.0),
+                theme.color.danger,
+            )
         };
         for (value, at, style, color) in [
-            (title, top, TextStyleToken::TitleMd, theme.color.danger),
+            (title, top, TextStyleToken::TitleMd, title_color),
             (
                 self.message().unwrap_or_default(),
                 message_at,
@@ -398,24 +518,33 @@ impl LocalFeedback {
         matches!(self.feedback, Some(Feedback::Stopped(_)))
     }
 
+    fn is_completed(&self) -> bool {
+        self.feedback == Some(Feedback::Completed)
+    }
+
     fn set(&mut self, next: Feedback) {
-        if self.is_stopped() || self.feedback == Some(next) {
+        if self.is_stopped()
+            || self.feedback == Some(next)
+            || (self.is_completed() && !matches!(next, Feedback::Stopped(_)))
+        {
             return;
         }
         let focused = self.focus.is_window_focused();
         self.feedback = Some(next);
         self.interaction = ButtonInteraction::default();
+        self.pointer_button_bounds = None;
         self.focus = FocusState::new(None, FocusModality::Pointer, focused);
     }
 
     fn clear(&mut self) {
         self.feedback = None;
         self.interaction = ButtonInteraction::default();
+        self.pointer_button_bounds = None;
         self.focus.set_current(None);
     }
 
     fn button(&self, layout: FeedbackLayout, frame: &FrameCtx) -> ActionButton<'static> {
-        let label = if self.is_stopped() {
+        let label = if self.is_stopped() || self.is_completed() {
             "New local game"
         } else {
             "Dismiss"
@@ -427,7 +556,7 @@ impl LocalFeedback {
             frame.theme().density.min_target,
         )
         .expect("recovery bounds retain the target floor")
-        .tone(if self.is_stopped() {
+        .tone(if self.is_stopped() || self.is_completed() {
             ButtonTone::Filled
         } else {
             ButtonTone::Tonal
@@ -437,6 +566,51 @@ impl LocalFeedback {
     fn layout(&self, frame: &FrameCtx) -> Option<FeedbackLayout> {
         self.feedback?;
         let viewport = frame.viewport().size();
+        let target = frame.theme().density.min_target.get().max(44.0);
+        if self.is_completed() {
+            // Retain at least 320dp of board height: the existing compact score
+            // presenters need that space. A short landscape uses a side dock.
+            let (panel, board_size) = if viewport.x >= 320.0 && viewport.y >= 484.0 {
+                (
+                    Rect::new(
+                        Vec2::new(12.0, viewport.y - 152.0),
+                        Vec2::new(viewport.x - 24.0, 140.0),
+                    )
+                    .ok()?,
+                    Vec2::new(viewport.x, viewport.y - 164.0),
+                )
+            } else if viewport.x >= 560.0 && viewport.y >= 320.0 {
+                (
+                    Rect::new(
+                        Vec2::new(viewport.x - 228.0, 12.0),
+                        Vec2::new(216.0, viewport.y - 24.0),
+                    )
+                    .ok()?,
+                    Vec2::new(viewport.x - 240.0, viewport.y),
+                )
+            } else {
+                return None;
+            };
+            let button_width = if viewport.x < 600.0 {
+                panel.size().x - 32.0
+            } else {
+                176.0
+            };
+            let button = Rect::new(
+                panel.origin()
+                    + Vec2::new(
+                        panel.size().x - button_width - 16.0,
+                        panel.size().y - target - 16.0,
+                    ),
+                Vec2::new(button_width, target),
+            )
+            .ok()?;
+            return Some(FeedbackLayout {
+                panel,
+                button,
+                board_size: Some(board_size),
+            });
+        }
         // A minimized/tiny surface cannot fit a usable target; retain the error
         // state until it grows instead of creating clipped geometry or targets.
         if viewport.x < 240.0 || viewport.y < 248.0 {
@@ -449,14 +623,17 @@ impl LocalFeedback {
             Vec2::new(width, height),
         )
         .ok()?;
-        let target = frame.theme().density.min_target.get().max(44.0);
         let button_width = if self.is_stopped() { 176.0 } else { 104.0 };
         let button = Rect::new(
             panel.origin() + Vec2::new(width - button_width - 16.0, height - target - 16.0),
             Vec2::new(button_width, target),
         )
         .ok()?;
-        Some(FeedbackLayout { panel, button })
+        Some(FeedbackLayout {
+            panel,
+            button,
+            board_size: None,
+        })
     }
 }
 
@@ -464,6 +641,7 @@ impl LocalFeedback {
 struct FeedbackLayout {
     panel: Rect,
     button: Rect,
+    board_size: Option<Vec2>,
 }
 
 fn activation_index(key: Key) -> Option<usize> {

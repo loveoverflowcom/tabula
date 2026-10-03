@@ -80,7 +80,7 @@ async fn main() {
             SelectedGame::Chess => run_chess(&mut renderer, &mut audio, &theme).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
             SelectedGame::Tiles => run_tiles(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
         }
-        // The only return from a stopped session is an explicit New local game
+        // A completed or stopped session returns only after New local game.
         // activation. Reconstruct the match, local state, clocks and bot RNG.
     }
 }
@@ -201,14 +201,15 @@ async fn run_local<R, P>(
             session_elapsed_ms(started_at_ms, presentation_now_ms()),
             *theme,
         );
-        local_match.local_mut().set_viewport(frame.viewport());
+        let board_frame = sync_local_frame(&mut local_match, &mut feedback, &frame);
 
         if feedback.allows_gameplay(local_match.ended().is_some()) {
-            match local_match.advance_frame(&frame) {
+            match local_match.advance_frame(&board_frame) {
                 Ok(cues) => play_cues(audio, &cues),
                 Err(error) => feedback.note_timer_error(&error),
             }
         }
+        sync_local_frame(&mut local_match, &mut feedback, &frame);
 
         for event in renderer.drain_input() {
             match feedback.route_input(&mut local_match, &event, &frame) {
@@ -223,7 +224,9 @@ async fn run_local<R, P>(
             // Fatal feedback consumed input above. Terminal matches still allow
             // local inspection; LocalMatch discards any emitted intent.
             let accepted_before = local_match.replay_trace().accepted_inputs().len();
-            match local_match.handle_presentation_input(&event, &frame) {
+            let was_ended = local_match.ended().is_some();
+            let board_frame = sync_local_frame(&mut local_match, &mut feedback, &frame);
+            match local_match.handle_presentation_input(&event, &board_frame) {
                 Ok(cues) => {
                     play_cues(audio, &cues);
                     if local_match.replay_trace().accepted_inputs().len() > accepted_before {
@@ -234,6 +237,10 @@ async fn run_local<R, P>(
                     feedback.note_error(&error);
                     feedback.suppress_opening_input(&event);
                 }
+            }
+            sync_local_frame(&mut local_match, &mut feedback, &frame);
+            if !was_ended && local_match.ended().is_some() {
+                feedback.suppress_opening_input(&event);
             }
         }
 
@@ -280,22 +287,55 @@ async fn run_local<R, P>(
         };
         local_match.set_viewer(viewer);
 
-        if feedback.allows_gameplay(false) {
-            let scene = local_match.present(&frame);
-            if renderer.submit(&scene).is_err() {
-                feedback.note_render_error();
-            }
-        }
-        // The recovery list uses supported screen-space primitives, separately
-        // from the board camera and even when the board itself failed preflight.
-        if let Ok(scene) = feedback.present(&frame) {
-            let _ = renderer.submit(&scene);
-        }
+        let board_frame = sync_local_frame(&mut local_match, &mut feedback, &frame);
+        present_local_scenes(&local_match, &mut feedback, renderer, &frame, &board_frame);
         renderer
             .end_frame()
             .expect("Macroquad end_frame is infallible");
         mq::next_frame().await;
     }
+}
+
+/// Draws the board and screen-space feedback, preserving fatal render recovery.
+fn present_local_scenes<R, P>(
+    local_match: &LocalMatch<R, P>,
+    feedback: &mut LocalFeedback,
+    renderer: &mut MacroquadRenderer,
+    frame: &tabula_presentation::FrameCtx,
+    board_frame: &tabula_presentation::FrameCtx,
+) where
+    R: GameRules,
+    P: GamePresentation<Rules = R>,
+{
+    if feedback.allows_gameplay(false)
+        && renderer.submit(&local_match.present(board_frame)).is_err()
+    {
+        feedback.note_render_error();
+    }
+    // Supported screen-space primitives remain available even when the board
+    // failed preflight. The dock uses the full frame, never the board camera.
+    if let Ok(scene) = feedback.present(frame) {
+        let _ = renderer.submit(&scene);
+    }
+}
+
+/// Uses one viewport for board input/rendering and suppresses held completion keys.
+fn sync_local_frame<R, P>(
+    local_match: &mut LocalMatch<R, P>,
+    feedback: &mut LocalFeedback,
+    frame: &tabula_presentation::FrameCtx,
+) -> tabula_presentation::FrameCtx
+where
+    R: GameRules,
+    P: GamePresentation<Rules = R>,
+    P::Local: SetViewport,
+{
+    if feedback.sync_match(local_match) {
+        suppress_held_activation(feedback);
+    }
+    let board_frame = feedback.board_frame(frame);
+    local_match.local_mut().set_viewport(board_frame.viewport());
+    board_frame
 }
 
 /// The one thing the generic loop needs from a presenter's local state.
@@ -405,6 +445,12 @@ fn play_cues(audio: &mut MacroquadAudioSink, cues: &tabula_presentation::AudioCu
 /// A recovery key held across creation cannot immediately submit a new move.
 fn fresh_feedback() -> LocalFeedback {
     let mut feedback = LocalFeedback::default();
+    suppress_held_activation(&mut feedback);
+    feedback
+}
+
+/// A timer/bot completion must not turn a held board key into a restart action.
+fn suppress_held_activation(feedback: &mut LocalFeedback) {
     for (key, native_key) in [
         (tabula_presentation::Key::Enter, mq::KeyCode::Enter),
         (tabula_presentation::Key::Space, mq::KeyCode::Space),
@@ -416,7 +462,6 @@ fn fresh_feedback() -> LocalFeedback {
             });
         }
     }
-    feedback
 }
 
 /// Converts Macroquad's monotonic presentation clock into the renderer frame fact.

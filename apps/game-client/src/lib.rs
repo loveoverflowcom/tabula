@@ -1404,16 +1404,37 @@ mod tests {
             .expect("first terminal outcome exists")
             .clone();
 
-        assert!(matches!(
-            match_.interpret_effects(&[Effect::EndMatch {
+        let error = match_
+            .interpret_effects(&[Effect::EndMatch {
                 outcome: first.clone(),
-            }]),
-            Err(LocalMatchError::MultipleEndMatch)
-        ));
+            }])
+            .expect_err("a second terminal effect must fail");
+        assert!(matches!(error, LocalMatchError::MultipleEndMatch));
         assert_eq!(
             match_.ended().expect("first outcome remains").summary(),
             first.summary()
         );
+
+        // `ended()` still holds the first effect. The shell must report the
+        // actual conflicting-effect failure rather than completed play.
+        let mut feedback = crate::runtime_ui::LocalFeedback::default();
+        assert!(feedback.sync_match(&match_));
+        feedback.note_error(&error);
+        for _ in 0..3 {
+            assert!(!feedback.sync_match(&match_));
+            feedback.note_accepted_input();
+            feedback.note_error(&LocalMatchError::MatchEnded);
+            assert_eq!(
+                feedback.message(),
+                Some("The local session received conflicting end results.")
+            );
+            assert!(!feedback.allows_gameplay(false));
+        }
+        let list = feedback.present(&frame(10)).unwrap();
+        assert!(list.commands().iter().any(|command| matches!(command,
+            tabula_presentation::RenderCmd::Text { text, .. } if text == "Local game stopped")));
+        assert!(!list.commands().iter().any(|command| matches!(command,
+            tabula_presentation::RenderCmd::Text { text, .. } if text == "Local game ended")));
     }
 
     #[test]
