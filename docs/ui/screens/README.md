@@ -10,6 +10,11 @@ They describe intended behavior; implementation and platform evidence are record
 | 01 — home and Library | [Library](01-library.md) | Leptos `/` and `/games` in Phase 5; native shell in Phase 6 |
 | 02 — game detail | [Detail](02-game-detail.md) | Leptos `/games/:id` through registry interfaces in Phase 5 |
 | 03 — new match setup | [Setup](03-new-match.md) | Proposed `?setup=1` detail substate; real driver/authority validates creation |
+| Gameplay contract for issue #51 | [Ownership, runtime states and input boundaries](gameplay.md); [verification](gameplay-verification.md) | Existing local presenters; network/recovery Phase 4 and Board Reader status/actions Phase 5 |
+| 04 — Chess gameplay | [Chess](04-chess.md) | Current Phase-2 presenter; online adapter stays gated |
+| 05 — Caro gameplay | [Caro](05-caro.md) | Future Phase-3 rules/presenter; design placeholder |
+| 06 — Tiles gameplay | [Tiles](06-tiles.md) | Current Phase-3 presenter; online/async operations stay gated |
+| 07 — Werewolf gameplay | [Werewolf](07-werewolf.md) | Creation-only headless foundation; presentation/social Phase 7, voice Phase 8 |
 | 13 — user settings | [Settings](13-settings.md) | Leptos `/settings` after Phase 4 exit; native shell at its phase |
 | 22 — component showcase | [Showcase](22-component-showcase.md) | Design/development documentation; no product route |
 
@@ -22,6 +27,11 @@ Issue #50 adds specifications for find → understand capabilities → configure
 start, with source-backed availability and an explicit runtime acceptance ledger.
 The [pinned discovery artwork](https://github.com/loveoverflowcom/tabula/tree/030da25d0098e240ab2cf36dacf9892e8b320a89/docs/ui/design-02/02-discovery)
 is reference provenance; this stage adds no discovery preview or executable shell.
+
+Issue #51 adds source-grounded gameplay specifications for screens 04–07 and
+the loader/reconnect/error contract. The
+[pinned gameplay artwork](https://github.com/loveoverflowcom/tabula/tree/030da25d0098e240ab2cf36dacf9892e8b320a89/docs/ui/design-02/03-gameplay)
+is design provenance; availability and executed checks are recorded separately.
 
 ```sh
 python3 -m http.server 8000 --directory .
