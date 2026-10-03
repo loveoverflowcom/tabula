@@ -1,0 +1,12 @@
+[
+  {
+    "command": "cargo check --offline --workspace --no-default-features",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/01-features.log"
+  },
+  {
+    "command": "cargo check --offline --workspace --all-features",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/02-features.log"
+  }
+]

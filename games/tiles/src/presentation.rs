@@ -50,18 +50,18 @@
 use core::fmt::Write as _;
 
 use tabula_design::{Positive, Theme};
-use tabula_game_api::{A11yAction, A11yDescription, ActionId, GameRules};
+use tabula_game_api::{A11yAction, A11yDescription, ActionId, AssetRef, GameRules};
 use tabula_presentation::{
     ActionButton, Affine2, Align, AssetPackRef, AudioCue, AudioCues, Border, ButtonInteraction,
     ButtonShape, ButtonTone, Camera2D, Corners, FocusGraph, FocusId, FocusNode, FocusState,
-    FrameCtx, GamePresentation, InputEvent, Intent, Key, Layer, NavigationAction, Paint,
-    PointerButton, PointerPhase, PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder,
-    RenderListError, TextStyleToken, Vec2, Viewport,
+    FrameCtx, GamePresentation, InputEvent, Intent, Key, Layer, MotionMode, MotionTimeline,
+    NavigationAction, Opacity, Paint, PointerButton, PointerPhase, PointerPosition, Rect,
+    RenderCmd, RenderList, RenderListBuilder, RenderListError, TextStyleToken, Vec2, Viewport,
 };
 
 use crate::rules::{
-    legal_placements, Command, Coord, Event, FeatureKind, PlacedTile, Rotation, Side, Terrain,
-    TilesRules, TurnPhase, View,
+    legal_placements, Command, Coord, Event, PlacedTile, Rotation, Side, TileKind, TilesRules,
+    TurnPhase, View,
 };
 
 /// One board square, in world units, at zoom 1.
@@ -85,6 +85,35 @@ const HUD_GAP: f32 = 8.0;
 const CONNECTED_GAP: f32 = 2.0;
 /// Height of the status strip along the top.
 const HUD_STATUS_HEIGHT: f32 = 64.0;
+
+/// Original, editable CC0 renderer-demo fixture. Production packs retain
+/// ADR-017's external-delivery policy; this tiny fixture is local proof only.
+pub mod fixture {
+    /// Exact pinned pack metadata built with `cargo xtask pack-assets tiles`.
+    pub const MANIFEST: &str = include_str!("../../../assets/packs/tiles/fixture.pack.toml");
+    /// White-mask RGBA atlas at explicitly declared density 1.
+    pub const ATLAS_1X: &[u8] = include_bytes!("../../../assets/packs/tiles/tiles@1x.png");
+    /// White-mask RGBA atlas at explicitly declared density 2.
+    pub const ATLAS_2X: &[u8] = include_bytes!("../../../assets/packs/tiles/tiles@2x.png");
+}
+
+/// One accepted placement's bounded, presentation-only settling timeline.
+/// Replacing it drops the previous motion rather than queueing events. (I-10)
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct TilePlacementAnimation {
+    at: Coord,
+    tile: PlacedTile,
+    timeline: MotionTimeline,
+}
+
+/// Rotation of an unconfirmed preview. The selected quarter turn remains
+/// independent of the visual interpolation, so motion never gates a command.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PreviewRotationAnimation {
+    from: f32,
+    to: f32,
+    timeline: MotionTimeline,
+}
 
 /// Screen-fixed camera and turn actions, grouped by their meaning.
 ///
@@ -241,6 +270,11 @@ pub struct TilesLocal {
     button_focus: FocusState,
     /// Normalized key events can repeat; activation needs a fresh key press.
     activation_held: [bool; 3],
+    placement_animation: Option<TilePlacementAnimation>,
+    preview_animation: Option<PreviewRotationAnimation>,
+    /// Last shell frame used when timestamping local input feedback.
+    frame: Option<FrameCtx>,
+    reduced_motion: bool,
 }
 
 impl Default for TilesLocal {
@@ -258,11 +292,86 @@ impl Default for TilesLocal {
             buttons: ButtonInteraction::default(),
             button_focus: FocusState::default(),
             activation_held: [false; 3],
+            placement_animation: None,
+            preview_animation: None,
+            frame: None,
+            reduced_motion: false,
         }
     }
 }
 
 impl TilesLocal {
+    /// Supplies presentation time and viewport before the shell drains input.
+    /// Neither fact enters a rules command or canonical state. (doc 04 §9.1)
+    pub fn set_frame_context(&mut self, frame: &FrameCtx) {
+        self.set_viewport(frame.viewport());
+        self.frame = Some(*frame);
+    }
+
+    /// Chooses the existing semantic reduced-motion policy. Geometric tile
+    /// travel/settling is removed while accepted view facts and cues remain.
+    pub fn set_reduced_motion(&mut self, reduced: bool) {
+        if self.reduced_motion != reduced {
+            self.reduced_motion = reduced;
+            self.interrupt_motion();
+        }
+    }
+
+    const fn motion_mode(&self) -> MotionMode {
+        if self.reduced_motion {
+            MotionMode::Reduced
+        } else {
+            MotionMode::Full
+        }
+    }
+
+    /// Drops transient motion after blur, a resync, or replacing a match.
+    /// The next render reads only the authoritative permitted view.
+    pub fn interrupt_motion(&mut self) {
+        self.placement_animation = None;
+        self.preview_animation = None;
+    }
+
+    fn rotate_preview(&mut self) {
+        let now_ms = self.frame.map_or(0, FrameCtx::now_ms);
+        let from = self.preview_angle(now_ms);
+        let to = self
+            .preview_animation
+            .filter(|motion| !motion.timeline.sample(now_ms).done)
+            .map_or(rotation_radians(self.preview), |motion| motion.to)
+            + core::f32::consts::FRAC_PI_2;
+        self.preview = self.preview.next();
+        self.preview_animation = self.frame.map(|frame| PreviewRotationAnimation {
+            from,
+            to,
+            timeline: MotionTimeline::from_profile(
+                frame.now_ms(),
+                frame.theme().motion.piece_move,
+                &frame.theme(),
+                self.motion_mode(),
+            ),
+        });
+    }
+
+    fn preview_angle(&self, now_ms: u64) -> f32 {
+        if self.reduced_motion
+            && self
+                .frame
+                .is_some_and(|frame| frame.theme().motion.reduced.prefer_fade)
+        {
+            return rotation_radians(self.preview);
+        }
+        self.preview_animation
+            .map_or(rotation_radians(self.preview), |motion| {
+                let sample = motion.timeline.sample(now_ms);
+                if sample.done {
+                    rotation_radians(self.preview)
+                } else {
+                    tabula_presentation::lerp_f32(motion.from, motion.to, sample.factor)
+                }
+            })
+    }
+
     #[must_use]
     pub const fn camera(&self) -> Camera2D {
         self.camera
@@ -405,7 +514,7 @@ impl TilesLocal {
                 None
             }
             Control::Rotate => {
-                self.preview = self.preview.next();
+                self.rotate_preview();
                 None
             }
             Control::Confirm => act_on_square(view, self, self.cursor),
@@ -499,14 +608,16 @@ impl GamePresentation for TilesPresentation {
     fn on_view_event(
         event: &<TilesRules as GameRules>::ViewEvent,
         local: &mut TilesLocal,
-        _frame: &FrameCtx,
+        frame: &FrameCtx,
     ) -> AudioCues {
         let mut cues = AudioCues::new();
         // A release cannot reuse an affordance from the previous projection.
         local.press = None;
         local.buttons = ButtonInteraction::default();
         match event {
-            Event::TilePlaced { at, .. } => {
+            Event::TilePlaced {
+                at, kind, rotation, ..
+            } => {
                 local.last_placed = Some(*at);
                 local.cursor = *at;
                 local.claim = None;
@@ -514,6 +625,17 @@ impl GamePresentation for TilesPresentation {
                 // The next tile gets a fresh orientation rather than inheriting
                 // the last one, which is what a player at a table does.
                 local.preview = Rotation::R0;
+                local.preview_animation = None;
+                local.placement_animation = Some(TilePlacementAnimation {
+                    at: *at,
+                    tile: PlacedTile::new(*kind, *rotation),
+                    timeline: MotionTimeline::from_profile(
+                        frame.now_ms(),
+                        frame.theme().motion.tile_place,
+                        &frame.theme(),
+                        local.motion_mode(),
+                    ),
+                });
                 cues.push(AudioCue::from_static("tile-place"));
             }
             Event::MeeplePlaced { .. } => cues.push(AudioCue::from_static("token-drop")),
@@ -521,12 +643,14 @@ impl GamePresentation for TilesPresentation {
                 cues.push(AudioCue::from_static("score-update"));
             }
             Event::TileDiscarded { .. } => cues.push(AudioCue::from_static("tile-discard")),
-            Event::Ended { .. } => cues.push(AudioCue::from_static("game-end")),
+            Event::Ended { .. } => {
+                local.interrupt_motion();
+                cues.push(AudioCue::from_static("game-end"));
+            }
             Event::TileDrawn { .. }
             | Event::MeepleSkipped { .. }
-            | Event::TurnAutoResolved { .. }
-            | Event::Paused
-            | Event::Resumed => {}
+            | Event::TurnAutoResolved { .. } => {}
+            Event::Paused | Event::Resumed => local.interrupt_motion(),
         }
         cues
     }
@@ -579,6 +703,7 @@ impl GamePresentation for TilesPresentation {
                 local.button_focus.set_window_focused(*focused);
                 local.buttons = ButtonInteraction::default();
                 if !focused {
+                    local.interrupt_motion();
                     // The OS may deliver the release to another window.
                     local.activation_held = [false; 3];
                 }
@@ -847,9 +972,9 @@ fn build(view: &View, local: &TilesLocal, frame: &FrameCtx) -> Result<RenderList
     let mut builder = RenderListBuilder::new(local.camera);
 
     draw_targets(&mut builder, view, local, &theme)?;
-    draw_board(&mut builder, view, &theme)?;
+    draw_board(&mut builder, view, local, frame)?;
     draw_followers(&mut builder, view, &theme)?;
-    draw_overlays(&mut builder, view, local, &theme)?;
+    draw_overlays(&mut builder, view, local, frame)?;
     draw_hud(&mut builder, view, local, viewport, &theme)?;
 
     builder.finish()
@@ -898,116 +1023,109 @@ fn draw_targets(
     Ok(())
 }
 
-fn draw_board(
+/// Logical resource identity only: physical files, regions and density stay
+/// in the pack resolver/backend. (doc 04 §12.2)
+fn tile_asset(kind: TileKind) -> AssetRef {
+    AssetRef::new(format!("tiles/{}", kind.def().name))
+        .expect("the repository tile names are canonical logical ids")
+}
+
+fn rotation_radians(rotation: Rotation) -> f32 {
+    f32::from(rotation.quarter_turns()) * core::f32::consts::FRAC_PI_2
+}
+
+fn draw_tile(
     builder: &mut RenderListBuilder,
-    view: &View,
+    at: Coord,
+    tile: PlacedTile,
+    angle: f32,
     theme: &Theme,
 ) -> Result<(), RenderListError> {
-    for (coord, tile) in view.board.iter() {
-        let rect = world_rect(coord);
-        builder.push(RenderCmd::Rect {
-            rect,
-            radii: Corners::uniform(1.0)?,
-            fill: Some(Paint::Solid(theme.color.surface_container)),
-            border: Some(Border::new(1.0, theme.color.outline)?),
-            layer: Layer::PIECES,
-            z: 0,
-        })?;
-
-        // Edge terrain, so adjacency is readable at a glance: a city edge is a
-        // solid block against the tile border, a road edge a bar reaching the
-        // middle, a field edge nothing at all.
-        for side in Side::ALL {
-            match tile.terrain(side) {
-                Terrain::City => builder.push(city_edge(coord, side, theme)?)?,
-                Terrain::Road => builder.push(road_edge(coord, side, theme)?)?,
-                Terrain::Field => {}
-            }
-        }
-
-        for index in 0..tile.segment_count() {
-            let Some(def) = tile.segment(index) else {
-                continue;
-            };
-            if def.kind == FeatureKind::Monastery {
-                let centre = world_centre(coord);
-                let size = Vec2::splat(TILE_SIZE * 0.28);
-                builder.push(RenderCmd::Rect {
-                    rect: Rect::new(centre - size * 0.5, size)?,
-                    radii: Corners::uniform(2.0)?,
-                    fill: Some(Paint::Solid(theme.color.on_surface_variant)),
-                    border: None,
-                    layer: Layer::PIECES,
-                    z: 2,
-                })?;
-            }
-            if def.pennant {
-                let centre = world_centre(coord);
-                let size = Vec2::splat(TILE_SIZE * 0.16);
-                builder.push(RenderCmd::Rect {
-                    rect: Rect::new(centre - size * 0.5 + Vec2::splat(TILE_SIZE * 0.2), size)?,
-                    radii: Corners::uniform(size.x * 0.5)?,
-                    fill: Some(Paint::Solid(theme.color.success)),
-                    border: None,
-                    layer: Layer::PIECES,
-                    z: 3,
-                })?;
-            }
-        }
-    }
+    let rect = world_rect(at);
+    builder.push(RenderCmd::Rect {
+        rect,
+        radii: Corners::uniform(1.0)?,
+        fill: Some(Paint::Solid(theme.color.surface_container)),
+        border: Some(Border::new(1.0, theme.color.outline)?),
+        layer: Layer::PIECES,
+        z: 0,
+    })?;
+    builder.push(RenderCmd::Sprite {
+        asset: tile_asset(tile.kind),
+        rect,
+        tint: theme.color.on_surface,
+        rotation: angle,
+        pivot: world_centre(at),
+        layer: Layer::PIECES,
+        z: 1,
+    })?;
     Ok(())
 }
 
-fn city_edge(coord: Coord, side: Side, theme: &Theme) -> Result<RenderCmd, RenderListError> {
-    let rect = world_rect(coord);
-    let band = TILE_SIZE * 0.22;
-    let geometry = match side {
-        Side::North => Rect::new(rect.origin(), Vec2::new(TILE_SIZE, band)),
-        Side::East => Rect::new(
-            rect.origin() + Vec2::new(TILE_SIZE - band, 0.0),
-            Vec2::new(band, TILE_SIZE),
-        ),
-        Side::South => Rect::new(
-            rect.origin() + Vec2::new(0.0, TILE_SIZE - band),
-            Vec2::new(TILE_SIZE, band),
-        ),
-        Side::West => Rect::new(rect.origin(), Vec2::new(band, TILE_SIZE)),
-    }?;
-    Ok(RenderCmd::Rect {
-        rect: geometry,
-        radii: Corners::uniform(0.0)?,
-        fill: Some(Paint::Solid(theme.color.primary)),
-        border: None,
-        layer: Layer::PIECES,
-        z: 1,
-    })
-}
-
-fn road_edge(coord: Coord, side: Side, theme: &Theme) -> Result<RenderCmd, RenderListError> {
-    let centre = world_centre(coord);
-    let width = TILE_SIZE * 0.1;
-    let midpoint = edge_midpoint(coord, side);
-    let (bar_origin, bar_size) = if matches!(side, Side::North | Side::South) {
-        let top = centre.y.min(midpoint.y);
-        (
-            Vec2::new(centre.x - width * 0.5, top),
-            Vec2::new(width, (midpoint.y - centre.y).abs()),
-        )
-    } else {
-        let left = centre.x.min(midpoint.x);
-        (
-            Vec2::new(left, centre.y - width * 0.5),
-            Vec2::new((midpoint.x - centre.x).abs(), width),
-        )
-    };
-    Ok(RenderCmd::Rect {
-        rect: Rect::new(bar_origin, bar_size)?,
-        radii: Corners::uniform(0.0)?,
-        fill: Some(Paint::Solid(theme.color.on_surface_variant)),
-        border: None,
-        layer: Layer::PIECES,
-        z: 1,
-    })
+fn draw_board(
+    builder: &mut RenderListBuilder,
+    view: &View,
+    local: &TilesLocal,
+    frame: &FrameCtx,
+) -> Result<(), RenderListError> {
+    let theme = frame.theme();
+    for (coord, tile) in view.board.iter() {
+        // An event grants only a transient pose for the SAME permitted tile.
+        // A newer/different projection, pause or explicit resync immediately
+        // falls back to its final authoritative geometry; no duplicate tile.
+        let motion = local.placement_animation.filter(|motion| {
+            !view.paused
+                && view.status == crate::rules::Status::Playing
+                && view.last_placed == Some(motion.at)
+                && motion.at == coord
+                && motion.tile == tile
+        });
+        let sample = motion.map(|motion| motion.timeline.sample(frame.now_ms()));
+        let prefer_fade = local.reduced_motion && theme.motion.reduced.prefer_fade;
+        let settling = sample.filter(|sample| !sample.done && !prefer_fade);
+        let fading = sample.filter(|sample| !sample.done && prefer_fade);
+        if let Some(sample) = fading {
+            builder.push(RenderCmd::PushOpacity {
+                opacity: Opacity::try_from(0.45 + 0.55 * sample.factor.clamp(0.0, 1.0))
+                    .expect("clamped informative fade opacity is in range"),
+                layer: Layer::PIECES,
+                z: 0,
+            })?;
+        }
+        if let Some(sample) = settling {
+            let remainder = 1.0 - sample.factor;
+            let centre = world_centre(coord);
+            let matrix = Affine2::from_translation(centre)
+                * Affine2::from_angle(2.0f32.to_radians() * remainder)
+                * Affine2::from_scale(Vec2::splat(1.0 + 0.08 * remainder))
+                * Affine2::from_translation(-centre);
+            builder.push(RenderCmd::PushTransform {
+                matrix,
+                layer: Layer::PIECES,
+                z: 0,
+            })?;
+        }
+        draw_tile(
+            builder,
+            coord,
+            tile,
+            rotation_radians(tile.rotation),
+            &theme,
+        )?;
+        if settling.is_some() {
+            builder.push(RenderCmd::PopTransform {
+                layer: Layer::PIECES,
+                z: 0,
+            })?;
+        }
+        if fading.is_some() {
+            builder.push(RenderCmd::PopOpacity {
+                layer: Layer::PIECES,
+                z: 0,
+            })?;
+        }
+    }
+    Ok(())
 }
 
 fn draw_followers(
@@ -1033,23 +1151,14 @@ fn draw_followers(
     Ok(())
 }
 
-fn draw_overlays(
+/// Draws the clearly local, unconfirmed tile separately from board authority.
+fn draw_preview(
     builder: &mut RenderListBuilder,
     view: &View,
     local: &TilesLocal,
-    theme: &Theme,
+    frame: &FrameCtx,
 ) -> Result<(), RenderListError> {
-    if let Some(at) = view.last_placed {
-        builder.push(RenderCmd::Rect {
-            rect: world_rect(at),
-            radii: Corners::uniform(2.0)?,
-            fill: None,
-            border: Some(Border::new(3.0, theme.color.last_action)?),
-            layer: Layer::OVERLAY,
-            z: 0,
-        })?;
-    }
-
+    let theme = &frame.theme();
     // The ghost of the tile about to be placed, at the cursor: a real preview of
     // the tile in hand, bordered by whether it would be accepted there.
     //
@@ -1062,14 +1171,39 @@ fn draw_overlays(
             if !view.board.contains(target) {
                 let tile = PlacedTile::new(kind, local.preview);
                 let legal = crate::rules::is_legal_placement(&view.board, target, tile);
+                let opacity = local
+                    .preview_animation
+                    .filter(|_| local.reduced_motion && theme.motion.reduced.prefer_fade)
+                    .map_or(0.75, |motion| {
+                        0.45 + 0.30
+                            * motion
+                                .timeline
+                                .sample(frame.now_ms())
+                                .factor
+                                .clamp(0.0, 1.0)
+                    });
+                builder.push(RenderCmd::PushOpacity {
+                    opacity: Opacity::try_from(opacity).expect("preview opacity is in range"),
+                    layer: Layer::OVERLAY,
+                    z: 5,
+                })?;
+                draw_tile(
+                    builder,
+                    target,
+                    tile,
+                    local.preview_angle(frame.now_ms()),
+                    theme,
+                )?;
+                builder.push(RenderCmd::PopOpacity {
+                    layer: Layer::OVERLAY,
+                    z: 5,
+                })?;
                 builder.push(RenderCmd::Rect {
                     rect: world_rect(target),
                     radii: Corners::uniform(2.0)?,
-                    // The same fill a placed tile has, so the preview reads as
-                    // the tile itself rather than as a coloured hole.
-                    fill: Some(Paint::Solid(theme.color.surface_container)),
+                    fill: None,
                     border: Some(Border::new(
-                        3.0,
+                        if legal { 3.0 } else { 2.0 },
                         if legal {
                             theme.color.legal_target
                         } else {
@@ -1077,19 +1211,45 @@ fn draw_overlays(
                         },
                     )?),
                     layer: Layer::OVERLAY,
-                    z: 5,
+                    z: 6,
                 })?;
-                // Its edges too, so the rotation is visible before it commits.
-                for side in Side::ALL {
-                    match tile.terrain(side) {
-                        Terrain::City => builder.push(city_edge(target, side, theme)?)?,
-                        Terrain::Road => builder.push(road_edge(target, side, theme)?)?,
-                        Terrain::Field => {}
-                    }
-                }
+                // Shape + words retain validity information without colour.
+                builder.push(RenderCmd::Text {
+                    text: if legal { "+ Ready" } else { "x Invalid" }.to_owned(),
+                    at: world_rect(target).origin() + Vec2::new(TILE_SIZE * 0.5, TILE_SIZE + 2.0),
+                    style: TextStyleToken::LabelSm,
+                    align: Align::Center,
+                    max_width: Positive::new(TILE_SIZE + 12.0).ok(),
+                    color: theme.color.on_surface,
+                    layer: Layer::OVERLAY,
+                    z: 7,
+                })?;
             }
         }
     }
+
+    Ok(())
+}
+
+fn draw_overlays(
+    builder: &mut RenderListBuilder,
+    view: &View,
+    local: &TilesLocal,
+    frame: &FrameCtx,
+) -> Result<(), RenderListError> {
+    let theme = &frame.theme();
+    if let Some(at) = view.last_placed {
+        builder.push(RenderCmd::Rect {
+            rect: world_rect(at),
+            radii: Corners::uniform(2.0)?,
+            fill: None,
+            border: Some(Border::new(3.0, theme.color.last_action)?),
+            layer: Layer::OVERLAY,
+            z: 0,
+        })?;
+    }
+
+    draw_preview(builder, view, local, frame)?;
 
     // Claim slots on the tile just placed.
     if view.phase == TurnPhase::PlaceMeeple {
@@ -1682,6 +1842,345 @@ mod tests {
         let mut local = TilesLocal::default();
         local.set_viewport(frame.viewport());
         local
+    }
+
+    fn board_list(view: &View, local: &TilesLocal, frame: &FrameCtx) -> RenderList {
+        let mut builder = RenderListBuilder::new(local.camera);
+        draw_board(&mut builder, view, local, frame).expect("permitted board renders");
+        builder.finish().expect("balanced tile scopes")
+    }
+
+    fn event_for_last_tile(view: &View) -> Event {
+        let at = view.last_placed.expect("fixture placed a tile");
+        let tile = view.board.get(at).expect("tile is visible");
+        Event::TilePlaced {
+            seat: view.turn,
+            at,
+            kind: tile.kind,
+            rotation: tile.rotation,
+        }
+    }
+
+    #[test]
+    fn fixture_covers_every_tile_with_verified_explicit_density_variants() {
+        use tabula_assets::{AssetDensity, AssetPackManifest};
+        let manifest = AssetPackManifest::from_toml(fixture::MANIFEST).unwrap();
+        let bound = manifest
+            .validate_binding(
+                &TilesPresentation::asset_pack(),
+                &tabula_core::GameId::new("com.tabula.tiles").unwrap(),
+            )
+            .unwrap();
+        assert_eq!(manifest.files().len(), 2);
+        assert_eq!(manifest.resources().len(), TileKind::all().count());
+        for density in [1, 2] {
+            let bytes = if density == 1 {
+                fixture::ATLAS_1X
+            } else {
+                fixture::ATLAS_2X
+            };
+            for kind in TileKind::all() {
+                let resolved = bound
+                    .resolve(&tile_asset(kind), AssetDensity::new(density).unwrap())
+                    .unwrap();
+                assert_eq!(resolved.file().density().unwrap().get(), density);
+                resolved
+                    .file()
+                    .verify_bytes(bytes)
+                    .expect("checked-in atlas matches size/digest");
+                let region = resolved
+                    .region()
+                    .expect("every tile has an explicit atlas region");
+                assert_eq!(region.width(), 64 * u32::from(density));
+                assert_eq!(region.height(), 64 * u32::from(density));
+            }
+        }
+    }
+
+    #[test]
+    fn accepted_tile_settles_once_and_sparse_dense_samples_have_identical_final_view() {
+        let (_, view) = claim_step_with_seed(21);
+        let mut local = local_for(&frame(100));
+        let event = event_for_last_tile(&view);
+        TilesPresentation::on_view_event(&event, &mut local, &frame(100));
+        let start = board_list(&view, &local, &frame(100));
+        assert!(start
+            .commands()
+            .iter()
+            .any(|cmd| matches!(cmd, RenderCmd::PushTransform { .. })));
+        assert_eq!(
+            start
+                .commands()
+                .iter()
+                .filter(|cmd| matches!(cmd, RenderCmd::Sprite { .. }))
+                .count(),
+            view.board.len()
+        );
+        for timestamp in 101..600 {
+            let _ = board_list(&view, &local, &frame(timestamp));
+        }
+        let dense = board_list(&view, &local, &frame(1000));
+        let mut sparse_local = local.clone();
+        sparse_local.interrupt_motion();
+        let sparse = board_list(&view, &sparse_local, &frame(1000));
+        assert_eq!(
+            dense, sparse,
+            "terminal samples must exactly match permitted geometry"
+        );
+        assert!(!dense
+            .commands()
+            .iter()
+            .any(|cmd| matches!(cmd, RenderCmd::PushTransform { .. })));
+    }
+
+    #[test]
+    fn reduced_motion_uses_informative_fade_without_rotation_or_scale() {
+        let (_, view) = claim_step_with_seed(21);
+        let mut local = local_for(&frame(100));
+        local.set_frame_context(&frame(100));
+        local.set_reduced_motion(true);
+        let cues =
+            TilesPresentation::on_view_event(&event_for_last_tile(&view), &mut local, &frame(100));
+        assert_eq!(cues.len(), 1, "accepted information retains its event cue");
+        let timeline = local.placement_animation.unwrap().timeline;
+        assert_eq!(
+            timeline.duration_ms(),
+            u64::from(frame(100).theme().motion.instant.milliseconds())
+        );
+        // Host preference synchronization each frame cannot cancel a live fade.
+        local.set_reduced_motion(true);
+        let initial = board_list(&view, &local, &frame(100));
+        assert!(!initial
+            .commands()
+            .iter()
+            .any(|cmd| matches!(cmd, RenderCmd::PushTransform { .. })));
+        assert!(initial
+            .commands()
+            .iter()
+            .any(|cmd| matches!(cmd, RenderCmd::PushOpacity { .. })));
+        let end = board_list(&view, &local, &frame(100 + timeline.duration_ms()));
+        assert_eq!(
+            end,
+            board_list(
+                &view,
+                &local_for(&frame(100)),
+                &frame(100 + timeline.duration_ms())
+            )
+        );
+        let list = build(&view, &local, &frame(100)).unwrap();
+        assert!(list.commands().iter().any(|cmd| matches!(cmd, RenderCmd::Rect { border: Some(border), .. } if border.color() == frame(100).theme().color.last_action)), "last-action information persists outside the fade");
+    }
+
+    #[test]
+    fn stale_or_replaced_views_never_invent_a_tile_and_interruptions_snap() {
+        let (_, opening) = opening();
+        let (_, accepted) = claim_step_with_seed(21);
+        let mut local = local_for(&frame(100));
+        let plain = board_list(&opening, &local, &frame(100));
+        TilesPresentation::on_view_event(&event_for_last_tile(&accepted), &mut local, &frame(100));
+        assert_eq!(
+            plain,
+            board_list(&opening, &local, &frame(100)),
+            "an event cannot grant pixels absent from a permitted view"
+        );
+        let accepted_final = board_list(&accepted, &TilesLocal::default(), &frame(100));
+        for interruption in 0..4 {
+            let mut interrupted = local.clone();
+            match interruption {
+                0 => interrupted.interrupt_motion(), // host resync boundary
+                1 => {
+                    TilesPresentation::on_input(
+                        &InputEvent::Focus(false),
+                        &accepted,
+                        &mut interrupted,
+                    );
+                }
+                2 => {
+                    TilesPresentation::on_view_event(&Event::Paused, &mut interrupted, &frame(100));
+                }
+                _ => interrupted.set_reduced_motion(true),
+            }
+            assert!(interrupted.placement_animation.is_none());
+            // Camera is local; compare commands against final view rather than
+            // a default camera that intentionally differs.
+            assert_eq!(
+                accepted_final.commands(),
+                board_list(&accepted, &interrupted, &frame(100)).commands()
+            );
+        }
+        let mut replaced = accepted.clone();
+        replaced.last_placed = None;
+        let ordinary = board_list(&replaced, &TilesLocal::default(), &frame(100));
+        assert_eq!(
+            ordinary.commands(),
+            board_list(&replaced, &local, &frame(100)).commands()
+        );
+        let mut ended = accepted.clone();
+        ended.status = crate::rules::Status::Aborted;
+        assert_eq!(
+            board_list(&ended, &TilesLocal::default(), &frame(100)).commands(),
+            board_list(&ended, &local, &frame(100)).commands(),
+            "a terminal replacement view interrupts motion even without an event"
+        );
+        let (_, newer) = claim_step_with_seed(22);
+        TilesPresentation::on_view_event(&event_for_last_tile(&newer), &mut local, &frame(120));
+        let replacement = local
+            .placement_animation
+            .expect("exactly one current placement timeline");
+        assert_eq!(replacement.at, newer.last_placed.unwrap());
+        assert_eq!(replacement.tile, newer.board.get(replacement.at).unwrap());
+        assert_eq!(replacement.timeline.started_at_ms(), 120);
+    }
+
+    #[test]
+    fn rotation_is_immediate_intent_and_motion_is_local_reduced_and_replaceable() {
+        let (state, view) = opening();
+        let canonical_before = tabula_core::canonical_encode(&state).unwrap();
+        let mut local = local_for(&frame(100));
+        local.set_frame_context(&frame(100));
+        assert!(key_tap(Key::Space, &view, &mut local).is_none());
+        assert_eq!(local.preview, Rotation::R90);
+        assert_eq!(local.preview_angle(100).to_bits(), 0.0f32.to_bits());
+        assert_eq!(
+            local.preview_angle(1000).to_bits(),
+            core::f32::consts::FRAC_PI_2.to_bits()
+        );
+        local.set_frame_context(&frame(150));
+        let pose_before = local.preview_angle(150);
+        key_tap(Key::Space, &view, &mut local);
+        assert_eq!(local.preview, Rotation::R180);
+        assert_eq!(
+            local.preview_angle(150).to_bits(),
+            pose_before.to_bits(),
+            "rapid input replaces motion continuously"
+        );
+        assert_eq!(
+            tabula_core::canonical_encode(&state).unwrap(),
+            canonical_before
+        );
+        local.set_reduced_motion(true);
+        assert_eq!(
+            local.preview_angle(150).to_bits(),
+            core::f32::consts::PI.to_bits()
+        );
+        assert!(local.preview_animation.is_none());
+        assert!(
+            local.placement_animation.is_none(),
+            "preview never fabricates accepted placement motion"
+        );
+    }
+
+    #[test]
+    fn a_completed_full_preview_turn_starts_the_next_quarter_turn_from_zero() {
+        let (_, view) = opening();
+        let mut local = local_for(&frame(100));
+        local.preview = Rotation::R270;
+        local.set_frame_context(&frame(100));
+        key_tap(Key::Space, &view, &mut local);
+        assert_eq!(local.preview, Rotation::R0);
+        assert_eq!(local.preview_angle(1000).to_bits(), 0.0f32.to_bits());
+        local.set_frame_context(&frame(1000));
+        key_tap(Key::Space, &view, &mut local);
+        let motion = local.preview_animation.expect("local rotation motion");
+        assert_eq!(motion.from.to_bits(), 0.0f32.to_bits());
+        assert_eq!(
+            motion.to.to_bits(),
+            core::f32::consts::FRAC_PI_2.to_bits(),
+            "a completed wrap must not spin an extra full turn"
+        );
+    }
+
+    #[test]
+    fn rejected_placement_keeps_rules_bytes_and_cannot_start_accepted_motion() {
+        let (mut state, view) = opening();
+        let before = tabula_core::canonical_encode(&state).unwrap();
+        let mut local = local_for(&frame(100));
+        local.set_frame_context(&frame(100));
+        local.cursor = Coord::new(9, 9).unwrap();
+        key_tap(Key::Space, &view, &mut local);
+        assert!(key_tap(Key::Enter, &view, &mut local).is_none());
+        let seed = MatchSeed::from_bytes([21; 32]);
+        let mut rng = DetRng::for_input(&seed, InputIndex(1));
+        let mut ctx = Ctx {
+            now: LogicalTime::ZERO,
+            index: InputIndex(1),
+            rng: &mut rng,
+            budget: Budget::default(),
+        };
+        let result = TilesRules::apply(
+            &mut state,
+            Input::Player {
+                seat: view.turn,
+                command: Command::PlaceTile {
+                    at: local.cursor,
+                    rotation: local.preview,
+                },
+            },
+            &mut ctx,
+        );
+        assert!(result.is_err(), "negative case must actually reject");
+        assert_eq!(tabula_core::canonical_encode(&state).unwrap(), before);
+        assert!(local.placement_animation.is_none());
+        let list = build(&view, &local, &frame(100)).unwrap();
+        assert!(
+            list.commands()
+                .iter()
+                .any(|cmd| matches!(cmd, RenderCmd::Text { text, .. } if text == "x Invalid")),
+            "invalid feedback has a shape/word cue"
+        );
+    }
+
+    #[test]
+    fn sprites_and_validity_words_preserve_tokens_for_themes_dpi_resize_and_zoom() {
+        let (_, view) = opening();
+        for theme in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            for density in [1.0, 2.0] {
+                for size in [Vec2::new(800.0, 600.0), Vec2::new(390.0, 640.0)] {
+                    let frame = FrameCtx::new(
+                        Viewport::new(size).unwrap(),
+                        Dpi::new(density).unwrap(),
+                        0,
+                        Theme::by_kind(theme),
+                    );
+                    let mut local = local_for(&frame);
+                    local.set_frame_context(&frame);
+                    let (at, rotations) = legal_placements(&view.board, view.drawn.unwrap())
+                        .first()
+                        .cloned()
+                        .unwrap();
+                    local.cursor = at;
+                    local.preview = rotations[0];
+                    for zoom in [MIN_ZOOM, 1.0, MAX_ZOOM] {
+                        local.set_zoom(zoom);
+                        let list = build(&view, &local, &frame).unwrap();
+                        let sprites: Vec<_> = list
+                            .commands()
+                            .iter()
+                            .filter_map(|cmd| match cmd {
+                                RenderCmd::Sprite { tint, .. } => Some(*tint),
+                                _ => None,
+                            })
+                            .collect();
+                        assert_eq!(
+                            sprites.len(),
+                            view.board.len() + 1,
+                            "one sprite per permitted tile plus the separate preview"
+                        );
+                        assert!(sprites
+                            .iter()
+                            .all(|tint| *tint == frame.theme().color.on_surface));
+                        assert!(list.commands().iter().any(
+                            |cmd| matches!(cmd, RenderCmd::Text { text, .. } if text == "+ Ready")
+                        ));
+                    }
+                }
+            }
+        }
     }
 
     fn click(point: Vec2, phase: PointerPhase) -> InputEvent {

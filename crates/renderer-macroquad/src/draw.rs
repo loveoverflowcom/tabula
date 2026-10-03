@@ -12,6 +12,7 @@ use tabula_presentation::{
     Border, Corners, LinearGradient, Paint, Rect, RenderCmd, RenderCmdKind, RenderError,
 };
 
+use crate::assets::ResolvedSprite;
 use crate::state::{logical_transform, Clip, DrawState};
 use crate::text;
 
@@ -20,6 +21,7 @@ pub(crate) fn execute(
     state: DrawState,
     camera: tabula_presentation::Camera2D,
     frame: &tabula_presentation::FrameCtx,
+    sprite: Option<&ResolvedSprite<mq::Texture2D>>,
 ) -> Result<(), RenderError> {
     configure_clip_viewport(state.clip, frame)?;
     let transform = logical_transform(camera, state.transform);
@@ -74,8 +76,27 @@ pub(crate) fn execute(
             state.opacity.get(),
             transform,
         )?,
-        RenderCmd::Sprite { .. } => {
-            return Err(RenderError::Unsupported(RenderCmdKind::Sprite));
+        RenderCmd::Sprite {
+            rect,
+            tint,
+            rotation,
+            pivot,
+            ..
+        } => {
+            let sprite = sprite.ok_or_else(|| {
+                RenderError::Execution(String::from(
+                    "renderer-macroquad sprite was not prepared before execution",
+                ))
+            })?;
+            draw_sprite(
+                sprite,
+                *rect,
+                *tint,
+                *rotation,
+                *pivot,
+                state.opacity.get(),
+                transform,
+            )?;
         }
         RenderCmd::PushClip { .. }
         | RenderCmd::PopClip { .. }
@@ -110,7 +131,12 @@ pub(crate) fn validate(
     }
 
     match command {
-        RenderCmd::Sprite { .. } => Err(RenderError::Unsupported(RenderCmdKind::Sprite)),
+        RenderCmd::Sprite {
+            rect,
+            rotation,
+            pivot,
+            ..
+        } => sprite_quad(*rect, *rotation, *pivot, transform).map(|_| ()),
         RenderCmd::Text { .. } if !text::supports_transform(transform) => {
             Err(RenderError::Unsupported(RenderCmdKind::Text))
         }
@@ -173,19 +199,14 @@ fn configure_clip_viewport(
         }
         return Ok(());
     };
-    let dpi = frame.dpi().get();
+    let viewport = clip_device_viewport(rect, frame)?;
     let mut camera = mq::Camera2D::from_display_rect(mq::Rect::new(
         rect.origin().x,
         rect.origin().y,
         rect.size().x,
         rect.size().y,
     ));
-    camera.viewport = Some((
-        device_coordinate(rect.origin().x * dpi)?,
-        device_coordinate(rect.origin().y * dpi)?,
-        device_coordinate(rect.size().x * dpi)?,
-        device_coordinate(rect.size().y * dpi)?,
-    ));
+    camera.viewport = Some(viewport);
     mq::set_camera(&camera);
     Ok(())
 }
@@ -194,23 +215,132 @@ fn validate_clip(clip: Clip, frame: &tabula_presentation::FrameCtx) -> Result<()
     let Clip::Rect(rect) = clip else {
         return Ok(());
     };
+    clip_device_viewport(rect, frame).map(|_| ())
+}
+
+/// The contract's logical scissor has a top-left origin, while the GPU viewport has a bottom-left
+/// origin. Keep its logical camera rect intact, and invert only the physical viewport's Y origin.
+/// Both preflight and execution use this exact conversion, including off-screen rectangles.
+fn clip_device_viewport(
+    rect: Rect,
+    frame: &tabula_presentation::FrameCtx,
+) -> Result<(i32, i32, i32, i32), RenderError> {
     let dpi = frame.dpi().get();
-    device_coordinate(rect.origin().x * dpi)?;
-    device_coordinate(rect.origin().y * dpi)?;
-    device_coordinate(rect.size().x * dpi)?;
-    device_coordinate(rect.size().y * dpi)?;
-    Ok(())
+    let bottom_origin = frame.viewport().size().y - (rect.origin().y + rect.size().y);
+    Ok((
+        device_coordinate(rect.origin().x * dpi)?,
+        device_coordinate(bottom_origin * dpi)?,
+        device_coordinate(rect.size().x * dpi)?,
+        device_coordinate(rect.size().y * dpi)?,
+    ))
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::float_arithmetic)]
 fn device_coordinate(value: f32) -> Result<i32, RenderError> {
     let rounded = value.round();
-    if !rounded.is_finite() || rounded < i32::MIN as f32 || rounded > i32::MAX as f32 {
+    if !rounded.is_finite()
+        || f64::from(rounded) < f64::from(i32::MIN)
+        || f64::from(rounded) > f64::from(i32::MAX)
+    {
         return Err(RenderError::Execution(String::from(
             "renderer-macroquad scissor exceeds supported device coordinates",
         )));
     }
     Ok(rounded as i32)
+}
+
+/// Builds the textured destination quad in logical coordinates. Rotation is around an absolute
+/// local pivot, before inherited affine scopes and then camera mapping. (doc 04 §5.1.1)
+fn sprite_quad(
+    rect: Rect,
+    rotation: f32,
+    pivot: Vec2,
+    transform: Affine2,
+) -> Result<[Vec2; 4], RenderError> {
+    let rotation = Affine2::from_angle(rotation);
+    let points = [
+        rect.origin(),
+        rect.origin() + Vec2::new(rect.size().x, 0.0),
+        rect.origin() + rect.size(),
+        rect.origin() + Vec2::new(0.0, rect.size().y),
+    ]
+    .map(|point| transform.transform_point2(rotation.transform_vector2(point - pivot) + pivot));
+    if points.iter().any(|point| !point.is_finite()) {
+        return Err(RenderError::Execution(String::from(
+            "renderer-macroquad transformed sprite geometry is not finite",
+        )));
+    }
+    Ok(points)
+}
+
+/// Normalized atlas coordinates preserve the resource's source-pixel region, independent of
+/// destination size, camera, density, or rotation.
+fn sprite_uvs(
+    source: tabula_assets::AssetPixelRegion,
+    width: u16,
+    height: u16,
+) -> Result<[Vec2; 4], RenderError> {
+    if width == 0
+        || height == 0
+        || source.x() + source.width() > u32::from(width)
+        || source.y() + source.height() > u32::from(height)
+    {
+        return Err(RenderError::Execution(String::from(
+            "renderer-macroquad sprite source region exceeds its ready texture",
+        )));
+    }
+    let start = Vec2::new(
+        source.x() as f32 / f32::from(width),
+        source.y() as f32 / f32::from(height),
+    );
+    let end = Vec2::new(
+        (source.x() + source.width()) as f32 / f32::from(width),
+        (source.y() + source.height()) as f32 / f32::from(height),
+    );
+    Ok([
+        start,
+        Vec2::new(end.x, start.y),
+        end,
+        Vec2::new(start.x, end.y),
+    ])
+}
+
+pub(crate) fn validate_sprite_source(
+    source: tabula_assets::AssetPixelRegion,
+    width: u16,
+    height: u16,
+) -> Result<(), RenderError> {
+    sprite_uvs(source, width, height).map(|_| ())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn draw_sprite(
+    sprite: &ResolvedSprite<mq::Texture2D>,
+    rect: Rect,
+    tint: Color,
+    rotation: f32,
+    pivot: Vec2,
+    opacity: f32,
+    transform: Affine2,
+) -> Result<(), RenderError> {
+    let points = sprite_quad(rect, rotation, pivot, transform)?;
+    let uvs = sprite_uvs(sprite.source(), sprite.width(), sprite.height())?;
+    let vertices = sprite_vertices(points, uvs, tint, opacity);
+    mq::draw_mesh(&mq::Mesh {
+        vertices: vertices.to_vec(),
+        indices: vec![0, 1, 2, 0, 2, 3],
+        texture: Some(sprite.texture().clone()),
+    });
+    Ok(())
+}
+
+fn sprite_vertices(points: [Vec2; 4], uvs: [Vec2; 4], tint: Color, opacity: f32) -> [Vertex; 4] {
+    let tint = apply_opacity(tint, opacity);
+    core::array::from_fn(|index| {
+        let mut vertex = vertex(points[index], tint);
+        vertex.uv = mq::Vec2::new(uvs[index].x, uvs[index].y);
+        vertex
+    })
 }
 
 fn draw_rect(
@@ -445,6 +575,220 @@ fn apply_opacity(color: Color, opacity: f32) -> Color {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn clip_frame(size: Vec2, dpi: f32) -> tabula_presentation::FrameCtx {
+        tabula_presentation::FrameCtx::new(
+            tabula_presentation::Viewport::new(size).unwrap(),
+            tabula_presentation::Dpi::new(dpi).unwrap(),
+            0,
+            tabula_design::Theme::by_kind(tabula_design::ThemeKind::Light),
+        )
+    }
+
+    #[test]
+    fn logical_top_origin_clip_maps_to_gpu_bottom_origin_at_each_dpi() {
+        // Browser regression fixture: top155..305 must use GPU415..565 in a720 logical frame.
+        let rect = Rect::new(Vec2::new(40.0, 155.0), Vec2::new(175.0, 150.0)).unwrap();
+        for (dpi, expected) in [(1.0, (40, 415, 175, 150)), (2.0, (80, 830, 350, 300))] {
+            let frame = clip_frame(Vec2::new(960.0, 720.0), dpi);
+            assert_eq!(clip_device_viewport(rect, &frame), Ok(expected));
+            assert_eq!(validate_clip(Clip::Rect(rect), &frame), Ok(()));
+        }
+        let frame = clip_frame(Vec2::new(80.0, 100.0), 1.0);
+        let full = Rect::new(Vec2::ZERO, frame.viewport().size()).unwrap();
+        assert_eq!(clip_device_viewport(full, &frame), Ok((0, 0, 80, 100)));
+    }
+
+    #[test]
+    fn offscreen_clips_keep_their_geometry_and_convert_negative_gpu_origins() {
+        for (origin, expected) in [
+            (Vec2::new(-15.0, -20.0), (-15, 80, 30, 40)),
+            (Vec2::new(75.0, 90.0), (75, -30, 30, 40)),
+            (Vec2::new(-15.0, 110.0), (-15, -50, 30, 40)),
+        ] {
+            let rect = Rect::new(origin, Vec2::new(30.0, 40.0)).unwrap();
+            for (dpi, expected) in [
+                (1.0, expected),
+                (
+                    2.0,
+                    (
+                        expected.0 * 2,
+                        expected.1 * 2,
+                        expected.2 * 2,
+                        expected.3 * 2,
+                    ),
+                ),
+            ] {
+                let frame = clip_frame(Vec2::new(80.0, 100.0), dpi);
+                assert_eq!(clip_device_viewport(rect, &frame), Ok(expected));
+                assert_eq!(validate_clip(Clip::Rect(rect), &frame), Ok(()));
+            }
+        }
+    }
+
+    #[test]
+    fn clip_preflight_rejects_the_same_unsupported_device_bounds_as_execution_conversion() {
+        let rect = Rect::new(Vec2::new(10.0, 20.0), Vec2::new(30.0, 40.0)).unwrap();
+        for frame in [
+            clip_frame(Vec2::new(80.0, f32::MAX), 1.0),
+            clip_frame(Vec2::new(80.0, 100.0), f32::MAX),
+        ] {
+            let error = clip_device_viewport(rect, &frame).unwrap_err();
+            assert_eq!(validate_clip(Clip::Rect(rect), &frame), Err(error));
+        }
+        let maximum_rounded_up = i32::MAX as f32;
+        let maximum_supported = f32::from_bits(maximum_rounded_up.to_bits() - 1);
+        assert_eq!(device_coordinate(maximum_supported), Ok(2_147_483_520));
+        assert!(
+            device_coordinate(maximum_rounded_up).is_err(),
+            "f32 rounds i32::MAX upward and cannot be accepted as an i32 coordinate"
+        );
+        assert_eq!(device_coordinate(i32::MIN as f32), Ok(i32::MIN));
+        assert!(device_coordinate(f32::from_bits((i32::MIN as f32).to_bits() + 1)).is_err());
+    }
+
+    fn assert_points_close(actual: [Vec2; 4], expected: [Vec2; 4]) {
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert!(
+                (actual - expected).abs().max_element() < 0.000_01,
+                "{actual:?} != {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn sprite_rotates_about_its_local_pivot_before_affine_scope_and_camera() {
+        let rect = Rect::new(Vec2::new(10.0, 20.0), Vec2::new(4.0, 2.0)).unwrap();
+        let local = Affine2::from_cols(
+            Vec2::new(2.0, 1.0),
+            Vec2::new(1.0, 3.0),
+            Vec2::new(7.0, 11.0),
+        );
+        let camera = tabula_presentation::Camera2D::new(Vec2::new(3.0, 5.0), 2.0).unwrap();
+        // Quarter-turn about rect's top-left maps its corners to (10,20), (10,24),
+        // (8,24), (8,20). The independent integer affine/camera oracle maps those below.
+        let actual = sprite_quad(
+            rect,
+            core::f32::consts::FRAC_PI_2,
+            rect.origin(),
+            logical_transform(camera, local),
+        )
+        .unwrap();
+        assert_points_close(
+            actual,
+            [
+                Vec2::new(88.0, 152.0),
+                Vec2::new(96.0, 176.0),
+                Vec2::new(88.0, 172.0),
+                Vec2::new(80.0, 148.0),
+            ],
+        );
+    }
+
+    #[test]
+    fn sprite_affine_geometry_supports_reflection_shear_and_singular_scopes() {
+        let rect = Rect::new(Vec2::ZERO, Vec2::new(4.0, 2.0)).unwrap();
+        for (transform, expected) in [
+            (
+                Affine2::from_cols(
+                    Vec2::new(-2.0, 0.0),
+                    Vec2::new(1.0, 3.0),
+                    Vec2::new(5.0, 7.0),
+                ),
+                [
+                    Vec2::new(5.0, 7.0),
+                    Vec2::new(-3.0, 7.0),
+                    Vec2::new(-1.0, 13.0),
+                    Vec2::new(7.0, 13.0),
+                ],
+            ),
+            (
+                Affine2::from_scale(Vec2::new(0.0, 2.0)),
+                [
+                    Vec2::ZERO,
+                    Vec2::ZERO,
+                    Vec2::new(0.0, 4.0),
+                    Vec2::new(0.0, 4.0),
+                ],
+            ),
+        ] {
+            assert_points_close(
+                sprite_quad(rect, 0.0, Vec2::ZERO, transform).unwrap(),
+                expected,
+            );
+        }
+    }
+
+    #[test]
+    fn sprite_rejects_transformed_overflow_even_with_finite_local_geometry() {
+        let rect = Rect::new(Vec2::splat(f32::MAX / 4.0), Vec2::ONE).unwrap();
+        assert_eq!(
+            sprite_quad(rect, 0.0, Vec2::ZERO, Affine2::from_scale(Vec2::splat(8.0))),
+            Err(RenderError::Execution(String::from(
+                "renderer-macroquad transformed sprite geometry is not finite"
+            )))
+        );
+        let rect = Rect::new(Vec2::splat(f32::MAX / 4.0), Vec2::ONE).unwrap();
+        assert!(sprite_quad(
+            rect,
+            core::f32::consts::PI,
+            Vec2::splat(-f32::MAX),
+            Affine2::IDENTITY
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn sprite_atlas_uvs_keep_exact_pixel_region_and_reject_out_of_bounds() {
+        let region = tabula_assets::AssetPixelRegion::new(16, 8, 32, 16).unwrap();
+        assert_points_close(
+            sprite_uvs(region, 64, 32).unwrap(),
+            [
+                Vec2::new(0.25, 0.25),
+                Vec2::new(0.75, 0.25),
+                Vec2::new(0.75, 0.75),
+                Vec2::new(0.25, 0.75),
+            ],
+        );
+        let whole = tabula_assets::AssetPixelRegion::new(0, 0, 64, 32).unwrap();
+        assert_points_close(
+            sprite_uvs(whole, 64, 32).unwrap(),
+            [Vec2::ZERO, Vec2::X, Vec2::ONE, Vec2::Y],
+        );
+        for (width, height) in [(47, 32), (64, 23), (0, 32), (64, 0)] {
+            assert!(sprite_uvs(region, width, height).is_err());
+        }
+    }
+
+    #[test]
+    fn sprite_vertices_preserve_uv_order_and_multiply_tint_alpha() {
+        let points = [
+            Vec2::new(1.0, 2.0),
+            Vec2::new(3.0, 2.0),
+            Vec2::new(3.0, 4.0),
+            Vec2::new(1.0, 4.0),
+        ];
+        let uvs = [Vec2::ZERO, Vec2::X, Vec2::ONE, Vec2::Y];
+        let color = tabula_design::Theme::by_kind(tabula_design::ThemeKind::Light)
+            .color
+            .primary;
+        let tint = Color::rgba(color.red(), color.green(), color.blue(), 128);
+        let vertices = sprite_vertices(points, uvs, tint, 0.25);
+        for index in 0..4 {
+            assert_eq!(
+                vertices[index].position,
+                mq::Vec3::new(points[index].x, points[index].y, 0.0)
+            );
+            assert_eq!(
+                vertices[index].uv,
+                mq::Vec2::new(uvs[index].x, uvs[index].y)
+            );
+            assert_eq!(
+                vertices[index].color,
+                [color.red(), color.green(), color.blue(), 32]
+            );
+        }
+    }
 
     #[test]
     fn stroke_width_is_transformed_with_its_local_geometry() {

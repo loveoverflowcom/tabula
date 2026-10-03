@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod assets;
 mod audio;
 mod draw;
 mod input;
@@ -16,3 +17,4 @@ mod text;
 
 pub use audio::{MacroquadAudioError, MacroquadAudioSink};
 pub use renderer::MacroquadRenderer;
+pub use support::{density_for_dpi, MACROQUAD_SUPPORTED_COMMANDS};

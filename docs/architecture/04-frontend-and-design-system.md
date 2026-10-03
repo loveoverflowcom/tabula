@@ -1099,14 +1099,25 @@ Implemented now:
 - byte-level integrity verification against manifest-declared size and BLAKE3 hash ([`AssetFile::verify_bytes`] returning [`VerifiedAssetBytes`]).
 - platform-neutral `AssetSource` port with explicit `UnverifiedAssetBytes` output;
 - deterministic `MemoryAssetSource` reference adapter and source-to-integrity composition;
-- owned verified payload construction and the `load_verified` source-to-integrity boundary.
+- owned verified payload construction and the `load_verified` source-to-integrity boundary;
+- `renderer-macroquad::assets`: PNG-only bounded decode of owned verified bytes,
+  decoded atlas bounds, pack/version/hash/density texture identity, bounded
+  residency including live leases, explicit missing/ready/failed states, and
+  safe release/reuse through managed backend texture ownership;
+- Sprite preflight and affine textured-mesh execution with camera, clip, tint,
+  inherited opacity, source region, pivot/rotation and stable command order;
+- a tiny editable CC0 Tiles fixture loaded through `MemoryAssetSource` by the
+  local host, plus presentation-only placement/preview motion. This fixture
+  does not change ADR-017's production delivery policy.
 
 Not implemented yet:
 
-- atlas generation, mipmap generation, or media conversion;
+- general atlas tooling, mipmap generation, or media conversion (the Tiles
+  fixture has its own editable art generator);
 - filesystem, HTTP, or browser asset-source implementations;
-- cache management, CDN URL/signature generation, or retry policy;
-- decoding or renderer handles.
+- persistent delivery cache/LRU, CDN URL/signature generation, or retry policy;
+- font/audio decoding and delivery adapters. Raster textures are implemented
+  inside the renderer; `tabula-assets` remains free of decoder/GPU types.
 
 The resolution and loading pipeline flow:
 
@@ -1135,9 +1146,9 @@ verify size + BLAKE3      [implemented / pure]
         ↓
 OwnedVerifiedAssetBytes   [owned proof-bearing payload]
         ↓
-  decode / loader         [future]
+ bounded PNG decode       [implemented / renderer]
         ↓
-   loaded handles         [future]
+ ready texture leases     [implemented / renderer]
 ```
 
 The Phase-3 manifest parser proves that each path is a safe, canonical relative
@@ -1145,8 +1156,9 @@ pack path and that the manifest declares a structurally valid content hash. `Ass
 yet prove that the path embeds that hash. Pure byte-level integrity verification (`AssetFile::verify_bytes`
 and `AssetFile::verify_owned_bytes`) enforces that actual bytes match the declared size and BLAKE3
 hash before producing a borrowed `VerifiedAssetBytes` or owned `OwnedVerifiedAssetBytes` value.
-`load_verified` composes the source port with the owned trust transition; future runtime and cache
-orchestration will route bytes from concrete sources through this boundary before trusted cache
+`load_verified` composes the source port with the owned trust transition. The local
+fixture host routes memory-source bytes through it before bounded raster decoding.
+Future production source/cache orchestration will use this boundary before trusted cache
 insertion or decoding. The current `MemoryAssetSource` exercises the same composition without
 performing I/O.
 

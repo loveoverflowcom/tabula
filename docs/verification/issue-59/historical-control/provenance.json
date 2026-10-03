@@ -1,0 +1,36 @@
+{
+  "baseline_commit": "7ffda7d00f17cc085f2c5169d68c05da13c23dab",
+  "historical_harness_sha256": "e33eedd45395d6730cd6d35b43af2463295e4d6cde7a49c4e1521364da23af45",
+  "scope": "historical visual control; not same-asset performance comparison",
+  "build_options": "--scenario static --theme light --motion full --warmup-ms 3000 --samples 900 --width 900 --height 720",
+  "baseline_repo_pristine": true,
+  "historical_dependency_parity": true,
+  "toolchain": "rustc 1.96.1 (31fca3adb 2026-06-26); cargo 1.96.1 (356927216 2026-06-26)",
+  "wasm": "/tmp/tabula-59-before-harness/target/wasm32-unknown-unknown/wasm-release/tabula-59-before-control.wasm",
+  "wasm_bytes": 846144,
+  "wasm_sha256": "2efeb58c59a9caa7035b99594ccf33b53c05d1311e6cacb8756461a2101e026d",
+  "staged_host": "/tmp/tabula-59-before-web",
+  "host_file_sha256": {
+    "index.html": "af903b560187bb98e803de510e479052c75d9d51b50c7b27e2d56276a5db94be",
+    "mq_js_bundle.js": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+  },
+  "fixture_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+  "fixture_counts": {
+    "accepted_inputs": 24,
+    "placements": 12,
+    "claims": 6,
+    "skips": 6,
+    "board_cells": 13
+  },
+  "baseline_repo_status_porcelain": "",
+  "checks": {
+    "native_fixture_tests": "PASS 2 passed; 0 failures; native Rust tests only, no native UI",
+    "wasm_build": "PASS wasm-release; compiled only",
+    "clippy": "PASS all-targets -D warnings",
+    "browser_runtime": "NOT_RUN by this agent; parent owns screenshot capture",
+    "native_runtime": "NOT_RUN by this agent"
+  },
+  "adaptation_input_source": "/Users/manhblue/Documents/Codex/2026-10-03/task-6/tabula/apps/game-client/examples/tiles_renderer_baseline.rs",
+  "adaptation_input_sha256": "13751e7227098c421b407815738fe7e1500af247e5c84ff203f692d334772752",
+  "adaptation_input_note": "Snapshot used to create the historical harness before final font/logging/provenance edits. This is not the final current-example hash; see ../source-manifest.json for final source."
+}

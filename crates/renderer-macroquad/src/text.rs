@@ -1,8 +1,10 @@
 //! Macroquad default-font mapping for semantic text tokens.
 //!
 //! This first backend maps the token's validated size and line height consistently for measuring
-//! and drawing. Tabular styles give ASCII digits equal advances (doc 04 §7.4), centering the
-//! default-font glyphs within those cells. This is a fallback layout, not a loaded mono face.
+//! and drawing. Small tokens rasterize the default pixel font at no less than 16 pixels and
+//! scale back to their logical size; smaller direct rasters lose most of their dark ink. Tabular
+//! styles give ASCII digits equal advances (doc 04 §7.4), centering the default-font glyphs within
+//! those cells. This is a fallback layout, not a loaded mono face.
 //! Font family, weight, tracking, and complex shaping still need the Phase 3 font asset path;
 //! they intentionally do not leak into the presentation contract.
 
@@ -16,7 +18,35 @@
 use glam::{Affine2, Vec2};
 use macroquad::prelude as mq;
 use tabula_design::{Color, Positive, TextStyle, TextStyleToken, Theme};
-use tabula_presentation::{Align, RenderError, TextMetrics};
+use tabula_presentation::{Align, FrameCtx, RenderCmd, RenderError, RenderList, TextMetrics};
+
+/// Warms every glyph at its actual backend size before any frame primitive is queued.
+///
+/// Macroquad 0.4.16 grows its font atlas by deleting the old texture. Drawing a
+/// character that triggers growth after earlier glyphs were queued can therefore
+/// leave those draws with deleted unmanaged texture IDs. The renderer calls this
+/// for all accepted lists before executing the frame (doc 04 §6).
+pub(crate) fn prepare(list: &RenderList, frame: &FrameCtx) -> Result<(), RenderError> {
+    for command in list.commands() {
+        if let RenderCmd::Text {
+            text: value,
+            style: token,
+            max_width,
+            ..
+        } = command
+        {
+            validate(value, *token, *max_width, frame)?;
+            let style = frame.theme().text_style(*token);
+            let size = font_size(style);
+            raw_measure(value, size);
+            if style.tabular_figures() {
+                // TextLayout measures every digit to choose one shared advance.
+                raw_measure("0123456789", size);
+            }
+        }
+    }
+    Ok(())
+}
 
 pub(crate) fn measure(
     text: &str,
@@ -111,7 +141,7 @@ pub(crate) fn draw(
         layout_line(
             line,
             layout.digit_advance,
-            |run| raw_measure(run, layout.font_size).width,
+            |run| layout.run_width(run),
             |run, x| {
                 let point = transform.transform_point2(at + Vec2::new(offset + x, baseline));
                 mq::draw_text_ex(
@@ -120,7 +150,7 @@ pub(crate) fn draw(
                     point.y,
                     mq::TextParams {
                         font_size: layout.font_size,
-                        font_scale: scale,
+                        font_scale: scale * layout.logical_font_scale,
                         font_scale_aspect: 1.0,
                         font: None,
                         color: with_opacity(color, opacity),
@@ -136,17 +166,19 @@ pub(crate) fn draw(
 /// One unscaled fallback layout, shared by wrapping, measuring, and drawing.
 struct TextLayout {
     font_size: u16,
+    logical_font_scale: f32,
     digit_advance: Option<f32>,
 }
 
 impl TextLayout {
     fn new(style: TextStyle) -> Self {
-        let font_size = font_size(style);
-        let digit_advance = style
-            .tabular_figures()
-            .then(|| tabular_digit_advance(|digit| raw_measure(digit, font_size).width));
+        let (font_size, logical_font_scale) = font_raster(style);
+        let digit_advance = style.tabular_figures().then(|| {
+            tabular_digit_advance(|digit| raw_measure(digit, font_size).width * logical_font_scale)
+        });
         Self {
             font_size,
+            logical_font_scale,
             digit_advance,
         }
     }
@@ -155,9 +187,13 @@ impl TextLayout {
         layout_line(
             line,
             self.digit_advance,
-            |run| raw_measure(run, self.font_size).width,
+            |run| self.run_width(run),
             |_, _| {},
         )
+    }
+
+    fn run_width(&self, value: &str) -> f32 {
+        raw_measure(value, self.font_size).width * self.logical_font_scale
     }
 }
 
@@ -215,7 +251,15 @@ fn raw_measure(text: &str, font_size: u16) -> mq::TextDimensions {
     clippy::float_arithmetic
 )]
 fn font_size(style: TextStyle) -> u16 {
-    style.size().get().round().clamp(1.0, f32::from(u16::MAX)) as u16
+    font_raster(style).0
+}
+
+/// One size mapping for prepare, measure, wrap, tabular advances, and draw. `ProggyClean` has
+/// complete pixel-font coverage at 16 pixels; preserve token size with a logical scale instead
+/// of asking fontdue for a sparse 11/12-pixel raster.
+fn font_raster(style: TextStyle) -> (u16, f32) {
+    let raster_size = style.size().get().round().clamp(16.0, f32::from(u16::MAX)) as u16;
+    (raster_size, style.size().get() / f32::from(raster_size))
 }
 
 fn uniform_positive_scale(transform: Affine2) -> Option<f32> {
@@ -285,6 +329,64 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn small_font_rasters_keep_token_size_and_share_the_preparation_size() {
+        for kind in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            let theme = Theme::by_kind(kind);
+            for (token, expected_raster, expected_scale) in [
+                (TextStyleToken::LabelSm, 16, 11.0 / 16.0),
+                (TextStyleToken::LabelMd, 16, 12.0 / 16.0),
+                (TextStyleToken::BodyMd, 16, 14.0 / 16.0),
+                (TextStyleToken::TitleMd, 16, 1.0),
+                (TextStyleToken::TitleLg, 22, 1.0),
+            ] {
+                let style = theme.text_style(token);
+                let (raster, scale) = font_raster(style);
+                assert_eq!(raster, expected_raster);
+                assert_eq!(scale, expected_scale);
+                assert_eq!(
+                    font_size(style),
+                    raster,
+                    "glyph preparation warms the exact draw raster"
+                );
+                assert_eq!(
+                    f32::from(raster) * scale,
+                    style.size().get(),
+                    "physical raster changes preserve logical token size"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn scaled_raster_measurement_keeps_tabular_alignment_and_wrapping_in_logical_units() {
+        let logical_scale = 12.0 / 16.0;
+        let measure = |run: &str| proportional_width(run) * logical_scale;
+        let advance = tabular_digit_advance(measure);
+        assert_eq!(advance, 7.5);
+        let mut runs = Vec::new();
+        assert_eq!(
+            layout_line("11:88", Some(advance), measure, |run, at| runs
+                .push((run.to_owned(), at))),
+            33.0
+        );
+        assert_eq!(
+            runs[0].1, 2.625,
+            "digits center inside scaled logical cells"
+        );
+        assert_eq!(
+            wrap_lines("1111", Some(Positive::new(15.0).unwrap()), |line| {
+                layout_line(line, Some(advance), measure, |_, _| {})
+            }),
+            ["11", "11"]
+        );
+    }
 
     #[test]
     fn bounded_and_unbounded_text_pass_preflight_without_a_graphics_context() {

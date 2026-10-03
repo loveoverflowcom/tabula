@@ -111,6 +111,7 @@ anyhow             = "1"
 
 # --- client tier -----------------------------------------------------------
 macroquad     = "0.4"
+image         = { version = "=0.24.9", default-features = false, features = ["png"] }
 leptos        = { version = "0.7", features = ["csr"] }
 leptos_router = "0.7"
 web-sys       = "0.3"

@@ -4,11 +4,17 @@ Numeric prefixes, when present, are the current recommended sequence and may
 be renumbered; they are not permanent issue IDs. GitHub issues own acceptance
 and the screen specifications own UI contracts.
 
-This checkout handles **#53 only**, including its current specification slice.
-The user's next task is **#59 in a separate chat**, followed by #60; neither is
-started here. #59 should re-pin `develop`, reuse the existing verified-byte
-asset seam and address Sprite preflight/execution/cache before the Tiles visual
-slice. Its own issue defines acceptance and the permitted renderer scope.
+This checkout handles **#59 only**, on the verified `develop` baseline
+`7ffda7d00f17cc085f2c5169d68c05da13c23dab`. The verified-byte PNG/texture seam,
+Sprite backend and local Tiles fixture/motion slice are implemented. Runtime
+and acceptance evidence belongs in [the #59 ledger](../verification/issue-59/README.md).
+
+The user's next task is **#60 in a separate chat**, after the #59 publication
+handoff. Reuse [the measured fixture protocol](../perf/tiles-renderer-baseline.md)
+and its pinned pack hashes, permitted view, accepted workload and motion options;
+compare embedding and renderer cost separately. Native runtime and additional
+browser/DPI evidence must retain their actual status, and cannot be inferred from
+compilation or a different target. Do not implement the RFC experiment here.
 
 The [#52 history/replay slice](backlog/issue-52-history-replay.md) remains gated.
 #53's [board/modes](backlog/issue-53-board-modes.md),

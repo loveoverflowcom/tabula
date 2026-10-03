@@ -1,0 +1,14 @@
+[
+  {
+    "level": "info",
+    "message": "TABULA_BASELINE {\"kind\":\"ready\",\"commit\":\"issue59-source-60460d1affc8c682\",\"build\":\"wasm-release\",\"target\":\"wasm32\",\"backend\":\"macroquad-0.4.16/miniquad-0.4.11\",\"pack\":\"tiles@0.1.0\",\"asset_hashes\":[\"7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac\",\"b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b\"],\"seed_byte\":47,\"seats\":3,\"initial_inputs\":24,\"fixture_hash\":\"e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032\",\"scenario\":\"interactive\",\"theme\":\"Light\",\"motion\":\"full\",\"primitive_control\":false,\"sprite_probe\":false,\"viewport\":[900,720],\"dpi\":1,\"warmup_ms\":3000,\"samples\":600,\"interval_ms\":750,\"scripted_inputs\":20,\"cache_state\":\"fresh-renderer-instance\",\"preload_ms\":9.000,\"decodes\":2,\"uploads\":2,\"estimated_resident_rgba_bytes\":2488320,\"resident_textures\":2}",
+    "timestamp": "2026-10-03T12:34:43.246Z",
+    "url": "http://127.0.0.1:8059/interactive/mq_js_bundle.js"
+  },
+  {
+    "level": "info",
+    "message": "TABULA_BASELINE {\"kind\":\"measurement\",\"samples\":600,\"submit_end_cpu_us\":{\"mean\":799.995,\"p50\":999.928,\"p95\":1000.166,\"max\":2000.093},\"frame_interval_ms\":{\"mean\":27.313,\"p50\":27.000,\"p95\":29.000,\"max\":113.000},\"elapsed_ms\":19344,\"accepted_inputs\":24,\"placements\":12,\"claims\":6,\"skips\":6,\"scripted_steps\":0,\"script_complete\":true,\"uncontrolled_input_events\":5,\"final_checkpoint\":\"e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032\",\"board_cells\":13,\"decodes\":2,\"uploads\":2,\"decodes_after_preload\":0,\"uploads_after_preload\":0,\"estimated_resident_rgba_bytes\":2488320,\"resident_textures\":2,\"viewport\":[900,720],\"dpi\":1}",
+    "timestamp": "2026-10-03T12:35:02.590Z",
+    "url": "http://127.0.0.1:8059/interactive/mq_js_bundle.js"
+  }
+]

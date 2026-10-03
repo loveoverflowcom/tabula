@@ -133,7 +133,7 @@ allow = ["tabula-core", "tabula-game-api", "tabula-design", "tabula-assets", "gl
 
 [crate."renderer-macroquad"]
 tier  = "client"
-allow = ["macroquad", "tabula-presentation", "tabula-design", "tabula-assets", "tabula-core", "glam"]
+allow = ["macroquad", "image", "blake3", "tabula-presentation", "tabula-design", "tabula-assets", "tabula-core", "glam"]
 
 [crate."renderer-headless"]
 tier  = "client"

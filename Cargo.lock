@@ -1735,7 +1735,9 @@ dependencies = [
 name = "renderer-macroquad"
 version = "0.0.0"
 dependencies = [
+ "blake3",
  "glam 0.29.3",
+ "image",
  "macroquad",
  "tabula-assets",
  "tabula-core",
@@ -2170,6 +2172,7 @@ dependencies = [
  "glam 0.29.3",
  "macroquad",
  "renderer-macroquad",
+ "tabula-assets",
  "tabula-core",
  "tabula-design",
  "tabula-game-api",

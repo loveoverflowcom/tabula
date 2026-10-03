@@ -307,7 +307,8 @@ For each crate: responsibility, allowed deps, forbidden deps, why separate, when
 
 - **Responsibility:** execute a `RenderList` with Macroquad; texture/font/atlas management; map
   Macroquad input to `InputEvent`; window/canvas lifecycle; frame pacing; implement `AudioSink`.
-- **Allowed:** `macroquad`, `tabula-presentation`, `tabula-design`, `tabula-assets`, `tabula-core`.
+- **Allowed:** `macroquad`, `image` (PNG-only bounded decoding), `tabula-presentation`,
+  `tabula-design`, `tabula-assets`, `tabula-core`.
 - **Forbidden:** any game crate, `tabula-protocol`, `tokio`.
 - **Why separate:** it is the designated *replaceable* component. A future `renderer-wgpu` slots in
   with no changes above it.

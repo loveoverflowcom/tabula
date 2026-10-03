@@ -910,6 +910,7 @@ fn a_whole_tiles_match_is_playable_through_pointer_and_keyboard_input() {
 }
 
 fn assert_terminal_tiles_inspection(match_: &mut TilesMatch, frame: &FrameCtx) {
+    let cache = tiles_sprite_fixture_cache();
     // Ending authority does not disable local inspection. Exercise the real
     // labeled zoom control and a board pan after the final placement/claim.
     let terminal_view = match_.view().clone();
@@ -993,7 +994,8 @@ fn assert_terminal_tiles_inspection(match_: &mut TilesMatch, frame: &FrameCtx) {
             match_.local_mut().set_viewport(board.viewport());
             assert!(board.viewport().size().y >= 320.0);
             let scene = match_.present(&board);
-            assert_eq!(MacroquadRenderer::preflight(&scene, &full), Ok(()));
+            let supported = MacroquadRenderer::preflight_with_cache(&scene, &full, &cache);
+            assert_eq!(supported, Ok(()));
             for seat in &match_.view().seats {
                 let score = match_.view().scores[seat];
                 assert!(scene.commands().iter().any(|command| matches!(command,
@@ -1056,15 +1058,83 @@ fn panning_and_zooming_through_the_runtime_consume_no_canonical_input() {
     );
 }
 
+/// Exercises verified fixture bytes and real bounded PNG decoding with a context-free upload
+/// adapter. This proves ready-resource acceptance; the runtime harness owns rendered pixel proof.
+fn tiles_sprite_fixture_cache(
+) -> renderer_macroquad::assets::SpriteAssetCache<impl renderer_macroquad::assets::TextureUploader>
+{
+    use renderer_macroquad::assets::{
+        AssetCacheLimits, DecodedRaster, SpriteAssetCache, TextureUploader,
+    };
+    use tabula_assets::{AssetPackManifest, UnverifiedAssetBytes};
+    use tabula_game_tiles::presentation::fixture;
+    use tabula_presentation::GamePresentation;
+
+    #[derive(Debug)]
+    struct FixtureUploader;
+    impl TextureUploader for FixtureUploader {
+        type Texture = (u16, u16);
+        fn upload(&mut self, raster: &DecodedRaster) -> Result<Self::Texture, String> {
+            Ok((raster.width(), raster.height()))
+        }
+    }
+    let manifest =
+        AssetPackManifest::from_toml(fixture::MANIFEST).expect("fixture manifest is valid");
+    let mut cache = SpriteAssetCache::new(FixtureUploader, AssetCacheLimits::default());
+    cache
+        .bind_pack(
+            &manifest,
+            TilesModule::metadata().id(),
+            &TilesPresentation::asset_pack(),
+        )
+        .expect("fixture matches game and exact pack version");
+    for file in manifest.files() {
+        let bytes = match file
+            .density()
+            .expect("fixture variants declare density")
+            .get()
+        {
+            1 => fixture::ATLAS_1X,
+            2 => fixture::ATLAS_2X,
+            other => panic!("fixture has no bundled density {other}"),
+        };
+        let verified = file
+            .verify_owned_bytes(UnverifiedAssetBytes::new(bytes.to_vec()))
+            .expect("fixture size and hash are exact");
+        cache
+            .insert_verified(verified)
+            .expect("fixture decodes inside renderer bounds and atlas regions");
+    }
+    assert_eq!(cache.stats().uploads, 2);
+    cache
+}
+
 #[test]
 fn the_tiles_presenter_produces_a_macroquad_supported_render_list() {
     let frame = frame(0);
+    let cache = tiles_sprite_fixture_cache();
+    let initial_cache = cache.stats();
     let mut match_ = tiles_match(4);
     match_.local_mut().set_viewport(frame.viewport());
-    assert_eq!(
-        MacroquadRenderer::preflight(&match_.present(&frame), &frame),
-        Ok(())
-    );
+    for dpi in [1.0, 2.0, 3.0] {
+        let frame = FrameCtx::new(
+            frame.viewport(),
+            Dpi::new(dpi).unwrap(),
+            frame.now_ms(),
+            frame.theme(),
+        );
+        let list = match_.present(&frame);
+        assert!(
+            list.commands()
+                .iter()
+                .any(|command| matches!(command, RenderCmd::Sprite { .. })),
+            "the fixture must exercise Sprite acceptance"
+        );
+        assert_eq!(
+            MacroquadRenderer::preflight_with_cache(&list, &frame, &cache),
+            Ok(())
+        );
+    }
 
     // And after a real turn, when followers, hints, and the claim overlay are
     // all on screen at once.
@@ -1082,8 +1152,13 @@ fn the_tiles_presenter_produces_a_macroquad_supported_render_list() {
     }
     tiles_tap(&mut match_, coord, &frame);
     assert_eq!(
-        MacroquadRenderer::preflight(&match_.present(&frame), &frame),
+        MacroquadRenderer::preflight_with_cache(&match_.present(&frame), &frame, &cache),
         Ok(())
+    );
+    assert_eq!(
+        cache.stats(),
+        initial_cache,
+        "complete-list preflight cannot decode or upload each frame"
     );
 }
 

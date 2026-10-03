@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod fixture_assets;
 mod replay_capture;
 pub mod runtime_ui;
 
@@ -124,6 +125,10 @@ pub enum LocalMatchInitError {
 /// @ai.invariant monotonic-logical-time
 /// @ai.invariant input-index-per-attempt
 /// @ai.invariant timers-reenter-through-canonical-input-stream
+/// @ai.evidence tests::projection_is_rebuilt_from_state_after_accepted_transition
+/// @ai.evidence tests::logical_time_is_monotonic_for_stalled_and_backwards_frames
+/// @ai.evidence tests::accepted_and_rejected_inputs_each_consume_one_index
+/// @ai.evidence tests::clock_timer_reenters_rules_as_a_recorded_timer_input
 #[allow(clippy::doc_markdown)]
 pub struct LocalMatch<R, P>
 where

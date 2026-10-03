@@ -1,0 +1,1026 @@
+{
+  "baseline": "7ffda7d00f17cc085f2c5169d68c05da13c23dab",
+  "source_fingerprint": "60460d1affc8c6823d7c01271233bfa453f5889b8b56b873e771d95338914e5b",
+  "files": [
+    {
+      "path": ".cargo/config.toml",
+      "sha256": "ddfb70971ca77d0beaaa2c3bfe8109f10f5242cbf37c3b72c5627873319ced99",
+      "bytes": 260
+    },
+    {
+      "path": "Cargo.lock",
+      "sha256": "76238e01347f483955dcccc09de6b0858b340b3a9fc6cef49b0b27703c00d37f",
+      "bytes": 71935
+    },
+    {
+      "path": "Cargo.toml",
+      "sha256": "0d3684fa6df2a6bce6ce50c4dc03fb4fea27e19a1263f4727b444fc19067dc7b",
+      "bytes": 8464
+    },
+    {
+      "path": "apps/admin/Cargo.toml",
+      "sha256": "50d9949bae0ec34412dd1ecd29f63c157a1258d023cfc3575ffe5cd7fdcf24cf",
+      "bytes": 762
+    },
+    {
+      "path": "apps/admin/src/main.rs",
+      "sha256": "249b4e10d932160602783ec2e4db2f908dedd08e3c4aef3fffb8635f69864ca8",
+      "bytes": 2083
+    },
+    {
+      "path": "apps/desktop/Cargo.toml",
+      "sha256": "904a601ce2816ebd4e2ff901e343be59a8e6375d05b4dd413501ab7aed9da1f5",
+      "bytes": 1112
+    },
+    {
+      "path": "apps/desktop/src/main.rs",
+      "sha256": "d4684782ba8b0cd472c0d86b18e0514f1123ea86e86524ed70bb8067a4bb91a9",
+      "bytes": 1617
+    },
+    {
+      "path": "apps/game-client/Cargo.toml",
+      "sha256": "8f0e9491150712f771eb7efd6eb9c5dbcb02507606aae9fe15bb07949647500b",
+      "bytes": 1765
+    },
+    {
+      "path": "apps/game-client/examples/renderer_observation.html",
+      "sha256": "d8731584aba245ca3c5cd867f4f588cba327a6fbaf8c853f0ff76d1fffb6566d",
+      "bytes": 3054
+    },
+    {
+      "path": "apps/game-client/examples/tiles_renderer_baseline.rs",
+      "sha256": "4485fc9e88ca64da45d51d756eba6a56a894ca6d045a49bb0a2119f656e14bb1",
+      "bytes": 26970
+    },
+    {
+      "path": "apps/game-client/src/fixture_assets.rs",
+      "sha256": "4a018837fd233407506f332f53fe92e768d011ed6478bd3bb719379525646d54",
+      "bytes": 2006
+    },
+    {
+      "path": "apps/game-client/src/lib.rs",
+      "sha256": "10ec358a62919745bff26106a78e2610b2698158a0f9ae70b52734a6fc045cad",
+      "bytes": 66323
+    },
+    {
+      "path": "apps/game-client/src/main.rs",
+      "sha256": "b2fc037af0c2c1319a7899541d8c26886bd3764a8a854a4ec7c658ea39b40f76",
+      "bytes": 19934
+    },
+    {
+      "path": "apps/game-client/src/replay_capture.rs",
+      "sha256": "480063f76d2b6f17810384cf7a1801116745af3118f59bec70d8019cb5084ba2",
+      "bytes": 7100
+    },
+    {
+      "path": "apps/game-client/src/runtime_ui.rs",
+      "sha256": "47b53a2f86cfd687d91791eb47f27048b7f8f8ca531c6a4a683b5669d15e957c",
+      "bytes": 35361
+    },
+    {
+      "path": "apps/game-client/tests/local_match.rs",
+      "sha256": "cc556816f51ef16a38e2a1b7fec06168f5ee81a6411c91541bac13071c8c8366",
+      "bytes": 42495
+    },
+    {
+      "path": "apps/game-client/web/index.html",
+      "sha256": "af903b560187bb98e803de510e479052c75d9d51b50c7b27e2d56276a5db94be",
+      "bytes": 830
+    },
+    {
+      "path": "apps/game-client/web/mq_js_bundle.js",
+      "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8",
+      "bytes": 37828
+    },
+    {
+      "path": "apps/web/Cargo.toml",
+      "sha256": "f88b2400dfa4197158bb0ca62cdb7a815b21a836224b8e9a4578293b7d98b9ac",
+      "bytes": 1262
+    },
+    {
+      "path": "apps/web/Trunk.toml",
+      "sha256": "eaee830f0f7a208df5f22b0f73d259d06b65552b775e572acaa188468f366b81",
+      "bytes": 802
+    },
+    {
+      "path": "apps/web/index.html",
+      "sha256": "a8eee14f89195d560e1d88a30362dff880b0d5552dec7762a729c5855b8a6227",
+      "bytes": 757
+    },
+    {
+      "path": "apps/web/src/i18n.rs",
+      "sha256": "894af6d8f848c0ae8406f4d3159bbe7a5dcb2d034cc285bb97ed3d690b86754a",
+      "bytes": 12208
+    },
+    {
+      "path": "apps/web/src/main.rs",
+      "sha256": "85e7ae3690dc6aba3b1e4613ffb052a5286068aee5f2de6c7990a9f32edbd139",
+      "bytes": 4808
+    },
+    {
+      "path": "apps/web/src/query.rs",
+      "sha256": "0e381b2908150eef298436422002fa822d6aebeb804f25740322e31e165163f1",
+      "bytes": 8963
+    },
+    {
+      "path": "apps/web/src/setup.rs",
+      "sha256": "3cf77ddf5e3ee40ccf0174c408bb42487c39dba6717d7ebe55eb95ed5e3a54f9",
+      "bytes": 15331
+    },
+    {
+      "path": "apps/web/src/views/detail.rs",
+      "sha256": "9c8befd0b760f73e3944ed134e4b0a21d42e39d64da77a371d7b5751388dd715",
+      "bytes": 7477
+    },
+    {
+      "path": "apps/web/src/views/home.rs",
+      "sha256": "9d8469be4b08a0427748208e0a2efdabc46ef591d26b51eba6626b41a4aed44a",
+      "bytes": 1803
+    },
+    {
+      "path": "apps/web/src/views/library.rs",
+      "sha256": "52c683c41a8f688c577aff99a5d3b95ab773dd2801b2da44cac3cf55dcd94698",
+      "bytes": 14637
+    },
+    {
+      "path": "apps/web/src/views/mod.rs",
+      "sha256": "fdb156e457a68f194c8dd56220f216e4c06231d12c9939adc8925c84b7b60068",
+      "bytes": 1300
+    },
+    {
+      "path": "apps/web/src/views/new_match.rs",
+      "sha256": "90a75accbd507607bc61d42e4252a175872ad2c85f7480978a7d894747d584de",
+      "bytes": 22910
+    },
+    {
+      "path": "apps/web/src/views/parts.rs",
+      "sha256": "6f190ac85d053ab53798cb06102ae9f4621e4bf027dc9322dabff42d5323d48a",
+      "bytes": 7504
+    },
+    {
+      "path": "assets/packs/tiles/fixture.pack.toml",
+      "sha256": "ac7a53e1a9b89b756370e19cce103b94d64a9e08c3a293c38e7c659f8354f51a",
+      "bytes": 6915
+    },
+    {
+      "path": "assets/packs/tiles/generate.py",
+      "sha256": "b9f5384e885fa096edb1f573edbb1b5c50f17596a85739d12905644a5853f788",
+      "bytes": 8551
+    },
+    {
+      "path": "assets/packs/tiles/pack.source.toml",
+      "sha256": "a371c430a39363dbf42cb5d6642a449f0c20b7af4e1a6b8e7995f4b7ee279170",
+      "bytes": 6003
+    },
+    {
+      "path": "assets/packs/tiles/tiles.svg",
+      "sha256": "ed3fea9fde68882fa7f912c753af1f22c6a3da4d0bbc99baf50d0be819ea32e4",
+      "bytes": 29788
+    },
+    {
+      "path": "assets/packs/tiles/tiles@1x.png",
+      "sha256": "c585ec81de45781f6703457bb1392ef29999ded4422acb07637041bf7378981c",
+      "bytes": 4587
+    },
+    {
+      "path": "assets/packs/tiles/tiles@2x.png",
+      "sha256": "2746adb6bddfdc2760284ac592951c5831bf5c5b382c07a78f47c5a5c257c276",
+      "bytes": 12943
+    },
+    {
+      "path": "crates/renderer-headless/Cargo.toml",
+      "sha256": "db9030d0c56624f5149a8c062c6eb6205c888f00f562b6eb0c82ab2eb9c711d1",
+      "bytes": 525
+    },
+    {
+      "path": "crates/renderer-headless/src/lib.rs",
+      "sha256": "035d8815935fabb63c02b8cf9928e7eba28a988673ae48e11bbfab1aa9635925",
+      "bytes": 43526
+    },
+    {
+      "path": "crates/renderer-headless/tests/goldens/dpi_camera_subset_64x64.png",
+      "sha256": "0b89030f0096736edcf6652d902261a172f14e11992d20ea35afd216146dfe26",
+      "bytes": 1866
+    },
+    {
+      "path": "crates/renderer-headless/tests/goldens/supported_subset_64x64.png",
+      "sha256": "28acc1fd0527c0318403fdc4235f81b0ba6489dbde134af2b2aea36b46ca8fce",
+      "bytes": 2814
+    },
+    {
+      "path": "crates/renderer-headless/tests/raster_goldens.rs",
+      "sha256": "3149965eac4f475ccb9aa9d4b2d96d13e0a305c407eefebffb04f2974687be42",
+      "bytes": 9619
+    },
+    {
+      "path": "crates/renderer-macroquad/Cargo.toml",
+      "sha256": "ac5a062444b5703f7480e6a66daedd66856db66527a6c42fa3471c82b0a22de3",
+      "bytes": 888
+    },
+    {
+      "path": "crates/renderer-macroquad/src/assets.rs",
+      "sha256": "581ba0ff0e19c5df2b64f9ddecee469bdd93fe5be9c20dc5e7ff2dce07ebffdd",
+      "bytes": 46538
+    },
+    {
+      "path": "crates/renderer-macroquad/src/audio.rs",
+      "sha256": "0151d810fc4c34b93081dc6fcd2c4ff7bed799c942c28a49a9712e7b70dc8d64",
+      "bytes": 3949
+    },
+    {
+      "path": "crates/renderer-macroquad/src/draw.rs",
+      "sha256": "3bb29bd9f4aa06bdef9ab0140bb3a5bebf8ab36ab39aa7602a0d81e1fda24d70",
+      "bytes": 28363
+    },
+    {
+      "path": "crates/renderer-macroquad/src/input.rs",
+      "sha256": "554f762ada58944596cdad3f909b76a7269b2ccf467f472b70ba9dbab4c92df5",
+      "bytes": 38283
+    },
+    {
+      "path": "crates/renderer-macroquad/src/lib.rs",
+      "sha256": "b6c5e0b0ece82b146542699c670bd783ac9145d6493f20496147f3c2b0527a61",
+      "bytes": 641
+    },
+    {
+      "path": "crates/renderer-macroquad/src/renderer.rs",
+      "sha256": "3b44dfbb5343a6e66c4c0132aae468ed9c75cbad2dd83b440467399fdc3a984b",
+      "bytes": 8500
+    },
+    {
+      "path": "crates/renderer-macroquad/src/state.rs",
+      "sha256": "d22785ebf79e0e774544dea7f7f57da02cb4cf520e4c7adca401a721ea4dbcd7",
+      "bytes": 9964
+    },
+    {
+      "path": "crates/renderer-macroquad/src/support.rs",
+      "sha256": "4facfa456cb118497973aaef3402ba9913270b7bd5ee88c5191579457fdc7f38",
+      "bytes": 17455
+    },
+    {
+      "path": "crates/renderer-macroquad/src/text.rs",
+      "sha256": "aee3e61b12fe1f0070471e44bbd7801d4bf485a254970431ae7d8c78263546b6",
+      "bytes": 20751
+    },
+    {
+      "path": "crates/tabula-assets/Cargo.toml",
+      "sha256": "fd64afd026f3feb7b4c502f6194212355dc2255d02b2b0b432dfbe56c1bfd2bb",
+      "bytes": 988
+    },
+    {
+      "path": "crates/tabula-assets/src/integrity.rs",
+      "sha256": "156ce881dd44c8b016c432844e7c02ddf23c0e03511c8ee3a78180e14f9ad18f",
+      "bytes": 25435
+    },
+    {
+      "path": "crates/tabula-assets/src/lib.rs",
+      "sha256": "540e30a2d87baa554f570b9c137ea88c27d24b4c45414c922e68706c39529918",
+      "bytes": 4023
+    },
+    {
+      "path": "crates/tabula-assets/src/loader.rs",
+      "sha256": "056e64b90d2e0bcd8ef4a82201528d0180ff5e688a766390aada8bd56edd1878",
+      "bytes": 9620
+    },
+    {
+      "path": "crates/tabula-assets/src/manifest.rs",
+      "sha256": "237036495f9330572feccfe825bc669566c6df0e5c41044e809c395b949a67ed",
+      "bytes": 84811
+    },
+    {
+      "path": "crates/tabula-assets/src/source.rs",
+      "sha256": "17678a699adcf83bfe8f4f8a09fe22f84bb22981c106214c77eb5d8392281932",
+      "bytes": 8910
+    },
+    {
+      "path": "crates/tabula-core/Cargo.toml",
+      "sha256": "13914eee455f1d7693be2163bdd3ffa2d235ff42f9cc2274dfe33687335ad0dc",
+      "bytes": 1492
+    },
+    {
+      "path": "crates/tabula-core/clippy.toml",
+      "sha256": "0f51e6b82b062f7841f9d5b9f4b2429f60dc4a421a477e6114bc3ee03e13789d",
+      "bytes": 1647
+    },
+    {
+      "path": "crates/tabula-core/src/audience.rs",
+      "sha256": "4b7030510943219a2382b34fa8c787bdef62f3d428b3715ecb1e360c5ca0b61a",
+      "bytes": 809
+    },
+    {
+      "path": "crates/tabula-core/src/error.rs",
+      "sha256": "2a4388bc2265da52960e024623fdbca40e24836f50b1fa016e3217895aa46b1d",
+      "bytes": 2827
+    },
+    {
+      "path": "crates/tabula-core/src/hash.rs",
+      "sha256": "d8eefd7c5adcd7d60eb248eb4b97c2b45d7869f9bf8f3e9609d4b5593a22ef33",
+      "bytes": 13799
+    },
+    {
+      "path": "crates/tabula-core/src/ids.rs",
+      "sha256": "888273c5f983d6f8fbbc7730820d2b4f9f33d45cc6f7be513834f1c96fc2c07c",
+      "bytes": 12673
+    },
+    {
+      "path": "crates/tabula-core/src/lib.rs",
+      "sha256": "217e5528fd32ee7ed775e34bdc923dc9237d103f2910d2d88cb62e8df758501f",
+      "bytes": 2545
+    },
+    {
+      "path": "crates/tabula-core/src/outcome.rs",
+      "sha256": "f50c36cfdb552b561851d9aee322803b1b51a9ca38107c822a56e47446115720",
+      "bytes": 15241
+    },
+    {
+      "path": "crates/tabula-core/src/rng.rs",
+      "sha256": "0c8241e020a644cdc23613280d83fc473f7636c4b482d58135f4cd071ca0ba09",
+      "bytes": 17795
+    },
+    {
+      "path": "crates/tabula-core/src/seat.rs",
+      "sha256": "91079b7d82f180b24b316daa20509233e1e4b6229deddc5c8b9cf5762faa8d60",
+      "bytes": 5760
+    },
+    {
+      "path": "crates/tabula-core/src/time.rs",
+      "sha256": "e1a45b6ba6d051f31ca194e0beece18adcf08635f9156ac46606c0cffd5192dc",
+      "bytes": 6582
+    },
+    {
+      "path": "crates/tabula-core/src/viewer.rs",
+      "sha256": "7b8c95491cfcb74fa86917ea4c405dd041f4b3bc5c94a01fe3d7cc07ef48d7d1",
+      "bytes": 2672
+    },
+    {
+      "path": "crates/tabula-design/Cargo.toml",
+      "sha256": "9e854e8996eb5d9eb07f1e004c56dcf3539b645efe31c70f84f7092b7490b11c",
+      "bytes": 840
+    },
+    {
+      "path": "crates/tabula-design/src/generated.rs",
+      "sha256": "a8d10e06ced0857e532818b92c58373f6f999951a58ae6c99d181b4a22cbb762",
+      "bytes": 14589
+    },
+    {
+      "path": "crates/tabula-design/src/lib.rs",
+      "sha256": "0a7a6f5ba9b7e185f7ef7ed06da4702aa10f6803f4ce4bd083686f271e984dca",
+      "bytes": 23617
+    },
+    {
+      "path": "crates/tabula-game-api/Cargo.toml",
+      "sha256": "6557a0cbd275dc5c2181d3d03770e6e867bd4b6ae0d61c97d50a2443380809b1",
+      "bytes": 791
+    },
+    {
+      "path": "crates/tabula-game-api/src/a11y.rs",
+      "sha256": "1d8b11acc28cc5182e31722999fa4f99171bcf8a6abfd19f952710bf80f9df54",
+      "bytes": 2433
+    },
+    {
+      "path": "crates/tabula-game-api/src/bot.rs",
+      "sha256": "046dcf634cfae011e2c6ce811740317be4cb62a607d2edd2f4c453fb510251e8",
+      "bytes": 1871
+    },
+    {
+      "path": "crates/tabula-game-api/src/capabilities.rs",
+      "sha256": "863065f45c3cc8d0fc531154f392325af6549dfbdb6612a2a40399d264b4be00",
+      "bytes": 28642
+    },
+    {
+      "path": "crates/tabula-game-api/src/ctx.rs",
+      "sha256": "c905f38afd6d3bc67dd7c5591be86d7ce4d9500db2082b3ff5d3ff4bfe12fce9",
+      "bytes": 1723
+    },
+    {
+      "path": "crates/tabula-game-api/src/effect.rs",
+      "sha256": "7f1b9d51adfe0db3450872f0580c1aaf168fc615b343ead7f6c2f87452c0325e",
+      "bytes": 5146
+    },
+    {
+      "path": "crates/tabula-game-api/src/error.rs",
+      "sha256": "e93fa06d14d2fd087c774df2c8b3611811bc9d9e3e6875bf89db151933c6a44a",
+      "bytes": 1937
+    },
+    {
+      "path": "crates/tabula-game-api/src/input.rs",
+      "sha256": "0d67cd18fd7aed5b165dfc589652f32b5e01bed96aef2a3d0687ad682a5e7283",
+      "bytes": 3113
+    },
+    {
+      "path": "crates/tabula-game-api/src/lib.rs",
+      "sha256": "be93944a53e024e2118e3bed8e8cbd2b8407ff3fd6d6e99bfef26d4e8b7b149a",
+      "bytes": 5698
+    },
+    {
+      "path": "crates/tabula-game-api/src/metadata.rs",
+      "sha256": "49c51933dd21e4a76ea897db73bbb106a9ebbe428f8005f9ad9e81a65864d450",
+      "bytes": 25919
+    },
+    {
+      "path": "crates/tabula-game-api/src/module.rs",
+      "sha256": "5a6409f0a445c8ca2b22a99750abf323854cce2f804718de02a9a095c8753b75",
+      "bytes": 2299
+    },
+    {
+      "path": "crates/tabula-game-api/src/rules.rs",
+      "sha256": "91561bb6e5aebd1c1f8fd02321f742c5595fddefb9d1ef4d67bacd23bee0b4fa",
+      "bytes": 15910
+    },
+    {
+      "path": "crates/tabula-lobby/Cargo.toml",
+      "sha256": "7912d32cc07713a404df93a971a06a349b0cb47ee8f50021ed7ae2d69fcf0305",
+      "bytes": 847
+    },
+    {
+      "path": "crates/tabula-lobby/src/lib.rs",
+      "sha256": "3d1d098de9c6b0bf0bceb6408c8ce4a986730e83d7f5b9e8f1e37849b460ea3f",
+      "bytes": 4078
+    },
+    {
+      "path": "crates/tabula-match/Cargo.toml",
+      "sha256": "1a12f2cb86e4b764c66b75b1dcdffce9010352a27e097920e4d46694083c696f",
+      "bytes": 1137
+    },
+    {
+      "path": "crates/tabula-match/src/lib.rs",
+      "sha256": "cd71da4b04ab6b47154de8e897cbe0e4adc5c90912b44732af4b5ba6e08aa435",
+      "bytes": 6711
+    },
+    {
+      "path": "crates/tabula-match/src/ports.rs",
+      "sha256": "0984e0948fa0c8a796c348e54f137d0e9b113de1564b5417a469fd675d4b0fde",
+      "bytes": 9576
+    },
+    {
+      "path": "crates/tabula-net-client/Cargo.toml",
+      "sha256": "e4e25a1481fef886e507d38775fd0db8d63993a49f1c86de9b5f21960caeb5d7",
+      "bytes": 1093
+    },
+    {
+      "path": "crates/tabula-net-client/src/lib.rs",
+      "sha256": "308a8c2d67cfb3c46546d07a9bdd2f2c50a1a01fc6125888a47cf18aac7c0df2",
+      "bytes": 4858
+    },
+    {
+      "path": "crates/tabula-presentation/Cargo.toml",
+      "sha256": "6c03628290de4a1650763690fc8d7cb3425f2be16779a1c62eba2d36d2cb443b",
+      "bytes": 903
+    },
+    {
+      "path": "crates/tabula-presentation/src/audio.rs",
+      "sha256": "666432bc54254b71ef216c0c59fb7ee3777077af2dcabbfdc44106c04a7abe0a",
+      "bytes": 3357
+    },
+    {
+      "path": "crates/tabula-presentation/src/button.rs",
+      "sha256": "a07de1146c92a4519c50ba828a6e757ede2e8a66dddfaadc62395ad648851030",
+      "bytes": 42451
+    },
+    {
+      "path": "crates/tabula-presentation/src/focus.rs",
+      "sha256": "94710a10d5a7897010d331277c9ca92b0c9dbfa1e3c4d84efd07c34015a28818",
+      "bytes": 22181
+    },
+    {
+      "path": "crates/tabula-presentation/src/game.rs",
+      "sha256": "40cee900decb00a0a4ffe6d73c52905f7403015d3c1139457175f0546d949632",
+      "bytes": 2606
+    },
+    {
+      "path": "crates/tabula-presentation/src/input.rs",
+      "sha256": "deb2897ca311acea9ed1d2b00a32a5e09dc630c8824f61585a6c31a779d64313",
+      "bytes": 2999
+    },
+    {
+      "path": "crates/tabula-presentation/src/lib.rs",
+      "sha256": "71b959b0cc757d4431bcea0ec02c8ff5222507806e6cc32c025692c6879e20d2",
+      "bytes": 1503
+    },
+    {
+      "path": "crates/tabula-presentation/src/motion.rs",
+      "sha256": "eb265dc48fa5e0e35f5d9a595ef8daa9ef6e59506f76386d916d6c87e0a22d61",
+      "bytes": 18053
+    },
+    {
+      "path": "crates/tabula-presentation/src/render.rs",
+      "sha256": "9facbad03f4410b5494b5e5f670aed85378fcfe88baa6e2fec85cdba38802270",
+      "bytes": 29225
+    },
+    {
+      "path": "crates/tabula-presentation/src/renderer.rs",
+      "sha256": "c37115617f6b66a3ecbc4b812645466704fc96f6d5b7b8b3e8de2a87cd267d85",
+      "bytes": 5805
+    },
+    {
+      "path": "crates/tabula-protocol/Cargo.toml",
+      "sha256": "ec095cb74db02a4fb23d7d46fe2cb02351f07e5e258ce23b90958794e9631385",
+      "bytes": 1011
+    },
+    {
+      "path": "crates/tabula-protocol/src/lib.rs",
+      "sha256": "6df980cbe3a04bdde986430bf23ffc9773d213e126b3332d6693229c5c3b23f3",
+      "bytes": 7334
+    },
+    {
+      "path": "crates/tabula-registry/Cargo.toml",
+      "sha256": "b0868674895fa357e4e316774f64725ca066b16a12e3bb3f64f2cf8948545148",
+      "bytes": 1468
+    },
+    {
+      "path": "crates/tabula-registry/src/availability.rs",
+      "sha256": "b3a08c82f76da6781373e01a1b80da1154fe0f84081f68d395a3fdb93fbeb859",
+      "bytes": 4499
+    },
+    {
+      "path": "crates/tabula-registry/src/catalog.rs",
+      "sha256": "e5c9a63cf3ffd3c528db7b5f7005884fb7bbffbbc2778dd1910f14f5b7839759",
+      "bytes": 8421
+    },
+    {
+      "path": "crates/tabula-registry/src/config.rs",
+      "sha256": "278abbe019fe345cf8efc1261a3ca54def3ad81e33292e9818961051ee07e490",
+      "bytes": 8563
+    },
+    {
+      "path": "crates/tabula-registry/src/erased.rs",
+      "sha256": "375cc44907f7a226a09dc73432e980d696df37952b2b0c8475e1de540f4cdfdf",
+      "bytes": 8733
+    },
+    {
+      "path": "crates/tabula-registry/src/games/chess.rs",
+      "sha256": "c9587cc4c63d6786d0076bb9ce8933b5094dd532c7bfca51fa5f0c423922a05c",
+      "bytes": 9519
+    },
+    {
+      "path": "crates/tabula-registry/src/games/mod.rs",
+      "sha256": "b1a549f3a96805c2cb9a6b349fff09859c162f343e115ac5594410953f38ede9",
+      "bytes": 603
+    },
+    {
+      "path": "crates/tabula-registry/src/games/tiles.rs",
+      "sha256": "d7e1687b797f144e65c83478449a3f54970b2bb5737e9846e787bd3d7ff13f18",
+      "bytes": 5570
+    },
+    {
+      "path": "crates/tabula-registry/src/i18n.rs",
+      "sha256": "822c35887290dbb6b63e5669ad908d7f29b60601a8d4190d394e5cf9a4cf61d9",
+      "bytes": 7271
+    },
+    {
+      "path": "crates/tabula-registry/src/launch.rs",
+      "sha256": "b384c924774e1b4d58b008cd37b32d1aea56fcbbaed55cb2da68e5ecbf018a27",
+      "bytes": 2979
+    },
+    {
+      "path": "crates/tabula-registry/src/lib.rs",
+      "sha256": "c049cd4ebae7f35dd0bddb3e1ecdc21b572ac3c6ca949ff4ab14ae21cb614ef2",
+      "bytes": 9124
+    },
+    {
+      "path": "crates/tabula-registry/src/parse.rs",
+      "sha256": "eaad2b61e07b8085216cdfe0deab688c11b5773617151b3494fe3258c1813053",
+      "bytes": 2755
+    },
+    {
+      "path": "crates/tabula-registry/src/tests.rs",
+      "sha256": "2fdd66225c59e7a97cad6612e3267f90f2e0f431d8cf04f8e28148d425902dcc",
+      "bytes": 21695
+    },
+    {
+      "path": "crates/tabula-storage/Cargo.toml",
+      "sha256": "5cb28cc0f8db82eb91e8a104e8cd3ba9da763fb1dc4f2d95458c2f8b188470bd",
+      "bytes": 999
+    },
+    {
+      "path": "crates/tabula-storage/src/lib.rs",
+      "sha256": "373bcfcfaeb18623bdb7189c3fc40da9b3ab26e1211d824d6ae55ebe9fa47fcd",
+      "bytes": 4384
+    },
+    {
+      "path": "crates/tabula-testkit/Cargo.toml",
+      "sha256": "bf0dcdd255afc989755c0bd6aa9d6fff5c431da22c1975e5d636a18091c247fb",
+      "bytes": 1980
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/commands.rs",
+      "sha256": "c77545a015107e27cf99c29170202c5678a456fd78a767c09ea606c31ff55e98",
+      "bytes": 6393
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/determinism.rs",
+      "sha256": "4fbedb47619b44b694a25bcf8d71c172a89a5d7c8850b1d94d36ec0a6edca692",
+      "bytes": 3925
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/hashing.rs",
+      "sha256": "8ac30aaff7892c734cb343822258c531dc7c19cef78028faa220d04c1deeec40",
+      "bytes": 2110
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/identity.rs",
+      "sha256": "30b69e1429bfa0b5f84c3b0fdb66e5a4431c1f22d84bfc07f92eccc6c89e4dca",
+      "bytes": 3082
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/mod.rs",
+      "sha256": "46b2b0e2f9d35ecec3128b3b1f2ee06e8af3d35b0e076d8a4b2ad0e7d44952db",
+      "bytes": 11331
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/replay.rs",
+      "sha256": "77009915b07396abc07f82b9277e1e8ab31966d56c5b4c061d5926d1dce95732",
+      "bytes": 5075
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/rng.rs",
+      "sha256": "e8546ba2c78ec8cf8149472bbd30df3b91ab7453719275c3718f3695346d7277",
+      "bytes": 2317
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/security.rs",
+      "sha256": "add642498db3a032e7798133470df238e8e92d82d9210b05cbc4d7465f1644fe",
+      "bytes": 14398
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/serialization.rs",
+      "sha256": "43ca1b6f45e5e5b19c209a36ec255b83f9eb1810054021e53984dab21eaa5d8c",
+      "bytes": 1042
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/support.rs",
+      "sha256": "90cec1ce2ccc3d38fc7f8d7fb289308b95b46f3d95be6ea91d651c1ef11ee81d",
+      "bytes": 2177
+    },
+    {
+      "path": "crates/tabula-testkit/src/conformance/terminal.rs",
+      "sha256": "857605f022786ef7c4e80437169770e6a4d6d3ac54ea0a8bcf1b0530e068089d",
+      "bytes": 3091
+    },
+    {
+      "path": "crates/tabula-testkit/src/determinism.rs",
+      "sha256": "b66ece5d0481297719769dcaace399ef1ec350841f2512eb6d7c3cb460e9a848",
+      "bytes": 25223
+    },
+    {
+      "path": "crates/tabula-testkit/src/fakes.rs",
+      "sha256": "1161d908d3a0df0ab87d4230934355ab92da4bee3a4c614937bc6af88d790787",
+      "bytes": 2378
+    },
+    {
+      "path": "crates/tabula-testkit/src/lib.rs",
+      "sha256": "d42815a50738e36fa97cfe9e937be6529abbfb166bd3f77b12f9d12de98e2f6c",
+      "bytes": 3652
+    },
+    {
+      "path": "crates/tabula-testkit/src/presentation.rs",
+      "sha256": "bf45b61f3cf0e6279500c16638663914033b7a3f09a873f3b09a1ac7500833ac",
+      "bytes": 21447
+    },
+    {
+      "path": "crates/tabula-testkit/src/projection.rs",
+      "sha256": "86510fa07b528c50040ff35d57b0871c1e82b1c6245203664fa18487fa928683",
+      "bytes": 30983
+    },
+    {
+      "path": "crates/tabula-testkit/src/replay/diagnostics.rs",
+      "sha256": "47da77ce67d041d06d5db51b0e367838089ca9ccaac8fb58e9c2cca75cd2e393",
+      "bytes": 16568
+    },
+    {
+      "path": "crates/tabula-testkit/src/replay.rs",
+      "sha256": "b085722781877d52b685060e5dafd7258000563817800ffc6b2d36c09d848ab0",
+      "bytes": 112214
+    },
+    {
+      "path": "crates/tabula-testkit/src/selfplay.rs",
+      "sha256": "46beb8dfa18e997493de8b56b1180ffa3672f7a8e2a46dfad8b525c1ccfd3da9",
+      "bytes": 76070
+    },
+    {
+      "path": "crates/tabula-testkit/src/strategies.rs",
+      "sha256": "72861912c427ffd02a403244ba49cfe2f2e05488dd65e942c2aa1744a0722085",
+      "bytes": 2807
+    },
+    {
+      "path": "crates/tabula-testkit/tests/conformance_catches_violations.rs",
+      "sha256": "f926e5dbf3bbaadfe181ec8da9b9af4de0d68efae86bc53bb7352e95d9c16940",
+      "bytes": 16499
+    },
+    {
+      "path": "crates/tabula-testkit/tests/harness_catches_violations.rs",
+      "sha256": "88efa800eed3e1db32f0d8446fb0939928499fbc04e6c49e747d83c1ca96fe31",
+      "bytes": 8536
+    },
+    {
+      "path": "crates/tabula-testkit/tests/projection_noninterference.rs",
+      "sha256": "3c83a3b542480fd8c5775676d28ee54574b38dbd296d02e7c29e47540b437508",
+      "bytes": 74039
+    },
+    {
+      "path": "crates/tabula-voice/Cargo.toml",
+      "sha256": "735e236b0643290d7fdec020fb13563068237ce15c988e3b5e68bc114624f7da",
+      "bytes": 761
+    },
+    {
+      "path": "crates/tabula-voice/src/lib.rs",
+      "sha256": "a37737fe884abf559921635d4642bcd27a9fb825701f63ebf3bdd5d181d953cc",
+      "bytes": 3056
+    },
+    {
+      "path": "deps.toml",
+      "sha256": "f1fa1f585182623edd6f3da809319e7bd87903f3b357641755ddc4377d7a04ba",
+      "bytes": 10639
+    },
+    {
+      "path": "games/caro/Cargo.toml",
+      "sha256": "82967d526329318878d5be07a8ca3261dd723e5d7ebd62fcba0037dc7cecb93a",
+      "bytes": 1266
+    },
+    {
+      "path": "games/caro/clippy.toml",
+      "sha256": "09f5b5a4dbbf6c37fbf2c70ffe8d6764c3c7f6080cdfdc65739d06e25c0c009e",
+      "bytes": 1522
+    },
+    {
+      "path": "games/caro/src/lib.rs",
+      "sha256": "c6aa23e7c4f2b4ad4fb0fa51642405b241365c8a186c8966d2dabb6a7db91af5",
+      "bytes": 3768
+    },
+    {
+      "path": "games/chess/Cargo.toml",
+      "sha256": "ed60404996fd1c2b35e6b5eceb7c14e58277c3bb5161ca6e1bf71fa285709fb6",
+      "bytes": 1409
+    },
+    {
+      "path": "games/chess/build.rs",
+      "sha256": "38d356eb15b93332801eaecc98a19210a45e50a2da72df7a22350026277d82b6",
+      "bytes": 3796
+    },
+    {
+      "path": "games/chess/clippy.toml",
+      "sha256": "09f5b5a4dbbf6c37fbf2c70ffe8d6764c3c7f6080cdfdc65739d06e25c0c009e",
+      "bytes": 1522
+    },
+    {
+      "path": "games/chess/game.toml",
+      "sha256": "261166a466491c1421cee076daae12bfc1833f4517b5f3eb7ebc9c0abb41b219",
+      "bytes": 1205
+    },
+    {
+      "path": "games/chess/src/bot.rs",
+      "sha256": "bd3db446f8296f97a27b49d1daf7b0b40c4aa241e45c4f2949133998fb53352a",
+      "bytes": 10728
+    },
+    {
+      "path": "games/chess/src/lib.rs",
+      "sha256": "77b35cf61957aabec78a8a8102c250617bc5c30a3171c9e749c01e4ab852ec5b",
+      "bytes": 5478
+    },
+    {
+      "path": "games/chess/src/presentation/mod.rs",
+      "sha256": "49d27aac9a5f27a640f76d1d512d4b2cd6a9e8f8f3e62baadbe11aef6c18321b",
+      "bytes": 161681
+    },
+    {
+      "path": "games/chess/src/rules/clock.rs",
+      "sha256": "a166f70985de76dd87df35e9a1aac72f4910234dc4bd2f321105d5fa3b98f84c",
+      "bytes": 10454
+    },
+    {
+      "path": "games/chess/src/rules/mod.rs",
+      "sha256": "e663b6a899e31e2a905372d998fb9f8897dc810d257b9c1785acab89648f32a2",
+      "bytes": 19909
+    },
+    {
+      "path": "games/chess/src/rules/movegen.rs",
+      "sha256": "86a05972e399e522914f5ee0563ccdce0097580849c2edf0243e056d35c0e2f8",
+      "bytes": 26872
+    },
+    {
+      "path": "games/chess/src/rules/state.rs",
+      "sha256": "f9fbdb48a92230384888ac47f722380e262074d787a5ac5ad1daddcfaa9c0418",
+      "bytes": 9212
+    },
+    {
+      "path": "games/chess/tests/bot.rs",
+      "sha256": "006bcf8294db3d020d71786e9811f8deccdd5f8283b7eec49f539f8f6b338e24",
+      "bytes": 8324
+    },
+    {
+      "path": "games/chess/tests/clocks.rs",
+      "sha256": "de3e5ae5420ddbd0f07bf3bb3090b9023ba4b12dc2272ca2d880292b671c7032",
+      "bytes": 24159
+    },
+    {
+      "path": "games/chess/tests/conformance.rs",
+      "sha256": "15ca8f44a503c70eacf2957e9aa9f1968381868b345c8c37db5297fa0f6382be",
+      "bytes": 2040
+    },
+    {
+      "path": "games/chess/tests/perft.rs",
+      "sha256": "75efdccfe47f2017d7b14479415fbafb0ec473a7f8268d94d517401208450efa",
+      "bytes": 1490
+    },
+    {
+      "path": "games/chess/tests/projection_control.rs",
+      "sha256": "4e2bbd5e53042ff30dc18d5028f2e9ae32179fca4b0343d7285a5fc455272755",
+      "bytes": 2698
+    },
+    {
+      "path": "games/chess/tests/replay.rs",
+      "sha256": "5aac0ebbd2bd842ac8c859a4bd5359f8d4a2fad9f5f4179e9e7ec4e35d75a128",
+      "bytes": 7713
+    },
+    {
+      "path": "games/chess/tests/rules.rs",
+      "sha256": "3592194c9e66f9b3fcf680efdca2ed29b58670c0a5a1a929fe047a7be69b95be",
+      "bytes": 8775
+    },
+    {
+      "path": "games/tiles/Cargo.toml",
+      "sha256": "1ffa5ae72b8e49af4f256aa60d41eeadf4f880fe6cc0c7a98e38a29c1f70c566",
+      "bytes": 1449
+    },
+    {
+      "path": "games/tiles/build.rs",
+      "sha256": "38d356eb15b93332801eaecc98a19210a45e50a2da72df7a22350026277d82b6",
+      "bytes": 3796
+    },
+    {
+      "path": "games/tiles/clippy.toml",
+      "sha256": "09f5b5a4dbbf6c37fbf2c70ffe8d6764c3c7f6080cdfdc65739d06e25c0c009e",
+      "bytes": 1522
+    },
+    {
+      "path": "games/tiles/game.toml",
+      "sha256": "e4dd8b66317f03407b457178a38bd30a61ec285f7ddaa2f0a2fa41468c8d91a5",
+      "bytes": 2549
+    },
+    {
+      "path": "games/tiles/src/bot.rs",
+      "sha256": "70baee665f3c3f5959487011ca1aae1e123d74692b2fce7254888f87548495e0",
+      "bytes": 9024
+    },
+    {
+      "path": "games/tiles/src/lib.rs",
+      "sha256": "9c18c8b912f7e9bf8db708fc7b5ee7dde469753a31fb4561a679ee31fd1dfa88",
+      "bytes": 14223
+    },
+    {
+      "path": "games/tiles/src/presentation.rs",
+      "sha256": "91d1e8933a063a15d5ed298eb1d5decce73fac28c01e516e3db11efa1933d88c",
+      "bytes": 123672
+    },
+    {
+      "path": "games/tiles/src/rules/coord.rs",
+      "sha256": "76490d63b01b923e06f42e3eed0e60362734911665a8ddbe9071f5526581cca0",
+      "bytes": 11775
+    },
+    {
+      "path": "games/tiles/src/rules/feature.rs",
+      "sha256": "efad28b7cbc1644dcd427b497985328c27d357b45035929958537de191d5ef31",
+      "bytes": 38074
+    },
+    {
+      "path": "games/tiles/src/rules/mod.rs",
+      "sha256": "0c47ca7dd5a29dc81cf9890a51116c8983f6fe004a61c6bddd40120653e958bc",
+      "bytes": 32411
+    },
+    {
+      "path": "games/tiles/src/rules/placement.rs",
+      "sha256": "3dee0bdf9b8babff1107d88a84cf1f066a2ec723be3f5d916b3e1eba9ad5f106",
+      "bytes": 13702
+    },
+    {
+      "path": "games/tiles/src/rules/scoring.rs",
+      "sha256": "5fe6b594f7fdb59c9b12d09a24c0a27ca962102a3a0d5e64a6e59f48b97ae7d2",
+      "bytes": 13107
+    },
+    {
+      "path": "games/tiles/src/rules/secret.rs",
+      "sha256": "5dd2f6aa1dfc2cabd171a710b37988e9eed45354c5afbf5585d32964a43a008e",
+      "bytes": 19630
+    },
+    {
+      "path": "games/tiles/src/rules/state.rs",
+      "sha256": "be829c6c023ad99e2f7b8cd507c1e89a3fc44b6ecc2d3eaa998d3392613e5745",
+      "bytes": 37153
+    },
+    {
+      "path": "games/tiles/src/rules/tile.rs",
+      "sha256": "ffea97c0c94643a71aeb9af0169a247af356c56d54bf03c0bb9259ccbfe85108",
+      "bytes": 21611
+    },
+    {
+      "path": "games/tiles/tests/conformance.rs",
+      "sha256": "98e573222fa7f97824c42cf851f9c3d8061e5e6795a3cb2560f1101769f2c8bb",
+      "bytes": 4491
+    },
+    {
+      "path": "games/tiles/tests/determinism.rs",
+      "sha256": "4dbb0108de5902c99de5cdec4da21c1338ab0197f3edec08e4d8ca8040e9dd61",
+      "bytes": 10615
+    },
+    {
+      "path": "games/tiles/tests/features.rs",
+      "sha256": "d96484176c38d5db7d55c52731c8d21f1f1e461b4d292ed75dc95bcbf1eed89d",
+      "bytes": 14174
+    },
+    {
+      "path": "games/tiles/tests/replay.rs",
+      "sha256": "20e4ee71fbc0e2af2dfe7dba573ce085dfcfd76c8b009597a84b1e1e422daca0",
+      "bytes": 14009
+    },
+    {
+      "path": "games/tiles/tests/rules.rs",
+      "sha256": "352050923b26a9c3bddf3292149e1d74f83e1b8d7c323716d832c756a9cf4fdc",
+      "bytes": 20946
+    },
+    {
+      "path": "games/tiles/tests/state_size.rs",
+      "sha256": "1d3939f72344b510eb83841fa8809ae0498991cb962f8c1c51e99d4752f66200",
+      "bytes": 5145
+    },
+    {
+      "path": "games/tiles/tests/support/mod.rs",
+      "sha256": "ca86606fed1aa882db02e21052f51dde12f6ed64a4f525d6217e93acd096d477",
+      "bytes": 6354
+    },
+    {
+      "path": "games/werewolf/Cargo.toml",
+      "sha256": "b2c02f8cdd468c4f9d028a49cf74b0218805a00f92b7dd23a193a3563b855378",
+      "bytes": 1404
+    },
+    {
+      "path": "games/werewolf/build.rs",
+      "sha256": "38d356eb15b93332801eaecc98a19210a45e50a2da72df7a22350026277d82b6",
+      "bytes": 3796
+    },
+    {
+      "path": "games/werewolf/clippy.toml",
+      "sha256": "09f5b5a4dbbf6c37fbf2c70ffe8d6764c3c7f6080cdfdc65739d06e25c0c009e",
+      "bytes": 1522
+    },
+    {
+      "path": "games/werewolf/game.toml",
+      "sha256": "2bbd83497cdd8cac32daed3a03fad779c7f49f042c3e158bd11a2e7aec024ba1",
+      "bytes": 1395
+    },
+    {
+      "path": "games/werewolf/src/lib.rs",
+      "sha256": "cbf273a07d53eda43bc542c7f3dee482e15a9948b5f48a08a21666cb8bc34ef8",
+      "bytes": 9664
+    },
+    {
+      "path": "games/werewolf/src/rules/config.rs",
+      "sha256": "da970a123fc519e08837d3991a5fc16b1b8347eef68b26dd25f3d2c063015d48",
+      "bytes": 14707
+    },
+    {
+      "path": "games/werewolf/src/rules/event.rs",
+      "sha256": "43a38b4f7fd8e596772a2fb292b0f7ea85b1db59b8516cdbbc3fe4dc4053ef64",
+      "bytes": 1128
+    },
+    {
+      "path": "games/werewolf/src/rules/mod.rs",
+      "sha256": "5c750a3355dc6735516fd58390acfd2dcd1ebab0293721c20fc5629f5f4a0d02",
+      "bytes": 4989
+    },
+    {
+      "path": "games/werewolf/src/rules/role.rs",
+      "sha256": "74076e57585a0076f6eff1c1e849fe77c4d3298ab68ac55d10cebdda1462e617",
+      "bytes": 8797
+    },
+    {
+      "path": "games/werewolf/src/rules/state.rs",
+      "sha256": "e92318ecd6de2cd7fe769fcfd3cb19b1adbbf84c1d999629d1d2852222b5e541",
+      "bytes": 25790
+    },
+    {
+      "path": "games/werewolf/tests/assignment.rs",
+      "sha256": "29edea2c0caa46d03e68db2bc86d0001f28910352935e94637aca5f98c847ad5",
+      "bytes": 12031
+    },
+    {
+      "path": "games/werewolf/tests/config.rs",
+      "sha256": "6cbef442b2a74e37a36a829e478fb955d3fd1c0984a43a6258b23c48995bac0c",
+      "bytes": 18501
+    },
+    {
+      "path": "games/werewolf/tests/metadata.rs",
+      "sha256": "5c7e95ec8eb53551805ad98d92e15ee380223cb362b4ac0a30a3451cc6c29572",
+      "bytes": 2746
+    },
+    {
+      "path": "games/werewolf/tests/state.rs",
+      "sha256": "4e6330aa337d501a37c14160dcf2d115781d12d63e96c7ec46bfb9353217ae7e",
+      "bytes": 21155
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "sha256": "59367a064785043de13ddc97394854c052a69eca0e86e4cb802d1c645889f052",
+      "bytes": 1624
+    }
+  ]
+}

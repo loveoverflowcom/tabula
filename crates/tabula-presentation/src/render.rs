@@ -287,6 +287,9 @@ pub enum Align {
 /// The intentionally small backend-neutral rendering vocabulary from doc 04 §5.2.
 #[derive(Clone, Debug, PartialEq)]
 pub enum RenderCmd {
+    /// A textured destination quad for a logical resource. `rotation` is in radians around
+    /// `pivot`, an absolute point in the same local coordinate space as `rect`. Rotation precedes
+    /// inherited affine scopes and the camera; the source-pixel region comes from the asset pack.
     Sprite {
         asset: AssetRef,
         rect: Rect,

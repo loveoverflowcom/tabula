@@ -31,7 +31,7 @@ use tabula_game_client::{
 };
 #[rustfmt::skip]
 use tabula_game_tiles::{ // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
-    presentation::TilesPresentation,
+    presentation::{fixture, TilesPresentation},
     rules::{MAX_SEATS as MAX_PLACEMENT_SEATS, MIN_SEATS as MIN_PLACEMENT_SEATS},
     Config as TilesConfig, TilesModule, TilesRules,
 };
@@ -77,7 +77,7 @@ async fn main() {
     // suppression marker instead of the whole block sharing one.
     loop {
         match options.game {
-            SelectedGame::Chess => run_chess(&mut renderer, &mut audio, &theme).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+            SelectedGame::Chess => run_chess(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
             SelectedGame::Tiles => run_tiles(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
         }
         // A completed or stopped session returns only after New local game.
@@ -90,6 +90,7 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
     renderer: &mut MacroquadRenderer,
     audio: &mut MacroquadAudioSink,
     theme: &tabula_design::Theme,
+    options: Options,
 ) {
     let local_match = LocalMatch::<ChessRules, ChessPresentation>::new(
         &ChessConfig {
@@ -113,6 +114,7 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
         |view| view.turn.seat(),
         None,
         &[],
+        options.reduced_motion,
     )
     .await;
 }
@@ -124,6 +126,20 @@ async fn run_tiles( // xtask-allow-game-id: direct Phase 3 local vertical slice 
     theme: &tabula_design::Theme,
     options: Options,
 ) {
+    if let Err(error) = tabula_game_client::fixture_assets::preload_sprite_fixture(
+        renderer,
+        fixture::MANIFEST,
+        TilesModule::metadata().id(),
+        &TilesPresentation::asset_pack(),
+        &[
+            (tabula_assets::AssetDensity::new(1).expect("valid fixture density"), fixture::ATLAS_1X),
+            (tabula_assets::AssetDensity::new(2).expect("valid fixture density"), fixture::ATLAS_2X),
+        ],
+    ).await {
+        // A missing/failed texture remains an explicit preflight failure, and
+        // the ordinary screen-space recovery dock is still available.
+        macroquad::logging::error!("{error}");
+    }
     let seats = options
         .seats
         .clamp(MIN_PLACEMENT_SEATS, MAX_PLACEMENT_SEATS);
@@ -151,6 +167,7 @@ async fn run_tiles( // xtask-allow-game-id: direct Phase 3 local vertical slice 
         |view| view.turn,
         TilesModule::bot(BotLevel::Easy),
         &bot_seats,
+        options.reduced_motion,
     )
     .await;
 }
@@ -171,6 +188,7 @@ async fn run_local<R, P>(
     turn_of: fn(&R::View) -> SeatId,
     bot: Option<Box<dyn GameBot<R>>>,
     bot_seats: &[SeatId],
+    reduced_motion: bool,
 ) where
     R: GameRules,
     P: GamePresentation<Rules = R>,
@@ -181,6 +199,7 @@ async fn run_local<R, P>(
     // without.
     let mut bot_rng = DetRng::for_input(&MatchSeed::from_bytes([0; 32]), InputIndex(u64::MAX));
     let mut feedback = fresh_feedback();
+    local_match.local_mut().set_reduced_motion(reduced_motion);
     let started_at_ms = presentation_now_ms();
 
     'game_loop: loop {
@@ -289,9 +308,9 @@ async fn run_local<R, P>(
 
         let board_frame = sync_local_frame(&mut local_match, &mut feedback, &frame);
         present_local_scenes(&local_match, &mut feedback, renderer, &frame, &board_frame);
-        renderer
-            .end_frame()
-            .expect("Macroquad end_frame is infallible");
+        if renderer.end_frame().is_err() {
+            feedback.note_render_error();
+        }
         mq::next_frame().await;
     }
 }
@@ -334,7 +353,7 @@ where
         suppress_held_activation(feedback);
     }
     let board_frame = feedback.board_frame(frame);
-    local_match.local_mut().set_viewport(board_frame.viewport());
+    local_match.local_mut().sync_frame(&board_frame);
     board_frame
 }
 
@@ -343,20 +362,24 @@ where
 /// Every game already has this method; naming it as a trait is what lets one
 /// loop serve all of them instead of one loop per game.
 trait SetViewport {
-    fn set_viewport(&mut self, viewport: tabula_presentation::Viewport);
+    fn sync_frame(&mut self, frame: &tabula_presentation::FrameCtx);
+    fn set_reduced_motion(&mut self, _reduced: bool) {}
 }
 
 #[rustfmt::skip]
 impl SetViewport for tabula_game_chess::presentation::ChessLocal { // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-    fn set_viewport(&mut self, viewport: tabula_presentation::Viewport) {
-        Self::set_viewport(self, viewport);
+    fn sync_frame(&mut self, frame: &tabula_presentation::FrameCtx) {
+        Self::set_viewport(self, frame.viewport());
     }
 }
 
 #[rustfmt::skip]
 impl SetViewport for tabula_game_tiles::presentation::TilesLocal { // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
-    fn set_viewport(&mut self, viewport: tabula_presentation::Viewport) {
-        Self::set_viewport(self, viewport);
+    fn sync_frame(&mut self, frame: &tabula_presentation::FrameCtx) {
+        Self::set_frame_context(self, frame);
+    }
+    fn set_reduced_motion(&mut self, reduced: bool) {
+        Self::set_reduced_motion(self, reduced);
     }
 }
 
@@ -366,6 +389,7 @@ struct Options {
     seats: u8,
     fill: SeatFill,
     theme: tabula_design::ThemeKind,
+    reduced_motion: bool,
 }
 
 impl Default for Options {
@@ -375,6 +399,7 @@ impl Default for Options {
             seats: 3,
             fill: SeatFill::default(),
             theme: tabula_design::ThemeKind::Light,
+            reduced_motion: false,
         }
     }
 }
@@ -400,6 +425,7 @@ fn parse_options_from(mut args: impl Iterator<Item = String>) -> Options {
                 }
             }
             "--solo" => options.fill = SeatFill::Solo,
+            "--reduced-motion" => options.reduced_motion = true,
             "--theme" => {
                 if let Some(theme) = args.next().and_then(|name| parse_local_theme(&name)) {
                     options.theme = theme;

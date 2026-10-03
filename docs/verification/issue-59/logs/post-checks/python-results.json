@@ -1,0 +1,32 @@
+[
+  {
+    "command": "/tmp/tabula-51-python/bin/python3 --version",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/01-python.log"
+  },
+  {
+    "command": "/tmp/tabula-51-python/bin/python3 -c 'import yaml; print(yaml.__version__)'",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/02-python.log"
+  },
+  {
+    "command": "/tmp/tabula-51-python/bin/python3 .agents/skills/tabula-engineering/scripts/check_skills.py",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/03-python.log"
+  },
+  {
+    "command": "/tmp/tabula-51-python/bin/python3 .agents/skills/tabula-engineering/scripts/test_check_skills.py",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/04-python.log"
+  },
+  {
+    "command": "/tmp/tabula-51-python/bin/python3 .agents/skills/tabula-engineering/scripts/test_ai_doc_contracts.py",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/05-python.log"
+  },
+  {
+    "command": "/tmp/tabula-51-python/bin/python3 .agents/skills/tabula-engineering/scripts/ai_doc_contracts.py check crates/renderer-macroquad/src crates/tabula-presentation/src games/tiles/src/presentation.rs apps/game-client/src apps/game-client/examples",
+    "exit_code": 1,
+    "log": "/tmp/tabula-59-post-checks/06-python.log"
+  }
+]

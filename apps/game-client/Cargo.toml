@@ -25,6 +25,7 @@ tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
 tabula-design       = { workspace = true }
 tabula-presentation = { workspace = true }
+tabula-assets       = { workspace = true }
 renderer-macroquad  = { workspace = true }
 macroquad           = { workspace = true }
 glam                = { workspace = true }
