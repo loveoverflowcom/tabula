@@ -1,8 +1,10 @@
 //! Macroquad default-font mapping for semantic text tokens.
 //!
 //! This first backend maps the token's validated size and line height consistently for measuring
-//! and drawing. Font family, weight, tracking, and complex shaping need the Phase 3 font asset
-//! path; they intentionally do not leak into the presentation contract.
+//! and drawing. Tabular styles give ASCII digits equal advances (doc 04 §7.4), centering the
+//! default-font glyphs within those cells. This is a fallback layout, not a loaded mono face.
+//! Font family, weight, tracking, and complex shaping still need the Phase 3 font asset path;
+//! they intentionally do not leak into the presentation contract.
 
 #![allow(
     clippy::cast_possible_truncation,
@@ -21,12 +23,11 @@ pub(crate) fn measure(
     style: TextStyle,
     max_width: Option<Positive>,
 ) -> Result<TextMetrics, RenderError> {
-    let lines = wrap_lines(text, max_width, |line| {
-        raw_measure(line, font_size(style)).width
-    });
+    let layout = TextLayout::new(style);
+    let lines = wrap_lines(text, max_width, |line| layout.width(line));
     let width = lines
         .iter()
-        .map(|line| raw_measure(line, font_size(style)).width)
+        .map(|line| layout.width(line))
         .fold(0.0, f32::max);
     let line_count = u16::try_from(lines.len()).map_err(|_| {
         RenderError::Execution(String::from(
@@ -40,20 +41,35 @@ pub(crate) fn measure(
     .map_err(|error| RenderError::Execution(error.to_string()))
 }
 
-/// Validates the same wrapped line count used by drawing, before any line is emitted.
+/// Purely proves the line count fits before drawing can emit any primitive.
+///
+/// Without a width limit the explicit line count is exact. Bounded text conservatively reserves
+/// one line per Unicode scalar (and one for each empty paragraph), capped at `u16::MAX`. Thus
+/// preflight needs no font or graphics context; measuring and drawing still use exact wrapping.
 pub(crate) fn validate(
     value: &str,
-    token: TextStyleToken,
+    _token: TextStyleToken,
     max_width: Option<Positive>,
-    frame: &tabula_presentation::FrameCtx,
+    _frame: &tabula_presentation::FrameCtx,
 ) -> Result<(), RenderError> {
-    let style = frame.theme().text_style(token);
-    let line_count = wrap_lines(value, max_width, |line| {
-        raw_measure(line, font_size(style)).width
-    })
-    .len();
-    u16::try_from(line_count).map(|_| ()).map_err(|_| {
-        RenderError::Execution(String::from("backend text has more than u16::MAX lines"))
+    let line_bound = value.split('\n').try_fold(0_u16, |count, paragraph| {
+        let paragraph_bound = if max_width.is_some() {
+            paragraph
+                .chars()
+                .take(usize::from(u16::MAX) + 1)
+                .count()
+                .max(1)
+        } else {
+            1
+        };
+        count.checked_add(u16::try_from(paragraph_bound).ok()?)
+    });
+    line_bound.map(|_| ()).ok_or_else(|| {
+        RenderError::Execution(String::from(if max_width.is_some() {
+            "backend bounded text exceeds u16::MAX preflight line capacity"
+        } else {
+            "backend text has more than u16::MAX lines"
+        }))
     })
 }
 
@@ -76,44 +92,117 @@ pub(crate) fn draw(
         ));
     };
     let style = theme.text_style(token);
-    let lines = wrap_lines(value, max_width, |line| {
-        raw_measure(line, font_size(style)).width
-    });
+    let layout = TextLayout::new(style);
+    let lines = wrap_lines(value, max_width, |line| layout.width(line));
     let container_width = max_width.map(Positive::get);
     for (index, line) in lines.iter().enumerate() {
-        let dimensions = raw_measure(line, font_size(style));
-        let width = dimensions.width;
+        let width = layout.width(line);
         let offset = match align {
             Align::Start => 0.0,
             Align::Center => -width / 2.0,
             Align::End => -container_width.unwrap_or(width),
         };
-        let point = transform.transform_point2(
-            at + Vec2::new(
-                offset,
-                style.line_height().get()
-                    * f32::from(u16::try_from(index + 1).map_err(|_| {
-                        RenderError::Execution(String::from(
-                            "renderer-macroquad text has more than u16::MAX lines",
-                        ))
-                    })?),
-            ),
-        );
-        mq::draw_text_ex(
+        let baseline = style.line_height().get()
+            * f32::from(u16::try_from(index + 1).map_err(|_| {
+                RenderError::Execution(String::from(
+                    "renderer-macroquad text has more than u16::MAX lines",
+                ))
+            })?);
+        layout_line(
             line,
-            point.x,
-            point.y,
-            mq::TextParams {
-                font_size: font_size(style),
-                font_scale: scale,
-                font_scale_aspect: 1.0,
-                font: None,
-                color: with_opacity(color, opacity),
-                rotation: 0.0,
+            layout.digit_advance,
+            |run| raw_measure(run, layout.font_size).width,
+            |run, x| {
+                let point = transform.transform_point2(at + Vec2::new(offset + x, baseline));
+                mq::draw_text_ex(
+                    run,
+                    point.x,
+                    point.y,
+                    mq::TextParams {
+                        font_size: layout.font_size,
+                        font_scale: scale,
+                        font_scale_aspect: 1.0,
+                        font: None,
+                        color: with_opacity(color, opacity),
+                        rotation: 0.0,
+                    },
+                );
             },
         );
     }
     Ok(())
+}
+
+/// One unscaled fallback layout, shared by wrapping, measuring, and drawing.
+struct TextLayout {
+    font_size: u16,
+    digit_advance: Option<f32>,
+}
+
+impl TextLayout {
+    fn new(style: TextStyle) -> Self {
+        let font_size = font_size(style);
+        let digit_advance = style
+            .tabular_figures()
+            .then(|| tabular_digit_advance(|digit| raw_measure(digit, font_size).width));
+        Self {
+            font_size,
+            digit_advance,
+        }
+    }
+
+    fn width(&self, line: &str) -> f32 {
+        layout_line(
+            line,
+            self.digit_advance,
+            |run| raw_measure(run, self.font_size).width,
+            |_, _| {},
+        )
+    }
+}
+
+fn tabular_digit_advance(measure: impl Fn(&str) -> f32) -> f32 {
+    ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+        .into_iter()
+        .map(measure)
+        .fold(0.0, f32::max)
+}
+
+/// Emits proportional non-digit runs and centered tabular digits at logical x offsets.
+/// The returned advance is also the width used for alignment and width-limited wrapping.
+fn layout_line(
+    text: &str,
+    digit_advance: Option<f32>,
+    measure: impl Fn(&str) -> f32,
+    mut emit: impl FnMut(&str, f32),
+) -> f32 {
+    let Some(digit_advance) = digit_advance else {
+        emit(text, 0.0);
+        return measure(text);
+    };
+    let mut x = 0.0;
+    let mut run_start = 0;
+    for (index, character) in text.char_indices() {
+        if !character.is_ascii_digit() {
+            continue;
+        }
+        if run_start < index {
+            let run = &text[run_start..index];
+            emit(run, x);
+            x += measure(run);
+        }
+        let end = index + character.len_utf8();
+        let digit = &text[index..end];
+        emit(digit, x + (digit_advance - measure(digit)) / 2.0);
+        x += digit_advance;
+        run_start = end;
+    }
+    if run_start < text.len() {
+        let run = &text[run_start..];
+        emit(run, x);
+        x += measure(run);
+    }
+    x
 }
 
 fn raw_measure(text: &str, font_size: u16) -> mq::TextDimensions {
@@ -164,19 +253,20 @@ fn wrap_lines(text: &str, max_width: Option<Positive>, measure: impl Fn(&str) ->
     let mut lines = Vec::new();
     for paragraph in text.split('\n') {
         let mut start = 0;
-        let mut last_fitting = 0;
         for (index, character) in paragraph.char_indices() {
             let end = index + character.len_utf8();
             if measure(&paragraph[start..end]) <= max_width.get() {
-                last_fitting = end;
                 continue;
             }
-            if last_fitting == start {
-                last_fitting = end;
+            if start < index {
+                lines.push(&paragraph[start..index]);
+                start = index;
             }
-            lines.push(&paragraph[start..last_fitting]);
-            start = last_fitting;
-            last_fitting = 0;
+            // An oversized scalar still makes progress, but cannot absorb the next scalar.
+            if measure(&paragraph[start..end]) > max_width.get() {
+                lines.push(&paragraph[start..end]);
+                start = end;
+            }
         }
         if start < paragraph.len() || paragraph.is_empty() {
             lines.push(&paragraph[start..]);
@@ -186,8 +276,185 @@ fn wrap_lines(text: &str, max_width: Option<Positive>, measure: impl Fn(&str) ->
 }
 
 #[cfg(test)]
+// The independent oracle uses exactly representable integer and half-cell widths.
+#[allow(clippy::float_cmp)]
 mod tests {
+    use tabula_design::ThemeKind;
+    use tabula_presentation::{
+        Camera2D, Dpi, FrameCtx, Layer, RenderCmd, RenderListBuilder, Viewport,
+    };
+
     use super::*;
+
+    #[test]
+    fn bounded_and_unbounded_text_pass_preflight_without_a_graphics_context() {
+        let frame = FrameCtx::new(
+            Viewport::new(Vec2::splat(640.0)).unwrap(),
+            Dpi::new(1.0).unwrap(),
+            0,
+            Theme::by_kind(ThemeKind::Light),
+        );
+        for (style, value) in [
+            (TextStyleToken::MonoMd, ""),
+            (TextStyleToken::MonoMd, "11:11\n88:88"),
+            (TextStyleToken::MonoSm, "LOW 00:08"),
+            (TextStyleToken::TitleSm, "Board"),
+            (TextStyleToken::LabelLg, "Zoom in"),
+        ] {
+            for max_width in [None, Some(Positive::new(1.0).unwrap())] {
+                let mut builder = RenderListBuilder::new(Camera2D::default());
+                builder
+                    .push(RenderCmd::Text {
+                        text: String::from(value),
+                        at: Vec2::ZERO,
+                        style,
+                        align: Align::Start,
+                        max_width,
+                        color: frame.theme().color.on_surface,
+                        layer: Layer::HUD,
+                        z: 0,
+                    })
+                    .unwrap();
+                assert_eq!(
+                    crate::MacroquadRenderer::preflight(&builder.finish().unwrap(), &frame),
+                    Ok(())
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn bounded_preflight_capacity_counts_unicode_scalars_and_empty_paragraphs() {
+        let frame = FrameCtx::new(
+            Viewport::new(Vec2::splat(640.0)).unwrap(),
+            Dpi::new(1.0).unwrap(),
+            0,
+            Theme::by_kind(ThemeKind::Light),
+        );
+        let maximum = "🙂".repeat(usize::from(u16::MAX));
+        let width = Some(Positive::new(1.0).unwrap());
+        assert_eq!(
+            validate(&maximum, TextStyleToken::MonoMd, width, &frame),
+            Ok(())
+        );
+        for oversized in [
+            format!("{maximum}\n"),
+            "🙂".repeat(usize::from(u16::MAX) + 1),
+        ] {
+            assert_eq!(
+                validate(&oversized, TextStyleToken::MonoMd, width, &frame),
+                Err(RenderError::Execution(String::from(
+                    "backend bounded text exceeds u16::MAX preflight line capacity"
+                )))
+            );
+        }
+        assert_eq!(
+            validate(&maximum, TextStyleToken::MonoMd, None, &frame),
+            Ok(())
+        );
+    }
+
+    /// Deliberately proportional oracle: narrow 1, wide 8, and a kerned non-digit run.
+    fn proportional_width(value: &str) -> f32 {
+        if value == "AV" {
+            return 9.0;
+        }
+        value
+            .chars()
+            .map(|character| match character {
+                '1' => 3.0,
+                '8' => 10.0,
+                ':' => 4.0,
+                'é' | '中' | '🙂' => 7.0,
+                _ => 5.0,
+            })
+            .sum()
+    }
+
+    #[test]
+    fn tabular_clock_figures_keep_the_same_width_across_every_digit() {
+        let advance = tabular_digit_advance(proportional_width);
+        assert_eq!(advance, 10.0);
+        for left in '0'..='9' {
+            for right in '0'..='9' {
+                let clock = format!("{left}{right}:{right}{left}");
+                assert_eq!(
+                    layout_line(&clock, Some(advance), proportional_width, |_, _| {}),
+                    44.0,
+                    "four digit cells and the colon stay fixed for {clock}"
+                );
+            }
+        }
+        assert_ne!(proportional_width("11:11"), proportional_width("88:88"));
+    }
+
+    #[test]
+    fn tabular_glyphs_are_centered_without_changing_non_digit_runs() {
+        let mut runs = Vec::new();
+        let width = layout_line("AV1é中8🙂", Some(10.0), proportional_width, |run, x| {
+            runs.push((run.to_owned(), x));
+        });
+        assert_eq!(width, 50.0);
+        assert_eq!(
+            runs,
+            [
+                (String::from("AV"), 0.0),
+                (String::from("1"), 12.5),
+                (String::from("é中"), 19.0),
+                (String::from("8"), 33.0),
+                (String::from("🙂"), 43.0),
+            ]
+        );
+        assert_eq!(
+            layout_line("", Some(10.0), proportional_width, |_, _| {
+                panic!("empty tabular text must not emit a run")
+            }),
+            0.0
+        );
+    }
+
+    #[test]
+    fn non_tabular_text_retains_one_proportional_run() {
+        let mut runs = Vec::new();
+        assert_eq!(
+            layout_line("AV11", None, proportional_width, |run, x| {
+                runs.push((run.to_owned(), x));
+            }),
+            16.0
+        );
+        assert_eq!(runs, [(String::from("AV11"), 0.0)]);
+    }
+
+    #[test]
+    fn tabular_wrapping_uses_digit_cells_instead_of_narrow_glyph_widths() {
+        for (width, expected) in [
+            (20.0, vec!["11", "11"]),
+            (10.0, vec!["1", "1", "1", "1"]),
+            (9.0, vec!["1", "1", "1", "1"]),
+        ] {
+            assert_eq!(
+                wrap_lines("1111", Some(Positive::new(width).unwrap()), |line| {
+                    layout_line(line, Some(10.0), proportional_width, |_, _| {})
+                }),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn wrapping_keeps_oversized_unicode_scalars_separate_from_following_text() {
+        let lines = wrap_lines("a中b🙂c", Some(Positive::new(2.0).unwrap()), |value| {
+            value
+                .chars()
+                .map(|character| match character {
+                    '中' => 3.0,
+                    '🙂' => 4.0,
+                    _ => 1.0,
+                })
+                .sum()
+        });
+        assert_eq!(lines, ["a", "中", "b", "🙂", "c"]);
+    }
 
     #[test]
     fn width_limited_text_wraps_with_a_measurement_oracle() {

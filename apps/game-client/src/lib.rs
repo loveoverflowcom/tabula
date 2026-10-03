@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 mod replay_capture;
+pub mod runtime_ui;
 
 use std::{collections::BTreeMap, marker::PhantomData};
 
@@ -18,7 +19,8 @@ use tabula_core::{
 };
 use tabula_game_api::{Budget, Ctx, Effect, GameRules, InitError, Input, Notice};
 use tabula_presentation::{
-    AudioCues, Dpi, FrameCtx, GamePresentation, InputEvent, RenderList, Viewport,
+    AudioCues, Dpi, FrameCtx, GamePresentation, InputEvent, PointerButton, PointerPhase,
+    PointerPosition, RenderList, Viewport,
 };
 
 pub use replay_capture::{AcceptedReplayInput, LocalReplayTrace, RecordedInput};
@@ -251,11 +253,33 @@ where
         Ok(cues)
     }
 
+    /// Cancels an interrupted pointer press without timers, indices, or authority input.
+    ///
+    /// A feedback overlay can take a gesture after its Down reached the board.
+    /// Any accidental intent emitted by a presenter on cancellation is discarded.
+    pub fn cancel_presentation_pointer(
+        &mut self,
+        position: PointerPosition,
+        button: PointerButton,
+    ) {
+        let _ = P::on_input(
+            &InputEvent::Pointer {
+                position,
+                button,
+                phase: PointerPhase::Cancel,
+            },
+            &self.view,
+            &mut self.local,
+        );
+    }
+
     /// Passes normalized UI input through the presenter and, when it emits a
     /// command, into the ordinary canonical `Input::Player` stream.
     ///
     /// Due timers are processed before presentation input. UI-only interactions
-    /// that produce no intent consume no index.
+    /// that produce no intent consume no index. After a terminal outcome, local
+    /// inspection remains available but an emitted intent is discarded before
+    /// it can consume an index or enter the canonical stream.
     pub fn handle_presentation_input(
         &mut self,
         input: &InputEvent,
@@ -265,6 +289,9 @@ where
         let Some(intent) = P::on_input(input, &self.view, &mut self.local) else {
             return Ok(cues);
         };
+        if self.ended.is_some() {
+            return Ok(cues);
+        }
         let Some(seat) = self.viewer.seat() else {
             return Err(LocalMatchError::ViewerCannotSubmitPlayerInput);
         };
@@ -784,27 +811,30 @@ mod tests {
 
     impl GamePresentation for CreateTerminalPresentation {
         type Rules = CreateTerminalRules;
-        type Local = ();
+        type Local = usize;
 
         fn asset_pack() -> AssetPackRef {
             AssetPackRef::from_static("terminal", "0.0.0")
         }
 
-        fn present(_view: &(), _local: &(), _frame: &FrameCtx) -> RenderList {
+        fn present(_view: &(), _local: &usize, _frame: &FrameCtx) -> RenderList {
             RenderListBuilder::new(Camera2D::default())
                 .finish()
                 .expect("the empty render list is valid")
         }
 
-        fn on_view_event(_event: &(), _local: &mut (), _frame: &FrameCtx) -> AudioCues {
+        fn on_view_event(_event: &(), _local: &mut usize, _frame: &FrameCtx) -> AudioCues {
             AudioCues::new()
         }
 
-        fn on_input(_input: &InputEvent, _view: &(), _local: &mut ()) -> Option<Intent<()>> {
-            None
+        fn on_input(_input: &InputEvent, _view: &(), local: &mut usize) -> Option<Intent<()>> {
+            *local += 1;
+            // Deliberately stale intent proves the shell's terminal guard,
+            // independently of real presenters already refusing gameplay.
+            Some(Intent::new(()))
         }
 
-        fn a11y(_view: &(), _local: &()) -> A11yDescription {
+        fn a11y(_view: &(), _local: &usize) -> A11yDescription {
             A11yDescription::default()
         }
     }
@@ -1084,6 +1114,35 @@ mod tests {
             replay::<CreateTerminalRules>(&(), &roster(), &seed, match_.replay_trace());
         assert_eq!(final_hash, match_.state_hash());
         assert_eq!(replay_terminal, Some(live_terminal));
+    }
+
+    #[test]
+    fn terminal_batched_presenter_input_retains_local_updates_but_discards_stale_intents() {
+        let mut match_ = LocalMatch::<CreateTerminalRules, CreateTerminalPresentation>::new(
+            &(),
+            &roster(),
+            MatchSeed::from_bytes([3; 32]),
+            Viewer::Spectator(tabula_core::SpectatorTier::Live),
+        )
+        .expect("creation-terminal fixture is valid");
+        let before = match_.state_hash();
+        for key in [
+            tabula_presentation::Key::Enter,
+            tabula_presentation::Key::Space,
+            tabula_presentation::Key::ArrowRight,
+        ] {
+            match_
+                .handle_presentation_input(&InputEvent::Key { key, pressed: true }, &frame(100))
+                .expect("local inspection remains available even with a stale emitted intent");
+        }
+        assert_eq!(
+            *match_.local_mut(),
+            3,
+            "presentation must actually have run"
+        );
+        assert_eq!(match_.state_hash(), before);
+        assert!(match_.recorded_inputs().is_empty());
+        assert!(match_.replay_trace().accepted_inputs().is_empty());
     }
 
     #[test]

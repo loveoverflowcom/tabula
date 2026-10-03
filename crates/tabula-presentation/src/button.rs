@@ -303,7 +303,8 @@ impl<'a> ActionButton<'a> {
 ///
 /// A primary pointer must press and release the same enabled target without
 /// leaving it. Enter/Space activate once per physical press. Missing/disabled
-/// actions, cancellation, and window focus loss discard pending pointer presses.
+/// actions and cancellation discard pending presses. Window focus loss also
+/// resets activation-key guards because releases may happen outside the window.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ButtonInteraction {
     hovered: Option<FocusId>,
@@ -365,9 +366,12 @@ impl ButtonInteraction {
                 if !focused {
                     self.clear_pending();
                     self.hovered = None;
+                    self.enter_held = false;
+                    self.space_held = false;
                 }
                 NavigationAction::None
             }
+            _ if !focus.is_window_focused() => NavigationAction::None,
             InputEvent::Key { key, pressed } if matches!(key, Key::Enter | Key::Space) => {
                 let held = match key {
                     Key::Enter => &mut self.enter_held,
@@ -384,7 +388,7 @@ impl ButtonInteraction {
                     }
                     return NavigationAction::None;
                 }
-                if repeated || !focus.is_window_focused() {
+                if repeated {
                     return NavigationAction::None;
                 }
                 self.pointer_pressed = None;
@@ -394,7 +398,6 @@ impl ButtonInteraction {
                 }
                 action
             }
-            _ if !focus.is_window_focused() => NavigationAction::None,
             InputEvent::Key { .. } => {
                 let action = handle_navigation(&graph, focus, input);
                 if !matches!(action, NavigationAction::None) {
@@ -910,12 +913,50 @@ mod tests {
             interaction.on_input(&InputEvent::Focus(true), &buttons, &graph, &mut focus);
             assert_eq!(
                 interaction.on_input(&key(activation_key, true), &buttons, &graph, &mut focus),
-                NavigationAction::None
+                NavigationAction::Activate(FIRST)
             );
+            for _ in 0..3 {
+                assert_eq!(
+                    interaction.on_input(&key(activation_key, true), &buttons, &graph, &mut focus),
+                    NavigationAction::None
+                );
+            }
+            assert_eq!(interaction.pressed(), Some(FIRST));
             interaction.on_input(&key(activation_key, false), &buttons, &graph, &mut focus);
+            assert_eq!(interaction.pressed(), None);
             assert_eq!(
                 interaction.on_input(&key(activation_key, true), &buttons, &graph, &mut focus),
                 NavigationAction::Activate(FIRST)
+            );
+        }
+    }
+
+    #[test]
+    fn unfocused_activation_keys_do_not_block_first_press_after_focus_returns() {
+        let buttons = buttons();
+        let graph = graph(&buttons);
+        for activation_key in [Key::Enter, Key::Space] {
+            let mut interaction = ButtonInteraction::default();
+            let mut focus = FocusState::new(Some(FIRST), FocusModality::Keyboard, true);
+            interaction.suppress_activation_until_release(activation_key);
+            interaction.on_input(&InputEvent::Focus(false), &buttons, &graph, &mut focus);
+            for _ in 0..3 {
+                assert_eq!(
+                    interaction.on_input(&key(activation_key, true), &buttons, &graph, &mut focus),
+                    NavigationAction::None
+                );
+                assert_eq!(interaction.pressed(), None);
+            }
+            // The physical release can occur outside the window, so recovery
+            // must not depend on receiving a synthetic key-up from the backend.
+            interaction.on_input(&InputEvent::Focus(true), &buttons, &graph, &mut focus);
+            assert_eq!(
+                interaction.on_input(&key(activation_key, true), &buttons, &graph, &mut focus),
+                NavigationAction::Activate(FIRST)
+            );
+            assert_eq!(
+                interaction.on_input(&key(activation_key, true), &buttons, &graph, &mut focus),
+                NavigationAction::None
             );
         }
     }

@@ -5,8 +5,8 @@
 use glam::Vec2;
 use renderer_macroquad::MacroquadRenderer;
 use tabula_core::{
-    InputIndex, LogicalTime, MatchSeed, Millis, Occupant, SeatEntry, SeatId, SeatRoster, TimerId,
-    UserId, Viewer,
+    InputIndex, LogicalTime, MatchSeed, Millis, Occupant, RuleError, RuleErrorCode, SeatEntry,
+    SeatId, SeatRoster, TimerId, UserId, Viewer,
 };
 use tabula_game_api::GameModule;
 use tabula_game_api::Input;
@@ -14,7 +14,10 @@ use tabula_game_chess::{
     presentation::{BoardLayout as ChessLayout, ChessPresentation},
     ChessRules, ClockConfig, ClockControl, Color, Config as ChessConfig, PieceKind, Square,
 };
-use tabula_game_client::{LocalEffect, LocalMatch, RecordedInput};
+use tabula_game_client::{
+    runtime_ui::{FeedbackInput, LocalFeedback},
+    LocalEffect, LocalMatch, LocalMatchError, RecordedInput,
+};
 use tabula_game_tiles::{
     presentation::{world_rect as tiles_world_rect, TilesLocal, TilesPresentation},
     rules::legal_placements as tiles_legal_placements,
@@ -22,7 +25,8 @@ use tabula_game_tiles::{
     TurnPhase as TilesTurnPhase,
 };
 use tabula_presentation::{
-    Dpi, FrameCtx, InputEvent, Key, PointerButton, PointerPhase, PointerPosition, Viewport,
+    Dpi, FrameCtx, InputEvent, Key, PointerButton, PointerPhase, PointerPosition, RenderCmd,
+    Viewport,
 };
 
 type ChessMatch = LocalMatch<ChessRules, ChessPresentation>;
@@ -130,14 +134,9 @@ fn shared_runtime_drives_both_chess_and_tiles_without_game_specific_branches() {
         if rotations.contains(&tiles.local_mut().preview_rotation()) {
             break;
         }
-        tiles
-            .handle_presentation_input(&tiles_key(Key::Space), &frame)
-            .expect("rotating is local only");
+        tiles_press_key(&mut tiles, Key::Space, &frame);
     }
-    let event = tiles_click(tiles.local_mut(), coord);
-    tiles
-        .handle_presentation_input(&event, &frame)
-        .expect("tiles placement is accepted");
+    tiles_tap(&mut tiles, coord, &frame);
 
     assert_eq!(tiles.recorded_inputs().len(), 1);
     assert_eq!(tiles.recorded_inputs()[0].index, InputIndex(1));
@@ -277,6 +276,230 @@ fn tiles_key(key: Key) -> InputEvent {
     InputEvent::Key { key, pressed: true }
 }
 
+/// A complete physical tap, including the press required by interruption guards.
+fn tiles_tap(match_: &mut TilesMatch, coord: TilesCoord, frame: &FrameCtx) {
+    // Navigate the growing board through the actual keyboard path so the tap
+    // remains visible and cannot land under an enlarged HUD or outside screen.
+    for _ in 0..512 {
+        let cursor = match_.local_mut().cursor();
+        let key = if cursor.x() > coord.x() {
+            Some(Key::ArrowLeft)
+        } else if cursor.x() < coord.x() {
+            Some(Key::ArrowRight)
+        } else if cursor.y() > coord.y() {
+            Some(Key::ArrowUp)
+        } else if cursor.y() < coord.y() {
+            Some(Key::ArrowDown)
+        } else {
+            None
+        };
+        let Some(key) = key else {
+            break;
+        };
+        tiles_press_key(match_, key, frame);
+    }
+    assert_eq!(
+        match_.local_mut().cursor(),
+        coord,
+        "the target must be reachable through navigation"
+    );
+    let InputEvent::Pointer {
+        position, button, ..
+    } = tiles_click(match_.local_mut(), coord)
+    else {
+        unreachable!("the helper always constructs a pointer");
+    };
+    for phase in [PointerPhase::Down, PointerPhase::Up] {
+        match_
+            .handle_presentation_input(
+                &InputEvent::Pointer {
+                    position,
+                    button,
+                    phase,
+                },
+                frame,
+            )
+            .expect("the complete tap is accepted");
+    }
+}
+
+/// Repeated actions need fresh physical presses, rather than repeated keydown.
+fn tiles_press_key(match_: &mut TilesMatch, key: Key, frame: &FrameCtx) {
+    for pressed in [true, false] {
+        match_
+            .handle_presentation_input(&InputEvent::Key { key, pressed }, frame)
+            .expect("the physical key press is accepted");
+    }
+}
+
+fn feedback_test_frame() -> FrameCtx {
+    FrameCtx::new(
+        Viewport::new(Vec2::new(320.0, 568.0)).unwrap(),
+        Dpi::new(1.0).unwrap(),
+        0,
+        tabula_design::Theme::by_kind(tabula_design::ThemeKind::Light),
+    )
+}
+
+fn rejection_feedback() -> LocalFeedback {
+    let mut feedback = LocalFeedback::default();
+    feedback.note_error(&LocalMatchError::Rejected(RuleError::code(
+        RuleErrorCode::IllegalMove,
+    )));
+    feedback
+}
+
+fn route_tiles_feedback(
+    match_: &mut TilesMatch,
+    feedback: &mut LocalFeedback,
+    event: &InputEvent,
+    frame: &FrameCtx,
+) -> FeedbackInput {
+    let routed = feedback.route_input(match_, event, frame);
+    if routed == FeedbackInput::PassThrough {
+        match_.handle_presentation_input(event, frame).unwrap();
+    }
+    routed
+}
+
+fn feedback_pointer(at: Vec2, phase: PointerPhase) -> InputEvent {
+    InputEvent::Pointer {
+        position: PointerPosition::new(at).unwrap(),
+        button: PointerButton::Primary,
+        phase,
+    }
+}
+
+#[test]
+fn feedback_occlusion_cancels_tiles_drag_before_release_and_hover() {
+    let frame = feedback_test_frame();
+    let mut match_ = tiles_match(2);
+    match_.local_mut().set_viewport(frame.viewport());
+    let mut feedback = rejection_feedback();
+    let view = match_.view().clone();
+    let original = match_.local_mut().camera();
+    let outside = Vec2::new(160.0, 400.0);
+    let inside = Vec2::new(160.0, 284.0);
+    assert_eq!(
+        route_tiles_feedback(
+            &mut match_,
+            &mut feedback,
+            &feedback_pointer(outside, PointerPhase::Down),
+            &frame
+        ),
+        FeedbackInput::PassThrough
+    );
+    assert_eq!(
+        route_tiles_feedback(
+            &mut match_,
+            &mut feedback,
+            &feedback_pointer(inside, PointerPhase::Move),
+            &frame
+        ),
+        FeedbackInput::CancelGameplayPointer
+    );
+    assert_eq!(
+        route_tiles_feedback(
+            &mut match_,
+            &mut feedback,
+            &feedback_pointer(inside, PointerPhase::Up),
+            &frame
+        ),
+        FeedbackInput::Consumed
+    );
+    route_tiles_feedback(
+        &mut match_,
+        &mut feedback,
+        &feedback_pointer(Vec2::new(170.0, 400.0), PointerPhase::Move),
+        &frame,
+    );
+    assert_eq!(
+        match_.local_mut().camera(),
+        original,
+        "released hover cannot pan an interrupted drag"
+    );
+    // A fresh real drag outside the banner remains usable.
+    for event in [
+        feedback_pointer(outside, PointerPhase::Down),
+        feedback_pointer(Vec2::new(200.0, 410.0), PointerPhase::Move),
+        feedback_pointer(Vec2::new(200.0, 410.0), PointerPhase::Up),
+    ] {
+        route_tiles_feedback(&mut match_, &mut feedback, &event, &frame);
+    }
+    assert_ne!(match_.local_mut().camera(), original);
+    assert_eq!(match_.view(), &view);
+    assert!(match_.recorded_inputs().is_empty());
+    assert!(match_.replay_trace().accepted_inputs().is_empty());
+}
+
+#[test]
+fn feedback_keyboard_focus_forwards_release_to_tiles_before_dismissal() {
+    let frame = feedback_test_frame();
+    let mut match_ = tiles_match(2);
+    match_.local_mut().set_viewport(frame.viewport());
+    let mut feedback = rejection_feedback();
+    let view = match_.view().clone();
+    let rotation = match_.local_mut().preview_rotation();
+    route_tiles_feedback(&mut match_, &mut feedback, &tiles_key(Key::Space), &frame);
+    let once = match_.local_mut().preview_rotation();
+    assert_ne!(
+        once, rotation,
+        "the first physical Space rotates the preview"
+    );
+    route_tiles_feedback(&mut match_, &mut feedback, &tiles_key(Key::Tab), &frame);
+    assert_eq!(
+        route_tiles_feedback(
+            &mut match_,
+            &mut feedback,
+            &InputEvent::Key {
+                key: Key::Space,
+                pressed: false
+            },
+            &frame
+        ),
+        FeedbackInput::PassThrough
+    );
+    route_tiles_feedback(&mut match_, &mut feedback, &tiles_key(Key::Escape), &frame);
+    assert!(feedback.message().is_none());
+    route_tiles_feedback(&mut match_, &mut feedback, &tiles_key(Key::Space), &frame);
+    assert_ne!(
+        match_.local_mut().preview_rotation(),
+        once,
+        "fresh Space works after banner dismissal"
+    );
+    assert_eq!(match_.view(), &view);
+    assert!(match_.recorded_inputs().is_empty());
+    assert!(match_.replay_trace().accepted_inputs().is_empty());
+}
+
+#[test]
+fn feedback_keeps_pointer_capture_through_escape_dismissal() {
+    let frame = feedback_test_frame();
+    let mut match_ = tiles_match(2);
+    match_.local_mut().set_viewport(frame.viewport());
+    let mut feedback = rejection_feedback();
+    let original = match_.local_mut().camera();
+    route_tiles_feedback(
+        &mut match_,
+        &mut feedback,
+        &feedback_pointer(Vec2::new(160.0, 284.0), PointerPhase::Down),
+        &frame,
+    );
+    route_tiles_feedback(&mut match_, &mut feedback, &tiles_key(Key::Escape), &frame);
+    assert!(feedback.message().is_none());
+    for event in [
+        feedback_pointer(Vec2::new(160.0, 400.0), PointerPhase::Move),
+        feedback_pointer(Vec2::new(160.0, 400.0), PointerPhase::Up),
+    ] {
+        assert_eq!(
+            route_tiles_feedback(&mut match_, &mut feedback, &event, &frame),
+            FeedbackInput::Consumed
+        );
+    }
+    assert_eq!(match_.local_mut().camera(), original);
+    assert!(match_.recorded_inputs().is_empty());
+}
+
 /// **The Phase 3 acceptance test.** A whole Tiles match is played from match
 /// creation to `EndMatch` using only what a real client has: normalized
 /// pointer and keyboard input, the presenter, and the generic runtime.
@@ -321,14 +544,9 @@ fn a_whole_tiles_match_is_playable_through_pointer_and_keyboard_input() {
                     if rotations.contains(&match_.local_mut().preview_rotation()) {
                         break;
                     }
-                    match_
-                        .handle_presentation_input(&tiles_key(Key::Space), &frame)
-                        .expect("rotating is local only");
+                    tiles_press_key(&mut match_, Key::Space, &frame);
                 }
-                let event = tiles_click(match_.local_mut(), coord);
-                match_
-                    .handle_presentation_input(&event, &frame)
-                    .expect("a legal placement is accepted");
+                tiles_tap(&mut match_, coord, &frame);
                 placements += 1;
                 assert_eq!(
                     match_.view().last_placed,
@@ -345,15 +563,10 @@ fn a_whole_tiles_match_is_playable_through_pointer_and_keyboard_input() {
                 let claim = (claims + passes) % 3 != 2 && !match_.view().meeple_slots.is_empty();
                 if claim {
                     let last = match_.view().last_placed.expect("a tile was just placed");
-                    let event = tiles_click(match_.local_mut(), last);
-                    match_
-                        .handle_presentation_input(&event, &frame)
-                        .expect("clicking a claim slot claims it");
+                    tiles_tap(&mut match_, last, &frame);
                     claims += 1;
                 } else {
-                    match_
-                        .handle_presentation_input(&tiles_key(Key::Escape), &frame)
-                        .expect("passing is always available in the claim step");
+                    tiles_press_key(&mut match_, Key::Escape, &frame);
                     passes += 1;
                 }
             }
@@ -396,6 +609,64 @@ fn a_whole_tiles_match_is_playable_through_pointer_and_keyboard_input() {
         match_.effects().last(),
         Some(LocalEffect::MatchEnded { .. })
     ));
+
+    assert_terminal_tiles_inspection(&mut match_, &frame);
+}
+
+fn assert_terminal_tiles_inspection(match_: &mut TilesMatch, frame: &FrameCtx) {
+    // Ending authority does not disable local inspection. Exercise the real
+    // labeled zoom control and a board pan after the final placement/claim.
+    let terminal_view = match_.view().clone();
+    let attempts = match_.recorded_inputs().len();
+    let accepted = match_.replay_trace().accepted_inputs().len();
+    let camera_before = match_.local_mut().camera();
+    let zoom_at = match_
+        .present(frame)
+        .commands()
+        .iter()
+        .find_map(|command| match command {
+            RenderCmd::Text { text, at, .. } if text == "Zoom in" => Some(*at),
+            _ => None,
+        })
+        .expect("the terminal HUD retains a zoom control");
+    let pointer = |at: Vec2, phase: PointerPhase| InputEvent::Pointer {
+        position: PointerPosition::new(at).unwrap(),
+        button: PointerButton::Primary,
+        phase,
+    };
+    for event in [
+        pointer(zoom_at, PointerPhase::Down),
+        pointer(zoom_at, PointerPhase::Up),
+    ] {
+        match_
+            .handle_presentation_input(&event, frame)
+            .expect("terminal zoom is local only");
+    }
+    assert_ne!(
+        match_.local_mut().camera().zoom().to_bits(),
+        camera_before.zoom().to_bits(),
+        "zoom must actually change"
+    );
+    let zoomed = match_.local_mut().camera();
+    for event in [
+        pointer(Vec2::new(400.0, 300.0), PointerPhase::Down),
+        pointer(Vec2::new(300.0, 380.0), PointerPhase::Move),
+        pointer(Vec2::new(200.0, 460.0), PointerPhase::Up),
+        tiles_key(Key::Enter),
+        tiles_key(Key::Space),
+    ] {
+        match_
+            .handle_presentation_input(&event, frame)
+            .expect("terminal inspection stays available");
+    }
+    assert_ne!(
+        match_.local_mut().camera().origin(),
+        zoomed.origin(),
+        "pan must actually change"
+    );
+    assert_eq!(match_.view(), &terminal_view);
+    assert_eq!(match_.recorded_inputs().len(), attempts);
+    assert_eq!(match_.replay_trace().accepted_inputs().len(), accepted);
 }
 
 /// The camera is presentation-local, driven through the runtime rather than by
@@ -464,14 +735,9 @@ fn the_tiles_presenter_produces_a_macroquad_supported_render_list() {
         if rotations.contains(&match_.local_mut().preview_rotation()) {
             break;
         }
-        match_
-            .handle_presentation_input(&tiles_key(Key::Space), &frame)
-            .expect("rotating is local only");
+        tiles_press_key(&mut match_, Key::Space, &frame);
     }
-    let event = tiles_click(match_.local_mut(), coord);
-    match_
-        .handle_presentation_input(&event, &frame)
-        .expect("a legal placement is accepted");
+    tiles_tap(&mut match_, coord, &frame);
     assert_eq!(
         MacroquadRenderer::preflight(&match_.present(&frame), &frame),
         Ok(())

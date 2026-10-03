@@ -24,7 +24,11 @@ use tabula_game_api::{GameBot, GameModule, GameRules};
 use tabula_game_chess::{ // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
     presentation::ChessPresentation, ChessRules, ClockConfig, ClockControl, Config as ChessConfig,
 };
-use tabula_game_client::{resolve_display_geometry, LocalMatch, LocalMatchError};
+use tabula_game_client::{
+    resolve_display_geometry,
+    runtime_ui::{parse_local_theme, FeedbackInput, LocalFeedback},
+    LocalMatch,
+};
 #[rustfmt::skip]
 use tabula_game_tiles::{ // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
     presentation::TilesPresentation,
@@ -53,7 +57,7 @@ enum SeatFill {
 
 fn window_conf() -> mq::Conf {
     mq::Conf {
-        window_title: String::from("Tabula — local hot seat"),
+        window_title: String::from("Tabula — local game"),
         window_width: 900,
         window_height: 720,
         high_dpi: true,
@@ -65,15 +69,19 @@ fn window_conf() -> mq::Conf {
 async fn main() {
     let mut renderer = MacroquadRenderer::new();
     let mut audio = MacroquadAudioSink::new();
-    let theme = tabula_design::Theme::by_kind(tabula_design::ThemeKind::Light);
     let options = parse_options();
+    let theme = tabula_design::Theme::by_kind(options.theme);
 
     // The only place a game is named. Each arm is a one-liner so rustfmt keeps
     // its trailing comment, which is what lets it carry its own I-9
     // suppression marker instead of the whole block sharing one.
-    match options.game {
-        SelectedGame::Chess => run_chess(&mut renderer, &mut audio, &theme).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-        SelectedGame::Tiles => run_tiles(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
+    loop {
+        match options.game {
+            SelectedGame::Chess => run_chess(&mut renderer, &mut audio, &theme).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+            SelectedGame::Tiles => run_tiles(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
+        }
+        // The only return from a stopped session is an explicit New local game
+        // activation. Reconstruct the match, local state, clocks and bot RNG.
     }
 }
 
@@ -172,6 +180,8 @@ async fn run_local<R, P>(
     // rules use, so a local session with bots is as reproducible as one
     // without.
     let mut bot_rng = DetRng::for_input(&MatchSeed::from_bytes([0; 32]), InputIndex(u64::MAX));
+    let mut feedback = fresh_feedback();
+    let started_at_ms = presentation_now_ms();
 
     'game_loop: loop {
         let Some((viewport, dpi)) = resolve_display_geometry(
@@ -185,26 +195,44 @@ async fn run_local<R, P>(
             mq::next_frame().await;
             continue 'game_loop;
         };
-        let frame = renderer.begin_frame(viewport, dpi, presentation_now_ms(), *theme);
+        let frame = renderer.begin_frame(
+            viewport,
+            dpi,
+            session_elapsed_ms(started_at_ms, presentation_now_ms()),
+            *theme,
+        );
         local_match.local_mut().set_viewport(frame.viewport());
 
-        match local_match.advance_frame(&frame) {
-            Ok(cues) => play_cues(audio, &cues),
-            Err(error) => {
-                eprintln!("local timer execution failed: {error:?}");
-                break 'game_loop;
+        if feedback.allows_gameplay(local_match.ended().is_some()) {
+            match local_match.advance_frame(&frame) {
+                Ok(cues) => play_cues(audio, &cues),
+                Err(error) => feedback.note_timer_error(&error),
             }
         }
 
         for event in renderer.drain_input() {
+            match feedback.route_input(&mut local_match, &event, &frame) {
+                FeedbackInput::NewLocalGame => {
+                    renderer.end_frame().expect("an active frame can be ended");
+                    mq::next_frame().await;
+                    return;
+                }
+                FeedbackInput::Consumed | FeedbackInput::CancelGameplayPointer => continue,
+                FeedbackInput::PassThrough => {}
+            }
+            // Fatal feedback consumed input above. Terminal matches still allow
+            // local inspection; LocalMatch discards any emitted intent.
+            let accepted_before = local_match.replay_trace().accepted_inputs().len();
             match local_match.handle_presentation_input(&event, &frame) {
-                Ok(cues) => play_cues(audio, &cues),
-                Err(LocalMatchError::Rejected(error)) => {
-                    eprintln!("local command rejected: {error}");
+                Ok(cues) => {
+                    play_cues(audio, &cues);
+                    if local_match.replay_trace().accepted_inputs().len() > accepted_before {
+                        feedback.note_accepted_input();
+                    }
                 }
                 Err(error) => {
-                    eprintln!("local match stopped: {error:?}");
-                    break 'game_loop;
+                    feedback.note_error(&error);
+                    feedback.suppress_opening_input(&event);
                 }
             }
         }
@@ -215,14 +243,17 @@ async fn run_local<R, P>(
             .drain_bot_requests()
             .map(|request| request.seat)
             .collect();
-        if let Some(bot) = bot.as_ref() {
+        if let Some(bot) = bot
+            .as_ref()
+            .filter(|_| feedback.allows_gameplay(local_match.ended().is_some()))
+        {
             let on_turn = turn_of(local_match.view());
             let due = requested
                 .iter()
                 .copied()
                 .chain(bot_seats.iter().copied().filter(|seat| *seat == on_turn));
             for seat in due {
-                if local_match.ended().is_some() {
+                if !feedback.allows_gameplay(local_match.ended().is_some()) {
                     break;
                 }
                 local_match.set_viewer(Viewer::Seat(seat));
@@ -231,20 +262,14 @@ async fn run_local<R, P>(
                 };
                 match local_match.submit_bot_move(seat, command, &frame) {
                     Ok(cues) => play_cues(audio, &cues),
-                    Err(LocalMatchError::Rejected(error)) => {
-                        eprintln!("local bot command rejected: {error}");
-                    }
-                    Err(error) => {
-                        eprintln!("local match stopped: {error:?}");
-                        break 'game_loop;
-                    }
+                    Err(error) => feedback.note_error(&error),
                 }
             }
         }
 
-        for notice in local_match.drain_notices() {
-            eprintln!("notice: {notice:?}");
-        }
+        // Notices carry an explicit audience. Until a viewer-filtered notice
+        // adapter exists, discard them without leaking payloads into logs/UI.
+        local_match.drain_notices().for_each(drop);
 
         // Hot seat: show whoever is on turn. With bots, the human at seat 0
         // keeps their own view.
@@ -255,10 +280,16 @@ async fn run_local<R, P>(
         };
         local_match.set_viewer(viewer);
 
-        let scene = local_match.present(&frame);
-        if let Err(error) = renderer.submit(&scene) {
-            eprintln!("local board render failed: {error:?}");
-            break 'game_loop;
+        if feedback.allows_gameplay(false) {
+            let scene = local_match.present(&frame);
+            if renderer.submit(&scene).is_err() {
+                feedback.note_render_error();
+            }
+        }
+        // The recovery list uses supported screen-space primitives, separately
+        // from the board camera and even when the board itself failed preflight.
+        if let Ok(scene) = feedback.present(&frame) {
+            let _ = renderer.submit(&scene);
         }
         renderer
             .end_frame()
@@ -289,20 +320,31 @@ impl SetViewport for tabula_game_tiles::presentation::TilesLocal { // xtask-allo
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 struct Options {
     game: SelectedGame,
     seats: u8,
     fill: SeatFill,
+    theme: tabula_design::ThemeKind,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            game: SelectedGame::default(),
+            seats: 3,
+            fill: SeatFill::default(),
+            theme: tabula_design::ThemeKind::Light,
+        }
+    }
 }
 
 fn parse_options() -> Options {
-    let mut options = Options {
-        game: SelectedGame::default(),
-        seats: 3,
-        fill: SeatFill::default(),
-    };
-    let mut args = std::env::args().skip(1);
+    parse_options_from(std::env::args().skip(1))
+}
+
+fn parse_options_from(mut args: impl Iterator<Item = String>) -> Options {
+    let mut options = Options::default();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--game" => {
@@ -318,7 +360,12 @@ fn parse_options() -> Options {
                 }
             }
             "--solo" => options.fill = SeatFill::Solo,
-            other => eprintln!("ignoring unknown argument {other:?}"),
+            "--theme" => {
+                if let Some(theme) = args.next().and_then(|name| parse_local_theme(&name)) {
+                    options.theme = theme;
+                }
+            }
+            _ => {}
         }
     }
     options
@@ -355,6 +402,23 @@ fn play_cues(audio: &mut MacroquadAudioSink, cues: &tabula_presentation::AudioCu
     }
 }
 
+/// A recovery key held across creation cannot immediately submit a new move.
+fn fresh_feedback() -> LocalFeedback {
+    let mut feedback = LocalFeedback::default();
+    for (key, native_key) in [
+        (tabula_presentation::Key::Enter, mq::KeyCode::Enter),
+        (tabula_presentation::Key::Space, mq::KeyCode::Space),
+    ] {
+        if mq::is_key_down(native_key) {
+            feedback.suppress_opening_input(&tabula_presentation::InputEvent::Key {
+                key,
+                pressed: true,
+            });
+        }
+    }
+    feedback
+}
+
 /// Converts Macroquad's monotonic presentation clock into the renderer frame fact.
 #[allow(
     clippy::cast_possible_truncation,
@@ -363,4 +427,46 @@ fn play_cues(audio: &mut MacroquadAudioSink, cues: &tabula_presentation::AudioCu
 )]
 fn presentation_now_ms() -> u64 {
     (mq::get_time() * 1_000.0) as u64
+}
+
+/// Every fresh local match starts at logical time zero, including recovery.
+fn session_elapsed_ms(started_at_ms: u64, now_ms: u64) -> u64 {
+    now_ms.saturating_sub(started_at_ms)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_theme_options_keep_the_selected_game_and_invalid_values_keep_light() {
+        for (name, expected) in [
+            ("light", tabula_design::ThemeKind::Light),
+            ("dark", tabula_design::ThemeKind::Dark),
+            ("hc-light", tabula_design::ThemeKind::HighContrastLight),
+            ("hc-dark", tabula_design::ThemeKind::HighContrastDark),
+        ] {
+            let options = parse_options_from(
+                ["--theme", name, "--seats", "4", "--solo"]
+                    .into_iter()
+                    .map(str::to_owned),
+            );
+            assert_eq!(options.theme, expected);
+            assert_eq!(options.seats, 4);
+            assert_eq!(options.fill, SeatFill::Solo);
+        }
+        for args in [vec!["--theme"], vec!["--theme", "unknown"]] {
+            assert_eq!(
+                parse_options_from(args.into_iter().map(str::to_owned)).theme,
+                tabula_design::ThemeKind::Light
+            );
+        }
+    }
+
+    #[test]
+    fn fresh_local_recovery_resets_elapsed_clock_time_and_clamps_clock_regression() {
+        assert_eq!(session_elapsed_ms(900_000, 900_000), 0);
+        assert_eq!(session_elapsed_ms(900_000, 900_012), 12);
+        assert_eq!(session_elapsed_ms(900_000, 899_999), 0);
+    }
 }
