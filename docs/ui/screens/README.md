@@ -15,11 +15,16 @@ They describe intended behavior; implementation and platform evidence are record
 | 05 — Caro gameplay | [Caro](05-caro.md) | Future Phase-3 rules/presenter; design placeholder |
 | 06 — Tiles gameplay | [Tiles](06-tiles.md) | Current Phase-3 presenter; online/async operations stay gated |
 | 07 — Werewolf gameplay | [Werewolf](07-werewolf.md) | Creation-only headless foundation; presentation/social Phase 7, voice Phase 8 |
+| Xiangqi contract for issue #53 | [Modes, identity, proposed adapters and platform/resource matrix](xiangqi.md); [verification](xiangqi-verification.md) | Specification slice A; #48 vision/ADR and Xiangqi rules gate precede runtime |
+| 08 — Xiangqi Play | [Play](08-xiangqi.md) | Proposed module/presenter; no playable Xiangqi at the pinned base |
 | Results/history/replay contract for issue #52 | [Authority, index domains, permissions and failure matrix](results-replay.md); [verification](results-replay-verification.md) | Existing local completion/replay-tooling slice; persistence/protocol Phase 4, document shell Phase 5, projected scrub Phase 9 |
 | 09 — match result | [Results](09-results.md) | Local compact handoff; full document `/matches/:id` awaits Phase 4/5 |
 | 10 — my matches | [History](10-history.md) | Authorized persisted history at `/u/:handle` awaits Phase 4/5 |
 | 11 — generic replay | [Replay](11-replay.md) | Shared projected timeline/controller; scrub/speed Phase 9; Xiangqi extension is separate |
+| 11 — Xiangqi analysis extension | [Analyze](11-xiangqi-analysis.md) | Shared replay seam plus a supported branch/host adapter; no fake engine output |
+| 12 — Xiangqi Learn | [Learn](12-learn.md) | Current-position evidence and structured fallback; optional LLM/knowledge provider separately gated |
 | 13 — user settings | [Settings](13-settings.md) | Leptos `/settings` after Phase 4 exit; native shell at its phase |
+| 14 — Xiangqi Resources | [Resources](14-resources.md) | Actual approved artifact rights, integrity, platform/budget/probe and provisioner required |
 | 22 — component showcase | [Showcase](22-component-showcase.md) | Design/development documentation; no product route |
 
 Open [the editable foundation preview](foundation-preview.html) from a repository-root
@@ -43,6 +48,13 @@ and original input indices from accepted-transition/cursor counts. The
 [pinned replay artwork](https://github.com/loveoverflowcom/tabula/tree/030da25d0098e240ab2cf36dacf9892e8b320a89/docs/ui/design-02/04-replay)
 is reference provenance. The [verification ledger](results-replay-verification.md)
 records the bounded implemented slice and remaining phase/UI gates.
+
+Issue #53 specifies Play/Analyze/Learn/Resources on one proposed Xiangqi rules
+authority. The [pinned artwork](https://github.com/loveoverflowcom/tabula/tree/030da25d0098e240ab2cf36dacf9892e8b320a89/docs/ui/design-02/05-xiangqi)
+is static reference provenance; sample clocks, arrows and PV are not evidence.
+The [shared contract](xiangqi.md) records missing #48 reconciliation, rules,
+reconstruction, engine and artifact-rights gates. No Xiangqi game, route,
+worker, install lifecycle or AI capability is enabled by these specifications.
 
 ```sh
 python3 -m http.server 8000 --directory .

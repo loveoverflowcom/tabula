@@ -45,6 +45,13 @@ canonical `.tbr` tooling preserves gapped original input indices. These do not
 implement persisted history, user replay export or a projected scrub viewer.
 See [verification and residual gates](screens/results-replay-verification.md).
 
+Issue #53 adds [Xiangqi Play/Analyze/Learn/Resources contracts](screens/xiangqi.md)
+for screens 08, the Xiangqi extension of 11, 12 and 14. They preserve generic
+replay, separate branch/original authority and position-bound evidence.
+[The ledger](screens/xiangqi-verification.md) distinguishes specification
+review and existing baseline checks from blocked Xiangqi runtime acceptance;
+no rules/engine/install capability is created before its gate.
+
 ## Phase-5 screen coverage
 
 Home/catalog, detail/setup and settings have specifications in the screen index.
