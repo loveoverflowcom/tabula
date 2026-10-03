@@ -1,0 +1,631 @@
+{
+  "base_commit": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+  "recorded_utc": "2026-10-03T14:03:36.264186+00:00",
+  "scope": "Final executable sources, generated fixture/schema, dependency locks and exact baseline assets. Final Git commit identifies documents/receipts; manifest excludes itself. Native/WASM binaries are build artifacts, fingerprints in runtime-builds.json.",
+  "files": [
+    {
+      "path": "Cargo.lock",
+      "bytes": 71992,
+      "sha256": "7d09fe4b0086a8674ae81fd7d7ba1332384f8e6cab67419489492d8a002b4cb8"
+    },
+    {
+      "path": "Cargo.toml",
+      "bytes": 8592,
+      "sha256": "23a8f36c74337cb1183375669e53197693a2f18bdb9b95257cc7f2885bbc940d"
+    },
+    {
+      "path": "apps/game-client/examples/tiles_renderer_baseline.rs",
+      "bytes": 26970,
+      "sha256": "4485fc9e88ca64da45d51d756eba6a56a894ca6d045a49bb0a2119f656e14bb1"
+    },
+    {
+      "path": "apps/web/examples/renderer_embedding_shell.rs",
+      "bytes": 2152,
+      "sha256": "b1202b3df01e8ad2239875a39293e282f1de9fa3c412f20274abc8f9ecb13f5e"
+    },
+    {
+      "path": "apps/web/src/main.rs",
+      "bytes": 4808,
+      "sha256": "85e7ae3690dc6aba3b1e4613ffb052a5286068aee5f2de6c7990a9f32edbd139"
+    },
+    {
+      "path": "assets/packs/tiles/LICENSE",
+      "bytes": 627,
+      "sha256": "4aaa1bd57db3c24183621045606d327e8c32324198166a22fe53786de84a7f12"
+    },
+    {
+      "path": "assets/packs/tiles/README.md",
+      "bytes": 1639,
+      "sha256": "d99a08ab9d5754314a4f22dff67386266d7e1475c052929de02caafa2e011783"
+    },
+    {
+      "path": "assets/packs/tiles/fixture.pack.toml",
+      "bytes": 6915,
+      "sha256": "ac7a53e1a9b89b756370e19cce103b94d64a9e08c3a293c38e7c659f8354f51a"
+    },
+    {
+      "path": "assets/packs/tiles/generate.py",
+      "bytes": 8551,
+      "sha256": "b9f5384e885fa096edb1f573edbb1b5c50f17596a85739d12905644a5853f788"
+    },
+    {
+      "path": "assets/packs/tiles/pack.source.toml",
+      "bytes": 6003,
+      "sha256": "a371c430a39363dbf42cb5d6642a449f0c20b7af4e1a6b8e7995f4b7ee279170"
+    },
+    {
+      "path": "assets/packs/tiles/tiles.svg",
+      "bytes": 29788,
+      "sha256": "ed3fea9fde68882fa7f912c753af1f22c6a3da4d0bbc99baf50d0be819ea32e4"
+    },
+    {
+      "path": "assets/packs/tiles/tiles@1x.png",
+      "bytes": 4587,
+      "sha256": "c585ec81de45781f6703457bb1392ef29999ded4422acb07637041bf7378981c"
+    },
+    {
+      "path": "assets/packs/tiles/tiles@2x.png",
+      "bytes": 12943,
+      "sha256": "2746adb6bddfdc2760284ac592951c5831bf5c5b382c07a78f47c5a5c257c276"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/.gitignore",
+      "bytes": 21,
+      "sha256": "411d208a5995d52c1705a159c91ee90119a7457ab211ccad28ee5a49fc323d81"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/DEPENDENCIES.md",
+      "bytes": 2917,
+      "sha256": "6ce2f4807e9b2440c3c097d3b256a8ff67abdd793801ba26bb7d39fd2e0d9f2f"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/README.md",
+      "bytes": 6074,
+      "sha256": "9fff6ad6b8fcca63111a4027ad85a2780aa0fd3d4dce5fe93b7a738f29d0fe3e"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/RUNNING.md",
+      "bytes": 6407,
+      "sha256": "63c316c65bd9dd2d87010234f3fc0bd8ddbccedad14adfd6011bf27a91f3f5dd"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/adapter.mjs",
+      "bytes": 8885,
+      "sha256": "af5f79ebe47681aeb2d74e7c14e8c780b7b6508ed661e73a9fc1d9d9982168b8"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/boundary.mjs",
+      "bytes": 8870,
+      "sha256": "bcd7396c64dca2e396805713c83a47d117e0e4104dcff67c2be1d1cd88453eef"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/bridge.mjs",
+      "bytes": 5558,
+      "sha256": "e560383ea35daa353d6dc6f59a18aa90dfc17ece7cf2a2e6a0639b0090ba54e9"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/browser-checks.mjs",
+      "bytes": 20512,
+      "sha256": "95d9988cf0c3e66348e6eb6152a60575beae717d4da7f57516f69a441948824f"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/browser-cycles.mjs",
+      "bytes": 4263,
+      "sha256": "0a02ac1bcb21d69207d136980776443e98a16f4cf99dc3c9ce3f49a2370f9cf8"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/browser-runtime.mjs",
+      "bytes": 10222,
+      "sha256": "dfb06e6cb79cfac8adfea19d68bd9700300b5f3d7b6b770e8504c2a1d28c92a2"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/check-dependencies.mjs",
+      "bytes": 2095,
+      "sha256": "96cfc8691f03a596eaba5995e7acf87c22744b6de23c7eaafc7bdf56e66a6b9e"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/dependency-audit.json",
+      "bytes": 360,
+      "sha256": "5be49545351ee19753ad544b78bf3703e24c4928d0b1dc0d3fdd925ebc3c5af4"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/dependency-inventory.json",
+      "bytes": 4683,
+      "sha256": "d86cc92f8e6951d46b56412ebb0bf558162b71d117247483e7677ab2459c0c1d"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/fixtures/fixture.json",
+      "bytes": 179950,
+      "sha256": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/fixtures/render-contract.json",
+      "bytes": 1259,
+      "sha256": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/host.mjs",
+      "bytes": 25353,
+      "sha256": "210d3549267f028ed031397cf91bdd25d97af1d83118d84fa45cbc8ca3ef7e70"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/index.html",
+      "bytes": 1450,
+      "sha256": "c4c41059dddf0783cc82fc3373f64bcd8c37392ca806ded1dd7b0057f5853e5d"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/leptos.html",
+      "bytes": 495,
+      "sha256": "1ccb5f0b3d1d89154b2e8e6a0676d11626312277feb9a2c00a585494c3ff0444"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/licenses/ProggyClean-MIT.txt",
+      "bytes": 1078,
+      "sha256": "fe61d069df303c697e04200f5f8232c2cb09dd3572f4357b323469f7d592d142"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/licenses/colord-MIT.txt",
+      "bytes": 1083,
+      "sha256": "7613d4594ee8b6163926af3435dae61c9e3d5a27cd137bd76a543ba40002d8fc"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/licenses/npm-NOTICES.txt",
+      "bytes": 14275,
+      "sha256": "e69f7a1adac440a4c53451951ecc10d2ab6267b555d572f133e3ac66b5e98a03"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/macroquad.html",
+      "bytes": 676,
+      "sha256": "43d0c178ca6965202886ee1b9dcebb6151e90082eff166ad476d0ed49c97ef8a"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/macroquad.mjs",
+      "bytes": 9420,
+      "sha256": "87358f6abed85dd5c42f2fce0382f85db2d1533e486468018c89bf250db03e86"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/native-runtime.py",
+      "bytes": 3491,
+      "sha256": "205345d648f5d364b1c53aa5082720fa53154f613df8f46cee39c281fc61f440"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/package-lock.json",
+      "bytes": 4603,
+      "sha256": "07c650fbfbe3207f41295e718ecf92a305085ad57e6b09236f84a16b859fb8ee"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/package.json",
+      "bytes": 532,
+      "sha256": "637e82c8cd33206c2c9baa70b52eb1dde63a6ac56554b87c2ed7cb2e191a1703"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/pixi-backend.mjs",
+      "bytes": 13173,
+      "sha256": "e598ae80f17bb505a7a533c3a41188c4514c1ea0e8d674bab59ee72286929498"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/serve.py",
+      "bytes": 5220,
+      "sha256": "5b6eac0fb4f8e257cbafe601e1a4acb6b6f01ebf8d83f73b6f5efc85b24bc503"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/spike.css",
+      "bytes": 1503,
+      "sha256": "86383f33f9aae9a00e078c5e83d03dccd9e2d22bfde9e0241aa8623247c7e722"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/stage.py",
+      "bytes": 9089,
+      "sha256": "da970be877aeff1d8341031ecefd95b1c464c05ba9f06fec27ff879506060024"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/summarize.py",
+      "bytes": 21503,
+      "sha256": "c22d7b5aada012b23f5325aa07c74a9034e93fdb68dfb19caad2835902fa817a"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/test_serve.py",
+      "bytes": 3553,
+      "sha256": "127aadd69f8d1d95fa41e3fab0b9559e41242df7403b7a285883b9a7d01cb52b"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/test_stage.py",
+      "bytes": 1931,
+      "sha256": "35ebba9ed2d4d5b6b51bbbef63d84452d123d88b9ef356cac86144689a22d4ca"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/tests/boundary.test.mjs",
+      "bytes": 2298,
+      "sha256": "a6a8cad18a00a80b2bef22f6dc41158e2343f7442e2523bf6f5a8655ae88cb7b"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/tests/bridge.test.mjs",
+      "bytes": 3343,
+      "sha256": "8915afad3027c48d79c7250ec891661da5fcab2bd3c449905602f62a619c9849"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/tests/helpers.mjs",
+      "bytes": 2755,
+      "sha256": "8c3bb5a84c76a1769ebcedd3f29355faaa1309134ccf72743b6f6ce7e732d63b"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/tests/integrity.test.mjs",
+      "bytes": 2059,
+      "sha256": "07d6232013142cba6e5ba4abf6a93eed8c9eb8d3697146647b6e7dacbc5b3f96"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/tests/lifecycle.test.mjs",
+      "bytes": 3920,
+      "sha256": "4814481991832e67535164969c3693127abaa8b95e35a680c5f1f00738612ad2"
+    },
+    {
+      "path": "tools/renderer-embedding-spike/tests/pixi-geometry.test.mjs",
+      "bytes": 1532,
+      "sha256": "bfac1de8be02d3818dde867a4dcc46125959249b5e782f4d5d98f4326194aa69"
+    },
+    {
+      "path": "xtask/Cargo.toml",
+      "bytes": 1791,
+      "sha256": "d3036d0f08da9de413a23b583a01f5c7a61ca999785c0e2dac49fcbdd7389d37"
+    },
+    {
+      "path": "xtask/examples/embedding_fixture.rs",
+      "bytes": 45798,
+      "sha256": "b5024f137695e9321672f62967f0472db285dc75f1b599adb2d944cf50ad81bc"
+    }
+  ],
+  "staging_verification": {
+    "status": "PASS",
+    "files": 29,
+    "source_and_staged_checks": [
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/adapter.mjs",
+        "sha256": "af5f79ebe47681aeb2d74e7c14e8c780b7b6508ed661e73a9fc1d9d9982168b8",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/adapter.mjs",
+        "sha256": "af5f79ebe47681aeb2d74e7c14e8c780b7b6508ed661e73a9fc1d9d9982168b8",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/boundary.mjs",
+        "sha256": "bcd7396c64dca2e396805713c83a47d117e0e4104dcff67c2be1d1cd88453eef",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/boundary.mjs",
+        "sha256": "bcd7396c64dca2e396805713c83a47d117e0e4104dcff67c2be1d1cd88453eef",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/bridge.mjs",
+        "sha256": "e560383ea35daa353d6dc6f59a18aa90dfc17ece7cf2a2e6a0639b0090ba54e9",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/bridge.mjs",
+        "sha256": "e560383ea35daa353d6dc6f59a18aa90dfc17ece7cf2a2e6a0639b0090ba54e9",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/browser-runtime.mjs",
+        "sha256": "dfb06e6cb79cfac8adfea19d68bd9700300b5f3d7b6b770e8504c2a1d28c92a2",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/browser-runtime.mjs",
+        "sha256": "dfb06e6cb79cfac8adfea19d68bd9700300b5f3d7b6b770e8504c2a1d28c92a2",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/check-dependencies.mjs",
+        "sha256": "96cfc8691f03a596eaba5995e7acf87c22744b6de23c7eaafc7bdf56e66a6b9e",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/check-dependencies.mjs",
+        "sha256": "96cfc8691f03a596eaba5995e7acf87c22744b6de23c7eaafc7bdf56e66a6b9e",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/host.mjs",
+        "sha256": "210d3549267f028ed031397cf91bdd25d97af1d83118d84fa45cbc8ca3ef7e70",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/host.mjs",
+        "sha256": "210d3549267f028ed031397cf91bdd25d97af1d83118d84fa45cbc8ca3ef7e70",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/index.html",
+        "sha256": "c4c41059dddf0783cc82fc3373f64bcd8c37392ca806ded1dd7b0057f5853e5d",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/index.html",
+        "sha256": "c4c41059dddf0783cc82fc3373f64bcd8c37392ca806ded1dd7b0057f5853e5d",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/leptos.html",
+        "sha256": "1ccb5f0b3d1d89154b2e8e6a0676d11626312277feb9a2c00a585494c3ff0444",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/leptos.html",
+        "sha256": "1ccb5f0b3d1d89154b2e8e6a0676d11626312277feb9a2c00a585494c3ff0444",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/macroquad.html",
+        "sha256": "43d0c178ca6965202886ee1b9dcebb6151e90082eff166ad476d0ed49c97ef8a",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/macroquad.html",
+        "sha256": "43d0c178ca6965202886ee1b9dcebb6151e90082eff166ad476d0ed49c97ef8a",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/macroquad.mjs",
+        "sha256": "87358f6abed85dd5c42f2fce0382f85db2d1533e486468018c89bf250db03e86",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/macroquad.mjs",
+        "sha256": "87358f6abed85dd5c42f2fce0382f85db2d1533e486468018c89bf250db03e86",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/pixi-backend.mjs",
+        "sha256": "e598ae80f17bb505a7a533c3a41188c4514c1ea0e8d674bab59ee72286929498",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/pixi-backend.mjs",
+        "sha256": "e598ae80f17bb505a7a533c3a41188c4514c1ea0e8d674bab59ee72286929498",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/spike.css",
+        "sha256": "86383f33f9aae9a00e078c5e83d03dccd9e2d22bfde9e0241aa8623247c7e722",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/spike.css",
+        "sha256": "86383f33f9aae9a00e078c5e83d03dccd9e2d22bfde9e0241aa8623247c7e722",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/apps/web/style/tokens.css",
+        "sha256": "8126175d4a113aec47609a65a902e4c26a12032853eeb07341de74877d0132e3",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/tokens.css",
+        "sha256": "8126175d4a113aec47609a65a902e4c26a12032853eeb07341de74877d0132e3",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/apps/game-client/web/mq_js_bundle.js",
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/mq_js_bundle.js",
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/private/tmp/tabula60-target/wasm32-unknown-unknown/wasm-release/examples/tiles_renderer_baseline.wasm",
+        "sha256": "511f59a3208fad9e6deb0ac85c8dee3840769e3f7ee342a2dcecffe00c87d777",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/tabula-game-client.wasm",
+        "sha256": "511f59a3208fad9e6deb0ac85c8dee3840769e3f7ee342a2dcecffe00c87d777",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/fixtures/fixture.json",
+        "sha256": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/fixture.json",
+        "sha256": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/fixtures/render-contract.json",
+        "sha256": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/render-contract.json",
+        "sha256": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/assets/packs/tiles/tiles@1x.png",
+        "sha256": "c585ec81de45781f6703457bb1392ef29999ded4422acb07637041bf7378981c",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/tiles/0.1.0/tiles@1x.b3-7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac.png",
+        "sha256": "c585ec81de45781f6703457bb1392ef29999ded4422acb07637041bf7378981c",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/assets/packs/tiles/tiles@2x.png",
+        "sha256": "2746adb6bddfdc2760284ac592951c5831bf5c5b382c07a78f47c5a5c257c276",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/tiles/0.1.0/tiles@2x.b3-b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b.png",
+        "sha256": "2746adb6bddfdc2760284ac592951c5831bf5c5b382c07a78f47c5a5c257c276",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/assets/packs/tiles/LICENSE",
+        "sha256": "4aaa1bd57db3c24183621045606d327e8c32324198166a22fe53786de84a7f12",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/tiles-LICENSE",
+        "sha256": "4aaa1bd57db3c24183621045606d327e8c32324198166a22fe53786de84a7f12",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/node_modules/pixi.js/dist/pixi.mjs",
+        "sha256": "8c7c745f667a9b352574044d6ce8d8e76705a6932c79b6bcb53db34a5e22ea76",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/node_modules/pixi.js/dist/pixi.mjs",
+        "sha256": "8c7c745f667a9b352574044d6ce8d8e76705a6932c79b6bcb53db34a5e22ea76",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/node_modules/pixi.js/LICENSE",
+        "sha256": "5ce7447bc57f7349ffc48338782fbcabe613696e00712b20d66bc58e780f9473",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/node_modules/pixi.js/LICENSE",
+        "sha256": "5ce7447bc57f7349ffc48338782fbcabe613696e00712b20d66bc58e780f9473",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/node_modules/pixi.js/package.json",
+        "sha256": "2bb6b7570ca5f4a062609b34fd16fecfa2a76e8c3599c67a5b996a276eabaa32",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/node_modules/pixi.js/package.json",
+        "sha256": "2bb6b7570ca5f4a062609b34fd16fecfa2a76e8c3599c67a5b996a276eabaa32",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/macroquad-0.4.16/src/ProggyClean.ttf",
+        "sha256": "527d2a443ce051f93f7e77b855609722b8cb220a9f104b4aa037be5c90b71324",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/fonts/ProggyClean.ttf",
+        "sha256": "527d2a443ce051f93f7e77b855609722b8cb220a9f104b4aa037be5c90b71324",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/macroquad-0.4.16/LICENSE-MIT",
+        "sha256": "523a23956d188905ef010091f7cf81cff3a8a9873c067d02850ccc1068de5ad4",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/macroquad-LICENSE-MIT",
+        "sha256": "523a23956d188905ef010091f7cf81cff3a8a9873c067d02850ccc1068de5ad4",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/macroquad-0.4.16/LICENSE-APACHE",
+        "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/macroquad-LICENSE-APACHE",
+        "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/licenses/ProggyClean-MIT.txt",
+        "sha256": "fe61d069df303c697e04200f5f8232c2cb09dd3572f4357b323469f7d592d142",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/ProggyClean-MIT.txt",
+        "sha256": "fe61d069df303c697e04200f5f8232c2cb09dd3572f4357b323469f7d592d142",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/licenses/colord-MIT.txt",
+        "sha256": "7613d4594ee8b6163926af3435dae61c9e3d5a27cd137bd76a543ba40002d8fc",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/colord-MIT.txt",
+        "sha256": "7613d4594ee8b6163926af3435dae61c9e3d5a27cd137bd76a543ba40002d8fc",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "source",
+        "path": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/licenses/npm-NOTICES.txt",
+        "sha256": "e69f7a1adac440a4c53451951ecc10d2ab6267b555d572f133e3ac66b5e98a03",
+        "matches_staged_manifest": true
+      },
+      {
+        "kind": "path",
+        "path": "/private/tmp/tabula-issue-60-spike/licenses/npm-NOTICES.txt",
+        "sha256": "e69f7a1adac440a4c53451951ecc10d2ab6267b555d572f133e3ac66b5e98a03",
+        "matches_staged_manifest": true
+      }
+    ]
+  }
+}

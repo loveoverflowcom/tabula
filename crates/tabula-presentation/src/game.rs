@@ -1,0 +1,80 @@
+use tabula_game_api::{A11yDescription, GameRules};
+
+use crate::{AudioCues, FrameCtx, InputEvent, RenderList};
+
+pub use tabula_assets::AssetPackRef;
+
+/// A command requested by presentation. It never mutates authoritative state itself.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Intent<C> {
+    command: C,
+}
+
+impl<C> Intent<C> {
+    #[must_use]
+    pub const fn new(command: C) -> Self {
+        Self { command }
+    }
+
+    #[must_use]
+    pub const fn command(&self) -> &C {
+        &self.command
+    }
+
+    #[must_use]
+    pub fn into_command(self) -> C {
+        self.command
+    }
+}
+
+/// Client-only half of a game: projection plus local state becomes a [`RenderList`].
+///
+/// Its public transition methods deliberately name [`GameRules::View`] and [`GameRules::ViewEvent`]
+/// only. Canonical [`GameRules::State`] is not an input to this boundary, while `Local` is owned by
+/// the client and never returned as a rule outcome.
+///
+/// ```compile_fail
+/// use tabula_game_api::GameRules;
+/// use tabula_presentation::{FrameCtx, GamePresentation, RenderList};
+///
+/// fn state_cannot_be_presented<P: GamePresentation>(
+///     state: &<P::Rules as GameRules>::State,
+///     local: &P::Local,
+///     frame: &FrameCtx,
+/// ) -> RenderList {
+///     P::present(state, local, frame)
+/// }
+/// ```
+///
+/// @ai.role game-presentation
+/// @ai.domain presentation.game
+/// @ai.related tabula_game_api::GameRules
+#[allow(clippy::doc_markdown)]
+pub trait GamePresentation: Send + 'static {
+    type Rules: GameRules;
+    type Local: Default;
+    fn asset_pack() -> AssetPackRef;
+    fn present(
+        view: &<Self::Rules as GameRules>::View,
+        local: &Self::Local,
+        frame: &FrameCtx,
+    ) -> RenderList;
+    /// Updates local presentation state and emits one-shot cues for an
+    /// authoritative projected event. Returned cues are ordered and must be
+    /// played in that same order by the imperative shell.
+    fn on_view_event(
+        event: &<Self::Rules as GameRules>::ViewEvent,
+        local: &mut Self::Local,
+        frame: &FrameCtx,
+    ) -> AudioCues;
+    fn on_input(
+        input: &InputEvent,
+        view: &<Self::Rules as GameRules>::View,
+        local: &mut Self::Local,
+    ) -> Option<Intent<<Self::Rules as GameRules>::Command>>;
+    /// Describes authoritative view facts together with local interaction state.
+    ///
+    /// Local state is required for honest descriptions of transient controls,
+    /// such as which option is selected in a promotion chooser.
+    fn a11y(view: &<Self::Rules as GameRules>::View, local: &Self::Local) -> A11yDescription;
+}

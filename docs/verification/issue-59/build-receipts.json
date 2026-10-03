@@ -1,0 +1,191 @@
+[
+  {
+    "name": "sprite-probe",
+    "options": "--scenario static --theme light --motion full --samples 600 --sprite-probe",
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "-p",
+      "tabula-game-client",
+      "--example",
+      "tiles_renderer_baseline",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--profile",
+      "wasm-release"
+    ],
+    "source_id": "issue59-source-60460d1affc8c682",
+    "exit_code": 0,
+    "wasm_bytes": 1297186,
+    "wasm_sha256": "77e27662514b4bb82efcb4c53c9f558cc0bc582ede264329c2df66297614fef5"
+  },
+  {
+    "name": "static-sprite",
+    "options": "--scenario static --theme light --motion full --samples 600",
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "-p",
+      "tabula-game-client",
+      "--example",
+      "tiles_renderer_baseline",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--profile",
+      "wasm-release"
+    ],
+    "source_id": "issue59-source-60460d1affc8c682",
+    "exit_code": 0,
+    "wasm_bytes": 1297169,
+    "wasm_sha256": "427b3993fe48312d2876fe707b2c65a4519c296f48616b852cceb900e1f21c6a"
+  },
+  {
+    "name": "static-primitive",
+    "options": "--scenario static --theme light --motion full --samples 600 --primitive-control",
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "-p",
+      "tabula-game-client",
+      "--example",
+      "tiles_renderer_baseline",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--profile",
+      "wasm-release"
+    ],
+    "source_id": "issue59-source-60460d1affc8c682",
+    "exit_code": 0,
+    "wasm_bytes": 1297186,
+    "wasm_sha256": "4a89701df56c96c34b17b6521b810b5ff8a33e5a74451ffc285a35dea3dd12e9"
+  },
+  {
+    "name": "script-light",
+    "options": "--scenario scripted --theme light --motion full --samples 600",
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "-p",
+      "tabula-game-client",
+      "--example",
+      "tiles_renderer_baseline",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--profile",
+      "wasm-release"
+    ],
+    "source_id": "issue59-source-60460d1affc8c682",
+    "exit_code": 0,
+    "wasm_bytes": 1297169,
+    "wasm_sha256": "23a1c09dfcb30a3db4347ef61501c87497b03dda9e67153505c2056033b1d41e"
+  },
+  {
+    "name": "script-dark",
+    "options": "--scenario scripted --theme dark --motion full --samples 600",
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "-p",
+      "tabula-game-client",
+      "--example",
+      "tiles_renderer_baseline",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--profile",
+      "wasm-release"
+    ],
+    "source_id": "issue59-source-60460d1affc8c682",
+    "exit_code": 0,
+    "wasm_bytes": 1297169,
+    "wasm_sha256": "2dd9f3965a3d51e829a61d2eb4d08c5d5b409b674f79b8cbc841b54f088de24f"
+  },
+  {
+    "name": "script-hc-light",
+    "options": "--scenario scripted --theme hc-light --motion full --samples 600",
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "-p",
+      "tabula-game-client",
+      "--example",
+      "tiles_renderer_baseline",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--profile",
+      "wasm-release"
+    ],
+    "source_id": "issue59-source-60460d1affc8c682",
+    "exit_code": 0,
+    "wasm_bytes": 1297170,
+    "wasm_sha256": "0c6ab2fe4245599f98e757dce38fe6ca20467a1809343980201032c05be87f8a"
+  },
+  {
+    "name": "script-hc-dark",
+    "options": "--scenario scripted --theme hc-dark --motion full --samples 600",
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "-p",
+      "tabula-game-client",
+      "--example",
+      "tiles_renderer_baseline",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--profile",
+      "wasm-release"
+    ],
+    "source_id": "issue59-source-60460d1affc8c682",
+    "exit_code": 0,
+    "wasm_bytes": 1297169,
+    "wasm_sha256": "3d81d579f68eb228d8bb16d991f115ca5b66493d54a6f880f5f1c85a44cacf91"
+  },
+  {
+    "name": "script-reduced",
+    "options": "--scenario scripted --theme light --motion reduced --samples 600",
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "-p",
+      "tabula-game-client",
+      "--example",
+      "tiles_renderer_baseline",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--profile",
+      "wasm-release"
+    ],
+    "source_id": "issue59-source-60460d1affc8c682",
+    "exit_code": 0,
+    "wasm_bytes": 1297170,
+    "wasm_sha256": "9eff657db7405a625200d83f18afe8436bb8ebe0f3d32ef80a432307f7823ccb"
+  },
+  {
+    "name": "interactive",
+    "options": "--scenario interactive --theme light --motion full --samples 600",
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "-p",
+      "tabula-game-client",
+      "--example",
+      "tiles_renderer_baseline",
+      "--target",
+      "wasm32-unknown-unknown",
+      "--profile",
+      "wasm-release"
+    ],
+    "source_id": "issue59-source-60460d1affc8c682",
+    "exit_code": 0,
+    "wasm_bytes": 1297170,
+    "wasm_sha256": "0524e375ffadcb36cb443af39754ddd0fd6c8ca14950f90679137593e9fbfb53"
+  }
+]

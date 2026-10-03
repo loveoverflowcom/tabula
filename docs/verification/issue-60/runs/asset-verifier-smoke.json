@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+  "binary_sha256": "c9e021daa3a1adb339775cdb4839e3170ba4551ad473ce6826b0c5f50d14f3f2",
+  "negative_case": {
+    "same_size": true,
+    "original_bytes": 4587,
+    "changed_bytes": 4587,
+    "mutated_offset": 100,
+    "digest_changed": true
+  },
+  "records": [
+    {
+      "argv": [
+        "/tmp/tabula60-target/debug/examples/embedding_fixture",
+        "--verify-assets",
+        "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/assets/packs/tiles"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"files\":[{\"bytes\":4587,\"density\":1,\"hash\":\"7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac\",\"name\":\"tiles@1x.atlas\",\"path\":\"tiles/0.1.0/tiles@1x.b3-7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac.png\",\"source_file\":\"tiles@1x.png\"},{\"bytes\":12943,\"density\":2,\"hash\":\"b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b\",\"name\":\"tiles@2x.atlas\",\"path\":\"tiles/0.1.0/tiles@2x.b3-b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b.png\",\"source_file\":\"tiles@2x.png\"}],\"pack\":\"tiles@0.1.0\",\"status\":\"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/tmp/tabula60-target/debug/examples/embedding_fixture",
+        "--verify-assets",
+        "/var/folders/75/8r6wfgxj0kx4vfxv2cwzqrh00000gn/T/tabula60-atlas-lno8z21u"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Error: \"fixture asset BLAKE3 mismatch: tiles@1x.atlas\""
+    }
+  ]
+}

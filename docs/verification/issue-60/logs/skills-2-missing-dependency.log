@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/.agents/skills/tabula-engineering/scripts/test_check_skills.py", line 11, in <module>
+    import check_skills
+  File "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/.agents/skills/tabula-engineering/scripts/check_skills.py", line 19, in <module>
+    import yaml
+ModuleNotFoundError: No module named 'yaml'

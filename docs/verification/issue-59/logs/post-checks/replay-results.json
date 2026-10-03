@@ -1,0 +1,17 @@
+[
+  {
+    "command": "cargo xtask replay tests/replays/chess-golden.tbr --verify --diagnose",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/01-replay.log"
+  },
+  {
+    "command": "cargo xtask replay tests/replays/chess-clock-golden.tbr --verify --diagnose",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/02-replay.log"
+  },
+  {
+    "command": "cargo xtask replay tests/replays/tiles-golden.tbr --verify --diagnose",
+    "exit_code": 0,
+    "log": "/tmp/tabula-59-post-checks/03-replay.log"
+  }
+]

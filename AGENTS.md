@@ -24,6 +24,22 @@ wins and the other is a bug.
 
 Docs live in [`docs/architecture/`](docs/architecture/README.md) and are numbered 00–09.
 
+### Agent workflows
+
+Load [`tabula-engineering`](.agents/skills/tabula-engineering/SKILL.md) for implementation,
+refactoring, reviews, testing, and engineering documentation. It owns the workflow and evidence
+vocabulary; load only the technique references relevant to the task.
+
+Compose [`tabula-game-audit`](.agents/skills/tabula-game-audit/SKILL.md) when adding, changing,
+or reviewing a game, auditing a named game or the portfolio, or changing a shared contract that
+affects games. Select checks by the changed behavior and affected consumers. A presentation edit
+uses its presentation reference; a shared rules change considers every consuming game.
+
+Skills are maintained only in `.agents/skills`; `.claude/skills` is a bridge to that same tree.
+[`The skill map`](.agents/skills/README.md) records workflow groups, migrated paths, and validation.
+`draft-skills/` contains historical research, not runtime instructions. Architecture doc 00 and
+ADRs retain authority over skills and phase gates.
+
 ---
 
 ## 2. The five rules that matter most
@@ -92,14 +108,14 @@ permission to implement them early.
 
 | Phase | Crates that become real |
 |---|---|
-| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `games/tictactoe`, `xtask` |
+| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `xtask` |
 | 1 | `games/chess` |
 | 2 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `renderer-headless`, `apps/game-client` |
-| 3 | `tabula-assets`, `games/cards`, `games/tiles`, `games/werewolf` (rules only) |
+| 3 | `tabula-assets`, `games/caro`, `games/tiles` (Carcassonne-like), `games/werewolf` (rules only) |
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin` |
 | 6 | `mobile/android`, `mobile/ios` |
-| 7 | werewolf + social |
+| 7 | `games/werewolf` (presentation, social, and online) |
 | 8 | `tabula-voice` |
 | 9+ | SDK stabilisation, scaling, third-party ecosystem |
 
@@ -109,12 +125,21 @@ games have not yet validated is a contract that can no longer move.
 
 If you believe a phase gate is wrong, write an ADR — do not quietly cross it.
 
+**One gate has been crossed, on purpose and on the record.** The discovery/setup
+slice of `tabula-registry` (Phase 4) and `apps/web` (Phase 5) is implemented
+ahead of the Phase 3 exit: [ADR-0028](docs/adr/0028-discovery-shell-ahead-of-phase-gate.md)
+states exactly what it contains and what both phases still hold back. Treat the
+rest of those crates as gated as before, and do not read the slice as evidence
+that Phase 3, 4 or 5 is complete.
+
 ---
 
 ## 5. Before you open a pull request
 
 ```bash
-just check          # fmt + clippy + deps + no-game-ids + nextest, in that order
+just check          # cargo xtask check: fmt, clippy, test, check-deps, check-no-game-ids,
+                    # check-manifests, generated design tokens current, check-no-raw-colors,
+                    # cargo deny check — in that order, stops at the first failure
 ```
 
 Or individually:
@@ -124,14 +149,18 @@ cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask check-deps            # the deps.toml matrix (I-1, I-15)
 cargo xtask check-no-game-ids     # I-9
-cargo xtask check-manifests       # game.toml == compiled metadata
+cargo xtask check-manifests       # game.toml/Cargo.toml schema and feature-shape validation
+cargo xtask check-no-raw-colors   # doc 04 §8.1 semantic design tokens
 cargo nextest run --workspace
 cargo deny check
 ```
 
+`just check` (or `cargo xtask check`) is the authoritative portable local core gate.
+CI additionally checks the full workspace feature matrix (`cargo check --workspace --no-default-features` and `--all-features`) and target-specific WASM compilation (`wasm32-unknown-unknown`). You can test the feature matrix locally with `just check-all` or `just features`.
+
 A change to a game crate additionally needs its conformance suite green
-(`tabula_testkit::conformance!(YourModule)` — doc 02 §11.1) and, if the game has hidden
-information, a `SecretModel` with the projection scan passing.
+(`tabula_testkit::conformance!(YourFixture)` against a `GameTestFixture` impl — doc 02 §11.1)
+and, if the game has hidden information, a `SecretModel` with the projection scan passing.
 
 ---
 
@@ -157,9 +186,10 @@ Full anti-pattern table for game authors: doc 02 §13.
 
 ## 7. Adding a game
 
-```bash
-cargo xtask new-game <slug> --seats 2 --category abstract
-```
+`cargo xtask new-game <slug> --seats 2 --category abstract` is **not implemented**: the current
+dispatch exits with an intentional error. Until the scaffold lands, use the existing game
+crate layout and doc 02 §14 to add a crate manually within the current phase; update the
+workspace and `deps.toml` as doc 01 requires.
 
 Then work the checklist in doc 02 §14. The target is a playable, networked, spectatable,
 replayable game in **one crate, under 300 lines**, with **zero platform changes**. If adding

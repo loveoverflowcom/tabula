@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 4. Everything above this crate is testable with in-memory fakes, which
 # keeps the test suite fast and the design honest.

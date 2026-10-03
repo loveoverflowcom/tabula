@@ -172,9 +172,15 @@ pub enum AbortReason { NotEnoughPlayers, OperatorCancelled, PlatformFailure, Rul
 // crates/tabula-core/src/hash.rs
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct StateHash(pub [u8; 32]);
-/// Canonical encoding = postcard over the type's derived Serialize, with a version tag.
+/// Canonical encoding = postcard over the type's derived Serialize, with a 2-byte
+/// little-endian ENCODING_VERSION prefix.
 /// NEVER serde_json (key order, float formatting) and never Debug. (ADR-021)
-pub fn canonical_hash<T: Serialize>(tag: &str, value: &T) -> StateHash;
+pub const ENCODING_VERSION: u16 = 1;
+pub fn canonical_encode<T: Serialize>(value: &T)  -> Result<Vec<u8>, CanonicalError>;
+pub fn canonical_decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, CanonicalError>;
+/// The rules version is a TYPED parameter, not a free-form &str tag: it is what
+/// separates two rules versions of one game, so it must not be omissible. (ADR-026 §2)
+pub fn state_hash<T: Serialize>(rules_version: RulesVersion, value: &T) -> StateHash;
 ```
 
 ---
@@ -194,6 +200,9 @@ pub fn canonical_hash<T: Serialize>(tag: &str, value: &T) -> StateHash;
 ///  R5. project() never returns information the viewer is not authorized to know.
 ///  R6. view_event() is the only path from Event to a client.
 ///  R7. All iteration that affects output is over ordered collections.
+///  R8. A rejected input is a TOTAL no-op: state, state_version, and the RNG stream
+///      are all unaffected. Free, because DetRng::for_input(seed, index) derives each
+///      input's stream independently — nothing to rewind. (ADR-026 §5)
 pub trait GameRules: Sized + Send + Sync + 'static {
     /// Canonical, full-information state. Server-only. Never serialized to a client. (I-5)
     type State: Clone + Serialize + DeserializeOwned + Send + Sync + 'static;
@@ -244,10 +253,11 @@ pub trait GameRules: Sized + Send + Sync + 'static {
         LegalCommands::Unknown
     }
 
-    /// Default: canonical_hash("state", state). Override only for huge states where a
-    /// structural incremental hash is worth it.
+    /// Default supplies RULES_VERSION itself, so a game cannot forget the version
+    /// separation. Override only for huge states where a structural incremental hash
+    /// is worth it — and then the incremental structure must be in the hash too.
     fn state_hash(state: &Self::State) -> StateHash {
-        canonical_hash(Self::RULES_VERSION.tag(), state)
+        tabula_core::state_hash(Self::RULES_VERSION, state)
     }
 
     /// Accessibility mirror: a text/tree description of the view for screen readers and
@@ -323,6 +333,14 @@ pub enum LegalCommands<C> {
 }
 ```
 
+`CommandHint` stays an opaque `(kind, canonically encoded payload)` pair. Writing the first real
+consumer (Tiles, Phase 3) did not produce a reason to give it game-shaped fields — Tiles groups its
+legal `(position × rotation)` pairs into one hint per position, which the opaque pair already
+expresses. It *did* produce one contract fix: the type was `#[non_exhaustive]` with public fields,
+so no crate outside `tabula-game-api` could construct one (E0639) and `Hints` was returnable by no
+game at all. It now has a private representation with a `CommandHint::new` constructor and
+`kind()`/`data()` accessors, and is re-exported from the crate root.
+
 ### 3.2 Why validation is not a separate trait method
 
 The brief's sketch had `validate_command` and `apply_command`. **Rejected.** Two functions that
@@ -396,7 +414,10 @@ pub trait GamePresentation: Send + 'static {
         frame: &FrameCtx);
     fn on_input(input: &InputEvent, view: &<Self::Rules as GameRules>::View,
         local: &mut Self::Local) -> Option<Intent<<Self::Rules as GameRules>::Command>>;
-    fn a11y(view: &<Self::Rules as GameRules>::View) -> A11yDescription;
+    fn a11y(
+        view: &<Self::Rules as GameRules>::View,
+        local: &Self::Local,
+    ) -> A11yDescription;
 }
 ```
 
@@ -423,6 +444,10 @@ pub struct GameMetadata {
     pub rules_url_key: Option<&'static str>,
 }
 ```
+
+The Phase-2 Rust implementation uses private validated metadata fields. Authors construct a
+`GameMetadataSpec` from proof-bearing `I18nKey` and `AssetRef` values, then cross the boundary into
+`GameMetadata`; serialized metadata keeps the same string-shaped representation.
 
 ### 4.2 `GameCapabilities`
 
@@ -488,6 +513,8 @@ pub struct ChatPolicy {
 }
 pub struct ChatChannelSpec { pub key: &'static str, pub kind: ChatKind }  // Table, Team, Dead, Whisper
 
+// Rust implementation: empty, whitespace-padded, and duplicate channel keys are rejected; authored order is retained.
+
 pub enum VoiceRequirement { No, Optional, Recommended }
 
 pub enum RankedSupport { No, Yes { rating: RatingKind } }
@@ -525,10 +552,12 @@ pub struct Budget { pub max_apply_micros: u32, pub max_events_per_input: u16 }
 
 ### 4.3 Manifest file
 
-Every game crate carries `game.toml`, which is the **source of truth for the catalog** and is
-validated against the compiled `GameMetadata`/`GameCapabilities` at build time by
-`xtask check-manifests`. Two representations exist because ops needs to read and diff capabilities
-without compiling, and because Phase B/C packages ship a manifest without our source.
+Every game crate carries `game.toml`, which is the catalog manifest. Today
+`xtask check-manifests` validates its schema independently from compiled
+`GameMetadata`/`GameCapabilities`; it does **not** cross-check the two forms yet. Two
+representations exist because ops needs to read and diff capabilities without compiling, and
+because Phase B/C packages ship a manifest without our source. A generated manifest boundary is
+the deferred mechanism for making the manifest the single source of truth.
 
 ```toml
 # games/chess/game.toml
@@ -675,31 +704,45 @@ fn view_event(state_after: &State, event: &Event, viewer: Viewer) -> Option<View
 
 ### 7.3 Mandatory projection tests
 
-Every game with `hidden_information = true` must provide a `SecretSet` describing what is secret
-and to whom:
+Every game with `hidden_information = true` must provide a [`SecretModel`] describing what is
+secret and to whom:
 
 ```rust
-impl SecretModel for CardsRules {
+impl SecretModel for WerewolfRules {
     fn secrets(state: &State) -> Vec<Secret> {
-        let mut v = vec![Secret::deck_order(&state.deck)];
-        for (seat, hand) in state.hands.iter() {
-            v.push(Secret::authorized(hand.tokens(), Viewer::Seat(*seat)));
+        let mut v = Vec::new();
+        for (seat, role) in state.roles.iter() {
+            v.push(Secret::authorized(
+                &format!("seat {}'s role", seat.0),
+                role.tokens(),
+                vec![Viewer::Seat(*seat)],
+            ));
         }
         v
     }
 }
 ```
 
-`tabula-testkit` then runs, for random states from random self-play games:
+`tabula-testkit` then runs, over a **reachable** trace — `create`'s own step, then one per accepted
+input, exactly as `tabula_testkit::determinism::run_typed_trace` replays a
+`HiddenInformationFixture::deterministic_script` — for every real client [`Viewer`] the roster and
+declared `SpectatorPolicy` name (never `Viewer::Audit`; see §11.1's note below):
 
 ```text
 for every secret S, for every viewer V not authorized for S:
-    assert!( !encode(project(state, V)).contains_tokens(S) )
-    assert!( events.all(|e| !encode(view_event(state, e, V)).contains_tokens(S)) )
+    assert!( !canonical_encode(project(state, V)).contains_any_token_of(S) )
+    for every canonical event E of this step:
+        if let Some(ve) = view_event(state_after, E, V):
+            assert!( !canonical_encode(ve).contains_any_token_of(S) )
 ```
 
-Token-level containment scanning is coarse but catches the real bugs (a whole card list leaking,
-a role map serialized wholesale). It runs on every PR for every hidden-information game.
+Token-level containment scanning is coarse but catches the real bugs (a whole hand list leaking,
+a role map serialized wholesale). It is the mandatory scan for every hidden-information game once
+those games exist (`games/werewolf` and `games/tiles` — Phase 3 reference games with
+`hidden_information = true`); see §11.1 for the sibling
+noninterference oracle this containment scan does not replace, and
+`crates/tabula-testkit/tests/projection_noninterference.rs` for a worked reference model exercising
+both against a real reachable trace.
 
 ---
 
@@ -801,10 +844,9 @@ Notes on this design:
 // crates/tabula-registry/src/lib.rs
 tabula_registry::register! {
     tabula_game_chess::ChessModule,
-    tabula_game_cards::CardsModule,
+    tabula_game_caro::CaroModule,
     tabula_game_werewolf::WerewolfModule,
     tabula_game_tiles::TilesModule,
-    tabula_game_tictactoe::TicTacToeModule,
 }
 ```
 
@@ -856,10 +898,13 @@ rules_version  — monotonic integer, bumped on ANY change to State/Command/Even
   `ChessModuleV1`, `ChessModuleV2`, both registered under the same `GameId` with different
   `rules_version`; the registry resolves by the match's recorded version. Old versions are dropped
   once no live matches and no replay-support window (default 180 days) reference them.
-- `rules_hash` = blake3 over the canonical `RULES_VERSION` tag plus a build-time hash of the rules
-  source (computed by `xtask`). It catches the failure where someone changes behavior *without*
-  bumping `rules_version` — replay of an affected match then fails loudly instead of silently
-  diverging.
+- `rules_hash` = the build-time identity exposed by `GameRules::RULES_HASH`. Each game crate's
+  `build.rs` recursively hashes its canonical `src/rules/` subtree using the versioned source
+  preimage in doc 05 §6.2. That subtree is also the rules module tree: canonical code may not
+  depend on crate-root package, bot, presentation, or other noncanonical source. Those sources
+  may depend on rules, but remain outside the boundary. It catches the failure where someone
+  changes behavior *without* bumping `rules_version` — replay of an affected match then fails
+  loudly instead of silently diverging.
 
 ```mermaid
 flowchart LR
@@ -925,13 +970,13 @@ providing lobby, matchmaking, reconnect, spectators, replay, and chat for free.
 ### 10.1 The command
 
 ```bash
-cargo xtask new-game tictactoe --seats 2 --category abstract
+cargo xtask new-game <slug> --seats 2 --category abstract
 ```
 
 Scaffolds:
 
 ```text
-games/tictactoe/
+games/<slug>/
 ├── Cargo.toml            # features: rules (default), presentation, bots, testkit
 ├── game.toml             # manifest
 ├── src/
@@ -942,13 +987,15 @@ games/tictactoe/
 │   └── ui.rs             # #[cfg(feature = "presentation")]  impl GamePresentation
 ├── assets/               # optional pack sources
 └── tests/
-    └── conformance.rs    # tabula_testkit::conformance!(TicTacToeModule);
+    └── conformance.rs    # tabula_testkit::conformance!(YourFixture);
 ```
 
-### 10.2 The rules (complete, real code shape)
+### 10.2 The rules (illustrative minimal game shape)
+
+> **Historical note:** The minimal 3×3 game below illustrates the SDK contract shape using the retired Phase 0 prototype. For full historical lessons and verification notes, see [`docs/legacy/tictactoe.md`](../legacy/tictactoe.md).
 
 ```rust
-// games/tictactoe/src/state.rs
+// games/<slug>/src/rules/state.rs
 use tabula_core::*;
 use serde::{Serialize, Deserialize};
 
@@ -988,7 +1035,7 @@ pub struct Config { pub move_timeout_ms: u64 }
 ```
 
 ```rust
-// games/tictactoe/src/rules.rs
+// games/tictactoe/src/rules/mod.rs
 use tabula_game_api::*;
 use crate::state::*;
 
@@ -1106,8 +1153,8 @@ static CAPABILITIES: GameCapabilities = tabula_game_api::capabilities_from_manif
 ```
 
 ```rust
-// games/tictactoe/tests/conformance.rs
-tabula_testkit::conformance!(tabula_game_tictactoe::TicTacToeModule);
+// games/<slug>/tests/conformance.rs
+tabula_testkit::conformance!(YourFixture);
 ```
 
 ### 10.3 What the developer did NOT write
@@ -1167,10 +1214,43 @@ until it passes.** This is the single mechanism that keeps determinism from rott
 | `view_event_consistency` | Folding `ViewEvent`s onto a `View` equals `project` at the new version (opt-in) | — |
 | `bot_self_play_terminates` | 1000 bot-vs-bot matches all reach a terminal state within `max_match_duration` | — |
 | `outcome_wellformed` | Standings cover all seats exactly once; ranks are contiguous from 0 | — |
-| `manifest_matches_code` | `game.toml` == compiled metadata/capabilities | — |
+| `manifest_schema_valid` | `game.toml` has the required, internally coherent schema; compiled cross-check is deferred | — |
 | `golden_replays` | Committed replays in `tests/replays/<game>/*.tbr` still reproduce their recorded hashes | I-8, I-16 |
 | `no_forbidden_deps` | The rules feature set builds with no banned crate in the tree | I-1 |
 | `apply_within_budget` | p99 `apply` time under `capabilities.apply_budget` on the CI machine class | — |
+
+`projection_hides_secrets` and `view_event_never_bypasses` are mechanical as of
+`tabula_testkit::projection::assert_no_leaks` / `assert_no_event_bypasses_redaction`. They are
+**not** part of `conformance!`'s own expansion — a perfect-information game has nothing to scan —
+but an opt-in sibling: a game with `hidden_information = true` additionally implements
+`SecretModel` and `HiddenInformationFixture`, and expands `projection_security!` alongside
+`conformance!` (`tabula_testkit::conformance::security`). Two distinctions worth being precise
+about, so the claim and the evidence keep saying the same thing:
+
+- **Containment vs. noninterference.** Both mandatory checks are **containment** scans: a secret's
+  own bytes must not appear in an unauthorized `View`/`ViewEvent`. They cannot see a *derived* leak
+  — a count, checksum, or other value computed from hidden data without copying it verbatim (§7.1's
+  "derived-secret audit" case). `assert_projection_noninterference` and
+  `assert_view_event_noninterference` are the complementary, independent oracle for that class; a
+  game with hidden information gets real evidence for both, not one standing in for the other.
+- **Redaction vs. routing.** `view_event_never_bypasses`'s I-6 citation is about **redaction
+  correctness**: every canonical event this suite's reachable trace produced was actually passed to
+  `view_event` for every real client viewer, and nothing it returned leaked. It is **not** evidence
+  that `view_event` is the *only* code path by which event bytes can reach a client. Routing
+  exclusivity is not mechanically established by this suite, and it is not established by the type
+  system today either: `GameRules::State` and `GameRules::Event` are themselves `Serialize` (§3 —
+  needed for snapshots, the event log, and replay, all server-side), so "only `View`/`ViewEvent` are
+  serializable" is false as a description of the current types. What I-5's enforcement column
+  actually requires — that no wire message can carry a canonical `State` or `Event` to a client — is
+  a property of `tabula-match`'s (Phase 4) broadcast path and `tabula-protocol`'s wire types, neither
+  of which exists yet. Until Phase 4 builds that boundary and a protocol test asserts it (I-5's own
+  enforcement note), routing exclusivity is an architectural commitment, not executed evidence — see
+  this PR's own verification ledger, which says the same thing.
+- **`Viewer::Audit` is excluded, not silently passed.** "Every viewer" in both rows means every real
+  client viewer a `HiddenInformationFixture` derives from the roster and `SpectatorPolicy` — never
+  `Viewer::Audit`, which doc 00 §9.4 documents as legitimately seeing canonical information. Scanning
+  Audit as if it were an unauthorized client would fail the suite on the documented exception instead
+  of a real leak.
 
 ### 11.2 Property-test strategies the testkit provides
 
@@ -1207,28 +1287,33 @@ that alters historical behavior fails CI with a precise diff, forcing an explici
 
 ## 12. Four games, one contract
 
-This section shows the *contract usage* for four structurally different games. The gameplay/
-validation rationale is in [doc 08](./08-first-games-validation-plan.md).
+This section shows the *contract usage* for four structurally different games — the current
+reference-game portfolio: **Chess, Caro, Werewolf, and Tiles (Carcassonne-like)**. (Historical Phase 0
+lessons from the retired Tic-Tac-Toe prototype are preserved in [`docs/legacy/tictactoe.md`](../legacy/tictactoe.md)).
+The gameplay/validation rationale is in [doc 08](./08-first-games-validation-plan.md).
 
 ### 12.0 Comparison at a glance
 
-| | **Chess** | **Tiến Lên (cards)** | **Werewolf** | **Tiles (Carcassonne-like)** |
+Values marked `EXPERIMENT` or `TBD` are not yet decided; they are honest placeholders, not locked
+capabilities (doc 08 §3 for Caro's open questions, including its eventual state-size class).
+
+| | **Chess** | **Caro** | **Werewolf** | **Tiles (Carcassonne-like)** |
 |---|---|---|---|---|
-| Seats | 2, asymmetric | 4, symmetric | 6–20, role-asymmetric | 2–5, symmetric |
+| Seats | 2, asymmetric | 2, symmetric | 6–20, role-asymmetric | 2–5, symmetric |
 | `turn_model` | `StrictSequential` | `StrictSequential` | `Phased` | `StrictSequential` |
-| `hidden_information` | false | **true** (hands, deck) | **true** (roles, night actions) | partial (bag order) |
-| RNG usage | none | deck shuffle | role assignment | tile bag shuffle |
-| Timers | per-move clock (Fischer/Bronstein) | per-turn 20 s | per-phase, long | per-turn 60 s, or 24 h async |
-| `spectators` | `Live` | `Delayed{30s}` | `GameControlled` (dead see all) | `Live` |
-| `voice` | `No` | `Optional` | **`Recommended`** | `Optional` |
+| `hidden_information` | false | false | **true** (roles, night actions) | **true** (remaining bag order; count public) |
+| RNG usage | none | none | role assignment | tile bag shuffle |
+| Timers | per-move clock (Fischer/Bronstein) | optional per-turn timer — `TBD during implementation` | per-phase, long | per-turn 60 s, or 24 h async |
+| `spectators` | `Live` | `Live` | `GameControlled` (dead see all) | `Live` |
+| `voice` | `No` | `No` | **`Recommended`** | `Optional` |
 | `chat.game_scoped` | false | false | **true** | false |
-| `async_turns` | true (correspondence) | false | false | **true** |
-| `ranked` | `Elo` | `Placement` | `No` (social) | `Placement` |
+| `async_turns` | true (correspondence) | `TBD during implementation` | false | **true** |
+| `ranked` | `Elo` | `TBD during implementation` | `No` (social) | `Placement` |
 | `durability` | `AckAfterPersist` | `AckAfterPersist` | `AckAfterApply` | `AckAfterPersist` |
-| `state_size` | `Tiny` | `Small` | `Small` | **`Medium`** |
+| `state_size` | `Tiny` | `TBD during implementation` | `Small` | `Small` — **measured**, against a `Medium` design estimate |
 | `substitution` | `BotOnly` | `BotOnly` | **`Forbidden`** | `BotOnly` |
 | `pausable` | false | false | false | true (async) |
-| Hardest contract stressed | clocks + `legal_commands` enumeration | projection + RNG secrecy | `view_event → None` + scopes | state size + snapshot cost + camera |
+| Hardest contract stressed | clocks + `legal_commands` enumeration | `legal_commands` at scale + zero-platform-change addition | `view_event → None` + scopes | state size + snapshot cost + camera + bag-order secrecy |
 
 ### 12.1 Chess — the simple case that must be perfect
 
@@ -1265,65 +1350,54 @@ Contract lessons:
 - **`legal_commands` fully enumerates** (~30 moves), which powers move highlighting, drag-drop
   legality, and a `Trivial` bot for free.
 
-### 12.2 Tiến Lên — hidden hands and server RNG
+### 12.2 Caro — a simple product game, and the SDK-friction benchmark
 
-(Chosen over poker deliberately: 4 players, hidden hands, trick-taking, no betting. Big Two, Tiến
-Lên Miền Nam, and simple poker variants reuse the same primitives.)
+Caro is a real, independently-added product game whose job is to prove the contract absorbs a *second*
+simple product game cheaply. See [doc 08 §3](./08-first-games-validation-plan.md) and
+[`docs/games/caro.md`](../games/caro.md) — the exact rule variant and board size are open game-design
+decisions, not settled here.
 
 ```rust
 struct State {
-    hands: [SmallVec<[Card; 13]>; 4],     // SECRET, per seat
-    deck_commit: [u8; 32],                // blake3(shuffled order || salt), published at start
-    salt: [u8; 16],                       // SECRET until match end
-    table: Option<Play>,                  // current trick requirement
-    lead: SeatId, turn: SeatId,
-    passed: [bool; 4],
-    finished: SmallVec<[SeatId; 4]>,      // finishing order = standings
-    scores: [i64; 4],
+    board: Grid<Option<Mark>>,    // fixed size (size: TBD)
+    turn: SeatId,
+    status: Status,
+    moves: u32,
 }
-enum Command { Play { cards: SmallVec<[Card; 5]> }, Pass }
+enum Command { Place { at: Coord }, Resign }
 enum Event {
-    Dealt { seat: SeatId, cards: SmallVec<[Card; 13]> },   // canonical: full info
-    Played { seat: SeatId, cards: SmallVec<[Card; 5]> },
-    Passed { seat: SeatId },
-    TrickWon { seat: SeatId },
-    Finished { seat: SeatId, place: u8 },
-    DeckRevealed { salt: [u8; 16] },                       // at match end, proves the shuffle
-    Ended { outcome: MatchOutcome },
+    Placed { seat: SeatId, at: Coord, mark: Mark },
+    Ended  { outcome: MatchOutcome },
 }
-#[derive(Serialize)]
+/// No hidden information: View ≈ State, plus legal_commands for the seat on turn.
+/// Still a distinct type (§7.1) — this is the pattern every perfect-information game reuses.
 struct View {
-    your_hand: SmallVec<[Card; 13]>,       // only ever your own
-    hand_counts: [u8; 4],                  // public
-    table: Option<Play>,
-    turn: SeatId, lead: SeatId,
-    passed: [bool; 4],
-    finished: SmallVec<[SeatId; 4]>,
-    deck_commit: [u8; 32],
+    board: Grid<Option<Mark>>,
+    turn: SeatId,
+    status: Status,
     you: Option<SeatId>,
 }
-enum ViewEvent {
-    DealtToYou { cards: SmallVec<[Card; 13]> },
-    DealtToOther { seat: SeatId, count: u8 },   // degraded, not hidden — the client animates backs
-    Played { seat, cards }, Passed { seat }, TrickWon { seat },
-    Finished { seat, place }, DeckRevealed { salt }, Ended { outcome },
-}
+type ViewEvent = Event;   // nothing is secret; nothing to degrade or hide
 ```
 
 Contract lessons:
 
-- **`view_event` degrades rather than hides**: `Dealt` → `DealtToOther{count}` for other seats. The
-  card-back animation is possible without leaking anything.
-- **RNG is drawn once, in `create`**, from `ctx.rng.stream(DOMAIN_SHUFFLE)`. The shuffle
-  algorithm is `DetRng::shuffle` (pinned Fisher-Yates), so a replay in two years reproduces the
-  same deal.
-- **The commitment scheme** (`deck_commit` published at start, `salt` revealed at end) lets any
-  player verify after the fact that the deck was not manipulated mid-match. **EXPERIMENT** — build
-  it here first because cards is where players suspect cheating.
-- **Spectators are delayed 30 s** so that a spectator cannot relay information to a player in real
-  time. The delay is enforced by the platform (buffering), declared by the capability.
-- **`SecretModel`** declares: deck order (nobody until end), each hand (its own seat only), salt
-  (nobody until end). The projection scanner then does the work.
+- **`hidden_information = false`.** Caro is deliberately boring on the security axis — like
+  chess, `View` ≈ `State` and no `SecretModel` is needed. That is the point: the
+  *only* new variable this game introduces is "a second, independently-built game exists", which is
+  what makes the SDK-friction measurement honest (doc 08 §3.2).
+- **`legal_commands` at a real scale.** A larger board (15×15 is the
+  expected direction, `TBD during implementation`) enumerates up to 225 — still comfortably
+  `Enumerated`, but the first real test of that path before Tiles forces `Hints` instead.
+- **Win-line detection is the interesting algorithm**, not a new contract shape: it exercises
+  whether the platform's `apply_budget` stays comfortable with a real (if still simple) rule
+  computation, without any of chess's move-generation complexity.
+- **No RNG, no hidden information, and (for now) no more than an optional turn timer.** Every other
+  axis is held constant so that friction found while adding Caro is SDK friction, not a symptom of
+  an unrelated axis of complexity.
+
+Why Caro in addition to chess: chess is too complex to isolate SDK friction from rules-implementation
+effort. Caro is the cheapest game that separates the two concerns.
 
 ### 12.3 Werewolf — phases, scoped chat, and event non-existence
 
@@ -1391,34 +1465,89 @@ Contract lessons:
 
 ### 12.4 Tiles (Carcassonne-like) — large dynamic state
 
+As implemented (`games/tiles/src/rules/state.rs`):
+
 ```rust
 struct State {
-    placed: BTreeMap<Coord, PlacedTile>,       // grows to ~72+ entries
-    bag: SmallVec<[TileKind; 72]>,             // SECRET order
-    drawn: Option<TileKind>,                   // public once drawn
-    meeples: BTreeMap<SeatId, u8>,
-    features: FeatureGraph,                    // incremental union-find for scoring
+    board: Board,                    // BTreeMap<Coord, PlacedTile>, grows to ~72
+    bag: Vec<TileKind>,              // SECRET order, public length
+    drawn: Option<TileKind>,         // public once drawn
+    discarded: Vec<TileKind>,        // unplaceable tiles, public
+    features: FeatureGraph,          // incremental components + followers
+    meeples: BTreeMap<SeatId, u8>,   // followers still in hand
     scores: BTreeMap<SeatId, i64>,
-    turn: SeatId, phase: TurnPhase,            // Draw | Place | Meeple | Score
+    seats: Vec<SeatId>, turn_index: u8,
+    phase: TurnPhase,                // PlaceTile | PlaceMeeple
+    status: Status, paused: bool,
+    turn_deadline_ms: u64,           // 0 = none; 60 s and 24 h take one code path
+    last_placed: Option<Coord>,
 }
-enum Command { PlaceTile { at: Coord, rot: Rotation }, SkipMeeple,
-               PlaceMeeple { on: FeatureSlot }, EndTurn }
+enum Command { PlaceTile { at: Coord, rotation: Rotation },
+               PlaceMeeple { segment: u8 }, SkipMeeple }
 ```
+
+Two differences from the sketch, both decided by writing it:
+
+- **`TurnPhase` has two variants, not four.** `Draw` and `Score` were phases no
+  player could occupy: the rules draw for the next seat as part of finishing a
+  turn, and scoring is a consequence of the claim decision rather than a
+  decision of its own. `EndTurn` disappeared with them — `SkipMeeple` already
+  ends the turn, and a second way to end it would be a second authority.
+- **`PlaceMeeple` names a segment of the tile just placed, not a `FeatureSlot`.**
+  The coordinate is not a parameter, so a follower cannot be placed anywhere but
+  the tile that was just put down, and there is no coordinate to forge.
+
+Scope note (Phase 3): Tiles implements **roads, cities, and monasteries**. **Farms/fields are
+deferred** — scoring them needs sub-edge field granularity (each tile side carries two field
+corners), which multiplies the graph's representation cost without exercising any contract the
+other three feature types do not already exercise. Field remains an *edge terrain* for adjacency
+matching; it is not a scorable feature. The tile distribution is Tabula's own, in the Carcassonne
+family; it is not a reproduction of any published set.
 
 Contract lessons:
 
-- **`state_size = Medium`** changes snapshot policy: snapshot every 50 inputs instead of every 200,
-  and store snapshots as compressed blobs (doc 03 §9).
+- **`state_size` is `Small`, measured, against a `Medium` estimate.** The design expected 30–120 KB,
+  which would have moved snapshot cadence from every 200 inputs to every 50 and stored snapshots as
+  compressed blobs (doc 03 §9). `games/tiles/tests/state_size.rs` plays complete matches at every
+  seat count and measures the canonical encoding: **a full board is about 1.7 KB**, two orders of
+  magnitude below the estimate. Roughly 300 bytes of that is the board and the discards; the rest
+  is the feature graph. The test asserts the declared class *is* the measured one, in both
+  `src/lib.rs` and `game.toml`, so the two cannot drift.
+  The honest consequence is recorded in doc 03 §9.2: **no game in the portfolio occupies `Medium`
+  yet.** Tiles is still the game that makes `StateSizeClass` a real capability — its state grows by
+  a factor of five over a match while chess's does not move — but it does not populate the class
+  the design assumed it would.
 - **`legal_commands` returns `Hints`, not `Enumerated`** — legal (position × rotation) pairs are
-  numerous; the hint form gives the client enough to highlight without enumerating commands.
+  numerous; the hint form gives the client enough to highlight without enumerating commands. This
+  is the game that found `CommandHint` to be unconstructible outside `tabula-game-api` (§3.1).
 - **`FeatureGraph` is an incremental structure**, which is why `apply` takes `&mut State`
-  (§3.3). Recomputing scoring from scratch each turn would be simpler but 100× slower on a large
-  board; the incremental structure must be included in the state hash so a divergence is caught.
+  (§3.3). It is a `State` field, so it is in the state hash by construction and a divergence in it
+  is caught rather than silently accumulating.
+  It is **not** a union-find, and the sketch's word for it was the one thing implementation
+  overturned. `find` with path compression *mutates*, and `project` and `legal_commands` are read
+  paths — so running them would change the encoded bytes and two runs of one input stream could
+  hash differently purely from how often something was queried. Turning compression off removes the
+  mutation and most of the benefit and still leaves parent pointers encoding union order rather
+  than membership. What Tiles uses instead is an explicit component registry merged by **minimum
+  id**: reads never mutate, a component's contents are a set union and its id a minimum (so both
+  are order-independent), and closure is a counter reaching zero.
+  `games/tiles/src/rules/feature.rs` records all four representations that were compared.
+  The reference model for it — a whole-board flood fill — is kept as the differential oracle
+  (`games/tiles/tests/features.rs` runs it after every input of complete matches at every seat
+  count), which is the honest place for "recompute from scratch": as the thing production is
+  checked against, not as production.
 - **Async turns are the natural mode.** `async_turns.supported = true` with a 24 h deadline; the
   match actor hibernates (doc 03 §11) and the platform sends push notifications. The rules are
   unchanged between live and async play — that is the payoff of `LogicalTime`.
-- **The bag is secret but its count is public.** `View` carries `bag_remaining: u8` and the drawn
-  tile, never the order.
+- **The bag is secret but its count is public.** `View` carries a remaining-tile count and the
+  drawn tile, never the order. Because that order determines every future draw, Tiles declares
+  `hidden_information = true`, provides a `SecretModel` marking the remaining order as authorised
+  to **nobody**, and expands `projection_security!` alongside `conformance!`. Being the *secondary*
+  hidden-information benchmark (Werewolf owns per-seat knowledge and event non-existence) buys
+  Tiles no exemption from either obligation. Containment scanning alone is not sufficient evidence
+  for an *ordered* secret — a short remaining bag encodes to a token too small to be a leak
+  detector — so Tiles pairs the scan with a noninterference property over bag permutations
+  (§11.1), which is the oracle that actually covers the whole range.
 
 ### 12.5 What this comparison proves about the contract
 

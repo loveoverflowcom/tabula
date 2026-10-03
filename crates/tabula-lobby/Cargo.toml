@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 5. Recommended to start life as a module inside tabula-match in
 # Phase 4 and be EXTRACTED here in Phase 5 (doc 01 §3).

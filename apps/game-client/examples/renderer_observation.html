@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tabula renderer baseline</title>
+<style>html,body{margin:0;width:100%;height:100%;overflow:hidden}#glcanvas{width:100%;height:100%;display:block;outline:none}</style>
+<canvas id="glcanvas" tabindex="1"></canvas>
+<button id="record" style="position:fixed;right:8px;top:8px">Record 20-second canvas video</button>
+<a id="recording" hidden download="tabula-renderer.webm">Download canvas recording</a>
+<output id="runtime-observation" hidden></output>
+<script src="mq_js_bundle.js"></script>
+<script>
+// Isolated measurement host. Observe only graphics/runtime resource facts;
+// no game state, view, command, token or production navigation is exposed.
+load("tabula-game-client.wasm");
+const observation = document.querySelector("#runtime-observation");
+const started = performance.now();
+function observe() {
+    const rect = canvas.getBoundingClientRect();
+    const backend = typeof gl === "undefined" ? null : gl;
+    const debug = backend && backend.getExtension("WEBGL_debug_renderer_info");
+    const resource = performance.getEntriesByType("resource").find(entry => entry.name.endsWith(".wasm"));
+    observation.textContent = JSON.stringify({
+        user_agent: navigator.userAgent,
+        elapsed_ms: performance.now() - started,
+        viewport: [rect.width, rect.height],
+        canvas_pixels: [canvas.width, canvas.height],
+        device_pixel_ratio: devicePixelRatio,
+        webgl_version: backend && backend.getParameter(backend.VERSION),
+        webgl_renderer: debug && backend.getParameter(debug.UNMASKED_RENDERER_WEBGL),
+        wasm_linear_memory_bytes: typeof wasm_memory === "undefined" ? null : wasm_memory.buffer.byteLength,
+        js_heap_bytes: performance.memory ? performance.memory.usedJSHeapSize : null,
+        wasm_download: resource ? {duration_ms: resource.duration,transfer_bytes:resource.transferSize,encoded_bytes:resource.encodedBodySize} : null,
+    });
+}
+observe();
+// Same 1 Hz observation cost for every comparison. Only the latest record is retained.
+setInterval(observe, 1000);
+// Optional visual evidence only. Start a separate run for metrics: clicking
+// this control changes focus and is counted as uncontrolled host input.
+document.querySelector("#record").onclick = () => {
+    document.querySelector("#record").hidden = true;
+    const stream = canvas.captureStream(30);
+    const recorder = new MediaRecorder(stream, {mimeType:"video/webm"});
+    const chunks = [];
+    recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+    recorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop());
+        const link = document.querySelector("#recording");
+        link.href = URL.createObjectURL(new Blob(chunks, {type:"video/webm"}));
+        link.hidden = false;
+        link.style = "position:fixed;right:8px;top:8px";
+    };
+    recorder.start();
+    setTimeout(() => recorder.stop(), 20000);
+};
+</script>
+</html>

@@ -1,0 +1,32 @@
+[
+  {
+    "argv": [
+      "python3",
+      ".agents/skills/tabula-engineering/scripts/check_skills.py"
+    ],
+    "status": "FAIL",
+    "exit_code": 1,
+    "log": "docs/verification/issue-60/logs/skills-1.log",
+    "summary": "Traceback (most recent call last):\n  File \"/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/.agents/skills/tabula-engineering/scripts/check_skills.py\", line 19, in <module>\n    import yaml\nModuleNotFoundError: No module named 'yaml'\n"
+  },
+  {
+    "argv": [
+      "python3",
+      ".agents/skills/tabula-engineering/scripts/test_check_skills.py"
+    ],
+    "status": "FAIL",
+    "exit_code": 1,
+    "log": "docs/verification/issue-60/logs/skills-2.log",
+    "summary": "Traceback (most recent call last):\n  File \"/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/.agents/skills/tabula-engineering/scripts/test_check_skills.py\", line 11, in <module>\n    import check_skills\n  File \"/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/.agents/skills/tabula-engineering/scripts/check_skills.py\", line 19, in <module>\n    import yaml\nModuleNotFoundError: No module named 'yaml'\n"
+  },
+  {
+    "argv": [
+      "python3",
+      ".agents/skills/tabula-engineering/scripts/test_ai_doc_contracts.py"
+    ],
+    "status": "PASS",
+    "exit_code": 0,
+    "log": "docs/verification/issue-60/logs/skills-3.log",
+    "summary": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.002s\n\nOK\n"
+  }
+]

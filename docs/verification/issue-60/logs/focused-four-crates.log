@@ -1,0 +1,442 @@
+   Compiling tabula-design v0.0.0 (/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/crates/tabula-design)
+   Compiling tabula-core v0.1.0 (/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/crates/tabula-core)
+   Compiling tabula-game-tiles v0.1.0 (/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/games/tiles)
+   Compiling tabula-game-api v0.1.0 (/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/crates/tabula-game-api)
+   Compiling tabula-assets v0.0.0 (/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/crates/tabula-assets)
+   Compiling tabula-presentation v0.0.0 (/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/crates/tabula-presentation)
+   Compiling tabula-testkit v0.1.0 (/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/crates/tabula-testkit)
+   Compiling renderer-macroquad v0.0.0 (/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/crates/renderer-macroquad)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.73s
+     Running unittests src/lib.rs (/tmp/tabula60-target/debug/deps/renderer_macroquad-3467dba98d363332)
+
+running 79 tests
+test assets::tests::missing_resource_and_unbound_states_are_explicit ... ok
+test assets::tests::byte_size_hash_and_foreign_file_fail_before_upload ... ok
+test assets::tests::bounded_entry_count_and_nonzero_configuration_are_enforced ... ok
+test assets::tests::release_and_rebind_keep_leases_alive_and_accounted_until_last_consumer ... ok
+test assets::tests::reused_bytes_revalidate_new_atlas_metadata_and_record_failure_state ... ok
+test assets::tests::failed_binding_is_transactional_and_cache_drop_does_not_invalidate_lease ... ok
+test assets::tests::leased_retired_texture_blocks_budget_until_safe_release ... ok
+test assets::tests::oversized_and_zero_headers_reject_before_decoder_allocation ... ok
+test assets::tests::cache_key_preserves_pack_version_hash_and_selected_density ... ok
+test assets::tests::upload_failure_reports_failed_state_and_can_retry_without_poisoning_cache ... ok
+test assets::tests::shared_resources_reuse_one_physical_decode_and_upload ... ok
+test audio::tests::duplicate_registration_is_rejected_without_replacing_the_handle ... ok
+test audio::tests::registered_cue_resolves_deterministically ... ok
+test assets::tests::all_atlas_regions_and_physical_aliases_are_checked_before_upload ... ok
+test assets::tests::verified_png_decodes_exact_pixels_at_encoded_and_allocation_boundaries ... ok
+test audio::tests::sink_reports_unknown_cues_as_a_structured_failure ... ok
+test assets::tests::valid_hash_does_not_make_corrupt_or_unsupported_images_uploadable ... ok
+test audio::tests::unknown_cue_is_unavailable_without_a_panic ... ok
+test draw::tests::clip_preflight_rejects_the_same_unsupported_device_bounds_as_execution_conversion ... ok
+test draw::tests::convexity_includes_the_wraparound_vertices ... ok
+test draw::tests::convexity_is_invariant_under_vertex_rotation ... ok
+test draw::tests::logical_top_origin_clip_maps_to_gpu_bottom_origin_at_each_dpi ... ok
+test draw::tests::offscreen_clips_keep_their_geometry_and_convert_negative_gpu_origins ... ok
+test draw::tests::sprite_affine_geometry_supports_reflection_shear_and_singular_scopes ... ok
+test draw::tests::sprite_atlas_uvs_keep_exact_pixel_region_and_reject_out_of_bounds ... ok
+test draw::tests::sprite_rejects_transformed_overflow_even_with_finite_local_geometry ... ok
+test draw::tests::sprite_rotates_about_its_local_pivot_before_affine_scope_and_camera ... ok
+test draw::tests::sprite_vertices_preserve_uv_order_and_multiply_tint_alpha ... ok
+test draw::tests::stroke_width_is_transformed_with_its_local_geometry ... ok
+test input::tests::a_coalesced_release_with_the_button_still_down_cancels_a_new_press ... ok
+test input::tests::a_fresh_key_cannot_authenticate_an_unrelated_mouse_press ... ok
+test input::tests::a_held_mouse_enter_after_the_restoration_frame_cannot_activate ... ok
+test input::tests::a_replayed_mouse_release_keeps_the_normal_up_phase ... ok
+test input::tests::default_input_state_registers_no_graphics_subscriber ... ok
+test input::tests::disappearing_primary_touch_cancels_before_mouse_fallback ... ok
+test input::tests::first_started_touch_becomes_the_primary_pointer ... ok
+test input::tests::focus_loss_cancels_contacts_before_discarding_synthetic_releases ... ok
+test input::tests::focus_loss_cancels_touch_and_restoration_cannot_replay_a_stale_release ... ok
+test input::tests::hover_release_and_held_key_repeat_cannot_restore_interaction ... ok
+test input::tests::invalid_mouse_release_cancels_at_last_finite_position ... ok
+test input::tests::invalid_platform_pointer_cannot_wedge_touch_ownership ... ok
+test input::tests::mouse_leave_and_held_reentry_cannot_release_an_armed_control ... ok
+test input::tests::move_only_interruption_resumes_before_a_fresh_space_press ... ok
+test input::tests::normalized_input_never_emits_non_finite_pointer_coordinates ... ok
+test input::tests::primary_touch_keeps_ownership_across_frames ... ok
+test input::tests::restoration_without_a_fresh_press_cannot_rearm_a_held_mouse ... ok
+test input::tests::restored_callback_and_fresh_pointer_press_precede_normalized_input ... ok
+test input::tests::synthetic_mouse_leave_release_cancels_instead_of_activating ... ok
+test input::tests::touch_suppresses_duplicate_mouse_events_and_keys_follow_pointer_events ... ok
+test renderer::tests::failed_submit_does_not_queue_earlier_primitives ... ok
+test renderer::tests::frame_operations_report_invalid_lifecycle_without_drawing ... ok
+test state::tests::camera_maps_after_local_transforms_while_clips_remain_logical ... ok
+test state::tests::direct_zero_area_clips_canonicalize_to_empty ... ok
+test state::tests::nested_clip_collapse_stays_empty ... ok
+test state::tests::nested_clips_intersect_and_restore_the_previous_scissor ... ok
+test state::tests::nested_scopes_compose_and_pop_restores_the_exact_parent_state ... ok
+test support::tests::concave_filled_path_is_rejected_before_execution ... ok
+test support::tests::ordinary_rect_and_text_lists_pass_macroquad_preflight ... ok
+test support::tests::sprite_geometry_failure_precedes_resource_resolution_and_empty_clip_is_validated ... ok
+test support::tests::sprite_preflight_preserves_nested_scope_and_stable_stacking_order ... ok
+test support::tests::sprite_without_ready_resource_fails_explicitly_before_execution ... ok
+test support::tests::support_inventory_declares_sprite_with_resource_specific_preflight ... ok
+test support::tests::supported_nested_scopes_pass_with_their_effective_state ... ok
+test support::tests::transformed_text_is_rejected_before_execution ... ok
+test text::tests::bounded_and_unbounded_text_pass_preflight_without_a_graphics_context ... ok
+test text::tests::explicit_newlines_are_preserved_without_a_width_limit ... ok
+test text::tests::non_tabular_text_retains_one_proportional_run ... ok
+test support::tests::ready_sprite_preflight_reuses_cache_and_leases_texture_until_frame_flush ... ok
+test text::tests::scaled_raster_measurement_keeps_tabular_alignment_and_wrapping_in_logical_units ... ok
+test text::tests::small_font_rasters_keep_token_size_and_share_the_preparation_size ... ok
+test text::tests::tabular_glyphs_are_centered_without_changing_non_digit_runs ... ok
+test text::tests::tabular_wrapping_uses_digit_cells_instead_of_narrow_glyph_widths ... ok
+test text::tests::text_transform_requires_positive_uniform_scale ... ok
+test text::tests::width_limited_text_wraps_with_a_measurement_oracle ... ok
+test text::tests::tabular_clock_figures_keep_the_same_width_across_every_digit ... ok
+test text::tests::wrapping_keeps_oversized_unicode_scalars_separate_from_following_text ... ok
+test text::tests::wrapping_never_slices_a_valid_unicode_scalar ... ok
+test support::tests::oversized_wrapped_text_is_rejected_before_execution ... ok
+test text::tests::bounded_preflight_capacity_counts_unicode_scalars_and_empty_paragraphs ... ok
+
+test result: ok. 79 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/tmp/tabula60-target/debug/deps/tabula_assets-51705d28601e878f)
+
+running 55 tests
+test integrity::tests::error_display_formatting_is_deterministic_and_informative ... ok
+test integrity::tests::integrity_verification_happy_path ... ok
+test integrity::tests::integrity_verification_rejects_size_mismatch ... ok
+test integrity::tests::owned_verified_asset_bytes_survive_source_and_file_scope ... ok
+test integrity::tests::shared_atlas_semantics_verifies_physical_file_once ... ok
+test integrity::tests::integrity_verification_rejects_hash_mismatch ... ok
+test integrity::tests::owned_verification_reuses_integrity_error_partitions ... ok
+test integrity::tests::non_raster_audio_and_multi_priority_verification ... ok
+test integrity::tests::same_size_file_substitution_is_rejected ... ok
+test integrity::tests::owned_verified_asset_debug_redacts_payload_bytes ... ok
+test integrity::tests::size_checked_before_hashing_even_if_hash_would_match ... ok
+test integrity::tests::single_byte_corruption_at_every_position_is_rejected ... ok
+test integrity::tests::verification_works_independently_of_binding_and_resolution ... ok
+test loader::tests::load_verified_preserves_integrity_errors ... ok
+test integrity::tests::verified_asset_bytes_witness_preserves_exact_file_and_payload ... ok
+test loader::tests::load_verified_preserves_source_errors ... ok
+test loader::tests::load_verified_rejects_oversized_payloads ... ok
+test loader::tests::missing_path_error_is_structured_at_source_boundary ... ok
+test loader::tests::load_verified_rejects_same_size_corruption ... ok
+test loader::tests::load_verified_rejects_same_size_bytes_for_another_asset_file ... ok
+test loader::tests::load_verified_returns_owned_payload_after_source_scope ... ok
+test loader::tests::repeated_memory_loads_are_deterministic_and_equivalent ... ok
+test manifest::tests::asset_file_name_constructor_partitions ... ok
+test loader::tests::unverified_source_value_is_consumed_by_owned_verification ... ok
+test manifest::tests::asset_pack_id_constructor_partitions ... ok
+test manifest::tests::asset_pack_ref_invalid_pack_id_partitions ... ok
+test manifest::tests::asset_pack_ref_invalid_separator_and_version_partitions ... ok
+test manifest::tests::asset_pack_ref_parse_and_display_round_trip ... ok
+test manifest::tests::asset_pack_ref_valid_parsing_and_construction ... ok
+test manifest::tests::asset_pack_ref_serde_round_trip_and_validation_barrier ... ok
+test manifest::tests::asset_path_constructor_partitions ... ok
+test manifest::tests::asset_pack_ref_from_static_panics_on_invalid_literals ... ok
+test manifest::tests::hash_validation_rejects_non_ascii_at_exact_byte_length_without_panicking ... ok
+test manifest::tests::malformed_or_pathological_toml_is_rejected_without_validation_panics ... ok
+test manifest::tests::hash_length_and_character_partitions_are_rejected ... ok
+test manifest::tests::manifest_exposes_pack_ref_matching_pack_and_version ... ok
+test manifest::tests::manifest_rejects_blank_pack_and_invalid_game_binding ... ok
+test manifest::tests::manifest_schema_rejects_unknown_top_level_and_file_fields ... ok
+test manifest::tests::manifest_without_files_is_not_a_resolvable_asset_pack ... ok
+test manifest::tests::manifest_validate_binding_partitions ... ok
+test manifest::tests::density_partitions_allow_exactly_one_through_three ... ok
+test manifest::tests::pixel_region_validation_rejects_degenerate_overflowing_and_unknown_input ... ok
+test manifest::tests::resource_validation_accepts_whole_files_density_variants_and_atlas_sharing ... ok
+test manifest::tests::resolution_is_declaration_order_independent_and_never_infers_file_names ... ok
+test manifest::tests::resolution_obeys_density_selection_law ... ok
+test source::tests::missing_path_returns_source_error_with_requested_path ... ok
+test manifest::tests::unknown_priority_and_zero_byte_size_are_rejected ... ok
+test source::tests::corrupt_source_output_is_rejected_by_integrity_boundary ... ok
+test manifest::tests::valid_minimal_manifest_parses_into_validated_values ... ok
+test source::tests::repeated_reads_of_one_path_are_deterministic_and_not_consuming ... ok
+test source::tests::source_output_requires_integrity_verification ... ok
+test source::tests::unverified_asset_bytes_exposes_owned_payload_operations ... ok
+test source::tests::truncated_source_output_is_rejected_by_integrity_boundary ... ok
+test manifest::tests::resource_validation_rejects_empty_duplicate_and_ambiguous_declarations ... ok
+test manifest::tests::manifest_rejects_hostile_and_ambiguous_file_metadata ... ok
+
+test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/tmp/tabula60-target/debug/deps/tabula_game_tiles-406b5bda100d7365)
+
+running 110 tests
+test bot::tests::the_module_offers_a_bot_for_the_levels_it_declares ... ok
+test presentation::tests::a_view_event_updates_only_local_state_and_emits_a_cue ... ok
+test presentation::tests::a_pointer_maps_back_to_the_square_it_was_taken_from ... ok
+test presentation::tests::a_completed_full_preview_turn_starts_the_next_quarter_turn_from_zero ... ok
+test bot::tests::the_bot_declines_when_it_is_not_its_turn_or_the_match_is_over ... ok
+test presentation::tests::a_tap_on_a_legal_square_asks_to_place_and_an_illegal_one_does_not ... ok
+test presentation::tests::arrows_move_the_cursor_and_tab_finds_a_legal_square ... ok
+test presentation::tests::activation_key_repeats_are_suppressed_and_blur_does_not_latch_a_key ... ok
+test presentation::tests::a_press_below_the_drag_threshold_is_still_a_tap ... ok
+test presentation::tests::cancelled_blurred_resized_and_repeated_releases_do_not_activate ... ok
+test presentation::tests::escape_passes_on_a_follower_only_in_the_claim_step ... ok
+test presentation::tests::dragging_pans_the_camera_and_does_not_place_on_release ... ok
+test presentation::tests::different_cameras_really_do_produce_different_render_lists ... ok
+test presentation::tests::every_reachable_claim_is_selectable_by_keyboard_and_by_its_pointer_position ... ok
+test presentation::tests::gameplay_actions_are_gated_for_paused_terminal_and_other_viewers ... ok
+test presentation::tests::losing_focus_disarms_a_drag_in_progress ... ok
+test presentation::tests::fixture_covers_every_tile_with_verified_explicit_density_variants ... ok
+test presentation::tests::maximum_zoom_keeps_the_short_map_cursor_and_focus_marker_visible ... ok
+test presentation::tests::reduced_motion_uses_informative_fade_without_rotation_or_scale ... ok
+test presentation::tests::rejected_placement_keeps_rules_bytes_and_cannot_start_accepted_motion ... ok
+test presentation::tests::accepted_tile_settles_once_and_sparse_dense_samples_have_identical_final_view ... ok
+test presentation::tests::rotation_is_immediate_intent_and_motion_is_local_reduced_and_replaceable ... ok
+test presentation::tests::every_hud_action_has_a_labeled_44_dp_target_and_compact_primary_reach ... ok
+test presentation::tests::space_and_the_rotate_control_both_turn_the_preview ... ok
+test presentation::tests::short_and_compact_results_keep_every_score_and_follower_label ... ok
+test presentation::tests::stale_or_replaced_views_never_invent_a_tile_and_interruptions_snap ... ok
+test presentation::tests::the_asset_pack_matches_the_manifest ... ok
+test presentation::tests::the_a11y_description_names_the_cursor_and_gates_its_actions ... ok
+test presentation::tests::the_opening_view_is_centred_on_the_start_tile ... ok
+test presentation::tests::the_whole_placement_step_is_reachable_from_the_keyboard ... ok
+test presentation::tests::the_hud_keeps_its_logical_geometry_at_every_zoom ... ok
+test presentation::tests::the_zoom_and_recenter_controls_change_only_the_camera ... ok
+test presentation::tests::zoom_is_clamped_at_both_ends ... ok
+test rules::coord::tests::coord_deserialization_cannot_bypass_the_playable_space_check ... ok
+test rules::coord::tests::coord_rejects_positions_outside_the_playable_space ... ok
+test rules::coord::tests::neighbour_and_opposite_side_are_mutually_inverse ... ok
+test rules::coord::tests::neighbour_is_total_at_the_boundary_instead_of_overflowing ... ok
+test rules::coord::tests::opposite_is_an_involution_and_never_the_identity ... ok
+test rules::coord::tests::raw_index_constructors_are_total_over_every_byte ... ok
+test rules::coord::tests::rotating_a_side_four_times_is_the_identity ... ok
+test rules::coord::tests::rotation_next_cycles_through_all_four_orientations ... ok
+test rules::feature::tests::a_completed_feature_reports_no_open_edges ... ok
+test rules::feature::tests::a_graph_that_forgot_a_segment_is_rejected ... ok
+test rules::feature::tests::a_graph_that_merged_two_unconnected_roads_is_rejected ... ok
+test rules::feature::tests::a_graph_with_a_wrong_open_edge_count_is_rejected ... ok
+test rules::feature::tests::a_lone_start_tile_has_one_city_and_one_road_both_open ... ok
+test rules::feature::tests::a_pennant_travels_with_the_city_it_belongs_to ... ok
+test rules::feature::tests::a_monastery_closes_only_when_all_eight_neighbours_are_filled ... ok
+test rules::feature::tests::a_segment_reference_rejects_an_index_no_tile_could_have ... ok
+test rules::feature::tests::a_segment_can_only_be_claimed_once_and_a_retired_one_never ... ok
+test rules::feature::tests::merging_is_independent_of_the_order_sides_are_processed ... ok
+test rules::feature::tests::side_helper_names_stay_used ... ok
+test rules::feature::tests::merging_two_claimed_components_keeps_both_owners ... ok
+test rules::placement::tests::a_mismatched_shared_edge_is_refused_and_names_the_side ... ok
+test rules::feature::tests::the_incremental_graph_agrees_with_a_whole_board_recomputation ... ok
+test rules::placement::tests::a_square_touching_nothing_is_refused_however_well_it_would_match ... ok
+test rules::placement::tests::a_square_between_two_tiles_must_match_both_of_them ... ok
+test rules::placement::tests::an_occupied_square_is_refused_before_anything_else_is_checked ... ok
+test rules::placement::tests::every_tile_kind_is_placeable_next_to_the_opening_position ... ok
+test rules::placement::tests::the_first_tile_has_nowhere_to_go_on_an_empty_board ... ok
+test rules::placement::tests::the_frontier_is_exactly_the_free_squares_touching_the_board ... ok
+test rules::scoring::tests::a_clear_majority_takes_it_all ... ok
+test rules::scoring::tests::a_completed_city_pays_two_a_tile_and_two_a_pennant ... ok
+test presentation::tests::sprites_and_validity_words_preserve_tokens_for_themes_dpi_resize_and_zoom ... ok
+test rules::placement::tests::legality_is_exhaustively_symmetric_over_every_kind_and_rotation ... ok
+test rules::scoring::tests::an_unclaimed_feature_awards_nothing_to_anybody ... ok
+test rules::scoring::tests::a_completed_road_pays_one_a_tile ... ok
+test rules::scoring::tests::tied_majorities_both_score_the_full_value ... ok
+test rules::scoring::tests::a_completed_monastery_pays_nine_and_an_unfinished_one_pays_what_it_has ... ok
+test rules::secret::tests::a_bag_too_short_to_tokenise_declares_no_containment_secret ... ok
+test rules::secret::tests::a_projection_that_carried_the_bag_would_be_caught_by_the_declared_tokens ... ok
+test rules::secret::tests::a_public_change_is_visible_to_every_viewer ... ok
+test rules::placement::tests::enumeration_agrees_with_the_predicate ... ok
+test rules::secret::tests::secrets_is_total_across_every_bag_length ... ok
+test rules::secret::tests::permuting_the_bag_changes_no_view_event_for_any_viewer ... ok
+test rules::secret::tests::the_module_declares_the_hidden_information_it_actually_has ... ok
+test rules::secret::tests::permuting_the_bag_changes_no_projection_for_any_viewer ... ok
+test rules::state::tests::a_board_without_the_start_tile_at_the_origin_is_rejected ... ok
+test rules::state::tests::a_disconnected_board_is_rejected ... ok
+test rules::state::tests::a_finished_match_cannot_be_paused_and_a_stray_last_square_is_rejected ... ok
+test rules::secret::tests::the_declared_secret_is_the_bag_order_and_is_authorised_to_nobody ... ok
+test rules::state::tests::a_graph_that_does_not_describe_the_board_is_rejected ... ok
+test rules::state::tests::a_state_that_duplicated_a_tile_is_rejected ... ok
+test rules::secret::tests::two_different_public_events_remain_distinguishable_to_every_viewer ... ok
+test rules::state::tests::an_edge_inconsistent_board_is_rejected ... ok
+test rules::state::tests::a_state_that_lost_a_tile_is_rejected ... ok
+test rules::state::tests::a_state_that_lost_a_follower_is_rejected ... ok
+test rules::state::tests::scores_and_hands_must_name_exactly_the_seated_players ... ok
+test rules::state::tests::seat_and_turn_shapes_are_checked ... ok
+test rules::state::tests::deserialization_cannot_bypass_the_validator ... ok
+test rules::state::tests::the_opening_position_is_valid_and_self_consistent ... ok
+test rules::state::tests::turn_deadline_config_partitions ... ok
+test rules::state::tests::the_validator_and_the_placement_rule_agree_about_shared_edges ... ok
+test rules::state::tests::the_phase_the_hand_and_the_status_must_agree ... ok
+test rules::state::tests::turn_order_wraps_through_every_seat_in_roster_order ... ok
+test rules::tile::tests::edge_terrain_agrees_with_the_segment_that_reaches_that_edge ... ok
+test rules::tile::tests::every_tile_definition_is_structurally_well_formed ... ok
+test rules::tile::tests::the_bag_and_the_full_set_are_the_documented_sizes ... ok
+test rules::tile::tests::rotating_a_tile_permutes_its_edge_terrain ... ok
+test rules::tile::tests::the_start_tile_offers_every_edge_terrain_to_its_neighbours ... ok
+test rules::tile::tests::the_start_tile_shows_one_city_edge_and_a_road_through ... ok
+test rules::tile::tests::segment_lookup_by_world_side_is_the_inverse_of_segment_edges ... ok
+test rules::tile::tests::tile_kind_rejects_indices_outside_the_table_including_from_the_wire ... ok
+test rules::secret::tests::tabula_hidden_information_security_suite ... ok
+test rules::placement::tests::adjacency_compatibility_is_symmetric_between_the_two_tiles ... ok
+test presentation::tests::identical_play_from_different_cameras_produces_identical_state ... ok
+test presentation::tests::golden_tiles_opening_800x600_light ... ok
+test presentation::tests::golden_tiles_claim_step_light ... ok
+test presentation::tests::golden_tiles_opening_zoomed_out_dark ... ok
+test bot::tests::self_play_terminates_deterministically_at_every_seat_count ... ok
+
+test result: ok. 110 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.41s
+
+     Running tests/conformance.rs (/tmp/tabula60-target/debug/deps/conformance-bd9db4e2a007e238)
+
+running 11 tests
+test tabula_conformance_stable_identity ... ok
+test tabula_conformance_deterministic_initialization ... ok
+test tabula_conformance_invalid_command_safety ... ok
+test tabula_conformance_state_hash_sensitivity ... ok
+test tabula_conformance_deterministic_command_execution ... ok
+test tabula_conformance_serialization_roundtrip ... ok
+test tabula_conformance_legal_commands_sanity ... ok
+test tabula_conformance_ordered_events ... ok
+test tabula_conformance_deterministic_rng ... ok
+test tabula_conformance_deterministic_replay ... ok
+test tabula_conformance_terminal_behavior ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/determinism.rs (/tmp/tabula60-target/debug/deps/determinism-fef31e0b23326450)
+
+running 6 tests
+test the_extreme_coordinate_that_once_panicked_is_rejected ... ok
+test a_rejected_input_leaves_the_canonical_encoding_byte_identical ... ok
+test an_accepted_input_leaves_a_state_the_validator_still_accepts ... ok
+test every_command_legal_commands_advertises_is_accepted_by_apply ... ok
+test replaying_the_recorded_inputs_reproduces_every_checkpoint ... ok
+test the_same_script_run_twice_produces_identical_canonical_state ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/features.rs (/tmp/tabula60-target/debug/deps/features-e4a4699f1dce2c88)
+
+running 6 tests
+test a_claim_is_refused_when_the_feature_is_taken_or_the_hand_is_empty ... ok
+test the_final_standings_rank_the_seats_by_the_scores_they_earned ... ok
+test every_completed_feature_is_scored_exactly_once_across_a_whole_match ... ok
+test followers_are_conserved_after_every_input_and_returned_when_a_feature_scores ... ok
+test scores_are_monotonic_and_match_the_points_the_events_reported ... ok
+test the_incremental_graph_agrees_with_recomputation_after_every_input_of_a_full_match ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s
+
+     Running tests/replay.rs (/tmp/tabula60-target/debug/deps/replay-e1212da74ff64c6a)
+
+running 8 tests
+test the_bot_and_presentation_halves_live_outside_the_hashed_subtree ... ok
+test every_rules_subtree_file_is_discovered_recursively_and_in_order ... ok
+test the_rules_hash_matches_an_independent_recomputation_over_the_rules_subtree ... ok
+test the_committed_tiles_replay_covers_placements_claims_and_passes ... ok
+test the_golden_stream_shows_a_claim_decision_by_the_seat_that_just_placed ... ok
+test a_change_to_canonical_rules_source_changes_the_hash ... ok
+test canonical_rules_do_not_depend_on_the_bot_or_presentation_halves ... ok
+test the_committed_tiles_replay_reproduces_its_recorded_final_hash ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/rules.rs (/tmp/tabula60-target/debug/deps/rules-1f75d643e8ffcdeb)
+
+running 19 tests
+test create_opens_with_the_start_tile_placed_and_one_tile_in_hand ... ok
+test a_seat_that_is_not_on_turn_is_rejected ... ok
+test a_rotation_whose_edges_do_not_match_is_an_illegal_move ... ok
+test a_seat_that_cannot_act_gets_no_hints ... ok
+test a_deadline_that_fires_while_paused_changes_nothing ... ok
+test a_placement_enters_the_claim_step_and_only_then_hands_the_turn_on ... ok
+test a_seat_that_is_not_in_the_match_is_rejected_before_anything_else ... ok
+test an_operator_cancel_ends_the_match_and_later_input_is_refused ... ok
+test a_timer_this_version_never_set_is_ignored_rather_than_rejected ... ok
+test pausing_stops_play_and_resuming_restores_it ... ok
+test placing_on_an_occupied_or_unreachable_square_is_an_illegal_move ... ok
+test every_rejected_command_leaves_the_state_byte_identical ... ok
+test the_create_seed_does_change_the_shuffle ... ok
+test the_turn_deadline_resolves_the_turn_deterministically ... ok
+test legal_commands_hints_decode_to_exactly_the_accepted_placements ... ok
+test turn_order_cycles_through_every_seat_once_per_turn ... ok
+test no_input_after_create_consumes_randomness ... ok
+test a_seat_with_no_followers_left_skips_the_claim_step_entirely ... ok
+test the_match_ends_when_the_bag_runs_dry_with_every_tile_accounted_for ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/state_size.rs (/tmp/tabula60-target/debug/deps/state_size-0bd230e3e6ffd013)
+
+running 3 tests
+test the_state_grows_substantially_between_the_opening_and_a_full_board ... ok
+test a_full_board_is_far_smaller_than_the_design_estimate ... ok
+test the_declared_state_size_class_is_the_measured_one ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+     Running unittests src/lib.rs (/tmp/tabula60-target/debug/deps/tabula_presentation-146cf0d8a9b85ceb)
+
+running 50 tests
+test audio::tests::empty_cue_id_is_rejected ... ok
+test button::tests::action_bounds_obey_theme_target_and_never_fall_below_44_dp ... ok
+test button::tests::disabled_visuals_use_authored_alpha_and_never_show_focus_or_state_feedback ... ok
+test button::tests::disabling_or_removing_a_pressed_action_prevents_release_activation ... ok
+test button::tests::all_schemes_render_semantic_fill_label_and_focus_with_a_surface_gap ... ok
+test audio::tests::invalid_static_cue_declaration_fails_loudly - should panic ... ok
+test button::tests::minimum_target_edges_remain_hittable_and_connected_corners_follow_group_position ... ok
+test button::tests::opening_key_can_be_suppressed_until_its_release ... ok
+test button::tests::enter_and_space_activate_once_until_release_and_ignore_unfocused_input ... ok
+test button::tests::pointer_cancellation_leaving_or_focus_loss_discards_the_press ... ok
+test button::tests::pressed_shape_is_immediate_and_reduced_motion_has_no_clock_dependency ... ok
+test button::tests::primary_pointer_requires_press_and_release_on_the_same_target ... ok
+test button::tests::secondary_and_middle_pointer_buttons_never_activate ... ok
+test button::tests::tab_and_arrows_skip_disabled_actions_and_keyboard_activation_requires_enabled_focus ... ok
+test focus::tests::directional_navigation_never_leaves_the_graph ... ok
+test button::tests::unfocused_activation_keys_do_not_block_first_press_after_focus_returns ... ok
+test focus::tests::enter_and_space_activate_the_current_focus_node ... ok
+test focus::tests::escape_produces_generic_cancel_action ... ok
+test focus::tests::focus_graph_rejects_duplicate_ids ... ok
+test focus::tests::focus_graph_rejects_unknown_edge_targets ... ok
+test focus::tests::focus_state_reconcile_clears_missing_focus ... ok
+test focus::tests::key_release_does_not_move_or_activate_focus ... ok
+test focus::tests::keyboard_navigation_activates_keyboard_modality_and_focus_visible ... ok
+test focus::tests::tab_navigation_follows_declared_stable_order ... ok
+test focus::tests::window_focus_loss_never_activates_a_node ... ok
+test input::tests::pointer_position_accepts_finite_coordinates_without_clamping ... ok
+test input::tests::pointer_position_rejects_non_finite_axes ... ok
+test motion::tests::full_motion_does_not_apply_reduced_policy_implicitly ... ok
+test motion::tests::late_arriving_motion_snaps_but_exact_boundary_animates ... ok
+test motion::tests::lerp_helpers_evaluate_endpoints_and_midpoint ... ok
+test motion::tests::motion_final_state_is_invariant_to_frame_partition ... ok
+test motion::tests::motion_sampling_depends_on_absolute_time_not_frame_history ... ok
+test motion::tests::motion_terminal_sample_is_exact ... ok
+test motion::tests::normal_800ms_motion_is_not_stale_at_601ms ... ok
+test motion::tests::reduced_duration_preserves_the_profile_curve_until_terminal_sample ... ok
+test motion::tests::reduced_motion_duration_resolution_honors_categories_and_floor ... ok
+test motion::tests::time_arithmetic_boundaries_do_not_panic ... ok
+test motion::tests::zero_duration_motion_finishes_immediately ... ok
+test render::tests::balanced_scopes_are_the_only_public_construction_path ... ok
+test render::tests::child_layers_cannot_escape_their_stacking_context ... ok
+test render::tests::equal_order_siblings_preserve_insertion_order_at_every_stack_level ... ok
+test render::tests::gradient_requires_finite_endpoints_and_ordered_stops ... ok
+test render::tests::nested_clips_transforms_and_opacity_are_balanced ... ok
+test render::tests::nested_scope_groups_sort_siblings_but_keep_each_scope_contiguous ... ok
+test render::tests::non_finite_text_position_reports_a_precise_error ... ok
+test render::tests::path_requires_enough_finite_points_for_its_geometry ... ok
+test render::tests::proof_barriers_reject_invalid_numerical_values ... ok
+test render::tests::sprite_command_requires_canonical_asset_ref_and_valid_geometry ... ok
+test renderer::tests::frame_context_rejects_invalid_display_facts ... ok
+test renderer::tests::text_metrics_reject_invalid_output_facts ... ok
+
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests renderer_macroquad
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_assets
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_game_tiles
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_presentation
+
+running 2 tests
+test crates/tabula-presentation/src/render.rs - render::RenderList (line 411) - compile fail ... ok
+test crates/tabula-presentation/src/game.rs - game::GamePresentation (line 36) - compile fail ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+

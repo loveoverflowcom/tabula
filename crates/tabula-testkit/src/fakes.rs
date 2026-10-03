@@ -44,5 +44,5 @@
 //                      assert what each seat and each spectator actually
 //                      received. This is the fake the projection tests use to
 //                      check leaks at the socket boundary rather than at the
-//                      function boundary — doc 08 §5.C requires exactly that for
+//                      function boundary — doc 08 §5 requires exactly that for
 //                      werewolf chat scopes.

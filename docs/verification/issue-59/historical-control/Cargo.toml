@@ -1,0 +1,27 @@
+[package]
+name = "tabula-59-before-control"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+macroquad = "=0.4.16"
+glam = "=0.29.3"
+tabula-core = { path = "/tmp/tabula-59-before-repo-7ffda7d/crates/tabula-core" }
+tabula-game-api = { path = "/tmp/tabula-59-before-repo-7ffda7d/crates/tabula-game-api" }
+tabula-design = { path = "/tmp/tabula-59-before-repo-7ffda7d/crates/tabula-design" }
+tabula-presentation = { path = "/tmp/tabula-59-before-repo-7ffda7d/crates/tabula-presentation" }
+tabula-game-client = { path = "/tmp/tabula-59-before-repo-7ffda7d/apps/game-client" }
+renderer-macroquad = { path = "/tmp/tabula-59-before-repo-7ffda7d/crates/renderer-macroquad" }
+tabula-game-tiles = { path = "/tmp/tabula-59-before-repo-7ffda7d/games/tiles", default-features = false, features = ["rules", "presentation", "bots"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = "fat"

@@ -1,0 +1,55 @@
+---
+source: games/tiles/src/presentation.rs
+assertion_line: 2684
+expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
+---
+camera origin=(-268.000, -288.000) zoom=1.000
+commands (total 48):
+  0: rect [origin=(0.000, -64.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=1.000 color=#5e5868ff] layer=board(0) z=0
+  1: rect [origin=(0.000, 64.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=1.000 color=#5e5868ff] layer=board(0) z=0
+  2: text "Rotate" at=(32.000, -40.000) style=LabelSm align=Center max_width=56.000 color=#4b4650ff layer=board(0) z=1
+  3: text "Rotate" at=(32.000, 88.000) style=LabelSm align=Center max_width=56.000 color=#4b4650ff layer=board(0) z=1
+  4: rect [origin=(0.000, 0.000) size=(64.000, 64.000)] radii=uniform(1.000) fill=solid(#f4edf7ff) border=[width=1.000 color=#79747eff] layer=pieces(10) z=0
+  5: sprite asset="tiles/city-cap-road" rect=[origin=(0.000, 0.000) size=(64.000, 64.000)] tint=#1e1c21ff rotation=0.000 pivot=(32.000, 32.000) layer=pieces(10) z=1
+  6: rect [origin=(0.000, 0.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=3.000 color=#5634beff] layer=overlay(20) z=20
+  7: push-transform matrix=[1.000, 0.000, 0.000, 1.000, -268.000, -288.000] layer=hud(30) z=0
+  8: rect [origin=(0.000, 0.000) size=(800.000, 64.000)] radii=uniform(0.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
+  9: rect [origin=(600.000, 72.000) size=(192.000, 136.000)] radii=uniform(16.000) fill=solid(#f4edf7ff) border=none layer=hud(30) z=0
+  10: rect [origin=(144.000, 504.000) size=(512.000, 96.000)] radii=uniform(16.000) fill=solid(#f4edf7ff) border=none layer=hud(30) z=0
+  11: rect [origin=(8.000, 72.000) size=(96.000, 56.000)] radii=(tl=28.000, tr=8.000, br=8.000, bl=28.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
+  12: text "+" at=(56.000, 77.000) style=TitleLg align=Center max_width=80.000 color=#1e1c21ff layer=hud(30) z=0
+  13: text "Zoom in" at=(56.000, 107.000) style=LabelMd align=Center max_width=80.000 color=#1e1c21ff layer=hud(30) z=0
+  14: rect [origin=(106.000, 72.000) size=(96.000, 56.000)] radii=uniform(8.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
+  15: text "-" at=(154.000, 77.000) style=TitleLg align=Center max_width=80.000 color=#1e1c21ff layer=hud(30) z=0
+  16: text "Zoom out" at=(154.000, 107.000) style=LabelMd align=Center max_width=80.000 color=#1e1c21ff layer=hud(30) z=0
+  17: rect [origin=(204.000, 72.000) size=(96.000, 56.000)] radii=(tl=8.000, tr=28.000, br=28.000, bl=8.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
+  18: text "@" at=(252.000, 77.000) style=TitleLg align=Center max_width=80.000 color=#1e1c21ff layer=hud(30) z=0
+  19: text "Center" at=(252.000, 107.000) style=LabelMd align=Center max_width=80.000 color=#1e1c21ff layer=hud(30) z=0
+  20: rect [origin=(152.000, 536.000) size=(160.000, 56.000)] radii=uniform(28.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
+  21: text "R" at=(232.000, 541.000) style=TitleLg align=Center max_width=144.000 color=#1e1c21ff layer=hud(30) z=0
+  22: text "Rotate" at=(232.000, 571.000) style=LabelMd align=Center max_width=144.000 color=#1e1c21ff layer=hud(30) z=0
+  23: push-opacity opacity=0.120 layer=hud(30) z=0
+  24: rect [origin=(320.000, 536.000) size=(160.000, 56.000)] radii=uniform(28.000) fill=solid(#1e1c21ff) border=none layer=hud(30) z=0
+  25: pop-opacity layer=hud(30) z=0
+  26: push-opacity opacity=0.380 layer=hud(30) z=0
+  27: text "Place tile" at=(400.000, 554.000) style=LabelLg align=Center max_width=144.000 color=#1e1c21ff layer=hud(30) z=0
+  28: pop-opacity layer=hud(30) z=0
+  29: push-opacity opacity=0.120 layer=hud(30) z=0
+  30: rect [origin=(488.000, 536.000) size=(160.000, 56.000)] radii=uniform(28.000) fill=solid(#1e1c21ff) border=none layer=hud(30) z=0
+  31: pop-opacity layer=hud(30) z=0
+  32: push-opacity opacity=0.380 layer=hud(30) z=0
+  33: text "Pass" at=(568.000, 554.000) style=LabelLg align=Center max_width=144.000 color=#1e1c21ff layer=hud(30) z=0
+  34: pop-opacity layer=hud(30) z=0
+  35: text "Seat 0: Place tile. 70 tiles left." at=(8.000, 8.000) style=TitleMd align=Start max_width=784.000 color=#1e1c21ff layer=hud(30) z=1
+  36: text "city-corner-pennant / R0 / Cursor 0,0" at=(8.000, 38.000) style=LabelMd align=Start max_width=784.000 color=#4b4650ff layer=hud(30) z=1
+  37: text "Seat 0: 0 points" at=(608.000, 80.000) style=LabelSm align=Start max_width=176.000 color=#006341ff layer=hud(30) z=1
+  38: rect [origin=(608.000, 100.000) size=(10.000, 10.000)] radii=uniform(5.000) fill=solid(#005f73ff) border=none layer=hud(30) z=1
+  39: text "7 followers. On turn" at=(624.000, 98.000) style=LabelSm align=Start max_width=160.000 color=#4b4650ff layer=hud(30) z=1
+  40: text "Seat 1: 0 points" at=(608.000, 120.000) style=LabelSm align=Start max_width=176.000 color=#4b4650ff layer=hud(30) z=1
+  41: rect [origin=(608.000, 140.000) size=(10.000, 10.000)] radii=uniform(5.000) fill=solid(#ca6702ff) border=none layer=hud(30) z=1
+  42: text "7 followers" at=(624.000, 138.000) style=LabelSm align=Start max_width=160.000 color=#4b4650ff layer=hud(30) z=1
+  43: text "Seat 2: 0 points" at=(608.000, 160.000) style=LabelSm align=Start max_width=176.000 color=#4b4650ff layer=hud(30) z=1
+  44: rect [origin=(608.000, 180.000) size=(10.000, 10.000)] radii=uniform(5.000) fill=solid(#6d597aff) border=none layer=hud(30) z=1
+  45: text "7 followers" at=(624.000, 178.000) style=LabelSm align=Start max_width=160.000 color=#4b4650ff layer=hud(30) z=1
+  46: text "Choose a valid square (Tab). Space rotates." at=(152.000, 512.000) style=LabelSm align=Start max_width=496.000 color=#4b4650ff layer=hud(30) z=1
+  47: pop-transform layer=hud(30) z=0

@@ -1,0 +1,1499 @@
+{
+  "status": "PASS",
+  "kind": "iframe",
+  "run": 2,
+  "browser": "154.0.8037.97",
+  "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "driver": "existing Playwright core",
+  "cache": "same browser/context, new document/renderer; HTTP cache warm unless resource timing shows otherwise",
+  "viewport": [
+    900,
+    720
+  ],
+  "dpr": 1,
+  "scenario": "static",
+  "warmup_ms": 3000,
+  "samples": 300,
+  "receipts": [
+    {
+      "observed_ms": 100,
+      "value": {
+        "kind": "ready",
+        "commit": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+        "build": "wasm-release",
+        "target": "wasm32",
+        "backend": "macroquad-0.4.16/miniquad-0.4.11",
+        "pack": "tiles@0.1.0",
+        "asset_hashes": [
+          "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac",
+          "b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b"
+        ],
+        "seed_byte": 47,
+        "seats": 3,
+        "initial_inputs": 24,
+        "fixture_hash": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "scenario": "static",
+        "theme": "Light",
+        "motion": "full",
+        "primitive_control": false,
+        "sprite_probe": false,
+        "viewport": [
+          900,
+          720
+        ],
+        "dpi": 1,
+        "warmup_ms": 3000,
+        "samples": 300,
+        "interval_ms": 750,
+        "scripted_inputs": 20,
+        "cache_state": "fresh-renderer-instance",
+        "preload_ms": 9,
+        "decodes": 2,
+        "uploads": 2,
+        "estimated_resident_rgba_bytes": 2488320,
+        "resident_textures": 2
+      }
+    },
+    {
+      "observed_ms": 11170,
+      "value": {
+        "kind": "measurement",
+        "samples": 300,
+        "submit_end_cpu_us": {
+          "mean": 823.328,
+          "p50": 999.928,
+          "p95": 2000.093,
+          "max": 2000.093
+        },
+        "frame_interval_ms": {
+          "mean": 27.067,
+          "p50": 26,
+          "p95": 31,
+          "max": 109
+        },
+        "elapsed_ms": 11069,
+        "accepted_inputs": 24,
+        "placements": 12,
+        "claims": 6,
+        "skips": 6,
+        "scripted_steps": 0,
+        "script_complete": true,
+        "uncontrolled_input_events": 0,
+        "final_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "board_cells": 13,
+        "decodes": 2,
+        "uploads": 2,
+        "decodes_after_preload": 0,
+        "uploads_after_preload": 0,
+        "estimated_resident_rgba_bytes": 2488320,
+        "resident_textures": 2,
+        "viewport": [
+          900,
+          720
+        ],
+        "dpi": 1
+      }
+    }
+  ],
+  "mounted": {
+    "kind": "iframe",
+    "status": "ready",
+    "identity": {
+      "session_id": "970e8862-e7f1-4523-b81b-c756bb19ba4a",
+      "generation": 1
+    },
+    "shell": "leptos-example",
+    "boot_ms": 78.30000000447035,
+    "viewport": {
+      "width": 900,
+      "height": 720,
+      "dpi": 1
+    },
+    "preferences": {
+      "reduced_motion": false,
+      "audio_enabled": false,
+      "volume": 0,
+      "modal": false
+    },
+    "scenario": "static",
+    "theme": "light",
+    "ready": {
+      "renderer": "macroquad",
+      "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+    },
+    "metrics": [
+      {
+        "name": "baseline_ready",
+        "value": {
+          "kind": "ready",
+          "commit": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+          "build": "wasm-release",
+          "target": "wasm32",
+          "backend": "macroquad-0.4.16/miniquad-0.4.11",
+          "pack": "tiles@0.1.0",
+          "asset_hashes": "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac,b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b",
+          "seed_byte": 47,
+          "seats": 3,
+          "initial_inputs": 24,
+          "fixture_hash": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+          "scenario": "static",
+          "theme": "Light",
+          "motion": "full",
+          "primitive_control": false,
+          "sprite_probe": false,
+          "viewport": [
+            900,
+            720
+          ],
+          "dpi": 1,
+          "warmup_ms": 3000,
+          "samples": 300,
+          "interval_ms": 750,
+          "scripted_inputs": 20,
+          "cache_state": "fresh-renderer-instance",
+          "preload_ms": 9,
+          "decodes": 2,
+          "uploads": 2,
+          "estimated_resident_rgba_bytes": 2488320,
+          "resident_textures": 2
+        }
+      }
+    ],
+    "frame_samples": [],
+    "authority": [],
+    "errors": [],
+    "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+    "dropped_callback_inputs": 0,
+    "controller": null,
+    "bridge": {
+      "disposed": false,
+      "listeners": 1,
+      "accepted": 3,
+      "rejected": 0,
+      "last_incoming": 2,
+      "last_outgoing": 0
+    },
+    "host_listeners": 3,
+    "host_observers": 1,
+    "host_motion_timers": 0,
+    "harness_document_listeners": 2,
+    "host_ready_timers": 0,
+    "iframes": 1,
+    "canvases": 0,
+    "pending_roundtrips": 0,
+    "match_sockets": 0,
+    "audio_fixture": false
+  },
+  "final": {
+    "kind": "iframe",
+    "status": "ready",
+    "identity": {
+      "session_id": "970e8862-e7f1-4523-b81b-c756bb19ba4a",
+      "generation": 1
+    },
+    "shell": "leptos-example",
+    "boot_ms": 78.30000000447035,
+    "viewport": {
+      "width": 900,
+      "height": 720,
+      "dpi": 1
+    },
+    "preferences": {
+      "reduced_motion": false,
+      "audio_enabled": false,
+      "volume": 0,
+      "modal": false
+    },
+    "scenario": "static",
+    "theme": "light",
+    "ready": {
+      "renderer": "macroquad",
+      "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+    },
+    "metrics": [
+      {
+        "name": "baseline_ready",
+        "value": {
+          "kind": "ready",
+          "commit": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+          "build": "wasm-release",
+          "target": "wasm32",
+          "backend": "macroquad-0.4.16/miniquad-0.4.11",
+          "pack": "tiles@0.1.0",
+          "asset_hashes": "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac,b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b",
+          "seed_byte": 47,
+          "seats": 3,
+          "initial_inputs": 24,
+          "fixture_hash": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+          "scenario": "static",
+          "theme": "Light",
+          "motion": "full",
+          "primitive_control": false,
+          "sprite_probe": false,
+          "viewport": [
+            900,
+            720
+          ],
+          "dpi": 1,
+          "warmup_ms": 3000,
+          "samples": 300,
+          "interval_ms": 750,
+          "scripted_inputs": 20,
+          "cache_state": "fresh-renderer-instance",
+          "preload_ms": 9,
+          "decodes": 2,
+          "uploads": 2,
+          "estimated_resident_rgba_bytes": 2488320,
+          "resident_textures": 2
+        }
+      },
+      {
+        "name": "boot",
+        "value": {
+          "document_ready_ms": 36.80000000447035
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 37.100000001490116,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 3719867,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "rendered",
+        "value": {
+          "minimum_completed_frames": 1
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 1028.4000000059605,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 4512725,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 2001.9000000059605,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 3952713,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 3003.8000000044703,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 4945329,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 4002.60000000149,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 4380209,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 5003.20000000298,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 3868301,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 6002.70000000298,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 4945237,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 7003.9000000059605,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 4479945,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 8001.20000000298,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 4497269,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 9003.40000000596,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 5122141,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 10002,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 4599581,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "runtime",
+        "value": {
+          "elapsed_ms": 11001.10000000149,
+          "viewport": [
+            900,
+            720
+          ],
+          "canvas_pixels": [
+            900,
+            720
+          ],
+          "device_pixel_ratio": 1,
+          "wasm_linear_memory_bytes": 9371648,
+          "js_heap_bytes": 4181561,
+          "js_heap_available": true,
+          "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+          "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "visible": true,
+          "focused": true,
+          "suspended": false,
+          "wasm_download_duration_ms": 0.7999999970197678,
+          "wasm_download_transfer_bytes": 0,
+          "wasm_download_encoded_bytes": 1297234
+        }
+      },
+      {
+        "name": "baseline_measurement",
+        "value": {
+          "kind": "measurement",
+          "samples": 300,
+          "submit_end_cpu_us_mean": 823.328,
+          "submit_end_cpu_us_p50": 999.928,
+          "submit_end_cpu_us_p95": 2000.093,
+          "submit_end_cpu_us_max": 2000.093,
+          "frame_interval_ms_mean": 27.067,
+          "frame_interval_ms_p50": 26,
+          "frame_interval_ms_p95": 31,
+          "frame_interval_ms_max": 109,
+          "elapsed_ms": 11069,
+          "accepted_inputs": 24,
+          "placements": 12,
+          "claims": 6,
+          "skips": 6,
+          "scripted_steps": 0,
+          "script_complete": true,
+          "uncontrolled_input_events": 0,
+          "final_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+          "board_cells": 13,
+          "decodes": 2,
+          "uploads": 2,
+          "decodes_after_preload": 0,
+          "uploads_after_preload": 0,
+          "estimated_resident_rgba_bytes": 2488320,
+          "resident_textures": 2,
+          "viewport": [
+            900,
+            720
+          ],
+          "dpi": 1
+        }
+      }
+    ],
+    "frame_samples": [],
+    "authority": [],
+    "errors": [],
+    "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+    "dropped_callback_inputs": 0,
+    "controller": null,
+    "bridge": {
+      "disposed": false,
+      "listeners": 1,
+      "accepted": 18,
+      "rejected": 0,
+      "last_incoming": 17,
+      "last_outgoing": 0
+    },
+    "host_listeners": 3,
+    "host_observers": 1,
+    "host_motion_timers": 0,
+    "harness_document_listeners": 2,
+    "host_ready_timers": 0,
+    "iframes": 1,
+    "canvases": 0,
+    "pending_roundtrips": 0,
+    "match_sockets": 0,
+    "audio_fixture": false
+  },
+  "process_samples": [
+    {
+      "elapsed_ms": 1002,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.67,
+          "rss_kib": 203152,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 2.98,
+          "rss_kib": 152688,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.27,
+          "rss_kib": 185776,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 168928,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83568,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 4.29,
+      "rss_kib_sum": 951696,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 2003,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 203088,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 3.28,
+          "rss_kib": 140592,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.34,
+          "rss_kib": 187040,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169152,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83664,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 4.67,
+      "rss_kib_sum": 941120,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 3005,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 203120,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 3.53,
+          "rss_kib": 140832,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.41,
+          "rss_kib": 187904,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169408,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83664,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 4.99,
+      "rss_kib_sum": 942512,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 4006,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 203120,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 3.77,
+          "rss_kib": 140832,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.47,
+          "rss_kib": 188464,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169424,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83664,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 5.29,
+      "rss_kib_sum": 943088,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 5007,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 203120,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 3.94,
+          "rss_kib": 144896,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.52,
+          "rss_kib": 188848,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169392,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83664,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 5.510000000000001,
+      "rss_kib_sum": 947504,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 6010,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 202960,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 4.21,
+          "rss_kib": 140640,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.59,
+          "rss_kib": 189264,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169328,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83616,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 5.85,
+      "rss_kib_sum": 943392,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 7012,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 202960,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 4.39,
+          "rss_kib": 140640,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.63,
+          "rss_kib": 189600,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169328,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83616,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 6.069999999999999,
+      "rss_kib_sum": 943728,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 8015,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 202960,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 4.64,
+          "rss_kib": 140640,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.69,
+          "rss_kib": 189952,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169328,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83616,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 6.38,
+      "rss_kib_sum": 944080,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 9017,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 202960,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 4.8,
+          "rss_kib": 140640,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.73,
+          "rss_kib": 190304,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169328,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83616,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 6.579999999999999,
+      "rss_kib_sum": 944432,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 10019,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 202960,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 5.09,
+          "rss_kib": 140640,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.81,
+          "rss_kib": 190880,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169392,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83616,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 6.95,
+      "rss_kib_sum": 945072,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    },
+    {
+      "elapsed_ms": 11020,
+      "processes": [
+        {
+          "pid": 4409,
+          "ppid": 4387,
+          "cpu_s": 0.68,
+          "rss_kib": 202960,
+          "role": "browser"
+        },
+        {
+          "pid": 4415,
+          "ppid": 4409,
+          "cpu_s": 5.34,
+          "rss_kib": 140640,
+          "role": "gpu-process"
+        },
+        {
+          "pid": 4416,
+          "ppid": 4409,
+          "cpu_s": 0.11,
+          "rss_kib": 92544,
+          "role": "utility"
+        },
+        {
+          "pid": 4417,
+          "ppid": 4409,
+          "cpu_s": 0.04,
+          "rss_kib": 65040,
+          "role": "utility"
+        },
+        {
+          "pid": 4422,
+          "ppid": 4409,
+          "cpu_s": 0.87,
+          "rss_kib": 191168,
+          "role": "renderer"
+        },
+        {
+          "pid": 4537,
+          "ppid": 4409,
+          "cpu_s": 0.17,
+          "rss_kib": 169392,
+          "role": "renderer"
+        },
+        {
+          "pid": 4538,
+          "ppid": 4409,
+          "cpu_s": 0.05,
+          "rss_kib": 83696,
+          "role": "renderer"
+        }
+      ],
+      "cpu_s_sum": 7.26,
+      "rss_kib_sum": 945440,
+      "caveat": "RSS sum double-counts shared pages; CPU sum excludes exited children; includes browser/GPU/shell"
+    }
+  ],
+  "observation": {
+    "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "dpr": 1,
+    "visibility": "visible",
+    "focused": true,
+    "js_heap_bytes": 5940616,
+    "resources": [
+      {
+        "name": "/tokens.css",
+        "duration_ms": 0.8999999985098839,
+        "transfer_bytes": 0,
+        "encoded_bytes": 41931,
+        "decoded_bytes": 41931
+      },
+      {
+        "name": "/spike.css",
+        "duration_ms": 1,
+        "transfer_bytes": 0,
+        "encoded_bytes": 1503,
+        "decoded_bytes": 1503
+      },
+      {
+        "name": "/host.mjs",
+        "duration_ms": 1.2999999970197678,
+        "transfer_bytes": 0,
+        "encoded_bytes": 24475,
+        "decoded_bytes": 24475
+      },
+      {
+        "name": "/leptos/renderer_embedding_shell.js",
+        "duration_ms": 1.3999999985098839,
+        "transfer_bytes": 300,
+        "encoded_bytes": 26609,
+        "decoded_bytes": 26609
+      },
+      {
+        "name": "/adapter.mjs",
+        "duration_ms": 0.6999999955296516,
+        "transfer_bytes": 0,
+        "encoded_bytes": 8885,
+        "decoded_bytes": 8885
+      },
+      {
+        "name": "/boundary.mjs",
+        "duration_ms": 1,
+        "transfer_bytes": 0,
+        "encoded_bytes": 8870,
+        "decoded_bytes": 8870
+      },
+      {
+        "name": "/bridge.mjs",
+        "duration_ms": 2.5999999940395355,
+        "transfer_bytes": 300,
+        "encoded_bytes": 5558,
+        "decoded_bytes": 5558
+      },
+      {
+        "name": "/pixi-backend.mjs",
+        "duration_ms": 0.7999999970197678,
+        "transfer_bytes": 0,
+        "encoded_bytes": 13173,
+        "decoded_bytes": 13173
+      },
+      {
+        "name": "/render-contract.json",
+        "duration_ms": 0.6000000014901161,
+        "transfer_bytes": 0,
+        "encoded_bytes": 1259,
+        "decoded_bytes": 1259
+      },
+      {
+        "name": "/fixture.json",
+        "duration_ms": 0.6999999955296516,
+        "transfer_bytes": 0,
+        "encoded_bytes": 179950,
+        "decoded_bytes": 179950
+      },
+      {
+        "name": "/runtime-assets.json",
+        "duration_ms": 3.5,
+        "transfer_bytes": 300,
+        "encoded_bytes": 12693,
+        "decoded_bytes": 12693
+      },
+      {
+        "name": "/leptos/renderer_embedding_shell_bg.wasm",
+        "duration_ms": 3.399999998509884,
+        "transfer_bytes": 300,
+        "encoded_bytes": 112184,
+        "decoded_bytes": 112184
+      },
+      {
+        "name": "/favicon.ico",
+        "duration_ms": 1.6000000014901161,
+        "transfer_bytes": 300,
+        "encoded_bytes": 0,
+        "decoded_bytes": 0
+      },
+      {
+        "name": "/macroquad.html",
+        "duration_ms": 2.899999998509884,
+        "transfer_bytes": 0,
+        "encoded_bytes": 676,
+        "decoded_bytes": 676
+      }
+    ],
+    "navigation": [
+      {
+        "duration_ms": 14.800000004470348,
+        "dom_content_loaded_ms": 14.800000004470348,
+        "load_ms": 14.800000004470348
+      }
+    ]
+  },
+  "console_errors": [],
+  "expected_console": [],
+  "page_errors": [],
+  "draw_method_ms": null,
+  "frame_interval_ms": null,
+  "postmessage_roundtrip_ms": {
+    "samples": 100,
+    "mean": 0.020999999940395354,
+    "p50": 0,
+    "p95": 0.10000000149011612,
+    "max": 0.29999999701976776
+  },
+  "postmessage_samples": {
+    "kind": "postmessage_roundtrip",
+    "unit": "ms",
+    "samples": [
+      0.29999999701976776,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0,
+      0.09999999403953552,
+      0,
+      0,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.09999999403953552,
+      0,
+      0,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.09999999403953552,
+      0,
+      0,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.10000000149011612,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.09999999403953552
+    ],
+    "includes": "Host→child→host task dispatch; no Rust input or paint"
+  },
+  "method_comparison": "Pixi draw includes scene rebuild + app.render; Macroquad submit/end excludes final frame flush. These are different boundaries, not engine-equivalent CPU timers."
+}

@@ -1,0 +1,75 @@
+{"kind": "host-ready", "origin": "http://127.0.0.1:8060", "scope": "isolated-local-fixture", "authority_pid": 12721}
+127.0.0.1 - - [03/Oct/2026 21:01:39] "GET /macroquad.html HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:01:39] "GET /tokens.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:01:39] "GET /mq_js_bundle.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:01:39] "GET /macroquad.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:01:39] "GET /bridge.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:01:39] "GET /boundary.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:01:39] "GET /tabula-game-client.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:01:39] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 21:01:51] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 21:02:02] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /leptos.html HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /tokens.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /host.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /spike.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /leptos/renderer_embedding_shell.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /adapter.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /boundary.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /bridge.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /pixi-backend.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /fixture.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /render-contract.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /runtime-assets.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /leptos/renderer_embedding_shell_bg.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /macroquad.html HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /mq_js_bundle.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /macroquad.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:22] "GET /tabula-game-client.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:03:34] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 21:03:46] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /leptos.html HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /tokens.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /spike.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /host.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /leptos/renderer_embedding_shell.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /adapter.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /bridge.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /boundary.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /pixi-backend.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /leptos/renderer_embedding_shell_bg.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /render-contract.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /runtime-assets.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /fixture.json HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /node_modules/pixi.js/dist/pixi.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /tiles/0.1.0/tiles@1x.b3-7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac.png HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /tiles/0.1.0/tiles@2x.b3-b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b.png HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "GET /fonts/ProggyClean.ttf HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 21:04:36] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 181, "response_bytes": 18248, "wall_ms": 6.598375002795365}
+127.0.0.1 - - [03/Oct/2026 21:04:36] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 2.0409580029081553}
+127.0.0.1 - - [03/Oct/2026 21:04:36] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 3.4673750051297247}
+127.0.0.1 - - [03/Oct/2026 21:04:43] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 96, "response_bytes": 136, "wall_ms": 0.24329200095962733}
+127.0.0.1 - - [03/Oct/2026 21:04:43] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 21:04:44] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 181, "response_bytes": 18248, "wall_ms": 4.766417005157564}
+127.0.0.1 - - [03/Oct/2026 21:04:44] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 2.004333000513725}
+127.0.0.1 - - [03/Oct/2026 21:04:44] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 3.095457999734208}
+127.0.0.1 - - [03/Oct/2026 21:04:51] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 96, "response_bytes": 136, "wall_ms": 0.2005420028581284}
+127.0.0.1 - - [03/Oct/2026 21:04:51] "GET /favicon.ico HTTP/1.1" 204 -
+127.0.0.1 - - [03/Oct/2026 21:04:51] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 181, "response_bytes": 18248, "wall_ms": 4.265790994395502}
+127.0.0.1 - - [03/Oct/2026 21:04:51] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 2.2894590001669712}
+127.0.0.1 - - [03/Oct/2026 21:04:51] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 176, "response_bytes": 17728, "wall_ms": 2.0283749981899746}
+127.0.0.1 - - [03/Oct/2026 21:04:58] "POST /authority HTTP/1.1" 200 -
+{"kind": "authority-request", "request_bytes": 96, "response_bytes": 136, "wall_ms": 0.2635420023580082}

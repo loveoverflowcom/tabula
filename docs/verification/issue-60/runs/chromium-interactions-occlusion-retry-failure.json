@@ -1,0 +1,1263 @@
+{
+  "status": "FAIL",
+  "browser": "154.0.8037.97",
+  "target": "actual headed Chromium, isolated Leptos example",
+  "checks": [
+    {
+      "name": "four themes and reduced motion use exact Rust scripted checkpoint with classified zero host input",
+      "status": "PASS",
+      "elapsed_ms": 5650,
+      "evidence": {
+        "receipts": [
+          {
+            "theme": "light",
+            "reduced_motion": false,
+            "checkpoint": "b7e81e41d5bd48f076a736858b6855b663591034127628be52b887ae1ce19a73",
+            "input_count": 44,
+            "script_steps": 20,
+            "host_input_events": 0,
+            "frame_updates": 62,
+            "final_a11y": "Seat 2: Claim or pass. 47 tiles left.  Cursor at -3,-1. Feature 1 / Tab changes feature. Tab chooses. Enter claims. Esc passes. Seat 0: 0 points, 3 followers. Seat 1: 0 points, 3 followers. Seat 2: 0 points, 5 followers.",
+            "frames_drawn": 78
+          },
+          {
+            "theme": "dark",
+            "reduced_motion": false,
+            "checkpoint": "b7e81e41d5bd48f076a736858b6855b663591034127628be52b887ae1ce19a73",
+            "input_count": 44,
+            "script_steps": 20,
+            "host_input_events": 0,
+            "frame_updates": 62,
+            "final_a11y": "Seat 2: Claim or pass. 47 tiles left.  Cursor at -3,-1. Feature 1 / Tab changes feature. Tab chooses. Enter claims. Esc passes. Seat 0: 0 points, 3 followers. Seat 1: 0 points, 3 followers. Seat 2: 0 points, 5 followers.",
+            "frames_drawn": 100
+          },
+          {
+            "theme": "hc-light",
+            "reduced_motion": false,
+            "checkpoint": "b7e81e41d5bd48f076a736858b6855b663591034127628be52b887ae1ce19a73",
+            "input_count": 44,
+            "script_steps": 20,
+            "host_input_events": 0,
+            "frame_updates": 62,
+            "final_a11y": "Seat 2: Claim or pass. 47 tiles left.  Cursor at -3,-1. Feature 1 / Tab changes feature. Tab chooses. Enter claims. Esc passes. Seat 0: 0 points, 3 followers. Seat 1: 0 points, 3 followers. Seat 2: 0 points, 5 followers.",
+            "frames_drawn": 96
+          },
+          {
+            "theme": "hc-dark",
+            "reduced_motion": false,
+            "checkpoint": "b7e81e41d5bd48f076a736858b6855b663591034127628be52b887ae1ce19a73",
+            "input_count": 44,
+            "script_steps": 20,
+            "host_input_events": 0,
+            "frame_updates": 62,
+            "final_a11y": "Seat 2: Claim or pass. 47 tiles left.  Cursor at -3,-1. Feature 1 / Tab changes feature. Tab chooses. Enter claims. Esc passes. Seat 0: 0 points, 3 followers. Seat 1: 0 points, 3 followers. Seat 2: 0 points, 5 followers.",
+            "frames_drawn": 94
+          },
+          {
+            "theme": "light",
+            "reduced_motion": true,
+            "checkpoint": "b7e81e41d5bd48f076a736858b6855b663591034127628be52b887ae1ce19a73",
+            "input_count": 44,
+            "script_steps": 20,
+            "host_input_events": 0,
+            "frame_updates": 62,
+            "final_a11y": "Seat 2: Claim or pass. 47 tiles left.  Cursor at -3,-1. Feature 1 / Tab changes feature. Tab chooses. Enter claims. Esc passes. Seat 0: 0 points, 3 followers. Seat 1: 0 points, 3 followers. Seat 2: 0 points, 5 followers.",
+            "frames_drawn": 96
+          }
+        ],
+        "scope": "Actual Pixi GPU/runtime drawing of Rust-scripted accepted workload; presentation clock is explicitly stepped, not realtime timing benchmark"
+      }
+    },
+    {
+      "name": "actual keyboard pointer drag focus and resize preserve fixture authority",
+      "status": "PASS",
+      "elapsed_ms": 1161,
+      "evidence": {
+        "initial_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "final_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "controller": {
+          "status": "ready",
+          "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+          "generation": 6,
+          "revision": 37,
+          "listeners": 13,
+          "pending_raf": 1,
+          "frames": 87,
+          "inputs": 12,
+          "dropped_inputs": 0,
+          "errors": 0,
+          "manual_suspended": false,
+          "visibility_suspended": false,
+          "modal": false,
+          "audio_supported": false,
+          "preferences": {
+            "reduced_motion": false,
+            "audio_enabled": false,
+            "volume": 0,
+            "modal": false
+          },
+          "viewport": {
+            "width": 640,
+            "height": 480,
+            "dpi": 1
+          },
+          "resources": {
+            "renderer": "pixi-webgl",
+            "version": "8.22.0",
+            "disposed": false,
+            "mounted": true,
+            "draw_count": 87,
+            "commands": 101,
+            "textures": 46,
+            "sources": 2,
+            "font_loaded": true,
+            "canvas_width": 640,
+            "canvas_height": 480
+          }
+        },
+        "inputs": [
+          {
+            "op": "input",
+            "elapsed_ms": 7.100000001490116,
+            "request_revision": 1,
+            "response_revision": 2,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 1,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 1,
+            "input_kind": "focus"
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 3.6999999955296516,
+            "request_revision": 2,
+            "response_revision": 3,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 1,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 2,
+            "input_kind": "key",
+            "pressed": true
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 3.7000000029802322,
+            "request_revision": 3,
+            "response_revision": 4,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 1,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 3,
+            "input_kind": "key",
+            "pressed": false
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 14.399999998509884,
+            "request_revision": 4,
+            "response_revision": 5,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 1,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 4,
+            "input_kind": "key",
+            "pressed": true
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 3.899999998509884,
+            "request_revision": 5,
+            "response_revision": 6,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 1,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 5,
+            "input_kind": "key",
+            "pressed": false
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 3.399999998509884,
+            "request_revision": 6,
+            "response_revision": 7,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 4,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 6,
+            "input_kind": "pointer",
+            "phase": "move"
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 3.9000000059604645,
+            "request_revision": 7,
+            "response_revision": 8,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 4,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 7,
+            "input_kind": "pointer",
+            "phase": "down"
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 4.0999999940395355,
+            "request_revision": 8,
+            "response_revision": 9,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 4,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 8,
+            "input_kind": "pointer",
+            "phase": "move"
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 15.600000001490116,
+            "request_revision": 9,
+            "response_revision": 10,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 7,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 9,
+            "input_kind": "pointer",
+            "phase": "move"
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 3.8000000044703484,
+            "request_revision": 10,
+            "response_revision": 11,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 9,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 10,
+            "input_kind": "pointer",
+            "phase": "move"
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 5.799999997019768,
+            "request_revision": 11,
+            "response_revision": 12,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 9,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 11,
+            "input_kind": "pointer",
+            "phase": "up"
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 11.699999995529652,
+            "request_revision": 32,
+            "response_revision": 33,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "observed_revision": 32,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 12,
+            "input_kind": "focus"
+          }
+        ],
+        "a11y": "Seat 0: Place tile. 58 tiles left.  Cursor at -1,1. city-cap-road / R90 / Cursor -1,1 Choose a valid square (Tab). Space rotates. Seat 0: 0 points, 5 followers. Seat 1: 0 points, 3 followers. Seat 2: 0 points, 7 followers."
+      }
+    },
+    {
+      "name": "Rust presenter accepted input is visible at its specific returned revision",
+      "status": "PASS",
+      "elapsed_ms": 164,
+      "evidence": {
+        "samples": [
+          {
+            "input_kind": "key",
+            "key": "Tab",
+            "roundtrip_to_draw_ms": 15,
+            "outcome": "local",
+            "revision": 2,
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_count": 24
+          },
+          {
+            "input_kind": "key",
+            "key": "Enter",
+            "roundtrip_to_draw_ms": 16.69999999552965,
+            "outcome": "accepted",
+            "revision": 3,
+            "checkpoint": "1fab4d08f9494d9d2790452221df1955c41191d2f416fcc605cfe76196e49090",
+            "input_count": 25
+          }
+        ],
+        "scope": "Programmatic typed input→native HTTP/Rust presenter/rules→returned revision draw; includes serialization, scheduling and local HTTP, not physical hardware input latency"
+      }
+    },
+    {
+      "name": "modal and natural Tab focus keep suspended surfaces from consuming input",
+      "status": "PASS",
+      "elapsed_ms": 699,
+      "evidence": [
+        {
+          "kind": "pixi",
+          "modal_focus_contained": true,
+          "main_inert": true,
+          "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+          "final": {
+            "kind": "pixi",
+            "status": "ready",
+            "identity": {
+              "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+              "generation": 8
+            },
+            "shell": "leptos-example",
+            "boot_ms": 46.5,
+            "viewport": {
+              "width": 640,
+              "height": 480,
+              "dpi": 1
+            },
+            "preferences": {
+              "reduced_motion": false,
+              "audio_enabled": false,
+              "volume": 0,
+              "modal": false
+            },
+            "scenario": "interactive",
+            "theme": "light",
+            "ready": {
+              "renderer": "pixi",
+              "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+            },
+            "metrics": [],
+            "frame_samples": [
+              {
+                "now_ms": 7063.7,
+                "draw_ms": 5.399999998509884,
+                "frame_interval_ms": null,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 0,
+                "commands": 101
+              },
+              {
+                "now_ms": 7072.1,
+                "draw_ms": 1.8000000044703484,
+                "frame_interval_ms": 8.400000000000546,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 1,
+                "commands": 95
+              },
+              {
+                "now_ms": 7082.1,
+                "draw_ms": 1.5,
+                "frame_interval_ms": 10,
+                "input_to_next_draw_ms": 3.8000000044703484,
+                "rendered_revision": 1,
+                "commands": 95
+              },
+              {
+                "now_ms": 7093.7,
+                "draw_ms": 1.6000000014901161,
+                "frame_interval_ms": 11.599999999999454,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 1,
+                "commands": 95
+              },
+              {
+                "now_ms": 7103.6,
+                "draw_ms": 1.5,
+                "frame_interval_ms": 9.900000000000546,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 4,
+                "commands": 95
+              },
+              {
+                "now_ms": 7113.6,
+                "draw_ms": 5.100000001490116,
+                "frame_interval_ms": 10,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 6,
+                "commands": 95
+              },
+              {
+                "now_ms": 7123.6,
+                "draw_ms": 5.299999997019768,
+                "frame_interval_ms": 10,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 6,
+                "commands": 95
+              },
+              {
+                "now_ms": 7133.7,
+                "draw_ms": 6,
+                "frame_interval_ms": 10.099999999999454,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 6,
+                "commands": 95
+              },
+              {
+                "now_ms": 7143.7,
+                "draw_ms": 5.399999998509884,
+                "frame_interval_ms": 10,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 6,
+                "commands": 95
+              },
+              {
+                "now_ms": 7153.6,
+                "draw_ms": 3.7999999970197678,
+                "frame_interval_ms": 9.900000000000546,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 7,
+                "commands": 95
+              },
+              {
+                "now_ms": 7163.6,
+                "draw_ms": 2.8000000044703484,
+                "frame_interval_ms": 10,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 7,
+                "commands": 95
+              },
+              {
+                "now_ms": 7173.7,
+                "draw_ms": 3.2000000029802322,
+                "frame_interval_ms": 10.099999999999454,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 7,
+                "commands": 95
+              }
+            ],
+            "authority": [
+              {
+                "op": "frame",
+                "elapsed_ms": 7,
+                "request_revision": 0,
+                "response_revision": 1,
+                "outcome": "local",
+                "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+              },
+              {
+                "op": "input",
+                "elapsed_ms": 18.600000001490116,
+                "request_revision": 1,
+                "response_revision": 2,
+                "outcome": "local",
+                "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+                "observed_revision": 1,
+                "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+                "input_sequence": 1,
+                "input_kind": "focus"
+              },
+              {
+                "op": "input",
+                "elapsed_ms": 3.7000000029802322,
+                "request_revision": 2,
+                "response_revision": 3,
+                "outcome": "local",
+                "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+                "observed_revision": 1,
+                "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+                "input_sequence": 2,
+                "input_kind": "focus"
+              },
+              {
+                "op": "input",
+                "elapsed_ms": 3.2999999970197678,
+                "request_revision": 3,
+                "response_revision": 4,
+                "outcome": "local",
+                "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+                "observed_revision": 1,
+                "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+                "input_sequence": 3,
+                "input_kind": "focus"
+              },
+              {
+                "op": "frame",
+                "elapsed_ms": 3.899999998509884,
+                "request_revision": 4,
+                "response_revision": 5,
+                "outcome": "local",
+                "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+              },
+              {
+                "op": "frame",
+                "elapsed_ms": 3.4000000059604645,
+                "request_revision": 5,
+                "response_revision": 6,
+                "outcome": "local",
+                "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+              },
+              {
+                "op": "frame",
+                "elapsed_ms": 3.7000000029802322,
+                "request_revision": 6,
+                "response_revision": 7,
+                "outcome": "local",
+                "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+              }
+            ],
+            "errors": [],
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "dropped_callback_inputs": 0,
+            "controller": {
+              "status": "ready",
+              "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+              "generation": 8,
+              "revision": 7,
+              "listeners": 13,
+              "pending_raf": 1,
+              "frames": 12,
+              "inputs": 3,
+              "dropped_inputs": 1,
+              "errors": 0,
+              "manual_suspended": false,
+              "visibility_suspended": false,
+              "modal": false,
+              "audio_supported": false,
+              "preferences": {
+                "reduced_motion": false,
+                "audio_enabled": false,
+                "volume": 0,
+                "modal": false
+              },
+              "viewport": {
+                "width": 640,
+                "height": 480,
+                "dpi": 1
+              },
+              "resources": {
+                "renderer": "pixi-webgl",
+                "version": "8.22.0",
+                "disposed": false,
+                "mounted": true,
+                "draw_count": 12,
+                "commands": 95,
+                "textures": 46,
+                "sources": 2,
+                "font_loaded": true,
+                "canvas_width": 640,
+                "canvas_height": 480
+              }
+            },
+            "bridge": null,
+            "host_listeners": 2,
+            "host_observers": 1,
+            "host_motion_timers": 1,
+            "harness_document_listeners": 2,
+            "host_ready_timers": 0,
+            "iframes": 0,
+            "canvases": 1,
+            "pending_roundtrips": 0,
+            "match_sockets": 0,
+            "audio_fixture": false
+          }
+        },
+        {
+          "kind": "iframe",
+          "modal_focus_contained": true,
+          "main_inert": true,
+          "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+          "final": {
+            "kind": "iframe",
+            "status": "ready",
+            "identity": {
+              "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+              "generation": 9
+            },
+            "shell": "leptos-example",
+            "boot_ms": 148.5,
+            "viewport": {
+              "width": 640,
+              "height": 480,
+              "dpi": 1
+            },
+            "preferences": {
+              "reduced_motion": false,
+              "audio_enabled": false,
+              "volume": 0,
+              "modal": false
+            },
+            "scenario": "interactive",
+            "theme": "light",
+            "ready": {
+              "renderer": "macroquad",
+              "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+            },
+            "metrics": [
+              {
+                "name": "baseline_ready",
+                "value": {
+                  "kind": "ready",
+                  "commit": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+                  "build": "wasm-release",
+                  "target": "wasm32",
+                  "backend": "macroquad-0.4.16/miniquad-0.4.11",
+                  "pack": "tiles@0.1.0",
+                  "asset_hashes": "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac,b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b",
+                  "seed_byte": 47,
+                  "seats": 3,
+                  "initial_inputs": 24,
+                  "fixture_hash": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+                  "scenario": "static",
+                  "theme": "Light",
+                  "motion": "full",
+                  "primitive_control": false,
+                  "sprite_probe": false,
+                  "viewport": [
+                    640,
+                    480
+                  ],
+                  "dpi": 1,
+                  "warmup_ms": 3000,
+                  "samples": 300,
+                  "interval_ms": 750,
+                  "scripted_inputs": 20,
+                  "cache_state": "fresh-renderer-instance",
+                  "preload_ms": 32,
+                  "decodes": 2,
+                  "uploads": 2,
+                  "estimated_resident_rgba_bytes": 2488320,
+                  "resident_textures": 2
+                }
+              },
+              {
+                "name": "boot",
+                "value": {
+                  "document_ready_ms": 104.20000000298023
+                }
+              },
+              {
+                "name": "runtime",
+                "value": {
+                  "elapsed_ms": 104.40000000596046,
+                  "viewport": [
+                    640,
+                    480
+                  ],
+                  "canvas_pixels": [
+                    640,
+                    480
+                  ],
+                  "device_pixel_ratio": 1,
+                  "wasm_linear_memory_bytes": 9371648,
+                  "js_heap_bytes": 26238814,
+                  "js_heap_available": true,
+                  "webgl_version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+                  "webgl_renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+                  "visible": true,
+                  "focused": true,
+                  "suspended": false,
+                  "wasm_download_duration_ms": 2,
+                  "wasm_download_transfer_bytes": 1297534,
+                  "wasm_download_encoded_bytes": 1297234
+                }
+              },
+              {
+                "name": "rendered",
+                "value": {
+                  "minimum_completed_frames": 1
+                }
+              },
+              {
+                "name": "lifecycle",
+                "value": {
+                  "paused": true,
+                  "pauses": 1,
+                  "resumes": 0
+                }
+              },
+              {
+                "name": "lifecycle",
+                "value": {
+                  "paused": false,
+                  "pauses": 1,
+                  "resumes": 1
+                }
+              }
+            ],
+            "frame_samples": [],
+            "authority": [],
+            "errors": [],
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "dropped_callback_inputs": 0,
+            "controller": null,
+            "bridge": {
+              "disposed": false,
+              "listeners": 1,
+              "accepted": 10,
+              "rejected": 0,
+              "last_incoming": 9,
+              "last_outgoing": 3
+            },
+            "host_listeners": 3,
+            "host_observers": 1,
+            "host_motion_timers": 0,
+            "harness_document_listeners": 2,
+            "host_ready_timers": 0,
+            "iframes": 1,
+            "canvases": 0,
+            "pending_roundtrips": 0,
+            "match_sockets": 0,
+            "audio_fixture": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "same-frame activation burst cannot change command meaning after Rust checkpoint advances",
+      "status": "PASS",
+      "elapsed_ms": 168,
+      "evidence": {
+        "inputs": [
+          {
+            "op": "input",
+            "elapsed_ms": 3.7000000029802322,
+            "request_revision": 1,
+            "response_revision": 2,
+            "outcome": "local",
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_kind": "key",
+            "pressed": true
+          },
+          {
+            "op": "input",
+            "elapsed_ms": 3.600000001490116,
+            "request_revision": 2,
+            "response_revision": 3,
+            "outcome": "accepted",
+            "checkpoint": "1fab4d08f9494d9d2790452221df1955c41191d2f416fcc605cfe76196e49090",
+            "observed_revision": 2,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 1,
+            "input_kind": "key",
+            "pressed": true
+          },
+          {
+            "op": "input",
+            "outcome": "dropped_stale_checkpoint",
+            "elapsed_ms": 0,
+            "request_revision": 3,
+            "response_revision": 3,
+            "checkpoint": "1fab4d08f9494d9d2790452221df1955c41191d2f416fcc605cfe76196e49090",
+            "observed_revision": 2,
+            "observed_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "input_sequence": 2,
+            "input_kind": "key",
+            "pressed": true
+          }
+        ],
+        "dropped_callback_inputs": 1,
+        "checkpoint": "1fab4d08f9494d9d2790452221df1955c41191d2f416fcc605cfe76196e49090",
+        "scope": "Real DOM event callbacks; both observe one permitted view. Guard uses Rust checkpoint identity, no JS key/command semantics."
+      }
+    },
+    {
+      "name": "background visibility suspends real RAF and resumes without stopping authority",
+      "status": "FAIL",
+      "elapsed_ms": 6601,
+      "error": "page.waitForFunction: Timeout 5000ms exceeded."
+    },
+    {
+      "name": "late native response after dispose cannot revive old generation and remount succeeds",
+      "status": "PASS",
+      "elapsed_ms": 946,
+      "evidence": {
+        "old_identity": {
+          "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+          "generation": 12
+        },
+        "next_identity": {
+          "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+          "generation": 13
+        },
+        "old_cleanup": {
+          "before": {
+            "kind": "pixi",
+            "status": "ready",
+            "identity": {
+              "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+              "generation": 12
+            },
+            "shell": "leptos-example",
+            "boot_ms": 51.399999998509884,
+            "viewport": {
+              "width": 640,
+              "height": 480,
+              "dpi": 1
+            },
+            "preferences": {
+              "reduced_motion": false,
+              "audio_enabled": false,
+              "volume": 0,
+              "modal": false
+            },
+            "scenario": "static",
+            "theme": "light",
+            "ready": {
+              "renderer": "pixi",
+              "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+            },
+            "metrics": [],
+            "frame_samples": [
+              {
+                "now_ms": 15102,
+                "draw_ms": 9.100000001490116,
+                "frame_interval_ms": null,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 0,
+                "commands": 101
+              },
+              {
+                "now_ms": 15113,
+                "draw_ms": 2,
+                "frame_interval_ms": 11,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 1,
+                "commands": 95
+              },
+              {
+                "now_ms": 15123.6,
+                "draw_ms": 3.0999999940395355,
+                "frame_interval_ms": 10.600000000000364,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 1,
+                "commands": 95
+              }
+            ],
+            "authority": [
+              {
+                "op": "frame",
+                "elapsed_ms": 12.899999998509884,
+                "request_revision": 0,
+                "response_revision": 1,
+                "outcome": "local",
+                "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+              }
+            ],
+            "errors": [],
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "dropped_callback_inputs": 0,
+            "controller": {
+              "status": "ready",
+              "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+              "generation": 12,
+              "revision": 1,
+              "listeners": 13,
+              "pending_raf": 1,
+              "frames": 3,
+              "inputs": 0,
+              "dropped_inputs": 0,
+              "errors": 0,
+              "manual_suspended": false,
+              "visibility_suspended": false,
+              "modal": false,
+              "audio_supported": false,
+              "preferences": {
+                "reduced_motion": false,
+                "audio_enabled": false,
+                "volume": 0,
+                "modal": false
+              },
+              "viewport": {
+                "width": 640,
+                "height": 480,
+                "dpi": 1
+              },
+              "resources": {
+                "renderer": "pixi-webgl",
+                "version": "8.22.0",
+                "disposed": false,
+                "mounted": true,
+                "draw_count": 3,
+                "commands": 95,
+                "textures": 46,
+                "sources": 2,
+                "font_loaded": true,
+                "canvas_width": 640,
+                "canvas_height": 480
+              }
+            },
+            "bridge": null,
+            "host_listeners": 2,
+            "host_observers": 1,
+            "host_motion_timers": 0,
+            "harness_document_listeners": 2,
+            "host_ready_timers": 0,
+            "iframes": 0,
+            "canvases": 1,
+            "pending_roundtrips": 0,
+            "match_sockets": 0,
+            "audio_fixture": false
+          },
+          "after": {
+            "kind": "pixi",
+            "status": "disposed",
+            "identity": {
+              "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+              "generation": 12
+            },
+            "shell": "leptos-example",
+            "boot_ms": 51.399999998509884,
+            "viewport": {
+              "width": 640,
+              "height": 480,
+              "dpi": 1
+            },
+            "preferences": {
+              "reduced_motion": false,
+              "audio_enabled": false,
+              "volume": 0,
+              "modal": false
+            },
+            "scenario": "static",
+            "theme": "light",
+            "ready": {
+              "renderer": "pixi",
+              "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+            },
+            "metrics": [],
+            "frame_samples": [
+              {
+                "now_ms": 15102,
+                "draw_ms": 9.100000001490116,
+                "frame_interval_ms": null,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 0,
+                "commands": 101
+              },
+              {
+                "now_ms": 15113,
+                "draw_ms": 2,
+                "frame_interval_ms": 11,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 1,
+                "commands": 95
+              },
+              {
+                "now_ms": 15123.6,
+                "draw_ms": 3.0999999940395355,
+                "frame_interval_ms": 10.600000000000364,
+                "input_to_next_draw_ms": null,
+                "rendered_revision": 1,
+                "commands": 95
+              }
+            ],
+            "authority": [
+              {
+                "op": "frame",
+                "elapsed_ms": 12.899999998509884,
+                "request_revision": 0,
+                "response_revision": 1,
+                "outcome": "local",
+                "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032"
+              }
+            ],
+            "errors": [],
+            "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+            "dropped_callback_inputs": 0,
+            "controller": {
+              "status": "disposed",
+              "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+              "generation": 12,
+              "revision": 1,
+              "listeners": 0,
+              "pending_raf": 0,
+              "frames": 3,
+              "inputs": 0,
+              "dropped_inputs": 1,
+              "errors": 0,
+              "manual_suspended": false,
+              "visibility_suspended": false,
+              "modal": false,
+              "audio_supported": false,
+              "preferences": {
+                "reduced_motion": false,
+                "audio_enabled": false,
+                "volume": 0,
+                "modal": false
+              },
+              "viewport": {
+                "width": 640,
+                "height": 480,
+                "dpi": 1
+              },
+              "resources": {
+                "renderer": "pixi-webgl",
+                "version": "8.22.0",
+                "disposed": true,
+                "mounted": true,
+                "draw_count": 3,
+                "commands": 95,
+                "textures": 0,
+                "sources": 0,
+                "font_loaded": false,
+                "canvas_width": 0,
+                "canvas_height": 0
+              }
+            },
+            "bridge": null,
+            "host_listeners": 0,
+            "host_observers": 0,
+            "host_motion_timers": 0,
+            "harness_document_listeners": 2,
+            "host_ready_timers": 0,
+            "iframes": 0,
+            "canvases": 0,
+            "pending_roundtrips": 0,
+            "match_sockets": 0,
+            "audio_fixture": false
+          }
+        },
+        "result": "Native accepted revision disposed exactly; old renderer never reattached"
+      }
+    },
+    {
+      "name": "dispose during actual delayed atlas initialization leaves no canvas or callbacks",
+      "status": "PASS",
+      "elapsed_ms": 342,
+      "evidence": {
+        "result": {
+          "cancelled": "mount cancelled"
+        },
+        "after": {
+          "status": "unmounted",
+          "generation": 14,
+          "shell": "leptos-example",
+          "iframes": 0,
+          "canvases": 0,
+          "host_listeners": 0,
+          "host_observers": 0,
+          "host_motion_timers": 0,
+          "host_ready_timers": 0,
+          "harness_document_listeners": 2,
+          "match_sockets": 0
+        }
+      }
+    },
+    {
+      "name": "same-size corrupt atlas fails before decode and remount recovers",
+      "status": "PASS",
+      "elapsed_ms": 65,
+      "evidence": {
+        "failure": {
+          "error": "asset_integrity: tiles@1x.atlas"
+        },
+        "cleanup": {
+          "kind": "pixi",
+          "status": "disposed",
+          "identity": {
+            "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+            "generation": 15
+          },
+          "shell": "leptos-example",
+          "boot_ms": null,
+          "viewport": {
+            "width": 640,
+            "height": 480,
+            "dpi": 1
+          },
+          "preferences": {
+            "reduced_motion": false,
+            "audio_enabled": false,
+            "volume": 0,
+            "modal": false
+          },
+          "scenario": "static",
+          "theme": "light",
+          "ready": null,
+          "metrics": [],
+          "frame_samples": [],
+          "authority": [],
+          "errors": [
+            {
+              "code": "asset_integrity",
+              "message": "asset_integrity: tiles@1x.atlas"
+            },
+            {
+              "code": "host_error",
+              "message": "asset_integrity: tiles@1x.atlas"
+            }
+          ],
+          "checkpoint": null,
+          "dropped_callback_inputs": 0,
+          "controller": {
+            "status": "disposed",
+            "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+            "generation": 15,
+            "revision": -1,
+            "listeners": 0,
+            "pending_raf": 0,
+            "frames": 0,
+            "inputs": 0,
+            "dropped_inputs": 1,
+            "errors": 1,
+            "manual_suspended": false,
+            "visibility_suspended": false,
+            "modal": false,
+            "audio_supported": false,
+            "preferences": {
+              "reduced_motion": false,
+              "audio_enabled": false,
+              "volume": 0,
+              "modal": false
+            },
+            "viewport": {
+              "width": 640,
+              "height": 480,
+              "dpi": 1
+            },
+            "resources": null
+          },
+          "bridge": null,
+          "host_listeners": 0,
+          "host_observers": 0,
+          "host_motion_timers": 0,
+          "harness_document_listeners": 2,
+          "host_ready_timers": 0,
+          "iframes": 0,
+          "canvases": 0,
+          "pending_roundtrips": 0,
+          "match_sockets": 0,
+          "audio_fixture": false
+        },
+        "recovered": {
+          "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+          "generation": 16
+        }
+      }
+    },
+    {
+      "name": "real WebGL loss stops drawing with structured remount requirement",
+      "status": "PASS",
+      "elapsed_ms": 316,
+      "evidence": {
+        "failed": {
+          "status": "failed",
+          "errors": [
+            {
+              "code": "context_lost",
+              "message": "context_lost: canvas"
+            },
+            {
+              "code": "host_error",
+              "message": "static control accepts no host input"
+            }
+          ],
+          "controller": {
+            "status": "ready",
+            "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+            "generation": 17,
+            "revision": 1,
+            "listeners": 13,
+            "pending_raf": 0,
+            "frames": 2,
+            "inputs": 1,
+            "dropped_inputs": 0,
+            "errors": 1,
+            "manual_suspended": true,
+            "visibility_suspended": false,
+            "modal": false,
+            "audio_supported": false,
+            "preferences": {
+              "reduced_motion": false,
+              "audio_enabled": false,
+              "volume": 0,
+              "modal": false
+            },
+            "viewport": {
+              "width": 640,
+              "height": 480,
+              "dpi": 1
+            },
+            "resources": {
+              "renderer": "pixi-webgl",
+              "version": "8.22.0",
+              "disposed": false,
+              "mounted": true,
+              "draw_count": 2,
+              "commands": 95,
+              "textures": 46,
+              "sources": 2,
+              "font_loaded": true,
+              "canvas_width": 640,
+              "canvas_height": 480
+            }
+          }
+        },
+        "recovered": {
+          "session_id": "a335b60d-4496-46bf-b9da-ea6d3f126e9a",
+          "generation": 18
+        }
+      }
+    },
+    {
+      "name": "Chromium DPR2 framebuffer and 2x atlas control execute separately",
+      "status": "PASS",
+      "elapsed_ms": 407,
+      "evidence": {
+        "controller": {
+          "status": "ready",
+          "session_id": "bf3b4a2a-4046-4645-9800-35741ace2a9b",
+          "generation": 1,
+          "revision": 1,
+          "listeners": 13,
+          "pending_raf": 1,
+          "frames": 3,
+          "inputs": 0,
+          "dropped_inputs": 0,
+          "errors": 0,
+          "manual_suspended": false,
+          "visibility_suspended": false,
+          "modal": false,
+          "audio_supported": false,
+          "preferences": {
+            "reduced_motion": false,
+            "audio_enabled": false,
+            "volume": 0,
+            "modal": false
+          },
+          "viewport": {
+            "width": 900,
+            "height": 720,
+            "dpi": 2
+          },
+          "resources": {
+            "renderer": "pixi-webgl",
+            "version": "8.22.0",
+            "disposed": false,
+            "mounted": true,
+            "draw_count": 3,
+            "commands": 95,
+            "textures": 46,
+            "sources": 2,
+            "font_loaded": true,
+            "canvas_width": 1800,
+            "canvas_height": 1440
+          }
+        },
+        "checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "scope": "Chromium emulated DPR2; physical high-DPI hardware display not measured"
+      }
+    }
+  ],
+  "uncaught_errors": [],
+  "console_messages": [
+    {
+      "type": "warning",
+      "message": "WebGL: INVALID_OPERATION: loseContext: context already lost",
+      "url": "http://127.0.0.1:8060/node_modules/pixi.js/dist/pixi.mjs"
+    }
+  ],
+  "expected_diagnostics": "Corrupt atlas and context loss intentionally create structured errors; each has asserted cleanup and recovery."
+}

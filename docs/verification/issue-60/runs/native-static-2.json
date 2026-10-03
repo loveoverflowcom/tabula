@@ -1,0 +1,173 @@
+{
+  "status": "PASS",
+  "command": [
+    "/private/tmp/tabula60-target/release/examples/tiles_renderer_baseline",
+    "--scenario",
+    "static",
+    "--theme",
+    "light",
+    "--motion",
+    "full",
+    "--initial-inputs",
+    "24",
+    "--warmup-ms",
+    "3000",
+    "--samples",
+    "300",
+    "--width",
+    "900",
+    "--height",
+    "720"
+  ],
+  "cache": "fresh-native-process; disk/driver caches not purged",
+  "window_pixels": "NOT_CAPTURED",
+  "receipts": [
+    {
+      "elapsed_ms": 99.77799999614945,
+      "receipt": {
+        "kind": "ready",
+        "commit": "2de46d27efafd078ba2d27b027a54de565e2fbe5",
+        "build": "release",
+        "target": "aarch64",
+        "backend": "macroquad-0.4.16/miniquad-0.4.11",
+        "pack": "tiles@0.1.0",
+        "asset_hashes": [
+          "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac",
+          "b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b"
+        ],
+        "seed_byte": 47,
+        "seats": 3,
+        "initial_inputs": 24,
+        "fixture_hash": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "scenario": "static",
+        "theme": "Light",
+        "motion": "full",
+        "primitive_control": false,
+        "sprite_probe": false,
+        "viewport": [
+          900,
+          720
+        ],
+        "dpi": 1,
+        "warmup_ms": 3000,
+        "samples": 300,
+        "interval_ms": 750,
+        "scripted_inputs": 20,
+        "cache_state": "fresh-renderer-instance",
+        "preload_ms": 1.348,
+        "decodes": 2,
+        "uploads": 2,
+        "estimated_resident_rgba_bytes": 2488320,
+        "resident_textures": 2
+      }
+    },
+    {
+      "elapsed_ms": 11191.049332999683,
+      "receipt": {
+        "kind": "measurement",
+        "samples": 300,
+        "submit_end_cpu_us": {
+          "mean": 26461.844,
+          "p50": 26535.988,
+          "p95": 27107.954,
+          "max": 29681.921
+        },
+        "frame_interval_ms": {
+          "mean": 26.941,
+          "p50": 27.011,
+          "p95": 27.58,
+          "max": 30.162
+        },
+        "elapsed_ms": 11065,
+        "accepted_inputs": 24,
+        "placements": 12,
+        "claims": 6,
+        "skips": 6,
+        "scripted_steps": 0,
+        "script_complete": true,
+        "uncontrolled_input_events": 0,
+        "final_checkpoint": "e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032",
+        "board_cells": 13,
+        "decodes": 2,
+        "uploads": 2,
+        "decodes_after_preload": 0,
+        "uploads_after_preload": 0,
+        "estimated_resident_rgba_bytes": 2488320,
+        "resident_textures": 2,
+        "viewport": [
+          900,
+          720
+        ],
+        "dpi": 1
+      }
+    }
+  ],
+  "process_samples": [
+    {
+      "elapsed_s": 0.0009267499990528449,
+      "ps_time_rss_kib_cpu": "0:00.00   1920   0.0",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 1.1080435409967322,
+      "ps_time_rss_kib_cpu": "0:00.28  71136  20.3",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 2.1200809579968336,
+      "ps_time_rss_kib_cpu": "0:00.49  71136  20.0",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 3.1321479999969597,
+      "ps_time_rss_kib_cpu": "0:00.69  71136  19.7",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 4.144888124996214,
+      "ps_time_rss_kib_cpu": "0:00.89  71136  19.6",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 5.156388707997394,
+      "ps_time_rss_kib_cpu": "0:01.10  71136  20.3",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 6.165391582995653,
+      "ps_time_rss_kib_cpu": "0:01.31  71136  20.0",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 7.17626470799587,
+      "ps_time_rss_kib_cpu": "0:01.51  71136  20.4",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 8.188446125001065,
+      "ps_time_rss_kib_cpu": "0:01.71  71136  19.5",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 9.20162954099942,
+      "ps_time_rss_kib_cpu": "0:01.92  71136  19.5",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 10.011992749998171,
+      "ps_time_rss_kib_cpu": "0:02.08  71152  19.7",
+      "ps_exit": 0
+    },
+    {
+      "elapsed_s": 11.022023958001228,
+      "ps_time_rss_kib_cpu": "0:02.28  71152  19.7",
+      "ps_exit": 0
+    }
+  ],
+  "runtime_log": [
+    "TABULA_BASELINE {\"kind\":\"ready\",\"commit\":\"2de46d27efafd078ba2d27b027a54de565e2fbe5\",\"build\":\"release\",\"target\":\"aarch64\",\"backend\":\"macroquad-0.4.16/miniquad-0.4.11\",\"pack\":\"tiles@0.1.0\",\"asset_hashes\":[\"7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac\",\"b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b\"],\"seed_byte\":47,\"seats\":3,\"initial_inputs\":24,\"fixture_hash\":\"e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032\",\"scenario\":\"static\",\"theme\":\"Light\",\"motion\":\"full\",\"primitive_control\":false,\"sprite_probe\":false,\"viewport\":[900,720],\"dpi\":1,\"warmup_ms\":3000,\"samples\":300,\"interval_ms\":750,\"scripted_inputs\":20,\"cache_state\":\"fresh-renderer-instance\",\"preload_ms\":1.348,\"decodes\":2,\"uploads\":2,\"estimated_resident_rgba_bytes\":2488320,\"resident_textures\":2}",
+    "TABULA_BASELINE {\"kind\":\"measurement\",\"samples\":300,\"submit_end_cpu_us\":{\"mean\":26461.844,\"p50\":26535.988,\"p95\":27107.954,\"max\":29681.921},\"frame_interval_ms\":{\"mean\":26.941,\"p50\":27.011,\"p95\":27.580,\"max\":30.162},\"elapsed_ms\":11065,\"accepted_inputs\":24,\"placements\":12,\"claims\":6,\"skips\":6,\"scripted_steps\":0,\"script_complete\":true,\"uncontrolled_input_events\":0,\"final_checkpoint\":\"e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032\",\"board_cells\":13,\"decodes\":2,\"uploads\":2,\"decodes_after_preload\":0,\"uploads_after_preload\":0,\"estimated_resident_rgba_bytes\":2488320,\"resident_textures\":2,\"viewport\":[900,720],\"dpi\":1}"
+  ],
+  "observed_exit_before_cleanup": null,
+  "cleanup": "process terminated after bounded measurement"
+}

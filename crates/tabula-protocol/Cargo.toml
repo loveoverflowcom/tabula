@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 4. Allowed deps (doc 01 §3): tabula-core, serde, postcard, serde_json,
 # thiserror. FORBIDDEN: tabula-game-api, any game, tokio, axum.

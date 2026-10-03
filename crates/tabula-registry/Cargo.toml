@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 4. The ONLY crate allowed to name a game. That containment is what makes
 # I-9 checkable: platform crates depend on this interface, never on games.
@@ -16,19 +17,20 @@ tabula-protocol = { workspace = true }
 serde           = { workspace = true }
 thiserror       = { workspace = true }
 
-# Phase 4: `register!` lists the game crates here, each behind a per-game
-# feature so a small mobile bundle or a dedicated tournament server can link a
-# subset (doc 02 §8.1).
-# tabula-game-tictactoe = { workspace = true, optional = true }
-# tabula-game-chess     = { workspace = true, optional = true }
-# tabula-game-cards     = { workspace = true, optional = true }
+# Each game is behind its own feature so a small bundle or a dedicated
+# tournament server can link a subset (doc 02 §8.1). `bots` is linked because
+# mode availability is a claim about this build's actual factories, not about
+# what the rules declare.
+tabula-game-chess = { workspace = true, optional = true, features = ["rules", "bots"] }
+tabula-game-tiles = { workspace = true, optional = true, features = ["rules", "bots"] }
+# Not yet linkable: caro has no rules and werewolf has no complete module.
+# tabula-game-caro      = { workspace = true, optional = true }
 # tabula-game-werewolf  = { workspace = true, optional = true }
-# tabula-game-tiles     = { workspace = true, optional = true }
 
 [features]
-default = []
-# game-tictactoe = ["dep:tabula-game-tictactoe"]
-# game-chess     = ["dep:tabula-game-chess"]
+default    = ["game-chess", "game-tiles"]
+game-chess = ["dep:tabula-game-chess"]
+game-tiles = ["dep:tabula-game-tiles"]
 
 [lints]
 workspace = true

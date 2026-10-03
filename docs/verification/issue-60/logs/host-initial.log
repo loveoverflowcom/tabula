@@ -1,0 +1,10 @@
+{"kind": "host-ready", "origin": "http://127.0.0.1:8060", "scope": "isolated-local-fixture", "authority_pid": 138}
+127.0.0.1 - - [03/Oct/2026 20:17:06] "GET /macroquad.html HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:17:06] "GET /macroquad.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:17:06] "GET /mq_js_bundle.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:17:06] "GET /tokens.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:17:06] "GET /bridge.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:17:06] "GET /boundary.mjs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:17:06] "GET /tabula-game-client.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [03/Oct/2026 20:17:06] code 404, message File not found
+127.0.0.1 - - [03/Oct/2026 20:17:06] "GET /favicon.ico HTTP/1.1" 404 -

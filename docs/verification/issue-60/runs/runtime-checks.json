@@ -1,0 +1,118 @@
+{
+  "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+  "authority_profile": "dev; native HTTP shim, not production WASM FFI",
+  "final_authority": "/tmp/tabula60-runtime-authority",
+  "commands": [
+    {
+      "environment": {
+        "TABULA_PLAYWRIGHT": "/Users/manhblue/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core"
+      },
+      "argv": [
+        "node",
+        "tools/renderer-embedding-spike/browser-runtime.mjs",
+        "document",
+        "docs/verification/issue-60",
+        "http://127.0.0.1:8060"
+      ],
+      "status": "PASS",
+      "executed_runs": 3,
+      "receipts": [
+        "runs/chromium-document-1.json",
+        "runs/chromium-document-2.json",
+        "runs/chromium-document-3.json"
+      ],
+      "log": "logs/chromium-document-final.log",
+      "scope": "actual headed Chrome154;3x300 staticframes;firstfreshprocess,thenwarmpages;allverificationbuildscompletedbeforefinalrefresh"
+    },
+    {
+      "environment": {
+        "TABULA_PLAYWRIGHT": "/Users/manhblue/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core"
+      },
+      "argv": [
+        "node",
+        "tools/renderer-embedding-spike/browser-runtime.mjs",
+        "iframe",
+        "docs/verification/issue-60",
+        "http://127.0.0.1:8060"
+      ],
+      "status": "PASS",
+      "executed_runs": 3,
+      "receipts": [
+        "runs/chromium-iframe-1.json",
+        "runs/chromium-iframe-2.json",
+        "runs/chromium-iframe-3.json"
+      ],
+      "log": "logs/chromium-iframe-final.log",
+      "scope": "actual headed Chrome154;3x300 staticframes;firstfreshprocess,thenwarmpages;allverificationbuildscompletedbeforefinalrefresh"
+    },
+    {
+      "environment": {
+        "TABULA_PLAYWRIGHT": "/Users/manhblue/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core"
+      },
+      "argv": [
+        "node",
+        "tools/renderer-embedding-spike/browser-runtime.mjs",
+        "pixi",
+        "docs/verification/issue-60",
+        "http://127.0.0.1:8060"
+      ],
+      "status": "PASS",
+      "executed_runs": 3,
+      "receipts": [
+        "runs/chromium-pixi-1.json",
+        "runs/chromium-pixi-2.json",
+        "runs/chromium-pixi-3.json"
+      ],
+      "log": "logs/chromium-pixi-final.log",
+      "scope": "actual headed Chrome154;3x300 staticframes;firstfreshprocess,thenwarmpages;allverificationbuildscompletedbeforefinalrefresh"
+    },
+    {
+      "environment": {
+        "TABULA_PLAYWRIGHT": "/Users/manhblue/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core"
+      },
+      "argv": [
+        "node",
+        "tools/renderer-embedding-spike/browser-cycles.mjs",
+        "pixi",
+        "docs/verification/issue-60",
+        "http://127.0.0.1:8060"
+      ],
+      "status": "PASS",
+      "executed_mounts": 50,
+      "receipt": "runs/chromium-pixi-cycles.json",
+      "log": "logs/chromium-pixi-cycles.log"
+    },
+    {
+      "environment": {
+        "TABULA_PLAYWRIGHT": "/Users/manhblue/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core"
+      },
+      "argv": [
+        "node",
+        "tools/renderer-embedding-spike/browser-cycles.mjs",
+        "iframe",
+        "docs/verification/issue-60",
+        "http://127.0.0.1:8060"
+      ],
+      "status": "PASS",
+      "executed_mounts": 50,
+      "receipt": "runs/chromium-iframe-cycles.json",
+      "log": "logs/chromium-iframe-cycles.log"
+    },
+    {
+      "environment": {
+        "TABULA_PLAYWRIGHT": "/Users/manhblue/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core"
+      },
+      "argv": [
+        "node",
+        "tools/renderer-embedding-spike/browser-checks.mjs",
+        "docs/verification/issue-60",
+        "http://127.0.0.1:8060"
+      ],
+      "status": "PARTIAL",
+      "passed": 11,
+      "blocked": 1,
+      "receipt": "runs/chromium-interactions.json",
+      "log": "logs/chromium-interactions.log"
+    }
+  ]
+}

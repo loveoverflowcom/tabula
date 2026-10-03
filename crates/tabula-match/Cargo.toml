@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 4. The hardest, most correctness-critical async code in the product.
 # It MUST be testable with in-memory fakes, no database, and no HTTP server —

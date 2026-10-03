@@ -1,0 +1,480 @@
+{
+  "schema_version": 1,
+  "scope": "final isolated JS and Python checks; DOM/GPU mock scope distinguished in named tests",
+  "source_sha256_before": {
+    "tools/renderer-embedding-spike/adapter.mjs": "af5f79ebe47681aeb2d74e7c14e8c780b7b6508ed661e73a9fc1d9d9982168b8",
+    "tools/renderer-embedding-spike/boundary.mjs": "bcd7396c64dca2e396805713c83a47d117e0e4104dcff67c2be1d1cd88453eef",
+    "tools/renderer-embedding-spike/bridge.mjs": "e560383ea35daa353d6dc6f59a18aa90dfc17ece7cf2a2e6a0639b0090ba54e9",
+    "tools/renderer-embedding-spike/browser-checks.mjs": "fd0bae265988cf83b79de6b6daa709d01ee040cf6b4fadc0570089590abadc9c",
+    "tools/renderer-embedding-spike/browser-cycles.mjs": "0a02ac1bcb21d69207d136980776443e98a16f4cf99dc3c9ce3f49a2370f9cf8",
+    "tools/renderer-embedding-spike/browser-runtime.mjs": "dfb06e6cb79cfac8adfea19d68bd9700300b5f3d7b6b770e8504c2a1d28c92a2",
+    "tools/renderer-embedding-spike/check-dependencies.mjs": "96cfc8691f03a596eaba5995e7acf87c22744b6de23c7eaafc7bdf56e66a6b9e",
+    "tools/renderer-embedding-spike/dependency-audit.json": "5be49545351ee19753ad544b78bf3703e24c4928d0b1dc0d3fdd925ebc3c5af4",
+    "tools/renderer-embedding-spike/dependency-inventory.json": "d86cc92f8e6951d46b56412ebb0bf558162b71d117247483e7677ab2459c0c1d",
+    "tools/renderer-embedding-spike/fixtures/fixture.json": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b",
+    "tools/renderer-embedding-spike/fixtures/render-contract.json": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78",
+    "tools/renderer-embedding-spike/host.mjs": "210d3549267f028ed031397cf91bdd25d97af1d83118d84fa45cbc8ca3ef7e70",
+    "tools/renderer-embedding-spike/macroquad.mjs": "87358f6abed85dd5c42f2fce0382f85db2d1533e486468018c89bf250db03e86",
+    "tools/renderer-embedding-spike/native-runtime.py": "205345d648f5d364b1c53aa5082720fa53154f613df8f46cee39c281fc61f440",
+    "tools/renderer-embedding-spike/package-lock.json": "07c650fbfbe3207f41295e718ecf92a305085ad57e6b09236f84a16b859fb8ee",
+    "tools/renderer-embedding-spike/package.json": "637e82c8cd33206c2c9baa70b52eb1dde63a6ac56554b87c2ed7cb2e191a1703",
+    "tools/renderer-embedding-spike/pixi-backend.mjs": "e598ae80f17bb505a7a533c3a41188c4514c1ea0e8d674bab59ee72286929498",
+    "tools/renderer-embedding-spike/serve.py": "5b6eac0fb4f8e257cbafe601e1a4acb6b6f01ebf8d83f73b6f5efc85b24bc503",
+    "tools/renderer-embedding-spike/stage.py": "da970be877aeff1d8341031ecefd95b1c464c05ba9f06fec27ff879506060024",
+    "tools/renderer-embedding-spike/test_serve.py": "127aadd69f8d1d95fa41e3fab0b9559e41242df7403b7a285883b9a7d01cb52b",
+    "tools/renderer-embedding-spike/test_stage.py": "35ebba9ed2d4d5b6b51bbbef63d84452d123d88b9ef356cac86144689a22d4ca",
+    "tools/renderer-embedding-spike/tests/boundary.test.mjs": "a6a8cad18a00a80b2bef22f6dc41158e2343f7442e2523bf6f5a8655ae88cb7b",
+    "tools/renderer-embedding-spike/tests/bridge.test.mjs": "8915afad3027c48d79c7250ec891661da5fcab2bd3c449905602f62a619c9849",
+    "tools/renderer-embedding-spike/tests/helpers.mjs": "8c3bb5a84c76a1769ebcedd3f29355faaa1309134ccf72743b6f6ce7e732d63b",
+    "tools/renderer-embedding-spike/tests/integrity.test.mjs": "07d6232013142cba6e5ba4abf6a93eed8c9eb8d3697146647b6e7dacbc5b3f96",
+    "tools/renderer-embedding-spike/tests/lifecycle.test.mjs": "4814481991832e67535164969c3693127abaa8b95e35a680c5f1f00738612ad2",
+    "tools/renderer-embedding-spike/tests/pixi-geometry.test.mjs": "bfac1de8be02d3818dde867a4dcc46125959249b5e782f4d5d98f4326194aa69"
+  },
+  "records": [
+    {
+      "command": [
+        "npm",
+        "test",
+        "--prefix",
+        "tools/renderer-embedding-spike"
+      ],
+      "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+      "started_utc": "2026-10-03T13:51:09.535699+00:00",
+      "elapsed_seconds": 0.297,
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "docs/verification/issue-60/logs/final-js.log",
+      "executed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "evidence_kind": "example-tested boundary/integrity; mock DOM/GPU lifecycle and actual Pixi CPU geometry distinguished by named tests"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "check",
+        "--prefix",
+        "tools/renderer-embedding-spike"
+      ],
+      "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+      "started_utc": "2026-10-03T13:51:09.832453+00:00",
+      "elapsed_seconds": 0.142,
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "docs/verification/issue-60/logs/final-checks.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "licenses",
+        "--prefix",
+        "tools/renderer-embedding-spike"
+      ],
+      "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+      "started_utc": "2026-10-03T13:51:09.974127+00:00",
+      "elapsed_seconds": 0.099,
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "docs/verification/issue-60/logs/final-licenses.log"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "<every checked-in tool .mjs>"
+      ],
+      "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+      "selection": 16,
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "docs/verification/issue-60/logs/final-all-mjs-syntax.log",
+      "commands": [
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/adapter.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/boundary.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/bridge.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/browser-checks.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/browser-cycles.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/browser-runtime.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/check-dependencies.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/host.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/macroquad.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/pixi-backend.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/tests/boundary.test.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/tests/bridge.test.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/tests/helpers.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/tests/integrity.test.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/tests/lifecycle.test.mjs"
+          ],
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/tests/pixi-geometry.test.mjs"
+          ],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/renderer-embedding-spike",
+        "-p",
+        "test_stage.py",
+        "-v"
+      ],
+      "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+      "started_utc": "2026-10-03T13:51:10.405524+00:00",
+      "elapsed_seconds": 0.054,
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "docs/verification/issue-60/logs/final-stage-tests.log",
+      "executed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "environment": {
+        "TABULA60_AUTHORITY_TOOL": "/tmp/tabula60-target/debug/examples/embedding_fixture"
+      },
+      "evidence_kind": "integration-tested actual Rust atlas verifier"
+    },
+    {
+      "command": [
+        "npm",
+        "audit",
+        "--json",
+        "--cache",
+        "/tmp/tabula-issue60-npm-cache",
+        "--prefix",
+        "tools/renderer-embedding-spike",
+        "--fetch-timeout=20000",
+        "--fetch-retries=0"
+      ],
+      "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+      "started_utc": "2026-10-03T13:51:53.403007+00:00",
+      "elapsed_seconds": 0.605,
+      "exit_code": 0,
+      "status": "PASS",
+      "execution_profile": "approved network/loopback sandbox exception",
+      "log": "docs/verification/issue-60/logs/final-audit.log",
+      "reported_vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependency_count": {
+        "prod": 13,
+        "dev": 0,
+        "optional": 0,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 12
+      }
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/renderer-embedding-spike",
+        "-p",
+        "test_serve.py",
+        "-v"
+      ],
+      "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+      "started_utc": "2026-10-03T13:51:54.008404+00:00",
+      "elapsed_seconds": 0.588,
+      "exit_code": 0,
+      "status": "PASS",
+      "execution_profile": "approved network/loopback sandbox exception",
+      "log": "docs/verification/issue-60/logs/final-python.log",
+      "executed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "environment": {
+        "TABULA60_AUTHORITY_TOOL": "/tmp/tabula60-target/debug/examples/embedding_fixture"
+      },
+      "evidence_kind": "integration-tested actual loopback HTTP wrapper with substitute authority transport; Rust game authority separately tested"
+    },
+    {
+      "command": [
+        "/tmp/tabula60-target/debug/examples/embedding_fixture",
+        "--export",
+        "/var/folders/75/8r6wfgxj0kx4vfxv2cwzqrh00000gn/T/tabula60-final-fixture-drift-kfr5cgcv"
+      ],
+      "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+      "exit_code": 0,
+      "elapsed_seconds": 0.071,
+      "status": "PASS",
+      "log": "docs/verification/issue-60/logs/final-fixture-drift.log",
+      "comparison": {
+        "fixture.json": {
+          "equal_bytes": true,
+          "committed_sha256": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b",
+          "exported_sha256": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b"
+        },
+        "render-contract.json": {
+          "equal_bytes": true,
+          "committed_sha256": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78",
+          "exported_sha256": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78"
+        }
+      },
+      "authority_executable_sha256": "42e5718df2de59844e5d4a420a07621bc211755e93cf420504bd22fc33234312"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "<changed final driver>"
+      ],
+      "cwd": "/Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula",
+      "selection": 1,
+      "exit_code": 0,
+      "status": "PASS",
+      "commands": [
+        {
+          "command": [
+            "node",
+            "--check",
+            "tools/renderer-embedding-spike/browser-checks.mjs"
+          ],
+          "exit_code": 0,
+          "source_sha256_before": "95d9988cf0c3e66348e6eb6152a60575beae717d4da7f57516f69a441948824f",
+          "source_sha256_after": "95d9988cf0c3e66348e6eb6152a60575beae717d4da7f57516f69a441948824f",
+          "stable_source": true
+        }
+      ],
+      "log": "docs/verification/issue-60/logs/final-changed-mjs-syntax.log"
+    }
+  ],
+  "node_version": "v22.15.0",
+  "npm_version": "10.9.2",
+  "python_version": "Python 3.13.5",
+  "pending": [],
+  "source_sha256_after": {
+    "tools/renderer-embedding-spike/adapter.mjs": "af5f79ebe47681aeb2d74e7c14e8c780b7b6508ed661e73a9fc1d9d9982168b8",
+    "tools/renderer-embedding-spike/boundary.mjs": "bcd7396c64dca2e396805713c83a47d117e0e4104dcff67c2be1d1cd88453eef",
+    "tools/renderer-embedding-spike/bridge.mjs": "e560383ea35daa353d6dc6f59a18aa90dfc17ece7cf2a2e6a0639b0090ba54e9",
+    "tools/renderer-embedding-spike/browser-checks.mjs": "ea232922171a75d90678c09a8fc34737edd4b8d6253e27aa30dbf3d19e2e8bbf",
+    "tools/renderer-embedding-spike/browser-cycles.mjs": "0a02ac1bcb21d69207d136980776443e98a16f4cf99dc3c9ce3f49a2370f9cf8",
+    "tools/renderer-embedding-spike/browser-runtime.mjs": "dfb06e6cb79cfac8adfea19d68bd9700300b5f3d7b6b770e8504c2a1d28c92a2",
+    "tools/renderer-embedding-spike/check-dependencies.mjs": "96cfc8691f03a596eaba5995e7acf87c22744b6de23c7eaafc7bdf56e66a6b9e",
+    "tools/renderer-embedding-spike/dependency-audit.json": "5be49545351ee19753ad544b78bf3703e24c4928d0b1dc0d3fdd925ebc3c5af4",
+    "tools/renderer-embedding-spike/dependency-inventory.json": "d86cc92f8e6951d46b56412ebb0bf558162b71d117247483e7677ab2459c0c1d",
+    "tools/renderer-embedding-spike/fixtures/fixture.json": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b",
+    "tools/renderer-embedding-spike/fixtures/render-contract.json": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78",
+    "tools/renderer-embedding-spike/host.mjs": "210d3549267f028ed031397cf91bdd25d97af1d83118d84fa45cbc8ca3ef7e70",
+    "tools/renderer-embedding-spike/macroquad.mjs": "87358f6abed85dd5c42f2fce0382f85db2d1533e486468018c89bf250db03e86",
+    "tools/renderer-embedding-spike/native-runtime.py": "205345d648f5d364b1c53aa5082720fa53154f613df8f46cee39c281fc61f440",
+    "tools/renderer-embedding-spike/package-lock.json": "07c650fbfbe3207f41295e718ecf92a305085ad57e6b09236f84a16b859fb8ee",
+    "tools/renderer-embedding-spike/package.json": "637e82c8cd33206c2c9baa70b52eb1dde63a6ac56554b87c2ed7cb2e191a1703",
+    "tools/renderer-embedding-spike/pixi-backend.mjs": "e598ae80f17bb505a7a533c3a41188c4514c1ea0e8d674bab59ee72286929498",
+    "tools/renderer-embedding-spike/serve.py": "5b6eac0fb4f8e257cbafe601e1a4acb6b6f01ebf8d83f73b6f5efc85b24bc503",
+    "tools/renderer-embedding-spike/stage.py": "da970be877aeff1d8341031ecefd95b1c464c05ba9f06fec27ff879506060024",
+    "tools/renderer-embedding-spike/test_serve.py": "127aadd69f8d1d95fa41e3fab0b9559e41242df7403b7a285883b9a7d01cb52b",
+    "tools/renderer-embedding-spike/test_stage.py": "35ebba9ed2d4d5b6b51bbbef63d84452d123d88b9ef356cac86144689a22d4ca",
+    "tools/renderer-embedding-spike/tests/boundary.test.mjs": "a6a8cad18a00a80b2bef22f6dc41158e2343f7442e2523bf6f5a8655ae88cb7b",
+    "tools/renderer-embedding-spike/tests/bridge.test.mjs": "8915afad3027c48d79c7250ec891661da5fcab2bd3c449905602f62a619c9849",
+    "tools/renderer-embedding-spike/tests/helpers.mjs": "8c3bb5a84c76a1769ebcedd3f29355faaa1309134ccf72743b6f6ce7e732d63b",
+    "tools/renderer-embedding-spike/tests/integrity.test.mjs": "07d6232013142cba6e5ba4abf6a93eed8c9eb8d3697146647b6e7dacbc5b3f96",
+    "tools/renderer-embedding-spike/tests/lifecycle.test.mjs": "4814481991832e67535164969c3693127abaa8b95e35a680c5f1f00738612ad2",
+    "tools/renderer-embedding-spike/tests/pixi-geometry.test.mjs": "bfac1de8be02d3818dde867a4dcc46125959249b5e782f4d5d98f4326194aa69"
+  },
+  "source_changed_during_checks": {
+    "tools/renderer-embedding-spike/browser-checks.mjs": {
+      "before": "fd0bae265988cf83b79de6b6daa709d01ee040cf6b4fadc0570089590abadc9c",
+      "after": "ea232922171a75d90678c09a8fc34737edd4b8d6253e27aa30dbf3d19e2e8bbf"
+    }
+  },
+  "status": "PASS",
+  "source_changes_rechecked": [
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/renderer-embedding-spike/browser-checks.mjs"
+      ],
+      "exit_code": 0,
+      "source_sha256_before": "95d9988cf0c3e66348e6eb6152a60575beae717d4da7f57516f69a441948824f",
+      "source_sha256_after": "95d9988cf0c3e66348e6eb6152a60575beae717d4da7f57516f69a441948824f",
+      "stable_source": true
+    }
+  ],
+  "source_sha256_final": {
+    "tools/renderer-embedding-spike/adapter.mjs": "af5f79ebe47681aeb2d74e7c14e8c780b7b6508ed661e73a9fc1d9d9982168b8",
+    "tools/renderer-embedding-spike/boundary.mjs": "bcd7396c64dca2e396805713c83a47d117e0e4104dcff67c2be1d1cd88453eef",
+    "tools/renderer-embedding-spike/bridge.mjs": "e560383ea35daa353d6dc6f59a18aa90dfc17ece7cf2a2e6a0639b0090ba54e9",
+    "tools/renderer-embedding-spike/browser-checks.mjs": "95d9988cf0c3e66348e6eb6152a60575beae717d4da7f57516f69a441948824f",
+    "tools/renderer-embedding-spike/browser-cycles.mjs": "0a02ac1bcb21d69207d136980776443e98a16f4cf99dc3c9ce3f49a2370f9cf8",
+    "tools/renderer-embedding-spike/browser-runtime.mjs": "dfb06e6cb79cfac8adfea19d68bd9700300b5f3d7b6b770e8504c2a1d28c92a2",
+    "tools/renderer-embedding-spike/check-dependencies.mjs": "96cfc8691f03a596eaba5995e7acf87c22744b6de23c7eaafc7bdf56e66a6b9e",
+    "tools/renderer-embedding-spike/dependency-audit.json": "5be49545351ee19753ad544b78bf3703e24c4928d0b1dc0d3fdd925ebc3c5af4",
+    "tools/renderer-embedding-spike/dependency-inventory.json": "d86cc92f8e6951d46b56412ebb0bf558162b71d117247483e7677ab2459c0c1d",
+    "tools/renderer-embedding-spike/fixtures/fixture.json": "aa753fed62879d0aa084819980f17647067caa4642b9be8f4e76e195d367620b",
+    "tools/renderer-embedding-spike/fixtures/render-contract.json": "0c476445cf0f1eb58dbb8372bf8ed1cf9f409f908c932b6580d0ab815e1cbb78",
+    "tools/renderer-embedding-spike/host.mjs": "210d3549267f028ed031397cf91bdd25d97af1d83118d84fa45cbc8ca3ef7e70",
+    "tools/renderer-embedding-spike/macroquad.mjs": "87358f6abed85dd5c42f2fce0382f85db2d1533e486468018c89bf250db03e86",
+    "tools/renderer-embedding-spike/native-runtime.py": "205345d648f5d364b1c53aa5082720fa53154f613df8f46cee39c281fc61f440",
+    "tools/renderer-embedding-spike/package-lock.json": "07c650fbfbe3207f41295e718ecf92a305085ad57e6b09236f84a16b859fb8ee",
+    "tools/renderer-embedding-spike/package.json": "637e82c8cd33206c2c9baa70b52eb1dde63a6ac56554b87c2ed7cb2e191a1703",
+    "tools/renderer-embedding-spike/pixi-backend.mjs": "e598ae80f17bb505a7a533c3a41188c4514c1ea0e8d674bab59ee72286929498",
+    "tools/renderer-embedding-spike/serve.py": "5b6eac0fb4f8e257cbafe601e1a4acb6b6f01ebf8d83f73b6f5efc85b24bc503",
+    "tools/renderer-embedding-spike/stage.py": "da970be877aeff1d8341031ecefd95b1c464c05ba9f06fec27ff879506060024",
+    "tools/renderer-embedding-spike/test_serve.py": "127aadd69f8d1d95fa41e3fab0b9559e41242df7403b7a285883b9a7d01cb52b",
+    "tools/renderer-embedding-spike/test_stage.py": "35ebba9ed2d4d5b6b51bbbef63d84452d123d88b9ef356cac86144689a22d4ca",
+    "tools/renderer-embedding-spike/tests/boundary.test.mjs": "a6a8cad18a00a80b2bef22f6dc41158e2343f7442e2523bf6f5a8655ae88cb7b",
+    "tools/renderer-embedding-spike/tests/bridge.test.mjs": "8915afad3027c48d79c7250ec891661da5fcab2bd3c449905602f62a619c9849",
+    "tools/renderer-embedding-spike/tests/helpers.mjs": "8c3bb5a84c76a1769ebcedd3f29355faaa1309134ccf72743b6f6ce7e732d63b",
+    "tools/renderer-embedding-spike/tests/integrity.test.mjs": "07d6232013142cba6e5ba4abf6a93eed8c9eb8d3697146647b6e7dacbc5b3f96",
+    "tools/renderer-embedding-spike/tests/lifecycle.test.mjs": "4814481991832e67535164969c3693127abaa8b95e35a680c5f1f00738612ad2",
+    "tools/renderer-embedding-spike/tests/pixi-geometry.test.mjs": "bfac1de8be02d3818dde867a4dcc46125959249b5e782f4d5d98f4326194aa69"
+  },
+  "source_bindings": {
+    "compile_command": [
+      "rustc",
+      "--edition=2024",
+      "/var/folders/75/8r6wfgxj0kx4vfxv2cwzqrh00000gn/T/tabula60-current-source-hash-gwoc4hm1/hash_current_sources.rs",
+      "--extern",
+      "blake3=/tmp/tabula60-target/debug/deps/libblake3-6c457eed15b280fc.rlib",
+      "-L",
+      "dependency=/tmp/tabula60-target/debug/deps",
+      "-o",
+      "/var/folders/75/8r6wfgxj0kx4vfxv2cwzqrh00000gn/T/tabula60-current-source-hash-gwoc4hm1/hash_current_sources"
+    ],
+    "compile_exit_code": 0,
+    "checker_source_sha256": "2386a4b74244739739211105743355a53135191a6d9c43aa65eecbf89473e596",
+    "dependency_rlib": "/tmp/tabula60-target/debug/deps/libblake3-6c457eed15b280fc.rlib",
+    "dependency_rlib_sha256": "cc042433593a0d1be0501b957f957a7d1476742542a4cba455c060420dce3ff2",
+    "run_command": [
+      "/var/folders/75/8r6wfgxj0kx4vfxv2cwzqrh00000gn/T/tabula60-current-source-hash-gwoc4hm1/hash_current_sources",
+      "xtask/examples/embedding_fixture.rs",
+      "games/tiles/src/presentation.rs"
+    ],
+    "run_exit_code": 0,
+    "comparison": {
+      "tooling_current_source_matches_compiled_binding": true,
+      "presenter_current_source_matches_compiled_binding": true
+    },
+    "current_blake3": {
+      "xtask/examples/embedding_fixture.rs": "b24ca6e999408366e27b6be459172c08284e7865a566acc0b64c5a4a0d052f73",
+      "games/tiles/src/presentation.rs": "3bf7c3dba75a2c676844d5340e53e18ead9ba5aea718b030d32a0d5fa83b554a"
+    },
+    "status": "PASS",
+    "log": "docs/verification/issue-60/logs/final-source-bindings.log"
+  },
+  "source_change_note": "browser-checks.mjs changed during initial syntax checks; changed final driver was rechecked with stable before/after SHA256 in final-changed-mjs-syntax.log. No implementation edits were made by the verification agent."
+}

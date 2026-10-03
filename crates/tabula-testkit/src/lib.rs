@@ -11,13 +11,23 @@
 //!
 //! ## Usage
 //!
+//! A game author writes a small [`GameTestFixture`] — the data one real match
+//! needs — and gets the mandatory suite for free:
+//!
 //! ```rust,ignore
 //! // games/<slug>/tests/conformance.rs
-//! tabula_testkit::conformance!(tabula_game_tictactoe::TicTacToeModule);
+//! struct ChessFixture;
+//!
+//! impl GameTestFixture for ChessFixture {
+//!     type Module = tabula_game_chess::ChessModule;
+//!     // ... config(), roster(), seed(), deterministic_script() ...
+//! }
+//!
+//! tabula_testkit::conformance!(ChessFixture);
 //! ```
 //!
-//! That one line expands to the fifteen tests in [`conformance`]. **A game may
-//! not be registered until it passes them.**
+//! That one line expands to the full suite documented in [`conformance`].
+//! **A game may not be registered until it passes them.**
 //!
 //! ## The highest-value test is the cheapest
 //!
@@ -27,17 +37,18 @@
 //! better than hand-written tests, and it costs a game author nothing beyond
 //! implementing `legal_commands`.
 //!
-//! Nightly it runs at 100k matches per game, and any failing seed is
-//! auto-committed to `tests/replays/<game>/regressions/`.
+//! Nightly it can run at 100k matches per game. Failures carry the base seed,
+//! match index, and input index needed to reproduce them; the harness does not
+//! mutate the repository or create replay files.
 //!
 //! ## Module map
 //!
 //! | Module | What it is |
 //! |---|---|
-//! | [`conformance`] | The `conformance!` macro and the mandatory test list |
+//! | [`conformance`] | The `conformance!` macro, the mandatory test list, and the opt-in `conformance::security` suite for hidden-information games |
 //! | [`determinism`] | Re-run harness, clone-and-compare R2 checker, snapshot round-trip |
-//! | [`projection`] | `SecretModel` scanning — the security test category |
-//! | [`replay`] | `.tbr` reader/writer and `ReplayRunner` |
+//! | [`projection`] | `SecretModel` containment scanning (`View` and `ViewEvent`) plus projection/event noninterference — the security test category |
+//! | [`replay`] | `.tbr` reader/encoder, evidence diagnosis, and `ReplayRunner` |
 //! | [`selfplay`] | Bot-vs-bot driver, the primary fuzzer |
 //! | [`strategies`] | `proptest` generators for inputs, rosters, configs |
 //! | [`fakes`] | In-memory `EventLog` / `SnapshotStore` / `Clock` |
@@ -47,10 +58,29 @@
 pub mod conformance;
 pub mod determinism;
 pub mod fakes;
+#[cfg(feature = "presentation")]
+pub mod presentation;
 pub mod projection;
 pub mod replay;
 pub mod selfplay;
 pub mod strategies;
 
-pub use projection::{Secret, SecretModel};
-pub use replay::{ReplayRunner, ReplayVerdict};
+pub use conformance::{
+    security::HiddenInformationFixture, GameTestFixture, InvalidCommandScenario,
+    RandomnessScenario, TerminalScenario,
+};
+pub use determinism::{RunTrace, Scenario};
+#[cfg(feature = "presentation")]
+pub use presentation::{render_list_snapshot, AsRenderList};
+pub use projection::{
+    assert_no_event_bypasses_redaction, assert_no_leaks, assert_projection_differs,
+    assert_projection_noninterference, assert_view_event_differs,
+    assert_view_event_noninterference, EventScanCoverage, LeakScanCoverage, Secret, SecretModel,
+};
+pub use replay::{
+    CheckpointEvidence, Divergence, DivergenceKind, DivergenceLocation, DivergenceWindow,
+    ExactDivergence, FinalEvidenceOnly, PositionEvidence, PrefixPosition, ReplayDiagnosis,
+    ReplayDiagnosisKind, ReplayDraft, ReplayError, ReplayFrame, ReplayHeader, ReplayIdentity,
+    ReplayKind, ReplayRunner, ReplayVerdict, ReproducerAvailability, ReproducerReason, StepResult,
+    ValidatedReplay, VerifyReport,
+};

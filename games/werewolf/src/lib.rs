@@ -9,9 +9,9 @@
 //!
 //! Werewolf is the game that forces three platform capabilities nothing else
 //! needs: **event non-existence**, **game-driven communication scoping**, and
-//! **6–20 seats with phases instead of turns**. (doc 08 §5.C)
+//! **6–20 seats with phases instead of turns**. (doc 08 §5)
 //!
-//! ## Scope (doc 08 §5.C)
+//! ## Scope (doc 08 §5)
 //!
 //! ```text
 //! IN:  6–20 seats; roles Villager, Werewolf, Seer, Doctor, Hunter, Witch
@@ -29,7 +29,7 @@
 //!
 //! ```rust,ignore
 //! struct State {
-//!     phase: Phase,                                 // Lobby, Night{n}, Dawn{n}, Day{n}, Vote{n}, Dusk{n}, Ended
+//!     phase: Phase,                                 // Night, Dawn, Day, Vote, Dusk, Ended
 //!     phase_ends_at: LogicalTime,
 //!     roles: BTreeMap<SeatId, Role>,                // SECRET
 //!     alive: BTreeSet<SeatId>,
@@ -77,13 +77,13 @@
 //! `durability = AckAfterApply`: no ranked stakes, and snappy voting matters more
 //! than a 50 ms loss window that the phase timer recovers from anyway.
 //!
-//! ## Failure signals (doc 08 §5.C)
+//! ## Failure signals (doc 08 §5)
 //!
 //! - Any villager socket frame derived from a night action — **critical**.
 //! - Chat scope enforcement needing game knowledge.
 //! - The platform needing to know phase names.
 //!
-//! ## Acceptance (doc 08 §5.C)
+//! ## Acceptance (doc 08 §5)
 //!
 //! ```text
 //! [ ] 20-seat golden integration match with per-seat projection assertions at
@@ -100,3 +100,108 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::float_arithmetic)]
+
+use std::sync::LazyLock;
+
+use tabula_core::Millis;
+use tabula_game_api::{
+    AssetRef, AsyncTurnPolicy, Budget, Category, ChatChannelSpec, ChatKind, ChatPolicy, Complexity,
+    ContentRating, Durability, DurationRange, GameCapabilities, GameCapabilitiesSpec, GameId,
+    GameMetadata, GameMetadataSpec, GameVersion, I18nKey, RankedSupport, ReconnectPolicy,
+    SeatCounts, SeatSpec, SpectatorPolicy, StateSizeClass, SubstitutionPolicy, TurnModel,
+    VoiceRequirement,
+};
+
+pub mod rules;
+
+pub use rules::{
+    checked_deadline, create_initial_state, create_initial_state_from_seed, Alignment, Ballot,
+    Config, ConfigValidationError, DurationError, Event, MaxRounds, MaxRoundsError, NightChoice,
+    Phase, PhaseDuration, PhaseDurations, PlayerStatus, Preset, RawConfig, RawPhaseDurations,
+    RawState, Role, RoleCounts, SeatCount, SeatCountError, State, StateError, VoteMode,
+    WitchPotions, DEFAULT_DAWN_MS, DEFAULT_DAY_MS, DEFAULT_DUSK_MS, DEFAULT_MAX_ROUNDS,
+    DEFAULT_NIGHT_MS, DEFAULT_VOTE_MS, DOMAIN_ROLES, MAX_MAX_ROUNDS, MAX_PHASE_DURATION_MS,
+    MAX_SEATS, MIN_MAX_ROUNDS, MIN_PHASE_DURATION_MS, MIN_SEATS, RULES_HASH, RULES_VERSION,
+};
+
+/// Compiled catalog metadata, kept independent from the incomplete W7 module adapter.
+static METADATA: LazyLock<GameMetadata> = LazyLock::new(|| {
+    GameMetadata::from(GameMetadataSpec {
+        id: GameId::new("com.tabula.werewolf").expect("literal is a valid game id"),
+        version: GameVersion::new("0.1.0").expect("literal is valid SemVer"),
+        rules_version: RULES_VERSION,
+        name_key: I18nKey::new("game.werewolf.name").expect("literal is a valid i18n key"),
+        tagline_key: I18nKey::new("game.werewolf.tagline").expect("literal is a valid i18n key"),
+        description_key: I18nKey::new("game.werewolf.description")
+            .expect("literal is a valid i18n key"),
+        categories: vec![Category::SocialDeduction],
+        tags: vec![
+            "social".to_owned(),
+            "deduction".to_owned(),
+            "hidden_role".to_owned(),
+        ],
+        estimated_minutes: DurationRange::new(15, 45).expect("literal range is ordered"),
+        complexity: Complexity::Medium,
+        content_rating: ContentRating::Everyone,
+        icon: AssetRef::new("werewolf/icon").expect("literal is a valid asset reference"),
+        hero: AssetRef::new("werewolf/hero").expect("literal is a valid asset reference"),
+        rules_url_key: None,
+    })
+});
+
+/// Compiled platform capabilities, kept independent from the incomplete W7 module adapter.
+static CAPABILITIES: LazyLock<GameCapabilities> = LazyLock::new(|| {
+    GameCapabilities::try_from(GameCapabilitiesSpec {
+        seats: SeatSpec::new(
+            SeatCounts::range(rules::MIN_SEATS, rules::MAX_SEATS).expect("literal range is valid"),
+            None,
+            false,
+            false,
+        ),
+        turn_model: TurnModel::Phased,
+        hidden_information: true,
+        spectators: SpectatorPolicy::GameControlled,
+        chat: ChatPolicy::new(
+            vec![
+                ChatChannelSpec::new("table", ChatKind::Table)
+                    .expect("literal is a valid chat channel"),
+                ChatChannelSpec::new("wolves", ChatKind::Team)
+                    .expect("literal is a valid chat channel"),
+                ChatChannelSpec::new("dead", ChatKind::Dead)
+                    .expect("literal is a valid chat channel"),
+            ],
+            true,
+        )
+        .expect("werewolf chat channels are unique"),
+        voice: VoiceRequirement::Recommended,
+        ranked: RankedSupport::No,
+        async_turns: AsyncTurnPolicy::Disabled,
+        reconnect: ReconnectPolicy {
+            grace: Millis(60_000),
+            notify_rules: true,
+        },
+        substitution: SubstitutionPolicy::Forbidden,
+        pausable: false,
+        durability: Durability::AckAfterApply,
+        client_preview: false,
+        state_size: StateSizeClass::Small,
+        apply_budget: Budget {
+            max_apply_micros: 2_000,
+            max_events_per_input: 64,
+        },
+        max_match_duration: None,
+    })
+    .expect("werewolf capabilities are coherent")
+});
+
+/// Returns compiled catalog metadata without requiring a complete [`tabula_game_api::GameModule`].
+#[must_use]
+pub fn metadata() -> &'static GameMetadata {
+    &METADATA
+}
+
+/// Returns compiled platform capabilities without requiring a complete [`tabula_game_api::GameModule`].
+#[must_use]
+pub fn capabilities() -> &'static GameCapabilities {
+    &CAPABILITIES
+}

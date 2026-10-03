@@ -19,11 +19,48 @@ One file per screen: layout at each breakpoint (`compact` <600dp, `medium`
 600–904, `expanded` 905–1439, `large` ≥1440), states (loading, empty, error,
 success), the keyboard path, and the a11y announcements.
 
-## Screens to specify (Phase 5)
+The [foundation and screen index](screens/README.md) defines the compact Material 3
+Expressive contract for issue #49: screen 13 owns user settings, while screen 22 is
+the component showcase. Its editable preview consumes the generated CSS tokens and
+contains sample data only; runtime work still follows the phase gates.
+
+Issue #50's [discovery/setup contract](screens/discovery.md) specifies screen 01
+(resume-first home and Library), 02 (game detail), and 03 (new match setup).
+[Source availability](screens/discovery-availability.md) separates current local
+launch paths from proposed catalog/configuration adapters; the
+[verification ledger](screens/discovery-verification.md) tracks documented and
+executed evidence separately.
+
+Screens 01–03 are **implemented** in `apps/web`, against the runtime catalog in
+`tabula-registry`. Both crates were built ahead of their Phase-4 and Phase-5
+gates as a recorded decision:
+[ADR-0028](../adr/0028-discovery-shell-ahead-of-phase-gate.md) states what the
+slice contains and what the gates still hold back. Running these screens
+requires `trunk serve` in `apps/web`; no match can be created from them.
+
+Issue #52's [shared boundary](screens/results-replay.md) and screen 09–11
+specifications cover results, match history and generic replay. The existing
+local driver can start a fresh game after a rules-owned terminal outcome;
+canonical `.tbr` tooling preserves gapped original input indices. These do not
+implement persisted history, user replay export or a projected scrub viewer.
+See [verification and residual gates](screens/results-replay-verification.md).
+
+Issue #53 adds [Xiangqi Play/Analyze/Learn/Resources contracts](screens/xiangqi.md)
+for screens 08, the Xiangqi extension of 11, 12 and 14. They preserve generic
+replay, separate branch/original authority and position-bound evidence.
+[The ledger](screens/xiangqi-verification.md) distinguishes specification
+review and existing baseline checks from blocked Xiangqi runtime acceptance;
+no rules/engine/install capability is created before its gate.
+
+## Phase-5 screen coverage
+
+Home/catalog, detail/setup and settings have specifications in the screen index.
+Home, catalog and detail/setup also have running routes; settings does not, and
+a specification alone never establishes one. The remaining shell
+screen inventory from doc 04 is:
 
 ```text
-home  login  register  catalog  game-detail  room-browser  room-detail
-queue  match-result  profile  friends  settings
+login  register  room-browser  room-detail  queue  match-result  profile  friends
 ```
 
 Plus the in-canvas screens the game runtime owns (doc 04 §3.4): branded loader,
