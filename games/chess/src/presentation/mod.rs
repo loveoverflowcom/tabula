@@ -30,8 +30,8 @@ const PROMOTION_CHOICES: [PromotionChoice; 4] = [
 ];
 const PROMOTION_BASE_FOCUS_ID: u32 = 100;
 const PROMOTION_CANCEL_FOCUS_ID: FocusId = FocusId::new(104);
-const STATUS_HEIGHT_FRACTION: f32 = 0.12;
-const STATUS_MAX_HEIGHT: f32 = 48.0;
+const STATUS_HEIGHT_FRACTION: f32 = 0.5;
+const STATUS_MAX_HEIGHT: f32 = 88.0;
 const IN_TRANSIT_PIECE_Z: i16 = 100;
 
 /// The closed set of pieces a pawn may become at the end of a Chess move.
@@ -131,7 +131,8 @@ fn chess_promotion_focus_graph(layout: BoardLayout) -> FocusGraph {
 /// The validated, responsive geometry shared by board rendering and hit testing.
 ///
 /// The board uses the smaller remaining content axis, so its rectangle is always
-/// square and centered below a small status header. A `Square` is converted to a
+/// square and centered beside a compact status dock (bottom at compact widths,
+/// top otherwise). A `Square` is converted to a
 /// rectangle only through this type, which keeps rendering and pointer mapping
 /// on the same coordinate calculation.
 ///
@@ -158,9 +159,19 @@ impl BoardLayout {
     pub fn from_viewport(viewport: Viewport) -> Self {
         let viewport_size = viewport.size();
         let status_height = (viewport_size.y * STATUS_HEIGHT_FRACTION).min(STATUS_MAX_HEIGHT);
-        let status = Rect::new(Vec2::ZERO, Vec2::new(viewport_size.x, status_height))
+        let compact = viewport_size.x < 600.0;
+        let status_origin = if compact {
+            Vec2::new(0.0, viewport_size.y - status_height)
+        } else {
+            Vec2::ZERO
+        };
+        let status = Rect::new(status_origin, Vec2::new(viewport_size.x, status_height))
             .expect("a finite positive viewport produces finite status geometry");
-        let content_origin = Vec2::new(0.0, status_height);
+        let content_origin = if compact {
+            Vec2::ZERO
+        } else {
+            Vec2::new(0.0, status_height)
+        };
         let content_size = Vec2::new(viewport_size.x, viewport_size.y - status_height);
         let side = content_size.x.min(content_size.y);
         let board_origin = content_origin + (content_size - Vec2::splat(side)) * 0.5;
@@ -1190,45 +1201,7 @@ fn build_render_list(
         }
     }
 
-    let status = status_text(view);
-    let status_rect = layout.status();
-    let status_line_height = theme
-        .text_style(TextStyleToken::TitleLg)
-        .line_height()
-        .get();
-    builder.push(RenderCmd::Text {
-        text: status,
-        at: status_rect.origin()
-            + Vec2::new(
-                status_rect.size().x * 0.5,
-                status_rect.size().y * 0.5 - status_line_height * 0.5,
-            ),
-        style: TextStyleToken::TitleLg,
-        align: Align::Center,
-        max_width: None,
-        color: theme.color.on_surface,
-        layer: Layer::HUD,
-        z: 0,
-    })?;
-
-    if let Some([white_clock, black_clock]) = clock_text(view, frame) {
-        let clock_y = status_rect.origin().y + status_rect.size().y * 0.78;
-        for (x_fraction, text) in [(0.25, white_clock), (0.75, black_clock)] {
-            builder.push(RenderCmd::Text {
-                text,
-                at: Vec2::new(
-                    status_rect.origin().x + status_rect.size().x * x_fraction,
-                    clock_y,
-                ),
-                style: TextStyleToken::LabelMd,
-                align: Align::Center,
-                max_width: None,
-                color: theme.color.on_surface_variant,
-                layer: Layer::HUD,
-                z: 1,
-            })?;
-        }
-    }
+    draw_status(&mut builder, view, frame, layout)?;
 
     if is_promotion {
         let buttons = promotion_buttons(view, local, layout);
@@ -1308,19 +1281,19 @@ fn status_text(view: &View) -> String {
     match &view.status {
         Status::Playing => {
             if view.you == Some(view.turn) {
-                format!("Your turn — {}", color_name(view.turn))
+                format!("Your turn / {}", color_name(view.turn))
             } else {
                 format!("{} to move", color_name(view.turn))
             }
         }
-        Status::Ended { outcome } => format!("Game over — {}", outcome.summary()),
+        Status::Ended { outcome } => format!("Game over / {}", outcome.summary()),
     }
 }
 
 /// Derives a presentation-only live clock from the last authoritative clock
 /// checkpoint and the current frame. It cannot alter rules state or timer
 /// scheduling; the next authoritative input replaces this estimate.
-fn clock_text(view: &View, frame: &FrameCtx) -> Option<[String; 2]> {
+fn clock_remaining(view: &View, frame: &FrameCtx) -> Option<[u64; 2]> {
     let clock = view.clock?;
     let elapsed = frame.now_ms().saturating_sub(clock.last_move_at.0);
     let charge = match clock.control {
@@ -1332,11 +1305,111 @@ fn clock_text(view: &View, frame: &FrameCtx) -> Option<[String; 2]> {
         ChessColor::White => 0,
         ChessColor::Black => 1,
     };
-    remaining[active].0 = remaining[active].0.saturating_sub(charge);
-    Some([
-        format_clock("White", remaining[0].0),
-        format_clock("Black", remaining[1].0),
-    ])
+    if matches!(view.status, Status::Playing) {
+        remaining[active].0 = remaining[active].0.saturating_sub(charge);
+    }
+    Some([remaining[0].0, remaining[1].0])
+}
+
+/// A compact tonal HUD with textual turn/low-time markers. The board and HUD
+/// have disjoint bounds; clocks are estimates, never authority (I-10/I-12).
+#[allow(clippy::float_arithmetic)]
+fn draw_status(
+    builder: &mut RenderListBuilder,
+    view: &View,
+    frame: &FrameCtx,
+    layout: BoardLayout,
+) -> Result<(), RenderListError> {
+    let rect = layout.status();
+    if rect.size().x < 120.0 || rect.size().y < 32.0 {
+        return Ok(());
+    }
+    let theme = frame.theme();
+    builder.push(RenderCmd::Rect {
+        rect,
+        radii: Corners::uniform(theme.shape.card.get().min(rect.size().y / 2.0))?,
+        fill: Some(Paint::Solid(theme.color.surface_container)),
+        border: None,
+        layer: Layer::HUD,
+        z: 0,
+    })?;
+    builder.push(RenderCmd::Text {
+        text: status_text(view),
+        at: rect.origin() + Vec2::new(rect.size().x / 2.0, 2.0),
+        style: TextStyleToken::TitleSm,
+        align: Align::Center,
+        max_width: Some(
+            tabula_design::Positive::new(rect.size().x - 16.0)
+                .map_err(|_| RenderListError::InvalidGeometry)?,
+        ),
+        color: theme.color.on_surface,
+        layer: Layer::HUD,
+        z: 1,
+    })?;
+    if rect.size().y < 80.0 {
+        return Ok(());
+    }
+    let Some(remaining) = clock_remaining(view, frame) else {
+        return Ok(());
+    };
+    let width = ((rect.size().x - 24.0) / 2.0).min(240.0);
+    let start = rect.origin().x + (rect.size().x - width * 2.0 - 8.0) / 2.0;
+    for (index, color) in [ChessColor::White, ChessColor::Black]
+        .into_iter()
+        .enumerate()
+    {
+        let active = matches!(view.status, Status::Playing) && view.turn == color;
+        let low = active && remaining[index] <= 30_000;
+        let (fill, content) = if low {
+            (theme.color.danger, theme.color.on_danger)
+        } else if active {
+            (theme.color.primary, theme.color.on_primary)
+        } else {
+            (theme.color.surface_container_high, theme.color.on_surface)
+        };
+        let x = start + if index == 0 { 0.0 } else { width + 8.0 };
+        let card = Rect::new(Vec2::new(x, rect.origin().y + 30.0), Vec2::new(width, 52.0))?;
+        builder.push(RenderCmd::Rect {
+            rect: card,
+            radii: Corners::uniform(theme.shape.button.get())?,
+            fill: Some(Paint::Solid(fill)),
+            border: None,
+            layer: Layer::HUD,
+            z: 1,
+        })?;
+        for (text, y, style) in [
+            (
+                format!(
+                    "{}{}",
+                    color_name(color),
+                    if active { " / turn" } else { "" }
+                ),
+                0.0,
+                TextStyleToken::LabelSm,
+            ),
+            (
+                format!(
+                    "{}{}",
+                    format_clock("", remaining[index]).trim(),
+                    if low { " LOW" } else { "" }
+                ),
+                19.0,
+                TextStyleToken::MonoMd,
+            ),
+        ] {
+            builder.push(RenderCmd::Text {
+                text,
+                at: card.origin() + Vec2::new(width / 2.0, y),
+                style,
+                align: Align::Center,
+                max_width: None,
+                color: content,
+                layer: Layer::HUD,
+                z: 2,
+            })?;
+        }
+    }
+    Ok(())
 }
 
 fn format_clock(color: &str, millis: u64) -> String {
@@ -1390,7 +1463,7 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
 
     if let Interaction::Promotion { from, to, selected } = local.interaction {
         description.status = format!(
-            "{} — choose promotion, {} selected",
+            "{} / choose promotion, {} selected",
             description.status,
             piece_name(selected.piece_kind())
         );
@@ -1642,8 +1715,119 @@ mod tests {
                 _ => None,
             })
             .collect::<Vec<_>>();
-        assert!(clock_labels.contains(&"White 0:58"));
-        assert!(clock_labels.contains(&"Black 2:00"));
+        assert!(clock_labels.contains(&"0:58"));
+        assert!(clock_labels.contains(&"2:00"));
+        assert_eq!(
+            scene
+                .commands()
+                .iter()
+                .filter(|cmd| matches!(cmd,
+                    RenderCmd::Text { text, style: TextStyleToken::MonoMd, .. }
+                    if text == "0:58" || text == "2:00"
+                ))
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn terminal_clock_checkpoint_does_not_keep_counting_down() {
+        let mut state = crate::State::initial();
+        state.clock = Some(crate::ClockState {
+            remaining: [Millis(29_000), Millis(120_000)],
+            last_move_at: LogicalTime::ZERO,
+            control: ClockControl::Fischer {
+                increment: Millis::ZERO,
+            },
+        });
+        let mut projected = view(&state);
+        let outcome = legal_apply(&mut state, 0, 1, Command::Resign);
+        assert!(
+            !outcome.effects.is_empty(),
+            "resignation must reach a terminal state"
+        );
+        projected.status = state.status.clone();
+        assert_eq!(
+            clock_remaining(&projected, &frame_at(640.0, 640.0, 50_000)),
+            Some([29_000, 120_000])
+        );
+    }
+
+    #[test]
+    fn clock_hud_marks_turn_and_low_time_in_text_in_every_theme() {
+        let mut state = crate::State::initial();
+        state.clock = Some(crate::ClockState {
+            remaining: [Millis(30_000), Millis(30_000)],
+            last_move_at: LogicalTime::ZERO,
+            control: ClockControl::Bronstein {
+                delay: Millis(2_000),
+            },
+        });
+        let projected = view(&state);
+        for kind in [
+            tabula_design::ThemeKind::Light,
+            tabula_design::ThemeKind::Dark,
+            tabula_design::ThemeKind::HighContrastLight,
+            tabula_design::ThemeKind::HighContrastDark,
+        ] {
+            let theme = Theme::by_kind(kind);
+            let frame = frame_with_theme(320.0, 640.0, 1_000, &theme);
+            assert_eq!(clock_remaining(&projected, &frame), Some([30_000, 30_000]));
+            let scene = ChessPresentation::present(&projected, &ChessLocal::default(), &frame);
+            assert!(scene
+                .commands()
+                .iter()
+                .any(|cmd| matches!(cmd, RenderCmd::Text { text, .. } if text == "White / turn")));
+            assert!(scene.commands().iter().any(|cmd| matches!(cmd, RenderCmd::Text { text, style: TextStyleToken::MonoMd, color, .. }
+                if text == "0:30 LOW" && *color == theme.color.on_danger)));
+            assert!(scene
+                .commands()
+                .iter()
+                .any(|cmd| matches!(cmd, RenderCmd::Text { text, .. } if text == "0:30")));
+        }
+    }
+
+    #[test]
+    fn clock_cards_fit_the_dock_at_compact_and_short_landscape_sizes() {
+        let mut state = crate::State::initial();
+        state.clock = Some(crate::ClockState {
+            remaining: [Millis(60_000), Millis(120_000)],
+            last_move_at: LogicalTime::ZERO,
+            control: ClockControl::Fischer {
+                increment: Millis::ZERO,
+            },
+        });
+        let projected = view(&state);
+        for (width, height) in [
+            (320.0, 320.0),
+            (390.0, 844.0),
+            (640.0, 240.0),
+            (768.0, 500.0),
+            (1440.0, 900.0),
+        ] {
+            let frame = frame(width, height);
+            let status = BoardLayout::from_viewport(frame.viewport()).status();
+            let scene = ChessPresentation::present(&projected, &ChessLocal::default(), &frame);
+            let cards: Vec<_> = scene
+                .commands()
+                .iter()
+                .filter_map(|cmd| match cmd {
+                    RenderCmd::Rect {
+                        rect,
+                        layer: Layer::HUD,
+                        ..
+                    } => Some(rect),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(cards.len(), 3, "dock and both clocks must remain visible");
+            for rect in cards {
+                assert!(rect.origin().cmpge(status.origin()).all());
+                assert!((rect.origin() + rect.size())
+                    .cmple(status.origin() + status.size())
+                    .all());
+            }
+        }
     }
 
     #[test]
@@ -1810,7 +1994,10 @@ mod tests {
             assert!(board.origin().x >= 0.0 && board.origin().y >= 0.0);
             assert!(board.origin().x + board.size().x <= width);
             assert!(board.origin().y + board.size().y <= height);
-            assert!(board.origin().y >= status.origin().y + status.size().y);
+            assert!(
+                board.origin().y >= status.origin().y + status.size().y
+                    || board.origin().y + board.size().y <= status.origin().y
+            );
             assert_eq!(
                 (0..64)
                     .filter_map(Square::new)
