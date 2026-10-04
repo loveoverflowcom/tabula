@@ -34,6 +34,8 @@ tempfile      = "3"
 tabula-core   = { workspace = true }
 tabula-game-api = { workspace = true }
 tabula-assets = { workspace = true }
+# `stage-mobile-game` derives the launchable game list from the catalog instead of naming games.
+tabula-registry = { workspace = true }
 tabula-testkit = { workspace = true }
 smallvec     = { workspace = true }
 tabula-presentation = { workspace = true }

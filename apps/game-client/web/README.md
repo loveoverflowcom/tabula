@@ -134,3 +134,23 @@ visual parity. Actual browser testing in the current cloud session was blocked b
 `ERR_BLOCKED_BY_CLIENT` on the supported local HTTP preview route; no alternate
 route was used to bypass that denial. Desktop/mobile/high-contrast/200%-zoom pixel
 and real keyboard/assistive-technology QA remain to be run on a permitted browser.
+
+## Hosted by the mobile app (ADR-0033)
+
+The integrated `/play/local/` document also runs inside the Android/iOS app's WebView. `host-bridge.js` is
+inert unless the native host injects `window.TabulaHostNative` (an origin-restricted port); a browser
+document never has it and behaves exactly as described above. When it is present, `bootstrap.js`:
+
+- says `hello`, waits for `init` (generation, granted capabilities, host preferences) and **starts nothing
+  before it**; silence for 5 s is a visible failure with no game fetch;
+- replaces only `theme`, `motion` and `locale` from the registry-validated launch query with the host's
+  preferences (read once; the board does not re-theme mid-game);
+- reports `ready{bootMs}`, `failed{code}` and `exit` instead of navigating, and asks for the one granted
+  service (`keep-awake`) after the board is on screen;
+- handles `suspend`/`resume` (stop and restart the frame loop; the local clock keeps wall-clock time),
+  `back-requested` (opens or dismisses its own leave confirmation) and `dispose` (retires the runtime);
+- drops any host message for another generation, after `dispose`, or outside the schema.
+
+The wire grammar is `tests/bridge-vectors.json`, run by `tests/host-bridge.test.cjs` here and by the Kotlin
+`BridgeVectorsTest` in `mobile/`. The loader (`resources.js`) is unchanged: same-origin, SHA-256 and size
+limits all still apply.

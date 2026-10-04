@@ -6,12 +6,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const launch = require("../launch-options.js");
+const hostBridge = require("../host-bridge.js");
 const {assetAlias, fixturePaths, runtimeFiles, manifestFor, mockStorage, webcrypto, until} = require("./resource-harness.cjs");
 const source = (name) => fs.readFileSync(path.join(__dirname, "..", name), "utf8");
 const media = (preferences = []) => (query) => ({matches:preferences.includes(query),addEventListener(){}});
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 function element(id) {
-  return {id,hidden:false,value:"",textContent:"",dataset:{},listeners:{},attributes:{},focus(){this.focused=true;},setAttribute(key,value){this.attributes[key]=value;},removeAttribute(key){delete this.attributes[key];},addEventListener(type,fn){(this.listeners[type] ??= []).push(fn);},dispatch(type,event={}){for(const fn of this.listeners[type]??[])fn(event);},showModal(){this.open=true;},close(){this.open=false;this.dispatch("close");}};
+  return {id,hidden:false,value:"",textContent:"",dataset:{},listeners:{},attributes:{},focus(){this.focused=true;},setAttribute(key,value){this.attributes[key]=value;},removeAttribute(key){delete this.attributes[key];},addEventListener(type,fn){(this.listeners[type] ??= []).push(fn);},dispatch(type,event={}){for(const fn of this.listeners[type]??[])fn(event);},click(){this.dispatch("click");},showModal(){this.open=true;},close(){this.open=false;this.dispatch("close");}};
 }
 function dom(html) {
   const elements = new Map([...html.matchAll(/id="([^"]+)"/g)].map((match) => [match[1],element(match[1])]));
@@ -95,7 +96,8 @@ test("untimed removes and disables timed fields; invalid values cannot navigate"
 });
 // VM mocks exercise host admission/navigation, not a real browser or WASM
 // rules execution. Deferred work deliberately ignores abort to test stale gates.
-async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=false,throwFrame=false,pinned=false,deferStage,pathname="/standalone/play.html",responseHeaders={},streamChunks,versionMismatch=false,missingFrame=false,navigationThrows=0,storage,corruptNetwork=false,missingMiniquad=false,resourceManifest,resourceFiles=runtimeFiles()}={}) {
+const hostInit=(over={})=>({v:1,type:"init",gen:7,capabilities:["keep-awake"],preferences:{theme:"dark",motion:"reduced",locale:"en"},...over});
+async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=false,throwFrame=false,pinned=false,deferStage,pathname="/standalone/play.html",responseHeaders={},streamChunks,versionMismatch=false,missingFrame=false,navigationThrows=0,storage,corruptNetwork=false,missingMiniquad=false,resourceManifest,resourceFiles=runtimeFiles(),host}={}) {
   const mock=dom(source("play.html"));
   mock.elements.get("runtime-error").hidden=true;
   const statuses=[];
@@ -150,7 +152,7 @@ async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=f
     crypto:{subtle:{async digest(algorithm,bytes){calls.digest++;if(deferStage==="digest"){blocked=true;await gate;}return webcrypto.subtle.digest(algorithm,bytes);}}},
     console:{error(){},warn(){},log(){}},window:events,plugins:[],version:2,wasm_memory:null,wasm_exports:null,
     FS:{unique_id:1,loaded_files:{}},UTF8ToString:(name)=>name,importObject:imports,animation_frame_timeout:1,
-    cancelAnimationFrame(){},clearTimeout(){},
+    cancelAnimationFrame(){},clearTimeout(){},performance:{now:()=>1234.6},
     setTimeout(fn,delay){if(delay>1000){callbacks.push(fn);return 1;}Promise.resolve().then(fn);return 2;},
     fetch:async(url,options)=>{
       fetches.push({url,options});
@@ -193,10 +195,23 @@ async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=f
     for(const name of ["wasm_memory","wasm_exports","FS","plugins","version","animation_frame_timeout","miniquad_add_plugin","register_plugins","init_plugins","importObject","animation","UTF8ToString"])delete context[name];
   }
   mock.document.hasFocus=()=>true;mock.document.visibilityState="visible";
+  const sent=[];
+  let hostPort;
+  if(host){
+    // A mock native port: records page→host JSON text and answers `hello` like a real host.
+    hostPort={postMessage(text){
+      sent.push(JSON.parse(text));
+      if(JSON.parse(text).type==="hello"&&host.init!==null)Promise.resolve().then(()=>hostPort.onmessage({data:JSON.stringify(host.init??hostInit())}));
+    },onmessage:null};
+    events.TabulaHostNative=hostPort;
+    events.TabulaHostBridge=hostBridge;
+    events.requestAnimationFrame=(fn)=>{host.frames?.push(fn);return host.frames?.length??1;};
+    if(host.init===null)blocked=true;
+  }
   vm.runInContext(`window.TabulaResourceManifest=${JSON.stringify(manifest)};\n${source("resources.js")}`,context);
   vm.runInContext(source("bootstrap.js"),context);
   await until(()=>startupComplete||blocked||!mock.elements.get("runtime-error").hidden,"bootstrap startup");
-  return {...mock,context,events,imports:context.importObject,navigation,callbacks,loaded,rustKeys,focusChanges,inputState,fetches,calls,release,rawExports,frames:()=>frames,statuses,startupFiles,startupAliases,startupComplete:()=>startupComplete};
+  return {...mock,context,events,hostPort,sent,imports:context.importObject,navigation,callbacks,loaded,rustKeys,focusChanges,inputState,fetches,calls,release,rawExports,frames:()=>frames,statuses,startupFiles,startupAliases,startupComplete:()=>startupComplete};
 }
 async function admitBoard(mock) {
   await until(()=>mock.startupComplete(),"mock Rust startup resources");
@@ -670,4 +685,134 @@ test("loading cancel and startup timeout retire cleanly with Miniquad globals de
     assert.equal(mock.calls.compile,0);
     assert.equal(mock.calls.main,0);
   }
+});
+
+// ---- Mobile GameHost bridge (ADR-0033) ------------------------------------------------
+const hostPage=()=>({search:integrated(),pathname:"/play/local/index.html"});
+const fromHost=(mock,message)=>{mock.hostPort.onmessage({data:JSON.stringify(message)});};
+const sentTypes=(mock)=>mock.sent.map((message)=>message.type);
+const launchText=async(mock)=>{
+  const id=mock.imports.env.fs_load_file("tabula-launch.txt",16);
+  await tick();
+  return new TextDecoder().decode(mock.context.FS.loaded_files[id]);
+};
+test("host mode handshakes before any game work and applies only host preferences",async()=>{
+  const mock=await runtimeHarness({...hostPage(),host:{frames:[]}});
+  assert.equal(mock.sent[0].type,"hello");
+  assert.deepEqual(mock.sent[0],{v:1,type:"hello"});
+  const args=await launchText(mock);
+  // The registry query said locale=en and no theme; the host's dark theme and reduced motion win.
+  assert.match(args,/--theme\ndark/);
+  assert.match(args,/--reduced-motion$/);
+  assert.equal(mock.context.document.documentElement.dataset.theme,"dark");
+});
+test("host silence fails closed with a bridge failure and no game fetch",async()=>{
+  const mock=await runtimeHarness({...hostPage(),host:{init:null,frames:[]}});
+  assert.equal(mock.fetches.length,0);
+  assert.equal(mock.calls.compile,0);
+  mock.callbacks[0]();
+  await until(()=>!mock.elements.get("runtime-error").hidden,"handshake timeout");
+  assert.equal(mock.fetches.length,0);
+  assert.equal(mock.elements.get("runtime-error").hidden,false);
+});
+test("ready reports bounded boot time once and requests only granted services",async()=>{
+  const mock=await runtimeHarness({...hostPage(),host:{frames:[]}});
+  await admitBoard(mock);
+  assert.deepEqual(sentTypes(mock),["hello","ready","service"]);
+  assert.deepEqual(mock.sent[1],{v:1,type:"ready",gen:7,bootMs:1235});
+  assert.deepEqual(mock.sent[2],{v:1,type:"service",gen:7,id:1,name:"keep-awake",enabled:true});
+  const refused=await runtimeHarness({...hostPage(),host:{frames:[],init:hostInit({capabilities:[]})}});
+  await admitBoard(refused);
+  assert.deepEqual(sentTypes(refused),["hello","ready"]);
+});
+test("a reply for an unknown request id or a stale generation is dropped",async()=>{
+  const mock=await runtimeHarness({...hostPage(),host:{frames:[]}});
+  await admitBoard(mock);
+  fromHost(mock,{v:1,type:"reply",gen:7,id:99,ok:true,code:"ok"});
+  fromHost(mock,{v:1,type:"suspend",gen:6});
+  mock.context.animation();
+  assert.ok(mock.frames()>0);
+  const before=mock.frames();
+  mock.context.animation();
+  assert.equal(mock.frames(),before+1,"a stale suspend must not stop drawing");
+});
+test("exit leaves through the bridge without navigation and a second exit is ignored",async()=>{
+  const mock=await runtimeHarness({...hostPage(),host:{frames:[]}});
+  await admitBoard(mock);
+  mock.elements.get("leave").dispatch("click");
+  mock.elements.get("confirm-leave").dispatch("click");
+  mock.elements.get("confirm-leave").dispatch("click");
+  assert.deepEqual(mock.navigation,[]);
+  assert.equal(sentTypes(mock).filter((type)=>type==="exit").length,1);
+  const before=mock.frames();
+  mock.context.animation();
+  assert.equal(mock.frames(),before,"a retired runtime draws nothing");
+});
+test("retry inside the host reloads the document for a fresh handshake",async()=>{
+  const mock=await runtimeHarness({...hostPage(),httpStatus:404,host:{frames:[]}});
+  assert.equal(mock.elements.get("runtime-error").hidden,false);
+  assert.equal(mock.sent.at(-1).type,"failed");
+  assert.equal(mock.sent.at(-1).code,"runtime");
+  mock.elements.get("retry").dispatch("click");
+  assert.deepEqual(mock.navigation,["reload"]);
+});
+test("graphics context loss is reported with its own code",async()=>{
+  const mock=await runtimeHarness({...hostPage(),pinned:true,host:{frames:[]}});
+  mock.elements.get("glcanvas").dispatch("webglcontextlost",{preventDefault(){}});
+  const failure=mock.sent.find((message)=>message.type==="failed");
+  assert.equal(failure.code,"graphics-context");
+  assert.ok(failure.detail.length<=200);
+});
+test("suspend stops drawing and clears input; resume restarts exactly one frame loop",async()=>{
+  const host={frames:[]};
+  const mock=await runtimeHarness({...hostPage(),host});
+  await admitBoard(mock);
+  mock.elements.get("glcanvas").dispatch("focus");
+  mock.inputState.held=true;
+  fromHost(mock,{v:1,type:"suspend",gen:7});
+  assert.equal(mock.inputState.held,false);
+  const frames=mock.frames();
+  mock.context.animation();
+  assert.equal(mock.frames(),frames,"no frame is drawn while suspended");
+  fromHost(mock,{v:1,type:"suspend",gen:7});
+  fromHost(mock,{v:1,type:"resume",gen:7});
+  fromHost(mock,{v:1,type:"resume",gen:7});
+  assert.equal(host.frames.length,1,"resume schedules one frame, repeated resume none");
+  host.frames[0]();
+  mock.context.animation();
+  assert.ok(mock.frames()>frames);
+});
+test("back routes to the leave confirmation while live, closes it on a second press, and leaves when not live",async()=>{
+  const mock=await runtimeHarness({...hostPage(),host:{frames:[]}});
+  await admitBoard(mock);
+  fromHost(mock,{v:1,type:"back-requested",gen:7});
+  assert.equal(mock.elements.get("leave-dialog").open,true);
+  assert.equal(sentTypes(mock).includes("exit"),false);
+  fromHost(mock,{v:1,type:"back-requested",gen:7});
+  assert.equal(mock.elements.get("leave-dialog").open,false);
+  const loading=await runtimeHarness({...hostPage(),deferStage:"fetch",host:{frames:[]}});
+  fromHost(loading,{v:1,type:"back-requested",gen:7});
+  assert.equal(sentTypes(loading).includes("exit"),true);
+});
+test("dispose retires the runtime; late host messages and outbound requests are dropped",async()=>{
+  const mock=await runtimeHarness({...hostPage(),host:{frames:[]}});
+  await admitBoard(mock);
+  const sentBefore=mock.sent.length;
+  fromHost(mock,{v:1,type:"dispose",gen:7});
+  fromHost(mock,{v:1,type:"resume",gen:7});
+  fromHost(mock,{v:1,type:"back-requested",gen:7});
+  mock.elements.get("leave").dispatch("click");
+  const frames=mock.frames();
+  mock.context.animation();
+  assert.equal(mock.frames(),frames);
+  assert.equal(mock.sent.length,sentBefore,"a disposed instance has no authority to speak");
+  assert.deepEqual(mock.navigation,[]);
+});
+test("a document without a native port ignores the bridge entirely",async()=>{
+  const mock=await runtimeHarness({...hostPage()});
+  assert.equal(mock.sent.length,0);
+  await admitBoard(mock);
+  mock.elements.get("leave").dispatch("click");
+  mock.elements.get("confirm-leave").dispatch("click");
+  assert.deepEqual(mock.navigation,["/games/com.tabula.chess?setup=1"]);
 });

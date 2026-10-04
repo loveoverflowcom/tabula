@@ -104,19 +104,27 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask check-no-raw-colors
 
-  # Compose Multiplatform mobile foundation (ADR-0032). Proves the shared Kotlin compiles for
-  # Android and iOS (klib), the host unit tests pass, and the debug APK assembles. It does NOT
-  # link the iOS framework or build the Xcode project (that needs a macOS runner) and runs no
-  # device or emulator.
+  # Compose Multiplatform mobile host (ADR-0032, ADR-0033). Stages the real first-party game bundle,
+  # then proves: the shared Kotlin compiles for Android and iOS (klib), the host unit tests and the
+  # desktop UI tests of the shell pass (the page there is simulated), and the debug APK assembles
+  # with the bundle packaged (the build fails if it is missing). It does NOT run an Android WebView
+  # or an emulator, and does NOT link the iOS framework or build the Xcode project (needs macOS).
   mobile:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96"
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release
+      - run: cargo xtask stage-mobile-game
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
       - working-directory: mobile
-        run: ./gradlew --console=plain :shared:testAndroidHostTest :android:assembleDebug
+        run: ./gradlew --console=plain -Ptabula.requireGameBundle=true :shared:testAndroidHostTest :previewApp:test :android:assembleDebug
       - working-directory: mobile
         run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
 

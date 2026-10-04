@@ -325,8 +325,13 @@ apps/desktop (optional):  Tauri shell evaluation spike — launcher + updater + 
 **Slice delivered ahead of the gate (ADR-0032).** The CMP project (`mobile/shared`, `mobile/android`,
 `mobile/ios`), a minimal shell with navigation, a reserved `GameHost` slot, and the generated
 Kotlin token adapter exist before the Phase 5 exit. That does **not** complete or open Phase 6.
-Everything below except those items stays gated, and the chain's later changes (WebView embedding of
-the local game, then only the host interfaces a change needs) each need their own evidence.
+Everything below except those items stays gated, and the chain's later changes each need their own evidence.
+
+**Second slice (ADR-0033).** A WebView `GameHost` for the one first-party packaged game (the ADR-0030 local
+document, served from the app bundle), a typed bridge for lifecycle, launch preferences and `keep-awake`, and
+the shared `GameSession`. **Executed:** unit, desktop-UI and packaging tests and the real document in desktop
+Chrome. **Not executed:** Android WebView, iOS WKWebView, any device — ADR-0032's embedding evidence is still owed.
+This is not a plugin system and opens no networked play, voice or further host service.
 
 **Deliverables**
 

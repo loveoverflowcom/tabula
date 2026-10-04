@@ -16,6 +16,7 @@ const HOST_FILES: &[&str] = &[
     "play.html",
     "standalone.css",
     "launch-options.js",
+    "host-bridge.js",
     "setup.js",
     "bootstrap.js",
     "resources.js",
@@ -111,7 +112,7 @@ pub fn run(args: &[String]) -> Result<WasmStageReport, WasmStageError> {
     Ok(report)
 }
 
-fn resolve_wasm_source(target_dir: &Path) -> Result<PathBuf, WasmStageError> {
+pub(crate) fn resolve_wasm_source(target_dir: &Path) -> Result<PathBuf, WasmStageError> {
     let wasm_dir = target_dir
         .join("wasm32-unknown-unknown")
         .join("wasm-release");
@@ -188,6 +189,21 @@ pub fn stage_local_bundle(
         })?;
     let candidate = temporary.path().join("bundle");
     let mut report = stage_bundle(web_src_dir, tokens_src, wasm_src, &candidate)?;
+    report.html_size = promote_integrated_entry(&candidate)?;
+    std::fs::rename(&candidate, &out_dir).map_err(|source| WasmStageError::Io {
+        src: candidate,
+        dst: out_dir.clone(),
+        source,
+    })?;
+    report.out_dir = out_dir;
+    report.host_file_count += 1;
+    Ok(report)
+}
+
+/// Turn a staged standalone bundle into the integrated `/play/local/` document: keep the
+/// standalone entry as `standalone.html`, promote the gameplay document to `index.html`
+/// and give its static no-script fallbacks a safe escape. Returns the entry's size.
+pub(crate) fn promote_integrated_entry(candidate: &Path) -> Result<u64, WasmStageError> {
     copy_file(
         &candidate.join("index.html"),
         &candidate.join("standalone.html"),
@@ -201,15 +217,7 @@ pub fn stage_local_bundle(
     let html = rewrite_quoted_attribute(&html, "href", "index.html", "href=\"/games\"");
     write_resource(&integrated_index, html.as_bytes())?;
     // play.html was validated before its references were content-versioned.
-    report.html_size = file_size(&candidate.join("index.html"))?;
-    std::fs::rename(&candidate, &out_dir).map_err(|source| WasmStageError::Io {
-        src: candidate,
-        dst: out_dir.clone(),
-        source,
-    })?;
-    report.out_dir = out_dir;
-    report.host_file_count += 1;
-    Ok(report)
+    file_size(&candidate.join("index.html"))
 }
 
 /// Stages the web host, JS bootstrap, and WASM binary into `out_dir`.
@@ -308,7 +316,7 @@ pub fn stage_bundle(
     })
 }
 
-fn remove_existing_destination(out_dir: &Path) -> Result<(), WasmStageError> {
+pub(crate) fn remove_existing_destination(out_dir: &Path) -> Result<(), WasmStageError> {
     match std::fs::symlink_metadata(out_dir) {
         Ok(_) => std::fs::remove_dir_all(out_dir).map_err(|source| WasmStageError::Io {
             src: out_dir.to_path_buf(),
@@ -371,7 +379,7 @@ fn validate_host_html(path: &Path, gameplay: bool) -> Result<(), WasmStageError>
     Ok(())
 }
 
-fn copy_file(src: &Path, dst: &Path) -> Result<(), WasmStageError> {
+pub(crate) fn copy_file(src: &Path, dst: &Path) -> Result<(), WasmStageError> {
     std::fs::copy(src, dst).map_err(|source| WasmStageError::Io {
         src: src.to_path_buf(),
         dst: dst.to_path_buf(),
@@ -380,7 +388,7 @@ fn copy_file(src: &Path, dst: &Path) -> Result<(), WasmStageError> {
     Ok(())
 }
 
-fn file_size(path: &Path) -> Result<u64, WasmStageError> {
+pub(crate) fn file_size(path: &Path) -> Result<u64, WasmStageError> {
     let metadata = std::fs::metadata(path).map_err(|source| WasmStageError::Io {
         src: path.to_path_buf(),
         dst: path.to_path_buf(),
@@ -557,6 +565,7 @@ fn stage_versioned_resources(directory: &Path) -> Result<usize, WasmStageError> 
         "resource-manifest.js",
         "resources.js",
         "launch-options.js",
+        "host-bridge.js",
         "setup.js",
         "bootstrap.js",
         "tokens.css",
@@ -918,7 +927,9 @@ mod tests {
             b"\0asm\x01\0\0\0v2"
         );
         assert!(!out_dir.path().join("stale.txt").exists());
-        assert_eq!(std::fs::read_dir(out_dir.path()).unwrap().count(), 13);
+        // Top-level entries: the HOST_FILES roots (including the host bridge), the bootstrap,
+        // WASM, tokens, manifest script and the hashed resources directory.
+        assert_eq!(std::fs::read_dir(out_dir.path()).unwrap().count(), 14);
     }
 
     #[test]

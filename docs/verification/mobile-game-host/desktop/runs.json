@@ -1,0 +1,33 @@
+{
+ "chrome": "Chrome/153.0.8010.36",
+ "note": "headless SwiftShader software GL on a developer laptop; boot = navigation start to board ready; cold = empty CacheStorage, warm = verified bytes reused; frames/second is the rAF cadence of software rendering, not a device frame-pacing measurement",
+ "runs": [
+  {
+   "run": 1,
+   "checks": 20,
+   "passed": 20,
+   "cold_boot_ms": 1426,
+   "cold_wall_ms": 1480,
+   "warm_boot_ms": 439,
+   "frames_per_second": 19
+  },
+  {
+   "run": 2,
+   "checks": 20,
+   "passed": 20,
+   "cold_boot_ms": 840,
+   "cold_wall_ms": 877,
+   "warm_boot_ms": 729,
+   "frames_per_second": 17
+  },
+  {
+   "run": 3,
+   "checks": 20,
+   "passed": 20,
+   "cold_boot_ms": 887,
+   "cold_wall_ms": 922,
+   "warm_boot_ms": 829,
+   "frames_per_second": 17
+  }
+ ]
+}

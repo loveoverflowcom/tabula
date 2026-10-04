@@ -14,6 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +31,8 @@ import com.loveoverflow.tabula.mobile.design.TabulaShape
 import com.loveoverflow.tabula.mobile.design.TabulaSpace
 import com.loveoverflow.tabula.mobile.design.TabulaText
 import com.loveoverflow.tabula.mobile.design.TabulaType
+import com.loveoverflow.tabula.mobile.host.BundledGame
+import com.loveoverflow.tabula.mobile.host.GameBackPort
 import com.loveoverflow.tabula.mobile.host.GameHost
 import com.loveoverflow.tabula.mobile.host.GameHostEvent
 import com.loveoverflow.tabula.mobile.host.GameLaunch
@@ -32,10 +40,14 @@ import com.loveoverflow.tabula.mobile.host.GameLaunch
 /** Visible copy of the shell; kept in one place until a localisation owner exists. */
 object ShellText {
     const val HomeTitle = "Tabula"
-    const val HomeStatus = "Mobile foundation. The game catalog and match flows are not connected yet."
-    const val OpenGameSlot = "Open game slot"
-    const val GameTitle = "Game"
+    const val HomeStatus = "Games packaged with this app play on this device. Online play, accounts and the full catalog are not connected."
+    const val NoGames = "This build has no packaged game. Run `cargo xtask stage-mobile-game` and rebuild."
     const val Back = "Back"
+    const val Retry = "Try again"
+    const val FailureTitle = "The game could not open"
+    const val FailureNote = "Trying again starts a new game. Local games are not saved."
+
+    fun play(name: String) = "Play $name on this device"
 }
 
 /** Screen shell: page surface, safe-area insets and a compact title (`docs/ui/screens/foundation.md`). */
@@ -75,22 +87,76 @@ fun ShellButton(label: String, filled: Boolean, onClick: () -> Unit, modifier: M
 }
 
 @Composable
-fun HomeScreen(onOpenGameSlot: () -> Unit) {
+fun HomeScreen(games: List<BundledGame>, languageTag: String, onOpen: (BundledGame) -> Unit) {
     ShellPage(ShellText.HomeTitle) {
         TabulaText(
-            ShellText.HomeStatus,
+            if (games.isEmpty()) ShellText.NoGames else ShellText.HomeStatus,
             TabulaType.bodyMd,
             color = LocalTabulaColors.current.onSurfaceVariant,
         )
-        ShellButton(ShellText.OpenGameSlot, filled = true, onClick = onOpenGameSlot, modifier = Modifier.fillMaxWidth())
+        for (game in games) {
+            ShellButton(
+                ShellText.play(game.displayName(languageTag)),
+                filled = true,
+                onClick = { onOpen(game) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
-/** Hosts the platform [GameHost] under a toolbar; the shell owns navigation, the host owns the surface. */
+/**
+ * Hosts the platform [GameHost] under a toolbar; the shell owns navigation, the host owns the surface.
+ *
+ * Back goes to the host first, so a live match shows its own leave confirmation; the shell pops
+ * only when the host does not consume it. A failure the game could not explain itself replaces
+ * the surface with a panel; **Try again** mounts a fresh host, which starts a new game.
+ */
+// The common BackHandler is experimental and deprecated in favour of NavigationEventHandler in
+// Compose Multiplatform 1.12; it is the one API available on both targets without a new dependency.
+@OptIn(ExperimentalComposeUiApi::class)
+@Suppress("DEPRECATION")
 @Composable
-fun GameScreen(launch: GameLaunch, host: GameHost, onEvent: (GameHostEvent) -> Unit, onBack: () -> Unit) {
-    ShellPage(ShellText.GameTitle) {
-        Row { ShellButton(ShellText.Back, filled = false, onClick = onBack) }
-        host.Content(launch, onEvent, Modifier.fillMaxWidth().weight(1f))
+fun GameScreen(title: String, launch: GameLaunch, host: GameHost, onLeave: () -> Unit) {
+    val back = remember { GameBackPort() }
+    var failure by remember { mutableStateOf<String?>(null) }
+    val leave = { if (!back.requestBack()) onLeave() }
+    BackHandler(enabled = true, onBack = leave)
+    ShellPage(title) {
+        Row { ShellButton(ShellText.Back, filled = false, onClick = leave) }
+        val reason = failure
+        if (reason != null) {
+            FailurePanel(reason, onRetry = { failure = null }, modifier = Modifier.fillMaxWidth().weight(1f))
+        } else {
+            // The failure panel and this branch are exclusive, so leaving the panel discards the old
+            // runtime with its composition and Try again mounts a new one. Nothing else restarts it.
+            host.Content(
+                launch = launch,
+                onEvent = { event ->
+                    when {
+                        event == GameHostEvent.Exited -> onLeave()
+                        event is GameHostEvent.Failed && !event.shownByGame -> failure = event.reason
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                back = back,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FailurePanel(reason: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalTabulaColors.current
+    Column(
+        modifier = modifier
+            .background(colors.container, RoundedCornerShape(TabulaShape.card.dp))
+            .padding(TabulaSpace.lg.dp),
+        verticalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp),
+    ) {
+        TabulaText(ShellText.FailureTitle, TabulaType.titleMd)
+        TabulaText(reason, TabulaType.bodyMd, color = colors.onSurfaceVariant)
+        TabulaText(ShellText.FailureNote, TabulaType.bodyMd, color = colors.onSurfaceVariant)
+        ShellButton(ShellText.Retry, filled = true, onClick = onRetry)
     }
 }
