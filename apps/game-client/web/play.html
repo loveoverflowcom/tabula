@@ -23,6 +23,8 @@
   <script src="resource-manifest.js"></script>
   <script src="resources.js"></script>
   <script src="launch-options.js"></script>
+  <!-- Inert unless a native mobile host injects its port (ADR-0033); a browser document never uses it. -->
+  <script src="host-bridge.js"></script>
   <!-- Only explicit launch loads manifest-listed game resources. -->
   <script src="bootstrap.js"></script>
 </body>

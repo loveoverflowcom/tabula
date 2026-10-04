@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- No permissions yet: network, microphone and notifications belong to later host changes. -->
+    <!-- No permissions: the game is served from the app bundle (no INTERNET); microphone and
+         notifications belong to later host changes. configChanges keeps a rotation or resize from
+         destroying the WebView, which would silently discard the match in progress. -->
     <application
         android:label="Tabula"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
@@ -9,6 +11,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode|density|locale|layoutDirection"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

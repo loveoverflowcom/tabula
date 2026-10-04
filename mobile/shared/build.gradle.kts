@@ -20,6 +20,10 @@ kotlin {
         withHostTest { }
     }
 
+    // The desktop JVM target exists so `:previewApp` can run and test the shared shell on a laptop
+    // (testing only, ADR-0033). It is not a product: Tabula ships Android and iOS from here.
+    jvm("desktop")
+
     // Kotlin/Native compiles iOS targets only on macOS; elsewhere Gradle skips them
     // (`kotlin.native.ignoreDisabledTargets`), so the iOS framework is NOT built on Linux.
     listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
@@ -33,9 +37,12 @@ kotlin {
         commonMain.dependencies {
             api(libs.compose.runtime)
             api(libs.compose.foundation)
+            api(libs.compose.ui.backhandler)
+            api(libs.lifecycle.runtime.compose)
         }
         androidMain.dependencies {
             api(libs.activity.compose)
+            implementation(libs.androidx.webkit)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

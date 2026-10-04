@@ -142,9 +142,12 @@ asset-delivery services and the remaining phase gates stay closed.
 **A bounded Phase 6 foundation is open on the same terms.**
 [ADR-0032](docs/adr/0032-compose-multiplatform-mobile-host.md) opens the Compose
 Multiplatform mobile project, its minimal shell and navigation, the `GameHost` interface,
-and the generated Kotlin token adapter — not Phase 6 itself. Mobile gameplay in a WebView,
-host services and voice, networked mobile play, accounts, push and the store gates stay
-closed until their own change and evidence. Kotlin and Swift own mobile UI, navigation and
+and the generated Kotlin token adapter — not Phase 6 itself.
+[ADR-0033](docs/adr/0033-webview-gamehost-first-party-embedding.md) adds a WebView `GameHost` for the
+first-party packaged game with a small typed bridge (lifecycle, launch preferences, `keep-awake`); it is
+not a plugin system, and its Android/iOS WebView execution is still NOT_RUN. Further host services and
+voice, networked mobile play, accounts, push, third-party games and the store gates stay closed until
+their own change and evidence. Kotlin and Swift own mobile UI, navigation and
 device services only; rules, projection and protocol decisions stay in Rust (ADR-001, as
 amended).
 

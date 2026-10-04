@@ -19,6 +19,12 @@
   let startupTimer;
   let boardAcknowledged = false;
   let config;
+  // Mobile GameHost (ADR-0033). The native host injects an origin-restricted port at
+  // document start; its absence means an ordinary browser document with no bridge.
+  const hostMode = typeof window.TabulaHostNative === "object" && window.TabulaHostNative !== null && Boolean(window.TabulaHostBridge);
+  let bridge = null;
+  let hostPreferences = null;
+  let suspended = false;
   const integratedEntry = /^\/play\/local\/(?:index\.html)?$/.test(location.pathname ?? "");
   let setupUrl = integratedEntry ? "/games" : location.pathname?.startsWith("/play/local/") ? "standalone.html" : "index.html";
   let returnToTabula = integratedEntry;
@@ -52,6 +58,9 @@
     if (leaving) return;
     leaving = true;
     stopRuntime();
+    // Inside a mobile host the shell owns navigation: ask it to leave and stay inert.
+    // A retry still reloads this document, which performs a fresh handshake.
+    if (hostMode && !reload) { bridge?.exit(); return; }
     try {
       if (reload) location.reload();
       else location.assign(url);
@@ -70,12 +79,13 @@
       byId("leave-detail").textContent = text.tabulaLeaveDetail;
     }
   }
-  function fail(error) {
+  function fail(error, code = "runtime") {
     if (failed || leaving) return;
     failed = true;
     ready = false;
     // A failed runtime is only restarted through an explicit document reload.
     stopRuntime();
+    bridge?.failed(code, error instanceof Error ? error.message : String(error));
     for (const id of ["leave-dialog", "help-dialog"]) if (byId(id).open) byId(id).close();
     byId("loader").hidden = true;
     byId("runtime-error").hidden = false;
@@ -124,7 +134,7 @@
       byId("leave").focus();
     }
   }, true);
-  byId("glcanvas").addEventListener("webglcontextlost", (event) => { event.preventDefault(); fail(new Error(config?.locale === "en" ? "The graphics context was lost. Return to setup or restart a new game." : "Đã mất kết nối đồ họa. Về thiết lập hoặc tải lại để bắt đầu ván mới.")); });
+  byId("glcanvas").addEventListener("webglcontextlost", (event) => { event.preventDefault(); fail(new Error(config?.locale === "en" ? "The graphics context was lost. Return to setup or restart a new game." : "Đã mất kết nối đồ họa. Về thiết lập hoặc tải lại để bắt đầu ván mới."), "graphics-context"); });
   window.addEventListener("error", (event) => fail(event.error ?? new Error(event.message)));
   window.addEventListener("unhandledrejection", (event) => fail(event.reason));
   window.addEventListener("beforeunload", (event) => { if (ready && !leaving) { event.preventDefault(); event.returnValue = ""; } });
@@ -134,6 +144,34 @@
   window.addEventListener("pageshow", (event) => {
     if (event.persisted && !live) { leaving = false; leaveDocument(null, true); }
   });
+  // Host lifecycle (ADR-0033). Suspending stops drawing and clears held input only: the
+  // local clock keeps wall-clock time exactly as for a hidden browser document (ADR-0030).
+  function suspendHost() {
+    if (!current() || suspended || leaving) return;
+    suspended = true;
+    forwardCanvasFocus(false);
+  }
+  function resumeHost() {
+    if (!current() || !suspended) return;
+    suspended = false;
+    if (!ready || failed || leaving || typeof animation === "undefined" || typeof window.requestAnimationFrame !== "function") return;
+    // Cancel the last scheduled frame first so a suspend/resume inside one tick cannot leave two loops.
+    if (typeof animation_frame_timeout !== "undefined" && animation_frame_timeout) window.cancelAnimationFrame?.(animation_frame_timeout);
+    animation_frame_timeout = window.requestAnimationFrame(animation);
+    forwardCanvasFocus(document.activeElement === byId("glcanvas"));
+  }
+  function disposeHost() {
+    leaving = true;
+    stopRuntime();
+  }
+  // The system Back gesture is routed to the page's own leave confirmation while a match
+  // is live; a loading or failed document has nothing to protect and leaves at once.
+  function requestBack() {
+    if (!current() || leaving) return;
+    if (!ready || failed) { leaveDocument(setupUrl); return; }
+    if (byId("leave-dialog").open) { byId("leave-dialog").close(); return; }
+    byId("leave").click();
+  }
   function resourceProgress(artifact) {
     return ({source, phase, received, total}) => {
       if (!current()) return;
@@ -149,6 +187,14 @@
     // Validate navigation independently so a bad gameplay option still has a
     // safe shell return. Malformed navigation falls back to the fixed catalog.
     setReturnLinks();
+    if (hostMode) {
+      // Nothing starts until the native host has answered with this document's generation,
+      // its granted capabilities and its preferences. Silence is a failure, not a default.
+      bridge = window.TabulaHostBridge.attach(window.TabulaHostNative, {suspend:suspendHost, resume:resumeHost, dispose:disposeHost, backRequested:requestBack}, {timers:{setTimeout:(callback, delay) => setTimeout(callback, delay), clearTimeout:(timer) => clearTimeout(timer)}});
+      try { hostPreferences = (await bridge.handshake()).preferences; }
+      catch (error) { fail(error, "bridge"); return; }
+      if (!current()) return;
+    }
     if (location.search.length > 4096) throw new Error("Launch configuration is too long");
     const rawQuery = new URLSearchParams(location.search);
     const locale = rawQuery.getAll("locale").length === 1 && rawQuery.get("locale") === "en" ? "en" : "vi";
@@ -162,14 +208,17 @@
     const navigation = TabulaLaunch.navigation(location.search);
     if (integratedEntry && !navigation) throw new Error("Tabula launch metadata is required for this entry");
     if (navigation) { setupUrl = navigation.returnTo; setReturnLinks(); }
-    config = TabulaLaunch.resolve(TabulaLaunch.parse(location.search), matchMedia);
+    // Host preferences replace only the three preference fields; every game option still
+    // comes from the registry-validated launch query.
+    const parsed = TabulaLaunch.parse(location.search);
+    config = TabulaLaunch.resolve(hostPreferences ? Object.freeze({...parsed, theme:hostPreferences.theme, motion:hostPreferences.motion, locale:hostPreferences.locale}) : parsed, matchMedia);
     text = config.locale === "en" ? en : vi;
     applyLanguage(config.locale);
     document.documentElement.dataset.theme = config.resolvedTheme;
     if (!returnToTabula) setupUrl = `${setupUrl}?${TabulaLaunch.query(config)}`;
     setReturnLinks();
     const launchBytes = new TextEncoder().encode(TabulaLaunch.argumentsFor(config));
-    startupTimer = setTimeout(() => fail(new Error(config.locale === "en" ? "The board did not start. Return to setup or try again." : "Bàn cờ chưa khởi động được. Về thiết lập hoặc thử lại.")), 30000);
+    startupTimer = setTimeout(() => fail(new Error(config.locale === "en" ? "The board did not start. Return to setup or try again." : "Bàn cờ chưa khởi động được. Về thiết lập hoặc thử lại."), "timeout"), 30000);
     if (!window.TabulaResources) throw new Error("The verified game resource loader is unavailable");
     const resources = window.TabulaResources.create(window.TabulaResourceManifest, {signal:controller.signal, current});
     let bytes = await resources.load("tabula-game-client.wasm", {onProgress:resourceProgress(true)});
@@ -243,7 +292,7 @@
     if (typeof wasm_exports.frame !== "function") throw new Error("The game frame export is unavailable");
     const originalAnimation = animation;
     animation = function () {
-      if (!current() || failed || leaving) return;
+      if (!current() || failed || leaving || suspended) return;
       try {
         originalAnimation();
         if (!current() || failed || leaving) return;
@@ -255,6 +304,11 @@
           byId("glcanvas").removeAttribute("aria-hidden");
           byId("glcanvas").focus();
           forwardCanvasFocus(true);
+          if (bridge) {
+            bridge.ready(performance.now());
+            // A match in progress must not sleep under the player; the host may refuse.
+            bridge.service("keep-awake", true);
+          }
         }
       } catch (error) { fail(error); }
     };
