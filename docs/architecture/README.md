@@ -4,6 +4,7 @@ Tabula is a **Rust-first, cross-platform board-game platform**: a reusable runti
 many independent board games (chess-like, card, social-deduction, tile-placement, party) are
 hosted, versioned, and deployed without modifying platform code.
 
+[The documentation index](../README.md) routes skills, UI contracts, evidence and history.
 These documents are the **architecture baseline**. A coding agent given a phase assignment
 should be able to read 2–3 of these files and implement it without re-deriving the design.
 

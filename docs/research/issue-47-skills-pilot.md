@@ -1,5 +1,8 @@
 # Issue 47: bounded local game-audit pilot
 
+> Historical execution record at the source ref below. Rediscover portfolio status at current
+> HEAD; this report and its raw log are retained together, without rerunning or rewriting results.
+
 This report applies [issue #47](https://github.com/loveoverflowcom/tabula/issues/47) to a selected
 Chess/Tiles scope. It separates SDK, rules, secrecy, replay and presentation evidence. No game
 behavior was changed and no golden was regenerated. Raw executed output, including the failed
@@ -8,7 +11,7 @@ capability probe, is retained in [the pilot log](issue-47-skills-pilot.log).
 ## Provenance and scope
 
 - Source ref: `44f6b74e07648abc7191363d7582efc1fceab262` on `develop`.
-- Dirty scope: skills, routing/docs, validation scripts/CI and comment-only references to migrated
+- Dirty scope: skills, routing/docs, validation scripts and CI, and comment-only references to migrated
   skills. Rules, fixture logic, canonical encoding and `.tbr` bytes match that source ref.
 - Working directory: `/home/manhpd/Projects/tabula`; native `x86_64-unknown-linux-gnu`,
   rustc/cargo `1.96.1`, nextest `0.9.143`. Commands below use the existing local Cargo cache offline.

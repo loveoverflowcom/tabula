@@ -37,8 +37,9 @@ uses its presentation reference; a shared rules change considers every consuming
 
 Skills are maintained only in `.agents/skills`; `.claude/skills` is a bridge to that same tree.
 [`The skill map`](.agents/skills/README.md) records workflow groups, migrated paths, and validation.
-`draft-skills/` contains historical research, not runtime instructions. Architecture doc 00 and
-ADRs retain authority over skills and phase gates.
+Draft skill essays have been retired; Git history retains their research. Architecture doc 00
+and ADRs retain authority over skills and phase gates. Use [the documentation index](docs/README.md)
+to distinguish maintained contracts from historical reports and scoped evidence.
 
 ---
 
