@@ -69,7 +69,12 @@ password managers from filling native form fields.
 
 Initial authenticated browser deployment uses **one trusted HTTPS origin** for
 app documents, `/api/v1` and `/ws`, via reverse proxy if needed. Public CDN
-assets use credential-omitting fetches and contain no account responses. Host
+assets and explicit pack fetches use `credentials: omit` and contain no account
+responses. Trusted same-origin document/bootstrap/static requests may carry the
+ambient cookie: static handlers ignore it for authority, redact it from logs,
+return account-independent public content and never set session cookies. Strip
+cookies before forwarding a static request to an external public CDN. Public
+hashed files stay cacheable; account responses never enter that cache. Host
 and proxy configuration use an explicit trusted origin; never derive it from
 untrusted `Host`/forwarded headers. Cross-origin authenticated browser API/WS
 and third-party embedding require a separate ADR; no wildcard credentialed
@@ -238,9 +243,16 @@ Browser tabs share one host cookie/account; tab-local storage is not identity
 isolation. Account switching clears old-authority connections/data in all active
 documents. Treat signed-out, authenticated, resolving, expired/revoked and unavailable as
 distinct typed dispositions. Bootstrap/context is the authority for recovery;
-cached profile/name/flags or a surviving cookie are insufficient. Before restoring
-private UI after BFCache, sleep, reload or account change, mask old data and
-revalidate; a broadcast/storage event is only a prompt to do this. A missed signal
+cached profile/name/flags or a surviving cookie are insufficient. On `pagehide`,
+synchronously mask/clear private DOM/canvas/accessibility output and retire
+pending operations/grants before potential freezing, without an awaited request
+or animation frame. On `pageshow`, keep it masked until current session/permissions
+and fresh authorized data are established; unavailable recovery stays masked.
+After sleep, reload or account change, revalidate before restoring private UI;
+a broadcast/storage event is only a prompt to do this. Real first-restored-frame
+and accessibility inspection is required: pagehide is not delivered in every
+interruption and no-store does not universally disable BFCache. An exclusion
+fallback needs verified browser-supported behavior, not an assumed header effect. A missed signal
 is handled on pageshow/focus/bootstrap. Browser JS cannot read a failed WS upgrade
 status: a socket error remains transport failure until HTTP context establishes
 auth disposition, rather than turning every network error into logout.
@@ -307,6 +319,8 @@ These establish mechanisms and threats, not Tabula's chosen timeout numbers:
 - [OWASP WebSocket Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html): cookie-authenticated upgrade origin validation, lifecycle/session checks and sensitive logging
 - [RFC 8725 JWT best practices](https://www.rfc-editor.org/rfc/rfc8725.html): pin algorithm/key and distinct issuer/audience/type validation for signed grants
 - [RFC 6455 client authentication](https://www.rfc-editor.org/rfc/rfc6455.html#section-10.5): HTTP authentication/cookies at upgrade
+- [MDN pagehide](https://developer.mozilla.org/en-US/docs/Web/API/Window/pagehide_event) and [Chrome no-store/BFCache](https://developer.chrome.com/docs/web-platform/bfcache-ccns): lifecycle limits and required real restored-frame evidence
+- [MDN request credentials](https://developer.mozilla.org/en-US/docs/Web/API/Request/credentials) and [crossorigin](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/crossorigin): default same-origin resources can carry ambient cookies
 - [MDN sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage): reload/restoration/opener behavior; tab hints are not identity isolation
 - [WHATWG WebSockets handshake](https://websockets.spec.whatwg.org/#opening-handshake): browser credentials mode and constructor/subprotocol constraints
 - [MDN Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie): HttpOnly, host-cookie requirements and browser session restoration
