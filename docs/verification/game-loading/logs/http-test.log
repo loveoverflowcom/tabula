@@ -1,0 +1,26 @@
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /play/local/resources/93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /play/local/resources/93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476.wasm HTTP/1.1" 304 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /play/local/resources/93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476.wasm?diagnostic=1 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] code 503, message Immutable resource content mismatch; rebuild local play
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /play/local/resources/93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476.wasm HTTP/1.1" 503 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] code 404, message File not found
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /play/local/resources/0000000000000000000000000000000000000000000000000000000000000000.wasm HTTP/1.1" 404 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /games/example?setup=1 HTTP/1.1" 200 -
+..127.0.0.1 - - [04/Oct/2026 16:54:36] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /games HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /games/example?setup=1 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /play/local/?source=tabula HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /play/local/game.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] code 404, message File not found
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /play/local/missing.wasm HTTP/1.1" 404 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] code 404, message File not found
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /play/local/missing.js HTTP/1.1" 404 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] code 404, message File not found
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /login HTTP/1.1" 404 -
+127.0.0.1 - - [04/Oct/2026 16:54:36] code 404, message File not found
+127.0.0.1 - - [04/Oct/2026 16:54:36] "GET /games/example/extra HTTP/1.1" 404 -
+.
+----------------------------------------------------------------------
+Ran 3 tests in 1.023s
+
+OK

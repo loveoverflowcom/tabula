@@ -186,6 +186,10 @@ impl GameModule for TilesModule {
         &CAPABILITIES
     }
 
+    fn declared_bot_levels() -> &'static [BotLevel] {
+        &[BotLevel::Trivial, BotLevel::Easy]
+    }
+
     #[cfg(any(test, feature = "bots"))]
     fn bot(level: BotLevel) -> Option<Box<dyn tabula_game_api::GameBot<TilesRules>>> {
         match level {
@@ -261,7 +265,7 @@ static CAPABILITIES: LazyLock<GameCapabilities> = LazyLock::new(|| {
             notify_rules: false,
         },
         substitution: SubstitutionPolicy::BotOnly {
-            levels: BotLevels::new(vec![BotLevel::Trivial, BotLevel::Easy])
+            levels: BotLevels::new(TilesModule::declared_bot_levels().to_vec())
                 .expect("literal levels are non-empty and unique"),
         },
         pausable: true,

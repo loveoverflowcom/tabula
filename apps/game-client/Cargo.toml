@@ -32,17 +32,25 @@ glam                = { workspace = true }
 # Phase 2 uses the game package directly; the Phase 4 registry will replace
 # this leaf dependency when the online runtime is introduced.
 tabula-game-chess   = { workspace = true, features = ["rules", "presentation"] }
-tabula-game-tiles     = { workspace = true, features = ["rules", "presentation", "bots"] }
+tabula-game-tiles     = { workspace = true, features = ["rules", "presentation", "bots"], optional = true }
 # Phase 4+
 # tabula-protocol   = { workspace = true }
 # tabula-registry   = { workspace = true }
 # tabula-net-client = { workspace = true }
 
 [features]
-default = []
+default = ["tiles"]
+# The deployed local Chess host opts out of the native multi-game leaf wiring.
+tiles  = ["dep:tabula-game-tiles"]
 # tokio only behind the native feature, for the native transport (doc 00 §8.1).
 native = []
 web    = []
+
+# Preserve the existing cross-game unit/integration/renderer-example evidence
+# under native test builds, including --no-default-features. This development
+# dependency is not part of the deployed WASM binary's normal dependency graph.
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tabula-game-tiles = { workspace = true, features = ["rules", "presentation", "bots"] }
 
 [lints]
 workspace = true

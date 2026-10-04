@@ -283,13 +283,111 @@ fn network_mode_is_unavailable_everywhere_at_this_phase() {
 }
 
 #[test]
-fn chess_links_exactly_the_bot_levels_it_builds() {
+fn catalog_preserves_the_games_declared_bot_policy_inventory() {
     let catalog = crate::catalog(&Stub::vi());
-    let chess = catalog.get(&chess_id()).expect("chess is linked");
-    assert_eq!(
-        chess.game().bot_levels(),
-        vec![BotLevel::Trivial, BotLevel::Easy]
-    );
+    for id in [chess_id(), tiles_id()] {
+        let entry = catalog.get(&id).expect("game is registered");
+        assert_eq!(
+            entry.game().bot_levels(),
+            vec![BotLevel::Trivial, BotLevel::Easy]
+        );
+    }
+}
+
+#[test]
+fn discovery_and_setup_never_construct_bot_policies() {
+    use tabula_core::SeatRoster;
+    use tabula_game_api::{ConfigError, GameCapabilities, GameMetadata, GameModule};
+    use tabula_game_tiles::{Config, TilesModule, TilesRules};
+
+    use crate::{games::tiles::TilesSetup, Adapter, ErasedGame, GameSetup};
+
+    struct CatalogOnlyModule;
+
+    impl GameModule for CatalogOnlyModule {
+        type Rules = TilesRules;
+
+        fn metadata() -> &'static GameMetadata {
+            TilesModule::metadata()
+        }
+
+        fn capabilities() -> &'static GameCapabilities {
+            TilesModule::capabilities()
+        }
+
+        fn declared_bot_levels() -> &'static [BotLevel] {
+            TilesModule::declared_bot_levels()
+        }
+
+        fn bot(_level: BotLevel) -> Option<Box<dyn tabula_game_api::GameBot<TilesRules>>> {
+            panic!("discovery/setup must never construct a bot policy")
+        }
+
+        fn validate_config(cfg: &Config, roster: &SeatRoster) -> Result<(), ConfigError> {
+            TilesModule::validate_config(cfg, roster)
+        }
+    }
+
+    struct CatalogOnlySetup;
+
+    impl GameSetup for CatalogOnlySetup {
+        type Module = CatalogOnlyModule;
+
+        fn form() -> &'static crate::ConfigForm {
+            TilesSetup::form()
+        }
+
+        fn modes() -> &'static [crate::ModeSupport] {
+            TilesSetup::modes()
+        }
+
+        fn messages(locale: crate::Locale) -> crate::Messages {
+            TilesSetup::messages(locale)
+        }
+
+        fn field_key(module_field: &str) -> Option<&'static str> {
+            TilesSetup::field_key(module_field)
+        }
+
+        fn parse(draft: &ConfigDraft) -> crate::erased::ParseResult<Self> {
+            TilesSetup::parse(draft)
+        }
+    }
+
+    let game = Adapter::<CatalogOnlySetup>::new();
+    assert_eq!(game.bot_levels(), vec![BotLevel::Trivial, BotLevel::Easy]);
+    for level in [
+        BotLevel::Trivial,
+        BotLevel::Easy,
+        BotLevel::Medium,
+        BotLevel::Hard,
+    ] {
+        let result = game.normalize(&SetupRequest {
+            mode: LaunchMode::LocalBots,
+            seats: 2,
+            bot_level: Some(level),
+            draft: draft(&[("deadline", "none")]),
+        });
+        if matches!(level, BotLevel::Trivial | BotLevel::Easy) {
+            assert!(result.is_ok(), "{level:?} is a declared policy");
+        } else {
+            assert_eq!(
+                result.unwrap_err().reason,
+                RejectionReason::Unsupported,
+                "{level:?} is not a declared policy"
+            );
+        }
+    }
+    let invalid = game
+        .normalize(&SetupRequest {
+            mode: LaunchMode::LocalBots,
+            seats: 2,
+            bot_level: Some(BotLevel::Easy),
+            draft: draft(&[("deadline", "timed"), ("deadline_seconds", "4")]),
+        })
+        .expect_err("the catalog still calls typed game config validation");
+    assert_eq!(invalid.reason, RejectionReason::ModuleField);
+    assert_eq!(invalid.field.as_deref(), Some("deadline_seconds"));
 }
 
 #[test]
@@ -451,7 +549,7 @@ fn an_unavailable_mode_cannot_be_normalized() {
 }
 
 #[test]
-fn a_bot_mode_requires_a_level_this_build_actually_links() {
+fn a_bot_mode_requires_a_level_the_package_declares() {
     let catalog = crate::catalog(&Stub::vi());
     let game = catalog.get(&tiles_id()).expect("tiles is linked").game();
 
@@ -465,27 +563,33 @@ fn a_bot_mode_requires_a_level_this_build_actually_links() {
         .expect_err("a bot mode needs a level");
     assert_eq!(missing.reason, RejectionReason::Unsupported);
 
-    let unlinked = game
+    let undeclared = game
         .normalize(&SetupRequest {
             mode: LaunchMode::LocalBots,
             seats: 2,
             bot_level: Some(BotLevel::Hard),
             draft: draft(&[("deadline", "none")]),
         })
-        .expect_err("tiles builds no Hard bot");
-    assert_eq!(unlinked.reason, RejectionReason::Unsupported);
+        .expect_err("tiles declares no Hard bot policy");
+    assert_eq!(undeclared.reason, RejectionReason::Unsupported);
 
-    let linked = game
+    let declared = game
         .normalize(&SetupRequest {
             mode: LaunchMode::LocalBots,
             seats: 2,
             bot_level: Some(BotLevel::Easy),
             draft: draft(&[("deadline", "none")]),
         })
-        .expect("tiles builds an Easy bot");
-    assert!(linked
+        .expect("tiles declares an Easy bot policy");
+    assert!(declared
         .launch_args
         .contains(&("bot".to_owned(), "easy".to_owned())));
+    assert!(declared.local_return_to.is_none());
+    assert_eq!(
+        resolve(RuntimeBinding::bound("/play"), &declared),
+        Err(UnavailableReason::NoModeRuntime),
+        "normalizing a declared policy never activates an unimplemented host"
+    );
 }
 
 #[test]
@@ -640,7 +744,7 @@ fn local_runtime_binding_cannot_redirect_to_another_origin_or_route() {
 }
 
 #[test]
-fn chess_bot_factories_do_not_advertise_an_unimplemented_local_ai_runtime() {
+fn chess_bot_descriptors_do_not_advertise_an_unimplemented_local_ai_runtime() {
     let catalog = crate::catalog(&Stub::vi());
     let game = catalog.get(&chess_id()).unwrap().game();
     assert!(!game

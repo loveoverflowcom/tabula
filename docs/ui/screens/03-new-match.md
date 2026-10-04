@@ -66,8 +66,10 @@ participants, and performs complete-roster module validation before match
 creation, as described in the shared contract and issue #55.
 
 The mode group distinguishes people sharing one device, a local bot opponent,
-and network participants. Bot choice is shown only if the linked level factory
-and launcher are confirmed; unsupported levels have no selectable value.
+and network participants. Bot choice lists only the package's declared policy
+levels for a supported setup mode; unsupported levels have no selectable value.
+The gameplay host must independently confirm its linked factory and bot runner
+before launch. Selecting or normalizing a policy never establishes that runtime.
 Network-dependent ranked/async/voice options require actual service support as
 well as declarations. No generic rating, engine-install, or engine-ready UI is
 introduced. Mic permission is not needed to browse or play an unrelated local

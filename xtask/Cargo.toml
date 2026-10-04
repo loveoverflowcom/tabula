@@ -22,6 +22,9 @@ publish.workspace       = true
 toml           = { workspace = true }
 serde          = { workspace = true }
 blake3         = { workspace = true }
+# Tooling-only SHA-256 names let the browser verify before WASM execution.
+# Pack payloads still use the existing BLAKE3 proof boundary in Rust.
+sha2           = "0.10"
 thiserror      = { workspace = true }
 # `cargo metadata --format-version 1` output, for check-deps. Tooling-only:
 # xtask is exempt from the dependency matrix (never linked into a shipped binary).

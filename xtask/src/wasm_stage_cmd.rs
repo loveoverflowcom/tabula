@@ -4,6 +4,10 @@
 //! `wasm-release` binary into a self-contained distribution directory (doc 01 §1.4).
 
 use std::path::{Path, PathBuf};
+use std::{collections::BTreeMap, fmt::Write};
+
+use serde::Serialize;
+use sha2::{Digest, Sha256};
 
 // Every resource needed by the standalone entry and gameplay documents.
 // An absent asset is a staging failure, never a silently incomplete bundle.
@@ -14,6 +18,7 @@ const HOST_FILES: &[&str] = &[
     "launch-options.js",
     "setup.js",
     "bootstrap.js",
+    "resources.js",
     "assets/chess-cover.png",
     "assets/chess-cover-small.png",
     "assets/chess-cover-provenance.md",
@@ -30,7 +35,7 @@ pub enum WasmStageError {
     #[error("failed to resolve workspace root: {0}")]
     WorkspaceRoot(#[from] cargo_metadata::Error),
 
-    #[error("expected WASM artifact is missing at {0}\nRun 'cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release' first.")]
+    #[error("expected WASM artifact is missing at {0}\nRun 'cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release' first.")]
     MissingWasmArtifact(PathBuf),
 
     #[error("expected host file is missing at {0}")]
@@ -63,6 +68,9 @@ pub enum WasmStageError {
 
     #[error("shell distribution is missing or invalid at {0}; build apps/web with TABULA_PLAY_BASE=/play first")]
     MissingShellDistribution(PathBuf),
+
+    #[error("invalid local runtime resource: {0}")]
+    InvalidResource(String),
 }
 
 /// Report summarizing successfully staged artifacts.
@@ -73,6 +81,8 @@ pub struct WasmStageReport {
     pub js_size: u64,
     pub wasm_size: u64,
     pub host_file_count: usize,
+    /// Manifest-listed WASM/font/pack payloads. These are fetched on demand.
+    pub runtime_resource_count: usize,
 }
 
 pub fn run(args: &[String]) -> Result<WasmStageReport, WasmStageError> {
@@ -89,12 +99,13 @@ pub fn run(args: &[String]) -> Result<WasmStageReport, WasmStageError> {
     let report = stage_bundle(&web_src_dir, &tokens_src, &wasm_src, &out_dir)?;
 
     println!(
-        "stage-wasm-game: staged browser host into {}\n  - index.html ({} bytes)\n  - mq_js_bundle.js ({} bytes)\n  - tabula-game-client.wasm ({} bytes)\n  - {} required host resources + canonical tokens.css",
+        "stage-wasm-game: staged browser host into {}\n  - index.html ({} bytes)\n  - mq_js_bundle.js ({} bytes)\n  - tabula-game-client.wasm ({} bytes)\n  - {} required host resources + canonical tokens.css\n  - {} manifest-listed, immutable runtime resources (loaded on demand)",
         report.out_dir.display(),
         report.html_size,
         report.js_size,
         report.wasm_size,
-        report.host_file_count
+        report.host_file_count,
+        report.runtime_resource_count
     );
 
     Ok(report)
@@ -140,9 +151,10 @@ pub fn run_local(args: &[String]) -> Result<WasmStageReport, WasmStageError> {
         &shell_dist,
     )?;
     println!(
-        "stage-local-play: staged separate gameplay document into {} ({} WASM bytes)",
+        "stage-local-play: staged separate gameplay document into {} ({} WASM bytes, {} on-demand runtime resources)",
         report.out_dir.display(),
-        report.wasm_size
+        report.wasm_size,
+        report.runtime_resource_count
     );
     Ok(report)
 }
@@ -181,7 +193,14 @@ pub fn stage_local_bundle(
         &candidate.join("standalone.html"),
     )?;
     copy_file(&candidate.join("play.html"), &candidate.join("index.html"))?;
-    validate_host_html(&candidate.join("index.html"), true)?;
+    // A missing/SRI-rejected bootstrap cannot rewrite these links. The plain
+    // integrated document must still offer a safe escape to the shell.
+    let integrated_index = candidate.join("index.html");
+    let html = String::from_utf8(read_resource(&integrated_index)?)
+        .map_err(|error| resource_error(format!("host UTF-8: {error}")))?;
+    let html = rewrite_quoted_attribute(&html, "href", "index.html", "href=\"/games\"");
+    write_resource(&integrated_index, html.as_bytes())?;
+    // play.html was validated before its references were content-versioned.
     report.html_size = file_size(&candidate.join("index.html"))?;
     std::fs::rename(&candidate, &out_dir).map_err(|source| WasmStageError::Io {
         src: candidate,
@@ -268,11 +287,10 @@ pub fn stage_bundle(
     copy_file(&js_src, &js_dst)?;
     copy_file(wasm_src, &wasm_dst)?;
 
-    validate_host_html(&html_dst, false)?;
-    validate_host_html(&staging_dir.path().join("play.html"), true)?;
+    let wasm_size = file_size(&wasm_dst)?;
+    let runtime_resource_count = stage_versioned_resources(staging_dir.path())?;
     let html_size = file_size(&html_dst)?;
     let js_size = file_size(&js_dst)?;
-    let wasm_size = file_size(&wasm_dst)?;
 
     std::fs::rename(staging_dir.path(), out_dir).map_err(|source| WasmStageError::Io {
         src: staging_dir.path().to_path_buf(),
@@ -286,6 +304,7 @@ pub fn stage_bundle(
         js_size,
         wasm_size,
         host_file_count: HOST_FILES.len(),
+        runtime_resource_count,
     })
 }
 
@@ -372,6 +391,288 @@ fn file_size(path: &Path) -> Result<u64, WasmStageError> {
         return Err(WasmStageError::EmptyStagedFile(path.to_path_buf()));
     }
     Ok(size)
+}
+
+/// A public, immutable payload admitted by the local browser host.
+/// SHA-256 protects the pre-execution boundary; pack files additionally keep
+/// their game-owned BLAKE3 identity and are verified by `load_verified` in Rust.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct WebResource {
+    url: String,
+    bytes: usize,
+    sha256: String,
+}
+
+#[derive(Serialize)]
+struct WebResourceManifest {
+    schema: u8,
+    files: BTreeMap<String, WebResource>,
+}
+
+fn resource_error(message: impl Into<String>) -> WasmStageError {
+    WasmStageError::InvalidResource(message.into())
+}
+
+fn read_resource(path: &Path) -> Result<Vec<u8>, WasmStageError> {
+    std::fs::read(path).map_err(|source| WasmStageError::Io {
+        src: path.to_path_buf(),
+        dst: path.to_path_buf(),
+        source,
+    })
+}
+
+fn write_resource(path: &Path, bytes: &[u8]) -> Result<(), WasmStageError> {
+    std::fs::write(path, bytes).map_err(|source| WasmStageError::Io {
+        src: path.to_path_buf(),
+        dst: path.to_path_buf(),
+        source,
+    })
+}
+
+fn immutable_resource(
+    directory: &Path,
+    bytes: &[u8],
+    extension: &str,
+) -> Result<WebResource, WasmStageError> {
+    if bytes.is_empty() || bytes.len() > 64 * 1024 * 1024 {
+        return Err(resource_error("payload must contain 1..64 MiB"));
+    }
+    let digest = Sha256::digest(bytes);
+    let mut sha256 = String::with_capacity(64);
+    for byte in digest {
+        write!(sha256, "{byte:02x}").expect("writing to a String cannot fail");
+    }
+    let url = format!("resources/{sha256}.{extension}");
+    write_resource(&directory.join(&url), bytes)?;
+    Ok(WebResource {
+        url,
+        bytes: bytes.len(),
+        sha256,
+    })
+}
+
+fn sri_sha256(resource: &WebResource) -> String {
+    // A fixed-size digest encoder avoids another browser-build dependency.
+    const BASE64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let bytes: Vec<u8> = resource
+        .sha256
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            let hex = std::str::from_utf8(pair).expect("SHA-256 is ASCII");
+            u8::from_str_radix(hex, 16).expect("SHA-256 was generated above")
+        })
+        .collect();
+    let mut encoded = String::from("sha256-");
+    for chunk in bytes.chunks(3) {
+        let value = u32::from(chunk[0]) << 16
+            | u32::from(*chunk.get(1).unwrap_or(&0)) << 8
+            | u32::from(*chunk.get(2).unwrap_or(&0));
+        for shift in [18, 12, 6, 0] {
+            let position = usize::try_from((value >> shift) & 63).expect("six bits fit usize");
+            encoded.push(char::from(BASE64[position]));
+        }
+        if chunk.len() < 3 {
+            encoded.pop();
+            encoded.push('=');
+        }
+        if chunk.len() == 1 {
+            let length = encoded.len();
+            encoded.replace_range(length - 2..length - 1, "=");
+        }
+    }
+    encoded
+}
+
+#[rustfmt::skip]
+fn stage_game_pack(
+    directory: &Path,
+    files: &mut BTreeMap<String, WebResource>,
+) -> Result<(), WasmStageError> {
+    // The local slice packages the existing game-owned manifest, not a second
+    // resource-selection policy or a new delivery service (ADR-0030).
+    let manifest = tabula_assets::AssetPackManifest::from_toml(
+        tabula_game_chess::presentation::assets::MANIFEST, // xtask-allow-game-id: local standalone packaging of the game-owned pack.
+    ).map_err(|error| resource_error(format!("local pack manifest: {error}")))?;
+    for file in manifest.files() {
+        let bytes = tabula_game_chess::presentation::assets::ALL_IMAGES.iter() // xtask-allow-game-id: local standalone packaging of the game-owned pack.
+            .find(|(name, _)| *name == file.name().as_str())
+            .map(|(_, bytes)| *bytes)
+            .ok_or_else(|| resource_error(format!("local pack file missing: {}", file.name())))?;
+        file.verify_bytes(bytes)
+            .map_err(|error| resource_error(format!("local pack integrity: {error}")))?;
+        files.insert(file.path().as_str().to_owned(), immutable_resource(directory, bytes, "png")?);
+    }
+    Ok(())
+}
+
+/// Version every runtime payload and every static host dependency. HTML stays
+/// mutable/no-store, with immutable script/style references (including SRI).
+/// Fixed-name diagnostic copies are retained but never referenced by the host.
+fn stage_versioned_resources(directory: &Path) -> Result<usize, WasmStageError> {
+    let resources = directory.join("resources");
+    std::fs::create_dir(&resources).map_err(|source| WasmStageError::CreateDir {
+        path: resources,
+        source,
+    })?;
+    let mut files = BTreeMap::new();
+    for (alias, extension) in [
+        ("tabula-game-client.wasm", "wasm"),
+        ("assets/OpenSans-Regular.ttf", "ttf"),
+        ("assets/OpenSans-Semibold.ttf", "ttf"),
+        ("assets/NotoSerif-Bold.ttf", "ttf"),
+    ] {
+        files.insert(
+            alias.to_owned(),
+            immutable_resource(
+                directory,
+                &read_resource(&directory.join(alias))?,
+                extension,
+            )?,
+        );
+    }
+    stage_game_pack(directory, &mut files)?;
+    if files.len() > 32 || files.values().map(|file| file.bytes).sum::<usize>() > 150 * 1024 * 1024
+    {
+        return Err(resource_error(
+            "local manifest exceeds its entry/byte budget",
+        ));
+    }
+    let runtime_resource_count = files.len();
+    let manifest = WebResourceManifest {
+        schema: 1,
+        files: files.clone(),
+    };
+    let json = serde_json::to_string(&manifest)
+        .map_err(|error| resource_error(format!("manifest serialization: {error}")))?;
+    let manifest_script = format!("window.TabulaResourceManifest={json};\n");
+    write_resource(
+        &directory.join("resource-manifest.js"),
+        manifest_script.as_bytes(),
+    )?;
+
+    let mut references = files;
+    for relative in [
+        "mq_js_bundle.js",
+        "resource-manifest.js",
+        "resources.js",
+        "launch-options.js",
+        "setup.js",
+        "bootstrap.js",
+        "tokens.css",
+        "assets/chess-cover.png", // xtask-allow-game-id: existing standalone cover packaging only.
+        "assets/chess-cover-small.png", // xtask-allow-game-id: existing standalone cover packaging only.
+    ] {
+        let extension = Path::new(relative)
+            .extension()
+            .and_then(|value| value.to_str())
+            .ok_or_else(|| resource_error("static host dependency has no extension"))?;
+        references.insert(
+            relative.to_owned(),
+            immutable_resource(
+                directory,
+                &read_resource(&directory.join(relative))?,
+                extension,
+            )?,
+        );
+    }
+    // A hashed stylesheet lives beside its fonts in resources/, so its font
+    // URLs are relative to that directory, not the mutable HTML entry.
+    let mut css = String::from_utf8(read_resource(&directory.join("standalone.css"))?)
+        .map_err(|error| resource_error(format!("stylesheet UTF-8: {error}")))?;
+    for alias in [
+        "assets/OpenSans-Regular.ttf",
+        "assets/OpenSans-Semibold.ttf",
+        "assets/NotoSerif-Bold.ttf",
+    ] {
+        css = css.replace(
+            alias,
+            references[alias].url.trim_start_matches("resources/"),
+        );
+    }
+    references.insert(
+        "standalone.css".to_owned(),
+        immutable_resource(directory, css.as_bytes(), "css")?,
+    );
+    rewrite_host_references(directory, &references)?;
+    Ok(runtime_resource_count)
+}
+
+fn rewrite_host_references(
+    directory: &Path,
+    references: &BTreeMap<String, WebResource>,
+) -> Result<(), WasmStageError> {
+    for relative in ["index.html", "play.html"] {
+        let path = directory.join(relative);
+        let mut html = String::from_utf8(read_resource(&path)?)
+            .map_err(|error| resource_error(format!("host UTF-8: {error}")))?;
+        for (alias, resource) in references {
+            match Path::new(alias)
+                .extension()
+                .and_then(|value| value.to_str())
+            {
+                Some(extension @ ("js" | "css")) => {
+                    let attribute = if extension == "js" { "src" } else { "href" };
+                    html = rewrite_attribute(&html, attribute, alias, resource);
+                    if html.contains(alias) {
+                        return Err(resource_error(format!(
+                            "unversioned host reference remains: {relative}: {alias}"
+                        )));
+                    }
+                }
+                Some("png") => html = html.replace(alias, &resource.url),
+                _ => {}
+            }
+        }
+        write_resource(&path, html.as_bytes())?;
+    }
+    Ok(())
+}
+
+/// Rewrite canonical quoted attributes, accepting both quote styles and HTML
+/// whitespace around `=`. Anything left referring to a mutable dependency is
+/// rejected above rather than silently bypassing versioning/SRI.
+fn rewrite_attribute(html: &str, attribute: &str, alias: &str, resource: &WebResource) -> String {
+    let markup = format!(
+        "{attribute}=\"{}\" integrity=\"{}\" crossorigin=\"anonymous\"",
+        resource.url,
+        sri_sha256(resource)
+    );
+    rewrite_quoted_attribute(html, attribute, alias, &markup)
+}
+
+fn rewrite_quoted_attribute(html: &str, attribute: &str, alias: &str, markup: &str) -> String {
+    let mut result = String::with_capacity(html.len());
+    let mut copied = 0;
+    let mut cursor = 0;
+    while let Some(offset) = html[cursor..].find(attribute) {
+        let start = cursor + offset;
+        cursor = start + attribute.len();
+        if !html[..start].ends_with(char::is_whitespace) {
+            continue;
+        }
+        let tail = html[cursor..].trim_start();
+        let Some(tail) = tail.strip_prefix('=') else {
+            continue;
+        };
+        let tail = tail.trim_start();
+        let Some(quote @ ('\'' | '"')) = tail.chars().next() else {
+            continue;
+        };
+        let Some(end) = tail[1..].find(quote) else {
+            continue;
+        };
+        if &tail[1..=end] != alias {
+            continue;
+        }
+        let value_end = html.len() - tail.len() + end + 2;
+        result.push_str(&html[copied..start]);
+        result.push_str(markup);
+        copied = value_end;
+        cursor = value_end;
+    }
+    result.push_str(&html[copied..]);
+    result
 }
 
 #[cfg(test)]
@@ -617,7 +918,7 @@ mod tests {
             b"\0asm\x01\0\0\0v2"
         );
         assert!(!out_dir.path().join("stale.txt").exists());
-        assert_eq!(std::fs::read_dir(out_dir.path()).unwrap().count(), 10);
+        assert_eq!(std::fs::read_dir(out_dir.path()).unwrap().count(), 13);
     }
 
     #[test]
@@ -683,6 +984,10 @@ mod tests {
         let web = tempdir().unwrap();
         let dist = tempdir().unwrap();
         write_valid_html(&web.path().join("index.html"));
+        let play = web.path().join("play.html");
+        let html = std::fs::read_to_string(&play).unwrap()
+            + "<a id=\"cancel-load\" href=\"index.html\">Return</a><a id='error-back' href = 'index.html'>Return</a>";
+        std::fs::write(&play, html).unwrap();
         std::fs::write(web.path().join("index.html"), "standalone setup").unwrap();
         std::fs::write(web.path().join("mq_js_bundle.js"), "bootstrap").unwrap();
         let wasm = web.path().join("game.wasm");
@@ -699,6 +1004,9 @@ mod tests {
         assert_eq!(report.out_dir, dist.path().join("play/local"));
         let html = std::fs::read_to_string(report.out_dir.join("index.html")).unwrap();
         assert!(html.contains("glcanvas"));
+        assert_eq!(html.matches("href=\"/games\"").count(), 2);
+        assert!(!html.contains("href=\"index.html\""));
+        assert!(!html.contains("href = 'index.html'"));
         assert_eq!(
             std::fs::read_to_string(report.out_dir.join("standalone.html")).unwrap(),
             "standalone setup"
@@ -755,5 +1063,114 @@ mod tests {
         .unwrap_err();
         assert!(matches!(error, WasmStageError::MissingShellDistribution(_)));
         assert!(!dist.path().join("play/local").exists());
+    }
+
+    #[test]
+    fn content_names_and_sri_match_a_published_sha256_vector() {
+        let directory = tempdir().unwrap();
+        std::fs::create_dir(directory.path().join("resources")).unwrap();
+        let resource = immutable_resource(directory.path(), b"abc", "wasm").unwrap();
+        assert_eq!(
+            resource.sha256,
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        assert_eq!(
+            sri_sha256(&resource),
+            "sha256-ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0="
+        );
+        assert_eq!(
+            resource,
+            immutable_resource(directory.path(), b"abc", "wasm").unwrap()
+        );
+        assert_ne!(
+            resource.url,
+            immutable_resource(directory.path(), b"abd", "wasm")
+                .unwrap()
+                .url
+        );
+        for original in [
+            "<script src='bootstrap.js'></script>",
+            "<script src = \"bootstrap.js\"></script>",
+            "<script\n src\t=\t'bootstrap.js'></script>",
+        ] {
+            let rewritten = rewrite_attribute(original, "src", "bootstrap.js", &resource);
+            assert!(rewritten.contains(&resource.url));
+            assert!(rewritten.contains("integrity=\"sha256-"));
+            assert!(!rewritten.contains("bootstrap.js"));
+        }
+        let style = rewrite_attribute(
+            "<link href = 'standalone.css'>",
+            "href",
+            "standalone.css",
+            &resource,
+        );
+        assert!(style.contains(&resource.url) && style.contains("integrity=\"sha256-"));
+    }
+
+    #[test]
+    fn staging_pins_every_runtime_payload_and_static_host_reference() {
+        let directory = tempdir().unwrap();
+        write_valid_html(&directory.path().join("index.html"));
+        let html = "<canvas id=\"glcanvas\"></canvas><script src=\"mq_js_bundle.js\"></script><script src=\"resource-manifest.js\"></script><script src=\"resources.js\"></script><script src=\"launch-options.js\"></script><script src=\"bootstrap.js\"></script><link rel=\"stylesheet\" href=\"standalone.css\">";
+        std::fs::write(directory.path().join("play.html"), html).unwrap();
+        std::fs::write(
+            directory.path().join("mq_js_bundle.js"),
+            "/* pinned bootstrap */",
+        )
+        .unwrap();
+        std::fs::write(directory.path().join("tabula-game-client.wasm"), VALID_WASM).unwrap();
+        std::fs::write(directory.path().join("tokens.css"), "/* tokens */").unwrap();
+        std::fs::write(
+            directory.path().join("standalone.css"),
+            "@font-face{src:url('assets/OpenSans-Regular.ttf')}",
+        )
+        .unwrap();
+        assert_eq!(stage_versioned_resources(directory.path()).unwrap(), 8);
+        let text = std::fs::read_to_string(directory.path().join("resource-manifest.js")).unwrap();
+        let value: serde_json::Value = serde_json::from_str(
+            text.trim_start_matches("window.TabulaResourceManifest=")
+                .trim_end_matches(";\n"),
+        )
+        .unwrap();
+        assert_eq!(value["schema"], 1);
+        let files = value["files"].as_object().unwrap();
+        assert_eq!(files.len(), 8);
+        for entry in files.values() {
+            let bytes =
+                std::fs::read(directory.path().join(entry["url"].as_str().unwrap())).unwrap();
+            assert_eq!(bytes.len() as u64, entry["bytes"].as_u64().unwrap());
+            assert_eq!(
+                format!("{:x}", Sha256::digest(&bytes)),
+                entry["sha256"].as_str().unwrap()
+            );
+        }
+        let play = std::fs::read_to_string(directory.path().join("play.html")).unwrap();
+        for alias in [
+            "mq_js_bundle.js",
+            "resource-manifest.js",
+            "resources.js",
+            "launch-options.js",
+            "bootstrap.js",
+            "standalone.css",
+        ] {
+            assert!(
+                !play.contains(&format!("=\"{alias}\"")),
+                "mutable reference: {alias}"
+            );
+        }
+        assert_eq!(play.matches("integrity=\"sha256-").count(), 6);
+        let font = files["assets/OpenSans-Regular.ttf"]["url"]
+            .as_str()
+            .unwrap();
+        let expected = font.trim_start_matches("resources/");
+        let css: Vec<_> = std::fs::read_dir(directory.path().join("resources"))
+            .unwrap()
+            .flatten()
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "css"))
+            .map(|entry| std::fs::read_to_string(entry.path()).unwrap())
+            .collect();
+        assert!(css
+            .iter()
+            .any(|css| css.contains(expected) && !css.contains("assets/OpenSans-Regular.ttf")));
     }
 }

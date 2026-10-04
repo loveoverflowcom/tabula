@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/429f9ca90843/tabula-game-loading/tools/tests/check-loading-budgets.py", line 101, in <module>
+    main()
+  File "/workspace/scratch/429f9ca90843/tabula-game-loading/tools/tests/check-loading-budgets.py", line 90, in main
+    result = {"game": game_budget(args.game_wasm, args.game_tree)}
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/429f9ca90843/tabula-game-loading/tools/tests/check-loading-budgets.py", line 37, in game_budget
+    assert result["bytes"] <= GAME_RAW_LIMIT, f"game raw size exceeds {GAME_RAW_LIMIT}: {result['bytes']}"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: game raw size exceeds 1250000: 1902364

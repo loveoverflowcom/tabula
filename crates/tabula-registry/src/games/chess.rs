@@ -141,8 +141,8 @@ const FIELDS: &[FieldSpec] = &[
 
 const FORM: ConfigForm = ConfigForm { fields: FIELDS };
 
-/// Only local hot-seat has a deployed gameplay construction path. The rules
-/// link bots, but the standalone host does not run them. Online authority still
+/// Only local hot-seat has a deployed gameplay construction path. The package
+/// declares bots, but the standalone host does not run them. Online authority still
 /// waits for its phase gate.
 const MODES: &[ModeSupport] = &[
     ModeSupport::available(LaunchMode::LocalHotSeat),

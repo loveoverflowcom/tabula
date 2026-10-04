@@ -68,7 +68,7 @@ impl LaunchMode {
 pub enum UnavailableReason {
     /// The game links no bot factory in this build.
     NoBotFactory,
-    /// A factory is linked, but no gameplay host runs that bot mode.
+    /// The package declares bot policies, but no gameplay host runs that mode.
     NoBotRuntime,
     /// No authoritative online service exists at this phase (doc 07 Phase 4).
     NoNetworkService,

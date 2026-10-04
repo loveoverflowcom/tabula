@@ -10,7 +10,6 @@
   const controller = new AbortController();
   const pendingTimers = new Set();
   const loadedFileIds = new Set();
-  const artifactLimit = 64 * 1024 * 1024;
   let live = true;
   let instanceExports = null;
   const current = () => live && window.__tabulaLocalGameHost === host;
@@ -23,8 +22,8 @@
   const integratedEntry = /^\/play\/local\/(?:index\.html)?$/.test(location.pathname ?? "");
   let setupUrl = integratedEntry ? "/games" : location.pathname?.startsWith("/play/local/") ? "standalone.html" : "index.html";
   let returnToTabula = integratedEntry;
-  const vi = {loading:"Đang mở bàn cờ…",download:"Đang tải chương trình WebAssembly",starting:"Đang khởi tạo bàn cờ",back:"Về thiết lập",retry:"Thử lại",error:"Không thể mở bàn cờ",restart:"Tải lại sẽ bắt đầu một ván mới. Ván cục bộ không được lưu",leaveTitle:"Rời ván cờ?",leaveDetail:"Ván cục bộ này không được lưu. Bạn có thể ở lại hoặc quay về thiết lập để bắt đầu ván mới",stay:"Ở lại",leave:"Rời ván cờ",help:"Trợ giúp bàn phím",helpTitle:"Điều khiển bàn cờ",helpDetail:"Chạm hoặc nhấp quân rồi ô đích. Dùng phím mũi tên để đổi ô, Enter để chọn, Escape để hủy chọn hoặc phong cấp. Tab chuyển từ ô cuối tới các nút trong ván; Shift+Tab đến nút rời ván. Trình đọc màn hình đầy đủ cho bàn cờ chưa có. Đồng hồ tiếp tục chạy khi mở hộp thoại hoặc chuyển tab; tải lại bắt đầu ván mới",closeHelp:"Về bàn cờ",tabulaBack:"Về Tabula",tabulaLeaveDetail:"Ván cục bộ này không được lưu. Về Tabula để thiết lập ván mới. Đồng hồ tiếp tục chạy khi mở hộp thoại hoặc chuyển tab"};
-  const en = {loading:"Opening your board…",download:"Downloading WebAssembly game",starting:"Starting the Chess board",back:"Back to setup",retry:"Try again",error:"Could not open the board",restart:"Reloading starts a new game. Local games are not saved",leaveTitle:"Leave this game?",leaveDetail:"This local game is not saved. Stay here or return to setup to start a new game",stay:"Stay",leave:"Leave game",help:"Keyboard help",helpTitle:"Board controls",helpDetail:"Tap or click a piece, then its destination. Use arrow keys to move focus, Enter to select, and Escape to cancel selection or promotion. Tab moves from the last square to in-game controls; Shift+Tab reaches the leave button. A complete screen-reader board is not available. Clocks keep running while dialogs are open or the tab is hidden; reloading starts a new game",closeHelp:"Back to board",tabulaBack:"Return to Tabula",tabulaLeaveDetail:"This local game is not saved. Return to Tabula to set up a new game. Clocks keep running while dialogs are open or the tab is hidden"}; // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
+  const vi = {loading:"Đang mở bàn cờ…",checking:"Đang mở tài nguyên chương trình",download:"Đang tải chương trình WebAssembly",verifying:"Đang kiểm tra chương trình WebAssembly",cacheCheck:"Đang kiểm tra chương trình WebAssembly đã lưu",cached:"Đang dùng chương trình WebAssembly đã kiểm tra",resources:"Đang mở tài nguyên bàn cờ",cacheSource:"bộ nhớ đệm đã kiểm tra",cacheCheckSource:"kiểm tra bộ nhớ đệm",networkSource:"tải từ mạng",starting:"Đang khởi tạo bàn cờ",back:"Về thiết lập",retry:"Thử lại",error:"Không thể mở bàn cờ",restart:"Tải lại sẽ bắt đầu một ván mới. Ván cục bộ không được lưu",leaveTitle:"Rời ván cờ?",leaveDetail:"Ván cục bộ này không được lưu. Bạn có thể ở lại hoặc quay về thiết lập để bắt đầu ván mới",stay:"Ở lại",leave:"Rời ván cờ",help:"Trợ giúp bàn phím",helpTitle:"Điều khiển bàn cờ",helpDetail:"Chạm hoặc nhấp quân rồi ô đích. Dùng phím mũi tên để đổi ô, Enter để chọn, Escape để hủy chọn hoặc phong cấp. Tab chuyển từ ô cuối tới các nút trong ván; Shift+Tab đến nút rời ván. Trình đọc màn hình đầy đủ cho bàn cờ chưa có. Đồng hồ tiếp tục chạy khi mở hộp thoại hoặc chuyển tab; tải lại bắt đầu ván mới",closeHelp:"Về bàn cờ",tabulaBack:"Về Tabula",tabulaLeaveDetail:"Ván cục bộ này không được lưu. Về Tabula để thiết lập ván mới. Đồng hồ tiếp tục chạy khi mở hộp thoại hoặc chuyển tab"};
+  const en = {loading:"Opening your board…",checking:"Resolving game resources",download:"Downloading WebAssembly game",verifying:"Checking WebAssembly game",cacheCheck:"Checking cached WebAssembly game",cached:"Using verified cached WebAssembly game",resources:"Opening board resource",cacheSource:"verified cache",cacheCheckSource:"checking cached bytes",networkSource:"network download",starting:"Starting the Chess board",back:"Back to setup",retry:"Try again",error:"Could not open the board",restart:"Reloading starts a new game. Local games are not saved",leaveTitle:"Leave this game?",leaveDetail:"This local game is not saved. Stay here or return to setup to start a new game",stay:"Stay",leave:"Leave game",help:"Keyboard help",helpTitle:"Board controls",helpDetail:"Tap or click a piece, then its destination. Use arrow keys to move focus, Enter to select, and Escape to cancel selection or promotion. Tab moves from the last square to in-game controls; Shift+Tab reaches the leave button. A complete screen-reader board is not available. Clocks keep running while dialogs are open or the tab is hidden; reloading starts a new game",closeHelp:"Back to board",tabulaBack:"Return to Tabula",tabulaLeaveDetail:"This local game is not saved. Return to Tabula to set up a new game. Clocks keep running while dialogs are open or the tab is hidden"}; // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
   let text = vi;
   byId("glcanvas").tabIndex = -1;
   byId("glcanvas").setAttribute("aria-hidden", "true");
@@ -33,21 +32,21 @@
     if (!live) return;
     // Cancellation clears held input before retiring exports. Rust still owns
     // local clock policy; this is document disposal, never a game pause.
-    try { if (typeof wasm_exports?.focus === "function") wasm_exports.focus(false); } catch (_) {}
+    try { if (typeof wasm_exports !== "undefined" && typeof wasm_exports?.focus === "function") wasm_exports.focus(false); } catch (_) {}
     live = false;
     controller.abort();
     clearTimeout(startupTimer);
     for (const timer of pendingTimers) clearTimeout(timer);
     pendingTimers.clear();
-    for (const id of loadedFileIds) delete FS.loaded_files[id];
+    if (typeof FS !== "undefined" && FS?.loaded_files) for (const id of loadedFileIds) delete FS.loaded_files[id];
     loadedFileIds.clear();
     if (typeof animation_frame_timeout !== "undefined") cancelAnimationFrame(animation_frame_timeout);
     window.blocking_event_loop = true;
     instanceExports = null;
-    wasm_memory = null;
+    if (typeof wasm_memory !== "undefined") wasm_memory = null;
     // Pinned DOM callbacks can still be queued during pagehide/BFCache. Their
     // admitted export wrappers become no-ops and retain no instance functions.
-    if (wasm_exports) for (const name of Object.keys(wasm_exports)) if (typeof wasm_exports[name] !== "function") wasm_exports[name] = null;
+    if (typeof wasm_exports !== "undefined" && wasm_exports) for (const name of Object.keys(wasm_exports)) if (typeof wasm_exports[name] !== "function") wasm_exports[name] = null;
   }
   function leaveDocument(url, reload = false) {
     if (leaving) return;
@@ -87,7 +86,7 @@
     console.error("Standalone Chess:", error); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
   }
   function forwardCanvasFocus(focused) {
-    if (!current() || !ready || failed || leaving || typeof wasm_exports?.focus !== "function") return;
+    if (!current() || !ready || failed || leaving || typeof wasm_exports === "undefined" || typeof wasm_exports?.focus !== "function") return;
     try {
       wasm_exports.focus(Boolean(focused && document.hasFocus() && document.visibilityState === "visible"));
     } catch (error) { fail(error); }
@@ -95,7 +94,7 @@
   byId("glcanvas").addEventListener("blur", () => forwardCanvasFocus(false));
   byId("glcanvas").addEventListener("focus", () => forwardCanvasFocus(true));
   function applyLanguage(locale) {
-    const ids = {"loading-title":"loading","loading-status":"download","cancel-load":"back","error-title":"error","restart-notice":"restart","error-back":"back","retry":"retry","leave":"back","help":"help","leave-title":"leaveTitle","leave-detail":"leaveDetail","stay":"stay","confirm-leave":"leave","help-title":"helpTitle","help-detail":"helpDetail","close-help":"closeHelp"};
+    const ids = {"loading-title":"loading","loading-status":"checking","cancel-load":"back","error-title":"error","restart-notice":"restart","error-back":"back","retry":"retry","leave":"back","help":"help","leave-title":"leaveTitle","leave-detail":"leaveDetail","stay":"stay","confirm-leave":"leave","help-title":"helpTitle","help-detail":"helpDetail","close-help":"closeHelp"};
     for (const [id, key] of Object.entries(ids)) byId(id).textContent = text[key];
     byId("keyboard-help").textContent = text.helpDetail;
     byId("glcanvas").setAttribute("aria-label", text.helpTitle);
@@ -135,47 +134,16 @@
   window.addEventListener("pageshow", (event) => {
     if (event.persisted && !live) { leaving = false; leaveDocument(null, true); }
   });
-  async function download(url, reportProgress = false) {
-    const response = await fetch(url, {signal:controller.signal, credentials:"same-origin"});
-    if (!current()) return null;
-    if (!response.ok) throw new Error(`Game download failed: HTTP ${response.status}`);
-    const advertised = Number(response.headers.get("Content-Length"));
-    const exactLength = advertised > 0 && !response.headers.get("Content-Encoding");
-    if (advertised > artifactLimit) throw new Error("Game artifact exceeds the 64 MiB host limit");
-    const progress = byId("load-progress");
-    if (reportProgress && exactLength) progress.max = advertised;
-    if (!response.body) {
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if (!current()) return null;
-      if (!bytes.byteLength || bytes.byteLength > artifactLimit) throw new Error("Invalid game artifact size");
-      return bytes;
-    }
-    const reader = response.body.getReader();
-    const chunks = [];
-    let received = 0;
-    try {
-      for (;;) {
-        const {done, value} = await reader.read();
-        if (!current()) { await reader.cancel(); return null; }
-        if (done) break;
-        received += value.byteLength;
-        if (received > artifactLimit) throw new Error("Game artifact exceeds the 64 MiB host limit");
-        chunks.push(value);
-        if (reportProgress) {
-          if (exactLength && received <= advertised) progress.value = received;
-          else progress.removeAttribute("value");
-          byId("loading-status").textContent = `${text.download} · ${(received / 1024).toFixed(0)} KiB`;
-        }
-      }
-    } catch (error) {
-      try { await reader.cancel(); } catch (_) {}
-      throw error;
-    } finally { reader.releaseLock(); }
-    if (received === 0) throw new Error("The game artifact is empty");
-    const result = new Uint8Array(received);
-    let offset = 0;
-    for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.byteLength; }
-    return result;
+  function resourceProgress(artifact) {
+    return ({source, phase, received, total}) => {
+      if (!current()) return;
+      const progress = byId("load-progress");
+      progress.max = total;
+      if (phase === "verify") progress.removeAttribute("value");
+      else progress.value = received;
+      const label = source === "cache" ? (phase === "cache-hit" ? text.cached : text.cacheCheck) : (phase === "verify" ? text.verifying : text.download);
+      byId("loading-status").textContent = artifact ? `${label} · ${(received / 1024).toFixed(0)} KiB` : `${text.resources} · ${source === "cache" ? (phase === "cache-hit" ? text.cacheSource : text.cacheCheckSource) : text.networkSource} · ${(received / 1024).toFixed(0)} KiB`;
+    };
   }
   async function start() {
     // Validate navigation independently so a bad gameplay option still has a
@@ -202,13 +170,21 @@
     setReturnLinks();
     const launchBytes = new TextEncoder().encode(TabulaLaunch.argumentsFor(config));
     startupTimer = setTimeout(() => fail(new Error(config.locale === "en" ? "The board did not start. Return to setup or try again." : "Bàn cờ chưa khởi động được. Về thiết lập hoặc thử lại.")), 30000);
-    let bytes = await download("tabula-game-client.wasm", true);
+    if (!window.TabulaResources) throw new Error("The verified game resource loader is unavailable");
+    const resources = window.TabulaResources.create(window.TabulaResourceManifest, {signal:controller.signal, current});
+    let bytes = await resources.load("tabula-game-client.wasm", {onProgress:resourceProgress(true)});
     if (!current()) return;
     byId("loading-status").textContent = text.starting;
     byId("load-progress").removeAttribute("value");
     // This is the existing Miniquad file-loading API. Rust uses the safe
     // macroquad::file::load_file("tabula-launch.txt") only on wasm32.
     miniquad_add_plugin({register_plugin(imports) {
+      // Release this host's bookkeeping when the pinned bridge consumes bytes.
+      const takeBuffer = imports.env.fs_take_buffer;
+      if (typeof takeBuffer === "function") imports.env.fs_take_buffer = function (id, pointer, length) {
+        try { return takeBuffer(id, pointer, length); }
+        finally { loadedFileIds.delete(id); }
+      };
       imports.env.fs_load_file = function (pointer, length) {
         if (!current()) return 0;
         const name = UTF8ToString(pointer, length);
@@ -229,13 +205,10 @@
           }, 0);
           pendingTimers.add(timer);
         } else {
-          // Preserve the pinned fs_load_file/file_loaded API while making asset
-          // requests cancelable and stale callbacks inadmissible. No new cache.
-          try {
-            const asset = new URL(name, location.href);
-            if (asset.origin !== location.origin || asset.username || asset.password) throw new Error("Game assets must be same-origin");
-            download(asset.href).then(deliver).catch(fail);
-          } catch (error) { fail(error); }
+          // Only explicitly requested manifest aliases cross this boundary.
+          // The loader verifies public bytes before Rust's font/file decoding;
+          // virtual configuration/readiness files never enter its cache.
+          resources.load(name, {onProgress:resourceProgress(false)}).then(deliver).catch(fail);
         }
         return id;
       };
@@ -266,7 +239,7 @@
     }
     init_plugins(plugins);
     // Fetch/compile/main are not board readiness. Reveal after an actual
-    // successful runtime frame, which includes Rust startup and embedded art.
+    // successful runtime frame, which includes verified Rust startup resources.
     if (typeof wasm_exports.frame !== "function") throw new Error("The game frame export is unavailable");
     const originalAnimation = animation;
     animation = function () {

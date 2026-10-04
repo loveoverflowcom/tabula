@@ -163,6 +163,10 @@ local discovery handoff is bounded by [ADR-0030](../adr/0030-local-discovery-gam
 `/play/local/` opens a separate existing Macroquad document, with public validated
 two-human configuration and a trusted return to detail/setup. Local return/reload
 starts over; it is neither a server identity nor saved resume or `/matches/:id`.
+The local shell never prefetches gameplay. Explicit launch loads the selected
+WASM, fonts and one nearest-density critical piece atlas; cover textures and
+other games are not required for its first board. Its bounded public-file cache
+is described in §12.2 and the [loading ledger](../verification/game-loading/README.md).
 
 ```mermaid
 sequenceDiagram
@@ -1010,7 +1014,8 @@ handle. We adopt one behind `VoiceService`, measure, and keep the option to chan
 The following diagram describes the target asset-delivery system. The pure
 manifest, identity, integrity, source-port, and deterministic pack-builder
 boundaries described in §12.2 are implemented today; concrete delivery
-adapters remain future work.
+adapters for the general CDN service remain future work. The opt-in local WASM
+host has a narrower concrete adapter and public-file cache, described below.
 
 ```mermaid
 flowchart TB
@@ -1116,12 +1121,33 @@ Implemented now:
   local host, plus presentation-only placement/preview motion. This fixture
   does not change ADR-017's production delivery policy.
 
+- the ADR-0030 local WASM host's allowlisted public-resource adapter: game-owned
+  resource declarations resolve through the existing manifest; `load_verified`
+  still checks exact size/BLAKE3 before bounded texture decode. WASM fonts and
+  artwork are external, selected only on explicit demand. Native retains its
+  tiny embedded fixtures and default multi-game binary;
+- atomic local staging generates SHA-256 content URLs for the WASM, fonts and
+  pack files, plus pinned script/style references with SRI. The host checks size
+  and SHA-256 before executing/delivering bytes. HTML remains mutable/no-store;
+- an optional local-host CacheStorage namespace, with Web Locks for concurrent
+  resource and budget operations, reverified hits, corrupt-entry refetch, and
+  file-LRU eviction. Its payloads plus bounded recency index fit 150 MiB and 32
+  entries; four concurrent loads reserve at most 64 MiB of declared payload.
+  Storage/lock absence or denial falls back to verified network loading. No
+  service worker, storage-persistence request, private configuration/state cache,
+  general pack-LRU, offline promise or native disk cache is introduced. Already
+  consumed live WASM/textures stay in their document even if the public file is
+  evicted from disk. Renderer texture residency retains its existing budget.
+
 Not implemented yet:
 
 - general atlas tooling, mipmap generation, or media conversion (the Tiles
   fixture has its own editable art generator);
-- filesystem, HTTP, or browser asset-source implementations;
-- persistent delivery cache/LRU, CDN URL/signature generation, or retry policy;
+- general filesystem/HTTP/browser asset-source implementations outside the
+  explicitly bounded local WASM host;
+- general persistent pack-cache/LRU, CDN URL/signature generation and native
+  disk delivery. The narrow local host's verified file-LRU and explicit
+  fresh-document retry do not complete that Phase-3 delivery service;
 - font/audio decoding and delivery adapters. Raster textures are implemented
   inside the renderer; `tabula-assets` remains free of decoder/GPU types.
 

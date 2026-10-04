@@ -1,10 +1,12 @@
 "use strict";
-const test = require("node:test");
+const {test:runTest} = require("node:test");
+const test = (name, body) => runTest(name, {timeout:5000}, body);
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const launch = require("../launch-options.js");
+const {assetAlias, fixturePaths, runtimeFiles, manifestFor, mockStorage, webcrypto, until} = require("./resource-harness.cjs");
 const source = (name) => fs.readFileSync(path.join(__dirname, "..", name), "utf8");
 const media = (preferences = []) => (query) => ({matches:preferences.includes(query),addEventListener(){}});
 const tick = () => new Promise((resolve) => setImmediate(resolve));
@@ -93,15 +95,22 @@ test("untimed removes and disables timed fields; invalid values cannot navigate"
 });
 // VM mocks exercise host admission/navigation, not a real browser or WASM
 // rules execution. Deferred work deliberately ignores abort to test stale gates.
-async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=false,throwFrame=false,pinned=false,deferStage,pathname="/standalone/play.html",responseHeaders={},streamChunks,versionMismatch=false,missingFrame=false,navigationThrows=0}={}) {
+async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=false,throwFrame=false,pinned=false,deferStage,pathname="/standalone/play.html",responseHeaders={},streamChunks,versionMismatch=false,missingFrame=false,navigationThrows=0,storage,corruptNetwork=false,missingMiniquad=false,resourceManifest,resourceFiles=runtimeFiles()}={}) {
   const mock=dom(source("play.html"));
   mock.elements.get("runtime-error").hidden=true;
+  const statuses=[];
+  let status="";
+  Object.defineProperty(mock.elements.get("loading-status"),"textContent",{get:()=>status,set(value){status=value;statuses.push(value);}});
   const events=element("window");
   const navigation=[];
   const callbacks=[];
   const loaded=[];
   const fetches=[];
-  const calls={compile:0,instantiate:0,main:0,cancelReader:0,releaseReader:0,navigation:0};
+  const calls={compile:0,instantiate:0,main:0,cancelReader:0,releaseReader:0,navigation:0,digest:0};
+  let blocked=false;
+  const manifest=resourceManifest??manifestFor(resourceFiles);
+  const resourceData=new Map(Object.entries(resourceFiles).map(([alias,bytes])=>[new URL(manifest.files[alias]?.url??"invalid",`https://tabula.test${pathname}`).href,bytes]));
+  const artifactUrl=new URL(manifest.files["tabula-game-client.wasm"]?.url??"invalid",`https://tabula.test${pathname}`).href;
   function navigate(target){calls.navigation++;if(navigationThrows-->0)throw new Error("Navigation blocked");navigation.push(target);}
   let release;
   const gate=new Promise(resolve=>{release=resolve;});
@@ -109,35 +118,61 @@ async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=f
   const rustKeys=[];
   const focusChanges=[];
   const inputState={held:false,dragging:false};
+  const startupAliases=["assets/OpenSans-Regular.ttf","assets/OpenSans-Semibold.ttf","assets/NotoSerif-Bold.ttf",fixturePaths[2]];
+  const startupFiles=new Map();
+  let startupComplete=false;
+  let startupPending;
+  let startupIndex=0;
+  function requestStartup(){
+    if(startupIndex===startupAliases.length){startupComplete=true;return;}
+    const alias=startupAliases[startupIndex];
+    startupPending=context.importObject.env.fs_load_file(alias,alias.length);
+  }
+  function fileLoaded(id){
+    loaded.push(id);
+    if(id===startupPending){
+      const alias=startupAliases[startupIndex];
+      if(!context.FS.loaded_files[id])throw new Error(`Startup resource was not delivered: ${alias}`);
+      startupFiles.set(alias,context.FS.loaded_files[id]);
+      delete context.FS.loaded_files[id]; // Mock Rust consumes the pinned byte buffer.
+      startupIndex++;startupPending=undefined;requestStartup();
+    }
+  }
   class Memory {}
-  const rawExports={memory:new Memory(),table:{kind:"fake-table"},crate_version:()=>versionMismatch?999:2,main(){calls.main++;},focus(value){focusChanges.push(value);if(!value){inputState.held=false;inputState.dragging=false;}},frame(){if(throwFrame)throw new Error("frame panic");frames++;},key_down:(key)=>rustKeys.push(key),key_press(){},file_loaded:id=>loaded.push(id)};
+  const rawExports={memory:new Memory(),table:{kind:"fake-table"},crate_version:()=>versionMismatch?999:2,main(){calls.main++;requestStartup();},focus(value){focusChanges.push(value);if(!value){inputState.held=false;inputState.dragging=false;}},frame(){if(throwFrame)throw new Error("frame panic");frames++;},key_down:(key)=>rustKeys.push(key),key_press(){},file_loaded:fileLoaded};
   if(missingFrame)delete rawExports.frame;
   const imports={env:{fs_load_file:()=>999}};
   const context=vm.createContext({
     document:mock.document,
     location:{search,pathname,href:`https://tabula.test${pathname}`,origin:"https://tabula.test",assign:navigate,reload:()=>navigate("reload")},
-    matchMedia:media(),TabulaLaunch:launch,URL,URLSearchParams,AbortController,TextEncoder,Uint8Array,Error,Number,Map,
+    matchMedia:media(),TabulaLaunch:launch,URL,URLSearchParams,AbortController,TextEncoder,TextDecoder,Uint8Array,Error,Number,Map,Response,
+    caches:storage?.caches,navigator:{locks:storage?.locks},
+    crypto:{subtle:{async digest(algorithm,bytes){calls.digest++;if(deferStage==="digest"){blocked=true;await gate;}return webcrypto.subtle.digest(algorithm,bytes);}}},
     console:{error(){},warn(){},log(){}},window:events,plugins:[],version:2,wasm_memory:null,wasm_exports:null,
     FS:{unique_id:1,loaded_files:{}},UTF8ToString:(name)=>name,importObject:imports,animation_frame_timeout:1,
     cancelAnimationFrame(){},clearTimeout(){},
     setTimeout(fn,delay){if(delay>1000){callbacks.push(fn);return 1;}Promise.resolve().then(fn);return 2;},
     fetch:async(url,options)=>{
       fetches.push({url,options});
-      const isArtifact=url==="tabula-game-client.wasm";
-      if((isArtifact&&deferStage==="fetch")||(!isArtifact&&deferStage==="asset"))await gate;
+      const isArtifact=url===artifactUrl;
+      const firstFontUrl=new URL(manifest.files["assets/OpenSans-Regular.ttf"]?.url??"invalid",`https://tabula.test${pathname}`).href;
+      if((isArtifact&&deferStage==="fetch")||(!isArtifact&&deferStage==="asset"&&startupComplete)||(url===firstFontUrl&&deferStage==="font")){blocked=true;await gate;}
       let chunk=0;
-      return {ok:httpStatus===200,status:httpStatus,headers:{get:key=>responseHeaders[key]??null},
-        body:streamChunks?{getReader:()=>({
-          async read(){if(deferStage==="stream")await gate;return chunk<streamChunks.length?{done:false,value:streamChunks[chunk++]}:{done:true};},
+      const expected=resourceData.get(url)??new Uint8Array();
+      const bytes=corruptNetwork?new Uint8Array(expected.length).fill(255):expected;
+      const chunks=isArtifact&&streamChunks!==undefined?streamChunks:[bytes];
+      return {ok:httpStatus===200,status:httpStatus,headers:{get:key=>responseHeaders[key]??(key==="Content-Length"?String(bytes.byteLength):null)},
+        body:{getReader:()=>({
+          async read(){if(isArtifact&&(deferStage==="stream"||deferStage==="body")){blocked=true;await gate;}return chunk<chunks.length?{done:false,value:chunks[chunk++]}:{done:true};},
           async cancel(){calls.cancelReader++;},releaseLock(){calls.releaseReader++;}
-        })}:null,
-        async arrayBuffer(){if(deferStage==="body")await gate;return new Uint8Array([0,97,115,109,1,0,0,0]).buffer;}
+        })},
+        async arrayBuffer(){throw new Error("Unbounded arrayBuffer payload reads are forbidden");}
       };
     },
     WebAssembly:{Memory,
-      compile:async()=>{calls.compile++;if(deferStage==="compile")await gate;return {};},
+      compile:async()=>{calls.compile++;if(deferStage==="compile"){blocked=true;await gate;}return {};},
       Module:{imports:()=>missingImport?[{module:"env",name:"missing"}]:[]},
-      instantiate:async()=>{calls.instantiate++;if(deferStage==="instantiate")await gate;return {exports:rawExports};}
+      instantiate:async()=>{calls.instantiate++;if(deferStage==="instantiate"){blocked=true;await gate;}return {exports:rawExports};}
     },
     miniquad_add_plugin(plugin){context.plugins.push(plugin);},
     register_plugins(plugins){for(const p of plugins)p.register_plugin(imports);},init_plugins(){},
@@ -150,13 +185,21 @@ async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=f
     mock.document.visibilityState="visible";
     events.requestAnimationFrame=()=>1;events.cancelAnimationFrame=()=>{};
     vm.runInContext(source("mq_js_bundle.js"),context);
+    const pinnedUtf8=context.UTF8ToString;
+    // Synthetic Rust supplies alias strings; real WASM supplies memory pointers.
+    context.UTF8ToString=(pointer,length)=>typeof pointer==="string"?pointer:pinnedUtf8(pointer,length);
+  }
+  if(missingMiniquad){
+    for(const name of ["wasm_memory","wasm_exports","FS","plugins","version","animation_frame_timeout","miniquad_add_plugin","register_plugins","init_plugins","importObject","animation","UTF8ToString"])delete context[name];
   }
   mock.document.hasFocus=()=>true;mock.document.visibilityState="visible";
+  vm.runInContext(`window.TabulaResourceManifest=${JSON.stringify(manifest)};\n${source("resources.js")}`,context);
   vm.runInContext(source("bootstrap.js"),context);
-  for(let i=0;i<5;i++)await tick();
-  return {...mock,context,events,imports,navigation,callbacks,loaded,rustKeys,focusChanges,inputState,fetches,calls,release,rawExports,frames:()=>frames};
+  await until(()=>startupComplete||blocked||!mock.elements.get("runtime-error").hidden,"bootstrap startup");
+  return {...mock,context,events,imports:context.importObject,navigation,callbacks,loaded,rustKeys,focusChanges,inputState,fetches,calls,release,rawExports,frames:()=>frames,statuses,startupFiles,startupAliases,startupComplete:()=>startupComplete};
 }
 async function admitBoard(mock) {
+  await until(()=>mock.startupComplete(),"mock Rust startup resources");
   mock.imports.env.fs_load_file("tabula-ready.txt",16);
   await tick();
   mock.context.animation();
@@ -169,8 +212,8 @@ test("download and initial async frames never falsely declare board readiness", 
   await tick();
   assert.ok(mock.loaded.includes(id));
   assert.match(new TextDecoder().decode(mock.context.FS.loaded_files[id]),/--skip-setup/);
-  const assetId=mock.imports.env.fs_load_file("other-asset.png",15);
-  await tick();
+  const assetId=mock.imports.env.fs_load_file(assetAlias,assetAlias.length);
+  await until(()=>mock.loaded.includes(assetId),"verified asset delivery");
   assert.ok(mock.loaded.includes(assetId));
   assert.equal(mock.context.FS.loaded_files[assetId].byteLength,8);
   const readyId=mock.imports.env.fs_load_file("tabula-ready.txt",16);
@@ -339,7 +382,7 @@ test("active host return confirms once, keeps integrated launch on retry, and re
   assert.equal(retry.context.location.search,integrated());
 });
 test("every asynchronous startup stage is stale after loading cancel or actual Back/close",async()=>{
-  for(const stage of ["fetch","body","stream","compile","instantiate"]){
+  for(const stage of ["fetch","body","stream","digest","compile","instantiate"]){
     for(const close of [false,true]){
       const mock=await runtimeHarness({search:integrated(),deferStage:stage,...(stage==="stream"?{streamChunks:[new Uint8Array([0,97,115,109,1,0,0,0])]}:{})});
       const before={...mock.calls};
@@ -351,7 +394,7 @@ test("every asynchronous startup stage is stale after loading cancel or actual B
       assert.equal(mock.calls.instantiate,before.instantiate,`${stage} began a stale instance`);
       assert.equal(mock.elements.get("runtime-error").hidden,true);
       assert.equal(mock.context.wasm_memory,null);
-      if(stage==="stream")assert.equal(mock.calls.cancelReader,1);
+      if(stage==="stream"||stage==="body")assert.equal(mock.calls.cancelReader,1);
     }
   }
 });
@@ -362,7 +405,7 @@ test("canceled unload warning retains game; actual pagehide retires input, callb
   mock.events.dispatch("beforeunload",{preventDefault(){prevented=true;}});
   assert.equal(prevented,true);
   const before=mock.frames();mock.context.animation();assert.equal(mock.frames(),before+1);
-  const pendingId=mock.imports.env.fs_load_file("other-asset.png",15);
+  const pendingId=mock.imports.env.fs_load_file(assetAlias,assetAlias.length);
   const loadedBefore=mock.loaded.length;
   mock.inputState.held=true;mock.inputState.dragging=true;
   mock.events.dispatch("pagehide",{persisted:true});
@@ -383,7 +426,7 @@ test("duplicate script starts one instance, and late readiness cannot resurrect 
   const mock=await runtimeHarness();
   vm.runInContext(source("bootstrap.js"),mock.context);
   await tick();
-  assert.equal(mock.fetches.length,1);assert.equal(mock.calls.compile,1);assert.equal(mock.calls.instantiate,1);assert.equal(mock.calls.main,1);
+  assert.equal(mock.fetches.length,5);assert.equal(mock.calls.compile,1);assert.equal(mock.calls.instantiate,1);assert.equal(mock.calls.main,1);
   const readyId=mock.imports.env.fs_load_file("tabula-ready.txt",16);
   mock.events.dispatch("pagehide");await tick();mock.context.animation();
   assert.equal(mock.loaded.includes(readyId),false);
@@ -414,7 +457,7 @@ test("oversized, empty or interrupted streamed download fails boundedly and rele
   const empty=await runtimeHarness({streamChunks:[]});
   assert.equal(empty.elements.get("runtime-error").hidden,false);assert.equal(empty.calls.compile,0);assert.equal(empty.calls.releaseReader,1);
   const compressed=await runtimeHarness({responseHeaders:{"Content-Length":"8","Content-Encoding":"gzip"},streamChunks:[new Uint8Array([0,97,115,109,1,0,0,0])]});
-  assert.equal(compressed.calls.main,1);assert.equal(compressed.elements.get("load-progress").attributes.value,undefined);
+  assert.equal(compressed.calls.main,1);assert.equal(compressed.elements.get("load-progress").max,8);
 });
 
 test("failed document navigation exposes recovery without reviving the retired runtime",async()=>{
@@ -483,5 +526,148 @@ test("integrated index and directory entries require complete handoff metadata w
   for(const pathname of ["/standalone/play.html","/play/local/play.html"]){
     const standalone=await runtimeHarness({pathname,search:""});
     assert.equal(standalone.calls.main,1);assert.equal(standalone.elements.get("runtime-error").hidden,true);
+  }
+});
+
+test("synthetic Rust startup aliases match real font declarations and selected pack manifest files",async()=>{
+  const rust=fs.readFileSync(path.join(__dirname,"../../src/main.rs"),"utf8");
+  const fontAliases=[...new Set([...rust.matchAll(/"(assets\/[A-Za-z0-9-]+\.ttf)"/g)].map(match=>match[1]))].sort();
+  const mock=await runtimeHarness();
+  assert.deepEqual(mock.startupAliases.filter(alias=>alias.endsWith(".ttf")).sort(),fontAliases);
+  assert.equal(fontAliases.length,3);
+  assert.ok(fontAliases.includes("assets/NotoSerif-Bold.ttf"));
+  assert.equal(mock.startupFiles.size,4);
+  for(const alias of mock.startupAliases)assert.deepEqual(mock.startupFiles.get(alias),runtimeFiles()[alias],alias);
+  assert.deepEqual(mock.startupAliases.filter(alias=>alias.endsWith(".png")),[fixturePaths[2]]);
+  assert.equal(mock.fetches.length,5,"only WASM, three fonts and selected pieces 1x should load");
+  assert.equal(mock.calls.digest,5);
+  const manifest=manifestFor(runtimeFiles());
+  const fetched=new Set(mock.fetches.map(({url})=>url));
+  for(const alias of [fixturePaths[0],fixturePaths[1],fixturePaths[3]])assert.equal(fetched.has(new URL(manifest.files[alias].url,mock.context.location.href).href),false,`unneeded startup file ${alias}`);
+  assert.equal(mock.elements.get("loader").hidden,false,"startup delivery is not the board-ready acknowledgement");
+  assert.equal(mock.elements.get("glcanvas").tabIndex,-1);
+  await admitBoard(mock);
+  assert.equal(mock.elements.get("loader").hidden,true);
+});
+
+test("missing startup font or selected pack aliases fail before mock Rust can acknowledge readiness",async()=>{
+  const aliases=["assets/OpenSans-Regular.ttf","assets/OpenSans-Semibold.ttf","assets/NotoSerif-Bold.ttf",fixturePaths[2]];
+  for(const alias of aliases){
+    const manifest=manifestFor(runtimeFiles());delete manifest.files[alias];
+    const mock=await runtimeHarness({resourceManifest:manifest});
+    assert.equal(mock.startupComplete(),false,alias);
+    assert.equal(mock.startupFiles.has(alias),false,alias);
+    assert.equal(mock.elements.get("runtime-error").hidden,false,alias);
+    assert.equal(mock.elements.get("glcanvas").tabIndex,-1,alias);
+    assert.match(mock.elements.get("error-detail").textContent,/not listed/);
+  }
+});
+
+test("delayed font delivery keeps loader present and a retired runtime rejects late startup assets",async()=>{
+  const mock=await runtimeHarness({deferStage:"font"});
+  assert.equal(mock.calls.main,1);
+  assert.equal(mock.startupComplete(),false);
+  mock.context.animation();
+  assert.equal(mock.elements.get("loader").hidden,false);
+  assert.equal(mock.elements.get("glcanvas").tabIndex,-1);
+  const loadedBefore=mock.loaded.length;
+  mock.events.dispatch("pagehide");mock.release();
+  await tick();await tick();
+  assert.equal(mock.loaded.length,loadedBefore);
+  assert.equal(mock.startupFiles.size,0);
+  assert.equal(mock.context.wasm_memory,null);
+});
+
+test("corrupt network WASM never compiles, and unknown same-origin file requests never fetch",async()=>{
+  const corrupt=await runtimeHarness({corruptNetwork:true});
+  assert.equal(corrupt.calls.digest,1);
+  assert.equal(corrupt.calls.compile,0);
+  assert.equal(corrupt.calls.main,0);
+  assert.equal(corrupt.elements.get("runtime-error").hidden,false);
+  const unknown=await runtimeHarness();
+  const before=unknown.fetches.length;
+  unknown.imports.env.fs_load_file("https://tabula.test/private-config.json",44);
+  await until(()=>!unknown.elements.get("runtime-error").hidden,"unlisted file failure");
+  assert.equal(unknown.fetches.length,before);
+  assert.equal(unknown.context.wasm_memory,null);
+});
+
+test("mocked warm cache reuses startup bytes across locale/theme choices but starts a fresh match",async()=>{
+  const storage=mockStorage();
+  const cold=await runtimeHarness({storage,search:"locale=en&theme=light&clock=untimed"});
+  assert.equal(cold.fetches.length,5);
+  const manifest=manifestFor(runtimeFiles());
+  const fetched=new Set(cold.fetches.map(({url})=>url));
+  for(const alias of [fixturePaths[0],fixturePaths[1],fixturePaths[3]])assert.equal(fetched.has(new URL(manifest.files[alias].url,cold.context.location.href).href),false,`unneeded startup file ${alias}`);
+  await admitBoard(cold);
+  const coldLaunch=cold.imports.env.fs_load_file("tabula-launch.txt",17);await tick();
+  const firstArguments=new TextDecoder().decode(cold.context.FS.loaded_files[coldLaunch]);
+  cold.events.dispatch("pagehide");
+  const warm=await runtimeHarness({storage,search:"locale=vi&theme=dark&clock=bronstein&initial-ms=600000&delay-ms=3000"});
+  assert.equal(warm.fetches.length,0);
+  assert.equal(warm.calls.digest,5);
+  assert.equal(warm.calls.compile,1);assert.equal(warm.calls.instantiate,1);assert.equal(warm.calls.main,1);
+  assert.notEqual(warm.rawExports.memory,cold.rawExports.memory);
+  assert.equal(warm.elements.get("loader").hidden,false);
+  const warmLaunch=warm.imports.env.fs_load_file("tabula-launch.txt",17);await tick();
+  const nextArguments=new TextDecoder().decode(warm.context.FS.loaded_files[warmLaunch]);
+  assert.notEqual(nextArguments,firstArguments);
+  assert.match(nextArguments,/--theme\ndark/);
+  assert.match(nextArguments,/--clock\nbronstein/);
+  assert.ok(warm.statuses.some(status=>status.includes("WebAssembly đã lưu")));
+  assert.ok(warm.statuses.some(status=>status.includes("WebAssembly đã kiểm tra")));
+  assert.ok(warm.statuses.every(status=>!status.includes("Đang tải chương trình WebAssembly")));
+  for(const key of storage.entries.keys())assert.doesNotMatch(key,/launch|ready|locale|theme|clock|config|match|token/);
+  await admitBoard(warm);
+  assert.equal(warm.elements.get("loader").hidden,true);
+});
+
+test("gameplay scripts load the generated manifest and verified loader before bootstrap",()=>{
+  const html=source("play.html");
+  assert.ok(html.indexOf('src="resource-manifest.js"')>=0);
+  assert.ok(html.indexOf('src="resource-manifest.js"')<html.indexOf('src="resources.js"'));
+  assert.ok(html.indexOf('src="resources.js"')<html.indexOf('src="bootstrap.js"'));
+});
+
+test("missing or SRI-rejected Miniquad globals still expose usable Error, Return and Retry",async()=>{
+  for(const search of [integrated(),integrated("fischer",{mode:"online"})]){
+    const mock=await runtimeHarness({missingMiniquad:true,pathname:"/play/local/index.html",search});
+    assert.equal("wasm_memory" in mock.context,false);
+    assert.equal("wasm_exports" in mock.context,false);
+    assert.equal("FS" in mock.context,false);
+    assert.equal(mock.elements.get("runtime-error").hidden,false);
+    assert.equal(mock.elements.get("loader").hidden,true);
+    assert.equal(mock.elements.get("error-back").focused,true);
+    assert.equal(mock.elements.get("glcanvas").tabIndex,-1);
+    assert.ok(mock.elements.get("error-detail").textContent.length>0);
+    mock.elements.get("error-back").dispatch("click",{preventDefault(){}});
+    assert.deepEqual(mock.navigation,["/games/com.tabula.chess?setup=1"]);
+    assert.equal(mock.calls.main,0);
+  }
+  const retry=await runtimeHarness({missingMiniquad:true});
+  assert.match(retry.elements.get("error-detail").textContent,/miniquad_add_plugin/);
+  retry.elements.get("retry").dispatch("click");
+  assert.deepEqual(retry.navigation,["reload"]);
+});
+
+test("loading cancel and startup timeout retire cleanly with Miniquad globals deliberately absent",async()=>{
+  for(const action of ["cancel","timeout"]){
+    const mock=await runtimeHarness({missingMiniquad:true,deferStage:"fetch",pathname:"/play/local/index.html",search:integrated()});
+    if(action==="cancel"){
+      mock.elements.get("cancel-load").dispatch("click",{preventDefault(){}});
+      assert.deepEqual(mock.navigation,["/games/com.tabula.chess?setup=1"]);
+    }else{
+      mock.callbacks[0]();
+      assert.equal(mock.elements.get("runtime-error").hidden,false);
+      assert.equal(mock.elements.get("error-back").focused,true);
+      mock.elements.get("retry").dispatch("click");
+      assert.deepEqual(mock.navigation,["reload"]);
+    }
+    assert.equal(mock.fetches[0].options.signal.aborted,true);
+    mock.release();await tick();await tick();
+    assert.equal("wasm_memory" in mock.context,false);
+    assert.equal("wasm_exports" in mock.context,false);
+    assert.equal(mock.calls.compile,0);
+    assert.equal(mock.calls.main,0);
   }
 });

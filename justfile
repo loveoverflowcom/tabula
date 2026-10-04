@@ -154,7 +154,7 @@ sqlx-prepare:
 # ------------------------------------------------------------------- builds
 
 wasm-game:
-    cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+    cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release
     cargo xtask stage-wasm-game
 
 # Serve the staged Macroquad gameplay client in a local browser.
@@ -165,7 +165,7 @@ wasm-serve port="8000": wasm-game
 # Opt-in local integration, two separate documents/bundles (ADR-0030/011).
 # Trunk's default shell-only build remains honestly unbound.
 web-local-build:
-    cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+    cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release
     cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release
     cargo xtask stage-local-play
 

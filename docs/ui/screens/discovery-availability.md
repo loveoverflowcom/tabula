@@ -18,6 +18,11 @@ Architecture [doc 00](../../architecture/00-architecture-principles.md) remains 
 > a session. Caro, Werewolf and Xiangqi are unchanged and are not in the
 > catalog.
 
+Current discovery/setup inventories `GameModule::declared_bot_levels()` without
+enabling the games' `bots` features or constructing policies. Factory parity is
+tested in bots-enabled game builds; the descriptor never proves a deployed host
+can run that mode. This does not change the historical launcher facts below.
+
 ## Availability is scoped to a launch path
 
 A manifest entry, compiled rules, a presenter, a bot factory, a working launcher, and an
@@ -77,7 +82,7 @@ Local play requires no account service or unnecessary sign-in step.
 | Manifest defaults | `game.toml` plus [check-manifests](../../../xtask/README.md) | Schema validation exists; general cross-check with compiled metadata/capabilities and generated manifest boundary do not |
 | Generated forms | [Doc 02 §10.3](../../architecture/02-game-module-and-sdk-design.md#103-what-the-developer-did-not-write) | `ConfigForm` is an experiment, not an implemented schema or generator; handwritten game forms are the documented fallback |
 
-Discovery availability, supported creation modes, setup presets, linked bot levels, service
+Discovery availability, supported creation modes, setup presets, declared bot policy levels, service
 readiness, and cache/accessibility evidence therefore require proposed typed adapters with named
 owners. They are not additions to `GameCapabilities` in this change. A future shell consumes
 registry interfaces rather than branching on `game_id` (I-9); game-specific config conversion

@@ -387,6 +387,9 @@ pub trait GameModule: Send + Sync + 'static {
     fn metadata() -> &'static GameMetadata;
     fn capabilities() -> &'static GameCapabilities;
 
+    /// Immutable package policy inventory, present without the optional bots feature.
+    fn declared_bot_levels() -> &'static [BotLevel] { &[] }
+
     /// Optional bot policies. Server-side; consumes projections only. (§6)
     fn bot(_level: BotLevel) -> Option<Box<dyn GameBot<Self::Rules>>> { None }
 
@@ -398,6 +401,12 @@ pub trait GameModule: Send + Sync + 'static {
     ) -> Result<(), ConfigError>;
 }
 ```
+
+Discovery/setup consumes `declared_bot_levels()` without constructing or linking
+bot policies. With the game's `bots` feature enabled, tests enumerate all four
+levels and require that declaration to match its factory inventory. A declaration
+does not establish that the selected gameplay host has linked a factory or runs a
+bot mode; the host/launch adapter must confirm that independently.
 
 Client-side presentation is a **separate trait in a separate crate** so the server never links it:
 

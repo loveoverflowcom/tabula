@@ -12,7 +12,7 @@ The standalone distribution below remains separate and unchanged in purpose.
 ## Build and serve
 
 ```bash
-cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release
 cargo xtask stage-wasm-game
 just wasm-serve
 ```
@@ -27,6 +27,25 @@ styles, cover exports, fonts/licenses/provenance and compiled WASM into
 `target/tabula-web-game`. It copies generated `apps/web/style/tokens.css`
 byte-for-byte. Any missing or empty required resource fails staging and invalidates
 the previous output. Run `cargo xtask gen-tokens` when authored tokens change.
+
+Staging also generates an exact public-resource manifest and SHA-256 URLs. The
+served HTML pins its script/styles with content names and SRI. The fixed-name
+copies are diagnostic compatibility output, never runtime fetch targets. The
+host downloads only the selected WASM, three fonts and one critical piece atlas;
+the loading/recovery UI uses system fonts and no hero image. Cover textures are
+not needed when the host passes `--skip-setup`. Another piece density is fetched
+only after a real DPI-tier change. Native builds keep their default game set.
+
+The optional CacheStorage cache rechecks SHA-256/size on every hit and serializes
+resource and budget work using Web Locks. Public payloads plus a bounded 32 KiB
+index fit 150 MiB/32 entries. Private arguments, roles, identities and match state
+are never stored. Storage/lock denial or absence falls back to verified network
+loading. WebCrypto SHA-256 in a secure context and readable streaming response
+bodies are required; non-streaming payloads fail before whole-body buffering.
+No service worker, persistent-storage
+permission or offline guarantee is added. See the
+[loading ledger](../../../docs/verification/game-loading/README.md) for actual
+emitted sizes, test scope and the outstanding real-browser cache/timing checks.
 
 ## URL configuration
 
@@ -65,7 +84,8 @@ the pinned upstream bootstrap itself is unchanged. File-loaded callbacks are
 asynchronous; failures expose the recovery UI. The loading screen
 is dismissed only after the ready acknowledgement and a successful runtime frame,
 not after download, compile, `main()` or an async startup frame. Download reports
-actual received bytes; unknown/compressed lengths use an indeterminate progress bar.
+actual received bytes against the manifest's decoded size, including compressed
+responses. A cache hit is labelled as reverified cached bytes, never a download.
 Missing HTTP artifacts, missing imports, bootstrap-version mismatch, runtime
 exceptions, startup timeout and WebGL context loss have explicit recovery.
 
@@ -98,11 +118,13 @@ do not prove real browser BFCache behavior or total heap/GPU reclamation.
 ## Focused checks
 
 ```bash
-node --test apps/game-client/web/tests/standalone.test.cjs
+node --test apps/game-client/web/tests/*.test.cjs
 cargo test -p xtask wasm_stage_cmd
 cargo test -p xtask --test wasm_stage_cli
 cargo xtask check-no-raw-colors
 cargo xtask check-no-game-ids
+python3 tools/test_serve_local_shell.py
+python3 tools/tests/check-loading-budgets.py --game-wasm target/wasm32-unknown-unknown/wasm-release/tabula-game-client.wasm
 ```
 
 The Node tests execute bounded configuration parsing, mocked setup/navigation and

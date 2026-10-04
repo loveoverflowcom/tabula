@@ -19,9 +19,10 @@ mod standalone_setup;
 use clock_options::{LocalClockControl, LocalClockOptions};
 use macroquad::prelude as mq;
 use renderer_macroquad::{MacroquadAudioSink, MacroquadRenderer};
+#[cfg(feature = "tiles")] // xtask-allow-game-id: optional Phase 3 local vertical slice wiring.
+use tabula_core::BotLevel;
 use tabula_core::{
-    BotLevel, DetRng, InputIndex, MatchSeed, Millis, Occupant, SeatEntry, SeatId, SeatRoster,
-    UserId, Viewer,
+    DetRng, InputIndex, MatchSeed, Millis, Occupant, SeatEntry, SeatId, SeatRoster, UserId, Viewer,
 };
 use tabula_game_api::{GameBot, GameModule, GameRules};
 #[rustfmt::skip]
@@ -29,11 +30,13 @@ use tabula_game_chess::{ // xtask-allow-game-id: direct Phase 2 local vertical s
     presentation::ChessPresentation, ChessRules, ClockConfig, ClockControl, Config as ChessConfig,
 };
 use tabula_game_client::{
+    fixture_assets::{LocalAssetScene, LocalSpriteResources},
     resolve_display_geometry,
     runtime_ui::{parse_local_theme, FeedbackInput, LocalFeedback},
     LocalMatch,
 };
 #[rustfmt::skip]
+#[cfg(feature = "tiles")] // xtask-allow-game-id: optional Phase 3 local vertical slice wiring.
 use tabula_game_tiles::{ // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
     presentation::{fixture, TilesPresentation},
     rules::{MAX_SEATS as MAX_PLACEMENT_SEATS, MIN_SEATS as MIN_PLACEMENT_SEATS},
@@ -45,6 +48,7 @@ use tabula_presentation::{AudioSink, GamePresentation, Renderer};
 enum SelectedGame {
     #[default]
     Chess, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+    #[cfg(feature = "tiles")] // xtask-allow-game-id: optional Phase 3 local vertical slice wiring.
     Tiles, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
 }
 
@@ -70,18 +74,23 @@ fn window_conf() -> mq::Conf {
 }
 
 #[macroquad::main(window_conf)]
+#[rustfmt::skip]
 async fn main() {
-    let mut renderer = MacroquadRenderer::new();
     let mut audio = MacroquadAudioSink::new();
-    if let Err(error) = renderer.set_builtin_font_bytes(
-        include_bytes!("../../../assets/fonts/OpenSans-Regular.ttf"),
-        include_bytes!("../../../assets/fonts/OpenSans-Semibold.ttf"),
-        include_bytes!("../../../assets/fonts/NotoSerif-Bold.ttf"),
-    ) {
-        macroquad::logging::error!("{error:?}");
-    }
     let options = parse_options().await;
     let theme = tabula_design::Theme::by_kind(options.theme);
+    let mut renderer = loop {
+        let mut candidate = MacroquadRenderer::new();
+        match load_builtin_fonts(&mut candidate).await {
+            Ok(()) => break candidate,
+            Err(error) => {
+                macroquad::logging::error!("{error}");
+                show_asset_failure(&mut candidate, &theme, &error).await;
+                // Font replacement after drawing is forbidden by the renderer.
+                // Retry on a fresh renderer before any match has been created.
+            }
+        }
+    };
 
     // The only place a game is named. Each arm is a one-liner so rustfmt keeps
     // its trailing comment, which is what lets it carry its own I-9
@@ -89,11 +98,51 @@ async fn main() {
     loop {
         match options.game {
             SelectedGame::Chess => run_chess(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+            #[cfg(feature = "tiles")] // xtask-allow-game-id: optional Phase 3 local vertical slice wiring.
             SelectedGame::Tiles => run_tiles(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
         }
         // A completed or stopped session returns only after New local game.
         // activation. Reconstruct the match, local state, clocks and bot RNG.
     }
+}
+
+/// Brand fonts use bounded external aliases on WASM and embedded bytes on native.
+#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
+async fn load_builtin_fonts(renderer: &mut MacroquadRenderer) -> Result<(), String> {
+    #[cfg(not(target_arch = "wasm32"))]
+    let (text, strong, display) = (
+        include_bytes!("../../../assets/fonts/OpenSans-Regular.ttf").as_slice(),
+        include_bytes!("../../../assets/fonts/OpenSans-Semibold.ttf").as_slice(),
+        include_bytes!("../../../assets/fonts/NotoSerif-Bold.ttf").as_slice(),
+    );
+    #[cfg(target_arch = "wasm32")]
+    let (text, strong, display) = {
+        let mut fonts = Vec::with_capacity(3);
+        for path in [
+            "assets/OpenSans-Regular.ttf",
+            "assets/OpenSans-Semibold.ttf",
+            "assets/NotoSerif-Bold.ttf",
+        ] {
+            let bytes = mq::load_file(path)
+                .await
+                .map_err(|error| format!("font load {path}: {error}"))?;
+            if bytes.is_empty() || bytes.len() > 256 * 1024 {
+                return Err(format!("font load {path}: invalid bounded size"));
+            }
+            fonts.push(bytes);
+        }
+        let mut fonts = fonts.into_iter();
+        (
+            fonts.next().expect("three declared fonts"),
+            fonts.next().expect("three declared fonts"),
+            fonts.next().expect("three declared fonts"),
+        )
+    };
+    #[cfg(target_arch = "wasm32")]
+    let (text, strong, display) = (text.as_slice(), strong.as_slice(), display.as_slice());
+    renderer
+        .set_builtin_font_bytes(text, strong, display)
+        .map_err(|error| format!("built-in fonts: {error:?}"))
 }
 
 #[rustfmt::skip]
@@ -103,19 +152,37 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
     theme: &tabula_design::Theme,
     mut options: Options,
 ) {
-    if let Err(error) = tabula_game_client::fixture_assets::preload_named_sprite_fixture(
-        renderer,
+    let resources = LocalSpriteResources::new(
         tabula_game_chess::presentation::assets::MANIFEST, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
         tabula_game_chess::ChessModule::metadata().id(), // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
         &ChessPresentation::asset_pack(),
+        tabula_game_chess::presentation::assets::setup_resources(), // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+        tabula_game_chess::presentation::assets::gameplay_resources(), // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+    );
+    let resources = match resources {
+        Ok(resources) => resources,
+        Err(error) => {
+            show_asset_failure(renderer, theme, &error).await;
+            return;
+        }
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    let resources = resources.with_embedded_images(
         tabula_game_chess::presentation::assets::ALL_IMAGES, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-    ).await {
-        macroquad::logging::error!("{error}");
+    );
+    if !options.skip_setup {
+        match run_setup(renderer, theme, options.clock, &resources).await {
+            Ok(clock) => options.clock = clock,
+            Err(error) => {
+                show_asset_failure(renderer, theme, &error).await;
+                return;
+            }
+        }
+    }
+    // Initial I/O completes before constructing the match and starting its clock.
+    if let Err(error) = resources.prepare(renderer, LocalAssetScene::Gameplay, display_dpi().await).await {
         show_asset_failure(renderer, theme, &error).await;
         return;
-    }
-    if !options.skip_setup {
-        options.clock = run_setup(renderer, theme, options.clock).await;
     }
     let mut local_match = LocalMatch::<ChessRules, ChessPresentation>::new(
         &ChessConfig {
@@ -136,6 +203,7 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
         None,
         &[],
         options.reduced_motion,
+        Some(&resources),
     )
     .await;
 }
@@ -162,8 +230,10 @@ async fn run_setup(
     renderer: &mut MacroquadRenderer,
     theme: &tabula_design::Theme,
     clock: LocalClockOptions,
-) -> LocalClockOptions {
+    resources: &LocalSpriteResources,
+) -> Result<LocalClockOptions, String> {
     let mut setup = standalone_setup::StandaloneSetup::new(clock);
+    let mut prepared_density = None;
     for (key, native) in [
         (tabula_presentation::Key::Enter, mq::KeyCode::Enter),
         (tabula_presentation::Key::Space, mq::KeyCode::Space),
@@ -181,12 +251,19 @@ async fn run_setup(
             mq::next_frame().await;
             continue;
         };
+        let density = renderer_macroquad::density_for_dpi(dpi);
+        if prepared_density != Some(density) {
+            resources
+                .prepare(renderer, LocalAssetScene::Setup, dpi)
+                .await?;
+            prepared_density = Some(density);
+        }
         let frame = renderer.begin_frame(viewport, dpi, 0, *theme);
         for event in renderer.drain_input() {
             if let Some(clock) = setup.on_input(&event, &frame) {
                 let _ = renderer.end_frame();
                 mq::next_frame().await;
-                return clock;
+                return Ok(clock);
             }
         }
         let cover = tabula_game_chess::presentation::assets::cover_asset(); // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
@@ -194,6 +271,20 @@ async fn run_setup(
             let _ = renderer.submit(&scene);
         }
         let _ = renderer.end_frame();
+        mq::next_frame().await;
+    }
+}
+
+/// Waits for valid geometry without choosing an invented initial density.
+async fn display_dpi() -> tabula_presentation::Dpi {
+    loop {
+        if let Some((_, dpi)) = resolve_display_geometry(
+            mq::screen_width(),
+            mq::screen_height(),
+            mq::screen_dpi_scale(),
+        ) {
+            return dpi;
+        }
         mq::next_frame().await;
     }
 }
@@ -256,7 +347,7 @@ async fn show_asset_failure(
         let mut builder = RenderListBuilder::new(Camera2D::default());
         for (text, y, style) in [
             (
-                "Local artwork could not load",
+                "Local resources could not load",
                 48.0,
                 TextStyleToken::HeadlineMd,
             ),
@@ -283,6 +374,7 @@ async fn show_asset_failure(
 }
 
 #[rustfmt::skip]
+#[cfg(feature = "tiles")] // xtask-allow-game-id: optional Phase 3 local vertical slice wiring.
 async fn run_tiles( // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
     renderer: &mut MacroquadRenderer,
     audio: &mut MacroquadAudioSink,
@@ -331,6 +423,7 @@ async fn run_tiles( // xtask-allow-game-id: direct Phase 3 local vertical slice 
         TilesModule::bot(BotLevel::Easy),
         &bot_seats,
         options.reduced_motion,
+        None,
     )
     .await;
 }
@@ -352,6 +445,7 @@ async fn run_local<R, P>(
     bot: Option<Box<dyn GameBot<R>>>,
     bot_seats: &[SeatId],
     reduced_motion: bool,
+    resources: Option<&LocalSpriteResources>,
 ) where
     R: GameRules,
     P: GamePresentation<Rules = R>,
@@ -365,6 +459,7 @@ async fn run_local<R, P>(
     local_match.local_mut().set_reduced_motion(reduced_motion);
     let started_at_ms = presentation_now_ms();
     let mut ready_notified = false;
+    let mut prepared_density = None;
 
     'game_loop: loop {
         let Some((viewport, dpi)) = resolve_display_geometry(
@@ -378,6 +473,20 @@ async fn run_local<R, P>(
             mq::next_frame().await;
             continue 'game_loop;
         };
+        // The prior next_frame has flushed submitted texture leases. A changed
+        // DPI may now fetch/decode its selected variant before begin_frame,
+        // never during synchronous rendering or after claiming readiness.
+        let density = renderer_macroquad::density_for_dpi(dpi);
+        if let Some(resources) = resources.filter(|_| prepared_density != Some(density)) {
+            if let Err(error) = resources
+                .prepare(renderer, LocalAssetScene::Gameplay, dpi)
+                .await
+            {
+                show_asset_failure(renderer, theme, &error).await;
+                return;
+            }
+            prepared_density = Some(density);
+        }
         let frame = renderer.begin_frame(
             viewport,
             dpi,
@@ -567,6 +676,7 @@ impl SetViewport for tabula_game_chess::presentation::ChessLocal { // xtask-allo
 }
 
 #[rustfmt::skip]
+#[cfg(feature = "tiles")] // xtask-allow-game-id: optional Phase 3 local vertical slice wiring.
 impl SetViewport for tabula_game_tiles::presentation::TilesLocal { // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
     fn sync_frame(&mut self, frame: &tabula_presentation::FrameCtx) {
         Self::set_frame_context(self, frame);
@@ -678,6 +788,7 @@ fn parse_options_from(mut args: impl Iterator<Item = String>) -> Options {
 fn parse_game(name: &str) -> SelectedGame {
     match name.to_ascii_lowercase().as_str() {
         "chess" => SelectedGame::Chess, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+        #[cfg(feature = "tiles")] // xtask-allow-game-id: optional Phase 3 local vertical slice wiring.
         "tiles" => SelectedGame::Tiles, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
         other => {
             eprintln!("unknown game '{other}', defaulting to the first entry");

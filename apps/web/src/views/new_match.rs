@@ -235,7 +235,8 @@ fn seat_control(
 }
 
 /// Bot level, offered only for a mode that fills seats with bots and only for
-/// levels whose factory this build links.
+/// levels in the package's declared policy inventory. The gameplay host's
+/// actual mode support is checked independently before launch.
 fn bot_control(messages: &Messages, game: &dyn ErasedGame, state: RwSignal<SetupState>) -> AnyView {
     let messages = messages.clone();
     let current = state.get();
