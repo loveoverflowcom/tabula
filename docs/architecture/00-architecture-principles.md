@@ -487,7 +487,7 @@ flowchart TB
     subgraph CLIENTS["Clients"]
         WEB["Web — Leptos shell<br/>(login, lobby, catalog, profile, social)"]
         WGAME["Web — Macroquad WASM<br/>at /play/:match_id"]
-        MOB["Android / iOS — native Macroquad"]
+        MOB["Android / iOS — Compose Multiplatform shell<br/>+ WebView GameHost (Rust/WASM game), ADR-0032"]
         DESK["Desktop — native Macroquad<br/>(+ optional Tauri shell)"]
     end
 
@@ -671,7 +671,7 @@ Longer discussion lives in the linked document.
 
 | ADR | Decision | Status | Why | Reconsider when |
 |---|---|---|---|---|
-| **001** | Rust for the deterministic core, protocol, server, and clients. JS/Kotlin/Swift only for platform glue. | LOCK NOW | One language for rules shared between server, client, bots, and tests is the single largest cost saving in the design. | Never for the core. Glue languages are already permitted. |
+| **001** | Rust for the deterministic core, protocol, server, and clients. JS/Kotlin/Swift only for platform glue — except that, on mobile, Kotlin/Swift may own the app UI, navigation, WebView hosting and device services, and never rules, projection or protocol decisions ([ADR-0032](../adr/0032-compose-multiplatform-mobile-host.md)). | LOCK NOW | One language for rules shared between server, client, bots, and tests is the single largest cost saving in the design. | Never for the core. Glue languages are already permitted. |
 | **002** | Game rules are a pure, sync, deterministic function; canonical state depends on nothing but `tabula-core`. | LOCK NOW | Enables replay, server validation, bots, audit, property testing — all from one property. | Never. This is the product. |
 | **003** | A single totally-ordered `Input` stream per match (player/timer/seat/admin), appended to one event log. | LOCK NOW | Makes replay total, disconnect/AFK ownership clean, and timers deterministic. See §3.1. | Never; extending `Input` with new variants is normal evolution. |
 | **004** | Server-authoritative. Clients get projections, never canonical state. | LOCK NOW | Anti-cheat is not retrofittable. | Never. |
@@ -689,7 +689,7 @@ Longer discussion lives in the linked document.
 | **016** | Voice is a separate plane: WebRTC + Opus, coturn, managed/proven SFU behind a `VoiceService` trait. | LOCK NOW (separation + trait) / EXPERIMENT (provider) | Media traffic must never share the game WebSocket's ordering or backpressure characteristics. | Provider choice is measured in Phase 8. Never write our own SFU for MVP. |
 | **017** | Assets ship as versioned, hashed **asset packs** per game, delivered from CDN and cached locally; not bundled into app releases. | LOCK NOW | Otherwise every app release grows with every game — fatal for mobile. Doc 04 §12. | Small games may inline a tiny pack; the mechanism stays. |
 | **018** | Design tokens are defined once in Rust (`tabula-design`) and adapted to CSS variables (Leptos) and a `Theme` struct (Macroquad). | SUPERSEDED by ADR-027 (representation only) | One semantic language across DOM and canvas is the only way the product feels like one product. | See ADR-027; the semantic-authority intent remains locked. |
-| **019** | Tauri is optional and never required for gameplay on any platform. | LOCK NOW | Gameplay must not depend on a WebView. Tauri earns its place only for launcher/updater/native integration. | Evaluate Tauri desktop in Phase 5, Tauri mobile shell no earlier than Phase 6 exit. |
+| **019** | Tauri is optional and never required for gameplay on any platform. | LOCK NOW; the mobile WebView prohibition is SUPERSEDED by ADR-0032 | Desktop gameplay must not depend on a WebView. Tauri earns its place only for launcher/updater/native integration. Mobile gameplay may run in a WebView under ADR-0032, which keeps this ADR's latency risk open until measured. | Evaluate Tauri desktop in Phase 5. The mobile shell is Compose Multiplatform (ADR-0032), not Tauri. |
 | **020** | No Kubernetes, Kafka, NATS, service mesh, or microservices before a measured need. | LOCK NOW | Each adds an operational tax that a small team pays daily and benefits from rarely. | Doc 06 lists the specific symptom for each. |
 | **021** | Rules crates are `#![forbid(unsafe_code)]`; state hashing uses a canonical encoding, not `serde_json`. | LOCK NOW | Determinism and audit integrity. Doc 05 §7. | Never. |
 | **022** | The chat *transport* is platform; chat *scoping* is game-driven via `Effect::SetChatScopes`. | LOCK NOW | Werewolf makes scoping a core rule; chess makes it trivial. One mechanism serves both. | Never. |
@@ -702,6 +702,7 @@ Longer discussion lives in the linked document.
 | **029** | An authorized isolated renderer/embedding spike compares the same Macroquad document/iframe artifact and a minimal PixiJS canvas adapter consuming Rust-derived presentation data. Long form: [`docs/adr/0029-renderer-embedding-spike.md`](../adr/0029-renderer-embedding-spike.md). | ACCEPTED TOOLING SCOPE; PRODUCTION CHOICE DEFERRED | Renderer choice and runtime containment need separate controls, validated lifecycle and target-specific evidence. ADR-010/011, dependency invariants and the remaining phase gates stay unchanged. | A concrete production embedding requirement and comparable runtime/lifecycle/resource evidence for the selected shipping targets, with residuals explicitly addressed. |
 | **030** | Opt-in discovery/setup handoff to the existing local two-human gameplay document, with bounded configuration, trusted return and lifecycle recovery. Long form: [`docs/adr/0030-local-discovery-gameplay-handoff.md`](../adr/0030-local-discovery-gameplay-handoff.md). | ACCEPTED LOCAL SCOPE | Connects the delivered standalone slice without duplicating rules or changing ADR-011 containment; network, native catalog, resume and remaining phase gates stay closed. | Another runtime/game consumer, native discovery, online/resume handoff or production hosting. |
 | **031** | Browser host-only HttpOnly cookies, native secure-store bearer credentials, HTTP/WS-upgrade channel authentication, credential-free Hello, memory-only scoped match grants and server-owned session lifecycle. Long form: [`docs/adr/0031-browser-native-session-contract.md`](../adr/0031-browser-native-session-contract.md). | ACCEPTED CONTRACT; RUNTIME GATED | Resolves contradictory storage/transport sketches without implementing accounts or weakening phase/I-13 gates; specifies CSRF, expiry, rotation and revocation oracles. | Cross-origin authenticated deployment, unsupported native secure store, longer-lived login, multi-process enforcement or implemented wire migration. |
+| **032** | Compose Multiplatform owns the Android/iOS app UI and navigation; the existing Rust/WASM game runs in a WebView `GameHost` embedded in the game screen; voice, device permissions and native services belong to the mobile host; Rust rules, presentation and renderer are unchanged. Long form: [`docs/adr/0032-compose-multiplatform-mobile-host.md`](../adr/0032-compose-multiplatform-mobile-host.md). | ACCEPTED FOUNDATION SCOPE; EMBEDDING, VOICE AND NATIVE SERVICES GATED | The owner chose a native app shell over canvas shell screens. This is a direction, not a measurement: no WebView evidence exists yet, and no phase gate is removed. | Per-platform WebView latency, frame-pacing or lifecycle evidence fails its stated bars; or networked mobile play is proposed (ADR against ADR-0031 first). |
 
 ---
 
@@ -737,6 +738,7 @@ Macroquad's practical ceiling for text, layout, and input (Phase 2–3)
 Macroquad UI vs a thin custom widget layer on RenderList (Phase 2)
 Leptos + Macroquad navigation/handoff UX at /play/:id (Phase 5)
 Tauri desktop shell value (Phase 5); Tauri mobile (post-Phase 6)
+CMP shell + WebView GameHost latency and lifecycle on shipping Android/iOS (Phase 6; ADR-0032)
 voice provider: self-hosted SFU vs managed (Phase 8)
 snapshot cadence and event-log compaction policy (Phase 4, tune with data)
 sharded match executor vs task-per-match at high CCU (Phase 10)
@@ -770,7 +772,8 @@ Each row names a way this project could fail, and the *mechanism* (not the inten
 | Animation state treated as authoritative | Desyncs, cheats via slow clients, non-replayable matches. | I-10: dependency direction + no upstream message carries presentation state |
 | Client determining RNG results | Trivial cheating in every card/dice game. | I-4 + server-only `MatchSeed`; clients receive results, never seeds |
 | Leptos required inside the native game runtime | Native/mobile builds break or bloat; two UI paradigms fight. | I-15 dependency check on `apps/game-client` |
-| Tauri mandatory for mobile | WebView performance and input latency become the gameplay ceiling. | ADR-019 + mobile target is native Macroquad from Phase 6 |
+| Tauri mandatory for mobile | A second shell runtime and its lifecycle become a gameplay dependency. | ADR-019 + the mobile shell is Compose Multiplatform (ADR-0032) |
+| WebView latency as the mobile gameplay ceiling | Mobile players feel input lag the desktop and web builds do not have. | Not prevented mechanically. ADR-0032 requires executed per-platform latency, frame-pacing and lifecycle evidence before the embedding change ships, and records NOT_RUN as such |
 | Redis before horizontal coordination exists | A second source of truth with no consistency story, plus an ops burden. | ADR-014 + a written numeric trigger (doc 06 §4.3) |
 | Kafka/NATS with no measured need | Weeks of plumbing for a problem we do not have. | ADR-020 + trigger list |
 | Kubernetes for initial deployment | Days of yak-shaving per week for a single-binary product. | ADR-020; Stage 0–1 is systemd/containers on one or two VPS (doc 06 §3) |

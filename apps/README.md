@@ -33,8 +33,11 @@ client-side route into a canvas.
 
 **`leptos` must never appear in `apps/game-client`'s dependency graph** — native
 or WASM. And per ADR-019, **Tauri is never required for gameplay on any
-platform**. Gameplay in a WebView would make WebView latency the product's
-ceiling.
+platform**. On desktop, gameplay in a WebView would make WebView latency the
+product's ceiling. On mobile the owner accepted a WebView `GameHost` under
+[ADR-0032](../docs/adr/0032-compose-multiplatform-mobile-host.md), with that latency
+risk still unmeasured and an evidence requirement before it ships. The mobile app
+lives in [`mobile/`](../mobile/README.md), not in `apps/`.
 
 ## The handoff (doc 04 §3.4)
 
@@ -57,14 +60,14 @@ game:   ... play ... → in-canvas result → navigate to /matches/:id
 Back/forward and deep links revalidate the current session and permissions
 before network resume. Stored cursors/IDs cannot authorize attachment.
 
-**Native has no navigation — it swaps a scene.** The same `MatchContext` struct
+**Desktop has no navigation — it swaps a scene.** The same `MatchContext` struct
 is passed in-process, so the runtime code is identical everywhere.
 
-## Shell screens are implemented twice, on purpose
+## Shell screens are implemented once per shell, on purpose
 
 Lobby and catalog UI: once in Leptos, once with `tabula-presentation` widgets for
-native. About a dozen screens. The alternative is a WebView on mobile, which
-ADR-019 rules out.
+the desktop client; Compose Multiplatform in `mobile/` for Android and iOS (ADR-0032).
+About a dozen screens.
 
 The *specification* lives once, in [`docs/ui/screens/`](../docs/ui/README.md), and
 both implementations reference it. Two implementations of an unwritten spec

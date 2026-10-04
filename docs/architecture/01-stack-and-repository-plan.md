@@ -53,7 +53,7 @@ Status markers per [doc 00 §11](./00-architecture-principles.md#11-decision-cla
 | Web gameplay | Macroquad WASM on its own route (`/play/:match_id`), separate `.wasm` | Same-binary integration | ADR-011 | If interleaved DOM overlays become a hard requirement | LOCK NOW / EXPERIMENT (UX of handoff) |
 | Desktop | Native Macroquad binary; **optional** Tauri shell for launcher/updater/notifications | Tauri-only, Electron | Gameplay must not sit inside a WebView (ADR-019) | Add Tauri in Phase 5 if updater/launcher value is real | LOCK NOW (optional) |
 | Desktop updater | `cargo-dist` + GitHub Releases; Tauri updater if Tauri lands | Sparkle/WinSparkle | Least infra for a small team | When we need staged rollouts/percentage deploys | EXPERIMENT |
-| Mobile | Native Macroquad via `cargo-apk`/`cargo-ndk` (Android) and a thin Xcode wrapper (iOS) | Tauri mobile, Flutter host | Direct GPU/input path, no WebView | Tauri mobile only for shell screens, post-Phase 6 | LOCK NOW |
+| Mobile | Compose Multiplatform shell and navigation (Android + iOS); the Rust/WASM game in a WebView `GameHost`; voice, permissions and native services in the mobile host ([ADR-0032](../adr/0032-compose-multiplatform-mobile-host.md)) | Native Macroquad via `cargo-apk`/`cargo-ndk` + Xcode wrapper (the earlier plan, superseded for mobile), Tauri mobile, Flutter host | One mobile UI codebase on platform navigation and accessibility; the game artifact is the same Rust/WASM document as the web, so no mobile-only renderer. **Trade:** WebView input latency is unmeasured | Embedding evidence on shipping devices fails its bars (ADR-0032) | ACCEPTED FOUNDATION SCOPE / EXPERIMENT (WebView latency) |
 | Client networking | `tabula-net-client`: one API, two backends — `tokio-tungstenite` (native), browser `WebSocket` via `web-sys` (WASM) | separate ad-hoc code per target | The reconnect/sequence/idempotency logic is subtle and must exist once | Never | LOCK NOW |
 | Client local storage | Trait `KvStore` with backends: `web-sys` `localStorage`/IndexedDB (web), platform dirs + file (desktop, via `directories`), `SharedPreferences`/`UserDefaults` bridge (mobile) | sled, rusqlite everywhere | Only non-secret small data persists (settings, public cached manifests, replay cache index); credentials use browser HttpOnly cookie/native OS keychain outside KvStore ([ADR-0031](../adr/0031-browser-native-session-contract.md)) | If offline replay libraries grow, add a `rusqlite`/IndexedDB-backed blob store behind the same trait | LOCK NOW |
 | Audio (SFX/music) | Macroquad's audio for MVP; abstract behind `AudioSink` in `tabula-presentation` | `kira`, `rodio` | Ships fastest; abstraction lets us move to `kira` for mixing/ducking | Move to `kira` when we need buses, ducking under voice chat, or precise scheduling | EXPERIMENT |
@@ -136,7 +136,7 @@ tabula/
 │   └── werewolf/                  # tabula-game-werewolf   (Game D)
 │
 ├── apps/
-│   ├── game-client/               # Macroquad binary: native (desktop/mobile) + wasm target
+│   ├── game-client/               # Macroquad binary: native desktop + wasm target (the wasm build is also what the mobile WebView loads)
 │   ├── web/                       # Leptos application shell (CSR)
 │   ├── desktop/                   # OPTIONAL Tauri shell (Phase 5+); not required for gameplay
 │   └── admin/                     # operator UI (Leptos, reuses design tokens) — Phase 5+
@@ -145,9 +145,10 @@ tabula/
 │   └── tabula-server/             # THE binary at Stage 0: HTTP + WS + match runtime + lobby
 │                                  # Splits later into gateway / match-worker (doc 06 §7)
 │
-├── mobile/
-│   ├── android/                   # gradle wrapper around the cdylib
-│   └── ios/                       # Xcode project wrapping the staticlib
+├── mobile/                        # ONE mobile tree (ADR-0032): Gradle root + Xcode host
+│   ├── shared/                    # Compose Multiplatform library: UI, navigation, GameHost interface
+│   ├── android/                   # Android application module
+│   └── ios/                       # Xcode project hosting the shared framework
 │
 ├── xtask/                         # check-deps, check-no-game-ids, gen-tokens, gen-protocol-vectors
 ├── deploy/
@@ -653,8 +654,8 @@ disallowed-methods = [
 | Linux desktop | `x86_64-unknown-linux-gnu`, `aarch64-…` | `apps/game-client` (feature `native`) | AppImage or tarball via `cargo-dist` |
 | macOS desktop | `aarch64-apple-darwin`, `x86_64-…` | same | Universal binary; notarization needed for distribution |
 | Windows desktop | `x86_64-pc-windows-msvc` | same | Code-signing needed |
-| Android | `aarch64-linux-android` (+ `armv7`, `x86_64` for emulators) | `apps/game-client` as `cdylib` → `mobile/android` | `cargo-apk` initially; graduate to `cargo-ndk` + Gradle when we need Play Billing, notifications, or custom `Activity` behavior |
-| iOS | `aarch64-apple-ios`, `aarch64-apple-ios-sim` | `apps/game-client` as `staticlib` → `mobile/ios` | Thin Xcode wrapper; `cargo-lipo`-style packaging |
+| Android | Gradle (AGP) | `mobile/shared` (CMP) → `mobile/android`; the game is the `wasm32-unknown-unknown` document in a WebView (later change) | ADR-0032. The earlier `cdylib` + `cargo-apk`/`cargo-ndk` plan is superseded for mobile |
+| iOS | Kotlin/Native `iosArm64`, `iosSimulatorArm64` (macOS to link) | `mobile/shared` static framework → `mobile/ios` Xcode host; the game is the same WASM document in a WKWebView (later change) | ADR-0032. The earlier `staticlib` plan is superseded for mobile |
 | Server | `x86_64-unknown-linux-gnu` (musl optional) | `services/tabula-server` | Container image; also runs natively via systemd at Stage 0–1 |
 
 **WASM constraints that shape the client design** (do not rediscover these in Phase 5):

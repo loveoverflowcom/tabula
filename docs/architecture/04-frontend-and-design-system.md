@@ -140,24 +140,35 @@ The duplication cost is real but small: `tabula-protocol`, `tabula-core`, `tabul
 and `tabula-net-client` appear in both bundles. They are the *small* crates. The presenters and
 Macroquad — the big things — appear only in `game.wasm`.
 
-### 3.3 Native (desktop and mobile)
+### 3.3 Native desktop and mobile
 
-One binary. The shell screens are drawn by the **same** Macroquad runtime using a small set of
-`RenderList`-based UI components from `tabula-presentation`, themed by the same tokens.
+**Desktop** is one binary. The shell screens are drawn by the **same** Macroquad runtime using a
+small set of `RenderList`-based UI components from `tabula-presentation`, themed by the same
+tokens. Gameplay never sits in a WebView there (ADR-019).
 
-This is a real divergence between web and native and it is accepted deliberately:
+**Mobile** is split differently, by [ADR-0032](../adr/0032-compose-multiplatform-mobile-host.md):
+a Compose Multiplatform (CMP) app owns the shell screens and navigation on Android and iOS, and
+the existing Rust/WASM game document runs in a WebView `GameHost` embedded in the game screen.
+Voice, device permissions and native services belong to the mobile host. The Rust rules,
+presentation and renderer are unchanged; Kotlin/Swift carry no game logic.
+
+This is a real divergence between web, desktop and mobile and it is accepted deliberately:
 
 - Web gets a DOM shell because the web platform's text, forms, accessibility, and deep linking are
   worth using.
-- Native gets a canvas shell because shipping a WebView (or a second UI toolkit) into the mobile app
-  just to render a lobby list contradicts ADR-019 and doubles the mobile surface.
-- **The consequence to manage:** the lobby/catalog UI must be implemented twice (Leptos components
-  and `tabula-presentation` widgets). That is bounded (roughly a dozen screens, mostly lists,
-  cards, and forms) and both implementations consume the same tokens and the same protocol types,
-  so they stay visually and behaviorally consistent. Screen *specifications* live in
-  `docs/ui/screens/` and are the shared source of truth.
-- **EXPERIMENT** (Phase 6): if native shell screens become a drag, evaluate a Tauri shell for
-  desktop only, keeping mobile native.
+- Desktop gets a canvas shell so it needs no WebView or second UI toolkit.
+- Mobile gets a CMP shell because platform navigation, text input, accessibility and system
+  integration are worth using, at the cost of a WebView on the gameplay path. **That cost is not
+  yet measured**: ADR-019's input-latency and rendering concern remains open until the embedding
+  change provides executed evidence on the shipping Android WebView and iOS WKWebView.
+- **The consequence to manage:** the lobby/catalog UI is implemented in Leptos, in
+  `tabula-presentation` widgets (desktop) and in Compose (mobile). That is bounded (roughly a
+  dozen screens, mostly lists, cards, and forms) and all consume the same tokens — Compose through
+  the generated Kotlin adapter of `tokens.toml` — and the same protocol types. Screen
+  *specifications* live in `docs/ui/screens/` and are the shared source of truth.
+- **EXPERIMENT** (Phase 6): WebView `GameHost` latency, frame pacing and lifecycle on shipping
+  devices. If native shell screens on desktop become a drag, evaluate a Tauri shell for desktop
+  only.
 
 ### 3.4 Handoff: entering and leaving a match
 
@@ -1294,7 +1305,7 @@ Feedback: state layers · focus ring · shake(invalid) · confetti(win, reduced-
 | 3 | Card fan, tile board with camera/zoom/rotation; animation engine + motion tokens; audio cues; asset packs |
 | 4 | `tabula-net-client`; networked play in the native client; reconnect UI; spectator view |
 | 5 | Leptos shell (all routes in §2.1); handoff; a11y `status`+`actions`; settings incl. motion/contrast; admin skeleton |
-| 6 | Mobile layouts, safe areas, touch tuning, orientation handling, native shell screens |
+| 6 | Mobile layouts, safe areas, touch tuning, orientation handling, Compose shell screens and the WebView `GameHost` (ADR-0032) |
 | 7 | Werewolf UI: phase banners, voting, scoped chat overlay, role reveal choreography |
 | 8 | Voice UI |
 | 9 | Board Reader full regions; replay viewer with scrub; delayed spectator UI; theming polish |

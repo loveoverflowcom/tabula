@@ -1,14 +1,14 @@
 [package]
 name        = "tabula-game-client"
 version     = "0.0.0"
-description = "The Macroquad gameplay client: desktop, mobile, and web-at-/play/:match_id."
+description = "The Macroquad gameplay client: desktop and web-at-/play/:match_id (the wasm build is also what the mobile WebView loads, ADR-0032)."
 edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
 publish.workspace      = true
 
-# PHASE 2 (hot-seat) → PHASE 4 (online) → PHASE 6 (mobile).
+# PHASE 2 (hot-seat) → PHASE 4 (online) → PHASE 6 (mobile WebView host, ADR-0032).
 #
 # I-15: `leptos` must NEVER appear in this crate's dependency graph, native or
 # wasm. Gameplay does not live in a DOM runtime (ADR-011, ADR-019).
@@ -16,9 +16,9 @@ publish.workspace      = true
 
 [lib]
 name       = "tabula_game_client"
-# Phase 6: Android links the cdylib, iOS links the staticlib. Adding them now
-# costs nothing and documents the target shape (doc 01 §7).
-crate-type = ["rlib"]  # ["rlib", "cdylib", "staticlib"] from Phase 6
+# Mobile no longer links this crate as a cdylib/staticlib: ADR-0032 hosts the wasm build in a
+# WebView instead, so only `rlib` is needed (doc 01 §7).
+crate-type = ["rlib"]
 
 [dependencies]
 tabula-core     = { workspace = true }

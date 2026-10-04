@@ -72,7 +72,7 @@ Ordered by how likely the replacement is.
 | **Database deployment model** (host, replicas, pooling, partitioning) | `tabula-storage` ports | Medium | One crate |
 | **Redis** (once introduced) | directory/presence/pubsub ports | Medium | Ports already exist as the in-process implementation |
 | **Web UI framework** (Leptos) | `tabula-protocol` types + tokens.css | Low–Medium | The shell only; protocol and design survive |
-| **Desktop/mobile shell** (Tauri or native) | gameplay never depends on it | Low | Shell only |
+| **Desktop shell** (Tauri or native) and **mobile shell** (Compose Multiplatform, ADR-0032) | desktop gameplay never depends on it; mobile gameplay depends on the WebView `GameHost` only | Low (desktop) / Medium (mobile WebView) | Shell only; the game artifact is the web document |
 | **Audio backend** (Macroquad → kira) | `AudioSink` | Medium | One crate |
 | **Wire codec** (Postcard → other) | `Codec` enum + golden vectors | Low | Protocol crate + a client rollout |
 | **Matchmaking algorithm** | it reads only capabilities + queue entries | Medium | One module |
@@ -111,7 +111,8 @@ update in the same PR (doc 00 §7.1).
 | Voice on a separate plane behind a trait | 016 | `tabula-voice` | Media must never share the game socket's semantics |
 | Per-game versioned, hashed asset packs | 017 | `tabula-assets`, manifest | Otherwise app size grows with the catalog |
 | One semantic design-token authority: authored `tokens.toml`, generated Rust runtime, CSS and JSON adapters | 018 → 027 | `xtask gen-tokens`, freshness gate, no-raw-colors lint | One product feel across DOM and canvas without ambiguous or hand-edited sources |
-| Tauri never required for gameplay | 019 | I-15, dependency matrix | Gameplay must not sit in a WebView |
+| Tauri never required for gameplay | 019 | I-15, dependency matrix | Desktop gameplay must not sit in a WebView; the mobile WebView prohibition is superseded by ADR-0032 |
+| Compose Multiplatform mobile shell with a WebView `GameHost`; Kotlin/Swift own UI, navigation and device services, never rules | [032](../adr/0032-compose-multiplatform-mobile-host.md) | `xtask gen-tokens` (Kotlin adapter), `check-no-raw-colors` (Kotlin), CI Android build | One mobile UI codebase on platform navigation; the same Rust/WASM game as the web |
 | No k8s/Kafka/NATS/mesh/microservices before a measured need | 020 | doc 06 §1.1 triggers | Operational tax paid daily, benefit received rarely |
 | `#![forbid(unsafe_code)]` in rules; canonical hashing | 021 | workspace lints | Determinism and audit integrity |
 | Chat transport platform / chat scoping game-driven | 022 | `ChatScopes` enforcement tests | Serves both chess and werewolf with one mechanism |
@@ -132,7 +133,8 @@ Direction chosen, details unproven. Build behind the seam; let measurement decid
 | Leptos ↔ Macroquad handoff UX | Bounded local slice (ADR-030); network flow Phase 5 | [Local integration ledger](../verification/chess-integration/README.md); time-to-first-frame and real target user testing remain explicit evidence | Keep separate documents; no saved local resume or phase-exit inference |
 | Renderer vs containment for DOM-heavy gameplay | Isolated tooling now (ADR-029); production remains gated | [Issue-60 RFC](../rfcs/issue-60-renderer-embedding.md): identical Macroquad document/iframe control, minimal PixiJS adapter, lifecycle/interop and target-specific runtime evidence | Keep Macroquad and ADR-011 separate-document handoff; production choice deferred |
 | Tauri desktop value (launcher/updater/notifications) | Phase 5 | Spike; compare with `cargo-dist` alone | Ship without Tauri |
-| Tauri mobile for shell screens | post-Phase 6 | Only if native shell screens prove painful | Keep native shell |
+| Tauri mobile for shell screens | post-Phase 6 | Not pursued: the mobile shell is Compose Multiplatform (ADR-0032) | Keep the CMP shell |
+| WebView `GameHost` latency, frame pacing and lifecycle on shipping Android/iOS | Phase 6 (embedding change) | Executed per-platform evidence against the bars in ADR-0032 | Revisit ADR-0032; reconsider the native-renderer path of ADR-019 |
 | Voice provider (self-hosted LiveKit vs managed) | Phase 8 | Cost per participant-minute, quality, ops burden | Swap adapters |
 | Snapshot cadence and log compaction policy | Phase 4→10 | Measure rehydration time and storage growth | Tune per `StateSizeClass` |
 | Sharded executor vs task-per-match | Phase 10 | Benchmark at 30k+ matches/process | Stay with task-per-match; add processes |
@@ -241,9 +243,10 @@ Named so they can be watched.
 3. **Phase 4 ordering/idempotency bugs under load.** Correct in tests, wrong at 5k CCU. Mitigations:
    load scenarios L1/L2/L4/L7 from the start of the phase, not the end; fencing tokens before any
    multi-process work; the "must always be 0" counters.
-4. **Macroquad's ceiling arriving at the worst moment** (during mobile work, Phase 6). Mitigations:
-   the `Renderer` seam, a Phase 2 spike that documents every workaround, and an early "hello
-   triangle" on iOS to de-risk the toolchain separately from the renderer.
+4. **Macroquad's ceiling, and now the mobile WebView, arriving at the worst moment** (during mobile work, Phase 6). Mitigations:
+   the `Renderer` seam, a Phase 2 spike that documents every workaround, an early "hello
+   triangle" on iOS to de-risk the toolchain separately from the renderer, and the executed
+   per-platform WebView evidence ADR-0032 requires before the embedding ships.
 5. **Scope drift into building a UI framework or an engine.** The classic failure of exactly this
    kind of project. Mitigations: the capped `RenderCmd` set with a written admission rule, the "no
    phase is only refactoring" constraint, and the fact that every phase must end in a demo a
@@ -316,7 +319,7 @@ architecture (doc 04 §1), asset pipeline (doc 04 §12.1), chat flow (doc 03 §1
 | Macroquad first, Miniquad escape hatch, wgpu later | ADR-010, doc 04 §6.3 |
 | Leptos shell + Macroquad gameplay, separate runtimes | ADR-011, doc 04 §3 |
 | Optional Tauri, never required for gameplay | ADR-019, doc 04 §3.3 |
-| Mobile native Macroquad first | doc 01 §7, doc 07 Phase 6 |
+| Mobile: Compose Multiplatform shell, Rust/WASM game in a WebView (supersedes "native Macroquad first") | ADR-0032, doc 01 §7, doc 07 Phase 6 |
 | Axum + Tokio + Postgres + SQLx backend, Redis optional | doc 01 §1.2, doc 03, ADR-014 |
 | Flexible per-game networking semantics | doc 02 §12, doc 00 §6.3 |
 | Platform vs game ownership fully resolved | doc 00 §6 (including the contested list) |

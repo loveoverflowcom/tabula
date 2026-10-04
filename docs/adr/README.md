@@ -2,7 +2,7 @@
 
 Most decisions live as **short-form rows** in
 [`docs/architecture/00-architecture-principles.md` §10](../architecture/00-architecture-principles.md#10-adr-register)
-— ADR-001 through ADR-031. Each row states the decision, its status, why, and the
+— ADR-001 through ADR-032. Each row states the decision, its status, why, and the
 trigger that would make us revisit it.
 
 This directory is for the cases where a row is not enough: a long argument, a
@@ -60,5 +60,5 @@ Worth knowing, because they are what most future ADRs will be about:
 1. A projection leak.
 2. Silent determinism rot.
 3. Phase 4 ordering/idempotency bugs under load.
-4. Macroquad's ceiling arriving during Phase 6 mobile work.
+4. Macroquad's ceiling, or the mobile WebView's latency (ADR-0032), arriving during Phase 6 mobile work.
 5. Scope drift into building a UI framework or a game engine.
