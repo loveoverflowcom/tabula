@@ -40,3 +40,14 @@ checks and release bundles; new publication is not authorized. The same next
 platform-evidence task now includes discovery/launch/return and real BFCache/
 resource behavior. Native catalog, server resume, online/rated/AI and phase exits
 remain gated.
+
+Issue #54's [account/social specification](../ui/screens/accounts-social.md)
+and [acceptance ledger](../ui/screens/accounts-social-verification.md) deliver
+PR A against fetched `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc`.
+Its next slices are deferred, not new active phase crossings:
+[B auth and self-profile](backlog/issue-54-auth-profile.md), then
+[C friends and presence](backlog/issue-54-friends-presence.md).
+Resolve the cookie/localStorage and HTTP/WS session-policy conflict with the
+identity owner before B, alongside approved registration fields and public
+error semantics. Existing discovery/local-play ADRs do not authorize account
+services. Passing aggregate checks does not close #54 or open Phase 4/5.
