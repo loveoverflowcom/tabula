@@ -1,7 +1,10 @@
 # Accounts and social — shared boundary
 
 PR A of [issue #54](https://github.com/loveoverflowcom/tabula/issues/54).
-Source review: freshly fetched `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc`.
+Original source review: fetched `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc`.
+Session-policy compatibility refresh: merged
+`develop @ 115159cd38cba11f7fa94c3c49698b7a45d59e5f` (PR #63), preserving
+that review and design provenance as historical evidence.
 Design provenance: `030da25d0098e240ab2cf36dacf9892e8b320a89`,
 [`06-accounts`](https://github.com/loveoverflowcom/tabula/tree/030da25d0098e240ab2cf36dacf9892e8b320a89/docs/ui/design-02/06-accounts),
 and `01-foundation/shared/material-component-map.md` at that revision.
@@ -20,33 +23,41 @@ their typed owner is implemented and the relevant gate is evidenced.
 
 ## Current source and gates
 
-| Surface at the pinned base | Actual status | Prerequisite for runtime |
+| Surface rechecked at the compatibility base | Actual status | Prerequisite for runtime |
 |---|---|---|
 | `apps/web/src/views/mod.rs` | Mounted `/`, `/games`, `/games/:id`; setup is a detail substate | Auth/profile/friends are absent, not hidden implemented routes |
 | `apps/web/src/main.rs`, `Cargo.toml` | PHASE 5; `AppState`/typed API client remain future layout; network dependencies commented | Phase 4 exit and opened Phase 5 gate, or a separately accepted bounded ADR |
 | `services/tabula-server/src/main.rs` | PHASE 4 scaffold; binary exits with gate message | Real identity/session/authentication/authorization and integration evidence |
-| `tabula-protocol`, `tabula-net-client`, `tabula-storage` | PHASE 4 scaffolds; identity/schema/transport are prose | Implemented versioned types, ports, session/security policy and persistence |
+| `tabula-protocol`, `tabula-net-client`, `tabula-storage` | PHASE 4 scaffolds; identity/schema/transport are prose | Implemented versioned types, ports, ADR-0031 session enforcement and persistence |
 | `tabula-lobby` | PHASE 5 scaffold; presence/room invitations are described | Real viewer-scoped social APIs, single shell lobby connection and tests |
 | Discovery/local play | Bounded real registry/setup and opt-in separate gameplay document | Reuse current availability and launch validation; it does not open accounts |
 
 [ADR-0028](../../adr/0028-discovery-shell-ahead-of-phase-gate.md) permits only
 discovery/setup; [ADR-0030](../../adr/0030-local-discovery-gameplay-handoff.md)
 adds an opt-in local gameplay handoff. Neither opens login, profile, friends,
-online play, ratings or saved history. Phase 3 exit remains a prerequisite for
-Phase 4; Phase 4 exit opens Phase 5. A passing existing aggregate check proves
-neither exit. Keep the PHASE banners and the issue's B/C slices gated.
+online play, ratings or saved history.
+[ADR-0031](../../adr/0031-browser-native-session-contract.md) resolves the
+browser/native session policy only. Actual Phase-2 platform evidence and
+Phase-3 portfolio/projection/freeze exit remain prerequisites for Phase 4;
+real Phase-4 authority/server/protocol/persistence/session integration and exit
+then open the Phase-5 shell gate. A passing existing aggregate check establishes
+none of those exits. Keep the PHASE banners and the issue's B/C slices gated;
+see the [session implementation backlog](../../work-plan/backlog/issue-54-session-contract.md).
 
-## Unresolved authority contracts
+## Accepted session policy and remaining authority contracts
 
-These are implementation blockers, not choices delegated to a mock form:
+The accepted policy and remaining implementation blockers are not choices
+delegated to a mock form:
 
-- Web credential storage/transport disagrees in architecture prose: doc 03
-  §21 specifies opaque sessions with `Secure`/`HttpOnly`/`SameSite=Lax` web
-  cookies, while doc 04 §4.5 and net-client rustdoc propose `auth.session` in
-  `localStorage`. The identity owner must reconcile this through the applicable
-  architecture decision, including CSRF, session rotation/expiry/revocation and
-  browser WebSocket authentication. This spec selects neither transport, adds
-  no persistence, and rejects copying demo authentication into either one
+- [ADR-0031](../../adr/0031-browser-native-session-contract.md) supersedes the
+  former cookie/localStorage and HTTP/WS disagreement: browser host-only
+  `Secure`/`HttpOnly`/`SameSite=Lax` cookies, native secure-store bearer credentials,
+  channel-bound HTTP/WS-upgrade authentication, credential-free `Hello`,
+  memory-only scoped match grants, CSRF/context and server-owned
+  rotation/expiry/revocation/lifecycle. Browser JS-readable credential storage
+  and plaintext native fallback are forbidden. The policy is decided; actual
+  enforcement and [S01–S14 evidence](../../verification/session-contract/README.md#required-acceptance-scenarios)
+  remain missing. This spec implements no credential persistence or demo auth
 - Doc 03 §2 proposes register/login/logout/refresh and `GET /api/v1/me`, but
   implements none. It does not define public-profile reads, edit-profile fields,
   friend search/graph/request operations or their error/disclosure policy

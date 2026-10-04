@@ -82,10 +82,14 @@ backpressure decision in the server.
 ## 2. HTTP API surface
 
 Small on purpose — screens drive it. Everything real-time goes over the WebSocket.
+This is a future-phase surface, not implemented endpoints.
+[ADR-0031](../adr/0031-browser-native-session-contract.md) owns session channels,
+CSRF, lifetime, revocation and upgrade/Attach authority.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/v1/auth/register` / `login` / `logout` / `refresh` | Opaque session tokens |
+| `POST` | `/api/v1/auth/register` / `login` / `logout` / `refresh` | Channel-bound opaque server sessions; browser cookie/native bearer |
+| `GET` | `/api/v1/auth/context` | Proposed typed session disposition + memory-only CSRF bootstrap; no-store |
 | `GET` | `/api/v1/auth/oidc/:provider` + `/callback` | OAuth |
 | `GET` | `/api/v1/me` | Profile, settings, entitlements |
 | `GET` | `/api/v1/games` | Catalog (rollout-filtered, localized keys) |
@@ -102,7 +106,9 @@ Small on purpose — screens drive it. Everything real-time goes over the WebSoc
 | `GET` | `/healthz` `/readyz` `/metrics` | Ops |
 | `*` | `/api/v1/admin/*` | Operator endpoints, separate authz role |
 
-Conventions: `Authorization: Bearer <session>`; UUIDv7 ids; RFC 9457 problem+json errors;
+Conventions: browser host-only HttpOnly session cookie, native
+`Authorization: Bearer <session>`; exact Origin/CSRF and ambiguity rejection
+under ADR-0031; UUIDv7 ids; RFC 9457 problem+json errors;
 cursor pagination; `Idempotency-Key` honored on all `POST`s that create resources.
 
 ---
@@ -117,14 +123,15 @@ sequenceDiagram
     participant R as Router
     participant M as Match Actor
 
-    C->>GW: GET /ws  Upgrade + Sec-WebSocket-Protocol: tabula.v1.postcard
+    C->>GW: GET /ws Upgrade + codec; browser cookie + Origin / native bearer
+    GW->>GW: authenticate current auth session; validate origin/channel
     GW-->>C: 101 Switching Protocols (selected subprotocol)
-    C->>S: Hello { protocol_version, client_build, auth: Bearer, codec }
-    S->>S: authenticate; load user; create SessionId
+    C->>S: Hello { protocol_version, client_build, codec }
+    S->>S: negotiate; bind authenticated record; create connection SessionId
     S-->>C: HelloAck { session_id, server_time, features, limits }
     Note over C,S: Session is now authenticated but attached to nothing.
 
-    C->>S: Attach { match_id, join_token?, as: Seat|Spectator, resume_from? }
+    C->>S: Attach { match_id, join_token, as: Seat|Spectator, resume_from? }
     S->>R: lookup(match_id)  → spawn/rehydrate if needed
     R-->>S: MatchHandle
     S->>M: Attach { session, viewer, resume_from }
@@ -145,12 +152,16 @@ sequenceDiagram
 - **Subprotocol negotiation carries the codec**: `tabula.v1.postcard` (production) or
   `tabula.v1.json` (dev/debug). The server refuses JSON in production for non-staff accounts —
   it is a debugging aid, not a supported client path. Doc 05 §4.
-- **`Hello` is an application-level frame**, not HTTP headers, so browsers (which cannot set
-  arbitrary WS headers) and native clients use the same path. Auth token travels in `Hello`.
+- **Authentication is at HTTP upgrade**: browser cookie + exact Origin, native
+  explicit bearer (no cookies). `Hello` is credential-free application-level
+  negotiation, bounded by a 5-second deadline. Browser code cannot set arbitrary
+  WS headers; it does not need to read the HttpOnly cookie. See ADR-0031; auth
+  sessions and process-local connection SessionIds are distinct.
 - **Version mismatch** → `Close(4400, "protocol_version_unsupported")` with the supported range in
   the body so the client can prompt for an update.
-- **One session may attach to at most one match** plus any number of *lobby* subscriptions.
-  Spectating a second match requires a second session. This keeps the routing table simple.
+- **One connection SessionId may attach to at most one match** plus any number
+  of *lobby* subscriptions. Spectating a second match requires a second WS
+  connection, not a second durable auth-session record. This keeps the routing table simple.
 
 ### 3.2 Frames, heartbeat, and limits
 
@@ -164,7 +175,7 @@ sequenceDiagram
 | Outbound queue | 256 messages, bounded | Overflow → `Close(4409, "slow_consumer")` |
 | Inbound rate | 20 msg/s burst 40, per session; 5 commands/s per match seat | Token bucket; excess → `Reject{RATE_LIMITED}`, repeated → close |
 | Idle (no attach) | 60 s | Close unattached sessions |
-| Max sessions per user | 4 | Prevent socket farming |
+| Max WS connections per user | 4 | Prevent socket farming; distinct from auth-session records |
 
 ### 3.3 Close codes
 
@@ -600,6 +611,9 @@ users (
   flags         jsonb not null default '{}'
 );
 user_identities ( user_id, provider, subject, primary key (provider, subject) );
+-- ADR-0031 requires channel, credential digest/generation, account epoch,
+-- idle/absolute deadlines and atomic refresh/revocation; these are not final DDL.
+-- The id is metadata, never an opaque bearer credential.
 sessions ( id uuid primary key, user_id uuid, created_at, last_seen_at, expires_at,
            device jsonb, revoked_at );
 
@@ -1182,7 +1196,7 @@ cheap today.
 | Information leaks | `project`/`view_event` + `SecretModel` scans (doc 02 §7.3); `hidden_information` games get stricter CI |
 | Spectator coaching | Spectator delay capability; separate spectator chat channel; ranked matches may forbid spectators entirely |
 | Bot/automation abuse | Rate limits, behavioral metrics (inter-command timing distribution), reported to the anti-abuse queue. Not solved by client attestation, which is unwinnable. |
-| Session theft | Opaque server-side sessions, rotation on privilege change, device list + revoke, `Secure`/`HttpOnly`/`SameSite=Lax` cookies for web, keychain storage for native |
+| Session theft / CSRF / stale authority | [ADR-0031](../adr/0031-browser-native-session-contract.md): channel-bound opaque sessions; host-only `Secure`/`HttpOnly`/`SameSite=Lax` browser cookie, native keychain; exact Origin/CSRF, upgrade authentication, expiry/rotation and durable revocation fences; future device-list/revoke UI remains gated |
 | Seed disclosure | Seeds encrypted at rest, never serialized into any client message, excluded from debug dumps (`MatchDebugDump` redacts it even for `Audit`) |
 | Operator abuse | Admin actions are `Input::Admin` — they land in the same immutable log with `OperatorId`, so every intervention is auditable |
 | Rating manipulation | Ratings computed server-side from `MatchOutcome`; smurf/boost heuristics in the rating job; `Aborted` outcomes never count |

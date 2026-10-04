@@ -66,9 +66,10 @@ shared form, route, operation and privacy states. The
 [pinned account artwork](https://github.com/loveoverflowcom/tabula/tree/030da25d0098e240ab2cf36dacf9892e8b320a89/docs/ui/design-02/06-accounts)
 is static provenance; credential fields, profile edits, sample statistics,
 friends and online badges are not functioning adapters. The
-[shared contract](accounts-social.md) names the unresolved web-session storage/
-transport policy and missing identity/profile/social APIs. This specification
-does not mount account routes or infer permissions from local presentation.
+[shared contract](accounts-social.md) applies
+[ADR-0031's accepted browser/native session policy](../../adr/0031-browser-native-session-contract.md)
+and names its missing enforcement/evidence and identity/profile/social APIs.
+This specification does not mount account routes or infer permissions from local presentation.
 ADR-0028/0030 preserve only discovery and bounded local play.
 
 ```sh

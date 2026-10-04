@@ -119,8 +119,11 @@ Two independent WASM bundles:
 ```
 
 `/play/:match_id` is a **separate document** (a real navigation, not a client-side route into a
-canvas), served by a minimal HTML page that boots `game.wasm` with parameters from the URL and a
-short-lived join token from `sessionStorage`.
+canvas), served by a minimal HTML page that boots `game.wasm` with bounded public
+parameters. Under [ADR-0031](../adr/0031-browser-native-session-contract.md), the
+same-origin document authenticates with its HttpOnly cookie and obtains a fresh
+scoped join grant by HTTP, held only in memory. No credential/grant travels in
+URL or sessionStorage. This networked handoff remains future-phase work.
 
 ### 3.2 Why separate bundles (ADR-011)
 
@@ -177,12 +180,13 @@ sequenceDiagram
 
     U->>SH: click "Start"
     SH->>SRV: POST /matches (or room start)
-    SRV-->>SH: { match_id, join_token }
-    SH->>SH: sessionStorage.set(match_ctx { match_id, join_token, game_id@version, pack })
+    SRV-->>SH: { match_id, public runtime metadata }
+    SH->>SH: sessionStorage.set(public match_ctx { match_id, game_id@version, pack })
     SH->>SH: prefetch asset pack manifest + game.wasm (link rel=prefetch)
     SH->>GR: navigate to /play/:match_id
     GR->>GR: read match_ctx; show branded loader with real progress
-    GR->>SRV: WS Hello + Attach (join_token)
+    GR->>SRV: authenticated HTTP + CSRF: obtain fresh scoped join grant
+    GR->>SRV: cookie + Origin WS upgrade; credential-free Hello + Attach(grant)
     SRV-->>GR: Welcome { view, capabilities }
     Note over GR: play
     GR->>SRV: match ends (ViewEvent Ended)
@@ -298,11 +302,11 @@ pub trait KvStore {
 
 | Data | Key | Backend | Notes |
 |---|---|---|---|
-| Session token | `auth.session` | web: `localStorage`; native: OS keychain/credential store | Never in plain files on native |
+| Session credential | outside `KvStore` | web: server-set host-only HttpOnly cookie; native: OS keychain/credential store | [ADR-0031](../adr/0031-browser-native-session-contract.md); no JS-readable storage/plain files |
 | Preferences (theme, motion, audio, a11y) | `prefs.v1` | KvStore | Synced to the server when logged in, so a new device inherits them |
 | Asset cache | content-hash keys | web: Cache API/IndexedDB; native: app cache dir | Managed by `tabula-assets` (§12) |
 | Cached catalog | `catalog.v1` | KvStore | ETag revalidated |
-| Last match context | `match.ctx` | `sessionStorage` (web) | For handoff + refresh recovery |
+| Public match context | `match.ctx` | `sessionStorage` (web) | Untrusted non-secret hints only; revalidate session/permission and reacquire memory-only grant |
 | Replay cache | `replay.<id>` | native only | Optional |
 
 **No game state is ever cached locally as authoritative.** On reconnect, the server is the source

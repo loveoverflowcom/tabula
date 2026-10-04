@@ -20,7 +20,7 @@ contract determines fields; the reference email/password is a proposal.
 | Email identifier, if supported | Persistent label; stable `name`/ID; `type=email`, `autocomplete=username`, email input mode, no autocapitalization/spellcheck. Account-owner normalization/bounds; no live account lookup |
 | Password | Persistent label; `type=password`, `autocomplete=current-password`; preserve whitespace/case; allow paste and password-manager autofill. No independent frontend password policy |
 | Show/Hide password | Labeled `type=button`, exposed pressed/visibility state, ≥44 dp target; preserve value/caret/focus and do not submit |
-| Remember this device | Omit until the session owner defines its actual persistence/lifetime and scope; never a local token-storage checkbox |
+| Remember this device | Omit under ADR-0031's initial no-remember-me policy; longer-lived login needs a superseding ADR and target evidence, never a local token-storage checkbox |
 | Login | One filled primary, supported real submit only; pending text retains purpose |
 | Browse games / supported local escape | Tonal visible link through the [safe escape contract](accounts-social.md#route-back-and-local-escape-contract); remains reachable during every form state |
 | Register / Reset / provider actions | Register only when its real route/contract exists. No reset link, provider or OAuth flow without a separately approved implemented adapter |
@@ -48,8 +48,12 @@ placeholder route. Do not present a local roster/name as a signed-in account.
 If already authenticated, skip requesting credentials and offer/perform only
 the validated read-only return navigation. Do not auto-create/accept an invite,
 start a match, or turn a return URL into authorization. Identity change while
-pending retires the old form generation. Session transport/CSRF/refresh policy
-is an explicit unresolved blocker in the shared contract.
+pending retires the old form generation.
+[ADR-0031](../../adr/0031-browser-native-session-contract.md) decides session
+transport, CSRF/context, refresh/expiry/revocation and cross-document cleanup.
+Real adapter/service enforcement and target-specific security/lifecycle evidence
+remain prerequisites in the [shared contract](accounts-social.md#accepted-session-policy-and-remaining-authority-contracts);
+a policy decision does not make this form operational.
 
 ## Keyboard, IME, layout and acceptance
 

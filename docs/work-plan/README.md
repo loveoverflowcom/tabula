@@ -43,11 +43,21 @@ remain gated.
 
 Issue #54's [account/social specification](../ui/screens/accounts-social.md)
 and [acceptance ledger](../ui/screens/accounts-social-verification.md) deliver
-PR A against fetched `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc`.
+PR A, originally reviewed against
+`develop @ 3527b65d6643d805d6c80352d165d97f71417ccc` and now aligned with
+[ADR-0031](../adr/0031-browser-native-session-contract.md).
 Its next slices are deferred, not new active phase crossings:
 [B auth and self-profile](backlog/issue-54-auth-profile.md), then
 [C friends and presence](backlog/issue-54-friends-presence.md).
-Resolve the cookie/localStorage and HTTP/WS session-policy conflict with the
-identity owner before B, alongside approved registration fields and public
-error semantics. Existing discovery/local-play ADRs do not authorize account
-services. Passing aggregate checks does not close #54 or open Phase 4/5.
+
+[#54 session policy](../adr/0031-browser-native-session-contract.md) is now
+reconciled in a separate prerequisite contract from
+[PR #62 specification A](https://github.com/loveoverflowcom/tabula/pull/62).
+The [session backlog](backlog/issue-54-session-contract.md) and
+[adversarial acceptance matrix](../verification/session-contract/README.md)
+retain actual platform/portfolio/Phase-4/server/Phase-5/API gates for B/C.
+B still needs approved registration fields and public-error/self-profile
+contracts; C needs real typed social/lobby authority. The ADR resolves the
+policy choice only; PR A is independently reviewable and no auth/social service
+or online match is activated. Existing discovery/local-play ADRs do not authorize
+account services. Passing aggregate checks does not close #54 or open Phase 4/5.

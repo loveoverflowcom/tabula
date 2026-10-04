@@ -10,11 +10,17 @@ play remain reachable without an account.
 session or locally saved account label would hide missing authority/security
 and falsely turn the discovery exception into a Phase-5 product shell.
 
-**Dependencies:** documented Phase-4 identity/session and exit evidence,
-opened Phase-5 shell gate; approved registration fields/handle/normalization/
-password/agreement/public-disclosure policy and response/session disposition;
-reconciliation of doc 03's HttpOnly cookie and doc 04/net-client localStorage
-proposals, including HTTP/WS/CSRF/rotation/revocation. See
+**Dependencies:** actual Phase-2 platform evidence and Phase-3 portfolio/
+projection/freeze exit, real Phase-4 identity/server/protocol/persistence/session
+integration and exit, then the opened Phase-5 shell gate; approved registration
+fields/handle/normalization/password/agreement/public-disclosure policy,
+response/session disposition and self-profile API.
+[ADR-0031](../../adr/0031-browser-native-session-contract.md) has resolved the
+cookie/localStorage and HTTP/WS policy choice. Its channel-bound adapters,
+CSRF/context, rotation/expiry/revocation/cleanup and native/browser behavior
+still require real implementation and
+[S01–S14 evidence](../../verification/session-contract/README.md#required-acceptance-scenarios);
+see the [session backlog](issue-54-session-contract.md). See
 [#54](https://github.com/loveoverflowcom/tabula/issues/54),
 [shared contract](../../ui/screens/accounts-social.md) and
 [acceptance oracles](../../ui/screens/accounts-social-verification.md).

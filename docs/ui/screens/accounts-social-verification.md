@@ -1,7 +1,11 @@
 # Accounts/social — scope and evidence ledger
 
 PR A of [issue #54](https://github.com/loveoverflowcom/tabula/issues/54),
-reviewed against `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc`.
+originally reviewed against `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc`.
+Compatibility refresh merges
+`develop @ 115159cd38cba11f7fa94c3c49698b7a45d59e5f` (PR #63) and applies
+[ADR-0031](../../adr/0031-browser-native-session-contract.md); original SHAs
+and test receipts below remain historical.
 See [shared contract](accounts-social.md), [Login](15-login.md),
 [Register](16-register.md), [Profile](20-profile.md), [Friends](21-friends.md)
 and [en/vi copy](accounts-social-copy.md).
@@ -16,17 +20,36 @@ mutation, schema, dependency, theme value or production UI preview.
 
 Source inspection confirmed that auth/profile/friends and their APIs are
 unimplemented, not merely disabled. Current discovery routes and bounded local
-handoff stay unchanged. The cookie vs localStorage/HTTP/WS policy conflict and
-missing register/profile/social contracts are explicit blockers. Synthetic
+handoff stay unchanged. ADR-0031 resolves the former cookie/localStorage and
+HTTP/WS policy conflict only. Session enforcement/real target evidence and
+missing register/profile/social contracts remain explicit blockers. Synthetic
 local roster IDs, sample statistics/presence, architecture prose and successful
 existing builds cannot establish account/session authority.
 
-## Current evidence (PR A)
+## Session-policy compatibility refresh
+
+The accepted policy is documented; account/session runtime remains
+**NOT_IMPLEMENTED**. Login/shared specification, the screen index and B backlog
+now defer to ADR-0031 instead of treating its policy choice as unresolved.
+The work-plan index retains both PR A/B/C and the session prerequisite links.
+No executable behavior, credential storage, auth route or phase gate changes.
+
+[S01–S14](../../verification/session-contract/README.md#required-acceptance-scenarios)
+refine A01/A05/A13/A15 without replacing registration, profile, social,
+form/layout/IME/password-manager/keyboard/AT requirements. Actual platform,
+portfolio, Phase-4 integration/exit and Phase-5 shell evidence remain required;
+see the [session backlog](../../work-plan/backlog/issue-54-session-contract.md).
+Fresh final-head core/feature checks, structural validation, publication SHA
+and exact-head CI receipts are recorded in
+[PR #62](https://github.com/loveoverflowcom/tabula/pull/62), separately from
+these retained original-review receipts.
+
+## Historical local evidence (original PR A review)
 
 | Claim / invariant | Owner/failure mode and oracle | Check / status / evidence | Residual |
 |---|---|---|---|
-| Correct base and isolation | Fresh `origin/develop`, source SHA; no implicit PR #61 content | PASS — `git fetch origin develop`, worktree from `origin/develop`; source-read | Publication/CI for new commit not authorized or executed |
-| No phase or authority invention | AGENTS/doc 00/03/04/05/07, ADR-0028/0030, actual mounted routes and PHASE scaffolds | PASS — documented/source-read, independent source audit | PR B/C need actual API and phase/security evidence |
+| Correct base and isolation | Fresh `origin/develop`, source SHA; no implicit PR #61 content | PASS — `git fetch origin develop`, worktree from `origin/develop`; source-read | Historical pre-publication boundary; later publication/check receipts are in PR #62 |
+| No phase or authority invention | Original-review AGENTS/doc 00/03/04/05/07, ADR-0028/0030, actual mounted routes and PHASE scaffolds | PASS — documented/source-read, independent source audit | PR B/C need actual API and phase/security evidence |
 | Design adaptation grounded | Four desktop SVGs and mobile/state SVG, three actual supplied PNGs, Register/Friends static SVG rasters | PASS — source-read and static image-inspected for task hierarchy/tonal containment | No product pixels, all-width layout, behavior or AT proof |
 | Local escape grounded | Current `/games`, registry availability, `RuntimeBinding` and two-human opt-in host | PASS — source-read | No auth route/redirect implementation; actual local hosting remains separately evidenced |
 | Links/copy/coverage coherent | Existing repository targets, Markdown anchors, all four screen matrices and bilingual unique keys | PASS — documentation validation: 11 Markdown files, 99 local links/anchors, 68 unique en/vi keys with argument parity, 3 referenced keys, 5 original SVG XML sources; `git diff --check` | Check structure cannot prove security or translation usability |
@@ -91,7 +114,9 @@ PR A records all eight issue acceptance areas, but runtime M3 components,
 desktop/mobile reflow, server session/permissions/presence, authorized statistics,
 keyboard/AT/IME and duplicate/expired mutation behavior remain unimplemented.
 Do not check off or close the whole issue from this spec/aggregate result.
-Next: reconcile the identity/session security and form contracts, prove Phase-4
-identity/session and the Phase-5 gate, then B login/register/self read-only.
+Next: implement/evidence ADR-0031 after actual platform/portfolio gates and
+resolve registration/public-error/self-profile contracts; prove real Phase-4
+identity/session integration/exit and the Phase-5 shell gate, then B
+login/register/self read-only.
 After actual typed social/lobby contracts, C implements friends/presence/requests.
 Profile editing remains a distinct approved slice; see the [work queue](../../work-plan/README.md).

@@ -29,7 +29,7 @@
 //! }
 //!
 //! pub enum ClientMessage {
-//!     Hello { protocol, client: ClientIdent, auth: AuthCredential, codec: Codec },
+//!     Hello { protocol, client: ClientIdent, codec: Codec },
 //!     Platform(PlatformCommand),
 //!     Game(GameCommandFrame),     // the ONLY message carrying game-specific bytes
 //!     Ping { nonce: u32 },
@@ -64,6 +64,11 @@
 //!     Draining { retry_after_ms: u32 },  // reconnect immediately; Close(4411) follows
 //! }
 //! ```
+//!
+//! ADR-0031 (docs/adr/0031-browser-native-session-contract.md) authenticates
+//! browser cookie/native bearer at HTTP upgrade; Hello never carries credentials.
+//! This corrects an unimplemented sketch, not executable wire data. Future
+//! implementation and compatibility changes retain I-13 vectors/version gates.
 //!
 //! ## ADR-008 in one sentence
 //!
