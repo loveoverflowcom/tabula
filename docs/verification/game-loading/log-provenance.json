@@ -1,0 +1,146 @@
+[
+  {
+    "path": "logs/aggregate.log",
+    "raw_sha256": "7bc3e0cd485d2c0145dbc82db0d0e9da57fca66ed7eb782fb637bf20c45267af",
+    "retained_sha256": "64e0a75ec5387875b7a65348dc92132bf97c1232d76aefb619b6e8a000b4de72",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/node-test.log",
+    "raw_sha256": "ab2da7fb4cd989d4f92ae1c5ad864c83bd8cc162760be9a20f20fb2d5379be06",
+    "retained_sha256": "ab2da7fb4cd989d4f92ae1c5ad864c83bd8cc162760be9a20f20fb2d5379be06",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/http-test.log",
+    "raw_sha256": "d500a6f88479855ea2465b15452cc644621e6ef6efa683c06d7249787a5712b4",
+    "retained_sha256": "d500a6f88479855ea2465b15452cc644621e6ef6efa683c06d7249787a5712b4",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/http-wiring.log",
+    "raw_sha256": "7bc3de0a1f5b03eaf5cd19ef66adf5bee2ec11b49ad9043d0c245ec36ff3dea2",
+    "retained_sha256": "7bc3de0a1f5b03eaf5cd19ef66adf5bee2ec11b49ad9043d0c245ec36ff3dea2",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/staging-test.log",
+    "raw_sha256": "a5e378eb6ef482d156e4ef80a07e84a1f3f4fd2e38eeb6bc692ca20fe1346d01",
+    "retained_sha256": "b2d4effb16c6cdac9aa2cd8cd3f619a4dfe31cc919ba6d7cbee8fbb0ac2fd1c5",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/stage-cli-test.log",
+    "raw_sha256": "4342156309eb8d410c8a9e1f1a34b141bffc4d1eddbb4cfd7ed043dabdd89d04",
+    "retained_sha256": "dc060444458da3991c45e1007def58f0deadaf535bc44666122aa3af5ceed5bd",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/web-check.log",
+    "raw_sha256": "2ff37d271809920da8a93dc6b9adf35d93192a1e81358675f3f3b0a67e8c5fc9",
+    "retained_sha256": "2ff37d271809920da8a93dc6b9adf35d93192a1e81358675f3f3b0a67e8c5fc9",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/wasm-build.log",
+    "raw_sha256": "4523ee797d3652608f2dcf2a2b74ec5587fc0768780d43898e2038c0889d3bf6",
+    "retained_sha256": "4523ee797d3652608f2dcf2a2b74ec5587fc0768780d43898e2038c0889d3bf6",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/shell-build.log",
+    "raw_sha256": "f82d36147b376894a2a144660464910c2f9b5316cb6254c973fae31ed14fc02d",
+    "retained_sha256": "f82d36147b376894a2a144660464910c2f9b5316cb6254c973fae31ed14fc02d",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/native-build.log",
+    "raw_sha256": "5cc65f86d01b520d6fe0f86587f73b6295b4fe3df758d1541af4dd56b0586706",
+    "retained_sha256": "5cc65f86d01b520d6fe0f86587f73b6295b4fe3df758d1541af4dd56b0586706",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/native-launch.log",
+    "raw_sha256": "d6cd370d919ddb0cc3efe59589b3f2cc627455be6403e2730fd37d4e2feb377c",
+    "retained_sha256": "d6cd370d919ddb0cc3efe59589b3f2cc627455be6403e2730fd37d4e2feb377c",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/no-default.log",
+    "raw_sha256": "c4496e28076dc987165fe4c33747aebfe5525552dad755afbc74f061c7c0e8b3",
+    "retained_sha256": "c4496e28076dc987165fe4c33747aebfe5525552dad755afbc74f061c7c0e8b3",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/all-features.log",
+    "raw_sha256": "85a552ac8e0ddeb2f6d2524f8ccc6f402d091dcb4316962ea7f00eb2fe304959",
+    "retained_sha256": "85a552ac8e0ddeb2f6d2524f8ccc6f402d091dcb4316962ea7f00eb2fe304959",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/rules-module-test.log",
+    "raw_sha256": "721e0499037ff3a77c57c6c7b0f1733ef284747edb2aeb167eaeffb15e07e955",
+    "retained_sha256": "99c9952020dcb90b82e8b196d0fac14a90dd49de528d2d342fd63e090464771d",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/module-test.log",
+    "raw_sha256": "7fbb8c5b7834464679f800b43351a8d71d0783e8acfd70c383220ef4f586ba0f",
+    "retained_sha256": "bbd50a670db4a3c23bbbe0e0b07e30dc688b44dc7c36ba75a75c91a1627e88b7",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/registry-test.log",
+    "raw_sha256": "2a235066893477b2425c4e87cd13aa1ac4fa94d5cf9bc63d729e8e41b56a1697",
+    "retained_sha256": "6f322cf297a96ed49bf32a645d08bf925257da6a90d90369ec59752781f0f1b1",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/client-test.log",
+    "raw_sha256": "a6fbe9c79d1a0562d7a13934ba80853e0c3027b1ee8a10bc26360db81ec3bcc2",
+    "retained_sha256": "824a86c6d97616f9350471d0c6d7a393394771597388bd9608b2d12adb0b039d",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/budgets.log",
+    "raw_sha256": "4d9c682892c233a7eb6ddd19da3bdd2cb7c122f90571edc41ceb4d5200f80942",
+    "retained_sha256": "4d9c682892c233a7eb6ddd19da3bdd2cb7c122f90571edc41ceb4d5200f80942",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/old-budget.log",
+    "raw_sha256": "f69d852ca337bfb6276f54084190ef4bb436c2b6b41c7fc2e88e3b04cf62a221",
+    "retained_sha256": "f69d852ca337bfb6276f54084190ef4bb436c2b6b41c7fc2e88e3b04cf62a221",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/stage-local.log",
+    "raw_sha256": "318ae11ca2ed854e4805e8435ca8035ae9d90e799363aed1e0b3ef1b38e35b4b",
+    "retained_sha256": "318ae11ca2ed854e4805e8435ca8035ae9d90e799363aed1e0b3ef1b38e35b4b",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/stage-standalone.log",
+    "raw_sha256": "df71a0c8503deacad60bfebd8181d16b80afe534c624d6eb070dbc21b424c9dc",
+    "retained_sha256": "df71a0c8503deacad60bfebd8181d16b80afe534c624d6eb070dbc21b424c9dc",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/skills.log",
+    "raw_sha256": "faec1116c74d64bdb31a2ad12d398aa6d54517c9d31715d3a914e0331dd94b78",
+    "retained_sha256": "faec1116c74d64bdb31a2ad12d398aa6d54517c9d31715d3a914e0331dd94b78",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/skills-tests.log",
+    "raw_sha256": "b9972efdb4cde5b8bab4786465e54a3a0ac04dc36bfbd1cbe57b31164e982aea",
+    "retained_sha256": "b9972efdb4cde5b8bab4786465e54a3a0ac04dc36bfbd1cbe57b31164e982aea",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  },
+  {
+    "path": "logs/ai-doc-tests.log",
+    "raw_sha256": "c6b9b1f09add0403cc07e90bfdf272129b1ddfa2f8f7675ea8218862f2516371",
+    "retained_sha256": "c6b9b1f09add0403cc07e90bfdf272129b1ddfa2f8f7675ea8218862f2516371",
+    "normalization": "trim trailing whitespace and final blank lines only"
+  }
+]

@@ -139,8 +139,16 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - run: cargo check -p tabula-game-client --target wasm32-unknown-unknown --no-default-features --features web
-      - run: cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+      - run: cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release
       - run: cargo xtask stage-wasm-game
+      # Current local loading boundary: real loader contracts, cache fault
+      # cases and byte/resource budgets; never substitute for browser timing.
+      - uses: actions/setup-node@v4
+        with: { node-version: "24" }
+      - run: node --test apps/game-client/web/tests/*.test.cjs
+      - run: python3 tools/test_serve_local_shell.py
+      - run: cargo tree -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --edges normal > target/local-game-graph.txt
+      - run: python3 tools/tests/check-loading-budgets.py --game-wasm target/wasm32-unknown-unknown/wasm-release/tabula-game-client.wasm --game-tree target/local-game-graph.txt
       - run: cargo check -p tabula-web --target wasm32-unknown-unknown
       # Bundle size cap: < 6 MB gzipped (doc 01 §7). Fail on a >10% regression.
       # - run: cargo xtask check-bundle-size

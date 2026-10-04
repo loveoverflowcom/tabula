@@ -45,7 +45,7 @@ pub trait GameSetup: Send + Sync + 'static {
     fn modes() -> &'static [ModeSupport];
 
     /// Whether this adapter has a deployable local hot-seat document.
-    /// The handoff resolver consumes this declaration; bot factories and rules
+    /// The handoff resolver consumes this declaration; bot descriptors and rules
     /// capabilities alone never establish a gameplay runtime (ADR-011).
     fn local_document() -> bool {
         false
@@ -86,7 +86,8 @@ pub trait ErasedGame: Send + Sync {
     fn modes(&self) -> &'static [ModeSupport];
     /// This game's own visible copy for one locale.
     fn messages(&self, locale: Locale) -> Messages;
-    /// Bot levels whose factory this build actually links.
+    /// The package's declared bot policy levels, independent of linked factories.
+    /// This inventory cannot establish a gameplay host's bot-mode support.
     fn bot_levels(&self) -> Vec<BotLevel>;
     /// Parse, plan the seats, and run the game's own validation.
     ///
@@ -128,15 +129,7 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
     }
 
     fn bot_levels(&self) -> Vec<BotLevel> {
-        [
-            BotLevel::Trivial,
-            BotLevel::Easy,
-            BotLevel::Medium,
-            BotLevel::Hard,
-        ]
-        .into_iter()
-        .filter(|level| S::Module::bot(*level).is_some())
-        .collect()
+        S::Module::declared_bot_levels().to_vec()
     }
 
     fn normalize(&self, request: &SetupRequest) -> Result<NormalizedConfig, ConfigRejection> {
@@ -154,7 +147,7 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
         }
 
         let bot_level = match (request.mode.fills_with_bots(), request.bot_level) {
-            (true, Some(level)) if S::Module::bot(level).is_some() => Some(level),
+            (true, Some(level)) if S::Module::declared_bot_levels().contains(&level) => Some(level),
             (true, _) => return Err(ConfigRejection::whole(RejectionReason::Unsupported)),
             (false, _) => None,
         };

@@ -33,10 +33,22 @@ pub trait GameModule: Send + Sync + 'static {
     fn metadata() -> &'static GameMetadata;
     fn capabilities() -> &'static GameCapabilities;
 
+    /// Bot policy levels implemented by this package, in selector order.
+    ///
+    /// This immutable inventory is available without linking the optional
+    /// `bots` feature, so discovery/setup never needs to construct a policy.
+    /// With `bots` enabled, each declared level must have a [`Self::bot`]
+    /// factory and undeclared levels must not. The inventory alone does not
+    /// establish that a gameplay host can run a bot mode. (doc 02 §4, §6)
+    fn declared_bot_levels() -> &'static [BotLevel] {
+        &[]
+    }
+
     /// Optional bot policies. Server-side; consumes projections only. (doc 02 §6)
     ///
     /// A `Trivial` bot is free for any game that implements `legal_commands`,
     /// and that alone unlocks auto-fill and self-play fuzzing.
+    /// A build without `bots` may return `None` for a declared policy level.
     fn bot(_level: BotLevel) -> Option<Box<dyn GameBot<Self::Rules>>> {
         None
     }

@@ -54,6 +54,17 @@ Extend the existing local vertical slice with an **opt-in web handoff**:
 The standalone host remains available through its existing independent staging
 command. Both builds reuse one presenter/runtime and the same assets.
 
+The local loading refinement keeps that containment. A deployed Chess-only
+WASM build excludes unrelated games; explicit launch requests external fonts
+and the manifest-selected critical atlas, with another density loaded only on
+an actual DPI change. Content-versioned public resources are size/SHA-256
+checked by the host and pack bytes additionally retain their Rust BLAKE3 proof.
+An optional bounded CacheStorage/Web Locks file cache reuses verified public
+bytes across fresh documents; it stores no launch configuration, assignments,
+credentials or match state. This is a local host adapter, not the deferred
+general CDN/native/offline service. See the
+[loading evidence ledger](../verification/game-loading/README.md).
+
 ## Remaining gates
 
 This does not complete Phase 3, 4, 5 or 6. The registry's `ErasedMatch`, network

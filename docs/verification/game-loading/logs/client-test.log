@@ -1,0 +1,95 @@
+   Compiling tabula-game-chess v0.1.2 (/workspace/scratch/429f9ca90843/tabula-game-loading/games/chess)
+   Compiling renderer-macroquad v0.0.0 (/workspace/scratch/429f9ca90843/tabula-game-loading/crates/renderer-macroquad)
+   Compiling tabula-game-tiles v0.1.0 (/workspace/scratch/429f9ca90843/tabula-game-loading/games/tiles)
+   Compiling tabula-game-client v0.0.0 (/workspace/scratch/429f9ca90843/tabula-game-loading/apps/game-client)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.38s
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_game_client-5eca560c3c81770f)
+
+running 43 tests
+test runtime_ui::tests::all_existing_rejection_codes_have_controlled_copy_and_theme_names_are_exact ... ok
+test runtime_ui::tests::board_arrows_do_not_steal_feedback_focus_and_blur_does_not_lose_a_fresh_press ... ok
+test runtime_ui::tests::fatal_is_latched_and_only_the_new_game_action_recovers ... ok
+test runtime_ui::tests::recovery_requires_matching_pointer_release_and_focus ... ok
+test runtime_ui::tests::rejected_timer_stops_and_terminal_outcome_never_becomes_fatal ... ok
+test runtime_ui::tests::rejection_is_non_authoritative_and_never_displays_detail ... ok
+test fixture_assets::tests::duplicate_named_files_fail_before_any_graphics_upload ... ok
+test fixture_assets::tests::corrupted_and_truncated_selected_bytes_never_reach_decode_or_ready ... ok
+test runtime_ui::tests::render_and_recovery_keep_screen_camera_tokens_and_target_floor_in_every_theme ... ok
+test fixture_assets::tests::gameplay_and_setup_select_only_their_actual_density_file ... ok
+test fixture_assets::tests::missing_named_cover_fails_instead_of_substituting_same_density_piece_bytes ... ok
+test tests::a_real_multi_move_opening_sequence_replays_to_every_checkpoint_and_the_final_hash ... ok
+test fixture_assets::tests::wrong_pack_version_game_and_undeclared_resources_fail_without_source_access ... ok
+test fixture_assets::tests::skip_setup_loads_no_cover_and_fetches_exact_manifest_path_once ... ok
+test tests::cancellation_rearm_and_simultaneous_timer_order_are_stable ... ok
+test tests::a_second_games_moves_are_recorded_and_replayed_by_the_same_generic_machinery ... ok
+test tests::corrupting_the_recorded_timer_logical_time_diverges_replay ... ok
+test tests::completed_feedback_keeps_keyboard_inspection_flip_and_intentional_restart_reachable ... ok
+test tests::audio_sink_failure_cannot_undo_an_accepted_move ... ok
+test tests::clock_timer_reenters_rules_as_a_recorded_timer_input ... ok
+test tests::a_recorded_input_index_is_load_bearing_for_rng_derived_replay ... ok
+test tests::display_geometry_accepts_positive_finite_viewport_and_dpi ... ok
+test tests::display_geometry_rejects_non_finite_or_zero_dpi ... ok
+test tests::accepted_and_rejected_inputs_each_consume_one_index ... ok
+test tests::create_end_match_is_replayed_with_zero_accepted_inputs ... ok
+test tests::display_geometry_rejects_zero_or_negative_dimensions ... ok
+test tests::every_effect_has_an_explicit_local_interpretation_in_emitted_order ... ok
+test tests::duplicate_end_match_is_rejected_without_overwriting_the_first_outcome ... ok
+test tests::logical_time_is_monotonic_for_stalled_and_backwards_frames ... ok
+test tests::late_frame_replays_the_timer_at_its_deadline_not_frame_arrival ... ok
+test tests::exhausted_input_index_never_wraps_or_reuses_rng_domain ... ok
+test tests::locally_executed_bot_move_reuses_the_player_input_path ... ok
+test tests::presenter_command_goes_through_game_rules_apply ... ok
+test fixture_assets::tests::missing_selected_file_fails_before_decode_and_retries_after_source_recovers ... ok
+test tests::projection_is_rebuilt_from_state_after_accepted_transition ... ok
+test tests::replay_oracle_rejects_multiple_end_match_effects - should panic ... ok
+test tests::public_bot_entry_cannot_overtake_a_due_timer ... ok
+test tests::public_input_entry_cannot_overtake_a_due_timer ... ok
+test tests::terminal_batched_presenter_input_retains_local_updates_but_discards_stale_intents ... ok
+test tests::transient_invalid_viewport_resumes_without_state_mutation ... ok
+test tests::ui_only_interaction_consumes_no_canonical_input_index ... ok
+test fixture_assets::tests::restart_and_density_return_do_not_refetch_or_redecode_ready_textures ... ok
+test tests::presenter_produces_a_macroquad_supported_render_list_with_verified_art ... ok
+
+test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/main.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_game_client-f407d873ca085be9)
+
+running 9 tests
+test clock_options::tests::endpoints_and_all_controls_are_reachable ... ok
+test clock_options::tests::rejected_values_preserve_the_previous_setup ... ok
+test standalone_setup::tests::held_key_from_previous_session_cannot_start_the_next_game ... ok
+test standalone_setup::tests::entry_keyboard_start_is_one_shot_and_repeated_key_is_suppressed ... ok
+test standalone_setup::tests::setup_actions_have_nonoverlapping_44dp_targets_inside_supported_viewports ... ok
+test tests::fresh_local_recovery_resets_elapsed_clock_time_and_clamps_clock_regression ... ok
+test tests::hostile_clock_launch_keeps_the_bounded_default ... ok
+test tests::local_launch_configures_real_untimed_fischer_and_bronstein_rules ... ok
+test tests::native_theme_options_keep_the_selected_game_and_invalid_values_keep_light ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/local_match.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/local_match-4af0cad983392fb5)
+
+running 15 tests
+test chess_timer_deadline_terminates_match_canonically ... ok
+test completion_release_while_hidden_and_resize_during_press_do_not_leave_a_restart_latch ... ok
+test chess_pointer_input_and_presentation_workflow ... ok
+test feedback_keyboard_focus_forwards_release_to_tiles_before_dismissal ... ok
+test completion_repeats_and_interrupted_restart_require_a_fresh_activation ... ok
+test feedback_occlusion_cancels_tiles_drag_before_release_and_hover ... ok
+test feedback_keeps_pointer_capture_through_escape_dismissal ... ok
+test terminal_local_match_offers_restart_without_changing_its_result_or_trace ... ok
+test panning_and_zooming_through_the_runtime_consume_no_canonical_input ... ok
+test shared_runtime_drives_both_chess_and_tiles_without_game_specific_branches ... ok
+test completion_never_comes_from_a_rejection_and_reserves_the_final_chess_hud ... ok
+test the_tiles_presenter_produces_a_macroquad_supported_render_list ... ok
+test chess_presenter_produces_macroquad_supported_render_list_with_verified_art ... ok
+test a_local_bot_can_take_the_seats_nobody_is_sitting_at ... ok
+test a_whole_tiles_match_is_playable_through_pointer_and_keyboard_input ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+   Doc-tests tabula_game_client
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

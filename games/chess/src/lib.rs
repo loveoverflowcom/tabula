@@ -54,6 +54,10 @@ impl GameModule for ChessModule {
         &CAPABILITIES
     }
 
+    fn declared_bot_levels() -> &'static [BotLevel] {
+        &[BotLevel::Trivial, BotLevel::Easy]
+    }
+
     #[cfg(feature = "bots")]
     fn bot(level: BotLevel) -> Option<Box<dyn tabula_game_api::GameBot<ChessRules>>> {
         matches!(level, BotLevel::Trivial | BotLevel::Easy).then(|| {
@@ -124,7 +128,7 @@ static CAPABILITIES: LazyLock<GameCapabilities> = LazyLock::new(|| {
             notify_rules: true,
         },
         substitution: SubstitutionPolicy::BotOnly {
-            levels: BotLevels::new(vec![BotLevel::Trivial, BotLevel::Easy])
+            levels: BotLevels::new(ChessModule::declared_bot_levels().to_vec())
                 .expect("literal levels are non-empty and unique"),
         },
         pausable: false,

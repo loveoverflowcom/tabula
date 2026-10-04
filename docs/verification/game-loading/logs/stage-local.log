@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running `/workspace/scratch/429f9ca90843/tabula/target/debug/xtask stage-local-play`
+stage-local-play: staged separate gameplay document into /workspace/scratch/429f9ca90843/tabula-game-loading/apps/web/dist/play/local (1131678 WASM bytes, 8 on-demand runtime resources)

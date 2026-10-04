@@ -1,0 +1,19 @@
+   Compiling tabula-game-tiles v0.1.0 (/workspace/scratch/429f9ca90843/tabula-game-loading/games/tiles)
+   Compiling tabula-game-chess v0.1.2 (/workspace/scratch/429f9ca90843/tabula-game-loading/games/chess)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.96s
+     Running tests/module.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/module-18a1f10bb182bb20)
+
+running 3 tests
+test package_declares_bot_levels_independently_of_the_bots_feature ... ok
+test rules_only_build_does_not_construct_bot_factories ... ok
+test module_bot_inventory_defaults_to_empty ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/module.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/module-3ac916ec2e7ed115)
+
+running 2 tests
+test package_declares_bot_levels_independently_of_the_bots_feature ... ok
+test rules_only_build_does_not_construct_bot_factories ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

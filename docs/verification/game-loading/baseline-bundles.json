@@ -1,0 +1,38 @@
+[
+  {
+    "path": "game.wasm",
+    "bytes": 1902364,
+    "gzip9_bytes": 904631,
+    "sha256": "c17ee5f237f692ae9a533d0d813465577735dc02eb16c0132fbbc0e7624d3a98"
+  },
+  {
+    "path": "shell/app-fd77d4a8b14e8a77.css",
+    "bytes": 11611,
+    "gzip9_bytes": 2028,
+    "sha256": "08dd0ebefcd11b2fc3c2f58561805d8fb47a3a1f6f42cda7052cad5aaa90d34a"
+  },
+  {
+    "path": "shell/index.html",
+    "bytes": 1568,
+    "gzip9_bytes": 960,
+    "sha256": "2960732d538a85c42686a8f8d47e3605330bf71951b051065c06d6f437474c84"
+  },
+  {
+    "path": "shell/tabula-web-f413d21d6138eda7.js",
+    "bytes": 44578,
+    "gzip9_bytes": 7743,
+    "sha256": "47b8920dce022d8ff91c5ccaface204318a48f047db5a788ae24b6fb8112fe0c"
+  },
+  {
+    "path": "shell/tabula-web-f413d21d6138eda7_bg.wasm",
+    "bytes": 863787,
+    "gzip9_bytes": 279437,
+    "sha256": "407da695d66fe72c9a8937b647f250d5ede707865343e41d086aa48800265550"
+  },
+  {
+    "path": "shell/tokens-4c12ca536a7c3d19.css",
+    "bytes": 47051,
+    "gzip9_bytes": 3066,
+    "sha256": "d7a35206b61176ad09e27d65551c4b10c7e1c170cc7c61ffd862b37c71f5c6e5"
+  }
+]
