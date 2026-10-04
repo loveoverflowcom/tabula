@@ -34,6 +34,12 @@ match acquires an identity, network token or saved resume.
 
 ## Decision
 
+[ADR-0034](0034-kanidm-auth-service-skeleton.md) subsequently reserves a separate
+Kanidm-backed account/session service. It supersedes only the local-password
+proposal and refines auth lifecycle versus gameplay enforcement ownership.
+The channel, CSRF, lifetime, rotation and revocation requirements below stand;
+cross-service fencing must be proven before implementation is enabled.
+
 ### 1. Identity, credentials and ownership
 
 Distinguish three objects instead of calling all of them a session:
@@ -45,7 +51,7 @@ Distinguish three objects instead of calling all of them a session:
 - **Session credential:** an opaque, unguessable 32-byte OS-CSPRNG value,
   encoded canonically for transport. Store only its SHA-256 digest, not the
   bearer value, in the server credential index. Public record IDs/UUIDv7 are
-  not credentials. Passwords remain argon2id under doc 01; never use game RNG
+  not credentials. Passwords are Kanidm-owned under ADR-0034; never use game RNG
 - **Connection SessionId:** doc 03's process-local WS routing identity. It
   cannot log in, refresh, prove a seat or outlive the auth-session authority
 

@@ -106,14 +106,15 @@ update in the same PR (doc 00 §7.1).
 | Dual codec (Postcard prod / JSON debug) | 009 | golden vectors, subprotocol negotiation | Debuggability of a binary protocol is a productivity multiplier |
 | One Tokio task per match, single writer | 006 | I-14, ownership leases | Ordering correctness with minimal machinery |
 | Compile-time game registry (Phase A) | 007 | registry crate structure | Type safety now; Phase B/C doors kept open at near-zero cost |
-| PostgreSQL as the only Stage-0 datastore; event log + snapshots | 013 | doc 03 §9 | One store, transactional, replay-friendly |
-| Modular monolith, one repo, one workspace | 015 | doc 01 §2, doc 06 §7 | A small team cannot afford distribution |
+| PostgreSQL as the only Tabula Stage-0 datastore; event log + snapshots; external credentials are Kanidm-owned | 013 + 034 | doc 03 §9, ADR-0034 | One Tabula store, transactional, replay-friendly |
+| Modular monolith, one repo, one workspace; account-auth boundary reserved separately | 015 + 034 | doc 01 §2, doc 06 §7 | Gameplay stays together; skeleton does not open runtime |
+| Kanidm account adapter/session lifecycle in tabula-auth; session/resource enforcement and match grants in tabula-server | [034](../adr/0034-kanidm-auth-service-skeleton.md) | std-only frame, deps.toml; runtime evidence still owed | Owner-selected preparation for #54 preserving ADR-0031 |
 | Voice on a separate plane behind a trait | 016 | `tabula-voice` | Media must never share the game socket's semantics |
 | Per-game versioned, hashed asset packs | 017 | `tabula-assets`, manifest | Otherwise app size grows with the catalog |
 | One semantic design-token authority: authored `tokens.toml`, generated Rust runtime, CSS and JSON adapters | 018 → 027 | `xtask gen-tokens`, freshness gate, no-raw-colors lint | One product feel across DOM and canvas without ambiguous or hand-edited sources |
 | Tauri never required for gameplay | 019 | I-15, dependency matrix | Desktop gameplay must not sit in a WebView; the mobile WebView prohibition is superseded by ADR-0032 |
 | Compose Multiplatform mobile shell with a WebView `GameHost`; Kotlin/Swift own UI, navigation and device services, never rules | [032](../adr/0032-compose-multiplatform-mobile-host.md) | `xtask gen-tokens` (Kotlin adapter), `check-no-raw-colors` (Kotlin), CI Android build | One mobile UI codebase on platform navigation; the same Rust/WASM game as the web |
-| No k8s/Kafka/NATS/mesh/microservices before a measured need | 020 | doc 06 §1.1 triggers | Operational tax paid daily, benefit received rarely |
+| No k8s/Kafka/NATS/mesh/microservices before a measured need; ADR-0034 records the account-auth skeleton exception | 020 + 034 | doc 06 §1.1 triggers | Operational tax paid daily, benefit received rarely |
 | `#![forbid(unsafe_code)]` in rules; canonical hashing | 021 | workspace lints | Determinism and audit integrity |
 | Chat transport platform / chat scoping game-driven | 022 | `ChatScopes` enforcement tests | Serves both chess and werewolf with one mechanism |
 | Matchmaking reads only capabilities | 023 | dependency matrix | Keeps matchmaking generic |

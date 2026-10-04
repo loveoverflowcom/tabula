@@ -181,6 +181,11 @@ allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry",
 tier  = "binary"
 allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-lobby", "tabula-storage", "tabula-voice", "tokio", "axum", "tower", "tower-http", "tower-governor", "sqlx", "tracing", "tracing-subscriber", "opentelemetry", "metrics", "figment", "argon2", "jsonwebtoken", "openidconnect", "uuid", "serde", "serde_json", "anyhow"]
 
+[crate."services/tabula-auth"]
+tier  = "binary"
+allow = [] # ADR-0034: std-only frame; add dependencies with actual implementation.
+forbidden_categories = ["game_specific", "rendering", "ui_framework"]
+
 [crate."apps/game-client"]
 tier    = "binary"
 allow   = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-presentation", "tabula-assets", "tabula-net-client", "tabula-render-macroquad", "macroquad", "glam"]

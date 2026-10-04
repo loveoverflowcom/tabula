@@ -1109,9 +1109,9 @@ fn panning_and_zooming_through_the_runtime_consume_no_canonical_input() {
 
 /// Exercises verified fixture bytes and real bounded PNG decoding with a context-free upload
 /// adapter. This proves ready-resource acceptance; the runtime harness owns rendered pixel proof.
-fn tiles_sprite_fixture_cache(
-) -> tabula_render_macroquad::assets::SpriteAssetCache<impl tabula_render_macroquad::assets::TextureUploader>
-{
+fn tiles_sprite_fixture_cache() -> tabula_render_macroquad::assets::SpriteAssetCache<
+    impl tabula_render_macroquad::assets::TextureUploader,
+> {
     use tabula_assets::{AssetPackManifest, UnverifiedAssetBytes};
     use tabula_game_tiles::presentation::fixture;
     use tabula_presentation::GamePresentation;

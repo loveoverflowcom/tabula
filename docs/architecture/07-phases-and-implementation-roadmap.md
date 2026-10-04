@@ -249,8 +249,10 @@ crates/tabula-storage:    sqlx repositories, migrations (doc 03 §9.4), event ba
 crates/tabula-net-client: connect/handshake, seq, pending commands, resume with backoff+jitter,
                           two transports (tokio / web-sys)
 services/tabula-server:   axum HTTP (doc 03 §2 minus matchmaking), WS gateway, session layer,
-                          room router, auth (password + one OAuth provider), table chat,
+                          room router, session enforcement + match grants, table chat,
                           admin inspect/cancel, tracing + metrics + OTLP
+services/tabula-auth:     Kanidm account authentication + opaque Tabula session lifecycle
+                          (ADR-0034); skeleton only until provider/revocation evidence
 apps/game-client:         online mode, lobby-less direct join by code, spectate by link,
                           connection-state UI
 tests/integration:        multi-client scenarios against real Postgres
@@ -268,6 +270,11 @@ deploy:                   compose (dev), systemd + Caddy (Stage 0 prod), backup 
 | **Exit criteria** | The demo above passes repeatedly; L1 sustains 500 CCU at p95 ack < 60 ms; L7 shows zero lost matches; nightly replay verification green for a week; integrity counters at zero; restore-from-backup rehearsed. |
 
 ---
+
+ADR-0034 permits only the server/auth module frames as preparation for #54; it
+does not open Phase 4 or prove the deliverables above. TODOs live in Rust beside
+their future implementations. Auth lifecycle and gameplay enforcement must share
+durable authority with verified revocation/expiry ordering under ADR-0031.
 
 ## Phase 5 — Web application shell
 

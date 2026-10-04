@@ -2,7 +2,8 @@
 
 Most decisions live as **short-form rows** in
 [`docs/architecture/00-architecture-principles.md` §10](../architecture/00-architecture-principles.md#10-adr-register)
-— ADR-001 through ADR-032. Each row states the decision, its status, why, and the
+— including [ADR-0034's server/auth skeleton](0034-kanidm-auth-service-skeleton.md).
+Each row states the decision, its status, why, and the
 trigger that would make us revisit it.
 
 This directory is for the cases where a row is not enough: a long argument, a
