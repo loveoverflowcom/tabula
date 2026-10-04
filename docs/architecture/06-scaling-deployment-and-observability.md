@@ -454,9 +454,15 @@ create table match_inputs_2026_09 partition of match_inputs
 5. + matchmaker                         (only when the matchmaker itself needs replication)
 ```
 
-**Explicitly not split:** lobby, chat, auth, catalog, presence. They are libraries inside the
+**Explicitly not split:** lobby, chat, catalog, presence. They are libraries inside the
 gateway. Splitting them buys independent deploys we do not need and costs N× the failure modes
 (ADR-015).
+
+[ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md) records the owner-selected
+exception: account authentication/session lifecycle is reserved for tabula-auth
+with operator-managed Kanidm. Gameplay retains session enforcement and match
+grants. These are skeletons, not a deployment; coherent cross-service revocation
+is a prerequisite before enabling account runtime.
 
 ### 7.2 Internal transport (Stage 2+)
 

@@ -88,7 +88,8 @@ crates/           platform libraries — the real product
 
 games/            one crate per game; feature-split into rules / bots / presentation
 apps/             game-client (Macroquad), web (Leptos), admin, desktop (optional Tauri)
-services/         tabula-server — THE binary at Stage 0
+services/         tabula-server — gameplay binary at Stage 0; tabula-auth — Kanidm
+                  account/session skeleton (ADR-0034), both runtime-gated
 mobile/           ONE Compose Multiplatform mobile tree (ADR-0032): shared/ (UI, navigation,
                   GameHost interface), android/ (app), ios/ (Xcode host); no game logic
 xtask/            repo automation (pure Rust, no make)
@@ -114,7 +115,7 @@ permission to implement them early.
 | 1 | `games/chess` |
 | 2 | `tabula-design`, `tabula-presentation`, `tabula-render-macroquad`, `tabula-render-headless`, `apps/game-client` |
 | 3 | `tabula-assets`, `games/caro`, `games/tiles` (Carcassonne-like), `games/werewolf` (rules only) |
-| 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` |
+| 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server`, `services/tabula-auth` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin` |
 | 6 | `mobile/shared`, `mobile/android`, `mobile/ios` (foundation slice open, see below) |
 | 7 | `games/werewolf` (presentation, social, and online) |

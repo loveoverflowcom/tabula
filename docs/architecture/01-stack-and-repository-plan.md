@@ -36,7 +36,7 @@ Status markers per [doc 00 §11](./00-architecture-principles.md#11-decision-cla
 | Connection pooling | `sqlx::PgPool`, size tuned per doc 06 §6 | pgbouncer | Sufficient until multiple processes multiply pools; then add pgbouncer in transaction mode | When total app connections approach Postgres `max_connections` (doc 06 §4.3) | LOCK NOW |
 | Wire codec (prod) | `postcard` | `bincode`, `rmp-serde`, Protobuf | Compact, `serde`-native, no schema compiler, `no_std`-friendly | See ADR-009 trigger | LOCK NOW (dual codec) / EXPERIMENT (choice) |
 | Wire codec (debug) | `serde_json` | CBOR diagnostic | Human-inspectable in browser devtools and `websocat` | Never remove; it is a developer-experience requirement | LOCK NOW |
-| Auth | Own email+password (`argon2id`) and OAuth (Google/Apple) via `openidconnect`; sessions as opaque server-side tokens; short-lived signed match tokens (`jsonwebtoken`, HS256 → later EdDSA) | Auth0/Clerk, pure JWT sessions | Opaque sessions are revocable; signed match grants are scoped and require current session/seat authorization ([ADR-0031](../adr/0031-browser-native-session-contract.md)); provider integrations remain planned | If self-hosting OAuth becomes a burden, a managed IdP fits behind the same `IdentityProvider` port | LOCK NOW |
+| Auth | Kanidm owns credentials/OIDC; `tabula-auth` owns the provider adapter and opaque Tabula session lifecycle; `tabula-server` enforces current sessions and scoped match grants ([ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md)) | Managed IdP behind the provider boundary | Avoid a local password authority; retain ADR-0031's revocable channel-bound sessions and resource permissions | Before enabling runtime, prove cross-service revocation/expiry and real provider integration | ACCEPTED SKELETON; RUNTIME GATED |
 | Rate limiting | `tower-governor` for HTTP; per-session token bucket in the gateway for WS | Redis-backed limiter | In-process is correct at Stage 0–1; the interface allows a shared backend later | When multiple gateway processes need shared limits (doc 06 §4.3) | LOCK NOW |
 | Background jobs | Postgres-backed queue (`SELECT ... FOR UPDATE SKIP LOCKED`) inside the server binary | `apalis`, sidekiq-style, Kafka | We have Postgres and few jobs (rating recompute, replay compaction, asset GC) | When job volume or isolation demands a separate worker binary — a small step, seam preserved | LOCK NOW |
 | Observability | `tracing` + `tracing-subscriber` + `opentelemetry` (OTLP) + `metrics` exposed as Prometheus | Datadog agent, raw logs | Span-per-command tracing is the debugging tool for a match runtime | Doc 06 §9 | LOCK NOW |
@@ -142,8 +142,9 @@ tabula/
 │   └── admin/                     # operator UI (Leptos, reuses design tokens) — Phase 5+
 │
 ├── services/
-│   └── tabula-server/             # THE binary at Stage 0: HTTP + WS + match runtime + lobby
-│                                  # Splits later into gateway / match-worker (doc 06 §7)
+│   ├── tabula-server/             # Gameplay: HTTP + WS + match runtime + lobby
+│   │                              # Splits later into gateway / match-worker (doc 06 §7)
+│   └── tabula-auth/               # Kanidm account/session skeleton (ADR-0034), runtime gated
 │
 ├── mobile/                        # ONE mobile tree (ADR-0032): Gradle root + Xcode host
 │   ├── shared/                    # Compose Multiplatform library: UI, navigation, GameHost interface
@@ -179,6 +180,11 @@ services from day one. **Rejected for Stage 0.** Reasons:
 
 So: **one `tabula-server` binary composed of library crates that already have the right seams.**
 The crates are the boundary; the process count is a deployment decision.
+
+[ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md) reserves one owner-selected
+exception: Kanidm-backed account authentication in `tabula-auth`. Gameplay, lobby,
+chat, catalog and presence remain together. Both binaries are gated skeletons;
+provider/session implementation and deployment are not opened by their layout.
 
 Also rejected: a separate `boardgame-game-api` **and** `boardgame-core` **and** a registry crate
 being three crates was questioned — but kept, because `tabula-core` is depended on by the protocol
@@ -371,7 +377,7 @@ Do **not** create all fifteen crates on day one. Create them when a phase needs 
 | `games/chess` | Phase 1 |
 | `tabula-design`, `tabula-presentation`, `tabula-render-macroquad`, `apps/game-client` | Phase 2 |
 | `tabula-assets`, `games/caro`, `games/tiles` (rules + presentation), `games/werewolf` (rules/headless) | Phase 3 |
-| `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` | Phase 4 |
+| `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server`, `services/tabula-auth` | Phase 4 |
 | `tabula-lobby`, `apps/web`, `apps/admin` | Phase 5 |
 | `games/werewolf` (presentation, social, and online) | Phase 7 |
 | `tabula-voice` | Phase 8 |

@@ -1,10 +1,13 @@
-//! # `tabula-server` — THE binary at Stage 0
+//! # `tabula-server` — the gameplay binary at Stage 0
 //!
 //! > ## PHASE 4
 //!
 //! HTTP API + WebSocket gateway + match runtime + lobby, in **one process**
 //! composed of library crates that already have the right seams (ADR-015).
 //! The crates are the boundary; the process count is a deployment decision.
+//! Account authentication is reserved for `services/tabula-auth` and Kanidm
+//! (ADR-0034); this binary enforces Tabula sessions and gameplay permissions.
+//! Both services are skeletons: no listener, credentials, or account API is active.
 //!
 //! Doc 01 §2.3 rejects the "separate services from day one" outline explicitly:
 //! matchmaking, lobby, and the match runtime all need the same room directory,
@@ -29,7 +32,7 @@
 //!
 //! ```text
 //! POST   /api/v1/auth/{register,login,logout,refresh}
-//! GET    /api/v1/auth/oidc/:provider  + /callback
+//! GET    /api/v1/auth/oidc/kanidm    + /callback (proposed, tabula-auth)
 //! GET    /api/v1/auth/context              proposed session/CSRF bootstrap
 //! GET    /api/v1/me
 //! GET    /api/v1/games                     catalog, rollout-filtered, i18n keys
@@ -52,6 +55,8 @@
 //! RFC 9457 problem+json, cursor pagination, `Idempotency-Key` on resource POSTs.
 //! ADR-0031 (docs/adr/0031-browser-native-session-contract.md) owns lifetime,
 //! refresh and revocation fences; these endpoints remain unimplemented.
+//! The `/api/v1/auth/*` routes belong to `tabula-auth`, behind the same trusted
+//! browser origin. Profile, friends, presence and match grants remain server-owned.
 //!
 //! `/readyz` means **DB reachable, registry loaded, migrations current** — it is
 //! what the load balancer gates on during a rolling deploy (doc 06 §11.3).
@@ -132,28 +137,31 @@
 //! **Never log**: seeds, session tokens, join tokens, canonical state, hidden
 //! information, chat bodies.
 //!
-//! ## Module layout when this becomes real
+//! ## Skeleton module layout (TODOs live beside their future implementation)
 //!
 //! ```text
-//! src/main.rs        boot: config → tracing → migrations → registry → serve
+//! src/main.rs        entry point; delegates to the closed phase gate
+//! src/bootstrap.rs   boot: config → tracing → storage → registry → serve
 //! src/config.rs      the typed config struct; validated once, fails fast
-//! src/http/          one module per route group above
-//! src/ws/
-//!   upgrade.rs       channel auth + Origin before 101, codec, credential-free Hello
-//!   session.rs       reader/writer tasks, heartbeat, backpressure
-//!   limits.rs        token buckets: per session and per seat
-//! src/auth/          argon2 passwords, opaque sessions, OIDC, match tokens
-//! src/chat.rs        transport + scope enforcement (scoping comes from the game)
-//! src/admin/         inspect, cancel, rollout
+//! src/http.rs        catalog, profile, match and later lobby/social/admin routes
+//! src/ws.rs          upgrade, codec, reader/writer tasks, limits and backpressure
+//! src/session.rs     current session authority and scoped match grants
+//! src/runtime.rs     compose registry, match/storage ports and later lobby/chat
 //! src/telemetry.rs   tracing-subscriber, OTLP, Prometheus metrics
 //! src/shutdown.rs    the drain sequence above
 //! ```
 
-fn main() {
-    eprintln!(
-        "tabula-server is a Phase 4 deliverable (docs/architecture/07-phases-and-implementation-roadmap.md).\n\
-         Gate: four games pass conformance AND the game contract stopped changing (Phase 3 exit).\n\
-         Doc 09 §7: building the server on a moving contract is how protocols get corrupted."
-    );
-    std::process::exit(1);
+#![forbid(unsafe_code)]
+
+mod bootstrap;
+mod config;
+mod http;
+mod runtime;
+mod session;
+mod shutdown;
+mod telemetry;
+mod ws;
+
+fn main() -> std::process::ExitCode {
+    bootstrap::run()
 }

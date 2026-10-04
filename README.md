@@ -21,6 +21,7 @@ trước khi sửa code. [AGENTS.md](AGENTS.md) hướng dẫn cách làm việc
 | `mobile/` | Một cây Compose Multiplatform cho Android/iOS theo ADR-0032; hiện là foundation, WebView gameplay và voice còn gated |
 | `apps/desktop` | Shell Tauri tùy chọn; gameplay không phụ thuộc Tauri |
 | `services/tabula-server`, `tabula-match`, `tabula-storage` | Kiến trúc multiplayer server-authoritative, Tokio/Axum và PostgreSQL; phần runtime ngoài slice được mở vẫn theo phase gate |
+| `services/tabula-auth` | Skeleton backend auth dùng Kanidm theo [ADR-0034](docs/adr/0034-kanidm-auth-service-skeleton.md); TODO trong Rust, chưa có login/session runtime cho #54 |
 
 Web shell và gameplay là hai WASM bundle/document riêng (ADR-011).
 Hướng mobile dùng CMP quản lý UI/navigation, rồi nhúng gameplay Rust/WASM qua

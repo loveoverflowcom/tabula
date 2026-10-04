@@ -2132,6 +2132,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "tabula-auth"
+version = "0.0.0"
+
+[[package]]
 name = "tabula-core"
 version = "0.1.0"
 dependencies = [

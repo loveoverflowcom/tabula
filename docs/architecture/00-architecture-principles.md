@@ -438,6 +438,7 @@ Rows are consumers, columns are what they are permitted to depend on.
 | `tabula-lobby` | Y | — | Y | Y | — | — | — | Y | — | Y | — | — | — | — |
 | `tabula-storage` | Y | Y | Y | — | — | — | — | — | – | Y | — | Y | — | — |
 | `services/tabula-server` | Y | — | Y | Y | — | — | — | Y | Y | Y | Y | Y | — | — |
+| `services/tabula-auth` | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `apps/game-client` | Y | Y | Y | Y | Y | Y | Y | — | — | f | — | — | Y | — |
 | `apps/web` (Leptos) | Y | — | Y | Y | Y | — | Y | — | — | — | — | — | — | Y |
 | `apps/desktop` (Tauri) | Y | — | Y | Y | Y | — | Y | — | — | Y | — | — | — | — |
@@ -457,6 +458,9 @@ Notes on the interesting cells:
   `tabula-match`/`tabula-lobby`; the implementations live here. This is the seam that makes
   "swap Postgres deployment model" and "add a read replica" non-invasive.
 - **Nothing depends on `services/*`.** Services are leaves (binaries).
+- **ADR-0034 reserves `tabula-auth` as a std-only skeleton.** Account authentication
+  uses Kanidm; Tabula sessions retain ADR-0031's guarantees. Provider/runtime
+  dependencies require a later implementation and `deps.toml` update.
 
 ### 8.2 CI enforcement
 
@@ -497,7 +501,7 @@ flowchart TB
     end
 
     subgraph SERVER["Rust server — one binary at Stage 0"]
-        HTTP["Axum HTTP API<br/>auth · catalog · profile · admin"]
+        HTTP["Axum HTTP API<br/>session enforcement · catalog · profile · admin"]
         WS["WebSocket gateway<br/>connection + session layer"]
         ROUTER["Room router<br/>match_id → owner"]
         MATCH["Match actors<br/>(one Tokio task per live match)"]
@@ -525,6 +529,9 @@ flowchart TB
         SFU["SFU — managed or self-hosted"]
     end
 
+    AUTHAPI["tabula-auth: account authentication and sessions (ADR-0034)"]
+    KANIDM["Kanidm: credentials and OIDC"]
+
     WEB -->|HTTPS| LB
     WGAME -->|WSS| LB
     MOB -->|WSS + HTTPS| LB
@@ -535,6 +542,8 @@ flowchart TB
 
     LB --> HTTP
     LB --> WS
+    LB --> AUTHAPI --> KANIDM
+    AUTHAPI -->|tabula-storage| PG
     WS --> ROUTER --> MATCH
     MATCH --> REGISTRY --> GAMES
     HTTP --> LOBBY --> ROUTER
@@ -683,14 +692,14 @@ Longer discussion lives in the linked document.
 | **010** | Macroquad is the first renderer, behind a `Renderer` trait fed by a `RenderList`. | LOCK NOW (abstraction) / EXPERIMENT (Macroquad's ceiling) | Fastest path to all four platforms with one Rust codebase. | Move to Miniquad when Macroquad blocks needed control (custom pipelines, render targets, text shaping); wgpu only when Miniquad blocks us. Doc 04 §6. |
 | **011** | Leptos for application UI; Macroquad WASM for gameplay; **separate WASM binaries**, shared Rust crates, not shared WASM memory. | LOCK NOW | Avoids fighting two runtimes for the canvas/DOM/event loop; keeps the app shell fast and the game binary small. | If a game must be embedded inside a DOM-heavy page with tight interleaving — then experiment with a single-binary integration. Doc 04 §3. |
 | **012** | No ECS as the primary architecture. Deterministic state machine + presentation layer. | LOCK NOW | Board-game state is small, highly structured, and rule-heavy; ECS optimizes for the wrong thing and harms determinism/readability. | If a game legitimately needs thousands of independently-simulated entities, that single game may use an ECS *internally* in its presentation half. |
-| **013** | PostgreSQL as the only datastore at Stage 0; event log + periodic snapshots as the durability model. | LOCK NOW | One store, transactional, well understood, replay-friendly. | Doc 06 gives the measurable triggers for adding Redis/object storage/read replicas. |
+| **013** | PostgreSQL as the only Tabula datastore at Stage 0; event log + periodic snapshots as the durability model. External credentials/directory are Kanidm-owned under ADR-0034. | LOCK NOW; identity-provider boundary amended by ADR-0034 | One Tabula store, transactional, well understood, replay-friendly. | Doc 06 gives the measurable triggers for adding Redis/object storage/read replicas. |
 | **014** | Redis is not in the MVP. | DEFER | Nothing needs cross-process coordination yet; adding it early creates a second source of truth. | Introduce when >1 match-owning process exists AND directory lookup p95 > 5 ms or presence fan-out saturates Postgres. Doc 06 §4.3. |
-| **015** | Modular monolith: one repo, one workspace, few binaries, strong crate boundaries. | LOCK NOW | A solo/small team cannot afford distributed-systems overhead; crate boundaries preserve the split seams. | Split a service out when its scaling curve or deploy cadence genuinely diverges. Doc 06 §7. |
+| **015** | Modular monolith: one repo, one workspace, few binaries, strong crate boundaries; ADR-0034 reserves account auth separately while gameplay stays in one process. | LOCK NOW; auth boundary amended by ADR-0034 | A solo/small team cannot afford distributed-systems overhead; crate boundaries preserve the split seams. | Split a gameplay service out when its scaling curve or deploy cadence genuinely diverges. Doc 06 §7. |
 | **016** | Voice is a separate plane: WebRTC + Opus, coturn, managed/proven SFU behind a `VoiceService` trait. | LOCK NOW (separation + trait) / EXPERIMENT (provider) | Media traffic must never share the game WebSocket's ordering or backpressure characteristics. | Provider choice is measured in Phase 8. Never write our own SFU for MVP. |
 | **017** | Assets ship as versioned, hashed **asset packs** per game, delivered from CDN and cached locally; not bundled into app releases. | LOCK NOW | Otherwise every app release grows with every game — fatal for mobile. Doc 04 §12. | Small games may inline a tiny pack; the mechanism stays. |
 | **018** | Design tokens are defined once in Rust (`tabula-design`) and adapted to CSS variables (Leptos) and a `Theme` struct (Macroquad). | SUPERSEDED by ADR-027 (representation only) | One semantic language across DOM and canvas is the only way the product feels like one product. | See ADR-027; the semantic-authority intent remains locked. |
 | **019** | Tauri is optional and never required for gameplay on any platform. | LOCK NOW; the mobile WebView prohibition is SUPERSEDED by ADR-0032 | Desktop gameplay must not depend on a WebView. Tauri earns its place only for launcher/updater/native integration. Mobile gameplay may run in a WebView under ADR-0032, which keeps this ADR's latency risk open until measured. | Evaluate Tauri desktop in Phase 5. The mobile shell is Compose Multiplatform (ADR-0032), not Tauri. |
-| **020** | No Kubernetes, Kafka, NATS, service mesh, or microservices before a measured need. | LOCK NOW | Each adds an operational tax that a small team pays daily and benefits from rarely. | Doc 06 lists the specific symptom for each. |
+| **020** | No Kubernetes, Kafka, NATS, service mesh, or microservices before a measured need, except the owner-selected account-auth boundary of ADR-0034 (skeleton only). | LOCK NOW; auth exception recorded in ADR-0034 | Each adds an operational tax that a small team pays daily and benefits from rarely. | Doc 06 lists the specific symptom for each. |
 | **021** | Rules crates are `#![forbid(unsafe_code)]`; state hashing uses a canonical encoding, not `serde_json`. | LOCK NOW | Determinism and audit integrity. Doc 05 §7. | Never. |
 | **022** | The chat *transport* is platform; chat *scoping* is game-driven via `Effect::SetChatScopes`. | LOCK NOW | Werewolf makes scoping a core rule; chess makes it trivial. One mechanism serves both. | Never. |
 | **023** | Matchmaking is a platform service consuming only `GameCapabilities` + seat requirements; it never reads game state. | LOCK NOW | Keeps matchmaking generic across all games. Doc 03 §15. | Game-specific matchmaking hints may be added as declarative capability fields, never as code. |
@@ -704,6 +713,7 @@ Longer discussion lives in the linked document.
 | **031** | Browser host-only HttpOnly cookies, native secure-store bearer credentials, HTTP/WS-upgrade channel authentication, credential-free Hello, memory-only scoped match grants and server-owned session lifecycle. Long form: [`docs/adr/0031-browser-native-session-contract.md`](../adr/0031-browser-native-session-contract.md). | ACCEPTED CONTRACT; RUNTIME GATED | Resolves contradictory storage/transport sketches without implementing accounts or weakening phase/I-13 gates; specifies CSRF, expiry, rotation and revocation oracles. | Cross-origin authenticated deployment, unsupported native secure store, longer-lived login, multi-process enforcement or implemented wire migration. |
 | **032** | Compose Multiplatform owns the Android/iOS app UI and navigation; the existing Rust/WASM game runs in a WebView `GameHost` embedded in the game screen; voice, device permissions and native services belong to the mobile host; Rust rules, presentation and renderer are unchanged. Long form: [`docs/adr/0032-compose-multiplatform-mobile-host.md`](../adr/0032-compose-multiplatform-mobile-host.md). | ACCEPTED FOUNDATION SCOPE; EMBEDDING, VOICE AND NATIVE SERVICES GATED | The owner chose a native app shell over canvas shell screens. This is a direction, not a measurement: no WebView evidence exists yet, and no phase gate is removed. | Per-platform WebView latency, frame-pacing or lifecycle evidence fails its stated bars; or networked mobile play is proposed (ADR against ADR-0031 first). |
 | **033** | The mobile `GameHost` is a WebView that serves the first-party packaged game from the app bundle on a virtual origin (the loader's origin, SHA-256 and size checks unchanged), with a typed, bounded, capability-gated bridge for lifecycle, launch preferences and one host service. Not a dynamic plugin system. Long form: [`docs/adr/0033-webview-gamehost-first-party-embedding.md`](../adr/0033-webview-gamehost-first-party-embedding.md). | ACCEPTED FOR THE FIRST-PARTY LOCAL SCOPE; ANDROID/IOS WEBVIEW EXECUTION NOT_RUN | Delivers ADR-0032's reserved embedding without moving rules, credentials or state across the bridge, and without weakening the loader. Networked play, voice, further services and third-party games stay closed. | A target's executed evidence misses ADR-0032's bars; the iOS custom-scheme secure-context check fails; a second host service, networked mode or third-party game is proposed. |
+| **034** | Kanidm owns credentials/OIDC; `tabula-auth` reserves account/session lifecycle, `tabula-server` enforces sessions and resource/match authority. Both are gated Rust frames. Long form: [ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md). | ACCEPTED SKELETON; RUNTIME GATED | Owner-requested preparation for #54; records the exception without copying provider code or weakening ADR-0031. | Before any auth runtime: prove shared durable authority, cross-service revocation/expiry, proxy trust and real Kanidm integration. |
 
 ---
 

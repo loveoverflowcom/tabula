@@ -1,0 +1,17 @@
+[package]
+name        = "tabula-auth"
+version     = "0.0.0"
+description = "Phase 4 skeleton: Kanidm account authentication and Tabula session lifecycle."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+publish.workspace      = true
+
+# PHASE 4 — ADR-0034. A service leaf; no other crate depends on this binary.
+# The frame uses std only. Add actual dependencies to deps.toml with the first
+# implementation; do not pull provider/runtime libraries into pure game crates.
+[dependencies]
+
+[lints]
+workspace = true

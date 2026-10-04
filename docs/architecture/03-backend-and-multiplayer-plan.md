@@ -8,15 +8,19 @@
 
 ## 1. Stage-0 topology
 
-One binary. Inside it, clearly separated modules that map 1:1 to crates, so that the later
+One gameplay binary. Inside it, clearly separated modules map to crates, so the later
 process split (doc 06 §7) is a wiring change and not a rewrite.
+[ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md) reserves account authentication
+and session lifecycle in `tabula-auth` with external Kanidm credentials/OIDC.
+Gameplay session enforcement and match grants remain here. Both services are
+frames; cross-service revocation/expiry evidence is required before enablement.
 
 ```mermaid
 flowchart TB
     subgraph PROC["services/tabula-server — one process"]
         direction TB
         AX["axum Router<br/>HTTP + /ws upgrade"]
-        AUTH["auth module<br/>sessions · tokens · argon2 · OIDC"]
+        AUTH["session enforcement<br/>current authority · match grants"]
         SESS["session layer<br/>one task pair per connection"]
         ROUTER["room router<br/>DashMap&lt;MatchId, MatchHandle&gt;"]
         SUP["match supervisor<br/>spawn · drain · restart · hibernate"]
@@ -33,8 +37,13 @@ flowchart TB
     PG[("PostgreSQL")]
     OBJ[("Object storage<br/>replays · snapshots(large) · asset packs")]
     SFU["Voice SFU + coturn"]
+    AUTHAPI["tabula-auth: account authentication and sessions"]
+    KANIDM["Kanidm: credentials and OIDC"]
 
     AX --> AUTH
+    AUTH --> STORE
+    AUTHAPI --> KANIDM
+    AUTHAPI -->|tabula-storage| PG
     AX --> SESS
     AX --> LOBBY
     SESS --> ROUTER --> ACT
@@ -90,7 +99,7 @@ CSRF, lifetime, revocation and upgrade/Attach authority.
 |---|---|---|
 | `POST` | `/api/v1/auth/register` / `login` / `logout` / `refresh` | Channel-bound opaque server sessions; browser cookie/native bearer |
 | `GET` | `/api/v1/auth/context` | Proposed typed session disposition + memory-only CSRF bootstrap; no-store |
-| `GET` | `/api/v1/auth/oidc/:provider` + `/callback` | OAuth |
+| `GET` | `/api/v1/auth/oidc/kanidm` + `/callback` | Proposed Kanidm OIDC through tabula-auth (ADR-0034) |
 | `GET` | `/api/v1/me` | Profile, settings, entitlements |
 | `GET` | `/api/v1/games` | Catalog (rollout-filtered, localized keys) |
 | `GET` | `/api/v1/games/:id` | Metadata + capabilities + config schema + asset pack ref |
@@ -110,6 +119,10 @@ Conventions: browser host-only HttpOnly session cookie, native
 `Authorization: Bearer <session>`; exact Origin/CSRF and ambiguity rejection
 under ADR-0031; UUIDv7 ids; RFC 9457 problem+json errors;
 cursor pagination; `Idempotency-Key` honored on all `POST`s that create resources.
+
+All `/api/v1/auth/*` paths are proposed tabula-auth routes exposed through the
+same trusted app origin. Profile, friends/presence and match grants stay in
+tabula-server; local play does not require an account.
 
 ---
 
@@ -605,12 +618,12 @@ users (
   id            uuid primary key,            -- v7
   handle        citext unique not null,
   email         citext unique,
-  password_hash text,                        -- null for OAuth-only
   created_at    timestamptz not null default now(),
   status        text not null,               -- active | suspended | deleted
   flags         jsonb not null default '{}'
 );
-user_identities ( user_id, provider, subject, primary key (provider, subject) );
+-- ADR-0034: Kanidm owns credentials; Tabula binds verified issuer + subject.
+user_identities ( user_id, issuer, subject, primary key (issuer, subject) );
 -- ADR-0031 requires channel, credential digest/generation, account epoch,
 -- idle/absolute deadlines and atomic refresh/revocation; these are not final DDL.
 -- The id is metadata, never an opaque bearer credential.
