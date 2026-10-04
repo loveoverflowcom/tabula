@@ -14,7 +14,7 @@ in [`deps.toml`](../deps.toml), and repeated in each crate's `src/lib.rs` header
 | [`tabula-testkit`](tabula-testkit) | 0 | The conformance suite every game must pass |
 | [`tabula-design`](tabula-design) | 2 | Semantic tokens, generated into CSS and a `Theme` |
 | [`tabula-presentation`](tabula-presentation) | 2 | `View` → `RenderList`, input model, animation, a11y |
-| [`renderer-macroquad`](renderer-macroquad) | 2 | The first `Renderer` backend — deliberately replaceable |
+| [`tabula-render-macroquad`](tabula-render-macroquad) | 2 | The first `Renderer` backend — deliberately replaceable |
 | [`tabula-assets`](tabula-assets) | 3 | Versioned, hashed per-game asset packs |
 | [`tabula-protocol`](tabula-protocol) | 4 | The wire: envelopes, versions, dual codec, error codes |
 | [`tabula-registry`](tabula-registry) | 4 | The catalog — the **only** crate that names games |
@@ -50,7 +50,7 @@ implementation. That is deliberate — see [`AGENTS.md`](../AGENTS.md) §4 and d
      │                 │                  │
   registry        presentation ───────────┘
      │                 │
-   match         renderer-macroquad
+   match         tabula-render-macroquad
      │                 │
    lobby          apps/game-client
      │

@@ -3,7 +3,6 @@
 #![allow(clippy::doc_markdown)]
 
 use glam::Vec2;
-use renderer_macroquad::MacroquadRenderer;
 use tabula_core::{
     InputIndex, LogicalTime, MatchSeed, Millis, Occupant, RuleError, RuleErrorCode, SeatEntry,
     SeatId, SeatRoster, TimerId, UserId, Viewer,
@@ -28,6 +27,7 @@ use tabula_presentation::{
     Dpi, FrameCtx, InputEvent, Key, PointerButton, PointerPhase, PointerPosition, RenderCmd,
     Viewport,
 };
+use tabula_render_macroquad::MacroquadRenderer;
 
 type ChessMatch = LocalMatch<ChessRules, ChessPresentation>;
 
@@ -513,10 +513,10 @@ fn completion_never_comes_from_a_rejection_and_reserves_the_final_chess_hud() {
 
 #[test]
 fn chess_presenter_produces_macroquad_supported_render_list_with_verified_art() {
-    use renderer_macroquad::assets::{
+    use tabula_game_chess::presentation::assets;
+    use tabula_render_macroquad::assets::{
         AssetCacheLimits, DecodedRaster, SpriteAssetCache, TextureUploader,
     };
-    use tabula_game_chess::presentation::assets;
     struct CpuUploader;
     impl TextureUploader for CpuUploader {
         type Texture = (u16, u16);
@@ -1110,14 +1110,14 @@ fn panning_and_zooming_through_the_runtime_consume_no_canonical_input() {
 /// Exercises verified fixture bytes and real bounded PNG decoding with a context-free upload
 /// adapter. This proves ready-resource acceptance; the runtime harness owns rendered pixel proof.
 fn tiles_sprite_fixture_cache(
-) -> renderer_macroquad::assets::SpriteAssetCache<impl renderer_macroquad::assets::TextureUploader>
+) -> tabula_render_macroquad::assets::SpriteAssetCache<impl tabula_render_macroquad::assets::TextureUploader>
 {
-    use renderer_macroquad::assets::{
-        AssetCacheLimits, DecodedRaster, SpriteAssetCache, TextureUploader,
-    };
     use tabula_assets::{AssetPackManifest, UnverifiedAssetBytes};
     use tabula_game_tiles::presentation::fixture;
     use tabula_presentation::GamePresentation;
+    use tabula_render_macroquad::assets::{
+        AssetCacheLimits, DecodedRaster, SpriteAssetCache, TextureUploader,
+    };
 
     #[derive(Debug)]
     struct FixtureUploader;

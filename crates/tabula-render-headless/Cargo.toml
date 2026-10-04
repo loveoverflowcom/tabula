@@ -1,5 +1,5 @@
 [package]
-name        = "renderer-headless"
+name        = "tabula-render-headless"
 version     = "0.0.0"
 description = "Headless RenderList recorder and CPU rasterizer for presentation verification."
 edition.workspace      = true

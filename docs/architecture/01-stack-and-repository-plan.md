@@ -94,7 +94,7 @@ One repository. One Cargo workspace. Few binaries. Strong crate boundaries. (ADR
 | `boardgame-assets` | `tabula-assets` |
 | `boardgame-storage` | `tabula-storage` |
 | `boardgame-game-api` | `tabula-game-api` |
-| `renderer-macroquad` | `renderer-macroquad` (unchanged) |
+| `renderer-macroquad` | `tabula-render-macroquad` |
 | `voice-api` | `tabula-voice` |
 | *(new)* | `tabula-registry`, `tabula-match`, `tabula-lobby`, `tabula-net-client`, `tabula-testkit` |
 
@@ -123,7 +123,7 @@ tabula/
 │   ├── tabula-storage/            # sqlx/Postgres implementations of the ports; migrations
 │   ├── tabula-presentation/       # View → RenderList, input model, animation, layout
 │   ├── tabula-design/             # semantic tokens + theme; css/macroquad adapters (features)
-│   ├── renderer-macroquad/        # Renderer impl for RenderList
+│   ├── tabula-render-macroquad/        # Renderer impl for RenderList
 │   ├── tabula-assets/             # asset manifests, resolution, cache, loader ports
 │   ├── tabula-net-client/         # client session: connect, resume, sequence, codec negotiation
 │   ├── tabula-voice/              # VoiceService trait + provider adapters (features)
@@ -304,7 +304,7 @@ For each crate: responsibility, allowed deps, forbidden deps, why separate, when
   any of them into the others.
 - **Merge:** never.
 
-### `renderer-macroquad` — the first backend
+### `tabula-render-macroquad` — the first backend
 
 - **Responsibility:** execute a `RenderList` with Macroquad; texture/font/atlas management; map
   Macroquad input to `InputEvent`; window/canvas lifecycle; frame pacing; implement `AudioSink`.
@@ -369,7 +369,7 @@ Do **not** create all fifteen crates on day one. Create them when a phase needs 
 |---|---|
 | `tabula-core`, `tabula-game-api`, `tabula-testkit` | Phase 0 |
 | `games/chess` | Phase 1 |
-| `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `apps/game-client` | Phase 2 |
+| `tabula-design`, `tabula-presentation`, `tabula-render-macroquad`, `apps/game-client` | Phase 2 |
 | `tabula-assets`, `games/caro`, `games/tiles` (rules + presentation), `games/werewolf` (rules/headless) | Phase 3 |
 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` | Phase 4 |
 | `tabula-lobby`, `apps/web`, `apps/admin` | Phase 5 |
@@ -397,7 +397,7 @@ flowchart BT
     STORE["tabula-storage"]
     DESIGN["tabula-design"]
     PRES["tabula-presentation"]
-    RMQ["renderer-macroquad"]
+    RMQ["tabula-render-macroquad"]
     ASSETS["tabula-assets"]
     NETC["tabula-net-client"]
     VOICE["tabula-voice"]

@@ -14,7 +14,6 @@
 use core::fmt::Write as _;
 use glam::{Affine2, Vec2};
 use macroquad::prelude as mq;
-use renderer_macroquad::MacroquadRenderer;
 use tabula_assets::AssetDensity;
 use tabula_core::{
     BotLevel, DetRng, InputIndex, MatchSeed, Occupant, SeatEntry, SeatId, SeatRoster, StateHash,
@@ -35,6 +34,7 @@ use tabula_presentation::{
     Align, Border, Camera2D, Corners, FrameCtx, GamePresentation, InputEvent, Key, Layer, Opacity,
     Paint, Rect, RenderCmd, RenderList, RenderListBuilder, Renderer, TextStyleToken,
 };
+use tabula_render_macroquad::MacroquadRenderer;
 
 type FixtureMatch = LocalMatch<Rules, Presentation>;
 const SEED: [u8; 32] = [47; 32];

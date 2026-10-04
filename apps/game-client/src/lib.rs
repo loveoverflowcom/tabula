@@ -579,7 +579,6 @@ mod tests {
         presentation::{BoardLayout, ChessPresentation},
         ChessRules, ClockConfig, ClockControl, Config, PieceKind, Square,
     };
-    use renderer_macroquad::MacroquadRenderer;
     use std::panic::{catch_unwind, AssertUnwindSafe};
     use tabula_core::{Occupant, RulesVersion, SeatEntry, SeatRoster, UserId};
     use tabula_game_api::{
@@ -591,6 +590,7 @@ mod tests {
         AssetPackRef, AudioCue, AudioCues, AudioSink, Camera2D, Dpi, InputEvent, Intent,
         PointerButton, PointerPhase, PointerPosition, RenderListBuilder, Viewport,
     };
+    use tabula_render_macroquad::MacroquadRenderer;
 
     type ChessMatch = LocalMatch<ChessRules, ChessPresentation>;
 
@@ -1495,7 +1495,7 @@ mod tests {
     #[test]
     fn presenter_produces_a_macroquad_supported_render_list_with_verified_art() {
         use local_game::presentation::assets;
-        use renderer_macroquad::assets::{
+        use tabula_render_macroquad::assets::{
             AssetCacheLimits, DecodedRaster, SpriteAssetCache, TextureUploader,
         };
         struct CpuUploader;

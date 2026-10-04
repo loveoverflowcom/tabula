@@ -26,7 +26,7 @@ tabula-game-api = { workspace = true }
 tabula-design       = { workspace = true }
 tabula-presentation = { workspace = true }
 tabula-assets       = { workspace = true }
-renderer-macroquad  = { workspace = true }
+tabula-render-macroquad    = { workspace = true }
 macroquad           = { workspace = true }
 glam                = { workspace = true }
 # Phase 2 uses the game package directly; the Phase 4 registry will replace

@@ -432,7 +432,7 @@ Rows are consumers, columns are what they are permitted to depend on.
 | `tabula-design` | Y | — | — | — | – | — | — | — | — | — | — | — | — | f |
 | `tabula-presentation` | Y | Y | — | — | Y | – | Y | — | — | — | — | — | — | — |
 | `tabula-assets` | Y | — | Y | — | — | — | – | — | — | f | — | — | — | — |
-| `renderer-macroquad` | Y | — | — | — | Y | Y | Y | — | — | — | — | — | Y | — |
+| `tabula-render-macroquad` | Y | — | — | — | Y | Y | Y | — | — | — | — | — | Y | — |
 | `tabula-net-client` | Y | — | Y | Y | — | — | — | — | — | Y | — | — | — | — |
 | `tabula-match` | Y | Y | Y | Y | — | — | — | – | — | Y | — | — | — | — |
 | `tabula-lobby` | Y | — | Y | Y | — | — | — | Y | — | Y | — | — | — | — |
@@ -738,7 +738,7 @@ Postcard vs alternative game-payload encodings (measure size/CPU in Phase 4)
 Macroquad's practical ceiling for text, layout, and input (Phase 2–3)
 Macroquad UI vs a thin custom widget layer on RenderList (Phase 2)
 Leptos + Macroquad navigation/handoff UX at /play/:id (Phase 5)
-Tauri desktop shell value (Phase 5); Tauri mobile (post-Phase 6)
+Tauri desktop shell value (Phase 5); mobile shell is CMP under ADR-0032
 CMP shell + WebView GameHost latency and lifecycle on shipping Android/iOS (Phase 6; ADR-0032)
 voice provider: self-hosted SFU vs managed (Phase 8)
 snapshot cadence and event-log compaction policy (Phase 4, tune with data)

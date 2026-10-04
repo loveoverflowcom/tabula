@@ -25,6 +25,11 @@ They describe intended behavior; implementation and platform evidence are record
 | 12 — Xiangqi Learn | [Learn](12-learn.md) | Current-position evidence and structured fallback; optional LLM/knowledge provider separately gated |
 | 13 — user settings | [Settings](13-settings.md) | Leptos `/settings` after Phase 4 exit; native shell at its phase |
 | 14 — Xiangqi Resources | [Resources](14-resources.md) | Actual approved artifact rights, integrity, platform/budget/probe and provisioner required |
+| Accounts/social contract for issue #54 | [Authority, forms, navigation and privacy](accounts-social.md); [en/vi copy](accounts-social-copy.md); [verification](accounts-social-verification.md) | Specification slice A; identity/session/security contract and Phase 4/5 gates precede B/C |
+| 15 — login | [Login](15-login.md) | Proposed `/login`; real identity/session adapter and shell gate required |
+| 16 — registration | [Register](16-register.md) | Proposed `/register`; approved form/handle/agreement/disclosure/session contract required |
+| 20 — profile | [Profile](20-profile.md) | Proposed `/u/:handle`; B starts with self read-only; other/edit/history remain separately permission-checked and gated |
+| 21 — friends | [Friends](21-friends.md) | Proposed `/friends`; C requires real typed social, presence, request and server-permission contracts |
 | 22 — component showcase | [Showcase](22-component-showcase.md) | Design/development documentation; no product route |
 
 Open [the editable foundation preview](foundation-preview.html) from a repository-root
@@ -55,6 +60,17 @@ is static reference provenance; sample clocks, arrows and PV are not evidence.
 The [shared contract](xiangqi.md) records missing #48 reconciliation, rules,
 reconstruction, engine and artifact-rights gates. No Xiangqi game, route,
 worker, install lifecycle or AI capability is enabled by these specifications.
+
+Issue #54 specifies compact Login/Register/Profile/Friends documents and their
+shared form, route, operation and privacy states. The
+[pinned account artwork](https://github.com/loveoverflowcom/tabula/tree/030da25d0098e240ab2cf36dacf9892e8b320a89/docs/ui/design-02/06-accounts)
+is static provenance; credential fields, profile edits, sample statistics,
+friends and online badges are not functioning adapters. The
+[shared contract](accounts-social.md) applies
+[ADR-0031's accepted browser/native session policy](../../adr/0031-browser-native-session-contract.md)
+and names its missing enforcement/evidence and identity/profile/social APIs.
+This specification does not mount account routes or infer permissions from local presentation.
+ADR-0028/0030 preserve only discovery and bounded local play.
 
 ```sh
 python3 -m http.server 8000 --directory .
