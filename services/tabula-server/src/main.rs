@@ -30,6 +30,7 @@
 //! ```text
 //! POST   /api/v1/auth/{register,login,logout,refresh}
 //! GET    /api/v1/auth/oidc/:provider  + /callback
+//! GET    /api/v1/auth/context              proposed session/CSRF bootstrap
 //! GET    /api/v1/me
 //! GET    /api/v1/games                     catalog, rollout-filtered, i18n keys
 //! GET    /api/v1/games/:id                 metadata + capabilities + config schema
@@ -46,9 +47,11 @@
 //! *      /api/v1/admin/*                   separate authz role
 //! ```
 //!
-//! Conventions: `Authorization: Bearer <session>`, `UUIDv7` ids, RFC 9457
-//! `problem+json` errors, cursor pagination, `Idempotency-Key` honoured on every
-//! resource-creating POST.
+//! Conventions: browser host-only `HttpOnly` cookie / explicit native bearer,
+//! exact Origin/CSRF and channel ambiguity rejection (ADR-0031), `UUIDv7` ids,
+//! RFC 9457 problem+json, cursor pagination, `Idempotency-Key` on resource POSTs.
+//! ADR-0031 (docs/adr/0031-browser-native-session-contract.md) owns lifetime,
+//! refresh and revocation fences; these endpoints remain unimplemented.
 //!
 //! `/readyz` means **DB reachable, registry loaded, migrations current** — it is
 //! what the load balancer gates on during a rolling deploy (doc 06 §11.3).
@@ -136,7 +139,7 @@
 //! src/config.rs      the typed config struct; validated once, fails fast
 //! src/http/          one module per route group above
 //! src/ws/
-//!   upgrade.rs       subprotocol negotiation, Hello, HelloAck
+//!   upgrade.rs       channel auth + Origin before 101, codec, credential-free Hello
 //!   session.rs       reader/writer tasks, heartbeat, backpressure
 //!   limits.rs        token buckets: per session and per seat
 //! src/auth/          argon2 passwords, opaque sessions, OIDC, match tokens

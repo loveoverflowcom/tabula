@@ -90,19 +90,23 @@
 //!
 //! | Data | Key | Backend |
 //! |---|---|---|
-//! | Session token | `auth.session` | web `localStorage` / native OS keychain |
+//! | Session credential | outside `KvStore` | server-set `HttpOnly` browser cookie / native OS keychain (ADR-0031) |
 //! | Preferences | `prefs.v1` | `KvStore`, server-synced |
 //! | Catalog | `catalog.v1` | `KvStore`, ETag-revalidated |
-//! | Match handoff | `match.ctx` | `sessionStorage` (web) — survives a refresh |
+//! | Public match hints | `match.ctx` | `sessionStorage` (web); no credentials/grants, revalidate on recovery |
 //! | Asset cache | content hash | Cache API/IndexedDB (web), app cache dir (native) |
 //!
 //! **No game state is ever cached locally as authoritative.**
+//! ADR-0031 (docs/adr/0031-browser-native-session-contract.md) owns the future
+//! browser/native session contract. HTTP/WS upgrade authenticates by channel;
+//! Hello carries no credential. Obtain scoped Attach grants by authenticated
+//! HTTP and keep them only in memory. These remain unimplemented PHASE-4 seams.
 //!
 //! ## Module layout when this becomes real
 //!
 //! ```text
 //! src/client.rs     MatchClient, send_command, poll
-//! src/session.rs    handshake, codec negotiation, auth token attach
+//! src/session.rs    authenticated upgrade, credential-free Hello, session lifecycle
 //! src/resume.rs     backoff + jitter, resume vs resync, pending replay
 //! src/pending.rs    PendingCommand tracking, ack/reject correlation
 //! src/transport/

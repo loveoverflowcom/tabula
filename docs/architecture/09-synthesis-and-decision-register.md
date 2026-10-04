@@ -118,6 +118,7 @@ update in the same PR (doc 00 §7.1).
 | Matchmaking reads only capabilities | 023 | dependency matrix | Keeps matchmaking generic |
 | Ratings computed by the platform from `MatchOutcome` | 024 | rating job | Ladder integrity uniform across games |
 | `tabula-testkit` conformance mandatory per game | 025 | `register!` requires it | Determinism cannot be maintained by review |
+| Browser/native session channel and lifecycle contract | [031](../adr/0031-browser-native-session-contract.md) | [Required session acceptance](../verification/session-contract/README.md); enforcement NOT_IMPLEMENTED until Phase 4 | Removes contradictory credential/Hello sketches; no phase crossing or executable wire change |
 
 ### 3.2 EXPERIMENT
 
