@@ -7,4 +7,4 @@
 //! keys; handle key rotation and provider failures without accepting stale authority.
 //! TODO(phase 4, #54): resolve identity by (issuer, subject), not email or display
 //! name. Provider credentials stay server-side, never in game URLs, Hello, browser
-//! storage or the mobile GameHost bridge. No mock discovery/issued access tokens.
+//! storage or the mobile `GameHost` bridge. No mock discovery/issued access tokens.

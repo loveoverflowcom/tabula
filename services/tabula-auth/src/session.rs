@@ -2,7 +2,7 @@
 //!
 //! TODO(phase 4, #54): after verified identity, mint channel-bound opaque sessions
 //! with OS entropy; persist only credential digests behind tabula-storage ports.
-//! Browser: __Host-tabula_session Secure/HttpOnly/SameSite=Lax, Path=/, no Domain.
+//! Browser: `__Host-tabula_session`, `Secure; HttpOnly; SameSite=Lax; Path=/`, no Domain.
 //! Native: explicit bearer held in the OS secure store; no plaintext fallback.
 //! Preserve ADR-0031's 30-minute idle and 24-hour absolute deadlines, atomic
 //! credential rotation, account epochs and durable current-session logout.
