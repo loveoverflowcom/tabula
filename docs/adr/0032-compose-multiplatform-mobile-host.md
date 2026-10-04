@@ -1,6 +1,6 @@
 # ADR-0032: Compose Multiplatform mobile host with an embedded Rust/WASM game
 
-- **Status:** accepted for the foundation scope below; embedding, voice and native services remain unimplemented and gated
+- **Status:** accepted for the foundation scope below; the first-party embedding is delivered by [ADR-0033](0033-webview-gamehost-first-party-embedding.md) (its Android/iOS WebView execution NOT_RUN); voice and native services remain unimplemented and gated
 - **Date:** 2026-10-04
 - **Supersedes:** ADR-019 in part — only its mobile-gameplay prohibition of a WebView. The rest of ADR-019 stands: Tauri stays optional and is never required for gameplay.
 - **Amends:** ADR-001 (what the mobile host languages may own), the Mobile row of doc 01 §1, doc 01 §7, the native-shell part of doc 04 §3.3, and the Phase 6 deliverables in doc 07
