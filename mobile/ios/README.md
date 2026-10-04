@@ -1,45 +1,38 @@
 # iOS
 
-> **PHASE 6.** Gate: the web shell ships and a stranger can play (Phase 5 exit).
+> **Foundation slice** of [ADR-0032](../../docs/adr/0032-compose-multiplatform-mobile-host.md).
+> Phase 6's gate (the Phase 5 exit) is not met. **This Xcode project has not been built or run**:
+> it was authored on Linux, where neither the iOS framework link nor Xcode exists.
 
-A thin Xcode wrapper around `apps/game-client` built as a **`staticlib`**.
-Gameplay is **native Macroquad**, not a WebView (ADR-019).
+A thin SwiftUI container over the `TabulaShared` static framework from `:shared`. `TabulaApp.swift`
+presents `TabulaViewController()` (Compose Multiplatform) and nothing else. It supersedes the earlier
+plan of a `staticlib` Macroquad wrapper.
 
-## Build path (doc 01 §7)
+## Build path
 
 ```text
-apps/game-client  --(crate-type = staticlib)-->  libtabula_game_client.a
-                  --(cargo-lipo style packaging)-->  mobile/ios
+mobile/shared  --(Kotlin/Native iosArm64 | iosSimulatorArm64)-->  TabulaShared.framework (static)
+               --(embedAndSignAppleFrameworkForXcode, first Xcode build phase)-->  TabulaApp.xcodeproj
 ```
 
-Targets: `aarch64-apple-ios` (ship) and `aarch64-apple-ios-sim` (simulator).
+On a Mac: open `TabulaApp.xcodeproj`, choose the `Tabula` scheme and an iOS simulator. Signing is
+automatic and needs your team. Deployment target is iOS 15.
 
 ## What the Swift side owns
 
-Glue only:
-
-```text
-UIViewController + MTKView/CAEAGLLayer lifecycle
-scene phase changes → suspend/resume into tabula-net-client
-universal links (tabula://match/<id>) → MatchContext handoff
-APNs push for async turns
-StoreKit (later)
-AVAudioSession + microphone permission (Phase 8)
-```
-
-No game logic.
+UI hosting, scene phase, and device services (AVAudioSession and microphone permission with voice in
+Phase 8, universal links, APNs, the Keychain per ADR-0031). **No game logic.** None of those services
+exists yet; the Info.plist declares no usage descriptions.
 
 ## Practical notes
 
-- **Thin is the requirement, not the aspiration.** Every line of Swift is a line
-  that must be reimplemented in Kotlin, and a line that cannot be tested by the
-  Rust test suite.
-- Audio session category matters for voice (Phase 8) — get it wrong and the game
-  either ducks the user's music forever or cannot capture the microphone.
-- App Store review rejects apps that look like a web wrapper. Native Macroquad
-  helps here, but the shell screens must not look like a website in a frame.
+- Every line of Swift is a line that cannot be tested by the Rust or shared Kotlin suites. Keep it thin.
+- App Store review rejects apps that look like a web wrapper. The shell screens are native Compose, and
+  the WebView is confined to the game surface.
+- Audio session category matters for voice (Phase 8): getting it wrong either ducks the user's music
+  forever or cannot capture the microphone.
 
-## Exit criteria (doc 07 Phase 6)
+## Exit criteria (doc 07 Phase 6, unchanged)
 
-Same as Android: full match on the device matrix, suspend/resume, battery drain
-< 8%/hour, crash-free sessions > 99.5%, and store acceptance.
+Same as Android: full match on the device matrix, suspend/resume, battery drain < 8%/hour,
+crash-free sessions > 99.5%, and store acceptance. None is met by the foundation.

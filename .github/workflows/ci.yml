@@ -104,6 +104,22 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask check-no-raw-colors
 
+  # Compose Multiplatform mobile foundation (ADR-0032). Proves the shared Kotlin compiles for
+  # Android and iOS (klib), the host unit tests pass, and the debug APK assembles. It does NOT
+  # link the iOS framework or build the Xcode project (that needs a macOS runner) and runs no
+  # device or emulator.
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: gradle/actions/setup-gradle@v4
+      - working-directory: mobile
+        run: ./gradlew --console=plain :shared:testAndroidHostTest :android:assembleDebug
+      - working-directory: mobile
+        run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
+
   # -------------------------------------------------------------------- tests
   test:
     runs-on: ubuntu-latest

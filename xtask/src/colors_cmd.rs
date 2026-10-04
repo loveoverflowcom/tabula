@@ -2,14 +2,17 @@
 
 use std::path::{Path, PathBuf};
 
-const ROOTS: [&str; 3] = ["apps", "games", "crates/tabula-presentation"];
-const ALLOWED_GENERATED: [&str; 1] = ["apps/web/style/tokens.css"];
+const ROOTS: [&str; 4] = ["apps", "games", "crates/tabula-presentation", "mobile"];
+const ALLOWED_GENERATED: [&str; 2] = [
+    "apps/web/style/tokens.css",
+    "mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt",
+];
 
 /// Build output, not source. `dist/` holds trunk's content-hashed copy of the
 /// generated `tokens.css`, so a developer who has run `trunk build` would
 /// otherwise fail this check on a file nobody wrote. `check-no-game-ids` skips
 /// the same set.
-const SKIP_DIRS: [&str; 4] = ["target", "dist", "node_modules", ".git"];
+const SKIP_DIRS: [&str; 6] = ["target", "dist", "node_modules", ".git", "build", ".gradle"];
 
 #[derive(Debug, thiserror::Error)]
 pub enum ColorCheckError {
@@ -26,6 +29,7 @@ pub enum RawColorViolation {
     RustStructLiteral,
     HexLiteral,
     CssFunction,
+    KotlinConstructor,
 }
 
 impl RawColorViolation {
@@ -38,6 +42,9 @@ impl RawColorViolation {
             }
             Self::HexLiteral => "raw hex colour literal; use tabula-design semantic tokens",
             Self::CssFunction => "raw CSS colour function; use tabula-design semantic tokens",
+            Self::KotlinConstructor => {
+                "raw Compose Color constructor or named colour; use the generated tabula-design semantic tokens"
+            }
         }
     }
 }
@@ -102,8 +109,9 @@ fn walk(root: &Path, dir: &Path, violations: &mut Vec<String>) -> Result<(), Col
             path.extension().and_then(|e| e.to_str()),
             Some("css" | "scss")
         );
+        let is_kotlin = path.extension().and_then(|e| e.to_str()) == Some("kt");
 
-        if !is_rust && !is_css {
+        if !is_rust && !is_css && !is_kotlin {
             continue;
         }
 
@@ -113,6 +121,8 @@ fn walk(root: &Path, dir: &Path, violations: &mut Vec<String>) -> Result<(), Col
 
         let file_violations = if is_rust {
             scan_rust_source(&contents)
+        } else if is_kotlin {
+            scan_kotlin_source(&contents)
         } else {
             scan_css_source(&contents)
         };
@@ -690,6 +700,125 @@ pub fn scan_css_source(source: &str) -> Vec<(usize, RawColorViolation)> {
     violations
 }
 
+const KOTLIN_NAMED_COLORS: [&str; 13] = [
+    "Black",
+    "DarkGray",
+    "Gray",
+    "LightGray",
+    "White",
+    "Red",
+    "Green",
+    "Blue",
+    "Yellow",
+    "Cyan",
+    "Magenta",
+    "Transparent",
+    "Unspecified",
+];
+
+/// Scans Kotlin/Compose source for colours that bypass the generated semantic tokens.
+///
+/// Comments are ignored. `Color.Transparent` and `Color.Unspecified` are not palette
+/// colours and are allowed; a `Color(...)` constructor, a named palette colour such as
+/// `Color.Red`, a `0xAARRGGBB` literal or a `#RRGGBB` string is rejected.
+#[must_use]
+pub fn scan_kotlin_source(source: &str) -> Vec<(usize, RawColorViolation)> {
+    let mut violations = Vec::new();
+    let mut in_block = false;
+    for (index, raw) in source.lines().enumerate() {
+        let line = strip_kotlin_comments(raw, &mut in_block);
+        let number = index + 1;
+        if kotlin_constructs_color(&line) || kotlin_names_palette_color(&line) {
+            violations.push((number, RawColorViolation::KotlinConstructor));
+        }
+        if has_hex_argb_literal(&line) || has_hash_hex_string(&line) {
+            violations.push((number, RawColorViolation::HexLiteral));
+        }
+    }
+    violations
+}
+
+fn strip_kotlin_comments(line: &str, in_block: &mut bool) -> String {
+    let bytes = line.as_bytes();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if *in_block {
+            if bytes[i] == b'*' && bytes.get(i + 1) == Some(&b'/') {
+                *in_block = false;
+                i += 2;
+            } else {
+                i += 1;
+            }
+        } else if bytes[i] == b'/' && bytes.get(i + 1) == Some(&b'*') {
+            *in_block = true;
+            i += 2;
+        } else if bytes[i] == b'/' && bytes.get(i + 1) == Some(&b'/') {
+            break;
+        } else {
+            out.push(char::from(bytes[i]));
+            i += 1;
+        }
+    }
+    out
+}
+
+fn is_ident_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'_'
+}
+
+fn kotlin_constructs_color(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    line.match_indices("Color(")
+        .any(|(at, _)| at == 0 || (!is_ident_byte(bytes[at - 1]) && bytes[at - 1] != b'.'))
+}
+
+fn kotlin_names_palette_color(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    line.match_indices("Color.").any(|(at, _)| {
+        let boundary = at == 0 || !is_ident_byte(bytes[at - 1]);
+        let rest = &line[at + "Color.".len()..];
+        boundary
+            && KOTLIN_NAMED_COLORS.iter().any(|name| {
+                rest.strip_prefix(name).is_some_and(|tail| {
+                    !matches!(*name, "Transparent" | "Unspecified")
+                        && !tail.bytes().next().is_some_and(is_ident_byte)
+                })
+            })
+    })
+}
+
+fn has_hex_argb_literal(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    line.match_indices("0x").any(|(at, _)| {
+        (at == 0 || !is_ident_byte(bytes[at - 1]))
+            && bytes[at + 2..]
+                .iter()
+                .take_while(|byte| byte.is_ascii_hexdigit() || **byte == b'_')
+                .filter(|byte| **byte != b'_')
+                .count()
+                == 8
+    })
+}
+
+fn has_hash_hex_string(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    line.match_indices('#').any(|(at, _)| {
+        // Only a string that begins with the hex colour, as in "#5634BE".
+        if at == 0 || bytes[at - 1] != b'"' {
+            return false;
+        }
+        let digits = bytes[at + 1..]
+            .iter()
+            .take_while(|byte| byte.is_ascii_hexdigit())
+            .count();
+        matches!(digits, 3 | 4 | 6 | 8)
+            && !bytes
+                .get(at + 1 + digits)
+                .is_some_and(|byte| is_ident_byte(*byte))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -701,6 +830,7 @@ mod tests {
             RawColorViolation::RustStructLiteral,
             RawColorViolation::HexLiteral,
             RawColorViolation::CssFunction,
+            RawColorViolation::KotlinConstructor,
         ] {
             let msg = violation.message();
             assert!(!msg.is_empty());
@@ -1029,5 +1159,34 @@ mod tests {
             .any(|v| v.contains("raw_colors.rs:2 raw Color struct literal")));
         assert!(!violations.iter().any(|v| v.contains("tokens.css")));
         assert!(!violations.iter().any(|v| v.contains("domain_types.rs")));
+    }
+
+    #[test]
+    fn kotlin_raw_colors_are_rejected() {
+        for code in [
+            "val c = Color(0xFF5634BE)",
+            "val c = Color(red = 1f, green = 0f, blue = 0f)",
+            "Box(Modifier.background(Color.Red))",
+            "val c = 0xFF123456",
+            "val c = \"#5634BE\"",
+            "val c = \"#fff\"",
+        ] {
+            assert!(!scan_kotlin_source(code).is_empty(), "{code}");
+        }
+    }
+
+    #[test]
+    fn kotlin_semantic_tokens_comments_and_non_palette_colors_are_allowed() {
+        let code = concat!(
+            "// Color(0xFF5634BE) is generated\n",
+            "/* Color.Red\n",
+            "   still a comment */\n",
+            "val c = LocalTabulaColors.current.primary\n",
+            "val clear = Color.Transparent\n",
+            "val unset = Color.Unspecified\n",
+            "val id = \"abc#def\"\n",
+            "fun BackgroundColor(x: Int) = x\n",
+        );
+        assert_eq!(scan_kotlin_source(code), vec![]);
     }
 }

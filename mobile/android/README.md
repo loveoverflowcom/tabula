@@ -1,50 +1,32 @@
 # Android
 
-> **PHASE 6.** Gate: the web shell ships and a stranger can play (Phase 5 exit).
+> **Foundation slice** of [ADR-0032](../../docs/adr/0032-compose-multiplatform-mobile-host.md).
+> Phase 6's gate (the Phase 5 exit) is not met; this module is not a shippable app.
 
-A Gradle wrapper around `apps/game-client` built as a **`cdylib`**. Gameplay is
-**native Macroquad**, not a WebView (ADR-019) — WebView input latency and
-rendering would become the product's ceiling on the platform where most players
-are.
-
-## Build path (doc 01 §7)
-
-```text
-apps/game-client  --(crate-type = cdylib)-->  libtabula_game_client.so
-                  --(cargo-apk | cargo-ndk)-->  mobile/android
-```
-
-Targets: `aarch64-linux-android` (ship), plus `armv7-linux-androideabi` and
-`x86_64-linux-android` for emulators.
-
-`cargo-apk` initially. Graduate to `cargo-ndk` + Gradle when we need Play
-Billing, notifications, or custom `Activity` behaviour — which is to say, as soon
-as this is a real product rather than a demo.
+The Android application module of the one mobile tree (see [`../README.md`](../README.md)).
+`MainActivity` only calls `installTabulaContent()` from `:shared`; screens and navigation are
+Compose Multiplatform code. It supersedes the earlier plan of a `cdylib` + `cargo-apk` Macroquad
+app.
 
 ## What the Kotlin side owns
 
-Glue only (ADR-001 permits it, and only it):
+UI, navigation, WebView hosting (a later change) and device services. **No game logic**: no rules,
+legality, turn order, projection or hashing. If Kotlin needs to know whose turn it is, it shows what
+Rust projected; it never computes it (ADR-001 as amended by ADR-0032).
 
-```text
-Activity + SurfaceView lifecycle          → suspend/resume into tabula-net-client
-deep links (tabula://match/<id>)          → MatchContext handoff
-push notifications for async turns        → payload schema is a Phase 6 contract
-Play Billing (later)
-permissions (microphone, Phase 8)
-```
+Today the manifest declares no permissions and the app has no network access. Microphone,
+notifications, deep links and the secure credential store (ADR-0031) arrive with the changes that
+need them.
 
-No game logic. No rules. No projection. If Kotlin needs to know whose turn it is,
-something has gone wrong.
+## Lifecycle is still the part that will bite
 
-## Lifecycle is the part that will bite
+Android suspends aggressively. When the WebView `GameHost` lands, suspend/resume must reach
+`tabula-net-client` and resume through the normal reconnect path (`Attach { resume_from,
+last_client_seq }`), not a bespoke mobile path: two reconnect implementations diverge, and the
+divergence shows up as a duplicated move. Process death and WebView context loss are in the
+evidence ADR-0032 requires before embedding ships.
 
-Android suspends aggressively. `tabula-net-client` must receive explicit
-suspend/resume events, and resume must go through the normal reconnect path
-(`Attach { resume_from, last_client_seq }`) rather than a bespoke mobile path.
-Two reconnect implementations diverge, and the divergence shows up as a
-duplicated move.
-
-## Exit criteria (doc 07 Phase 6)
+## Exit criteria (doc 07 Phase 6, unchanged)
 
 ```text
 [ ] a full match completes on the device matrix
@@ -53,3 +35,5 @@ duplicated move.
 [ ] crash-free sessions > 99.5%
 [ ] the Play Store accepts the build
 ```
+
+None is met by the foundation.

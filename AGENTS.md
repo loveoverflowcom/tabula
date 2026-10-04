@@ -88,7 +88,8 @@ crates/           platform libraries — the real product
 games/            one crate per game; feature-split into rules / bots / presentation
 apps/             game-client (Macroquad), web (Leptos), admin, desktop (optional Tauri)
 services/         tabula-server — THE binary at Stage 0
-mobile/           gradle + Xcode wrappers around the game-client library
+mobile/           ONE Compose Multiplatform mobile tree (ADR-0032): shared/ (UI, navigation,
+                  GameHost interface), android/ (app), ios/ (Xcode host); no game logic
 xtask/            repo automation (pure Rust, no make)
 deploy/           compose (dev), systemd (Stage 0–1), terraform (Stage 2+)
 tests/            integration (real Postgres), load (Rust generator), replays (golden .tbr)
@@ -114,7 +115,7 @@ permission to implement them early.
 | 3 | `tabula-assets`, `games/caro`, `games/tiles` (Carcassonne-like), `games/werewolf` (rules only) |
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin` |
-| 6 | `mobile/android`, `mobile/ios` |
+| 6 | `mobile/shared`, `mobile/android`, `mobile/ios` (foundation slice open, see below) |
 | 7 | `games/werewolf` (presentation, social, and online) |
 | 8 | `tabula-voice` |
 | 9+ | SDK stabilisation, scaling, third-party ecosystem |
@@ -137,6 +138,15 @@ The opt-in local discovery-to-gameplay integration extends that bounded slice:
 standalone local authority and separate document. Network/resume, native catalog,
 asset-delivery services and the remaining phase gates stay closed.
 
+**A bounded Phase 6 foundation is open on the same terms.**
+[ADR-0032](docs/adr/0032-compose-multiplatform-mobile-host.md) opens the Compose
+Multiplatform mobile project, its minimal shell and navigation, the `GameHost` interface,
+and the generated Kotlin token adapter — not Phase 6 itself. Mobile gameplay in a WebView,
+host services and voice, networked mobile play, accounts, push and the store gates stay
+closed until their own change and evidence. Kotlin and Swift own mobile UI, navigation and
+device services only; rules, projection and protocol decisions stay in Rust (ADR-001, as
+amended).
+
 ---
 
 ## 5. Before you open a pull request
@@ -155,12 +165,15 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask check-deps            # the deps.toml matrix (I-1, I-15)
 cargo xtask check-no-game-ids     # I-9
 cargo xtask check-manifests       # game.toml/Cargo.toml schema and feature-shape validation
-cargo xtask check-no-raw-colors   # doc 04 §8.1 semantic design tokens
+cargo xtask check-no-raw-colors   # doc 04 §8.1 semantic design tokens (Rust, CSS and mobile Kotlin)
 cargo nextest run --workspace
 cargo deny check
 ```
 
 `just check` (or `cargo xtask check`) is the authoritative portable local core gate.
+A change under `mobile/` additionally runs, from `mobile/`,
+`./gradlew :shared:testAndroidHostTest :android:assembleDebug`; the iOS framework and Xcode
+project build only on macOS (see `mobile/README.md` for what each environment proves).
 CI additionally checks the full workspace feature matrix (`cargo check --workspace --no-default-features` and `--all-features`) and target-specific WASM compilation (`wasm32-unknown-unknown`). You can test the feature matrix locally with `just check-all` or `just features`.
 
 A change to a game crate additionally needs its conformance suite green

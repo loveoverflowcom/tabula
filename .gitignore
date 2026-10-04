@@ -40,3 +40,9 @@ __pycache__/
 # local perf/profiling output
 perf.data*
 flamegraph.svg
+
+# mobile (Gradle / Kotlin)
+/mobile/.gradle/
+/mobile/.kotlin/
+/mobile/local.properties
+/mobile/**/build/

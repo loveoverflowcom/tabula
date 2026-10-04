@@ -26,8 +26,8 @@
 //! | `selfplay <game>` | Bot-vs-bot matches with full invariant checking | 0 |
 //! | `replay <file>` | Replay a `.tbr` locally; `--diagnose` prints evidence strength | 0 |
 //! | `perft chess [depth]` | Chess move-generation counts | 1 |
-//! | `gen-tokens` | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json` | 2 |
-//! | `check-no-raw-colors` | No hex literals or `Color::new(` outside `tabula-design` | 2 |
+//! | `gen-tokens` | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json` + Kotlin `TabulaTokens.kt` | 2 |
+//! | `check-no-raw-colors` | No hex literals or `Color::new(`/Compose `Color(` outside `tabula-design` and its generated adapters | 2 |
 //! | `stage-local-play` | Stage the existing local gameplay document beside an opt-in built discovery shell (ADR-0030) | bounded local slice |
 //! | `pack-assets <game>` | Build, hash, and manifest a game's asset pack | 3 |
 //! | `gen-protocol-vectors` | Regenerate golden wire vectors — requires `--bump minor\|major` | 4 |
