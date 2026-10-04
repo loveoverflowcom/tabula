@@ -104,8 +104,8 @@ Three runs on one laptop show variation (840–1426 ms cold); no ranking, percen
   safe areas, accessibility with TalkBack/VoiceOver, landscape layout (the existing page overlaps its
   action buttons with the side panel at 860×412).
 - The shell's `BackHandler` uses an API deprecated in favour of `NavigationEventHandler` in Compose 1.12.
-- The Chrome check and the desktop UI tests are not wired as required CI gates beyond the `mobile` job's
-  Gradle steps; the Chrome check is a local command (CI execution: NOT_IMPLEMENTED; merge enforcement: unknown).
+- The desktop UI tests run in CI's `mobile` job; `tools/mobile-host-check` is a local command (CI execution:
+  NOT_IMPLEMENTED).
 
 The [follow-up queue](../../work-plan/backlog/mobile-game-host-device-evidence.md) lists the narrow next checks.
 
@@ -126,6 +126,9 @@ on one signature in `apps/game-client/tests/local_match.rs`; a separate mechanic
 
 Not part of the gate and **not run**: `cargo check --workspace --all-features` (CI's `features` job) and
 `cargo nextest` (the gate runs `cargo test`; CI's `test` job uses nextest), the Xcode build, any emulator.
-CI (`.github/workflows/ci.yml`) was edited, not executed: the `mobile` job now stages the bundle and runs
-`:previewApp:test`; its first run on the PR is the only CI evidence there will be (CI execution: NOT_RUN;
-merge enforcement: unknown).
+CI (`.github/workflows/ci.yml`): the PR's run [37210473249](https://github.com/loveoverflowcom/tabula/actions/runs/37210473249)
+on `af315c5` finished **12/12 jobs success**, including `mobile` (stages the real bundle, `:shared:testAndroidHostTest`,
+`:previewApp:test`, `:android:assembleDebug -Ptabula.requireGameBundle=true`, iOS klib compile) and `wasm`
+(web tests incl. the 79). That is CI execution of compile/unit/desktop-UI checks only: CI never runs an Android
+WebView, an emulator or Xcode, and does not run `tools/mobile-host-check`. Merge enforcement (required status
+checks) is unknown (not inspectable here).
