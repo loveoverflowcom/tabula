@@ -111,7 +111,8 @@ The [follow-up queue](../../work-plan/backlog/mobile-game-host-device-evidence.m
 
 ## Final gate
 
-On the final tree (after the last code and documentation edit):
+On the final tree, which includes `origin/develop @ 8ddb640` merged in (that commit itself fails `cargo fmt --check`
+on one signature in `apps/game-client/tests/local_match.rs`; a separate mechanical rustfmt commit fixes it):
 
 | Check | Result |
 |---|---|
