@@ -21,7 +21,7 @@ at that time, not a guarantee about browser plugins, GPU drivers, or all future 
 Installation used `--ignore-scripts`; the dependency has no prototype install-time scripts.
 
 Tiles atlas sources, generated PNGs, manifest hashes and CC0 notice remain under
-`assets/packs/tiles/`. Rust verifies the production manifest's BLAKE3 bytes before export;
+`games/tiles/assets/`. Rust verifies the production manifest's BLAKE3 bytes before export;
 staging computes an additional SHA-256 pin for the same bytes. Browser Web Crypto verifies
 that additional pin and expected byte count before decoding. The SHA-256 staging check does
 not replace the production BLAKE3 pack contract.

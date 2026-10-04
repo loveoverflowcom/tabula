@@ -30,7 +30,7 @@ The common dashboard remains M3; Werewolf owns its in-game card material.
 
 ## Artifact ownership / provenance
 
-- Standard source pack: `assets/packs/werewolf/`; 14 PNGs plus pinned manifest/source/generator
+- Standard source pack: `games/werewolf/assets/`; 14 PNGs plus pinned manifest/source/generator
 - Design reference and original attribution: `docs/ui/werewolf-approved/`; source ZIP v1 retained
 - Game presenter: `games/werewolf/src/presentation/`; all front typography live Vietnamese
 - Opt-in host: `apps/game-client/src/bin/werewolf.rs`; shared existing font/resource boundary

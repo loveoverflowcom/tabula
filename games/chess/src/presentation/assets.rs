@@ -11,19 +11,19 @@ use tabula_presentation::AssetPackRef;
 use crate::rules::{Color, Piece, PieceKind};
 
 /// Exact pinned metadata emitted by `cargo xtask pack-assets chess`.
-pub const MANIFEST: &str = include_str!("../../../../assets/packs/chess/fixture.pack.toml");
+pub const MANIFEST: &str = include_str!("../../assets/fixture.pack.toml");
 /// Transparent 432×144 piece atlas at explicitly declared density 1.
 #[cfg(not(target_arch = "wasm32"))]
-pub const ATLAS_1X: &[u8] = include_bytes!("../../../../assets/packs/chess/pieces@1x.png");
+pub const ATLAS_1X: &[u8] = include_bytes!("../../assets/pieces@1x.png");
 /// Transparent 864×288 piece atlas at explicitly declared density 2.
 #[cfg(not(target_arch = "wasm32"))]
-pub const ATLAS_2X: &[u8] = include_bytes!("../../../../assets/packs/chess/pieces@2x.png");
+pub const ATLAS_2X: &[u8] = include_bytes!("../../assets/pieces@2x.png");
 /// Bounded 240×160 editorial entry artwork, never a board or interactive surface.
 #[cfg(not(target_arch = "wasm32"))]
-pub const COVER_1X: &[u8] = include_bytes!("../../../../assets/packs/chess/cover@1x.png");
+pub const COVER_1X: &[u8] = include_bytes!("../../assets/cover@1x.png");
 /// Bounded 480×320 editorial entry artwork at density 2.
 #[cfg(not(target_arch = "wasm32"))]
-pub const COVER_2X: &[u8] = include_bytes!("../../../../assets/packs/chess/cover@2x.png");
+pub const COVER_2X: &[u8] = include_bytes!("../../assets/cover@2x.png");
 /// Exact manifest-local file names and bytes for the host's named preload adapter.
 ///
 /// Density alone is insufficient because pieces and cover share 1x/2x densities.

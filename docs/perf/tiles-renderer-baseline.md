@@ -2,7 +2,7 @@
 
 The checked-in [example](../../apps/game-client/examples/tiles_renderer_baseline.rs)
 exercises the real local runtime, presenter, Macroquad renderer and verified
-[CC0 fixture pack](../../assets/packs/tiles/README.md). It is a Phase-3 local
+[CC0 fixture pack](../../games/tiles/assets/README.md). It is a Phase-3 local
 graphics harness, separate from production routes and delivery policy. This
 file specifies reproduction; measured results belong in a dated evidence ledger.
 

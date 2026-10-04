@@ -11,7 +11,7 @@ compressed=gzip.compress(b,compresslevel=9,mtime=0);assert len(compressed)<=500_
 assert 'tabula-game-werewolf ' in tree
 for name in ['tabula-game-chess ','tabula-game-tiles ','leptos ']:assert name not in tree,name
 absent=[]
-for folder in ['assets/fonts','assets/packs/chess','assets/packs/tiles','assets/packs/werewolf']:
+for folder in ['assets/fonts','games/chess/assets','games/tiles/assets','games/werewolf/assets']:
  for f in sorted((ROOT/folder).iterdir()):
   if f.suffix in ['.png','.ttf']:
    assert f.read_bytes() not in b,f;absent.append(str(f.relative_to(ROOT)))

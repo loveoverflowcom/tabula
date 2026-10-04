@@ -6,7 +6,7 @@ inputs before implementation. `design-reference-v1.zip` is the source review exp
 editable Vietnamese card markup, original-art atlas and private/game styling. It is a
 **design reference**, not evidence of the Rust runtime running or a multiplayer game.
 
-Runtime assets are the independent PNG derivatives at `assets/packs/werewolf/`, generated
+Runtime assets are the independent PNG derivatives at `games/werewolf/assets/`, generated
 reproducibly from the original art atlas. Typography remains live code; the opaque common
 back is role-independent. The full source atlas is never a served runtime texture.
 `budgets.json` preserves measured per-file encoded/hash/dimension and estimated RGBA budgets.

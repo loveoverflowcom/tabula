@@ -68,7 +68,7 @@ struct SourceRegionSpec {
     height: u64,
 }
 
-/// A safe source path relative to assets/packs/<game>/.
+/// A safe source path relative to games/<game>/assets/.
 ///
 /// This is a builder trust boundary, not an emitted AssetPath. Hostile path
 /// spellings are rejected rather than normalized.
@@ -338,10 +338,10 @@ fn collect_inspected_files(
     let mut declared_names = BTreeSet::new();
     let mut declared_sources = BTreeSet::new();
     for declaration in &source_manifest.files {
-        if !declared_names.insert(declaration.name.clone()) {
+        if !declared_names.insert(declaration.name.to_ascii_lowercase()) {
             return Err(PackBuildError::DuplicateFileName(declaration.name.clone()));
         }
-        if !declared_sources.insert(declaration.source.clone()) {
+        if !declared_sources.insert(declaration.source.to_ascii_lowercase()) {
             return Err(PackBuildError::DuplicateSourcePath(
                 declaration.source.clone(),
             ));
@@ -560,6 +560,7 @@ fn build_pack(
     game: &str,
 ) -> Result<BuildSummary, PackAssetsError> {
     let game = GameDirectoryName::new(game)?;
+    let pack_root = game_owned_source_root(repository_root, &game)?;
     let game_root = repository_root.join("games").join(game.as_str());
     let game_manifest_path = game_root.join("game.toml");
     let game_manifest_source = read_text(&game_manifest_path)?;
@@ -580,12 +581,16 @@ fn build_pack(
     }
     let binding = game_manifest.asset_binding()?;
 
-    let pack_root = repository_root
-        .join("assets")
-        .join("packs")
-        .join(game.as_str());
     let source_manifest_path = pack_root.join("pack.source.toml");
-    let source_manifest_source = read_text(&source_manifest_path)?;
+    let source_manifest_bytes = read_regular_source_file(
+        &pack_root,
+        &PackSourcePath::new("pack.source.toml").expect("constant source path is safe"),
+    )?;
+    let source_manifest_source =
+        String::from_utf8(source_manifest_bytes).map_err(|error| PackAssetsError::InputIo {
+            path: source_manifest_path.clone(),
+            source: io::Error::new(io::ErrorKind::InvalidData, error),
+        })?;
     let source_manifest: SourceManifest =
         toml::from_str(&source_manifest_source).map_err(|source| {
             PackAssetsError::InvalidSourceManifest {
@@ -597,6 +602,54 @@ fn build_pack(
     let inspected = inspect_source_files(&pack_root, &source_manifest)?;
     let plan = plan_pack(&binding, &source_manifest, inspected).map_err(PackAssetsError::Plan)?;
     publish_staged_pack(output_root, &binding, &plan)
+}
+
+/// Resolve only the owning game's source directory. There is no legacy global
+/// fallback, and no source-directory ancestor may redirect through a symlink.
+fn game_owned_source_root(
+    repository_root: &Path,
+    game: &GameDirectoryName,
+) -> Result<PathBuf, PackAssetsError> {
+    let mut current = repository_root.to_path_buf();
+    for component in ["games", game.as_str(), "assets"] {
+        require_exact_source_child(&current, component)?;
+        current.push(component);
+        let metadata =
+            fs::symlink_metadata(&current).map_err(|source| PackAssetsError::SourceIo {
+                path: current.clone(),
+                source,
+            })?;
+        if metadata.file_type().is_symlink() || !metadata.is_dir() {
+            return Err(PackAssetsError::SourceRootNotDirectory(current));
+        }
+    }
+    Ok(current)
+}
+
+/// Exact spelling is required even on case-insensitive filesystems, so a pack
+/// that builds on one supported host cannot silently select another file.
+fn require_exact_source_child(parent: &Path, component: &str) -> Result<(), PackAssetsError> {
+    let path = parent.join(component);
+    let entries = fs::read_dir(parent).map_err(|source| PackAssetsError::SourceIo {
+        path: parent.to_path_buf(),
+        source,
+    })?;
+    for entry in entries {
+        let entry = entry.map_err(|source| PackAssetsError::SourceIo {
+            path: parent.to_path_buf(),
+            source,
+        })?;
+        if entry.file_name() == std::ffi::OsStr::new(component) {
+            return Ok(());
+        }
+    }
+    Err(PackAssetsError::SourceIo {
+        path,
+        source: io::Error::new(
+            io::ErrorKind::NotFound,
+            "exact source path spelling not found",
+        ),
+    })
 }
 
 fn inspect_source_files(
@@ -635,6 +688,7 @@ fn read_regular_source_file(
     let mut current = pack_root.to_path_buf();
     let components: Vec<_> = source.as_str().split('/').collect();
     for (index, component) in components.iter().enumerate() {
+        require_exact_source_child(&current, component)?;
         current.push(component);
         let metadata =
             fs::symlink_metadata(&current).map_err(|source_error| PackAssetsError::SourceIo {
@@ -1054,15 +1108,15 @@ mod tests {
 
     fn write_repository_fixture(root: &Path, source_manifest: &str, source_bytes: Option<&[u8]>) {
         fs::create_dir_all(root.join("games/sample")).unwrap();
-        fs::create_dir_all(root.join("assets/packs/sample")).unwrap();
+        fs::create_dir_all(root.join("games/sample/assets")).unwrap();
         fs::write(root.join("games/sample/game.toml"), game_manifest()).unwrap();
         fs::write(
-            root.join("assets/packs/sample/pack.source.toml"),
+            root.join("games/sample/assets/pack.source.toml"),
             source_manifest,
         )
         .unwrap();
         if let Some(bytes) = source_bytes {
-            fs::write(root.join("assets/packs/sample/fixture.bin"), bytes).unwrap();
+            fs::write(root.join("games/sample/assets/fixture.bin"), bytes).unwrap();
         }
     }
 
@@ -1104,6 +1158,92 @@ mod tests {
             [[resources.variants]]
             file = "fixture.bin"
         "#
+    }
+
+    #[test]
+    fn legacy_global_source_is_never_a_fallback() {
+        let root = tempfile::tempdir().unwrap();
+        write_repository_fixture(root.path(), valid_source_manifest(), Some(b"owned"));
+        let legacy = root.path().join("assets/packs/sample");
+        fs::create_dir_all(&legacy).unwrap();
+        fs::write(legacy.join("pack.source.toml"), valid_source_manifest()).unwrap();
+        fs::write(legacy.join("fixture.bin"), b"legacy").unwrap();
+        fs::remove_file(root.path().join("games/sample/assets/pack.source.toml")).unwrap();
+        let output = root.path().join("target/asset-packs");
+        let result = build_pack(root.path(), &output, "sample");
+        assert!(matches!(result, Err(PackAssetsError::SourceIo { path, .. })
+            if path == root.path().join("games/sample/assets/pack.source.toml")));
+        assert!(!output.exists());
+    }
+
+    #[test]
+    fn source_lookup_requires_exact_case() {
+        let root = tempfile::tempdir().unwrap();
+        let source =
+            valid_source_manifest().replace("source = \"fixture.bin\"", "source = \"Fixture.bin\"");
+        write_repository_fixture(root.path(), &source, Some(b"case-sensitive"));
+        let output = root.path().join("target/asset-packs");
+        assert!(matches!(
+            build_pack(root.path(), &output, "sample"),
+            Err(PackAssetsError::SourceIo { .. })
+        ));
+        assert!(!output.exists());
+    }
+
+    #[test]
+    fn case_colliding_source_declarations_are_rejected() {
+        let (a_spec, a) = file("a.bin", "data/fixture.bin", b"a");
+        let (b_spec, b) = file("b.bin", "data/Fixture.bin", b"b");
+        let source = source_manifest(vec![a_spec, b_spec], vec![]);
+        assert!(matches!(
+            plan_pack(&binding(), &source, vec![a, b]),
+            Err(PackBuildError::DuplicateSourcePath(_))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_game_directory_is_rejected_without_publication() {
+        use std::os::unix::fs::symlink;
+        let root = tempfile::tempdir().unwrap();
+        write_repository_fixture(root.path(), valid_source_manifest(), Some(b"outside-game"));
+        let outside = tempfile::tempdir().unwrap();
+        fs::rename(
+            root.path().join("games/sample"),
+            outside.path().join("sample"),
+        )
+        .unwrap();
+        symlink(
+            outside.path().join("sample"),
+            root.path().join("games/sample"),
+        )
+        .unwrap();
+        let output = root.path().join("target/asset-packs");
+        assert!(matches!(
+            build_pack(root.path(), &output, "sample"),
+            Err(PackAssetsError::SourceRootNotDirectory(_))
+        ));
+        assert!(!output.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_source_manifest_is_rejected_without_publication() {
+        use std::os::unix::fs::symlink;
+        let root = tempfile::tempdir().unwrap();
+        write_repository_fixture(
+            root.path(),
+            valid_source_manifest(),
+            Some(b"outside-manifest"),
+        );
+        let manifest = root.path().join("games/sample/assets/pack.source.toml");
+        let outside = root.path().join("outside.toml");
+        fs::rename(&manifest, &outside).unwrap();
+        symlink(&outside, &manifest).unwrap();
+        let output = root.path().join("target/asset-packs");
+        assert!(matches!(build_pack(root.path(), &output, "sample"),
+            Err(PackAssetsError::SourceSymlink(path)) if path == manifest));
+        assert!(!output.exists());
     }
 
     #[test]
@@ -1261,7 +1401,7 @@ mod tests {
         fs::write(outside.path().join("fixture.bin"), b"outside").unwrap();
         symlink(
             outside.path(),
-            root.path().join("assets/packs/sample/outside"),
+            root.path().join("games/sample/assets/outside"),
         )
         .unwrap();
         let output = root.path().join("target/asset-packs");
@@ -1282,7 +1422,7 @@ mod tests {
         fs::write(&outside_file, b"outside").unwrap();
         symlink(
             &outside_file,
-            root.path().join("assets/packs/sample/fixture.bin"),
+            root.path().join("games/sample/assets/fixture.bin"),
         )
         .unwrap();
         let output = root.path().join("target/asset-packs");
@@ -1491,7 +1631,7 @@ mod tests {
         )
         .unwrap();
         fs::write(outside_pack.join("fixture.bin"), b"outside-root").unwrap();
-        let pack_root = root.path().join("assets/packs/sample");
+        let pack_root = root.path().join("games/sample/assets");
         fs::remove_dir_all(&pack_root).unwrap();
         symlink(&outside_pack, &pack_root).unwrap();
 

@@ -1034,7 +1034,7 @@ host has a narrower concrete adapter and public-file cache, described below.
 
 ```mermaid
 flowchart TB
-    SRC["assets/packs/chess/*<br/>source art, audio, fonts"] --> BUILD["xtask pack-assets chess"]
+    SRC["games/chess/assets/*<br/>source art, audio, fonts"] --> BUILD["xtask pack-assets chess"]
     BUILD --> PACK["staged pack output<br/>opaque files + pack.toml"]
     PACK --> CDN[("CDN — immutable, content-hashed paths")]
     PACK --> SRV["server: validates + serves manifest URL"]

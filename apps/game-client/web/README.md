@@ -110,7 +110,8 @@ do not prove real browser BFCache behavior or total heap/GPU reclamation.
 - `mq_js_bundle.js`: unchanged pinned upstream Macroquad 0.4.16 / Miniquad 0.4.11,
   dual licensed MIT / Apache-2.0; original header retained
 - Cover: supplied approved `chess-design` editorial artwork; original and responsive
-  export hashes and exact generation provenance in `assets/chess-cover-provenance.md`
+  export hashes and exact generation provenance in
+  [the game-owned source record](../../../games/chess/assets/source/standalone-cover-provenance.md)
 - Fonts: supplied Open Sans (Apache-2.0) and Noto Serif (SIL OFL 1.1), with complete licenses retained
 - Shared header: canonical system CSS variables; game-art variables scoped to the
   Chess surface, generated from the authored token authority

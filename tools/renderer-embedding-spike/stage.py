@@ -66,7 +66,7 @@ def main():
     parser.add_argument("--macroquad-wasm", type=Path)
     parser.add_argument("--fixture-dir", type=Path, default=HERE / "fixtures")
     parser.add_argument("--font", type=Path)
-    parser.add_argument("--asset-source-dir", type=Path, default=REPO / "assets/packs/tiles")
+    parser.add_argument("--asset-source-dir", type=Path, default=REPO / "games/tiles/assets")
     parser.add_argument("--authority-tool", type=Path)
     parser.add_argument("--leptos-wasm", type=Path)
     parser.add_argument("--wasm-bindgen", type=Path)
@@ -108,7 +108,7 @@ def main():
         assets.append({"name": file["name"], "path": file["path"], "sha256": receipt["sha256"],
                        "bytes": receipt["bytes"], "width": width, "height": height,
                        "blake3": file["hash"], "blake3_provenance": "Rust fixed-scope verifier checks this exact staged byte snapshot against the canonical pack"})
-    receipts.append(copy(REPO / "assets/packs/tiles/LICENSE", destination / "licenses/tiles-LICENSE"))
+    receipts.append(copy(REPO / "games/tiles/assets/LICENSE", destination / "licenses/tiles-LICENSE"))
     pixi = HERE / "node_modules/pixi.js"
     for name in ["dist/pixi.mjs", "LICENSE", "package.json"]:
         receipts.append(copy(pixi / name, destination / "node_modules/pixi.js" / name))

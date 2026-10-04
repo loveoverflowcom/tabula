@@ -32,8 +32,8 @@ Constraints: no text, no lettering, no logo, no UI, no watermark, no faces, no f
 ## Standalone host exports
 
 - Design input: `chess-design/assets/chess-atmosphere.png` from the supplied design handoff, SHA-256 above
-- `chess-cover.png`: byte-identical original, 1536 × 1024; selected by responsive `srcset` for larger entry covers
-- `chess-cover-small.png`: byte-identical copy of `assets/packs/chess/cover@2x.png`, 480 × 320; the asset export pipeline downsized the original without adding UI, text or overlays
+- `chess-cover.png`: byte-identical alias of `games/chess/assets/source/chess-atmosphere.png`, 1536 × 1024; selected by responsive `srcset` for larger entry covers
+- `chess-cover-small.png`: byte-identical copy of `games/chess/assets/cover@2x.png`, 480 × 320; the asset export pipeline downsized the original without adding UI, text or overlays
 - Small export SHA-256: `fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b`
 - Cover remains decorative. Game title, configuration, clocks and controls are live text and controls
 - Open Sans Regular/Semibold and Noto Serif Bold are byte-identical supplied fonts, with supplied license notices retained. `OFL-OpenSans.txt` identifies the legacy Open Sans font as Apache-2.0; the full license is `LICENSE-OpenSans-Apache-2.0.txt`. Noto Serif uses SIL OFL 1.1 in `OFL-Noto.txt`

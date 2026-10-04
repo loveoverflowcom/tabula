@@ -157,13 +157,17 @@ tabula/
 │   ├── systemd/                   # Stage 0–1 unit files
 │   └── terraform/                 # optional, Stage 2+
 ├── assets/
-│   ├── brand/                     # logo, shared fonts, shared icons
-│   └── packs/                     # per-game source assets + pack build scripts
+│   ├── brand/                     # shared logo and icons
+│   └── fonts/                     # shared fonts and licenses
 └── tests/
     ├── integration/               # server + Postgres + real WS, multi-client scenarios
     ├── load/                      # Rust load generator
     └── replays/                   # committed golden replays per game (determinism regression)
 ```
+
+Game-owned source art, generators, provenance and pack manifests live under
+`games/<game>/assets/` beside their game crate. Shared resources remain under `assets/`;
+built content-addressed packs remain under `target/asset-packs/` (ADR-017).
 
 ### 2.3 Challenges to the structure proposed in the brief
 
