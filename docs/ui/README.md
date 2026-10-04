@@ -38,7 +38,11 @@ Screens 01–03 are **implemented** in `apps/web`, against the runtime catalog i
 gates as a recorded decision:
 [ADR-0028](../adr/0028-discovery-shell-ahead-of-phase-gate.md) states what the
 slice contains and what the gates still hold back. Running these screens
-requires `trunk serve` in `apps/web`; no match can be created from them.
+with `trunk serve` in `apps/web` leaves gameplay unbound. The opt-in local
+handoff under [ADR-0030](../adr/0030-local-discovery-gameplay-handoff.md) uses
+`just web-local-serve` to launch the existing two-human gameplay document.
+This does not create a server match or implement online/resume; see the
+[local integration ledger](../verification/chess-integration/README.md).
 
 Issue #52's [shared boundary](screens/results-replay.md) and screen 09–11
 specifications cover results, match history and generic replay. The existing
@@ -46,6 +50,13 @@ local driver can start a fresh game after a rules-owned terminal outcome;
 canonical `.tbr` tooling preserves gapped original input indices. These do not
 implement persisted history, user replay export or a projected scrub viewer.
 See [verification and residual gates](screens/results-replay-verification.md).
+
+Issue #54's [account/social contract](screens/accounts-social.md) specifies
+login/register, self-profile and friends/presence.
+[ADR-0031](../adr/0031-browser-native-session-contract.md) owns session policy;
+the [verification ledger](screens/accounts-social-verification.md) and
+[work queue](../work-plan/README.md) retain the runtime prerequisites.
+These specifications do not activate accounts or social services.
 
 Issue #53 adds [Xiangqi Play/Analyze/Learn/Resources contracts](screens/xiangqi.md)
 for screens 08, the Xiangqi extension of 11, 12 and 14. They preserve generic

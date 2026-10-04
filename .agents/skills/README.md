@@ -26,8 +26,10 @@ The checker verifies the final bridge, metadata and resource paths. A fresh Code
 Claude's live skill inventory still need runtime inspection: filesystem resolution does not
 prove runtime registration, and this migration does not claim either runtime was restarted.
 
-[draft-skills](../../draft-skills/README.md) inventories historical research essays. They are
-not runtime instructions. Historical audit documents describe earlier refs and remain historical.
+The former draft essays have been removed after their functional-core, type-design and
+verification topics were consolidated in the references below. Git history retains the research;
+do not recreate a parallel instruction tree. [The documentation index](../../docs/README.md)
+separates maintained contracts from historical reports and scoped evidence.
 
 ## Migration map
 
