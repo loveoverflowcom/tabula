@@ -1,0 +1,18 @@
+.127.0.0.1 - - [04/Oct/2026 15:26:54] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 15:26:54] "GET /games HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 15:26:54] "GET /games/example?setup=1 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 15:26:54] "GET /play/local/?source=tabula HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 15:26:54] "GET /play/local/game.wasm HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 15:26:54] code 404, message File not found
+127.0.0.1 - - [04/Oct/2026 15:26:54] "GET /play/local/missing.wasm HTTP/1.1" 404 -
+127.0.0.1 - - [04/Oct/2026 15:26:54] code 404, message File not found
+127.0.0.1 - - [04/Oct/2026 15:26:54] "GET /play/local/missing.js HTTP/1.1" 404 -
+127.0.0.1 - - [04/Oct/2026 15:26:54] code 404, message File not found
+127.0.0.1 - - [04/Oct/2026 15:26:54] "GET /login HTTP/1.1" 404 -
+127.0.0.1 - - [04/Oct/2026 15:26:54] code 404, message File not found
+127.0.0.1 - - [04/Oct/2026 15:26:54] "GET /games/example/extra HTTP/1.1" 404 -
+.
+----------------------------------------------------------------------
+Ran 2 tests in 0.515s
+
+OK

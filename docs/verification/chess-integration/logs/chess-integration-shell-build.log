@@ -1,0 +1,13 @@
+2026-10-04T08:31:02.916735Z  INFO 🚀 Starting trunk 0.21.14
+2026-10-04T08:31:02.917175Z  INFO 📦 starting build
+2026-10-04T08:31:03.183791Z  INFO downloading sass version="1.69.5"
+   Compiling tabula-registry v0.0.0 (/workspace/scratch/429f9ca90843/tabula-chess-integration/crates/tabula-registry)
+   Compiling tabula-web v0.0.0 (/workspace/scratch/429f9ca90843/tabula-chess-integration/apps/web)
+2026-10-04T08:31:12.952896Z  INFO installing sass
+    Finished `release` profile [optimized] target(s) in 14.78s
+2026-10-04T08:31:18.306811Z  INFO downloading wasm-bindgen version="0.2.129"
+2026-10-04T08:31:25.546522Z  INFO installing wasm-bindgen
+2026-10-04T08:31:26.307919Z  INFO downloading wasm-opt version="version_123"
+2026-10-04T08:31:34.007829Z  INFO installing wasm-opt
+2026-10-04T08:31:35.733852Z  INFO applying new distribution
+2026-10-04T08:31:35.734147Z  INFO ✅ success

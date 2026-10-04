@@ -1,0 +1,244 @@
+{
+  "baseline": "8891bb34382dac4605c3aa29cf406528a737ff40",
+  "implementation_commit": "0346191ce1116e3941c77f60b1b04836e2902188",
+  "branch": "feat/chess-tabula-integration",
+  "date": "2026-10-04",
+  "toolchain": "rustc 1.96.1 (31fca3adb 2026-06-26)",
+  "shell_binding": "TABULA_PLAY_BASE=/play",
+  "rust_profile": "wasm-release for game; release for shell",
+  "tooling": {
+    "trunk": "0.21.14",
+    "sass": "1.69.5",
+    "wasm_bindgen": "0.2.129",
+    "wasm_opt": "version_123"
+  },
+  "changed_implementation_files": {
+    "AGENTS.md": {
+      "bytes": 11019,
+      "sha256": "3ab07d2cc5780e4ca6d1cbe21ede988adc3ae14d66bec5c57218b2d0b36f9ed6"
+    },
+    "apps/game-client/web/README.md": {
+      "bytes": 6365,
+      "sha256": "f85ce299c101afb7ede67846357d88d58fd5019e06faa5a258aba5589f4d2131"
+    },
+    "apps/game-client/web/bootstrap.js": {
+      "bytes": 17631,
+      "sha256": "70907f6e37a54dfaa2ed6805e7a2c62247b924ea7fa4242f6bb376ce9b5b7b76"
+    },
+    "apps/game-client/web/launch-options.js": {
+      "bytes": 7609,
+      "sha256": "7e5112906ae09b24d5fbb2e036737a082695c36f6a85867c3e0120db5c82a4f3"
+    },
+    "apps/game-client/web/tests/standalone.test.cjs": {
+      "bytes": 30525,
+      "sha256": "4019a717037c036edb6d5835611f3834a2c7b66dcd36041998104cd852f22398"
+    },
+    "apps/web/src/i18n.rs": {
+      "bytes": 12322,
+      "sha256": "a604a4b946be469249f1b148611cf4fbe1ae3118b65bc0b2c6b34bb0d02f37b8"
+    },
+    "apps/web/src/main.rs": {
+      "bytes": 4908,
+      "sha256": "6ab50321dc971d2e3eef978d0bdb83a44d855c597bab2c37a58bfefc4989776b"
+    },
+    "apps/web/src/setup.rs": {
+      "bytes": 20749,
+      "sha256": "a0fa61974e9f1690e2c0ea4ed32de377e28442998d5503e750f8fda2e767130d"
+    },
+    "apps/web/src/views/new_match.rs": {
+      "bytes": 24610,
+      "sha256": "86b54123e4938aa77f9b91a543b538c16cbc1f576e931f6d11e4ea5f436be217"
+    },
+    "crates/tabula-registry/Cargo.toml": {
+      "bytes": 1515,
+      "sha256": "65cff814616a50c6d11267289db84313ad8ce6e6af34cb4801096817344d949d"
+    },
+    "crates/tabula-registry/src/availability.rs": {
+      "bytes": 5229,
+      "sha256": "a7d896d7685faa6c95b9b88088a61a042eba52aae750797a6f6ed21a610beff4"
+    },
+    "crates/tabula-registry/src/config.rs": {
+      "bytes": 9473,
+      "sha256": "1881fe6893b54f2adea8d3eff7af29471645eee00184b411f72a526b9dedd94d"
+    },
+    "crates/tabula-registry/src/erased.rs": {
+      "bytes": 9187,
+      "sha256": "98724c8bd58b243c444275c6dcf7a2f065d01c307f2717bb7859aa73ae2570d0"
+    },
+    "crates/tabula-registry/src/games/chess.rs": {
+      "bytes": 9888,
+      "sha256": "d755a32df0d5ef7c30a2f235c929e9f6736a5f2eebbbeecfb54a25dce02ad6a8"
+    },
+    "crates/tabula-registry/src/i18n.rs": {
+      "bytes": 8644,
+      "sha256": "1c68e671910c6289ba42f5d4bfd30bff3b85995f5c634f65516cb93325b9a723"
+    },
+    "crates/tabula-registry/src/launch.rs": {
+      "bytes": 3843,
+      "sha256": "b23f983707e6ae0dfd8a3c32a2a4843063c5db71a784aa0bebe52c1e409f2f21"
+    },
+    "crates/tabula-registry/src/lib.rs": {
+      "bytes": 9385,
+      "sha256": "95813cc7368d461af73fd804b58c09865f0b240b435d6fa91f7e242b43049f15"
+    },
+    "crates/tabula-registry/src/tests.rs": {
+      "bytes": 29059,
+      "sha256": "4d0062503e7a5d3ac69cb2a5269bdd9cd1a22858dc82f373a31f63355512cac5"
+    },
+    "docs/adr/0030-local-discovery-gameplay-handoff.md": {
+      "bytes": 4557,
+      "sha256": "04d09d4e3e41d7e329f0525c8c1c14559dcc977e6169a079f7a54610c52dbaad"
+    },
+    "docs/adr/README.md": {
+      "bytes": 2393,
+      "sha256": "ad305d5f6b299e7a7e6b9173c4e1ef2d00f981d7d31b255e64020f3332b680e3"
+    },
+    "docs/architecture/00-architecture-principles.md": {
+      "bytes": 52060,
+      "sha256": "400d14aed663d73ad198d5cb65a1533e560ddfdb2648db4cebc3a5ddac4a6dbc"
+    },
+    "docs/architecture/04-frontend-and-design-system.md": {
+      "bytes": 64779,
+      "sha256": "8e5bc9059e345be2f91c01c2c30da4ddc893cd6c3c4477cc13093c9156be2b11"
+    },
+    "docs/architecture/09-synthesis-and-decision-register.md": {
+      "bytes": 25596,
+      "sha256": "b40a841daf38bf9ed8a89828d53df83e7dadbdf0859790e3a0379f469ab67191"
+    },
+    "docs/ui/screens/discovery.md": {
+      "bytes": 17617,
+      "sha256": "29a9dd01e1815716ab30082cc899d37770a5c88a17b9b8d27570611b93dd4db6"
+    },
+    "justfile": {
+      "bytes": 5826,
+      "sha256": "562f5f926f329a4c92fe5da28bd210caaeaf88a03ee7d4c202840f65007f5681"
+    },
+    "tools/serve-local-shell.py": {
+      "bytes": 2125,
+      "sha256": "0cefe6813e0172bded55d95d24d831d214f116fd803b029927c52e9aa96f3cd9"
+    },
+    "tools/test_serve_local_shell.py": {
+      "bytes": 2679,
+      "sha256": "a177445454971084e2727af94ac166f9f846defedf3d88469c9c514ba0bd5296"
+    },
+    "tools/tests/check-local-handoff.cjs": {
+      "bytes": 2120,
+      "sha256": "21996b8e3578d80c1d2bd7dead191b91a091dcd83849af494a0bc834a83f80ac"
+    },
+    "xtask/src/main.rs": {
+      "bytes": 10626,
+      "sha256": "403c47a1ef072dbfd75779a1e9458931a432a871f9f721ea45eb6b6d9ff97de8"
+    },
+    "xtask/src/wasm_stage_cmd.rs": {
+      "bytes": 26730,
+      "sha256": "ce999a50f438ef108a87731e70ae6d8ec149e30a73489a0c6d9e4d671d6270f9"
+    },
+    "xtask/src/workspace.rs": {
+      "bytes": 653,
+      "sha256": "b2358bf0733773f2b51d45effee8f95ca2f8e7d9f69adfd0a37fcc381017b134"
+    },
+    "xtask/tests/wasm_stage_cli.rs": {
+      "bytes": 956,
+      "sha256": "d1d9d1cc30cfb7bc9374caf04974e65044083111ba59b862ada6d8b9710f800b"
+    }
+  },
+  "staged_distribution": {
+    "app-fd77d4a8b14e8a77.css": {
+      "bytes": 11611,
+      "sha256": "08dd0ebefcd11b2fc3c2f58561805d8fb47a3a1f6f42cda7052cad5aaa90d34a"
+    },
+    "index.html": {
+      "bytes": 1568,
+      "sha256": "2960732d538a85c42686a8f8d47e3605330bf71951b051065c06d6f437474c84"
+    },
+    "play/local/assets/LICENSE-OpenSans-Apache-2.0.txt": {
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "play/local/assets/NotoSerif-Bold.ttf": {
+      "bytes": 141544,
+      "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+    },
+    "play/local/assets/OFL-Noto.txt": {
+      "bytes": 5208,
+      "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+    },
+    "play/local/assets/OFL-OpenSans.txt": {
+      "bytes": 1031,
+      "sha256": "94d4b78643f99d7cfa872145b38da578299f401405ca5cba66a5c95bf13933b0"
+    },
+    "play/local/assets/OpenSans-Regular.ttf": {
+      "bytes": 40460,
+      "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+    },
+    "play/local/assets/OpenSans-Semibold.ttf": {
+      "bytes": 41628,
+      "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+    },
+    "play/local/assets/chess-cover-provenance.md": {
+      "bytes": 3676,
+      "sha256": "9615692df8de09e3fb69aa9202eca9b4463201ef60893037e20807439489bc59"
+    },
+    "play/local/assets/chess-cover-small.png": {
+      "bytes": 168293,
+      "sha256": "fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b"
+    },
+    "play/local/assets/chess-cover.png": {
+      "bytes": 1958467,
+      "sha256": "054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233"
+    },
+    "play/local/bootstrap.js": {
+      "bytes": 17631,
+      "sha256": "70907f6e37a54dfaa2ed6805e7a2c62247b924ea7fa4242f6bb376ce9b5b7b76"
+    },
+    "play/local/index.html": {
+      "bytes": 3686,
+      "sha256": "15f96dbf571da862f703350f7be7852b9349c961c28b6b916d613f05629b9b8b"
+    },
+    "play/local/launch-options.js": {
+      "bytes": 7609,
+      "sha256": "7e5112906ae09b24d5fbb2e036737a082695c36f6a85867c3e0120db5c82a4f3"
+    },
+    "play/local/mq_js_bundle.js": {
+      "bytes": 37828,
+      "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+    },
+    "play/local/play.html": {
+      "bytes": 3686,
+      "sha256": "15f96dbf571da862f703350f7be7852b9349c961c28b6b916d613f05629b9b8b"
+    },
+    "play/local/setup.js": {
+      "bytes": 6751,
+      "sha256": "1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849"
+    },
+    "play/local/standalone.css": {
+      "bytes": 12314,
+      "sha256": "57ef98c98516dcd31924fbf5f4c67cbb41e56a04d41dfb38b2b7617522c95754"
+    },
+    "play/local/standalone.html": {
+      "bytes": 6155,
+      "sha256": "1d7feeca9fff225eeaf5237537064f74bbdd9f70232f5d8352cb91f953919952"
+    },
+    "play/local/tabula-game-client.wasm": {
+      "bytes": 1902364,
+      "sha256": "c17ee5f237f692ae9a533d0d813465577735dc02eb16c0132fbbc0e7624d3a98"
+    },
+    "play/local/tokens.css": {
+      "bytes": 47051,
+      "sha256": "d7a35206b61176ad09e27d65551c4b10c7e1c170cc7c61ffd862b37c71f5c6e5"
+    },
+    "tabula-web-f413d21d6138eda7.js": {
+      "bytes": 44578,
+      "sha256": "47b8920dce022d8ff91c5ccaface204318a48f047db5a788ae24b6fb8112fe0c"
+    },
+    "tabula-web-f413d21d6138eda7_bg.wasm": {
+      "bytes": 863787,
+      "sha256": "407da695d66fe72c9a8937b647f250d5ede707865343e41d086aa48800265550"
+    },
+    "tokens-4c12ca536a7c3d19.css": {
+      "bytes": 47051,
+      "sha256": "d7a35206b61176ad09e27d65551c4b10c7e1c170cc7c61ffd862b37c71f5c6e5"
+    }
+  },
+  "visual_status": "BLOCKED: no runtime screenshots/real browser/native/mobile evidence"
+}

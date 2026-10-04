@@ -31,3 +31,12 @@ specific check is [real platform evidence](010-standalone-chess-platform-evidenc
 The [implementation ledger](../verification/standalone-chess/README.md) separates
 executed rules/presentation/build checks from unavailable real runtime pixels.
 Observed coordinate history does not close the gated #52 replay slice.
+
+The requested fresh-session Chess integration is implemented locally under
+[ADR-0030](../adr/0030-local-discovery-gameplay-handoff.md), reusing the standalone
+runtime in an opt-in separate document. Its
+[ledger](../verification/chess-integration/README.md) records core/host/config/HTTP
+checks and release bundles; new publication is not authorized. The same next
+platform-evidence task now includes discovery/launch/return and real BFCache/
+resource behavior. Native catalog, server resume, online/rated/AI and phase exits
+remain gated.

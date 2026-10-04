@@ -1,9 +1,11 @@
-# Complete standalone Chess platform evidence
+# Complete Chess platform evidence
 
 ## Outcome
 
 Exercise and inspect the real native/WASM standalone Chess UI on permitted
 supported platforms; retain runtime screenshots and interaction evidence.
+Also exercise the opt-in normal Tabula discovery/setup → separate local game →
+Return flow in [ADR-0030](../adr/0030-local-discovery-gameplay-handoff.md).
 
 ## Why
 
@@ -18,11 +20,16 @@ Use the committed native/WASM flow, not a design prototype. Check desktop,
 board tap/drag/keyboard, promotion/cancel/stale/repeat, local seat selection,
 draw/resign confirmation, endings/restart, setup/leave/error focus and hidden
 clock catch-up. Confirm toolbar labels and clock digits do not clip.
+For integrated web play, cover normal and missing runtime bindings, loading
+cancel/error/retry, duplicate Start, Back/Forward/close/reopen, real BFCache
+restoration and owned heap/GPU disposal. Local re-entry starts fresh, never resume.
 
 ## Dependencies
 
 A browser/native display that permits the documented local HTTP/runtime path.
 See [the implementation ledger](../verification/standalone-chess/README.md).
+The [integration ledger](../verification/chess-integration/README.md) records
+local core/build/mock/HTTP evidence and the separately blocked real targets.
 
 ## Risks / unknowns
 

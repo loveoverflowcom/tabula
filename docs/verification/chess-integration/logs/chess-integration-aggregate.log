@@ -1,0 +1,3122 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running `/workspace/scratch/429f9ca90843/tabula/target/debug/xtask check`
+
+=== xtask check: cargo fmt --all -- --check ===
+
+=== xtask check: cargo clippy --workspace --all-targets --all-features -- -D warnings ===
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.17s
+
+=== xtask check: cargo test --workspace ===
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/renderer_headless-323a76c3db1be947)
+
+running 18 tests
+test tests::compare_raster_dimension_mismatch_fails_regardless_of_pixels ... ok
+test tests::clip_and_transform_order_use_the_same_logical_viewport_scissor ... ok
+test tests::camera_origin_zoom_and_local_transform_change_raster_positions ... ok
+test tests::compare_raster_rejects_buffer_size_overflow_without_panicking ... ok
+test tests::compare_raster_channel_delta_beyond_tolerance_fails ... ok
+test tests::compare_raster_identical_images_pass_exact ... ok
+test tests::compare_raster_rejects_malformed_actual_buffer_without_panicking ... ok
+test tests::compare_raster_channel_delta_within_tolerance_passes ... ok
+test tests::compare_raster_rejects_malformed_expected_buffer_without_panicking ... ok
+test tests::compare_raster_too_many_different_pixels_fails ... ok
+test tests::default_camera_transform_and_opacity_are_identity ... ok
+test tests::dpi_scales_the_device_target_but_not_logical_command_coordinates ... ok
+test tests::pixel_rejects_coordinates_outside_both_dimensions ... ok
+test tests::nested_clips_and_transforms_keep_a_logical_scissor ... ok
+test tests::inherited_opacity_is_per_primitive_not_true_group_compositing ... ok
+test tests::recorder_consumes_the_backend_neutral_contract ... ok
+test tests::unsupported_stable_draw_features_fail_loudly ... ok
+test tests::png_encode_and_decode_round_trip ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/raster_goldens.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/raster_goldens-83de9a82475aa435)
+
+running 4 tests
+test regenerate_goldens ... ignored, only run explicitly to regenerate committed golden image fixtures
+test dpi_and_camera_scene_matches_committed_pixel_golden ... ok
+test supported_subset_matches_committed_pixel_golden ... ok
+test deliberate_pixel_corruption_fails_golden_comparison ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/renderer_macroquad-36a3fba174e234ca)
+
+running 80 tests
+test assets::tests::missing_resource_and_unbound_states_are_explicit ... ok
+test assets::tests::bounded_entry_count_and_nonzero_configuration_are_enforced ... ok
+test assets::tests::byte_size_hash_and_foreign_file_fail_before_upload ... ok
+test assets::tests::failed_binding_is_transactional_and_cache_drop_does_not_invalidate_lease ... ok
+test assets::tests::release_and_rebind_keep_leases_alive_and_accounted_until_last_consumer ... ok
+test assets::tests::leased_retired_texture_blocks_budget_until_safe_release ... ok
+test assets::tests::reused_bytes_revalidate_new_atlas_metadata_and_record_failure_state ... ok
+test assets::tests::upload_failure_reports_failed_state_and_can_retry_without_poisoning_cache ... ok
+test assets::tests::all_atlas_regions_and_physical_aliases_are_checked_before_upload ... ok
+test assets::tests::verified_png_decodes_exact_pixels_at_encoded_and_allocation_boundaries ... ok
+test assets::tests::shared_resources_reuse_one_physical_decode_and_upload ... ok
+test assets::tests::valid_hash_does_not_make_corrupt_or_unsupported_images_uploadable ... ok
+test assets::tests::oversized_and_zero_headers_reject_before_decoder_allocation ... ok
+test assets::tests::cache_key_preserves_pack_version_hash_and_selected_density ... ok
+test audio::tests::duplicate_registration_is_rejected_without_replacing_the_handle ... ok
+test audio::tests::registered_cue_resolves_deterministically ... ok
+test audio::tests::sink_reports_unknown_cues_as_a_structured_failure ... ok
+test audio::tests::unknown_cue_is_unavailable_without_a_panic ... ok
+test draw::tests::clip_preflight_rejects_the_same_unsupported_device_bounds_as_execution_conversion ... ok
+test draw::tests::convexity_is_invariant_under_vertex_rotation ... ok
+test draw::tests::convexity_includes_the_wraparound_vertices ... ok
+test draw::tests::logical_top_origin_clip_maps_to_gpu_bottom_origin_at_each_dpi ... ok
+test draw::tests::sprite_atlas_uvs_keep_exact_pixel_region_and_reject_out_of_bounds ... ok
+test draw::tests::sprite_rotates_about_its_local_pivot_before_affine_scope_and_camera ... ok
+test draw::tests::stroke_width_is_transformed_with_its_local_geometry ... ok
+test draw::tests::sprite_affine_geometry_supports_reflection_shear_and_singular_scopes ... ok
+test draw::tests::sprite_rejects_transformed_overflow_even_with_finite_local_geometry ... ok
+test draw::tests::offscreen_clips_keep_their_geometry_and_convert_negative_gpu_origins ... ok
+test draw::tests::sprite_vertices_preserve_uv_order_and_multiply_tint_alpha ... ok
+test input::tests::a_replayed_mouse_release_keeps_the_normal_up_phase ... ok
+test input::tests::a_coalesced_release_with_the_button_still_down_cancels_a_new_press ... ok
+test input::tests::a_fresh_key_cannot_authenticate_an_unrelated_mouse_press ... ok
+test input::tests::a_held_mouse_enter_after_the_restoration_frame_cannot_activate ... ok
+test input::tests::default_input_state_registers_no_graphics_subscriber ... ok
+test input::tests::disappearing_primary_touch_cancels_before_mouse_fallback ... ok
+test input::tests::first_started_touch_becomes_the_primary_pointer ... ok
+test input::tests::focus_loss_cancels_contacts_before_discarding_synthetic_releases ... ok
+test input::tests::hover_release_and_held_key_repeat_cannot_restore_interaction ... ok
+test input::tests::focus_loss_cancels_touch_and_restoration_cannot_replay_a_stale_release ... ok
+test input::tests::invalid_mouse_release_cancels_at_last_finite_position ... ok
+test input::tests::mouse_leave_and_held_reentry_cannot_release_an_armed_control ... ok
+test input::tests::normalized_input_never_emits_non_finite_pointer_coordinates ... ok
+test input::tests::move_only_interruption_resumes_before_a_fresh_space_press ... ok
+test input::tests::restored_callback_and_fresh_pointer_press_precede_normalized_input ... ok
+test input::tests::restoration_without_a_fresh_press_cannot_rearm_a_held_mouse ... ok
+test input::tests::synthetic_mouse_leave_release_cancels_instead_of_activating ... ok
+test input::tests::touch_suppresses_duplicate_mouse_events_and_keys_follow_pointer_events ... ok
+test renderer::tests::frame_operations_report_invalid_lifecycle_without_drawing ... ok
+test renderer::tests::failed_submit_does_not_queue_earlier_primitives ... ok
+test state::tests::camera_maps_after_local_transforms_while_clips_remain_logical ... ok
+test input::tests::primary_touch_keeps_ownership_across_frames ... ok
+test input::tests::invalid_platform_pointer_cannot_wedge_touch_ownership ... ok
+test renderer::tests::built_in_font_loading_is_bounded_before_graphics_and_cannot_replace_live_atlases ... ok
+test state::tests::direct_zero_area_clips_canonicalize_to_empty ... ok
+test state::tests::nested_clip_collapse_stays_empty ... ok
+test state::tests::nested_clips_intersect_and_restore_the_previous_scissor ... ok
+test state::tests::nested_scopes_compose_and_pop_restores_the_exact_parent_state ... ok
+test support::tests::ordinary_rect_and_text_lists_pass_macroquad_preflight ... ok
+test support::tests::concave_filled_path_is_rejected_before_execution ... ok
+test support::tests::sprite_geometry_failure_precedes_resource_resolution_and_empty_clip_is_validated ... ok
+test support::tests::supported_nested_scopes_pass_with_their_effective_state ... ok
+test support::tests::sprite_without_ready_resource_fails_explicitly_before_execution ... ok
+test support::tests::support_inventory_declares_sprite_with_resource_specific_preflight ... ok
+test support::tests::sprite_preflight_preserves_nested_scope_and_stable_stacking_order ... ok
+test support::tests::transformed_text_is_rejected_before_execution ... ok
+test text::tests::bounded_and_unbounded_text_pass_preflight_without_a_graphics_context ... ok
+test text::tests::explicit_newlines_are_preserved_without_a_width_limit ... ok
+test text::tests::non_tabular_text_retains_one_proportional_run ... ok
+test text::tests::small_font_rasters_keep_token_size_and_share_the_preparation_size ... ok
+test text::tests::tabular_glyphs_are_centered_without_changing_non_digit_runs ... ok
+test text::tests::width_limited_text_wraps_with_a_measurement_oracle ... ok
+test support::tests::ready_sprite_preflight_reuses_cache_and_leases_texture_until_frame_flush ... ok
+test text::tests::tabular_clock_figures_keep_the_same_width_across_every_digit ... ok
+test text::tests::scaled_raster_measurement_keeps_tabular_alignment_and_wrapping_in_logical_units ... ok
+test text::tests::text_transform_requires_positive_uniform_scale ... ok
+test text::tests::wrapping_keeps_oversized_unicode_scalars_separate_from_following_text ... ok
+test text::tests::tabular_wrapping_uses_digit_cells_instead_of_narrow_glyph_widths ... ok
+test text::tests::wrapping_never_slices_a_valid_unicode_scalar ... ok
+test support::tests::oversized_wrapped_text_is_rejected_before_execution ... ok
+test text::tests::bounded_preflight_capacity_counts_unicode_scalars_and_empty_paragraphs ... ok
+
+test result: ok. 80 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/main.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_admin-2fac832e2193b53b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_assets-5339d531adbc7b76)
+
+running 55 tests
+test integrity::tests::error_display_formatting_is_deterministic_and_informative ... ok
+test integrity::tests::integrity_verification_happy_path ... ok
+test integrity::tests::integrity_verification_rejects_hash_mismatch ... ok
+test integrity::tests::integrity_verification_rejects_size_mismatch ... ok
+test integrity::tests::non_raster_audio_and_multi_priority_verification ... ok
+test integrity::tests::owned_verification_reuses_integrity_error_partitions ... ok
+test integrity::tests::owned_verified_asset_bytes_survive_source_and_file_scope ... ok
+test integrity::tests::owned_verified_asset_debug_redacts_payload_bytes ... ok
+test integrity::tests::single_byte_corruption_at_every_position_is_rejected ... ok
+test integrity::tests::size_checked_before_hashing_even_if_hash_would_match ... ok
+test integrity::tests::same_size_file_substitution_is_rejected ... ok
+test integrity::tests::verification_works_independently_of_binding_and_resolution ... ok
+test integrity::tests::shared_atlas_semantics_verifies_physical_file_once ... ok
+test loader::tests::load_verified_preserves_integrity_errors ... ok
+test loader::tests::load_verified_preserves_source_errors ... ok
+test loader::tests::load_verified_rejects_oversized_payloads ... ok
+test integrity::tests::verified_asset_bytes_witness_preserves_exact_file_and_payload ... ok
+test loader::tests::load_verified_rejects_same_size_corruption ... ok
+test loader::tests::load_verified_rejects_same_size_bytes_for_another_asset_file ... ok
+test loader::tests::repeated_memory_loads_are_deterministic_and_equivalent ... ok
+test manifest::tests::asset_pack_id_constructor_partitions ... ok
+test loader::tests::load_verified_returns_owned_payload_after_source_scope ... ok
+test manifest::tests::asset_file_name_constructor_partitions ... ok
+test loader::tests::unverified_source_value_is_consumed_by_owned_verification ... ok
+test manifest::tests::asset_pack_ref_invalid_pack_id_partitions ... ok
+test manifest::tests::asset_pack_ref_invalid_separator_and_version_partitions ... ok
+test loader::tests::missing_path_error_is_structured_at_source_boundary ... ok
+test manifest::tests::asset_pack_ref_valid_parsing_and_construction ... ok
+test manifest::tests::asset_path_constructor_partitions ... ok
+test manifest::tests::asset_pack_ref_parse_and_display_round_trip ... ok
+test manifest::tests::density_partitions_allow_exactly_one_through_three ... ok
+test manifest::tests::hash_validation_rejects_non_ascii_at_exact_byte_length_without_panicking ... ok
+test manifest::tests::asset_pack_ref_serde_round_trip_and_validation_barrier ... ok
+test manifest::tests::hash_length_and_character_partitions_are_rejected ... ok
+test manifest::tests::malformed_or_pathological_toml_is_rejected_without_validation_panics ... ok
+test manifest::tests::manifest_exposes_pack_ref_matching_pack_and_version ... ok
+test manifest::tests::manifest_schema_rejects_unknown_top_level_and_file_fields ... ok
+test manifest::tests::asset_pack_ref_from_static_panics_on_invalid_literals ... ok
+test manifest::tests::manifest_rejects_blank_pack_and_invalid_game_binding ... ok
+test manifest::tests::manifest_rejects_hostile_and_ambiguous_file_metadata ... ok
+test manifest::tests::manifest_without_files_is_not_a_resolvable_asset_pack ... ok
+test manifest::tests::manifest_validate_binding_partitions ... ok
+test source::tests::missing_path_returns_source_error_with_requested_path ... ok
+test manifest::tests::unknown_priority_and_zero_byte_size_are_rejected ... ok
+test source::tests::corrupt_source_output_is_rejected_by_integrity_boundary ... ok
+test manifest::tests::resource_validation_accepts_whole_files_density_variants_and_atlas_sharing ... ok
+test manifest::tests::resolution_is_declaration_order_independent_and_never_infers_file_names ... ok
+test manifest::tests::pixel_region_validation_rejects_degenerate_overflowing_and_unknown_input ... ok
+test manifest::tests::resolution_obeys_density_selection_law ... ok
+test manifest::tests::resource_validation_rejects_empty_duplicate_and_ambiguous_declarations ... ok
+test source::tests::unverified_asset_bytes_exposes_owned_payload_operations ... ok
+test source::tests::repeated_reads_of_one_path_are_deterministic_and_not_consuming ... ok
+test manifest::tests::valid_minimal_manifest_parses_into_validated_values ... ok
+test source::tests::source_output_requires_integrity_verification ... ok
+test source::tests::truncated_source_output_is_rejected_by_integrity_boundary ... ok
+
+test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_core-1925f77e079c8e55)
+
+running 40 tests
+test hash::tests::canonical_encoding_is_stable ... ok
+test hash::tests::decode_rejects_a_foreign_encoding_version ... ok
+test hash::tests::decode_rejects_a_truncated_blob ... ok
+test hash::tests::different_states_hash_differently ... ok
+test hash::tests::blake3_dependency_is_standard ... ok
+test hash::tests::encoding_round_trips_and_preserves_the_hash ... ok
+test hash::tests::encoding_version_prefix_is_little_endian ... ok
+test hash::tests::hashing_is_pure ... ok
+test hash::tests::rules_version_separates_the_hash ... ok
+test hash::tests::state_hash_is_stable ... ok
+test ids::tests::game_id_constructor_partitions ... ok
+test ids::tests::game_id_deserialization_cannot_bypass_validation ... ok
+test ids::tests::game_version_accepts_semver_and_rejects_near_misses ... ok
+test outcome::tests::match_outcome_encoding_remains_compatible_with_v1 ... ok
+test outcome::tests::outcome_constructor_partitions ... ok
+test hash::tests::state_hash_matches_its_documented_preimage ... ok
+test outcome::tests::restored_outcome_requires_authoritative_roster_validation ... ok
+test outcome::tests::outcome_deserialization_rejects_structural_forgeries ... ok
+test ids::tests::game_version_deserialization_cannot_bypass_validation ... ok
+test rng::tests::below_is_stable ... ok
+test rng::tests::different_index_gives_a_different_stream ... ok
+test rng::tests::below_degenerate_bounds_are_total ... ok
+test rng::tests::blake3_dependency_is_standard ... ok
+test rng::tests::below_respects_its_bound ... ok
+test rng::tests::different_seed_gives_a_different_stream ... ok
+test rng::tests::for_input_matches_its_documented_preimage ... ok
+test rng::tests::shuffle_of_short_slices_is_total ... ok
+test rng::tests::shuffle_is_stable ... ok
+test rng::tests::shuffle_is_a_permutation ... ok
+test rng::tests::substreams_are_independent_and_do_not_consume_the_parent ... ok
+test rng::tests::for_input_stream_is_stable ... ok
+test rng::tests::stream_matches_its_documented_preimage ... ok
+test rng::tests::same_seed_and_index_reproduce_the_stream ... ok
+test time::tests::from_secs_handles_conversion_boundaries ... ok
+test rng::tests::substreams_compose_to_any_depth ... ok
+test seat::tests::roster_deserialization_cannot_bypass_unique_seats ... ok
+test time::tests::plus_saturates_at_maximum ... ok
+test time::tests::since_is_exact_or_zero ... ok
+test seat::tests::roster_rejects_duplicate_addressable_seats ... ok
+test rng::tests::below_is_not_visibly_biased ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_design-c71cb145328ed5b0)
+
+running 9 tests
+test tests::bounded_token_values_reject_invalid_boundaries ... ok
+test tests::foundation_action_state_layers_preserve_text_contrast ... ok
+test tests::foundation_tonal_surface_pairs_meet_their_thresholds ... ok
+test tests::game_art_text_pairs_and_identity_tint_preserve_accessibility ... ok
+test tests::generated_measurements_reject_non_finite_values ... ok
+test tests::high_contrast_strengthens_critical_surface_pairs ... ok
+test tests::mono_styles_require_tabular_figures ... ok
+test tests::named_semantic_accessibility_pairs_meet_their_thresholds ... ok
+test tests::text_style_constructor_closes_metric_bypass ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_desktop-84b99a6eea7077ec)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_game_api-e672039223dc9d30)
+
+running 18 tests
+test capabilities::tests::bot_levels_and_team_sizes_reject_degenerate_values ... ok
+test capabilities::tests::chat_policy_rejects_duplicate_channel_identity ... ok
+test capabilities::tests::capability_deserialization_cannot_bypass_cross_field_validation ... ok
+test capabilities::tests::ranked_capabilities_require_durable_acknowledgement ... ok
+test capabilities::tests::capability_readers_expose_declarative_facts_without_mutation ... ok
+test capabilities::tests::refined_capability_deserialization_rejects_invalid_parts ... ok
+test capabilities::tests::seat_count_constructor_partitions ... ok
+test metadata::tests::asset_ref_constructor_partitions ... ok
+test metadata::tests::asset_ref_from_static ... ok
+test metadata::tests::asset_ref_serde_barrier ... ok
+test metadata::tests::asset_ref_traits_and_ordering ... ok
+test metadata::tests::duration_range_constructor_and_deserialization_reject_inversion ... ok
+test metadata::tests::i18n_key_constructor_partitions ... ok
+test metadata::tests::metadata_spec_and_validated_metadata_keep_the_same_wire_shape ... ok
+test rules::tests::command_hint_exposes_the_kind_and_payload_it_was_built_from ... ok
+test metadata::tests::metadata_deserialization_cannot_bypass_key_validation ... ok
+test metadata::tests::metadata_deserialization_cannot_bypass_asset_ref_validation ... ok
+test metadata::tests::invalid_static_asset_ref_declaration_fails_loudly - should panic ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_game_caro-715864729007ff8e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_game_chess-8aa88e886479f9a3)
+
+running 92 tests
+test presentation::hud::responsive_regressions::a_board_drag_keeps_pointer_ownership_across_every_hud_region ... ok
+test presentation::hud::tests::blur_during_keyboard_confirmation_does_not_latch_the_opening_action ... ok
+test presentation::hud::responsive_regressions::every_eligible_control_retains_44_dp_hit_and_keyboard_targets_in_small_layouts ... ok
+test presentation::hud::responsive_regressions::promotion_is_disabled_even_if_the_move_remains_legal_in_a_changed_projection ... ok
+test presentation::hud::tests::cancelling_keyboard_confirmation_resets_the_hud_activation_latch ... ok
+test presentation::hud::tests::hot_seat_override_requires_explicit_shell_admission_and_resets_on_move ... ok
+test presentation::hud::tests::local_flip_maps_all_square_centers_and_keeps_command_identity ... ok
+test presentation::hud::tests::opening_draw_control_is_disabled_without_inventing_eligibility ... ok
+test presentation::hud::tests::focus_loss_interrupts_drag_and_blocks_orphan_release_after_resume ... ok
+test presentation::assets::tests::all_bundled_files_are_exact_manifest_bytes_and_bounded_pngs ... ok
+test presentation::assets::tests::every_piece_and_cover_resolve_at_both_declared_densities ... ok
+test presentation::hud::tests::resign_is_safe_by_default_and_confirmed_once ... ok
+test presentation::hud::tests::stale_or_changed_seat_confirmation_cannot_emit_an_action ... ok
+test presentation::tests::a11y_describes_every_square_from_the_projection ... ok
+test presentation::hud::tests::terminal_board_has_directional_keyboard_access_to_flip_in_both_orientations ... ok
+test presentation::tests::a11y_describes_the_active_promotion_selection ... ok
+test presentation::hud::tests::offers_use_projected_offturn_eligibility_and_confirmation ... ok
+test presentation::tests::accepted_projected_move_emits_one_cue_without_mutating_canonical_state ... ok
+test presentation::tests::board_is_64_square_square_and_fits_both_viewport_orientations ... ok
+test presentation::tests::chess_declares_typed_asset_pack_matching_metadata ... ok
+test presentation::tests::black_promotion_chooser_uses_black_piece_glyphs ... ok
+test presentation::tests::animation_does_not_gate_input_or_intent_creation ... ok
+test presentation::tests::active_animation_does_not_gate_drag ... ok
+test presentation::tests::board_boundaries_clamp_directional_arrows ... ok
+test presentation::tests::clock_updates_are_silent ... ok
+test presentation::tests::chess_board_focus_uses_shared_directional_navigation ... ok
+test presentation::tests::chess_move_animation_has_a_real_in_flight_sample ... ok
+test presentation::tests::chess_move_animation_is_driven_by_view_event ... ok
+test presentation::tests::drag_and_tap_and_keyboard_converge_on_the_same_move_command ... ok
+test presentation::tests::clocked_presentation_visibly_counts_down_from_authoritative_clock_state ... ok
+test presentation::tests::chess_animation_never_mutates_authoritative_state ... ok
+test presentation::tests::drag_outside_board_is_total_and_has_no_target ... ok
+test presentation::tests::drag_does_not_enable_keyboard_focus_visible ... ok
+test presentation::tests::drag_source_identity_never_changes ... ok
+test presentation::tests::clock_hud_marks_turn_and_low_time_in_text_in_every_theme ... ok
+test presentation::tests::escape_cancels_promotion_without_emitting_a_command ... ok
+test presentation::tests::end_to_end_projection_presentation_intent_and_rules_apply ... ok
+test presentation::tests::clock_cards_fit_the_dock_at_compact_and_short_landscape_sizes ... ok
+test presentation::tests::every_pointer_promotion_choice_emits_the_matching_command ... ok
+test presentation::tests::chess_final_render_is_identical_after_sparse_or_dense_sampling ... ok
+test presentation::tests::focus_is_local_and_never_mutates_authoritative_state ... ok
+test presentation::tests::golden_chess_initial_320x640_responsive ... ok
+test presentation::tests::golden_chess_drag_e2_to_e4_midflight_dark ... ok
+test presentation::tests::golden_chess_move_animation_midflight ... ok
+test presentation::tests::golden_chess_selected_focus_overlay_dark ... ok
+test presentation::tests::invalid_drop_emits_no_intent_and_restores_source_selection ... ok
+test presentation::tests::golden_chess_initial_640x640_light ... ok
+test presentation::tests::golden_chess_terminal_checkmate_hud ... ok
+test presentation::tests::golden_chess_promotion_chooser_modal ... ok
+test presentation::tests::legal_drag_emits_exact_move_intent ... ok
+test presentation::tests::movement_above_drag_threshold_enters_dragging ... ok
+test presentation::tests::movement_below_drag_threshold_remains_tap_candidate ... ok
+test presentation::tests::keyboard_focus_renders_semantic_focus_ring ... ok
+test presentation::tests::keyboard_promotion_navigation_is_clamped_and_commits_the_selected_piece ... ok
+test presentation::tests::keyboard_opening_press_cannot_repeat_into_a_promotion_action ... ok
+test presentation::tests::pointer_and_keyboard_activation_build_the_same_move ... ok
+test presentation::tests::keyboard_opened_promotion_uses_keyboard_modality_and_shows_focus_ring ... ok
+test presentation::tests::pointer_and_keyboard_promotion_selection_share_command_construction ... ok
+test presentation::tests::piece_in_transit_is_not_double_rendered ... ok
+test presentation::tests::cue_identity_is_frame_independent_and_present_is_audio_free ... ok
+test presentation::tests::initial_position_renders_all_board_squares_and_pieces_deterministically ... ok
+test presentation::tests::pointer_cancel_during_drag_emits_no_intent_and_clears_drag ... ok
+test presentation::tests::pointer_down_on_movable_piece_enters_pressed_state ... ok
+test presentation::tests::promotion_choice_type_contains_exactly_the_four_upgrade_pieces ... ok
+test presentation::tests::pointer_selection_is_local_and_valid_destination_emits_one_command ... ok
+test presentation::tests::pointer_opened_promotion_keeps_pointer_modality_and_hides_focus_ring ... ok
+test presentation::tests::promotion_choice_comes_from_the_canonical_legal_move_projection ... ok
+test presentation::tests::promotion_cancel_is_available_to_pointer_and_keyboard_when_choices_are_disabled ... ok
+test presentation::tests::promotion_animation_moves_a_pawn_and_finishes_as_the_promoted_piece ... ok
+test presentation::tests::promotion_drag_regression ... ok
+test presentation::tests::promotion_choices_disable_when_the_projection_no_longer_permits_them ... ok
+test presentation::tests::projected_capture_emits_capture_not_move ... ok
+test presentation::tests::promotion_controls_retain_44_dp_targets_on_compact_viewports ... ok
+test presentation::tests::resize_mid_drag_remains_total ... ok
+test presentation::tests::promotion_pointer_cancellation_and_outside_release_preserve_the_modal ... ok
+test presentation::tests::promotion_release_without_a_press_never_activates_a_choice ... ok
+test presentation::tests::real_opening_e2_to_e4_drag_drop_sequence ... ok
+test presentation::tests::promotion_window_focus_loss_blocks_activation ... ok
+test presentation::tests::square_mapping_round_trips_centers_and_rejects_edges_outside_the_board ... ok
+test presentation::tests::resizing_between_clicks_keeps_hit_testing_on_the_current_board ... ok
+test presentation::tests::terminal_clock_checkpoint_does_not_keep_counting_down ... ok
+test presentation::tests::rendering_proves_no_duplicate_piece_during_drag ... ok
+test presentation::tests::terminal_projection_renders_result_and_disables_input ... ok
+test presentation::tests::promotion_widgets_use_semantic_themes_and_keep_reduced_motion_immediate ... ok
+test rules::clock::tests::fischer_increment_caps_at_the_explicit_finite_domain_limit ... ok
+test rules::clock::tests::fischer_near_limit_repeated_zero_elapsed_moves_are_deterministic ... ok
+test rules::clock::tests::timer_budget_matches_control_semantics_at_boundaries ... ok
+test presentation::tests::terminal_projected_events_preserve_move_then_game_end_cue_order ... ok
+test rules::clock::tests::bronstein_charge_matches_bounded_reference_model ... ok
+test rules::clock::tests::fischer_charge_matches_bounded_reference_model ... ok
+test presentation::tests::tab_navigation_traverses_all_board_squares ... ok
+test bot::tests::easy_bot_cannot_distinguish_unprojected_repetition_history ... ok
+
+test result: ok. 92 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/bot.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/bot-500f1f12d96d5c01)
+
+running 10 tests
+test easy_returns_none_for_the_wrong_seat_or_when_no_moves_are_projected ... ok
+test easy_bot_is_deterministic_for_identical_view_and_rng ... ok
+test easy_uses_piece_square_positioning_when_material_is_equal ... ok
+test trivial_bot_remains_deterministic_and_legal_for_a_fixed_seed ... ok
+test easy_treats_a_terminal_draw_as_neutral_utility ... ok
+test easy_equal_score_ties_use_rng_but_stay_with_the_best_moves ... ok
+test easy_chooses_the_materially_superior_capture ... ok
+test easy_searches_the_opponent_reply_before_taking_poisoned_material ... ok
+test easy_bot_always_returns_a_legal_projected_command ... ok
+test phase_one_bot_pairings_self_play_without_illegal_or_nondeterministic_moves ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.35s
+
+     Running tests/clocks.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/clocks-36db1b430d555bb5)
+
+running 28 tests
+test admin_cancel_cancels_clock_timer ... ok
+test clock_config_is_validated_before_match_creation ... ok
+test bronstein_delay_is_refunded_without_resetting_the_turn ... ok
+test bronstein_exact_timeout_boundary_flags ... ok
+test bronstein_move_inside_delay_consumes_no_clock ... ok
+test bronstein_move_past_delay_consumes_only_excess ... ok
+test clocked_creation_initializes_and_arms_the_white_clock ... ok
+test clock_timer_rearms_for_new_side_after_move ... ok
+test early_timer_rearms_instead_of_ending_match ... ok
+test fischer_increment_is_not_granted_to_flagged_player ... ok
+test fischer_exact_zero_flags_before_move ... ok
+test fischer_move_decrements_elapsed_and_adds_increment ... ok
+test resignation_cancels_clock_timer ... ok
+test illegal_move_does_not_consume_clock ... ok
+test seat_disconnect_does_not_pause_clock ... ok
+test out_of_turn_move_does_not_consume_clock ... ok
+test timeout_ignores_flagged_side_material_when_survivor_is_bare_king ... ok
+test timeout_is_a_draw_when_the_surviving_side_has_only_a_king ... ok
+test terminal_move_cancels_clock_timer ... ok
+test fischer_one_millisecond_before_deadline_survives ... ok
+test fischer_near_limit_repeated_zero_elapsed_moves_never_wrap ... ok
+test clocked_script_is_deterministic_in_state_events_and_effects ... ok
+test rejected_draw_command_does_not_consume_clock ... ok
+test timeout_with_mating_material_is_decisive_and_does_not_mutate_board ... ok
+test unknown_timer_is_harmless ... ok
+test timeout_material_edges_distinguish_minor_and_mating_combinations ... ok
+test expired_clock_preempts_valid_non_move_commands ... ok
+test timer_at_exact_deadline_flags_side_to_move ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/conformance.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/conformance-ff7c1cd0016a5aee)
+
+running 11 tests
+test tabula_conformance_deterministic_rng ... ok
+test tabula_conformance_deterministic_initialization ... ok
+test tabula_conformance_stable_identity ... ok
+test tabula_conformance_serialization_roundtrip ... ok
+test tabula_conformance_state_hash_sensitivity ... ok
+test tabula_conformance_invalid_command_safety ... ok
+test tabula_conformance_terminal_behavior ... ok
+test tabula_conformance_ordered_events ... ok
+test tabula_conformance_deterministic_command_execution ... ok
+test tabula_conformance_deterministic_replay ... ok
+test tabula_conformance_legal_commands_sanity ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/perft.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/perft-03d9f5b20ce1a2aa)
+
+running 2 tests
+test initial_position_depth_five_matches_published_oracle ... ignored, deep verification: run cargo test -p tabula-game-chess --test perft -- --ignored
+test published_positions_match_through_practical_depths ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.03s
+
+     Running tests/projection_control.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/projection_control-8176aa975251ab96)
+
+running 10 tests
+test a_move_changes_the_board_which_is_public_to_every_viewer ... ok
+test readonly_and_terminal_views_have_no_action_or_movement_affordances ... ok
+test projection_is_deterministic_for_a_fixed_reachable_state ... ok
+test projected_movement_hints_and_legal_commands_remain_move_only ... ok
+test opening_projects_resignation_but_no_premature_draw_offer ... ok
+test every_non_move_command_is_reached_in_projection_reducer_agreement_checks ... ok
+test fifty_move_claim_is_projected_only_at_the_threshold_and_to_current_turn ... ok
+test check_is_projected_for_every_viewer_and_preserved_at_checkmate ... ok
+test draw_offer_actions_follow_off_turn_seat_and_recipient ... ok
+test repetition_claim_uses_canonical_history_without_reconstructing_it_from_view ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/replay.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/replay-ae8157c66f65848e)
+
+running 7 tests
+test all_rules_subtree_files_are_discovered_recursively ... ok
+test canonical_tree_rejects_noncanonical_feature_sources ... ok
+test rules_hash_matches_independent_rules_subtree_oracle ... ok
+test canonical_source_mutation_changes_oracle_hash ... ok
+test committed_chess_clock_replay_contains_a_recorded_timer_input ... ok
+test committed_chess_replay_reproduces_its_independent_final_hash ... ok
+test canonical_rules_do_not_depend_on_crate_root_sources ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/rules.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/rules-5153edf342cecdc0)
+
+running 11 tests
+test fen_rejects_unrepresentable_positions ... ok
+test draw_offer_before_both_players_move_is_rejected ... ok
+test all_promotion_choices_are_legal_and_change_the_piece ... ok
+test fifty_move_rule_is_claimable_and_seventy_five_move_rule_is_automatic ... ok
+test repetition_key_omits_an_unavailable_en_passant_target ... ok
+test a_draw_offer_is_answered_by_the_other_seat_without_changing_turn ... ok
+test illegal_moves_are_byte_identical_noops ... ok
+test resigning_from_a_dead_position_is_a_draw_and_can_happen_off_turn ... ok
+test fivefold_repetition_is_automatic ... ok
+test threefold_repetition_is_claimable_but_not_automatic ... ok
+test legal_commands_are_stably_ordered_and_all_authoritative ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_game_client-0788756fff49a002)
+
+running 37 tests
+test runtime_ui::tests::all_existing_rejection_codes_have_controlled_copy_and_theme_names_are_exact ... ok
+test runtime_ui::tests::fatal_is_latched_and_only_the_new_game_action_recovers ... ok
+test runtime_ui::tests::recovery_requires_matching_pointer_release_and_focus ... ok
+test runtime_ui::tests::board_arrows_do_not_steal_feedback_focus_and_blur_does_not_lose_a_fresh_press ... ok
+test runtime_ui::tests::rejected_timer_stops_and_terminal_outcome_never_becomes_fatal ... ok
+test runtime_ui::tests::rejection_is_non_authoritative_and_never_displays_detail ... ok
+test runtime_ui::tests::render_and_recovery_keep_screen_camera_tokens_and_target_floor_in_every_theme ... ok
+test tests::a_recorded_input_index_is_load_bearing_for_rng_derived_replay ... ok
+test fixture_assets::tests::duplicate_named_files_fail_before_any_graphics_upload ... ok
+test tests::clock_timer_reenters_rules_as_a_recorded_timer_input ... ok
+test fixture_assets::tests::missing_named_cover_fails_instead_of_substituting_same_density_piece_bytes ... ok
+test tests::audio_sink_failure_cannot_undo_an_accepted_move ... ok
+test tests::cancellation_rearm_and_simultaneous_timer_order_are_stable ... ok
+test tests::display_geometry_rejects_non_finite_or_zero_dpi ... ok
+test tests::accepted_and_rejected_inputs_each_consume_one_index ... ok
+test tests::a_second_games_moves_are_recorded_and_replayed_by_the_same_generic_machinery ... ok
+test tests::corrupting_the_recorded_timer_logical_time_diverges_replay ... ok
+test tests::completed_feedback_keeps_keyboard_inspection_flip_and_intentional_restart_reachable ... ok
+test tests::create_end_match_is_replayed_with_zero_accepted_inputs ... ok
+test tests::display_geometry_accepts_positive_finite_viewport_and_dpi ... ok
+test tests::display_geometry_rejects_zero_or_negative_dimensions ... ok
+test tests::logical_time_is_monotonic_for_stalled_and_backwards_frames ... ok
+test tests::duplicate_end_match_is_rejected_without_overwriting_the_first_outcome ... ok
+test tests::a_real_multi_move_opening_sequence_replays_to_every_checkpoint_and_the_final_hash ... ok
+test tests::late_frame_replays_the_timer_at_its_deadline_not_frame_arrival ... ok
+test tests::every_effect_has_an_explicit_local_interpretation_in_emitted_order ... ok
+test tests::locally_executed_bot_move_reuses_the_player_input_path ... ok
+test tests::exhausted_input_index_never_wraps_or_reuses_rng_domain ... ok
+test tests::replay_oracle_rejects_multiple_end_match_effects - should panic ... ok
+test tests::terminal_batched_presenter_input_retains_local_updates_but_discards_stale_intents ... ok
+test tests::public_input_entry_cannot_overtake_a_due_timer ... ok
+test tests::transient_invalid_viewport_resumes_without_state_mutation ... ok
+test tests::ui_only_interaction_consumes_no_canonical_input_index ... ok
+test tests::public_bot_entry_cannot_overtake_a_due_timer ... ok
+test tests::projection_is_rebuilt_from_state_after_accepted_transition ... ok
+test tests::presenter_command_goes_through_game_rules_apply ... ok
+test tests::presenter_produces_a_macroquad_supported_render_list_with_verified_art ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/main.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_game_client-646aa9574802e294)
+
+running 9 tests
+test clock_options::tests::endpoints_and_all_controls_are_reachable ... ok
+test clock_options::tests::rejected_values_preserve_the_previous_setup ... ok
+test standalone_setup::tests::entry_keyboard_start_is_one_shot_and_repeated_key_is_suppressed ... ok
+test standalone_setup::tests::held_key_from_previous_session_cannot_start_the_next_game ... ok
+test standalone_setup::tests::setup_actions_have_nonoverlapping_44dp_targets_inside_supported_viewports ... ok
+test tests::fresh_local_recovery_resets_elapsed_clock_time_and_clamps_clock_regression ... ok
+test tests::hostile_clock_launch_keeps_the_bounded_default ... ok
+test tests::local_launch_configures_real_untimed_fischer_and_bronstein_rules ... ok
+test tests::native_theme_options_keep_the_selected_game_and_invalid_values_keep_light ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/local_match.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/local_match-9f87d48ab21e2ccf)
+
+running 15 tests
+test chess_timer_deadline_terminates_match_canonically ... ok
+test completion_release_while_hidden_and_resize_during_press_do_not_leave_a_restart_latch ... ok
+test completion_repeats_and_interrupted_restart_require_a_fresh_activation ... ok
+test feedback_keeps_pointer_capture_through_escape_dismissal ... ok
+test feedback_keyboard_focus_forwards_release_to_tiles_before_dismissal ... ok
+test chess_pointer_input_and_presentation_workflow ... ok
+test feedback_occlusion_cancels_tiles_drag_before_release_and_hover ... ok
+test panning_and_zooming_through_the_runtime_consume_no_canonical_input ... ok
+test terminal_local_match_offers_restart_without_changing_its_result_or_trace ... ok
+test shared_runtime_drives_both_chess_and_tiles_without_game_specific_branches ... ok
+test completion_never_comes_from_a_rejection_and_reserves_the_final_chess_hud ... ok
+test the_tiles_presenter_produces_a_macroquad_supported_render_list ... ok
+test chess_presenter_produces_macroquad_supported_render_list_with_verified_art ... ok
+test a_local_bot_can_take_the_seats_nobody_is_sitting_at ... ok
+test a_whole_tiles_match_is_playable_through_pointer_and_keyboard_input ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_game_tiles-4d0c26fa723d4001)
+
+running 110 tests
+test bot::tests::the_module_offers_a_bot_for_the_levels_it_declares ... ok
+test presentation::tests::a_completed_full_preview_turn_starts_the_next_quarter_turn_from_zero ... ok
+test presentation::tests::a_pointer_maps_back_to_the_square_it_was_taken_from ... ok
+test bot::tests::the_bot_declines_when_it_is_not_its_turn_or_the_match_is_over ... ok
+test presentation::tests::a_press_below_the_drag_threshold_is_still_a_tap ... ok
+test presentation::tests::a_view_event_updates_only_local_state_and_emits_a_cue ... ok
+test presentation::tests::activation_key_repeats_are_suppressed_and_blur_does_not_latch_a_key ... ok
+test presentation::tests::arrows_move_the_cursor_and_tab_finds_a_legal_square ... ok
+test presentation::tests::cancelled_blurred_resized_and_repeated_releases_do_not_activate ... ok
+test presentation::tests::a_tap_on_a_legal_square_asks_to_place_and_an_illegal_one_does_not ... ok
+test presentation::tests::dragging_pans_the_camera_and_does_not_place_on_release ... ok
+test presentation::tests::escape_passes_on_a_follower_only_in_the_claim_step ... ok
+test presentation::tests::different_cameras_really_do_produce_different_render_lists ... ok
+test presentation::tests::every_reachable_claim_is_selectable_by_keyboard_and_by_its_pointer_position ... ok
+test presentation::tests::gameplay_actions_are_gated_for_paused_terminal_and_other_viewers ... ok
+test presentation::tests::losing_focus_disarms_a_drag_in_progress ... ok
+test presentation::tests::maximum_zoom_keeps_the_short_map_cursor_and_focus_marker_visible ... ok
+test presentation::tests::every_hud_action_has_a_labeled_44_dp_target_and_compact_primary_reach ... ok
+test presentation::tests::fixture_covers_every_tile_with_verified_explicit_density_variants ... ok
+test presentation::tests::accepted_tile_settles_once_and_sparse_dense_samples_have_identical_final_view ... ok
+test presentation::tests::reduced_motion_uses_informative_fade_without_rotation_or_scale ... ok
+test presentation::tests::rejected_placement_keeps_rules_bytes_and_cannot_start_accepted_motion ... ok
+test presentation::tests::rotation_is_immediate_intent_and_motion_is_local_reduced_and_replaceable ... ok
+test presentation::tests::space_and_the_rotate_control_both_turn_the_preview ... ok
+test presentation::tests::short_and_compact_results_keep_every_score_and_follower_label ... ok
+test presentation::tests::the_a11y_description_names_the_cursor_and_gates_its_actions ... ok
+test presentation::tests::stale_or_replaced_views_never_invent_a_tile_and_interruptions_snap ... ok
+test presentation::tests::the_asset_pack_matches_the_manifest ... ok
+test presentation::tests::the_opening_view_is_centred_on_the_start_tile ... ok
+test presentation::tests::the_zoom_and_recenter_controls_change_only_the_camera ... ok
+test presentation::tests::the_whole_placement_step_is_reachable_from_the_keyboard ... ok
+test presentation::tests::the_hud_keeps_its_logical_geometry_at_every_zoom ... ok
+test presentation::tests::zoom_is_clamped_at_both_ends ... ok
+test rules::coord::tests::coord_deserialization_cannot_bypass_the_playable_space_check ... ok
+test rules::coord::tests::coord_rejects_positions_outside_the_playable_space ... ok
+test rules::coord::tests::neighbour_is_total_at_the_boundary_instead_of_overflowing ... ok
+test rules::coord::tests::neighbour_and_opposite_side_are_mutually_inverse ... ok
+test rules::coord::tests::raw_index_constructors_are_total_over_every_byte ... ok
+test rules::coord::tests::opposite_is_an_involution_and_never_the_identity ... ok
+test rules::coord::tests::rotating_a_side_four_times_is_the_identity ... ok
+test rules::coord::tests::rotation_next_cycles_through_all_four_orientations ... ok
+test rules::feature::tests::a_graph_that_forgot_a_segment_is_rejected ... ok
+test rules::feature::tests::a_completed_feature_reports_no_open_edges ... ok
+test rules::feature::tests::a_graph_that_merged_two_unconnected_roads_is_rejected ... ok
+test rules::feature::tests::a_graph_with_a_wrong_open_edge_count_is_rejected ... ok
+test rules::feature::tests::a_lone_start_tile_has_one_city_and_one_road_both_open ... ok
+test rules::feature::tests::a_pennant_travels_with_the_city_it_belongs_to ... ok
+test rules::feature::tests::a_segment_can_only_be_claimed_once_and_a_retired_one_never ... ok
+test rules::feature::tests::a_segment_reference_rejects_an_index_no_tile_could_have ... ok
+test rules::feature::tests::a_monastery_closes_only_when_all_eight_neighbours_are_filled ... ok
+test rules::feature::tests::merging_two_claimed_components_keeps_both_owners ... ok
+test rules::feature::tests::side_helper_names_stay_used ... ok
+test rules::placement::tests::a_mismatched_shared_edge_is_refused_and_names_the_side ... ok
+test rules::feature::tests::the_incremental_graph_agrees_with_a_whole_board_recomputation ... ok
+test rules::feature::tests::merging_is_independent_of_the_order_sides_are_processed ... ok
+test rules::placement::tests::a_square_between_two_tiles_must_match_both_of_them ... ok
+test rules::placement::tests::a_square_touching_nothing_is_refused_however_well_it_would_match ... ok
+test rules::placement::tests::an_occupied_square_is_refused_before_anything_else_is_checked ... ok
+test rules::placement::tests::every_tile_kind_is_placeable_next_to_the_opening_position ... ok
+test rules::placement::tests::legality_is_exhaustively_symmetric_over_every_kind_and_rotation ... ok
+test rules::placement::tests::the_first_tile_has_nowhere_to_go_on_an_empty_board ... ok
+test rules::placement::tests::the_frontier_is_exactly_the_free_squares_touching_the_board ... ok
+test rules::scoring::tests::a_clear_majority_takes_it_all ... ok
+test rules::scoring::tests::a_completed_city_pays_two_a_tile_and_two_a_pennant ... ok
+test rules::scoring::tests::a_completed_monastery_pays_nine_and_an_unfinished_one_pays_what_it_has ... ok
+test rules::scoring::tests::a_completed_road_pays_one_a_tile ... ok
+test rules::scoring::tests::an_unclaimed_feature_awards_nothing_to_anybody ... ok
+test rules::scoring::tests::tied_majorities_both_score_the_full_value ... ok
+test rules::secret::tests::a_bag_too_short_to_tokenise_declares_no_containment_secret ... ok
+test presentation::tests::sprites_and_validity_words_preserve_tokens_for_themes_dpi_resize_and_zoom ... ok
+test rules::placement::tests::enumeration_agrees_with_the_predicate ... ok
+test rules::secret::tests::a_public_change_is_visible_to_every_viewer ... ok
+test rules::secret::tests::permuting_the_bag_changes_no_projection_for_any_viewer ... ok
+test rules::secret::tests::permuting_the_bag_changes_no_view_event_for_any_viewer ... ok
+test rules::secret::tests::a_projection_that_carried_the_bag_would_be_caught_by_the_declared_tokens ... ok
+test rules::secret::tests::secrets_is_total_across_every_bag_length ... ok
+test rules::secret::tests::the_module_declares_the_hidden_information_it_actually_has ... ok
+test rules::secret::tests::two_different_public_events_remain_distinguishable_to_every_viewer ... ok
+test rules::state::tests::a_board_without_the_start_tile_at_the_origin_is_rejected ... ok
+test rules::secret::tests::the_declared_secret_is_the_bag_order_and_is_authorised_to_nobody ... ok
+test rules::state::tests::a_disconnected_board_is_rejected ... ok
+test rules::state::tests::a_finished_match_cannot_be_paused_and_a_stray_last_square_is_rejected ... ok
+test rules::state::tests::a_graph_that_does_not_describe_the_board_is_rejected ... ok
+test rules::state::tests::a_state_that_duplicated_a_tile_is_rejected ... ok
+test rules::state::tests::a_state_that_lost_a_tile_is_rejected ... ok
+test rules::state::tests::a_state_that_lost_a_follower_is_rejected ... ok
+test rules::state::tests::an_edge_inconsistent_board_is_rejected ... ok
+test rules::state::tests::scores_and_hands_must_name_exactly_the_seated_players ... ok
+test rules::state::tests::deserialization_cannot_bypass_the_validator ... ok
+test rules::state::tests::seat_and_turn_shapes_are_checked ... ok
+test rules::state::tests::the_opening_position_is_valid_and_self_consistent ... ok
+test rules::placement::tests::adjacency_compatibility_is_symmetric_between_the_two_tiles ... ok
+test rules::state::tests::the_validator_and_the_placement_rule_agree_about_shared_edges ... ok
+test rules::state::tests::the_phase_the_hand_and_the_status_must_agree ... ok
+test rules::secret::tests::tabula_hidden_information_security_suite ... ok
+test rules::tile::tests::edge_terrain_agrees_with_the_segment_that_reaches_that_edge ... ok
+test rules::state::tests::turn_deadline_config_partitions ... ok
+test rules::tile::tests::every_tile_definition_is_structurally_well_formed ... ok
+test rules::state::tests::turn_order_wraps_through_every_seat_in_roster_order ... ok
+test rules::tile::tests::rotating_a_tile_permutes_its_edge_terrain ... ok
+test rules::tile::tests::the_bag_and_the_full_set_are_the_documented_sizes ... ok
+test rules::tile::tests::the_start_tile_shows_one_city_edge_and_a_road_through ... ok
+test rules::tile::tests::the_start_tile_offers_every_edge_terrain_to_its_neighbours ... ok
+test rules::tile::tests::segment_lookup_by_world_side_is_the_inverse_of_segment_edges ... ok
+test rules::tile::tests::tile_kind_rejects_indices_outside_the_table_including_from_the_wire ... ok
+test presentation::tests::identical_play_from_different_cameras_produces_identical_state ... ok
+test presentation::tests::golden_tiles_opening_zoomed_out_dark ... ok
+test presentation::tests::golden_tiles_opening_800x600_light ... ok
+test presentation::tests::golden_tiles_claim_step_light ... ok
+test bot::tests::self_play_terminates_deterministically_at_every_seat_count ... ok
+
+test result: ok. 110 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.15s
+
+     Running tests/conformance.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/conformance-6510eb8c4f477295)
+
+running 11 tests
+test tabula_conformance_stable_identity ... ok
+test tabula_conformance_deterministic_initialization ... ok
+test tabula_conformance_invalid_command_safety ... ok
+test tabula_conformance_deterministic_rng ... ok
+test tabula_conformance_serialization_roundtrip ... ok
+test tabula_conformance_state_hash_sensitivity ... ok
+test tabula_conformance_legal_commands_sanity ... ok
+test tabula_conformance_ordered_events ... ok
+test tabula_conformance_deterministic_command_execution ... ok
+test tabula_conformance_deterministic_replay ... ok
+test tabula_conformance_terminal_behavior ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/determinism.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/determinism-d7d3539cb4f04b36)
+
+running 6 tests
+test the_extreme_coordinate_that_once_panicked_is_rejected ... ok
+test an_accepted_input_leaves_a_state_the_validator_still_accepts ... ok
+test every_command_legal_commands_advertises_is_accepted_by_apply ... ok
+test a_rejected_input_leaves_the_canonical_encoding_byte_identical ... ok
+test the_same_script_run_twice_produces_identical_canonical_state ... ok
+test replaying_the_recorded_inputs_reproduces_every_checkpoint ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/features.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/features-9cf18d6b70fea4b1)
+
+running 6 tests
+test a_claim_is_refused_when_the_feature_is_taken_or_the_hand_is_empty ... ok
+test every_completed_feature_is_scored_exactly_once_across_a_whole_match ... ok
+test the_final_standings_rank_the_seats_by_the_scores_they_earned ... ok
+test scores_are_monotonic_and_match_the_points_the_events_reported ... ok
+test followers_are_conserved_after_every_input_and_returned_when_a_feature_scores ... ok
+test the_incremental_graph_agrees_with_recomputation_after_every_input_of_a_full_match ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+     Running tests/replay.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/replay-8d7aa48fb672f668)
+
+running 8 tests
+test the_bot_and_presentation_halves_live_outside_the_hashed_subtree ... ok
+test every_rules_subtree_file_is_discovered_recursively_and_in_order ... ok
+test the_golden_stream_shows_a_claim_decision_by_the_seat_that_just_placed ... ok
+test the_rules_hash_matches_an_independent_recomputation_over_the_rules_subtree ... ok
+test the_committed_tiles_replay_covers_placements_claims_and_passes ... ok
+test a_change_to_canonical_rules_source_changes_the_hash ... ok
+test canonical_rules_do_not_depend_on_the_bot_or_presentation_halves ... ok
+test the_committed_tiles_replay_reproduces_its_recorded_final_hash ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/rules.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/rules-23a3e58d80c3cd1d)
+
+running 19 tests
+test a_seat_that_cannot_act_gets_no_hints ... ok
+test a_seat_that_is_not_in_the_match_is_rejected_before_anything_else ... ok
+test a_seat_that_is_not_on_turn_is_rejected ... ok
+test a_rotation_whose_edges_do_not_match_is_an_illegal_move ... ok
+test an_operator_cancel_ends_the_match_and_later_input_is_refused ... ok
+test a_placement_enters_the_claim_step_and_only_then_hands_the_turn_on ... ok
+test a_deadline_that_fires_while_paused_changes_nothing ... ok
+test create_opens_with_the_start_tile_placed_and_one_tile_in_hand ... ok
+test a_timer_this_version_never_set_is_ignored_rather_than_rejected ... ok
+test placing_on_an_occupied_or_unreachable_square_is_an_illegal_move ... ok
+test pausing_stops_play_and_resuming_restores_it ... ok
+test the_create_seed_does_change_the_shuffle ... ok
+test every_rejected_command_leaves_the_state_byte_identical ... ok
+test the_turn_deadline_resolves_the_turn_deterministically ... ok
+test legal_commands_hints_decode_to_exactly_the_accepted_placements ... ok
+test turn_order_cycles_through_every_seat_once_per_turn ... ok
+test no_input_after_create_consumes_randomness ... ok
+test a_seat_with_no_followers_left_skips_the_claim_step_entirely ... ok
+test the_match_ends_when_the_bag_runs_dry_with_every_tile_accounted_for ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/state_size.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/state_size-2c3affdce29163be)
+
+running 3 tests
+test the_state_grows_substantially_between_the_opening_and_a_full_board ... ok
+test the_declared_state_size_class_is_the_measured_one ... ok
+test a_full_board_is_far_smaller_than_the_design_estimate ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_game_werewolf-527b918d190805f8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/assignment.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/assignment-be8e2fb4e514e9b3)
+
+running 8 tests
+test fixed_seed_and_roster_produce_pinned_assignment_vector ... ok
+test initial_state_has_valid_night_1_structure ... ok
+test role_assignment_works_with_non_contiguous_and_irregular_seat_ids ... ok
+test roster_order_invariance_produces_identical_assignment ... ok
+test seed_determinism_produces_byte_identical_state ... ok
+test role_assignment_exhaustive_across_all_supported_seat_counts ... ok
+test seed_sensitivity_positive_control_produces_different_assignments ... ok
+test every_roster_permutation_preserves_assignment ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/config.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/config-355aa1bd85d9dba9)
+
+running 17 tests
+test config_default_is_semantically_valid ... ok
+test classic_v1_table_matches_pinned_specification_for_all_seat_counts ... ok
+test deserialization_rejects_config_with_invalid_max_rounds ... ok
+test config_canonical_round_trip ... ok
+test deserialization_rejects_config_with_invalid_nested_durations ... ok
+test deserialization_rejects_out_of_range_max_rounds ... ok
+test deserialization_rejects_out_of_range_phase_duration ... ok
+test deserialization_rejects_out_of_range_seat_count ... ok
+test max_rounds_boundaries ... ok
+test phase_duration_boundaries ... ok
+test primitive_types_canonical_round_trip ... ok
+test role_alignment_mapping_is_correct ... ok
+test role_all_contains_all_six_roles_uniquely ... ok
+test role_counts_by_role_query_matches_fields ... ok
+test roster_validation_enforces_boundaries_and_rules ... ok
+test validate_seat_count_matches_bounds ... ok
+test seat_count_boundaries ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/metadata.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/metadata-8ebfe4c9ef4bf59c)
+
+running 3 tests
+test compiled_capabilities_preserve_werewolf_decisions ... ok
+test compiled_metadata_matches_werewolf_manifest_identity ... ok
+test manifest_uses_recommended_voice_and_no_fixed_hard_stop ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/state.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/state-a0060f047428066d)
+
+running 29 tests
+test checked_deadline_is_exact_until_u64_overflow ... ok
+test rules_hash_is_non_zero ... ok
+test changing_canonical_rules_source_changes_hash_oracle ... ok
+test initial_state_creation_rejects_deadline_overflow ... ok
+test state_reconstruction_accepts_role_specific_living_targets ... ok
+test state_reconstruction_rejects_extra_role ... ok
+test state_reconstruction_rejects_dead_doctor_and_witch_targets ... ok
+test rules_hash_matches_independent_rules_subtree_oracle ... ok
+test state_reconstruction_rejects_incoherent_revealed_set ... ok
+test state_reconstruction_rejects_invalid_alive_set ... ok
+test state_reconstruction_rejects_invalid_doctor_target ... ok
+test rules_version_matches_manifest ... ok
+test rules_subtree_is_discovered_recursively_in_canonical_order ... ok
+test state_reconstruction_rejects_invalid_round ... ok
+test state_reconstruction_rejects_invalid_timer ... ok
+test state_reconstruction_rejects_invalid_witch_potions ... ok
+test state_reconstruction_rejects_night_choices_outside_night_phase ... ok
+test state_reconstruction_rejects_invalid_hunter_targets ... ok
+test state_reconstruction_rejects_seer_history_alignment_mismatch ... ok
+test state_reconstruction_rejects_invalid_wolf_targets ... ok
+test state_reconstruction_rejects_missing_role ... ok
+test state_reconstruction_rejects_phase_and_outcome_mismatch ... ok
+test state_reconstruction_rejects_self_vote_in_vote_phase ... ok
+test state_reconstruction_rejects_unknown_seat_in_roles ... ok
+test state_canonical_round_trip ... ok
+test state_reconstruction_rejects_unauthorized_night_choice ... ok
+test state_reconstruction_rejects_wrong_preset_counts ... ok
+test state_reconstruction_rejects_votes_outside_vote_phase ... ok
+test state_reconstruction_rejects_unsorted_or_duplicate_roster ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_lobby-10f5fbd5fec1f7f4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_match-7407f943599cb6e0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_net_client-ca043f7ba08e47cc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_presentation-854f0b6c1a55f904)
+
+running 50 tests
+test audio::tests::empty_cue_id_is_rejected ... ok
+test button::tests::action_bounds_obey_theme_target_and_never_fall_below_44_dp ... ok
+test button::tests::all_schemes_render_semantic_fill_label_and_focus_with_a_surface_gap ... ok
+test button::tests::disabling_or_removing_a_pressed_action_prevents_release_activation ... ok
+test button::tests::disabled_visuals_use_authored_alpha_and_never_show_focus_or_state_feedback ... ok
+test audio::tests::invalid_static_cue_declaration_fails_loudly - should panic ... ok
+test button::tests::enter_and_space_activate_once_until_release_and_ignore_unfocused_input ... ok
+test button::tests::minimum_target_edges_remain_hittable_and_connected_corners_follow_group_position ... ok
+test button::tests::pointer_cancellation_leaving_or_focus_loss_discards_the_press ... ok
+test button::tests::pressed_shape_is_immediate_and_reduced_motion_has_no_clock_dependency ... ok
+test button::tests::primary_pointer_requires_press_and_release_on_the_same_target ... ok
+test button::tests::tab_and_arrows_skip_disabled_actions_and_keyboard_activation_requires_enabled_focus ... ok
+test button::tests::opening_key_can_be_suppressed_until_its_release ... ok
+test focus::tests::directional_navigation_never_leaves_the_graph ... ok
+test focus::tests::enter_and_space_activate_the_current_focus_node ... ok
+test button::tests::unfocused_activation_keys_do_not_block_first_press_after_focus_returns ... ok
+test focus::tests::escape_produces_generic_cancel_action ... ok
+test focus::tests::focus_graph_rejects_duplicate_ids ... ok
+test focus::tests::focus_graph_rejects_unknown_edge_targets ... ok
+test focus::tests::focus_state_reconcile_clears_missing_focus ... ok
+test button::tests::secondary_and_middle_pointer_buttons_never_activate ... ok
+test focus::tests::key_release_does_not_move_or_activate_focus ... ok
+test focus::tests::keyboard_navigation_activates_keyboard_modality_and_focus_visible ... ok
+test focus::tests::tab_navigation_follows_declared_stable_order ... ok
+test focus::tests::window_focus_loss_never_activates_a_node ... ok
+test input::tests::pointer_position_accepts_finite_coordinates_without_clamping ... ok
+test motion::tests::lerp_helpers_evaluate_endpoints_and_midpoint ... ok
+test motion::tests::motion_terminal_sample_is_exact ... ok
+test input::tests::pointer_position_rejects_non_finite_axes ... ok
+test motion::tests::full_motion_does_not_apply_reduced_policy_implicitly ... ok
+test motion::tests::reduced_motion_duration_resolution_honors_categories_and_floor ... ok
+test motion::tests::late_arriving_motion_snaps_but_exact_boundary_animates ... ok
+test motion::tests::zero_duration_motion_finishes_immediately ... ok
+test motion::tests::motion_sampling_depends_on_absolute_time_not_frame_history ... ok
+test motion::tests::normal_800ms_motion_is_not_stale_at_601ms ... ok
+test motion::tests::time_arithmetic_boundaries_do_not_panic ... ok
+test render::tests::balanced_scopes_are_the_only_public_construction_path ... ok
+test motion::tests::motion_final_state_is_invariant_to_frame_partition ... ok
+test motion::tests::reduced_duration_preserves_the_profile_curve_until_terminal_sample ... ok
+test render::tests::child_layers_cannot_escape_their_stacking_context ... ok
+test render::tests::equal_order_siblings_preserve_insertion_order_at_every_stack_level ... ok
+test render::tests::gradient_requires_finite_endpoints_and_ordered_stops ... ok
+test render::tests::nested_clips_transforms_and_opacity_are_balanced ... ok
+test render::tests::non_finite_text_position_reports_a_precise_error ... ok
+test render::tests::path_requires_enough_finite_points_for_its_geometry ... ok
+test render::tests::nested_scope_groups_sort_siblings_but_keep_each_scope_contiguous ... ok
+test render::tests::proof_barriers_reject_invalid_numerical_values ... ok
+test renderer::tests::frame_context_rejects_invalid_display_facts ... ok
+test renderer::tests::text_metrics_reject_invalid_output_facts ... ok
+test render::tests::sprite_command_requires_canonical_asset_ref_and_valid_geometry ... ok
+
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_protocol-89fa864da72ad115)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_registry-ae9d210f59448451)
+
+running 32 tests
+test tests::an_unavailable_mode_cannot_be_normalized ... ok
+test tests::a_bot_mode_requires_a_level_this_build_actually_links ... ok
+test tests::a_form_hides_the_fields_the_selected_choice_does_not_reveal ... ok
+test tests::a_bound_build_hands_off_to_a_separate_document_with_encoded_arguments ... ok
+test tests::an_unknown_well_formed_id_is_not_found_rather_than_a_fallback ... ok
+test tests::an_unbound_build_reports_no_gameplay_runtime_instead_of_navigating ... ok
+test tests::binding_one_runtime_does_not_launch_an_unimplemented_game_or_change_its_modes ... ok
+test tests::catalog_orders_by_folded_localized_title ... ok
+test tests::catalog_lists_every_linked_game_once ... ok
+test tests::chess_rejects_a_zero_initial_clock_through_its_own_validator ... ok
+test tests::chess_rejects_unparseable_and_out_of_range_input_without_clamping ... ok
+test tests::category_and_complexity_filters_read_metadata ... ok
+test tests::defaults_come_from_the_form_rather_than_the_shell ... ok
+test tests::chess_links_exactly_the_bot_levels_it_builds ... ok
+test tests::chess_bot_factories_do_not_advertise_an_unimplemented_local_ai_runtime ... ok
+test tests::draft_redirect_and_locale_fields_cannot_override_registry_handoff_metadata ... ok
+test tests::chess_untimed_and_timed_configurations_normalize_distinctly ... ok
+test tests::duration_filter_is_a_budget_on_the_estimated_maximum ... ok
+test tests::chess_rejects_a_seat_count_it_does_not_declare ... ok
+test tests::chess_setup_rejects_values_the_standalone_runtime_cannot_construct ... ok
+test tests::every_local_clock_handoff_is_complete_and_excludes_irrelevant_fields ... ok
+test tests::every_key_the_catalog_hands_the_shell_exists_in_both_locales ... ok
+test tests::integrated_launch_carries_a_registry_selected_setup_return_route ... ok
+test tests::local_runtime_binding_cannot_redirect_to_another_origin_or_route ... ok
+test tests::search_folds_case_and_vietnamese_tone_marks ... ok
+test tests::search_matches_declared_tags ... ok
+test tests::tiles_deadline_boundaries_follow_the_rules_floor ... ok
+test tests::network_mode_is_unavailable_everywhere_at_this_phase ... ok
+test tests::seat_filter_uses_the_modules_declared_counts ... ok
+test tests::export_local_handoff_boundary_urls ... ok
+test tests::tiles_accepts_every_seat_count_it_declares_and_no_other ... ok
+test tests::the_chess_form_range_cannot_produce_a_config_the_rules_call_unrepresentable ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_server-6f39cbdc140c44e8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_storage-b5594d1395fa8ec0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_testkit-451e88e45bc0451d)
+
+running 68 tests
+test conformance::identity::tests::accepts_the_documented_shape ... ok
+test conformance::identity::tests::rejects_empty_and_malformed_ids ... ok
+test presentation::tests::camera_zoom_and_origin_change_changes_snapshot ... ok
+test presentation::tests::color_change_changes_snapshot ... ok
+test presentation::tests::negative_zero_is_normalized_to_positive_zero ... ok
+test presentation::tests::layer_and_z_change_changes_snapshot ... ok
+test presentation::tests::rect_origin_change_changes_snapshot ... ok
+test presentation::tests::same_render_list_formatted_twice_is_byte_identical ... ok
+test presentation::tests::scope_order_change_changes_snapshot ... ok
+test presentation::tests::text_content_and_style_change_changes_snapshot ... ok
+test presentation::tests::sprite_and_path_and_gradient_are_fully_formatted ... ok
+test replay::tests::checkpoint_reconvergence_does_not_restore_monotonicity ... ok
+test replay::tests::canonical_replay_requires_seed ... ok
+test replay::tests::checkpoint_mismatch_reports_context ... ok
+test replay::tests::canonical_log_cannot_continue_after_end_match ... ok
+test replay::tests::corruption_is_rejected ... ok
+test replay::tests::canonical_input_cannot_follow_create_end_match ... ok
+test replay::tests::dictionary_id_frame_cannot_bypass_window_guard ... ok
+test replay::tests::diagnosis_cannot_authorize_another_replay_even_on_final_frame ... ok
+test replay::tests::accepted_rng_replay_preserves_gaps_and_maximum_original_index ... ok
+test replay::tests::diagnosis_is_deterministic_for_identical_evidence ... ok
+test replay::tests::checkpoint_reproducer_validates_and_reproduces ... ok
+test replay::tests::final_checkpoint_reproducer_reports_original_as_minimal ... ok
+test replay::tests::end_match_from_create_is_verified ... ok
+test replay::tests::exact_checkpoint_diagnosis_is_adjacent ... ok
+test replay::tests::final_hash_mismatch_fails_verification ... ok
+test replay::tests::final_hash_only_diagnosis_is_final_evidence ... ok
+test replay::tests::hostile_structural_metadata_is_rejected_before_frame_decode ... ok
+test replay::tests::multiple_end_match_effects_are_rejected ... ok
+test replay::tests::gapped_final_hash_and_terminal_diagnoses_use_original_last_index ... ok
+test replay::tests::gapped_checkpoint_diagnosis_and_reproducer_preserve_accepted_adjacency ... ok
+test replay::tests::missing_terminal_outcome_is_divergence ... ok
+test replay::tests::multiple_end_match_from_create_is_rejected ... ok
+test replay::tests::non_checkpoint_reproducer_is_not_derived ... ok
+test replay::tests::first_checkpoint_without_previous_evidence_is_a_window ... ok
+test replay::tests::projected_seed_is_rejected_by_writer_and_reader ... ok
+test replay::tests::non_monotonic_reader_frames_are_rejected ... ok
+test replay::tests::recomputed_trailer_metadata_reaches_semantic_validation ... ok
+test replay::tests::replay_rejection_is_not_reported_as_success ... ok
+test replay::tests::replay_terminal_outcome_matches_effect ... ok
+test replay::tests::round_trip_preserves_validated_structure ... ok
+test replay::tests::same_rules_version_with_different_hash_is_compatible_version ... ok
+test replay::tests::seek_never_hides_checkpoint_divergence ... ok
+test replay::tests::seek_never_hides_final_hash_divergence ... ok
+test replay::tests::seek_requires_the_same_authoritative_rules_identity_as_verify ... ok
+test replay::tests::truncated_zstd_stream_is_rejected ... ok
+test replay::tests::trailer_metadata_is_crc_protected ... ok
+test replay::tests::terminal_outcome_diagnosis_is_structured ... ok
+test replay::tests::wrong_terminal_outcome_is_divergence ... ok
+test replay::tests::runner_replays_independent_live_execution_and_supports_seek ... ok
+test selfplay::tests::hostile_fraction_boundaries_are_explicit_and_deterministic ... ok
+test replay::tests::sparse_checkpoint_diagnosis_is_a_window ... ok
+test selfplay::tests::direct_bot_driver_is_a_test_only_policy_not_a_request_effect_gate ... ok
+test replay::tests::writer_and_hostile_reader_reject_zero_duplicate_and_decreasing_original_indices ... ok
+test selfplay::tests::hostile_decision_and_kind_streams_are_separate_and_reproducible ... ok
+test selfplay::tests::invalid_fraction_is_rejected_without_running_a_match ... ok
+test selfplay::tests::multiple_end_match_effects_are_rejected_by_the_runtime ... ok
+test selfplay::tests::initial_state_divergence_is_reported_at_index_zero ... ok
+test selfplay::tests::max_inputs_returns_a_structured_failure ... ok
+test selfplay::tests::timer_deadline_wins_an_exact_bot_tie ... ok
+test selfplay::tests::timer_queue_rearms_and_cancels ... ok
+test selfplay::tests::projection_outputs_participate_in_semantic_determinism ... ok
+test selfplay::tests::hostile_rejections_are_checked_transactionally ... ok
+test selfplay::tests::view_event_outputs_participate_in_semantic_determinism ... ok
+test selfplay::tests::match_index_range_uses_the_last_index_that_will_run ... ok
+test selfplay::tests::zero_match_batches_are_rejected_at_the_library_boundary ... ok
+test selfplay::tests::same_setup_and_seed_is_semantically_stable ... ok
+test replay::tests::zstd_limits_and_exact_frame_boundary_are_enforced ... ok
+
+test result: ok. 68 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/conformance_catches_violations.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/conformance_catches_violations-ca9c637e2ff593d6)
+
+running 3 tests
+test ignores_terminality::conformance_catches_a_game_that_ignores_its_own_terminality ... ok
+test dishonest_legal_commands::conformance_catches_a_legal_command_that_apply_rejects ... ok
+test placeholder_hash::conformance_catches_a_placeholder_state_hash ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/harness_catches_violations.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/harness_catches_violations-b099fa6c36698110)
+
+running 3 tests
+test harness_catches_a_rejection_that_mutates_state ... ok
+test harness_catches_a_hashmap_in_canonical_state ... ok
+test harness_catches_unordered_event_emission ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/projection_noninterference.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/projection_noninterference-15a9f038130ce096)
+
+running 25 tests
+test audit_legitimately_sees_every_hand_so_scrambling_is_expected_to_be_visible ... ok
+test audit_sees_full_deal_detail_change_regardless_of_seat ... ok
+test a_seats_own_hand_change_is_observable_to_that_seat ... ok
+test a_public_round_change_is_observable_to_every_viewer_kind ... ok
+test derived_event_leak_needs_noninterference::event_containment_is_blind_to_a_derived_checksum_leak ... ok
+test each_seat_is_indifferent_to_every_other_seats_hand_in_a_three_seat_match ... ok
+test game_controlled_spectators::a_missing_hook_fails_loudly_instead_of_silently_scanning_no_spectators ... ok
+test derived_event_leak_needs_noninterference::event_noninterference_catches_the_derived_checksum_leak_containment_missed ... ok
+test direct_leaks_are_caught::event_secret_never_touches_state_is_still_caught ... ok
+test direct_leaks_are_caught::event_containment_scanner_catches_a_direct_view_event_leak ... ok
+test direct_leaks_are_caught::containment_scanner_catches_a_direct_projection_leak_to_a_spectator ... ok
+test game_controlled_spectators::an_explicit_hook_names_the_game_controlled_spectators_and_the_suite_passes ... ok
+test honest_pipeline::tabula_hidden_information_security_suite ... ok
+test opponents_hidden_hand_does_not_affect_a_seated_viewers_projection ... ok
+test owner_receives_authorized_deal_detail_that_differs_with_its_own_cards ... ok
+test malformed_secret_token_fails_loudly::containment_scanner_fails_loudly_on_an_empty_token_instead_of_silently_passing ... ok
+test leaky_projection_is_caught::noninterference_check_catches_a_derived_leak_a_containment_scan_would_miss ... ok
+test same_state_and_viewer_yield_the_same_projection_every_time ... ok
+test vacuous_suite_is_rejected::an_empty_script_that_never_touches_a_secret_is_rejected_as_vacuous ... ok
+test viewer_universe_completeness::viewer_universe_derivation_catches_a_leak_to_a_seat_no_secret_ever_named ... ok
+test unauthorized_seat_and_spectator_receive_degraded_deal_detail_not_the_cards ... ok
+test unauthorized_seat_and_spectator_are_indifferent_to_another_seats_deal_detail ... ok
+test changing_any_seats_secret_content_preserves_the_spectators_projection ... ok
+test spectators_see_no_hand_information_regardless_of_hidden_hands ... ok
+test changing_only_other_seats_secret_content_preserves_the_seated_viewers_projection ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_voice-d25813d9558749bc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/tabula_web-c1ff2b8d859e79e6)
+
+running 23 tests
+test query::tests::a_zero_count_is_an_error_rather_than_a_silent_removal ... ok
+test query::tests::an_empty_query_links_to_the_bare_library_route ... ok
+test query::tests::an_empty_value_removes_its_constraint_without_an_error ... ok
+test query::tests::an_unknown_key_is_ignored ... ok
+test setup::tests::a_bot_level_is_only_sent_for_a_mode_that_uses_one ... ok
+test setup::tests::a_fresh_draft_selects_a_supported_mode_and_the_games_own_defaults ... ok
+test query::tests::every_axis_round_trips_through_the_address ... ok
+test query::tests::an_unreadable_value_is_reported_and_left_unapplied ... ok
+test setup::tests::a_refused_navigation_keeps_the_validated_config_for_recovery ... ok
+test setup::tests::a_game_id_that_is_not_in_the_catalog_has_no_draft ... ok
+test setup::tests::a_rejection_keeps_the_values_that_were_rejected ... ok
+test setup::tests::a_pending_start_admits_neither_an_edit_nor_a_second_submission ... ok
+test setup::tests::a_supported_preselection_is_kept ... ok
+test setup::tests::a_result_for_the_current_revision_is_accepted ... ok
+test setup::tests::an_unsupported_preselection_is_replaced_rather_than_carried ... ok
+test setup::tests::editing_immediately_retires_readiness ... ok
+test setup::tests::an_unresolvable_start_reports_its_reason_instead_of_a_started_match ... ok
+test setup::tests::restored_editing_and_ready_states_are_not_an_automatic_launch ... ok
+test setup::tests::validation_is_scoped_to_one_revision ... ok
+test setup::tests::an_interrupted_validation_is_retired_before_its_result_returns ... ok
+test views::parts::tests::each_pair_of_preferences_names_its_own_generated_scheme ... ok
+test setup::tests::restored_setup_retires_a_handoff_without_starting_another_game ... ok
+test setup::tests::an_old_launch_result_cannot_finish_or_fail_a_new_pending_revision ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/xtask-8ae485f8abb2022d)
+
+running 95 tests
+test colors_cmd::tests::css_hex_color_literals_are_rejected ... ok
+test colors_cmd::tests::domain_color_enum_and_impl_are_allowed ... ok
+test colors_cmd::tests::css_id_selectors_and_tokens_are_allowed ... ok
+test colors_cmd::tests::css_color_functions_are_rejected ... ok
+test colors_cmd::tests::multiline_block_comments_in_rust_and_css_are_exempt ... ok
+test colors_cmd::tests::rust_raw_color_constructors_are_rejected ... ok
+test colors_cmd::tests::multiline_rust_struct_literals_are_rejected ... ok
+test colors_cmd::tests::rust_hex_literals_in_code_are_rejected ... ok
+test colors_cmd::tests::string_literals_in_rust_and_css_are_exempt ... ok
+test deps_policy::tests::crate_missing_from_deps_toml_is_reported ... ok
+test deps_policy::tests::core_depending_on_renderer_fails ... ok
+test colors_cmd::tests::single_line_rust_struct_literals_are_rejected ... ok
+test colors_cmd::tests::violation_messages_are_non_empty_and_descriptive ... ok
+test game_ids_policy::tests::ci_workflow_files_are_exempt ... ok
+test deps_policy::tests::transitive_banned_crate_is_reported_with_path ... ok
+test game_ids_policy::tests::code_after_a_trailing_comment_is_still_flagged_before_it ... ok
+test deps_policy::tests::layering_violation_when_lower_tier_depends_on_higher_tier ... ok
+test deps_policy::tests::undeclared_direct_dependency_fails ... ok
+test deps_policy::tests::game_api_depending_on_server_fails ... ok
+test deps_policy::tests::valid_dependency_passes ... ok
+test game_ids_policy::tests::game_id_hardcoded_in_platform_crate_fails ... ok
+test game_ids_policy::tests::game_id_in_other_package_fails ... ok
+test colors_cmd::tests::walk_detects_violations_and_respects_exemptions ... ok
+test game_ids_policy::tests::explicit_suppression_marker_is_honored ... ok
+test game_ids_policy::tests::manifests_and_docs_are_exempt ... ok
+test game_ids_policy::tests::game_id_in_registry_passes ... ok
+test game_ids_policy::tests::game_id_in_own_package_passes ... ok
+test game_ids_policy::tests::rationale_comments_naming_other_games_are_exempt ... ok
+test game_ids_policy::tests::substring_false_positives_are_avoided ... ok
+test game_ids_policy::tests::game_id_as_crate_reference_is_caught ... ok
+test game_ids_policy::tests::test_fixtures_are_exempt ... ok
+test manifest_policy::tests::game_crate_missing_presentation_feature_fails ... ok
+test manifest_policy::tests::game_toml_id_mismatch_fails ... ok
+test manifest_policy::tests::game_toml_missing_metadata_fails ... ok
+test manifest_policy::tests::game_toml_invalid_capability_enum_fails ... ok
+test manifest_policy::tests::missing_workspace_inherited_fields_fails ... ok
+test manifest_policy::tests::path_dependency_on_internal_crate_instead_of_workspace_fails ... ok
+test manifest_policy::tests::seats_min_greater_than_max_fails ... ok
+test manifest_policy::tests::wildcard_registry_dependency_fails ... ok
+test manifest_policy::tests::valid_game_toml_passes ... ok
+test pack_assets_cmd::tests::asset_ref_error_is_not_silently_rewritten_by_the_builder ... ok
+test manifest_policy::tests::committed_game_manifests_declare_valid_asset_packs_matching_presenters ... ok
+test manifest_policy::tests::valid_game_crate_manifest_passes ... ok
+test manifest_policy::tests::game_toml_invalid_asset_pack_ref_fails ... ok
+test pack_assets_cmd::tests::direct_duplicate_source_declarations_are_rejected_deterministically ... ok
+test pack_assets_cmd::tests::corrupted_staged_bytes_are_rejected_before_publication ... ok
+test pack_assets_cmd::tests::hostile_source_paths_are_rejected_without_normalization ... ok
+test pack_assets_cmd::tests::existing_output_file_is_not_replaced ... ok
+test pack_assets_cmd::tests::declaration_order_does_not_change_the_pack_plan ... ok
+test pack_assets_cmd::tests::duplicate_logical_resources_are_rejected_before_publication ... ok
+test pack_assets_cmd::tests::content_addressed_path_commits_to_exact_bytes ... ok
+test pack_assets_cmd::tests::invalid_density_is_rejected_before_publication ... ok
+test pack_assets_cmd::tests::invalid_game_directory_cannot_escape_repository_inputs ... ok
+test pack_assets_cmd::tests::missing_inspection_identifies_the_declared_file ... ok
+test pack_assets_cmd::tests::generated_manifest_round_trips_through_runtime_parser ... ok
+test pack_assets_cmd::tests::regular_file_source_root_is_rejected ... ok
+test pack_assets_cmd::tests::one_byte_changes_content_identity ... ok
+test pack_assets_cmd::tests::source_file_path_helper_rejects_invalid_digest_facts ... ok
+test pack_assets_cmd::tests::non_directory_source_ancestor_is_rejected_without_publication ... ok
+test pack_assets_cmd::tests::missing_source_does_not_publish_a_final_pack ... ok
+test pack_assets_cmd::tests::resource_regions_have_stable_canonical_order ... ok
+test pack_assets_cmd::tests::source_manifest_rejects_unknown_builder_fields ... ok
+test pack_assets_cmd::tests::invalid_generated_manifest_does_not_publish_a_final_pack ... ok
+test pack_assets_cmd::tests::source_manifest_invalid_resource_is_left_to_runtime_parser ... ok
+test pack_assets_cmd::tests::unexpected_inspection_is_rejected_even_when_counts_match ... ok
+test pack_assets_cmd::tests::published_manifest_and_files_pass_runtime_integrity_contract ... ok
+test tests::future_commands_produce_intentional_messages_without_panic ... ok
+test pack_assets_cmd::tests::symlinked_source_ancestor_is_rejected_without_publication ... ok
+test pack_assets_cmd::tests::symlinked_source_file_is_rejected_without_publication ... ok
+test pack_assets_cmd::tests::zero_byte_source_is_rejected_before_publication ... ok
+test pack_assets_cmd::tests::symlinked_source_root_is_rejected_without_publication ... ok
+test tokens_cmd::tests::fractions_require_exact_whole_percentages ... ok
+test pack_assets_cmd::tests::repeated_builds_have_identical_observable_output ... ok
+test tokens_cmd::tests::malformed_or_incomplete_game_art_is_rejected ... ok
+test wasm_stage_cmd::tests::failed_stage_removes_previous_bundle ... ok
+test wasm_stage_cmd::tests::local_stage_failure_invalidates_only_previous_game_document ... ok
+test wasm_stage_cmd::tests::local_stage_promotes_gameplay_without_overwriting_shell ... ok
+test wasm_stage_cmd::tests::local_stage_requires_a_built_shell ... ok
+test wasm_stage_cmd::tests::stage_bundle_fails_when_canonical_tokens_are_missing_or_empty ... ok
+test wasm_stage_cmd::tests::stage_bundle_fails_when_html_is_missing ... ok
+test wasm_stage_cmd::tests::stage_bundle_fails_when_js_is_missing ... ok
+test wasm_stage_cmd::tests::stage_bundle_fails_when_required_resource_is_missing ... ok
+test wasm_stage_cmd::tests::stage_bundle_fails_when_wasm_is_missing ... ok
+test wasm_stage_cmd::tests::stage_bundle_overwrites_stale_files_deterministically ... ok
+test wasm_stage_cmd::tests::stage_bundle_produces_all_expected_artifacts ... ok
+test wasm_stage_cmd::tests::stage_bundle_rejects_empty_staged_file ... ok
+test wasm_stage_cmd::tests::stage_bundle_rejects_html_with_remote_cdn_scripts ... ok
+test tokens_cmd::tests::malformed_sources_fail_at_the_typed_boundary ... ok
+test tokens_cmd::tests::motion_medium_has_an_exact_cross_artifact_oracle ... ok
+test tokens_cmd::tests::body_medium_weight_has_an_exact_cross_artifact_oracle ... ok
+test tokens_cmd::tests::exact_fractions_have_identical_cross_artifact_semantics ... ok
+test tokens_cmd::tests::rust_and_css_use_the_same_semantic_motion_name ... ok
+test tokens_cmd::tests::generation_is_idempotent ... ok
+test tokens_cmd::tests::game_art_changes_reach_all_adapters_without_changing_common_semantics ... ok
+test tokens_cmd::tests::all_major_token_families_reach_the_intended_artifacts ... ok
+
+test result: ok. 95 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/pack_assets_cli.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/pack_assets_cli-fe67291086cd492e)
+
+running 2 tests
+test pack_assets_without_a_game_returns_usage_error ... ok
+test pack_assets_resolves_workspace_from_a_nested_directory ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/wasm_stage_cli.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/wasm_stage_cli-489586dc0c44fabf)
+
+running 2 tests
+test stage_local_play_rejects_arbitrary_output_paths ... ok
+test stage_wasm_game_rejects_removed_output_override ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests renderer_headless
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests renderer_macroquad
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_assets
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_design
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_game_api
+
+running 1 test
+test crates/tabula-game-api/src/effect.rs - effect::ChatScopes (line 90) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_game_caro
+
+running 1 test
+test games/caro/src/lib.rs - (line 31) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_game_chess
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_game_client
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_game_tiles
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_game_werewolf
+
+running 2 tests
+test games/werewolf/src/lib.rs - (line 30) ... ignored
+test games/werewolf/src/lib.rs - (line 59) ... ignored
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_lobby
+
+running 1 test
+test crates/tabula-lobby/src/lib.rs - (line 26) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_match
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_net_client
+
+running 2 tests
+test crates/tabula-net-client/src/lib.rs - (line 15) ... ignored
+test crates/tabula-net-client/src/lib.rs - (line 83) ... ignored
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_presentation
+
+running 2 tests
+test crates/tabula-presentation/src/render.rs - render::RenderList (line 411) - compile fail ... ok
+test crates/tabula-presentation/src/game.rs - game::GamePresentation (line 36) - compile fail ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+   Doc-tests tabula_protocol
+
+running 1 test
+test crates/tabula-protocol/src/lib.rs - (line 21) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_registry
+
+running 4 tests
+test crates/tabula-registry/src/lib.rs - (line 32) ... ignored
+test crates/tabula-registry/src/lib.rs - (line 86) ... ignored
+test crates/tabula-registry/src/lib.rs - (line 97) ... ignored
+test crates/tabula-registry/src/config.rs - config::NormalizedConfig (line 243) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests tabula_storage
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_testkit
+
+running 6 tests
+test crates/tabula-testkit/src/conformance/mod.rs - conformance (line 15) ... ignored
+test crates/tabula-testkit/src/conformance/mod.rs - conformance::conformance (line 203) ... ignored
+test crates/tabula-testkit/src/conformance/security.rs - conformance::security::projection_security (line 281) ... ignored
+test crates/tabula-testkit/src/lib.rs - (line 17) ... ignored
+test crates/tabula-testkit/src/presentation.rs - presentation (line 10) ... ignored
+test crates/tabula-testkit/src/projection.rs - projection::SecretModel (line 104) ... ignored
+
+test result: ok. 0 passed; 0 failed; 6 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_voice
+
+running 2 tests
+test crates/tabula-voice/src/lib.rs - (line 24) ... ignored
+test crates/tabula-voice/src/lib.rs - (line 46) ... ignored
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== xtask check: check-deps ===
+check-deps: 25 workspace crates checked against deps.toml — all clear
+
+=== xtask check: check-no-game-ids ===
+check-no-game-ids: 499 files scanned for 4 game id(s) — all clear
+
+=== xtask check: check-manifests ===
+check-manifests: 28 manifest(s) checked — all clear
+
+=== xtask check: generated design tokens are current ===
+
+=== xtask check: check-no-raw-colors ===
+check-no-raw-colors: all presentation sources use semantic tokens
+
+=== xtask check: cargo deny check ===
+warning[duplicate]: found 2 duplicate entries for crate 'bitflags'
+   ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:16:1
+   │
+16 │ ╭ bitflags 1.3.2 registry+https://github.com/rust-lang/crates.io-index
+17 │ │ bitflags 2.13.1 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰─────────────────────────────────────────────────────────────────────┘ lock entries
+   │
+   ├ bitflags v1.3.2
+     └── png v0.17.16
+         ├── image v0.24.9
+         │   ├── macroquad v0.4.16
+         │   │   ├── renderer-macroquad v0.0.0
+         │   │   │   └── tabula-game-client v0.0.0
+         │   │   │       └── xtask v0.1.0
+         │   │   └── tabula-game-client v0.0.0 (*)
+         │   └── renderer-macroquad v0.0.0 (*)
+         └── tiny-skia v0.11.4
+             └── renderer-headless v0.0.0
+   ├ bitflags v2.13.1
+     ├── proptest v1.11.0
+     │   ├── (dev) tabula-game-tiles v0.1.0
+     │   │   ├── tabula-game-client v0.0.0
+     │   │   │   └── xtask v0.1.0
+     │   │   ├── tabula-registry v0.0.0
+     │   │   │   ├── tabula-lobby v0.0.0
+     │   │   │   ├── tabula-match v0.0.0
+     │   │   │   │   └── tabula-lobby v0.0.0 (*)
+     │   │   │   ├── tabula-net-client v0.0.0
+     │   │   │   └── tabula-web v0.0.0
+     │   │   └── xtask v0.1.0 (*)
+     │   ├── (dev) tabula-game-werewolf v0.0.0
+     │   └── tabula-testkit v0.1.0
+     │       ├── (dev) tabula-game-caro v0.0.0
+     │       ├── (dev) tabula-game-chess v0.1.2
+     │       │   ├── tabula-game-client v0.0.0 (*)
+     │       │   ├── tabula-registry v0.0.0 (*)
+     │       │   └── xtask v0.1.0 (*)
+     │       ├── (dev) tabula-game-tiles v0.1.0 (*)
+     │       ├── (dev) tabula-game-werewolf v0.0.0 (*)
+     │       └── xtask v0.1.0 (*)
+     └── rustix v1.1.4
+         └── tempfile v3.27.0
+             ├── insta v1.48.0
+             │   └── tabula-testkit v0.1.0 (*)
+             ├── proptest v1.11.0 (*)
+             ├── rusty-fork v0.3.1
+             │   └── proptest v1.11.0 (*)
+             └── xtask v0.1.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'convert_case'
+   ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:40:1
+   │
+40 │ ╭ convert_case 0.6.0 registry+https://github.com/rust-lang/crates.io-index
+41 │ │ convert_case 0.7.1 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰────────────────────────────────────────────────────────────────────────┘ lock entries
+   │
+   ├ convert_case v0.6.0
+     ├── config v0.15.27
+     │   └── leptos_config v0.7.8
+     │       └── leptos v0.7.8
+     │           ├── leptos_router v0.7.8
+     │           │   └── tabula-web v0.0.0
+     │           └── tabula-web v0.0.0 (*)
+     └── server_fn_macro v0.7.8
+         ├── leptos_macro v0.7.9
+         │   └── leptos v0.7.8 (*)
+         └── server_fn_macro_default v0.7.8
+             └── server_fn v0.7.8
+                 ├── leptos v0.7.8 (*)
+                 └── leptos_server v0.7.8
+                     └── leptos v0.7.8 (*)
+   ├ convert_case v0.7.1
+     ├── leptos_macro v0.7.9
+     │   └── leptos v0.7.8
+     │       ├── leptos_router v0.7.8
+     │       │   └── tabula-web v0.0.0
+     │       └── tabula-web v0.0.0 (*)
+     └── reactive_stores_macro v0.1.8
+         └── reactive_stores v0.1.8
+             └── tachys v0.1.9
+                 ├── leptos v0.7.8 (*)
+                 ├── leptos_dom v0.7.8
+                 │   └── leptos v0.7.8 (*)
+                 ├── leptos_router v0.7.8 (*)
+                 └── leptos_server v0.7.8
+                     └── leptos v0.7.8 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'getrandom'
+   ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:75:1
+   │
+75 │ ╭ getrandom 0.3.4 registry+https://github.com/rust-lang/crates.io-index
+76 │ │ getrandom 0.4.3 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰─────────────────────────────────────────────────────────────────────┘ lock entries
+   │
+   ├ getrandom v0.3.4
+     └── rand_core v0.9.5
+         ├── rand v0.9.5
+         │   └── proptest v1.11.0
+         │       ├── (dev) tabula-game-tiles v0.1.0
+         │       │   ├── tabula-game-client v0.0.0
+         │       │   │   └── xtask v0.1.0
+         │       │   ├── tabula-registry v0.0.0
+         │       │   │   ├── tabula-lobby v0.0.0
+         │       │   │   ├── tabula-match v0.0.0
+         │       │   │   │   └── tabula-lobby v0.0.0 (*)
+         │       │   │   ├── tabula-net-client v0.0.0
+         │       │   │   └── tabula-web v0.0.0
+         │       │   └── xtask v0.1.0 (*)
+         │       ├── (dev) tabula-game-werewolf v0.0.0
+         │       └── tabula-testkit v0.1.0
+         │           ├── (dev) tabula-game-caro v0.0.0
+         │           ├── (dev) tabula-game-chess v0.1.2
+         │           │   ├── tabula-game-client v0.0.0 (*)
+         │           │   ├── tabula-registry v0.0.0 (*)
+         │           │   └── xtask v0.1.0 (*)
+         │           ├── (dev) tabula-game-tiles v0.1.0 (*)
+         │           ├── (dev) tabula-game-werewolf v0.0.0 (*)
+         │           └── xtask v0.1.0 (*)
+         ├── rand_chacha v0.9.0
+         │   └── proptest v1.11.0 (*)
+         └── rand_xorshift v0.4.0
+             └── proptest v1.11.0 (*)
+   ├ getrandom v0.4.3
+     ├── tempfile v3.27.0
+     │   ├── insta v1.48.0
+     │   │   └── tabula-testkit v0.1.0
+     │   │       ├── (dev) tabula-game-caro v0.0.0
+     │   │       ├── (dev) tabula-game-chess v0.1.2
+     │   │       │   ├── tabula-game-client v0.0.0
+     │   │       │   │   └── xtask v0.1.0
+     │   │       │   ├── tabula-registry v0.0.0
+     │   │       │   │   ├── tabula-lobby v0.0.0
+     │   │       │   │   ├── tabula-match v0.0.0
+     │   │       │   │   │   └── tabula-lobby v0.0.0 (*)
+     │   │       │   │   ├── tabula-net-client v0.0.0
+     │   │       │   │   └── tabula-web v0.0.0
+     │   │       │   └── xtask v0.1.0 (*)
+     │   │       ├── (dev) tabula-game-tiles v0.1.0
+     │   │       │   ├── tabula-game-client v0.0.0 (*)
+     │   │       │   ├── tabula-registry v0.0.0 (*)
+     │   │       │   └── xtask v0.1.0 (*)
+     │   │       ├── (dev) tabula-game-werewolf v0.0.0
+     │   │       └── xtask v0.1.0 (*)
+     │   ├── proptest v1.11.0
+     │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+     │   │   ├── (dev) tabula-game-werewolf v0.0.0 (*)
+     │   │   └── tabula-testkit v0.1.0 (*)
+     │   ├── rusty-fork v0.3.1
+     │   │   └── proptest v1.11.0 (*)
+     │   └── xtask v0.1.0 (*)
+     └── uuid v1.26.1
+         └── leptos_macro v0.7.9
+             └── leptos v0.7.8
+                 ├── leptos_router v0.7.8
+                 │   └── tabula-web v0.0.0 (*)
+                 └── tabula-web v0.0.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'glam'
+   ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:77:1
+   │
+77 │ ╭ glam 0.27.0 registry+https://github.com/rust-lang/crates.io-index
+78 │ │ glam 0.29.3 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰─────────────────────────────────────────────────────────────────┘ lock entries
+   │
+   ├ glam v0.27.0
+     └── macroquad v0.4.16
+         ├── renderer-macroquad v0.0.0
+         │   └── tabula-game-client v0.0.0
+         │       └── xtask v0.1.0
+         └── tabula-game-client v0.0.0 (*)
+   ├ glam v0.29.3
+     ├── renderer-headless v0.0.0
+     ├── renderer-macroquad v0.0.0
+     │   └── tabula-game-client v0.0.0
+     │       └── xtask v0.1.0
+     ├── tabula-game-chess v0.1.2
+     │   ├── tabula-game-client v0.0.0 (*)
+     │   ├── tabula-registry v0.0.0
+     │   │   ├── tabula-lobby v0.0.0
+     │   │   ├── tabula-match v0.0.0
+     │   │   │   └── tabula-lobby v0.0.0 (*)
+     │   │   ├── tabula-net-client v0.0.0
+     │   │   └── tabula-web v0.0.0
+     │   └── xtask v0.1.0 (*)
+     ├── tabula-game-client v0.0.0 (*)
+     ├── tabula-game-tiles v0.1.0
+     │   ├── tabula-game-client v0.0.0 (*)
+     │   ├── tabula-registry v0.0.0 (*)
+     │   └── xtask v0.1.0 (*)
+     ├── tabula-presentation v0.0.0
+     │   ├── renderer-headless v0.0.0 (*)
+     │   ├── renderer-macroquad v0.0.0 (*)
+     │   ├── tabula-game-chess v0.1.2 (*)
+     │   ├── tabula-game-client v0.0.0 (*)
+     │   ├── tabula-game-tiles v0.1.0 (*)
+     │   ├── tabula-testkit v0.1.0
+     │   │   ├── (dev) tabula-game-caro v0.0.0
+     │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+     │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+     │   │   ├── (dev) tabula-game-werewolf v0.0.0
+     │   │   └── xtask v0.1.0 (*)
+     │   └── xtask v0.1.0 (*)
+     └── xtask v0.1.0 (*)
+
+warning[duplicate]: found 3 duplicate entries for crate 'hashbrown'
+   ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:82:1
+   │
+82 │ ╭ hashbrown 0.14.5 registry+https://github.com/rust-lang/crates.io-index
+83 │ │ hashbrown 0.15.5 registry+https://github.com/rust-lang/crates.io-index
+84 │ │ hashbrown 0.17.1 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰──────────────────────────────────────────────────────────────────────┘ lock entries
+   │
+   ├ hashbrown v0.14.5
+     └── dashmap v6.2.1
+         └── server_fn v0.7.8
+             ├── leptos v0.7.8
+             │   ├── leptos_router v0.7.8
+             │   │   └── tabula-web v0.0.0
+             │   └── tabula-web v0.0.0 (*)
+             └── leptos_server v0.7.8
+                 └── leptos v0.7.8 (*)
+   ├ hashbrown v0.15.5
+     └── fontdue v0.9.4
+         └── macroquad v0.4.16
+             ├── renderer-macroquad v0.0.0
+             │   └── tabula-game-client v0.0.0
+             │       └── xtask v0.1.0
+             └── tabula-game-client v0.0.0 (*)
+   ├ hashbrown v0.17.1
+     └── indexmap v2.14.1
+         ├── leptos_hot_reload v0.7.8
+         │   ├── leptos v0.7.8
+         │   │   ├── leptos_router v0.7.8
+         │   │   │   └── tabula-web v0.0.0
+         │   │   └── tabula-web v0.0.0 (*)
+         │   └── leptos_macro v0.7.9
+         │       └── leptos v0.7.8 (*)
+         ├── tachys v0.1.9
+         │   ├── leptos v0.7.8 (*)
+         │   ├── leptos_dom v0.7.8
+         │   │   └── leptos v0.7.8 (*)
+         │   ├── leptos_router v0.7.8 (*)
+         │   └── leptos_server v0.7.8
+         │       └── leptos v0.7.8 (*)
+         └── toml_edit v0.22.27
+             └── toml v0.8.23
+                 ├── tabula-assets v0.0.0
+                 │   ├── renderer-macroquad v0.0.0
+                 │   │   └── tabula-game-client v0.0.0
+                 │   │       └── xtask v0.1.0
+                 │   ├── tabula-game-chess v0.1.2
+                 │   │   ├── tabula-game-client v0.0.0 (*)
+                 │   │   ├── tabula-registry v0.0.0
+                 │   │   │   ├── tabula-lobby v0.0.0
+                 │   │   │   ├── tabula-match v0.0.0
+                 │   │   │   │   └── tabula-lobby v0.0.0 (*)
+                 │   │   │   ├── tabula-net-client v0.0.0
+                 │   │   │   └── tabula-web v0.0.0 (*)
+                 │   │   └── xtask v0.1.0 (*)
+                 │   ├── tabula-game-client v0.0.0 (*)
+                 │   ├── tabula-game-tiles v0.1.0
+                 │   │   ├── tabula-game-client v0.0.0 (*)
+                 │   │   ├── tabula-registry v0.0.0 (*)
+                 │   │   └── xtask v0.1.0 (*)
+                 │   ├── tabula-presentation v0.0.0
+                 │   │   ├── renderer-headless v0.0.0
+                 │   │   ├── renderer-macroquad v0.0.0 (*)
+                 │   │   ├── tabula-game-chess v0.1.2 (*)
+                 │   │   ├── tabula-game-client v0.0.0 (*)
+                 │   │   ├── tabula-game-tiles v0.1.0 (*)
+                 │   │   ├── tabula-testkit v0.1.0
+                 │   │   │   ├── (dev) tabula-game-caro v0.0.0
+                 │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+                 │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+                 │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+                 │   │   │   └── xtask v0.1.0 (*)
+                 │   │   └── xtask v0.1.0 (*)
+                 │   └── xtask v0.1.0 (*)
+                 └── xtask v0.1.0 (*)
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/deny.toml:70:36
+   │
+70 │   "BSD-2-Clause", "BSD-3-Clause", "ISC", "Zlib",
+   │                                    ━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/deny.toml:71:30
+   │
+71 │   "Unicode-3.0", "CC0-1.0", "MPL-2.0",
+   │                              ━━━━━━━ unmatched license allowance
+
+warning[duplicate]: found 2 duplicate entries for crate 'miniz_oxide'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:128:1
+    │
+128 │ ╭ miniz_oxide 0.8.9 registry+https://github.com/rust-lang/crates.io-index
+129 │ │ miniz_oxide 0.9.1 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰───────────────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ miniz_oxide v0.8.9
+      └── png v0.17.16
+          ├── image v0.24.9
+          │   ├── macroquad v0.4.16
+          │   │   ├── renderer-macroquad v0.0.0
+          │   │   │   └── tabula-game-client v0.0.0
+          │   │   │       └── xtask v0.1.0
+          │   │   └── tabula-game-client v0.0.0 (*)
+          │   └── renderer-macroquad v0.0.0 (*)
+          └── tiny-skia v0.11.4
+              └── renderer-headless v0.0.0
+    ├ miniz_oxide v0.9.1
+      └── flate2 v1.1.10
+          └── png v0.17.16
+              ├── image v0.24.9
+              │   ├── macroquad v0.4.16
+              │   │   ├── renderer-macroquad v0.0.0
+              │   │   │   └── tabula-game-client v0.0.0
+              │   │   │       └── xtask v0.1.0
+              │   │   └── tabula-game-client v0.0.0 (*)
+              │   └── renderer-macroquad v0.0.0 (*)
+              └── tiny-skia v0.11.4
+                  └── renderer-headless v0.0.0
+
+warning[duplicate]: found 2 duplicate entries for crate 'rand_chacha'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:162:1
+    │
+162 │ ╭ rand_chacha 0.3.1 registry+https://github.com/rust-lang/crates.io-index
+163 │ │ rand_chacha 0.9.0 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰───────────────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ rand_chacha v0.3.1
+      └── tabula-core v0.1.0
+          ├── renderer-macroquad v0.0.0
+          │   └── tabula-game-client v0.0.0
+          │       └── xtask v0.1.0
+          ├── tabula-admin v0.0.0
+          ├── tabula-assets v0.0.0
+          │   ├── renderer-macroquad v0.0.0 (*)
+          │   ├── tabula-game-chess v0.1.2
+          │   │   ├── tabula-game-client v0.0.0 (*)
+          │   │   ├── tabula-registry v0.0.0
+          │   │   │   ├── tabula-lobby v0.0.0
+          │   │   │   ├── tabula-match v0.0.0
+          │   │   │   │   └── tabula-lobby v0.0.0 (*)
+          │   │   │   ├── tabula-net-client v0.0.0
+          │   │   │   └── tabula-web v0.0.0
+          │   │   └── xtask v0.1.0 (*)
+          │   ├── tabula-game-client v0.0.0 (*)
+          │   ├── tabula-game-tiles v0.1.0
+          │   │   ├── tabula-game-client v0.0.0 (*)
+          │   │   ├── tabula-registry v0.0.0 (*)
+          │   │   └── xtask v0.1.0 (*)
+          │   ├── tabula-presentation v0.0.0
+          │   │   ├── renderer-headless v0.0.0
+          │   │   ├── renderer-macroquad v0.0.0 (*)
+          │   │   ├── tabula-game-chess v0.1.2 (*)
+          │   │   ├── tabula-game-client v0.0.0 (*)
+          │   │   ├── tabula-game-tiles v0.1.0 (*)
+          │   │   ├── tabula-testkit v0.1.0
+          │   │   │   ├── (dev) tabula-game-caro v0.0.0
+          │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+          │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+          │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+          │   │   │   └── xtask v0.1.0 (*)
+          │   │   └── xtask v0.1.0 (*)
+          │   └── xtask v0.1.0 (*)
+          ├── tabula-desktop v0.0.0
+          ├── tabula-game-api v0.1.0
+          │   ├── tabula-assets v0.0.0 (*)
+          │   ├── tabula-game-caro v0.0.0 (*)
+          │   ├── tabula-game-chess v0.1.2 (*)
+          │   ├── tabula-game-client v0.0.0 (*)
+          │   ├── tabula-game-tiles v0.1.0 (*)
+          │   ├── tabula-game-werewolf v0.0.0 (*)
+          │   ├── tabula-match v0.0.0 (*)
+          │   ├── tabula-presentation v0.0.0 (*)
+          │   ├── tabula-registry v0.0.0 (*)
+          │   ├── tabula-storage v0.0.0
+          │   ├── tabula-testkit v0.1.0 (*)
+          │   └── xtask v0.1.0 (*)
+          ├── tabula-game-caro v0.0.0 (*)
+          ├── tabula-game-chess v0.1.2 (*)
+          ├── tabula-game-client v0.0.0 (*)
+          ├── tabula-game-tiles v0.1.0 (*)
+          ├── tabula-game-werewolf v0.0.0 (*)
+          ├── tabula-lobby v0.0.0 (*)
+          ├── tabula-match v0.0.0 (*)
+          ├── tabula-net-client v0.0.0 (*)
+          ├── tabula-presentation v0.0.0 (*)
+          ├── tabula-protocol v0.0.0
+          │   ├── tabula-lobby v0.0.0 (*)
+          │   ├── tabula-match v0.0.0 (*)
+          │   ├── tabula-net-client v0.0.0 (*)
+          │   ├── tabula-registry v0.0.0 (*)
+          │   └── tabula-storage v0.0.0 (*)
+          ├── tabula-registry v0.0.0 (*)
+          ├── tabula-server v0.0.0
+          ├── tabula-storage v0.0.0 (*)
+          ├── tabula-testkit v0.1.0 (*)
+          ├── tabula-voice v0.0.0
+          └── xtask v0.1.0 (*)
+    ├ rand_chacha v0.9.0
+      └── proptest v1.11.0
+          ├── (dev) tabula-game-tiles v0.1.0
+          │   ├── tabula-game-client v0.0.0
+          │   │   └── xtask v0.1.0
+          │   ├── tabula-registry v0.0.0
+          │   │   ├── tabula-lobby v0.0.0
+          │   │   ├── tabula-match v0.0.0
+          │   │   │   └── tabula-lobby v0.0.0 (*)
+          │   │   ├── tabula-net-client v0.0.0
+          │   │   └── tabula-web v0.0.0
+          │   └── xtask v0.1.0 (*)
+          ├── (dev) tabula-game-werewolf v0.0.0
+          └── tabula-testkit v0.1.0
+              ├── (dev) tabula-game-caro v0.0.0
+              ├── (dev) tabula-game-chess v0.1.2
+              │   ├── tabula-game-client v0.0.0 (*)
+              │   ├── tabula-registry v0.0.0 (*)
+              │   └── xtask v0.1.0 (*)
+              ├── (dev) tabula-game-tiles v0.1.0 (*)
+              ├── (dev) tabula-game-werewolf v0.0.0 (*)
+              └── xtask v0.1.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'rand_core'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:164:1
+    │
+164 │ ╭ rand_core 0.6.4 registry+https://github.com/rust-lang/crates.io-index
+165 │ │ rand_core 0.9.5 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰─────────────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ rand_core v0.6.4
+      ├── rand_chacha v0.3.1
+      │   └── tabula-core v0.1.0
+      │       ├── renderer-macroquad v0.0.0
+      │       │   └── tabula-game-client v0.0.0
+      │       │       └── xtask v0.1.0
+      │       ├── tabula-admin v0.0.0
+      │       ├── tabula-assets v0.0.0
+      │       │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   ├── tabula-game-chess v0.1.2
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-registry v0.0.0
+      │       │   │   │   ├── tabula-lobby v0.0.0
+      │       │   │   │   ├── tabula-match v0.0.0
+      │       │   │   │   │   └── tabula-lobby v0.0.0 (*)
+      │       │   │   │   ├── tabula-net-client v0.0.0
+      │       │   │   │   └── tabula-web v0.0.0
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   ├── tabula-game-client v0.0.0 (*)
+      │       │   ├── tabula-game-tiles v0.1.0
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   ├── tabula-presentation v0.0.0
+      │       │   │   ├── renderer-headless v0.0.0
+      │       │   │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   │   ├── tabula-testkit v0.1.0
+      │       │   │   │   ├── (dev) tabula-game-caro v0.0.0
+      │       │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+      │       │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+      │       │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+      │       │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   └── xtask v0.1.0 (*)
+      │       ├── tabula-desktop v0.0.0
+      │       ├── tabula-game-api v0.1.0
+      │       │   ├── tabula-assets v0.0.0 (*)
+      │       │   ├── tabula-game-caro v0.0.0 (*)
+      │       │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   ├── tabula-game-client v0.0.0 (*)
+      │       │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   ├── tabula-game-werewolf v0.0.0 (*)
+      │       │   ├── tabula-match v0.0.0 (*)
+      │       │   ├── tabula-presentation v0.0.0 (*)
+      │       │   ├── tabula-registry v0.0.0 (*)
+      │       │   ├── tabula-storage v0.0.0
+      │       │   ├── tabula-testkit v0.1.0 (*)
+      │       │   └── xtask v0.1.0 (*)
+      │       ├── tabula-game-caro v0.0.0 (*)
+      │       ├── tabula-game-chess v0.1.2 (*)
+      │       ├── tabula-game-client v0.0.0 (*)
+      │       ├── tabula-game-tiles v0.1.0 (*)
+      │       ├── tabula-game-werewolf v0.0.0 (*)
+      │       ├── tabula-lobby v0.0.0 (*)
+      │       ├── tabula-match v0.0.0 (*)
+      │       ├── tabula-net-client v0.0.0 (*)
+      │       ├── tabula-presentation v0.0.0 (*)
+      │       ├── tabula-protocol v0.0.0
+      │       │   ├── tabula-lobby v0.0.0 (*)
+      │       │   ├── tabula-match v0.0.0 (*)
+      │       │   ├── tabula-net-client v0.0.0 (*)
+      │       │   ├── tabula-registry v0.0.0 (*)
+      │       │   └── tabula-storage v0.0.0 (*)
+      │       ├── tabula-registry v0.0.0 (*)
+      │       ├── tabula-server v0.0.0
+      │       ├── tabula-storage v0.0.0 (*)
+      │       ├── tabula-testkit v0.1.0 (*)
+      │       ├── tabula-voice v0.0.0
+      │       └── xtask v0.1.0 (*)
+      └── tabula-core v0.1.0 (*)
+    ├ rand_core v0.9.5
+      ├── rand v0.9.5
+      │   └── proptest v1.11.0
+      │       ├── (dev) tabula-game-tiles v0.1.0
+      │       │   ├── tabula-game-client v0.0.0
+      │       │   │   └── xtask v0.1.0
+      │       │   ├── tabula-registry v0.0.0
+      │       │   │   ├── tabula-lobby v0.0.0
+      │       │   │   ├── tabula-match v0.0.0
+      │       │   │   │   └── tabula-lobby v0.0.0 (*)
+      │       │   │   ├── tabula-net-client v0.0.0
+      │       │   │   └── tabula-web v0.0.0
+      │       │   └── xtask v0.1.0 (*)
+      │       ├── (dev) tabula-game-werewolf v0.0.0
+      │       └── tabula-testkit v0.1.0
+      │           ├── (dev) tabula-game-caro v0.0.0
+      │           ├── (dev) tabula-game-chess v0.1.2
+      │           │   ├── tabula-game-client v0.0.0 (*)
+      │           │   ├── tabula-registry v0.0.0 (*)
+      │           │   └── xtask v0.1.0 (*)
+      │           ├── (dev) tabula-game-tiles v0.1.0 (*)
+      │           ├── (dev) tabula-game-werewolf v0.0.0 (*)
+      │           └── xtask v0.1.0 (*)
+      ├── rand_chacha v0.9.0
+      │   └── proptest v1.11.0 (*)
+      └── rand_xorshift v0.4.0
+          └── proptest v1.11.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'serde_spanned'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:191:1
+    │
+191 │ ╭ serde_spanned 0.6.9 registry+https://github.com/rust-lang/crates.io-index
+192 │ │ serde_spanned 1.1.1 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰─────────────────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ serde_spanned v0.6.9
+      ├── toml v0.8.23
+      │   ├── tabula-assets v0.0.0
+      │   │   ├── renderer-macroquad v0.0.0
+      │   │   │   └── tabula-game-client v0.0.0
+      │   │   │       └── xtask v0.1.0
+      │   │   ├── tabula-game-chess v0.1.2
+      │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   │   ├── tabula-registry v0.0.0
+      │   │   │   │   ├── tabula-lobby v0.0.0
+      │   │   │   │   ├── tabula-match v0.0.0
+      │   │   │   │   │   └── tabula-lobby v0.0.0 (*)
+      │   │   │   │   ├── tabula-net-client v0.0.0
+      │   │   │   │   └── tabula-web v0.0.0
+      │   │   │   └── xtask v0.1.0 (*)
+      │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   ├── tabula-game-tiles v0.1.0
+      │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   │   ├── tabula-registry v0.0.0 (*)
+      │   │   │   └── xtask v0.1.0 (*)
+      │   │   ├── tabula-presentation v0.0.0
+      │   │   │   ├── renderer-headless v0.0.0
+      │   │   │   ├── renderer-macroquad v0.0.0 (*)
+      │   │   │   ├── tabula-game-chess v0.1.2 (*)
+      │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │   │   │   ├── tabula-testkit v0.1.0
+      │   │   │   │   ├── (dev) tabula-game-caro v0.0.0
+      │   │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+      │   │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+      │   │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+      │   │   │   │   └── xtask v0.1.0 (*)
+      │   │   │   └── xtask v0.1.0 (*)
+      │   │   └── xtask v0.1.0 (*)
+      │   └── xtask v0.1.0 (*)
+      └── toml_edit v0.22.27
+          └── toml v0.8.23 (*)
+    ├ serde_spanned v1.1.1
+      └── toml v1.1.6+spec-1.1.0
+          └── config v0.15.27
+              └── leptos_config v0.7.8
+                  └── leptos v0.7.8
+                      ├── leptos_router v0.7.8
+                      │   └── tabula-web v0.0.0
+                      └── tabula-web v0.0.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'syn'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:205:1
+    │
+205 │ ╭ syn 2.0.119 registry+https://github.com/rust-lang/crates.io-index
+206 │ │ syn 3.0.4 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰───────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ syn v2.0.119
+      ├── attribute-derive v0.10.5
+      │   └── leptos_macro v0.7.9
+      │       └── leptos v0.7.8
+      │           ├── leptos_router v0.7.8
+      │           │   └── tabula-web v0.0.0
+      │           └── tabula-web v0.0.0 (*)
+      ├── attribute-derive-macro v0.10.5
+      │   └── attribute-derive v0.10.5 (*)
+      ├── leptos_hot_reload v0.7.8
+      │   ├── leptos v0.7.8 (*)
+      │   └── leptos_macro v0.7.9 (*)
+      ├── leptos_macro v0.7.9 (*)
+      ├── leptos_router_macro v0.7.8
+      │   └── leptos_router v0.7.8 (*)
+      ├── manyhow v0.11.4
+      │   ├── attribute-derive v0.10.5 (*)
+      │   └── attribute-derive-macro v0.10.5 (*)
+      ├── pin-project-internal v1.1.13
+      │   └── pin-project v1.1.13
+      │       └── gloo-net v0.6.0
+      │           ├── leptos_router v0.7.8 (*)
+      │           └── server_fn v0.7.8
+      │               ├── leptos v0.7.8 (*)
+      │               └── leptos_server v0.7.8
+      │                   └── leptos v0.7.8 (*)
+      ├── prettyplease v0.2.37
+      │   └── leptos_macro v0.7.9 (*)
+      ├── proc-macro-error2 v2.0.1
+      │   ├── leptos_macro v0.7.9 (*)
+      │   ├── leptos_router_macro v0.7.8 (*)
+      │   ├── reactive_stores_macro v0.1.8
+      │   │   └── reactive_stores v0.1.8
+      │   │       └── tachys v0.1.9
+      │   │           ├── leptos v0.7.8 (*)
+      │   │           ├── leptos_dom v0.7.8
+      │   │           │   └── leptos v0.7.8 (*)
+      │   │           ├── leptos_router v0.7.8 (*)
+      │   │           └── leptos_server v0.7.8 (*)
+      │   └── syn_derive v0.2.0
+      │       └── rstml v0.12.1
+      │           ├── leptos_hot_reload v0.7.8 (*)
+      │           └── leptos_macro v0.7.9 (*)
+      ├── proc-macro2-diagnostics v0.10.1
+      │   └── rstml v0.12.1 (*)
+      ├── quote-use-macros v0.8.4
+      │   └── quote-use v0.8.4
+      │       └── attribute-derive-macro v0.10.5 (*)
+      ├── reactive_stores_macro v0.1.8 (*)
+      ├── rstml v0.12.1 (*)
+      ├── server_fn_macro v0.7.8
+      │   ├── leptos_macro v0.7.9 (*)
+      │   └── server_fn_macro_default v0.7.8
+      │       └── server_fn v0.7.8 (*)
+      ├── server_fn_macro_default v0.7.8 (*)
+      ├── syn_derive v0.2.0 (*)
+      ├── thiserror-impl v1.0.69
+      │   └── thiserror v1.0.69
+      │       ├── gloo-net v0.6.0 (*)
+      │       ├── serde_qs v0.13.0
+      │       │   ├── leptos v0.7.8 (*)
+      │       │   └── server_fn v0.7.8 (*)
+      │       ├── tabula-assets v0.0.0
+      │       │   ├── renderer-macroquad v0.0.0
+      │       │   │   └── tabula-game-client v0.0.0
+      │       │   │       └── xtask v0.1.0
+      │       │   ├── tabula-game-chess v0.1.2
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-registry v0.0.0
+      │       │   │   │   ├── tabula-lobby v0.0.0
+      │       │   │   │   ├── tabula-match v0.0.0
+      │       │   │   │   │   └── tabula-lobby v0.0.0 (*)
+      │       │   │   │   ├── tabula-net-client v0.0.0
+      │       │   │   │   └── tabula-web v0.0.0 (*)
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   ├── tabula-game-client v0.0.0 (*)
+      │       │   ├── tabula-game-tiles v0.1.0
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   ├── tabula-presentation v0.0.0
+      │       │   │   ├── renderer-headless v0.0.0
+      │       │   │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   │   ├── tabula-testkit v0.1.0
+      │       │   │   │   ├── (dev) tabula-game-caro v0.0.0
+      │       │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+      │       │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+      │       │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+      │       │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   └── xtask v0.1.0 (*)
+      │       ├── tabula-core v0.1.0
+      │       │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   ├── tabula-admin v0.0.0
+      │       │   ├── tabula-assets v0.0.0 (*)
+      │       │   ├── tabula-desktop v0.0.0
+      │       │   ├── tabula-game-api v0.1.0
+      │       │   │   ├── tabula-assets v0.0.0 (*)
+      │       │   │   ├── tabula-game-caro v0.0.0 (*)
+      │       │   │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   │   ├── tabula-game-werewolf v0.0.0 (*)
+      │       │   │   ├── tabula-match v0.0.0 (*)
+      │       │   │   ├── tabula-presentation v0.0.0 (*)
+      │       │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   ├── tabula-storage v0.0.0
+      │       │   │   ├── tabula-testkit v0.1.0 (*)
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   ├── tabula-game-caro v0.0.0 (*)
+      │       │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   ├── tabula-game-client v0.0.0 (*)
+      │       │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   ├── tabula-game-werewolf v0.0.0 (*)
+      │       │   ├── tabula-lobby v0.0.0 (*)
+      │       │   ├── tabula-match v0.0.0 (*)
+      │       │   ├── tabula-net-client v0.0.0 (*)
+      │       │   ├── tabula-presentation v0.0.0 (*)
+      │       │   ├── tabula-protocol v0.0.0
+      │       │   │   ├── tabula-lobby v0.0.0 (*)
+      │       │   │   ├── tabula-match v0.0.0 (*)
+      │       │   │   ├── tabula-net-client v0.0.0 (*)
+      │       │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   └── tabula-storage v0.0.0 (*)
+      │       │   ├── tabula-registry v0.0.0 (*)
+      │       │   ├── tabula-server v0.0.0
+      │       │   ├── tabula-storage v0.0.0 (*)
+      │       │   ├── tabula-testkit v0.1.0 (*)
+      │       │   ├── tabula-voice v0.0.0
+      │       │   └── xtask v0.1.0 (*)
+      │       ├── tabula-game-api v0.1.0 (*)
+      │       ├── tabula-game-tiles v0.1.0 (*)
+      │       ├── tabula-game-werewolf v0.0.0 (*)
+      │       ├── tabula-lobby v0.0.0 (*)
+      │       ├── tabula-match v0.0.0 (*)
+      │       ├── tabula-net-client v0.0.0 (*)
+      │       ├── tabula-protocol v0.0.0 (*)
+      │       ├── tabula-registry v0.0.0 (*)
+      │       ├── tabula-storage v0.0.0 (*)
+      │       ├── tabula-testkit v0.1.0 (*)
+      │       ├── tabula-voice v0.0.0 (*)
+      │       └── xtask v0.1.0 (*)
+      └── typed-builder-macro v0.20.1
+          ├── leptos v0.7.8 (*)
+          └── typed-builder v0.20.1
+              ├── leptos v0.7.8 (*)
+              └── leptos_config v0.7.8
+                  └── leptos v0.7.8 (*)
+    ├ syn v3.0.4
+      ├── async-trait v0.1.92
+      │   └── tachys v0.1.9
+      │       ├── leptos v0.7.8
+      │       │   ├── leptos_router v0.7.8
+      │       │   │   └── tabula-web v0.0.0
+      │       │   └── tabula-web v0.0.0 (*)
+      │       ├── leptos_dom v0.7.8
+      │       │   └── leptos v0.7.8 (*)
+      │       ├── leptos_router v0.7.8 (*)
+      │       └── leptos_server v0.7.8
+      │           └── leptos v0.7.8 (*)
+      ├── derive-where v1.7.0
+      │   ├── attribute-derive v0.10.5
+      │   │   └── leptos_macro v0.7.9
+      │   │       └── leptos v0.7.8 (*)
+      │   └── rstml v0.12.1
+      │       ├── leptos_hot_reload v0.7.8
+      │       │   ├── leptos v0.7.8 (*)
+      │       │   └── leptos_macro v0.7.9 (*)
+      │       └── leptos_macro v0.7.9 (*)
+      ├── displaydoc v0.2.7
+      │   ├── icu_collections v2.3.0
+      │   │   ├── icu_normalizer v2.3.0
+      │   │   │   └── idna_adapter v1.2.2
+      │   │   │       └── idna v1.1.0
+      │   │   │           └── url v2.5.8
+      │   │   │               ├── leptos_router v0.7.8 (*)
+      │   │   │               └── server_fn v0.7.8
+      │   │   │                   ├── leptos v0.7.8 (*)
+      │   │   │                   └── leptos_server v0.7.8 (*)
+      │   │   └── icu_properties v2.3.0
+      │   │       └── idna_adapter v1.2.2 (*)
+      │   ├── icu_locale_core v2.3.0
+      │   │   ├── icu_properties v2.3.0 (*)
+      │   │   └── icu_provider v2.3.1
+      │   │       ├── icu_normalizer v2.3.0 (*)
+      │   │       └── icu_properties v2.3.0 (*)
+      │   ├── icu_properties v2.3.0 (*)
+      │   ├── icu_provider v2.3.1 (*)
+      │   ├── tinystr v0.8.4
+      │   │   └── icu_locale_core v2.3.0 (*)
+      │   └── zerotrie v0.2.5
+      │       ├── icu_properties v2.3.0 (*)
+      │       └── icu_provider v2.3.1 (*)
+      ├── futures-macro v0.3.34
+      │   └── futures-util v0.3.34
+      │       ├── futures v0.3.34
+      │       │   ├── any_spawner v0.2.0
+      │       │   │   ├── leptos v0.7.8 (*)
+      │       │   │   ├── leptos_router v0.7.8 (*)
+      │       │   │   ├── leptos_server v0.7.8 (*)
+      │       │   │   ├── reactive_graph v0.1.8
+      │       │   │   │   ├── leptos v0.7.8 (*)
+      │       │   │   │   ├── leptos_dom v0.7.8 (*)
+      │       │   │   │   ├── leptos_router v0.7.8 (*)
+      │       │   │   │   ├── leptos_server v0.7.8 (*)
+      │       │   │   │   ├── reactive_stores v0.1.8
+      │       │   │   │   │   └── tachys v0.1.9 (*)
+      │       │   │   │   └── tachys v0.1.9 (*)
+      │       │   │   └── tachys v0.1.9 (*)
+      │       │   ├── hydration_context v0.2.1
+      │       │   │   ├── leptos v0.7.8 (*)
+      │       │   │   ├── leptos_server v0.7.8 (*)
+      │       │   │   └── reactive_graph v0.1.8 (*)
+      │       │   ├── leptos v0.7.8 (*)
+      │       │   ├── leptos_router v0.7.8 (*)
+      │       │   ├── leptos_server v0.7.8 (*)
+      │       │   ├── reactive_graph v0.1.8 (*)
+      │       │   ├── server_fn v0.7.8 (*)
+      │       │   └── tachys v0.1.9 (*)
+      │       ├── futures-executor v0.3.34
+      │       │   └── futures v0.3.34 (*)
+      │       ├── js-sys v0.3.106
+      │       │   ├── gloo-net v0.6.0
+      │       │   │   ├── leptos_router v0.7.8 (*)
+      │       │   │   └── server_fn v0.7.8 (*)
+      │       │   ├── gloo-utils v0.2.0
+      │       │   │   └── gloo-net v0.6.0 (*)
+      │       │   ├── leptos_dom v0.7.8 (*)
+      │       │   ├── leptos_router v0.7.8 (*)
+      │       │   ├── server_fn v0.7.8 (*)
+      │       │   ├── tachys v0.1.9 (*)
+      │       │   ├── wasm-bindgen-futures v0.4.79
+      │       │   │   ├── any_spawner v0.2.0 (*)
+      │       │   │   ├── gloo-net v0.6.0 (*)
+      │       │   │   ├── server_fn v0.7.8 (*)
+      │       │   │   └── wasm-streams v0.4.2
+      │       │   │       └── server_fn v0.7.8 (*)
+      │       │   ├── wasm-streams v0.4.2 (*)
+      │       │   └── web-sys v0.3.106
+      │       │       ├── gloo-net v0.6.0 (*)
+      │       │       ├── gloo-utils v0.2.0 (*)
+      │       │       ├── leptos v0.7.8 (*)
+      │       │       ├── leptos_dom v0.7.8 (*)
+      │       │       ├── leptos_router v0.7.8 (*)
+      │       │       ├── reactive_graph v0.1.8 (*)
+      │       │       ├── server_fn v0.7.8 (*)
+      │       │       ├── tabula-web v0.0.0 (*)
+      │       │       ├── tachys v0.1.9 (*)
+      │       │       └── wasm-streams v0.4.2 (*)
+      │       └── wasm-streams v0.4.2 (*)
+      ├── serde_derive v1.0.229
+      │   └── serde v1.0.229
+      │       ├── cargo-platform v0.1.9
+      │       │   └── cargo_metadata v0.19.2
+      │       │       └── xtask v0.1.0
+      │       ├── cargo_metadata v0.19.2 (*)
+      │       ├── codee v0.3.5
+      │       │   └── leptos_server v0.7.8 (*)
+      │       ├── compact_str v0.8.2
+      │       │   ├── tabula-core v0.1.0
+      │       │   │   ├── renderer-macroquad v0.0.0
+      │       │   │   │   └── tabula-game-client v0.0.0
+      │       │   │   │       └── xtask v0.1.0 (*)
+      │       │   │   ├── tabula-admin v0.0.0
+      │       │   │   ├── tabula-assets v0.0.0
+      │       │   │   │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   │   │   ├── tabula-game-chess v0.1.2
+      │       │   │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   │   │   ├── tabula-registry v0.0.0
+      │       │   │   │   │   │   ├── tabula-lobby v0.0.0
+      │       │   │   │   │   │   ├── tabula-match v0.0.0
+      │       │   │   │   │   │   │   └── tabula-lobby v0.0.0 (*)
+      │       │   │   │   │   │   ├── tabula-net-client v0.0.0
+      │       │   │   │   │   │   └── tabula-web v0.0.0 (*)
+      │       │   │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   │   ├── tabula-game-tiles v0.1.0
+      │       │   │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   │   ├── tabula-presentation v0.0.0
+      │       │   │   │   │   ├── renderer-headless v0.0.0
+      │       │   │   │   │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   │   │   │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   │   │   │   ├── tabula-testkit v0.1.0
+      │       │   │   │   │   │   ├── (dev) tabula-game-caro v0.0.0
+      │       │   │   │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+      │       │   │   │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+      │       │   │   │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+      │       │   │   │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   ├── tabula-desktop v0.0.0
+      │       │   │   ├── tabula-game-api v0.1.0
+      │       │   │   │   ├── tabula-assets v0.0.0 (*)
+      │       │   │   │   ├── tabula-game-caro v0.0.0 (*)
+      │       │   │   │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   │   │   ├── tabula-game-werewolf v0.0.0 (*)
+      │       │   │   │   ├── tabula-match v0.0.0 (*)
+      │       │   │   │   ├── tabula-presentation v0.0.0 (*)
+      │       │   │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   │   ├── tabula-storage v0.0.0
+      │       │   │   │   ├── tabula-testkit v0.1.0 (*)
+      │       │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   ├── tabula-game-caro v0.0.0 (*)
+      │       │   │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   │   ├── tabula-game-werewolf v0.0.0 (*)
+      │       │   │   ├── tabula-lobby v0.0.0 (*)
+      │       │   │   ├── tabula-match v0.0.0 (*)
+      │       │   │   ├── tabula-net-client v0.0.0 (*)
+      │       │   │   ├── tabula-presentation v0.0.0 (*)
+      │       │   │   ├── tabula-protocol v0.0.0
+      │       │   │   │   ├── tabula-lobby v0.0.0 (*)
+      │       │   │   │   ├── tabula-match v0.0.0 (*)
+      │       │   │   │   ├── tabula-net-client v0.0.0 (*)
+      │       │   │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   │   └── tabula-storage v0.0.0 (*)
+      │       │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   ├── tabula-server v0.0.0
+      │       │   │   ├── tabula-storage v0.0.0 (*)
+      │       │   │   ├── tabula-testkit v0.1.0 (*)
+      │       │   │   ├── tabula-voice v0.0.0
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   └── tabula-game-api v0.1.0 (*)
+      │       ├── glam v0.29.3
+      │       │   ├── renderer-headless v0.0.0 (*)
+      │       │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   ├── tabula-game-client v0.0.0 (*)
+      │       │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   ├── tabula-presentation v0.0.0 (*)
+      │       │   └── xtask v0.1.0 (*)
+      │       ├── gloo-net v0.6.0 (*)
+      │       ├── gloo-utils v0.2.0 (*)
+      │       ├── hydration_context v0.2.1 (*)
+      │       ├── insta v1.48.0
+      │       │   └── tabula-testkit v0.1.0 (*)
+      │       ├── leptos v0.7.8 (*)
+      │       ├── leptos_config v0.7.8
+      │       │   └── leptos v0.7.8 (*)
+      │       ├── leptos_hot_reload v0.7.8 (*)
+      │       ├── leptos_server v0.7.8 (*)
+      │       ├── oco_ref v0.2.1
+      │       │   ├── leptos v0.7.8 (*)
+      │       │   └── tachys v0.1.9 (*)
+      │       ├── postcard v1.1.3
+      │       │   ├── tabula-core v0.1.0 (*)
+      │       │   └── tabula-testkit v0.1.0 (*)
+      │       ├── reactive_graph v0.1.8 (*)
+      │       ├── serde_qs v0.13.0
+      │       │   ├── leptos v0.7.8 (*)
+      │       │   └── server_fn v0.7.8 (*)
+      │       ├── serde_spanned v0.6.9
+      │       │   ├── toml v0.8.23
+      │       │   │   ├── tabula-assets v0.0.0 (*)
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   └── toml_edit v0.22.27
+      │       │       └── toml v0.8.23 (*)
+      │       ├── server_fn v0.7.8 (*)
+      │       ├── smallvec v1.15.2
+      │       │   ├── icu_normalizer v2.3.0 (*)
+      │       │   ├── idna v1.1.0 (*)
+      │       │   ├── parking_lot_core v0.9.12
+      │       │   │   ├── dashmap v6.2.1
+      │       │   │   │   └── server_fn v0.7.8 (*)
+      │       │   │   └── parking_lot v0.12.5
+      │       │   │       ├── leptos_hot_reload v0.7.8 (*)
+      │       │   │       └── tachys v0.1.9 (*)
+      │       │   ├── proc-macro-utils v0.10.0
+      │       │   │   ├── attribute-derive-macro v0.10.5
+      │       │   │   │   └── attribute-derive v0.10.5 (*)
+      │       │   │   ├── manyhow-macros v0.11.4
+      │       │   │   │   └── manyhow v0.11.4
+      │       │   │   │       ├── attribute-derive v0.10.5 (*)
+      │       │   │   │       └── attribute-derive-macro v0.10.5 (*)
+      │       │   │   └── quote-use-macros v0.8.4
+      │       │   │       └── quote-use v0.8.4
+      │       │   │           └── attribute-derive-macro v0.10.5 (*)
+      │       │   ├── tabula-core v0.1.0 (*)
+      │       │   ├── tabula-game-api v0.1.0 (*)
+      │       │   ├── tabula-game-caro v0.0.0 (*)
+      │       │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   ├── tabula-game-werewolf v0.0.0 (*)
+      │       │   ├── tabula-match v0.0.0 (*)
+      │       │   ├── tabula-presentation v0.0.0 (*)
+      │       │   ├── tabula-testkit v0.1.0 (*)
+      │       │   └── xtask v0.1.0 (*)
+      │       ├── tabula-assets v0.0.0 (*)
+      │       ├── tabula-core v0.1.0 (*)
+      │       ├── tabula-design v0.0.0
+      │       │   ├── renderer-headless v0.0.0 (*)
+      │       │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   ├── tabula-game-client v0.0.0 (*)
+      │       │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   ├── tabula-presentation v0.0.0 (*)
+      │       │   └── xtask v0.1.0 (*)
+      │       ├── tabula-game-api v0.1.0 (*)
+      │       ├── tabula-game-caro v0.0.0 (*)
+      │       ├── tabula-game-chess v0.1.2 (*)
+      │       ├── tabula-game-tiles v0.1.0 (*)
+      │       ├── tabula-game-werewolf v0.0.0 (*)
+      │       ├── tabula-presentation v0.0.0 (*)
+      │       ├── tabula-protocol v0.0.0 (*)
+      │       ├── tabula-registry v0.0.0 (*)
+      │       ├── tabula-testkit v0.1.0 (*)
+      │       ├── tabula-voice v0.0.0 (*)
+      │       ├── toml v0.8.23 (*)
+      │       ├── toml_datetime v0.6.11
+      │       │   ├── toml v0.8.23 (*)
+      │       │   └── toml_edit v0.22.27 (*)
+      │       ├── toml_edit v0.22.27 (*)
+      │       └── xtask v0.1.0 (*)
+      ├── synstructure v0.14.0
+      │   ├── yoke-derive v0.8.4
+      │   │   └── yoke v0.8.3
+      │   │       ├── icu_collections v2.3.0 (*)
+      │   │       ├── icu_provider v2.3.1 (*)
+      │   │       ├── zerotrie v0.2.5 (*)
+      │   │       └── zerovec v0.11.8
+      │   │           ├── icu_collections v2.3.0 (*)
+      │   │           ├── icu_locale_core v2.3.0 (*)
+      │   │           ├── icu_normalizer v2.3.0 (*)
+      │   │           ├── icu_properties v2.3.0 (*)
+      │   │           ├── icu_provider v2.3.1 (*)
+      │   │           ├── potential_utf v0.1.6
+      │   │           │   └── icu_collections v2.3.0 (*)
+      │   │           └── tinystr v0.8.4 (*)
+      │   └── zerofrom-derive v0.1.8
+      │       └── zerofrom v0.1.8
+      │           ├── icu_collections v2.3.0 (*)
+      │           ├── icu_provider v2.3.1 (*)
+      │           ├── yoke v0.8.3 (*)
+      │           ├── zerotrie v0.2.5 (*)
+      │           └── zerovec v0.11.8 (*)
+      ├── thiserror-impl v2.0.20
+      │   └── thiserror v2.0.20
+      │       ├── any_spawner v0.2.0 (*)
+      │       ├── cargo_metadata v0.19.2 (*)
+      │       ├── cobs v0.3.0
+      │       │   └── postcard v1.1.3 (*)
+      │       ├── codee v0.3.5 (*)
+      │       ├── leptos v0.7.8 (*)
+      │       ├── leptos_config v0.7.8 (*)
+      │       ├── leptos_router v0.7.8 (*)
+      │       ├── oco_ref v0.2.1 (*)
+      │       ├── reactive_graph v0.1.8 (*)
+      │       ├── rstml v0.12.1 (*)
+      │       └── server_fn v0.7.8 (*)
+      ├── wasm-bindgen-macro-support v0.2.129
+      │   └── wasm-bindgen-macro v0.2.129
+      │       └── wasm-bindgen v0.2.129
+      │           ├── gloo-net v0.6.0 (*)
+      │           ├── gloo-utils v0.2.0 (*)
+      │           ├── js-sys v0.3.106 (*)
+      │           ├── leptos v0.7.8 (*)
+      │           ├── leptos_dom v0.7.8 (*)
+      │           ├── leptos_router v0.7.8 (*)
+      │           ├── server_fn v0.7.8 (*)
+      │           ├── tabula-web v0.0.0 (*)
+      │           ├── tachys v0.1.9 (*)
+      │           ├── wasm-bindgen-futures v0.4.79 (*)
+      │           ├── wasm-streams v0.4.2 (*)
+      │           └── web-sys v0.3.106 (*)
+      ├── yoke-derive v0.8.4 (*)
+      ├── zerofrom-derive v0.1.8 (*)
+      └── zerovec-derive v0.11.6
+          └── zerovec v0.11.8 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'thiserror'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:233:1
+    │
+233 │ ╭ thiserror 1.0.69 registry+https://github.com/rust-lang/crates.io-index
+234 │ │ thiserror 2.0.20 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰──────────────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ thiserror v1.0.69
+      ├── gloo-net v0.6.0
+      │   ├── leptos_router v0.7.8
+      │   │   └── tabula-web v0.0.0
+      │   └── server_fn v0.7.8
+      │       ├── leptos v0.7.8
+      │       │   ├── leptos_router v0.7.8 (*)
+      │       │   └── tabula-web v0.0.0 (*)
+      │       └── leptos_server v0.7.8
+      │           └── leptos v0.7.8 (*)
+      ├── serde_qs v0.13.0
+      │   ├── leptos v0.7.8 (*)
+      │   └── server_fn v0.7.8 (*)
+      ├── tabula-assets v0.0.0
+      │   ├── renderer-macroquad v0.0.0
+      │   │   └── tabula-game-client v0.0.0
+      │   │       └── xtask v0.1.0
+      │   ├── tabula-game-chess v0.1.2
+      │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   ├── tabula-registry v0.0.0
+      │   │   │   ├── tabula-lobby v0.0.0
+      │   │   │   ├── tabula-match v0.0.0
+      │   │   │   │   └── tabula-lobby v0.0.0 (*)
+      │   │   │   ├── tabula-net-client v0.0.0
+      │   │   │   └── tabula-web v0.0.0 (*)
+      │   │   └── xtask v0.1.0 (*)
+      │   ├── tabula-game-client v0.0.0 (*)
+      │   ├── tabula-game-tiles v0.1.0
+      │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   ├── tabula-registry v0.0.0 (*)
+      │   │   └── xtask v0.1.0 (*)
+      │   ├── tabula-presentation v0.0.0
+      │   │   ├── renderer-headless v0.0.0
+      │   │   ├── renderer-macroquad v0.0.0 (*)
+      │   │   ├── tabula-game-chess v0.1.2 (*)
+      │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │   │   ├── tabula-testkit v0.1.0
+      │   │   │   ├── (dev) tabula-game-caro v0.0.0
+      │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+      │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+      │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+      │   │   │   └── xtask v0.1.0 (*)
+      │   │   └── xtask v0.1.0 (*)
+      │   └── xtask v0.1.0 (*)
+      ├── tabula-core v0.1.0
+      │   ├── renderer-macroquad v0.0.0 (*)
+      │   ├── tabula-admin v0.0.0
+      │   ├── tabula-assets v0.0.0 (*)
+      │   ├── tabula-desktop v0.0.0
+      │   ├── tabula-game-api v0.1.0
+      │   │   ├── tabula-assets v0.0.0 (*)
+      │   │   ├── tabula-game-caro v0.0.0 (*)
+      │   │   ├── tabula-game-chess v0.1.2 (*)
+      │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │   │   ├── tabula-game-werewolf v0.0.0 (*)
+      │   │   ├── tabula-match v0.0.0 (*)
+      │   │   ├── tabula-presentation v0.0.0 (*)
+      │   │   ├── tabula-registry v0.0.0 (*)
+      │   │   ├── tabula-storage v0.0.0
+      │   │   ├── tabula-testkit v0.1.0 (*)
+      │   │   └── xtask v0.1.0 (*)
+      │   ├── tabula-game-caro v0.0.0 (*)
+      │   ├── tabula-game-chess v0.1.2 (*)
+      │   ├── tabula-game-client v0.0.0 (*)
+      │   ├── tabula-game-tiles v0.1.0 (*)
+      │   ├── tabula-game-werewolf v0.0.0 (*)
+      │   ├── tabula-lobby v0.0.0 (*)
+      │   ├── tabula-match v0.0.0 (*)
+      │   ├── tabula-net-client v0.0.0 (*)
+      │   ├── tabula-presentation v0.0.0 (*)
+      │   ├── tabula-protocol v0.0.0
+      │   │   ├── tabula-lobby v0.0.0 (*)
+      │   │   ├── tabula-match v0.0.0 (*)
+      │   │   ├── tabula-net-client v0.0.0 (*)
+      │   │   ├── tabula-registry v0.0.0 (*)
+      │   │   └── tabula-storage v0.0.0 (*)
+      │   ├── tabula-registry v0.0.0 (*)
+      │   ├── tabula-server v0.0.0
+      │   ├── tabula-storage v0.0.0 (*)
+      │   ├── tabula-testkit v0.1.0 (*)
+      │   ├── tabula-voice v0.0.0
+      │   └── xtask v0.1.0 (*)
+      ├── tabula-game-api v0.1.0 (*)
+      ├── tabula-game-tiles v0.1.0 (*)
+      ├── tabula-game-werewolf v0.0.0 (*)
+      ├── tabula-lobby v0.0.0 (*)
+      ├── tabula-match v0.0.0 (*)
+      ├── tabula-net-client v0.0.0 (*)
+      ├── tabula-protocol v0.0.0 (*)
+      ├── tabula-registry v0.0.0 (*)
+      ├── tabula-storage v0.0.0 (*)
+      ├── tabula-testkit v0.1.0 (*)
+      ├── tabula-voice v0.0.0 (*)
+      └── xtask v0.1.0 (*)
+    ├ thiserror v2.0.20
+      ├── any_spawner v0.2.0
+      │   ├── leptos v0.7.8
+      │   │   ├── leptos_router v0.7.8
+      │   │   │   └── tabula-web v0.0.0
+      │   │   └── tabula-web v0.0.0 (*)
+      │   ├── leptos_router v0.7.8 (*)
+      │   ├── leptos_server v0.7.8
+      │   │   └── leptos v0.7.8 (*)
+      │   ├── reactive_graph v0.1.8
+      │   │   ├── leptos v0.7.8 (*)
+      │   │   ├── leptos_dom v0.7.8
+      │   │   │   └── leptos v0.7.8 (*)
+      │   │   ├── leptos_router v0.7.8 (*)
+      │   │   ├── leptos_server v0.7.8 (*)
+      │   │   ├── reactive_stores v0.1.8
+      │   │   │   └── tachys v0.1.9
+      │   │   │       ├── leptos v0.7.8 (*)
+      │   │   │       ├── leptos_dom v0.7.8 (*)
+      │   │   │       ├── leptos_router v0.7.8 (*)
+      │   │   │       └── leptos_server v0.7.8 (*)
+      │   │   └── tachys v0.1.9 (*)
+      │   └── tachys v0.1.9 (*)
+      ├── cargo_metadata v0.19.2
+      │   └── xtask v0.1.0
+      ├── cobs v0.3.0
+      │   └── postcard v1.1.3
+      │       ├── tabula-core v0.1.0
+      │       │   ├── renderer-macroquad v0.0.0
+      │       │   │   └── tabula-game-client v0.0.0
+      │       │   │       └── xtask v0.1.0 (*)
+      │       │   ├── tabula-admin v0.0.0
+      │       │   ├── tabula-assets v0.0.0
+      │       │   │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   │   ├── tabula-game-chess v0.1.2
+      │       │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   │   ├── tabula-registry v0.0.0
+      │       │   │   │   │   ├── tabula-lobby v0.0.0
+      │       │   │   │   │   ├── tabula-match v0.0.0
+      │       │   │   │   │   │   └── tabula-lobby v0.0.0 (*)
+      │       │   │   │   │   ├── tabula-net-client v0.0.0
+      │       │   │   │   │   └── tabula-web v0.0.0 (*)
+      │       │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-game-tiles v0.1.0
+      │       │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   ├── tabula-presentation v0.0.0
+      │       │   │   │   ├── renderer-headless v0.0.0
+      │       │   │   │   ├── renderer-macroquad v0.0.0 (*)
+      │       │   │   │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   │   │   ├── tabula-testkit v0.1.0
+      │       │   │   │   │   ├── (dev) tabula-game-caro v0.0.0
+      │       │   │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+      │       │   │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+      │       │   │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+      │       │   │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   │   └── xtask v0.1.0 (*)
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   ├── tabula-desktop v0.0.0
+      │       │   ├── tabula-game-api v0.1.0
+      │       │   │   ├── tabula-assets v0.0.0 (*)
+      │       │   │   ├── tabula-game-caro v0.0.0 (*)
+      │       │   │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   │   ├── tabula-game-client v0.0.0 (*)
+      │       │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   │   ├── tabula-game-werewolf v0.0.0 (*)
+      │       │   │   ├── tabula-match v0.0.0 (*)
+      │       │   │   ├── tabula-presentation v0.0.0 (*)
+      │       │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   ├── tabula-storage v0.0.0
+      │       │   │   ├── tabula-testkit v0.1.0 (*)
+      │       │   │   └── xtask v0.1.0 (*)
+      │       │   ├── tabula-game-caro v0.0.0 (*)
+      │       │   ├── tabula-game-chess v0.1.2 (*)
+      │       │   ├── tabula-game-client v0.0.0 (*)
+      │       │   ├── tabula-game-tiles v0.1.0 (*)
+      │       │   ├── tabula-game-werewolf v0.0.0 (*)
+      │       │   ├── tabula-lobby v0.0.0 (*)
+      │       │   ├── tabula-match v0.0.0 (*)
+      │       │   ├── tabula-net-client v0.0.0 (*)
+      │       │   ├── tabula-presentation v0.0.0 (*)
+      │       │   ├── tabula-protocol v0.0.0
+      │       │   │   ├── tabula-lobby v0.0.0 (*)
+      │       │   │   ├── tabula-match v0.0.0 (*)
+      │       │   │   ├── tabula-net-client v0.0.0 (*)
+      │       │   │   ├── tabula-registry v0.0.0 (*)
+      │       │   │   └── tabula-storage v0.0.0 (*)
+      │       │   ├── tabula-registry v0.0.0 (*)
+      │       │   ├── tabula-server v0.0.0
+      │       │   ├── tabula-storage v0.0.0 (*)
+      │       │   ├── tabula-testkit v0.1.0 (*)
+      │       │   ├── tabula-voice v0.0.0
+      │       │   └── xtask v0.1.0 (*)
+      │       └── tabula-testkit v0.1.0 (*)
+      ├── codee v0.3.5
+      │   └── leptos_server v0.7.8 (*)
+      ├── leptos v0.7.8 (*)
+      ├── leptos_config v0.7.8
+      │   └── leptos v0.7.8 (*)
+      ├── leptos_router v0.7.8 (*)
+      ├── oco_ref v0.2.1
+      │   ├── leptos v0.7.8 (*)
+      │   └── tachys v0.1.9 (*)
+      ├── reactive_graph v0.1.8 (*)
+      ├── rstml v0.12.1
+      │   ├── leptos_hot_reload v0.7.8
+      │   │   ├── leptos v0.7.8 (*)
+      │   │   └── leptos_macro v0.7.9
+      │   │       └── leptos v0.7.8 (*)
+      │   └── leptos_macro v0.7.9 (*)
+      └── server_fn v0.7.8
+          ├── leptos v0.7.8 (*)
+          └── leptos_server v0.7.8 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'thiserror-impl'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:235:1
+    │
+235 │ ╭ thiserror-impl 1.0.69 registry+https://github.com/rust-lang/crates.io-index
+236 │ │ thiserror-impl 2.0.20 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰───────────────────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ thiserror-impl v1.0.69
+      └── thiserror v1.0.69
+          ├── gloo-net v0.6.0
+          │   ├── leptos_router v0.7.8
+          │   │   └── tabula-web v0.0.0
+          │   └── server_fn v0.7.8
+          │       ├── leptos v0.7.8
+          │       │   ├── leptos_router v0.7.8 (*)
+          │       │   └── tabula-web v0.0.0 (*)
+          │       └── leptos_server v0.7.8
+          │           └── leptos v0.7.8 (*)
+          ├── serde_qs v0.13.0
+          │   ├── leptos v0.7.8 (*)
+          │   └── server_fn v0.7.8 (*)
+          ├── tabula-assets v0.0.0
+          │   ├── renderer-macroquad v0.0.0
+          │   │   └── tabula-game-client v0.0.0
+          │   │       └── xtask v0.1.0
+          │   ├── tabula-game-chess v0.1.2
+          │   │   ├── tabula-game-client v0.0.0 (*)
+          │   │   ├── tabula-registry v0.0.0
+          │   │   │   ├── tabula-lobby v0.0.0
+          │   │   │   ├── tabula-match v0.0.0
+          │   │   │   │   └── tabula-lobby v0.0.0 (*)
+          │   │   │   ├── tabula-net-client v0.0.0
+          │   │   │   └── tabula-web v0.0.0 (*)
+          │   │   └── xtask v0.1.0 (*)
+          │   ├── tabula-game-client v0.0.0 (*)
+          │   ├── tabula-game-tiles v0.1.0
+          │   │   ├── tabula-game-client v0.0.0 (*)
+          │   │   ├── tabula-registry v0.0.0 (*)
+          │   │   └── xtask v0.1.0 (*)
+          │   ├── tabula-presentation v0.0.0
+          │   │   ├── renderer-headless v0.0.0
+          │   │   ├── renderer-macroquad v0.0.0 (*)
+          │   │   ├── tabula-game-chess v0.1.2 (*)
+          │   │   ├── tabula-game-client v0.0.0 (*)
+          │   │   ├── tabula-game-tiles v0.1.0 (*)
+          │   │   ├── tabula-testkit v0.1.0
+          │   │   │   ├── (dev) tabula-game-caro v0.0.0
+          │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+          │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+          │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+          │   │   │   └── xtask v0.1.0 (*)
+          │   │   └── xtask v0.1.0 (*)
+          │   └── xtask v0.1.0 (*)
+          ├── tabula-core v0.1.0
+          │   ├── renderer-macroquad v0.0.0 (*)
+          │   ├── tabula-admin v0.0.0
+          │   ├── tabula-assets v0.0.0 (*)
+          │   ├── tabula-desktop v0.0.0
+          │   ├── tabula-game-api v0.1.0
+          │   │   ├── tabula-assets v0.0.0 (*)
+          │   │   ├── tabula-game-caro v0.0.0 (*)
+          │   │   ├── tabula-game-chess v0.1.2 (*)
+          │   │   ├── tabula-game-client v0.0.0 (*)
+          │   │   ├── tabula-game-tiles v0.1.0 (*)
+          │   │   ├── tabula-game-werewolf v0.0.0 (*)
+          │   │   ├── tabula-match v0.0.0 (*)
+          │   │   ├── tabula-presentation v0.0.0 (*)
+          │   │   ├── tabula-registry v0.0.0 (*)
+          │   │   ├── tabula-storage v0.0.0
+          │   │   ├── tabula-testkit v0.1.0 (*)
+          │   │   └── xtask v0.1.0 (*)
+          │   ├── tabula-game-caro v0.0.0 (*)
+          │   ├── tabula-game-chess v0.1.2 (*)
+          │   ├── tabula-game-client v0.0.0 (*)
+          │   ├── tabula-game-tiles v0.1.0 (*)
+          │   ├── tabula-game-werewolf v0.0.0 (*)
+          │   ├── tabula-lobby v0.0.0 (*)
+          │   ├── tabula-match v0.0.0 (*)
+          │   ├── tabula-net-client v0.0.0 (*)
+          │   ├── tabula-presentation v0.0.0 (*)
+          │   ├── tabula-protocol v0.0.0
+          │   │   ├── tabula-lobby v0.0.0 (*)
+          │   │   ├── tabula-match v0.0.0 (*)
+          │   │   ├── tabula-net-client v0.0.0 (*)
+          │   │   ├── tabula-registry v0.0.0 (*)
+          │   │   └── tabula-storage v0.0.0 (*)
+          │   ├── tabula-registry v0.0.0 (*)
+          │   ├── tabula-server v0.0.0
+          │   ├── tabula-storage v0.0.0 (*)
+          │   ├── tabula-testkit v0.1.0 (*)
+          │   ├── tabula-voice v0.0.0
+          │   └── xtask v0.1.0 (*)
+          ├── tabula-game-api v0.1.0 (*)
+          ├── tabula-game-tiles v0.1.0 (*)
+          ├── tabula-game-werewolf v0.0.0 (*)
+          ├── tabula-lobby v0.0.0 (*)
+          ├── tabula-match v0.0.0 (*)
+          ├── tabula-net-client v0.0.0 (*)
+          ├── tabula-protocol v0.0.0 (*)
+          ├── tabula-registry v0.0.0 (*)
+          ├── tabula-storage v0.0.0 (*)
+          ├── tabula-testkit v0.1.0 (*)
+          ├── tabula-voice v0.0.0 (*)
+          └── xtask v0.1.0 (*)
+    ├ thiserror-impl v2.0.20
+      └── thiserror v2.0.20
+          ├── any_spawner v0.2.0
+          │   ├── leptos v0.7.8
+          │   │   ├── leptos_router v0.7.8
+          │   │   │   └── tabula-web v0.0.0
+          │   │   └── tabula-web v0.0.0 (*)
+          │   ├── leptos_router v0.7.8 (*)
+          │   ├── leptos_server v0.7.8
+          │   │   └── leptos v0.7.8 (*)
+          │   ├── reactive_graph v0.1.8
+          │   │   ├── leptos v0.7.8 (*)
+          │   │   ├── leptos_dom v0.7.8
+          │   │   │   └── leptos v0.7.8 (*)
+          │   │   ├── leptos_router v0.7.8 (*)
+          │   │   ├── leptos_server v0.7.8 (*)
+          │   │   ├── reactive_stores v0.1.8
+          │   │   │   └── tachys v0.1.9
+          │   │   │       ├── leptos v0.7.8 (*)
+          │   │   │       ├── leptos_dom v0.7.8 (*)
+          │   │   │       ├── leptos_router v0.7.8 (*)
+          │   │   │       └── leptos_server v0.7.8 (*)
+          │   │   └── tachys v0.1.9 (*)
+          │   └── tachys v0.1.9 (*)
+          ├── cargo_metadata v0.19.2
+          │   └── xtask v0.1.0
+          ├── cobs v0.3.0
+          │   └── postcard v1.1.3
+          │       ├── tabula-core v0.1.0
+          │       │   ├── renderer-macroquad v0.0.0
+          │       │   │   └── tabula-game-client v0.0.0
+          │       │   │       └── xtask v0.1.0 (*)
+          │       │   ├── tabula-admin v0.0.0
+          │       │   ├── tabula-assets v0.0.0
+          │       │   │   ├── renderer-macroquad v0.0.0 (*)
+          │       │   │   ├── tabula-game-chess v0.1.2
+          │       │   │   │   ├── tabula-game-client v0.0.0 (*)
+          │       │   │   │   ├── tabula-registry v0.0.0
+          │       │   │   │   │   ├── tabula-lobby v0.0.0
+          │       │   │   │   │   ├── tabula-match v0.0.0
+          │       │   │   │   │   │   └── tabula-lobby v0.0.0 (*)
+          │       │   │   │   │   ├── tabula-net-client v0.0.0
+          │       │   │   │   │   └── tabula-web v0.0.0 (*)
+          │       │   │   │   └── xtask v0.1.0 (*)
+          │       │   │   ├── tabula-game-client v0.0.0 (*)
+          │       │   │   ├── tabula-game-tiles v0.1.0
+          │       │   │   │   ├── tabula-game-client v0.0.0 (*)
+          │       │   │   │   ├── tabula-registry v0.0.0 (*)
+          │       │   │   │   └── xtask v0.1.0 (*)
+          │       │   │   ├── tabula-presentation v0.0.0
+          │       │   │   │   ├── renderer-headless v0.0.0
+          │       │   │   │   ├── renderer-macroquad v0.0.0 (*)
+          │       │   │   │   ├── tabula-game-chess v0.1.2 (*)
+          │       │   │   │   ├── tabula-game-client v0.0.0 (*)
+          │       │   │   │   ├── tabula-game-tiles v0.1.0 (*)
+          │       │   │   │   ├── tabula-testkit v0.1.0
+          │       │   │   │   │   ├── (dev) tabula-game-caro v0.0.0
+          │       │   │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+          │       │   │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+          │       │   │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+          │       │   │   │   │   └── xtask v0.1.0 (*)
+          │       │   │   │   └── xtask v0.1.0 (*)
+          │       │   │   └── xtask v0.1.0 (*)
+          │       │   ├── tabula-desktop v0.0.0
+          │       │   ├── tabula-game-api v0.1.0
+          │       │   │   ├── tabula-assets v0.0.0 (*)
+          │       │   │   ├── tabula-game-caro v0.0.0 (*)
+          │       │   │   ├── tabula-game-chess v0.1.2 (*)
+          │       │   │   ├── tabula-game-client v0.0.0 (*)
+          │       │   │   ├── tabula-game-tiles v0.1.0 (*)
+          │       │   │   ├── tabula-game-werewolf v0.0.0 (*)
+          │       │   │   ├── tabula-match v0.0.0 (*)
+          │       │   │   ├── tabula-presentation v0.0.0 (*)
+          │       │   │   ├── tabula-registry v0.0.0 (*)
+          │       │   │   ├── tabula-storage v0.0.0
+          │       │   │   ├── tabula-testkit v0.1.0 (*)
+          │       │   │   └── xtask v0.1.0 (*)
+          │       │   ├── tabula-game-caro v0.0.0 (*)
+          │       │   ├── tabula-game-chess v0.1.2 (*)
+          │       │   ├── tabula-game-client v0.0.0 (*)
+          │       │   ├── tabula-game-tiles v0.1.0 (*)
+          │       │   ├── tabula-game-werewolf v0.0.0 (*)
+          │       │   ├── tabula-lobby v0.0.0 (*)
+          │       │   ├── tabula-match v0.0.0 (*)
+          │       │   ├── tabula-net-client v0.0.0 (*)
+          │       │   ├── tabula-presentation v0.0.0 (*)
+          │       │   ├── tabula-protocol v0.0.0
+          │       │   │   ├── tabula-lobby v0.0.0 (*)
+          │       │   │   ├── tabula-match v0.0.0 (*)
+          │       │   │   ├── tabula-net-client v0.0.0 (*)
+          │       │   │   ├── tabula-registry v0.0.0 (*)
+          │       │   │   └── tabula-storage v0.0.0 (*)
+          │       │   ├── tabula-registry v0.0.0 (*)
+          │       │   ├── tabula-server v0.0.0
+          │       │   ├── tabula-storage v0.0.0 (*)
+          │       │   ├── tabula-testkit v0.1.0 (*)
+          │       │   ├── tabula-voice v0.0.0
+          │       │   └── xtask v0.1.0 (*)
+          │       └── tabula-testkit v0.1.0 (*)
+          ├── codee v0.3.5
+          │   └── leptos_server v0.7.8 (*)
+          ├── leptos v0.7.8 (*)
+          ├── leptos_config v0.7.8
+          │   └── leptos v0.7.8 (*)
+          ├── leptos_router v0.7.8 (*)
+          ├── oco_ref v0.2.1
+          │   ├── leptos v0.7.8 (*)
+          │   └── tachys v0.1.9 (*)
+          ├── reactive_graph v0.1.8 (*)
+          ├── rstml v0.12.1
+          │   ├── leptos_hot_reload v0.7.8
+          │   │   ├── leptos v0.7.8 (*)
+          │   │   └── leptos_macro v0.7.9
+          │   │       └── leptos v0.7.8 (*)
+          │   └── leptos_macro v0.7.9 (*)
+          └── server_fn v0.7.8
+              ├── leptos v0.7.8 (*)
+              └── leptos_server v0.7.8 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'toml'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:241:1
+    │
+241 │ ╭ toml 0.8.23 registry+https://github.com/rust-lang/crates.io-index
+242 │ │ toml 1.1.6+spec-1.1.0 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰───────────────────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ toml v0.8.23
+      ├── tabula-assets v0.0.0
+      │   ├── renderer-macroquad v0.0.0
+      │   │   └── tabula-game-client v0.0.0
+      │   │       └── xtask v0.1.0
+      │   ├── tabula-game-chess v0.1.2
+      │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   ├── tabula-registry v0.0.0
+      │   │   │   ├── tabula-lobby v0.0.0
+      │   │   │   ├── tabula-match v0.0.0
+      │   │   │   │   └── tabula-lobby v0.0.0 (*)
+      │   │   │   ├── tabula-net-client v0.0.0
+      │   │   │   └── tabula-web v0.0.0
+      │   │   └── xtask v0.1.0 (*)
+      │   ├── tabula-game-client v0.0.0 (*)
+      │   ├── tabula-game-tiles v0.1.0
+      │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   ├── tabula-registry v0.0.0 (*)
+      │   │   └── xtask v0.1.0 (*)
+      │   ├── tabula-presentation v0.0.0
+      │   │   ├── renderer-headless v0.0.0
+      │   │   ├── renderer-macroquad v0.0.0 (*)
+      │   │   ├── tabula-game-chess v0.1.2 (*)
+      │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │   │   ├── tabula-testkit v0.1.0
+      │   │   │   ├── (dev) tabula-game-caro v0.0.0
+      │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+      │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+      │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+      │   │   │   └── xtask v0.1.0 (*)
+      │   │   └── xtask v0.1.0 (*)
+      │   └── xtask v0.1.0 (*)
+      └── xtask v0.1.0 (*)
+    ├ toml v1.1.6+spec-1.1.0
+      └── config v0.15.27
+          └── leptos_config v0.7.8
+              └── leptos v0.7.8
+                  ├── leptos_router v0.7.8
+                  │   └── tabula-web v0.0.0
+                  └── tabula-web v0.0.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'toml_datetime'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:243:1
+    │
+243 │ ╭ toml_datetime 0.6.11 registry+https://github.com/rust-lang/crates.io-index
+244 │ │ toml_datetime 1.1.1+spec-1.1.0 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰────────────────────────────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ toml_datetime v0.6.11
+      ├── toml v0.8.23
+      │   ├── tabula-assets v0.0.0
+      │   │   ├── renderer-macroquad v0.0.0
+      │   │   │   └── tabula-game-client v0.0.0
+      │   │   │       └── xtask v0.1.0
+      │   │   ├── tabula-game-chess v0.1.2
+      │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   │   ├── tabula-registry v0.0.0
+      │   │   │   │   ├── tabula-lobby v0.0.0
+      │   │   │   │   ├── tabula-match v0.0.0
+      │   │   │   │   │   └── tabula-lobby v0.0.0 (*)
+      │   │   │   │   ├── tabula-net-client v0.0.0
+      │   │   │   │   └── tabula-web v0.0.0
+      │   │   │   └── xtask v0.1.0 (*)
+      │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   ├── tabula-game-tiles v0.1.0
+      │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   │   ├── tabula-registry v0.0.0 (*)
+      │   │   │   └── xtask v0.1.0 (*)
+      │   │   ├── tabula-presentation v0.0.0
+      │   │   │   ├── renderer-headless v0.0.0
+      │   │   │   ├── renderer-macroquad v0.0.0 (*)
+      │   │   │   ├── tabula-game-chess v0.1.2 (*)
+      │   │   │   ├── tabula-game-client v0.0.0 (*)
+      │   │   │   ├── tabula-game-tiles v0.1.0 (*)
+      │   │   │   ├── tabula-testkit v0.1.0
+      │   │   │   │   ├── (dev) tabula-game-caro v0.0.0
+      │   │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+      │   │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+      │   │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+      │   │   │   │   └── xtask v0.1.0 (*)
+      │   │   │   └── xtask v0.1.0 (*)
+      │   │   └── xtask v0.1.0 (*)
+      │   └── xtask v0.1.0 (*)
+      └── toml_edit v0.22.27
+          └── toml v0.8.23 (*)
+    ├ toml_datetime v1.1.1+spec-1.1.0
+      └── toml v1.1.6+spec-1.1.0
+          └── config v0.15.27
+              └── leptos_config v0.7.8
+                  └── leptos v0.7.8
+                      ├── leptos_router v0.7.8
+                      │   └── tabula-web v0.0.0
+                      └── tabula-web v0.0.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'winnow'
+    ┌─ /workspace/scratch/429f9ca90843/tabula-chess-integration/Cargo.lock:273:1
+    │
+273 │ ╭ winnow 0.7.15 registry+https://github.com/rust-lang/crates.io-index
+274 │ │ winnow 1.0.4 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰──────────────────────────────────────────────────────────────────┘ lock entries
+    │
+    ├ winnow v0.7.15
+      └── toml_edit v0.22.27
+          └── toml v0.8.23
+              ├── tabula-assets v0.0.0
+              │   ├── renderer-macroquad v0.0.0
+              │   │   └── tabula-game-client v0.0.0
+              │   │       └── xtask v0.1.0
+              │   ├── tabula-game-chess v0.1.2
+              │   │   ├── tabula-game-client v0.0.0 (*)
+              │   │   ├── tabula-registry v0.0.0
+              │   │   │   ├── tabula-lobby v0.0.0
+              │   │   │   ├── tabula-match v0.0.0
+              │   │   │   │   └── tabula-lobby v0.0.0 (*)
+              │   │   │   ├── tabula-net-client v0.0.0
+              │   │   │   └── tabula-web v0.0.0
+              │   │   └── xtask v0.1.0 (*)
+              │   ├── tabula-game-client v0.0.0 (*)
+              │   ├── tabula-game-tiles v0.1.0
+              │   │   ├── tabula-game-client v0.0.0 (*)
+              │   │   ├── tabula-registry v0.0.0 (*)
+              │   │   └── xtask v0.1.0 (*)
+              │   ├── tabula-presentation v0.0.0
+              │   │   ├── renderer-headless v0.0.0
+              │   │   ├── renderer-macroquad v0.0.0 (*)
+              │   │   ├── tabula-game-chess v0.1.2 (*)
+              │   │   ├── tabula-game-client v0.0.0 (*)
+              │   │   ├── tabula-game-tiles v0.1.0 (*)
+              │   │   ├── tabula-testkit v0.1.0
+              │   │   │   ├── (dev) tabula-game-caro v0.0.0
+              │   │   │   ├── (dev) tabula-game-chess v0.1.2 (*)
+              │   │   │   ├── (dev) tabula-game-tiles v0.1.0 (*)
+              │   │   │   ├── (dev) tabula-game-werewolf v0.0.0
+              │   │   │   └── xtask v0.1.0 (*)
+              │   │   └── xtask v0.1.0 (*)
+              │   └── xtask v0.1.0 (*)
+              └── xtask v0.1.0 (*)
+    ├ winnow v1.0.4
+      ├── config v0.15.27
+      │   └── leptos_config v0.7.8
+      │       └── leptos v0.7.8
+      │           ├── leptos_router v0.7.8
+      │           │   └── tabula-web v0.0.0
+      │           └── tabula-web v0.0.0 (*)
+      ├── toml v1.1.6+spec-1.1.0
+      │   └── config v0.15.27 (*)
+      └── toml_parser v1.1.3+spec-1.1.0
+          └── toml v1.1.6+spec-1.1.0 (*)
+
+advisories ok, bans ok, licenses ok, sources ok
+
+xtask check: all gates passed

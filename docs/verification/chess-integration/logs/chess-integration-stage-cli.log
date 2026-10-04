@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running tests/wasm_stage_cli.rs (/workspace/scratch/429f9ca90843/tabula/target/debug/deps/wasm_stage_cli-56c5d2328f847efd)
+
+running 2 tests
+test stage_local_play_rejects_arbitrary_output_paths ... ok
+test stage_wasm_game_rejects_removed_output_override ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

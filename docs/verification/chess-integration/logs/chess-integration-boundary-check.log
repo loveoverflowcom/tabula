@@ -1,0 +1,1 @@
+PASS: 18 actual registry URLs → host config → Rust launch arguments

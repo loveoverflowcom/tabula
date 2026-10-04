@@ -1,0 +1,101 @@
+{
+  "normalization": "Trailing horizontal whitespace and excess final blank lines only; command content/outcomes preserved",
+  "logs": {
+    "chess-integration-aggregate.log": {
+      "raw_bytes": 186178,
+      "raw_sha256": "1f9bec1ac3145446bde4b8a8098ca02cd53966e02679c1f7ac3fafa61a8e4cd3",
+      "retained_bytes": 186118,
+      "retained_sha256": "fc7783c1deabc1c92a2049b6b698082afaa2b0453a127aac86c4f8c4b116d220"
+    },
+    "chess-integration-all-features.log": {
+      "raw_bytes": 1995,
+      "raw_sha256": "76bc65f235d5ce33b225596b90b0190cac41696cb147a59a09daf51c89ab0b5f",
+      "retained_bytes": 1995,
+      "retained_sha256": "76bc65f235d5ce33b225596b90b0190cac41696cb147a59a09daf51c89ab0b5f"
+    },
+    "chess-integration-boundary-check.log": {
+      "raw_bytes": 72,
+      "raw_sha256": "c11be21f73c01a6b1de3365ee5371992cf24318817f32ed51b1ba41919a068df",
+      "retained_bytes": 72,
+      "retained_sha256": "c11be21f73c01a6b1de3365ee5371992cf24318817f32ed51b1ba41919a068df"
+    },
+    "chess-integration-host-tests.log": {
+      "raw_bytes": 3059,
+      "raw_sha256": "047a5b44da1375803e7f1245842d738755cc34d96f7bb30126128aadcb6025af",
+      "retained_bytes": 3059,
+      "retained_sha256": "047a5b44da1375803e7f1245842d738755cc34d96f7bb30126128aadcb6025af"
+    },
+    "chess-integration-http-tests.log": {
+      "raw_bytes": 1059,
+      "raw_sha256": "8a221fc1a6047afcfdaf0bfec14315f716d91069c6d017c4de8be551cf7a2aa4",
+      "retained_bytes": 1059,
+      "retained_sha256": "8a221fc1a6047afcfdaf0bfec14315f716d91069c6d017c4de8be551cf7a2aa4"
+    },
+    "chess-integration-native-build.log": {
+      "raw_bytes": 1111,
+      "raw_sha256": "43d53be71a7b53e3153112b540ca8a8866590ae2224d9cabbe53c45e13a71eee",
+      "retained_bytes": 1111,
+      "retained_sha256": "43d53be71a7b53e3153112b540ca8a8866590ae2224d9cabbe53c45e13a71eee"
+    },
+    "chess-integration-native-launch.log": {
+      "raw_bytes": 277,
+      "raw_sha256": "506d53a80800ba638d383b09fad1307915becff1a82e0ed942116b3d124b7b4c",
+      "retained_bytes": 277,
+      "retained_sha256": "506d53a80800ba638d383b09fad1307915becff1a82e0ed942116b3d124b7b4c"
+    },
+    "chess-integration-no-default.log": {
+      "raw_bytes": 2897,
+      "raw_sha256": "6ce988c5bf2348481f6ef79826ebdd4bb1100aaa0ca82101f00b75077b687eac",
+      "retained_bytes": 2897,
+      "retained_sha256": "6ce988c5bf2348481f6ef79826ebdd4bb1100aaa0ca82101f00b75077b687eac"
+    },
+    "chess-integration-shell-build.log": {
+      "raw_bytes": 886,
+      "raw_sha256": "b4b178b8eb608591bc05c886d74058426b4bd9663081dbeef472708012c1ba6e",
+      "retained_bytes": 886,
+      "retained_sha256": "b4b178b8eb608591bc05c886d74058426b4bd9663081dbeef472708012c1ba6e"
+    },
+    "chess-integration-skills-tests.log": {
+      "raw_bytes": 235,
+      "raw_sha256": "aa9e5c33f476eb9ccf30c9597f90e4ea6a67401ba5b46bfe8dbfdd25db91c9d9",
+      "retained_bytes": 235,
+      "retained_sha256": "aa9e5c33f476eb9ccf30c9597f90e4ea6a67401ba5b46bfe8dbfdd25db91c9d9"
+    },
+    "chess-integration-skills.log": {
+      "raw_bytes": 86,
+      "raw_sha256": "faec1116c74d64bdb31a2ad12d398aa6d54517c9d31715d3a914e0331dd94b78",
+      "retained_bytes": 86,
+      "retained_sha256": "faec1116c74d64bdb31a2ad12d398aa6d54517c9d31715d3a914e0331dd94b78"
+    },
+    "chess-integration-stage-cli.log": {
+      "raw_bytes": 434,
+      "raw_sha256": "5483e9292618499a5f294fe97585d621af67f58386ed4ac3ad25e8319437a5c0",
+      "retained_bytes": 433,
+      "retained_sha256": "f82a348b9cb4f28cd98ab59555018939169cf7b72bd83c49b8f5545a62d5bcc9"
+    },
+    "chess-integration-staging-test.log": {
+      "raw_bytes": 3100,
+      "raw_sha256": "62189849377d876206137fbe900ecb8d66fc3ffa08ae2b76ad3a5db04b15de57",
+      "retained_bytes": 3099,
+      "retained_sha256": "210c859bc1a1729066377cf4eccd2e4f85b411fd4c5146eb80ba786ff95983de"
+    },
+    "chess-integration-standalone-stage.log": {
+      "raw_bytes": 443,
+      "raw_sha256": "5c3d0807ba59e4b2db9de66dca7a65a260bdfe0ff6c28769ba0b79b323513f15",
+      "retained_bytes": 443,
+      "retained_sha256": "5c3d0807ba59e4b2db9de66dca7a65a260bdfe0ff6c28769ba0b79b323513f15"
+    },
+    "chess-integration-wasm-build.log": {
+      "raw_bytes": 1429,
+      "raw_sha256": "e5e1754660591756115f42aa521567c6508609f54fbef7d72d9db774fc9362dc",
+      "retained_bytes": 1429,
+      "retained_sha256": "e5e1754660591756115f42aa521567c6508609f54fbef7d72d9db774fc9362dc"
+    },
+    "chess-integration-wasm-web-check.log": {
+      "raw_bytes": 1111,
+      "raw_sha256": "426f7c42097e49e3875917939da570dc2624c271e35961965ac499817deaadec",
+      "retained_bytes": 1111,
+      "retained_sha256": "426f7c42097e49e3875917939da570dc2624c271e35961965ac499817deaadec"
+    }
+  }
+}
