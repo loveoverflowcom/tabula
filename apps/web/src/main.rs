@@ -8,8 +8,10 @@
 //! > `/`, `/games` and `/games/:id` (with its `?setup=1` substate) are
 //! > implemented anyway, as a recorded decision: see
 //! > `docs/adr/0028-discovery-shell-ahead-of-phase-gate.md`. Every other route
-//! > below still waits for the gate, and nothing here creates a match: there is
-//! > no protocol, no authority, and no gameplay document to hand off to.
+//! > below still waits for the gate. The optional `/play/local/` handoff opens
+//! > the existing standalone hot-seat runtime as a separate document
+//! > (ADR-0030, retaining ADR-011). The shell creates no match and provides no
+//! > network authority.
 //!
 //! Phase 5's goal in one sentence: **a stranger can sign up, browse, create or
 //! join a room, get matched, play, and see their results.**

@@ -19,8 +19,8 @@ thiserror       = { workspace = true }
 
 # Each game is behind its own feature so a small bundle or a dedicated
 # tournament server can link a subset (doc 02 §8.1). `bots` is linked because
-# mode availability is a claim about this build's actual factories, not about
-# what the rules declare.
+# the catalog inventories actual factories independently of gameplay-host
+# support; a linked bot does not make an unimplemented AI runtime available.
 tabula-game-chess = { workspace = true, optional = true, features = ["rules", "bots"] }
 tabula-game-tiles = { workspace = true, optional = true, features = ["rules", "bots"] }
 # Not yet linkable: caro has no rules and werewolf has no complete module.

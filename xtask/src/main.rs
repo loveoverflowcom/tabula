@@ -28,6 +28,7 @@
 //! | `perft chess [depth]` | Chess move-generation counts | 1 |
 //! | `gen-tokens` | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json` | 2 |
 //! | `check-no-raw-colors` | No hex literals or `Color::new(` outside `tabula-design` | 2 |
+//! | `stage-local-play` | Stage the existing local gameplay document beside an opt-in built discovery shell (ADR-0030) | bounded local slice |
 //! | `pack-assets <game>` | Build, hash, and manifest a game's asset pack | 3 |
 //! | `gen-protocol-vectors` | Regenerate golden wire vectors — requires `--bump minor\|major` | 4 |
 //! | `check-protocol` | Golden vectors match; the version-bump gate (I-13) | 4 |
@@ -180,6 +181,16 @@ fn main() {
                 }
             }
         }
+        Some("stage-local-play") => {
+            let args: Vec<String> = std::env::args().skip(2).collect();
+            match wasm_stage_cmd::run_local(&args) {
+                Ok(_) => {}
+                Err(err) => {
+                    eprintln!("stage-local-play: {err}");
+                    std::process::exit(1);
+                }
+            }
+        }
 
         // Phase 4+
         Some("gen-protocol-vectors") => {
@@ -207,7 +218,7 @@ fn print_usage_and_exit(other: Option<&str>) -> ! {
                    new-game <slug>  selfplay <game>  replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]\n\
                    replay-goldens (intentional fixture regeneration)\n\
          phase 1:  perft chess [depth]\n\
-         phase 2:  gen-tokens  check-no-raw-colors  stage-wasm-game\n\
+         phase 2:  gen-tokens  check-no-raw-colors  stage-wasm-game  stage-local-play\n\
          phase 3:  pack-assets <game>\n\
          phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\
          See xtask/README.md and docs/architecture/01-stack-and-repository-plan.md §6.3."

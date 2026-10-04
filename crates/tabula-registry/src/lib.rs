@@ -9,6 +9,9 @@
 //! > phase gate protects that is **not** listed here — `ErasedMatch`, codecs,
 //! > match creation, rollout tables, multi-version resolution, `register!` —
 //! > remains unimplemented and still waits for its gate.
+//! > ADR-0030 additionally permits the opt-in separate-document handoff to the
+//! > existing local hot-seat runtime. It adds no match authority, network,
+//! > persisted session or replay service.
 //!
 //! This is the **only** crate that knows the set of games exists. That
 //! containment is what makes I-9 mechanically checkable: every platform crate
@@ -173,7 +176,10 @@ pub use config::{
 };
 pub use erased::{bot_level_label_key, Adapter, ErasedGame, GameSetup, SetupRequest};
 pub use i18n::{platform_messages, Locale, Messages};
-pub use launch::{resolve as resolve_launch, LaunchHandoff, RuntimeBinding};
+pub use launch::{
+    resolve as resolve_launch, resolve_with_locale as resolve_launch_with_locale, LaunchHandoff,
+    RuntimeBinding,
+};
 pub use tabula_core::{BotLevel, GameId};
 pub use tabula_game_api::{
     metadata::{Category, Complexity, ContentRating, DurationRange, I18nKey},

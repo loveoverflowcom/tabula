@@ -25,7 +25,7 @@ const EN: Messages = &[
     ("game.chess.tagline", "The classic two-player strategy game"),
     (
         "game.chess.description",
-        "Standard chess: every legal move, check, stalemate, the fifty-move rule and threefold repetition, with optional clocks.",
+        "Standard chess: every legal move, check, stalemate, the fifty-move rule and threefold repetition, with optional clocks. This build offers two players on one device, unranked. AI, online play and saved replay are unavailable.",
     ),
     ("chess.field.clock", "Clock"),
     ("chess.field.clock.hint", "How each player's time is kept."),
@@ -54,7 +54,7 @@ const VI: Messages = &[
     ("game.chess.tagline", "Trò chơi chiến thuật hai người kinh điển"),
     (
         "game.chess.description",
-        "Cờ vua tiêu chuẩn: đủ nước đi hợp lệ, chiếu, hết nước đi, luật năm mươi nước và lặp ba lần, có thể bật đồng hồ.",
+        "Cờ vua tiêu chuẩn: đủ nước đi hợp lệ, chiếu, hết nước đi, luật năm mươi nước và lặp ba lần, có thể bật đồng hồ. Bản dựng này cho hai người chơi trên một máy, không xếp hạng. Chưa hỗ trợ đấu máy, trực tuyến hay phát lại ván đã lưu.",
     ),
     ("chess.field.clock", "Đồng hồ"),
     ("chess.field.clock.hint", "Cách tính giờ cho mỗi người chơi."),
@@ -113,7 +113,7 @@ const FIELDS: &[FieldSpec] = &[
             // Zero is accepted by the form and rejected by the rules: the form
             // must not pre-empt the game's own validation of its clock.
             min: 0,
-            max: 600,
+            max: 180,
             default: 5,
         },
     },
@@ -123,7 +123,7 @@ const FIELDS: &[FieldSpec] = &[
         hint_key: Some("chess.field.increment_seconds.hint"),
         kind: FieldKind::Integer {
             min: 0,
-            max: 180,
+            max: 60,
             default: 2,
         },
     },
@@ -133,7 +133,7 @@ const FIELDS: &[FieldSpec] = &[
         hint_key: Some("chess.field.delay_seconds.hint"),
         kind: FieldKind::Integer {
             min: 0,
-            max: 180,
+            max: 60,
             default: 2,
         },
     },
@@ -141,12 +141,12 @@ const FIELDS: &[FieldSpec] = &[
 
 const FORM: ConfigForm = ConfigForm { fields: FIELDS };
 
-/// Chess builds a bot for Trivial and Easy, and this crate links that feature,
-/// so the bot mode has a real construction path. No online authority exists at
-/// this phase, so the network mode names that as its reason.
+/// Only local hot-seat has a deployed gameplay construction path. The rules
+/// link bots, but the standalone host does not run them. Online authority still
+/// waits for its phase gate.
 const MODES: &[ModeSupport] = &[
     ModeSupport::available(LaunchMode::LocalHotSeat),
-    ModeSupport::available(LaunchMode::LocalBots),
+    ModeSupport::unavailable(LaunchMode::LocalBots, UnavailableReason::NoBotRuntime),
     ModeSupport::unavailable(LaunchMode::Network, UnavailableReason::NoNetworkService),
 ];
 
@@ -162,6 +162,10 @@ impl GameSetup for ChessSetup {
 
     fn modes() -> &'static [ModeSupport] {
         MODES
+    }
+
+    fn local_document() -> bool {
+        true
     }
 
     fn messages(locale: Locale) -> Messages {
@@ -249,7 +253,8 @@ impl GameSetup for ChessSetup {
     }
 }
 
-/// The form's maximum is 600 minutes plus 180 seconds, so neither conversion
+/// The form's maximum is 180 minutes plus 60 seconds, matching the standalone
+/// host's bounded local options. Neither conversion
 /// can overflow `u64` milliseconds; `saturating_mul` keeps that total anyway.
 fn minutes_to_millis(minutes: u64) -> u64 {
     minutes.saturating_mul(60_000)

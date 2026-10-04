@@ -9,7 +9,7 @@
 //! resolves to the literal `local` session document, and a network session is
 //! not resolvable at all.
 
-use crate::{availability::UnavailableReason, config::NormalizedConfig};
+use crate::{availability::UnavailableReason, config::NormalizedConfig, i18n::Locale};
 
 /// Where this build's gameplay document lives, if it is deployed at all.
 ///
@@ -27,7 +27,9 @@ impl RuntimeBinding {
         Self { play_base: None }
     }
 
-    /// Bind the gameplay document base path, such as `/play`.
+    /// Bind only the same-origin `/play` document base.
+    /// Other values remain unbound, including origins, query strings and dot
+    /// segments. This opt-in is deployment configuration, not a redirect input.
     #[must_use]
     pub const fn bound(play_base: &'static str) -> Self {
         Self {
@@ -36,8 +38,8 @@ impl RuntimeBinding {
     }
 
     #[must_use]
-    pub const fn is_bound(&self) -> bool {
-        self.play_base.is_some()
+    pub fn is_bound(&self) -> bool {
+        matches!(self.play_base, Some("/play" | "/play/"))
     }
 }
 
@@ -57,17 +59,36 @@ pub fn resolve(
     binding: RuntimeBinding,
     config: &NormalizedConfig,
 ) -> Result<LaunchHandoff, UnavailableReason> {
-    let base = binding
-        .play_base
-        .ok_or(UnavailableReason::NoGameplayRuntime)?;
-    let query = config
-        .launch_args
+    resolve_with_locale(binding, config, Locale::En)
+}
+
+/// Resolve an immutable, validated local configuration and the shell's locale.
+/// The registry selects the return target; no address-bar redirect is accepted.
+pub fn resolve_with_locale(
+    binding: RuntimeBinding,
+    config: &NormalizedConfig,
+    locale: Locale,
+) -> Result<LaunchHandoff, UnavailableReason> {
+    if !binding.is_bound() {
+        return Err(UnavailableReason::NoGameplayRuntime);
+    }
+    let return_to = config
+        .local_return_to
+        .as_ref()
+        .ok_or(UnavailableReason::NoModeRuntime)?;
+    let mut args = config.launch_args.clone();
+    args.extend([
+        ("source".to_owned(), "tabula".to_owned()),
+        ("return_to".to_owned(), return_to.clone()),
+        ("locale".to_owned(), locale.tag().to_owned()),
+    ]);
+    let query = args
         .iter()
         .map(|(key, value)| format!("{}={}", encode(key), encode(value)))
         .collect::<Vec<_>>()
         .join("&");
     Ok(LaunchHandoff {
-        url: format!("{}/local?{query}", base.trim_end_matches('/')),
+        url: format!("/play/local/?{query}"),
     })
 }
 

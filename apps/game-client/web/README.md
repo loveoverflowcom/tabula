@@ -4,6 +4,11 @@ A real local hot-seat Chess setup page and a separate Macroquad gameplay documen
 The board remains the production Rust presenter/Renderer path (ADR-011 and
 ADR-0029); this host adds no DOM board, iframe, network service or shared WASM memory.
 
+The normal Tabula discovery/setup handoff is an opt-in build of this same runtime
+([ADR-0030](../../../docs/adr/0030-local-discovery-gameplay-handoff.md)). See the
+[integration instructions and evidence](../../../docs/verification/chess-integration/README.md).
+The standalone distribution below remains separate and unchanged in purpose.
+
 ## Build and serve
 
 ```bash
@@ -53,9 +58,11 @@ ordinary process arguments; WASM uses safe `macroquad::file::load_file`:
 - `tabula-ready.txt`: a one-time readiness acknowledgement requested by Rust only
   after a full nonfatal game frame has been submitted and flushed
 
-A host plugin wraps the existing pinned `fs_load_file` import for exactly those
-two virtual files. All other assets go through the original loader. File-loaded
-callbacks are asynchronous; failures expose the recovery UI. The loading screen
+A host plugin implements the existing pinned `fs_load_file` API for those two
+virtual files and bounded cancelable same-origin asset downloads. Generation
+admission rejects late callbacks after failure, departure or page restoration;
+the pinned upstream bootstrap itself is unchanged. File-loaded callbacks are
+asynchronous; failures expose the recovery UI. The loading screen
 is dismissed only after the ready acknowledgement and a successful runtime frame,
 not after download, compile, `main()` or an async startup frame. Download reports
 actual received bytes; unknown/compressed lengths use an indeterminate progress bar.
@@ -70,6 +77,13 @@ board square. Shift+Tab explicitly leaves the canvas and focuses the host Leave
 button; browser Tab then reaches Help. Arrow/Enter/Escape remain presenter input. Leave/help use native dialogs with safe cancellation and
 board focus restoration. Browser zoom is unrestricted. Setup is accessible DOM;
 a complete assistive-technology Board Reader is not implemented or claimed.
+
+The gameplay document boots at most once. Return, pagehide and runtime failure
+abort owned downloads/timers, retire file buffers and export references and
+cancel the known animation callback. A cached document restores by explicit
+reload into a fresh local match; it never resumes discarded state. Browser
+document teardown owns final WASM/canvas/GPU disposal. The mocked lifecycle tests
+do not prove real browser BFCache behavior or total heap/GPU reclamation.
 
 ## Provenance
 

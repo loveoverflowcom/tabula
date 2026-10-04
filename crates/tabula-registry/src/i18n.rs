@@ -86,6 +86,12 @@ const PLATFORM_EN: Messages = &[
         "unavailable.no_gameplay_runtime.recovery",
         "Use a build that ships the gameplay bundle; the configuration below is still validated.",
     ),
+    ("unavailable.no_bot_runtime.reason", "This gameplay runtime does not support playing against a bot yet."),
+    ("unavailable.no_bot_runtime.recovery", "Choose two players on this device."),
+    ("unavailable.no_mode_runtime.reason", "The gameplay bundle does not implement this game and mode."),
+    ("unavailable.no_mode_runtime.recovery", "Return to the catalog or use a build that supports this mode."),
+    ("unavailable.navigation_failed.reason", "The browser could not open the gameplay document."),
+    ("unavailable.navigation_failed.recovery", "Return to the configuration and try again."),
     ("bot.trivial", "Trivial"),
     ("bot.easy", "Easy"),
     ("bot.medium", "Medium"),
@@ -166,6 +172,30 @@ const PLATFORM_VI: Messages = &[
     (
         "unavailable.no_gameplay_runtime.recovery",
         "Hãy dùng bản dựng có kèm gói gameplay; cấu hình bên dưới vẫn được kiểm tra.",
+    ),
+    (
+        "unavailable.no_bot_runtime.reason",
+        "Bản gameplay này chưa hỗ trợ đấu với máy.",
+    ),
+    (
+        "unavailable.no_bot_runtime.recovery",
+        "Hãy chọn hai người chơi trên máy này.",
+    ),
+    (
+        "unavailable.no_mode_runtime.reason",
+        "Gói gameplay chưa hỗ trợ trò chơi và chế độ này.",
+    ),
+    (
+        "unavailable.no_mode_runtime.recovery",
+        "Hãy về danh mục hoặc dùng bản dựng hỗ trợ chế độ này.",
+    ),
+    (
+        "unavailable.navigation_failed.reason",
+        "Trình duyệt chưa mở được trang gameplay.",
+    ),
+    (
+        "unavailable.navigation_failed.recovery",
+        "Hãy quay lại cấu hình và thử lại.",
     ),
     ("bot.trivial", "Ngẫu nhiên"),
     ("bot.easy", "Dễ"),

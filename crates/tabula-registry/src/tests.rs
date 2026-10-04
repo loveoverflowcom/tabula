@@ -386,14 +386,14 @@ fn chess_rejects_unparseable_and_out_of_range_input_without_clamping() {
             2,
             &[
                 ("clock", "fischer"),
-                ("initial_minutes", "601"),
+                ("initial_minutes", "181"),
                 ("increment_seconds", "2"),
             ],
         ))
-        .expect_err("601 minutes is outside the form range");
+        .expect_err("181 minutes is outside the form range");
     assert_eq!(
         rejection.reason,
-        RejectionReason::OutOfRange { min: 0, max: 600 }
+        RejectionReason::OutOfRange { min: 0, max: 180 }
     );
 }
 
@@ -415,8 +415,8 @@ fn the_chess_form_range_cannot_produce_a_config_the_rules_call_unrepresentable()
                 2,
                 &[
                     ("clock", control),
-                    ("initial_minutes", "600"),
-                    (field, "180"),
+                    ("initial_minutes", "180"),
+                    (field, "60"),
                 ],
             ))
             .expect("the maximum the form offers is representable");
@@ -453,36 +453,36 @@ fn an_unavailable_mode_cannot_be_normalized() {
 #[test]
 fn a_bot_mode_requires_a_level_this_build_actually_links() {
     let catalog = crate::catalog(&Stub::vi());
-    let chess = catalog.get(&chess_id()).expect("chess is linked").game();
+    let game = catalog.get(&tiles_id()).expect("tiles is linked").game();
 
-    let missing = chess
+    let missing = game
         .normalize(&SetupRequest {
             mode: LaunchMode::LocalBots,
             seats: 2,
             bot_level: None,
-            draft: draft(&[("clock", "untimed")]),
+            draft: draft(&[("deadline", "none")]),
         })
         .expect_err("a bot mode needs a level");
     assert_eq!(missing.reason, RejectionReason::Unsupported);
 
-    let unlinked = chess
+    let unlinked = game
         .normalize(&SetupRequest {
             mode: LaunchMode::LocalBots,
             seats: 2,
             bot_level: Some(BotLevel::Hard),
-            draft: draft(&[("clock", "untimed")]),
+            draft: draft(&[("deadline", "none")]),
         })
-        .expect_err("chess builds no Hard bot");
+        .expect_err("tiles builds no Hard bot");
     assert_eq!(unlinked.reason, RejectionReason::Unsupported);
 
-    let linked = chess
+    let linked = game
         .normalize(&SetupRequest {
             mode: LaunchMode::LocalBots,
             seats: 2,
             bot_level: Some(BotLevel::Easy),
-            draft: draft(&[("clock", "untimed")]),
+            draft: draft(&[("deadline", "none")]),
         })
-        .expect("chess builds an Easy bot");
+        .expect("tiles builds an Easy bot");
     assert!(linked
         .launch_args
         .contains(&("bot".to_owned(), "easy".to_owned())));
@@ -608,10 +608,234 @@ fn a_bound_build_hands_off_to_a_separate_document_with_encoded_arguments() {
         .normalize(&local(2, &[("clock", "untimed")]))
         .expect("valid config");
     let handoff = resolve(RuntimeBinding::bound("/play"), &config).expect("a bound build resolves");
-    assert!(handoff.url.starts_with("/play/local?"));
+    assert!(handoff.url.starts_with("/play/local/?"));
     assert!(handoff.url.contains("game=com.tabula.chess"));
     assert!(handoff.url.contains("mode=local"));
     assert!(!handoff.url.contains(' '));
+}
+
+#[test]
+fn local_runtime_binding_cannot_redirect_to_another_origin_or_route() {
+    let catalog = crate::catalog(&Stub::vi());
+    let config = catalog
+        .get(&chess_id())
+        .unwrap()
+        .game()
+        .normalize(&local(2, &[("clock", "untimed")]))
+        .unwrap();
+    for base in [
+        "https://other.example/play",
+        "//other.example/play",
+        "/",
+        "/other",
+        "/play?next=1",
+        "/play/../other",
+    ] {
+        assert_eq!(
+            resolve(RuntimeBinding::bound(base), &config),
+            Err(UnavailableReason::NoGameplayRuntime),
+            "{base}"
+        );
+    }
+}
+
+#[test]
+fn chess_bot_factories_do_not_advertise_an_unimplemented_local_ai_runtime() {
+    let catalog = crate::catalog(&Stub::vi());
+    let game = catalog.get(&chess_id()).unwrap().game();
+    assert!(!game
+        .modes()
+        .iter()
+        .find(|support| support.mode == LaunchMode::LocalBots)
+        .unwrap()
+        .is_available());
+    assert!(game
+        .normalize(&SetupRequest {
+            mode: LaunchMode::LocalBots,
+            seats: 2,
+            bot_level: Some(BotLevel::Easy),
+            draft: draft(&[("clock", "untimed")]),
+        })
+        .is_err());
+}
+
+#[test]
+fn chess_setup_rejects_values_the_standalone_runtime_cannot_construct() {
+    let catalog = crate::catalog(&Stub::vi());
+    let game = catalog.get(&chess_id()).unwrap().game();
+    for pairs in [
+        [
+            ("clock", "fischer"),
+            ("initial_minutes", "181"),
+            ("increment_seconds", "2"),
+        ],
+        [
+            ("clock", "fischer"),
+            ("initial_minutes", "5"),
+            ("increment_seconds", "61"),
+        ],
+        [
+            ("clock", "bronstein"),
+            ("initial_minutes", "5"),
+            ("delay_seconds", "61"),
+        ],
+    ] {
+        assert!(game.normalize(&local(2, &pairs)).is_err(), "{pairs:?}");
+    }
+}
+
+#[test]
+fn integrated_launch_carries_a_registry_selected_setup_return_route() {
+    let catalog = crate::catalog(&Stub::vi());
+    let config = catalog
+        .get(&chess_id())
+        .unwrap()
+        .game()
+        .normalize(&local(2, &[("clock", "untimed")]))
+        .unwrap();
+    let handoff = resolve(RuntimeBinding::bound("/play"), &config).unwrap();
+    assert!(handoff.url.starts_with("/play/local/?"));
+    assert!(handoff.url.contains("source=tabula"));
+    assert!(handoff
+        .url
+        .contains("return_to=%2Fgames%2Fcom.tabula.chess%3Fsetup%3D1"));
+}
+
+#[test]
+fn every_local_clock_handoff_is_complete_and_excludes_irrelevant_fields() {
+    let catalog = crate::catalog(&Stub::vi());
+    let game = catalog.get(&chess_id()).unwrap().game();
+    for (pairs, expected) in [
+        (vec![("clock", "untimed")], vec![("clock", "untimed")]),
+        (
+            vec![
+                ("clock", "fischer"),
+                ("initial_minutes", "180"),
+                ("increment_seconds", "60"),
+            ],
+            vec![
+                ("clock", "fischer"),
+                ("initial_ms", "10800000"),
+                ("increment_ms", "60000"),
+            ],
+        ),
+        (
+            vec![
+                ("clock", "bronstein"),
+                ("initial_minutes", "1"),
+                ("delay_seconds", "0"),
+            ],
+            vec![
+                ("clock", "bronstein"),
+                ("initial_ms", "60000"),
+                ("delay_ms", "0"),
+            ],
+        ),
+    ] {
+        let config = game.normalize(&local(2, &pairs)).unwrap();
+        let mut args = vec![
+            ("game", "com.tabula.chess"),
+            ("mode", "local"),
+            ("seats", "2"),
+        ];
+        args.extend(expected);
+        assert_eq!(
+            config.launch_args(),
+            args.into_iter()
+                .map(|(key, value)| (key.to_owned(), value.to_owned()))
+                .collect::<Vec<_>>()
+        );
+        let handoff = crate::launch::resolve_with_locale(
+            RuntimeBinding::bound("/play/"),
+            &config,
+            crate::Locale::Vi,
+        )
+        .unwrap();
+        assert!(handoff.url.starts_with("/play/local/?"));
+        assert!(handoff.url.ends_with(
+            "&source=tabula&return_to=%2Fgames%2Fcom.tabula.chess%3Fsetup%3D1&locale=vi"
+        ));
+    }
+}
+
+#[test]
+fn draft_redirect_and_locale_fields_cannot_override_registry_handoff_metadata() {
+    let catalog = crate::catalog(&Stub::vi());
+    let game = catalog.get(&chess_id()).unwrap().game();
+    let config = game
+        .normalize(&local(
+            2,
+            &[
+                ("clock", "untimed"),
+                ("source", "other"),
+                ("return_to", "https://other.example"),
+                ("locale", "other"),
+            ],
+        ))
+        .unwrap();
+    assert_eq!(resolve(RuntimeBinding::bound("/play"), &config).unwrap().url,
+        "/play/local/?game=com.tabula.chess&mode=local&seats=2&clock=untimed&source=tabula&return_to=%2Fgames%2Fcom.tabula.chess%3Fsetup%3D1&locale=en");
+}
+
+#[test]
+fn binding_one_runtime_does_not_launch_an_unimplemented_game_or_change_its_modes() {
+    let catalog = crate::catalog(&Stub::vi());
+    let game = catalog.get(&tiles_id()).unwrap().game();
+    assert!(game
+        .modes()
+        .iter()
+        .any(|support| support.mode == LaunchMode::LocalBots && support.is_available()));
+    let config = game.normalize(&local(2, &[("deadline", "none")])).unwrap();
+    assert_eq!(
+        resolve(RuntimeBinding::bound("/play"), &config),
+        Err(UnavailableReason::NoModeRuntime)
+    );
+}
+
+/// Executable registry-to-document boundary corpus. A caller can pipe the
+/// marker lines from `--nocapture` into the real browser launch parser rather
+/// than trusting two independently handwritten sets of query fixtures.
+#[test]
+fn export_local_handoff_boundary_urls() {
+    let catalog = crate::catalog(&Stub::vi());
+    let game = catalog.get(&chess_id()).unwrap().game();
+    let mut drafts = vec![draft(&[("clock", "untimed")])];
+    for (clock, adjustment_field) in [
+        ("fischer", "increment_seconds"),
+        ("bronstein", "delay_seconds"),
+    ] {
+        for initial in ["1", "180"] {
+            for adjustment in ["0", "60"] {
+                drafts.push(draft(&[
+                    ("clock", clock),
+                    ("initial_minutes", initial),
+                    (adjustment_field, adjustment),
+                ]));
+            }
+        }
+    }
+    let mut exported = 0;
+    for locale in crate::Locale::ALL {
+        for draft in &drafts {
+            let config = game
+                .normalize(&SetupRequest {
+                    mode: LaunchMode::LocalHotSeat,
+                    seats: 2,
+                    bot_level: None,
+                    draft: draft.clone(),
+                })
+                .unwrap();
+            let handoff =
+                crate::launch::resolve_with_locale(RuntimeBinding::bound("/play"), &config, locale)
+                    .unwrap();
+            println!("TABULA_LAUNCH_URL={}", handoff.url);
+            exported += 1;
+        }
+    }
+    assert_eq!(
+        exported, 18,
+        "both locales and all timed clock endpoints execute"
+    );
 }
 
 #[test]
@@ -668,8 +892,15 @@ fn every_key_the_catalog_hands_the_shell_exists_in_both_locales() {
         for level in game.bot_levels() {
             required.push(bot_level_label_key(level));
         }
-        required.push(UnavailableReason::NoGameplayRuntime.reason_key());
-        required.push(UnavailableReason::NoGameplayRuntime.recovery_key());
+        for reason in [
+            UnavailableReason::NoGameplayRuntime,
+            UnavailableReason::NoBotRuntime,
+            UnavailableReason::NoModeRuntime,
+            UnavailableReason::NavigationFailed,
+        ] {
+            required.push(reason.reason_key());
+            required.push(reason.recovery_key());
+        }
     }
 
     for locale in Locale::ALL {

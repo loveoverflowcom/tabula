@@ -60,6 +60,9 @@ pub enum WasmStageError {
 
     #[error("unexpected argument for stage-wasm-game: {0}")]
     UnexpectedArgument(String),
+
+    #[error("shell distribution is missing or invalid at {0}; build apps/web with TABULA_PLAY_BASE=/play first")]
+    MissingShellDistribution(PathBuf),
 }
 
 /// Report summarizing successfully staged artifacts.
@@ -79,7 +82,7 @@ pub fn run(args: &[String]) -> Result<WasmStageReport, WasmStageError> {
 
     let root = crate::workspace::root()?;
     let web_src_dir = root.join("apps").join("game-client").join("web");
-    let wasm_src = resolve_wasm_source(&root)?;
+    let wasm_src = resolve_wasm_source(&crate::workspace::target_dir()?)?;
     let out_dir = root.join("target").join("tabula-web-game");
 
     let tokens_src = root.join("apps/web/style/tokens.css");
@@ -97,9 +100,8 @@ pub fn run(args: &[String]) -> Result<WasmStageReport, WasmStageError> {
     Ok(report)
 }
 
-fn resolve_wasm_source(root: &Path) -> Result<PathBuf, WasmStageError> {
-    let wasm_dir = root
-        .join("target")
+fn resolve_wasm_source(target_dir: &Path) -> Result<PathBuf, WasmStageError> {
+    let wasm_dir = target_dir
         .join("wasm32-unknown-unknown")
         .join("wasm-release");
 
@@ -115,6 +117,80 @@ fn resolve_wasm_source(root: &Path) -> Result<PathBuf, WasmStageError> {
     }
 
     Err(WasmStageError::MissingWasmArtifact(candidates[0].clone()))
+}
+
+/// Stage the separate local gameplay document beside an already-built shell.
+///
+/// ADR-011/0030: `/play/local/` is static HTML, never a Leptos route. Only
+/// workspace-owned build output is replaced; shell files and standalone source
+/// remain unchanged. A failed attempt retires the previous local play bundle.
+pub fn run_local(args: &[String]) -> Result<WasmStageReport, WasmStageError> {
+    if let Some(argument) = args.first() {
+        return Err(WasmStageError::UnexpectedArgument(argument.clone()));
+    }
+    let root = crate::workspace::root()?;
+    let shell_dist = root.join("apps/web/dist");
+    let out_dir = shell_dist.join("play/local");
+    remove_existing_destination(&out_dir)?;
+    let wasm_src = resolve_wasm_source(&crate::workspace::target_dir()?)?;
+    let report = stage_local_bundle(
+        &root.join("apps/game-client/web"),
+        &root.join("apps/web/style/tokens.css"),
+        &wasm_src,
+        &shell_dist,
+    )?;
+    println!(
+        "stage-local-play: staged separate gameplay document into {} ({} WASM bytes)",
+        report.out_dir.display(),
+        report.wasm_size
+    );
+    Ok(report)
+}
+
+/// Build a complete local document before atomically publishing it in shell output.
+pub fn stage_local_bundle(
+    web_src_dir: &Path,
+    tokens_src: &Path,
+    wasm_src: &Path,
+    shell_dist: &Path,
+) -> Result<WasmStageReport, WasmStageError> {
+    let out_dir = shell_dist.join("play/local");
+    remove_existing_destination(&out_dir)?;
+    let shell_index = shell_dist.join("index.html");
+    if !shell_index.is_file() || file_size(&shell_index)? == 0 {
+        return Err(WasmStageError::MissingShellDistribution(
+            shell_dist.to_path_buf(),
+        ));
+    }
+    let parent = out_dir.parent().expect("local output has a parent");
+    std::fs::create_dir_all(parent).map_err(|source| WasmStageError::CreateDir {
+        path: parent.to_path_buf(),
+        source,
+    })?;
+    let temporary = tempfile::Builder::new()
+        .prefix(".tabula-local-play-")
+        .tempdir_in(parent)
+        .map_err(|source| WasmStageError::CreateDir {
+            path: parent.to_path_buf(),
+            source,
+        })?;
+    let candidate = temporary.path().join("bundle");
+    let mut report = stage_bundle(web_src_dir, tokens_src, wasm_src, &candidate)?;
+    copy_file(
+        &candidate.join("index.html"),
+        &candidate.join("standalone.html"),
+    )?;
+    copy_file(&candidate.join("play.html"), &candidate.join("index.html"))?;
+    validate_host_html(&candidate.join("index.html"), true)?;
+    report.html_size = file_size(&candidate.join("index.html"))?;
+    std::fs::rename(&candidate, &out_dir).map_err(|source| WasmStageError::Io {
+        src: candidate,
+        dst: out_dir.clone(),
+        source,
+    })?;
+    report.out_dir = out_dir;
+    report.host_file_count += 1;
+    Ok(report)
 }
 
 /// Stages the web host, JS bootstrap, and WASM binary into `out_dir`.
@@ -600,5 +676,84 @@ mod tests {
         .unwrap_err();
         assert!(matches!(err, WasmStageError::MissingWasmArtifact(_)));
         assert!(!out_dir.path().exists());
+    }
+
+    #[test]
+    fn local_stage_promotes_gameplay_without_overwriting_shell() {
+        let web = tempdir().unwrap();
+        let dist = tempdir().unwrap();
+        write_valid_html(&web.path().join("index.html"));
+        std::fs::write(web.path().join("index.html"), "standalone setup").unwrap();
+        std::fs::write(web.path().join("mq_js_bundle.js"), "bootstrap").unwrap();
+        let wasm = web.path().join("game.wasm");
+        std::fs::write(&wasm, VALID_WASM).unwrap();
+        std::fs::write(dist.path().join("index.html"), "Leptos shell").unwrap();
+        std::fs::write(dist.path().join("app.js"), "shell bootstrap").unwrap();
+        let report = stage_local_bundle(
+            web.path(),
+            &web.path().join("canonical.css"),
+            &wasm,
+            dist.path(),
+        )
+        .unwrap();
+        assert_eq!(report.out_dir, dist.path().join("play/local"));
+        let html = std::fs::read_to_string(report.out_dir.join("index.html")).unwrap();
+        assert!(html.contains("glcanvas"));
+        assert_eq!(
+            std::fs::read_to_string(report.out_dir.join("standalone.html")).unwrap(),
+            "standalone setup"
+        );
+        assert_eq!(
+            std::fs::read_to_string(dist.path().join("index.html")).unwrap(),
+            "Leptos shell"
+        );
+        assert_eq!(
+            std::fs::read_to_string(dist.path().join("app.js")).unwrap(),
+            "shell bootstrap"
+        );
+        assert_eq!(report.host_file_count, HOST_FILES.len() + 1);
+        assert_eq!(
+            std::fs::read(report.out_dir.join("tabula-game-client.wasm")).unwrap(),
+            VALID_WASM
+        );
+    }
+
+    #[test]
+    fn local_stage_failure_invalidates_only_previous_game_document() {
+        let web = tempdir().unwrap();
+        let dist = tempdir().unwrap();
+        let output = dist.path().join("play/local");
+        std::fs::create_dir_all(&output).unwrap();
+        std::fs::write(output.join("index.html"), "stale game").unwrap();
+        std::fs::write(dist.path().join("index.html"), "Leptos shell").unwrap();
+        let missing = web.path().join("missing.wasm");
+        let error = stage_local_bundle(
+            web.path(),
+            &web.path().join("canonical.css"),
+            &missing,
+            dist.path(),
+        )
+        .unwrap_err();
+        assert!(matches!(error, WasmStageError::MissingWasmArtifact(_)));
+        assert!(!output.exists());
+        assert_eq!(
+            std::fs::read_to_string(dist.path().join("index.html")).unwrap(),
+            "Leptos shell"
+        );
+    }
+
+    #[test]
+    fn local_stage_requires_a_built_shell() {
+        let web = tempdir().unwrap();
+        let dist = tempdir().unwrap();
+        let error = stage_local_bundle(
+            web.path(),
+            &web.path().join("canonical.css"),
+            &web.path().join("game.wasm"),
+            dist.path(),
+        )
+        .unwrap_err();
+        assert!(matches!(error, WasmStageError::MissingShellDistribution(_)));
+        assert!(!dist.path().join("play/local").exists());
     }
 }

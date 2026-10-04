@@ -79,6 +79,13 @@ match; otherwise retain safe user input for explicit review and revalidate.
 Opening detail or setup never creates a match. A successful handoff replaces the
 pending setup history entry to prevent Back from repeating creation.
 
+Local implementation qualifier ([ADR-0030](../../adr/0030-local-discovery-gameplay-handoff.md)):
+the opt-in two-human document handoff uses ordinary navigation and retains the
+setup entry for browser Back. Restoring that entry retires Pending/Handoff to
+Editing and requires explicit revalidation/start; it never repeats creation.
+Reopening gameplay starts a fresh unsaved local match. The replacement/resume
+contract above remains the future server-owned flow.
+
 ## Typed data mapping
 
 Names in the “proposed boundary” column are design obligations, not implemented

@@ -158,6 +158,12 @@ This is a real divergence between web and native and it is accepted deliberately
 
 ### 3.4 Handoff: entering and leaving a match
 
+The networked flow below remains a future-phase contract. The implemented opt-in
+local discovery handoff is bounded by [ADR-0030](../adr/0030-local-discovery-gameplay-handoff.md):
+`/play/local/` opens a separate existing Macroquad document, with public validated
+two-human configuration and a trusted return to detail/setup. Local return/reload
+starts over; it is neither a server identity nor saved resume or `/matches/:id`.
+
 ```mermaid
 sequenceDiagram
     participant U as User

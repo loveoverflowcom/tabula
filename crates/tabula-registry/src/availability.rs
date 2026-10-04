@@ -68,11 +68,17 @@ impl LaunchMode {
 pub enum UnavailableReason {
     /// The game links no bot factory in this build.
     NoBotFactory,
+    /// A factory is linked, but no gameplay host runs that bot mode.
+    NoBotRuntime,
     /// No authoritative online service exists at this phase (doc 07 Phase 4).
     NoNetworkService,
     /// The gameplay document this shell would hand off to is not deployed in
     /// this build, so no local session can be started from the browser.
     NoGameplayRuntime,
+    /// The bound document does not implement this game's selected local mode.
+    NoModeRuntime,
+    /// The browser refused the requested separate-document navigation.
+    NavigationFailed,
 }
 
 impl UnavailableReason {
@@ -80,8 +86,11 @@ impl UnavailableReason {
     pub const fn reason_key(self) -> &'static str {
         match self {
             Self::NoBotFactory => "unavailable.no_bot_factory.reason",
+            Self::NoBotRuntime => "unavailable.no_bot_runtime.reason",
             Self::NoNetworkService => "unavailable.no_network_service.reason",
             Self::NoGameplayRuntime => "unavailable.no_gameplay_runtime.reason",
+            Self::NoModeRuntime => "unavailable.no_mode_runtime.reason",
+            Self::NavigationFailed => "unavailable.navigation_failed.reason",
         }
     }
 
@@ -89,8 +98,11 @@ impl UnavailableReason {
     pub const fn recovery_key(self) -> &'static str {
         match self {
             Self::NoBotFactory => "unavailable.no_bot_factory.recovery",
+            Self::NoBotRuntime => "unavailable.no_bot_runtime.recovery",
             Self::NoNetworkService => "unavailable.no_network_service.recovery",
             Self::NoGameplayRuntime => "unavailable.no_gameplay_runtime.recovery",
+            Self::NoModeRuntime => "unavailable.no_mode_runtime.recovery",
+            Self::NavigationFailed => "unavailable.navigation_failed.recovery",
         }
     }
 }

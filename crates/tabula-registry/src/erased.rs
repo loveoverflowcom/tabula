@@ -44,6 +44,13 @@ pub trait GameSetup: Send + Sync + 'static {
     /// Modes this build can actually construct for this game.
     fn modes() -> &'static [ModeSupport];
 
+    /// Whether this adapter has a deployable local hot-seat document.
+    /// The handoff resolver consumes this declaration; bot factories and rules
+    /// capabilities alone never establish a gameplay runtime (ADR-011).
+    fn local_document() -> bool {
+        false
+    }
+
     /// This game's own visible copy, including its metadata message keys.
     fn messages(locale: Locale) -> Messages;
 
@@ -188,6 +195,8 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
         Ok(NormalizedConfig {
             summary,
             launch_args: args,
+            local_return_to: (S::local_document() && request.mode == LaunchMode::LocalHotSeat)
+                .then(|| format!("/games/{}?setup=1", metadata.id().as_str())),
         })
     }
 }

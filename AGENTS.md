@@ -132,6 +132,11 @@ states exactly what it contains and what both phases still hold back. Treat the
 rest of those crates as gated as before, and do not read the slice as evidence
 that Phase 3, 4 or 5 is complete.
 
+The opt-in local discovery-to-gameplay integration extends that bounded slice:
+[ADR-0030](docs/adr/0030-local-discovery-gameplay-handoff.md). It reuses the existing
+standalone local authority and separate document. Network/resume, native catalog,
+asset-delivery services and the remaining phase gates stay closed.
+
 ---
 
 ## 5. Before you open a pull request

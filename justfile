@@ -162,5 +162,15 @@ wasm-serve port="8000": wasm-game
     @echo "Serving Tabula gameplay client at http://localhost:{{port}}"
     python3 -m http.server {{port}} --directory target/tabula-web-game
 
+# Opt-in local integration, two separate documents/bundles (ADR-0030/011).
+# Trunk's default shell-only build remains honestly unbound.
+web-local-build:
+    cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+    cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release
+    cargo xtask stage-local-play
+
+web-local-serve port="8000": web-local-build
+    python3 tools/serve-local-shell.py --port {{port}}
+
 server-release:
     cargo build -p tabula-server --profile release-server

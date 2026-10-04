@@ -10,6 +10,7 @@ use tabula_registry::{
     bot_level_label_key, Catalog, ErasedGame, FieldKind, GameId, LaunchMode, ModeSupport,
     RuntimeBinding, SummaryLine, SummaryValue, TimeControlKind,
 };
+use wasm_bindgen::{closure::Closure, JsCast};
 
 use crate::{
     i18n::{shell, Messages},
@@ -21,10 +22,10 @@ use crate::{
 ///
 /// ADR-011 makes gameplay a separate document, so the shell cannot start a
 /// session by mounting anything: it needs a deployed bundle to navigate to.
-/// `TABULA_PLAY_BASE_URL` binds one at build time; without it the Start action
+/// `TABULA_PLAY_BASE=/play` binds one at build time; without it the Start action
 /// stays unavailable with its reason, and never reports a started match.
 fn runtime_binding() -> RuntimeBinding {
-    match option_env!("TABULA_PLAY_BASE_URL") {
+    match option_env!("TABULA_PLAY_BASE") {
         Some(base) => RuntimeBinding::bound(base),
         None => RuntimeBinding::unbound(),
     }
@@ -42,6 +43,7 @@ pub fn NewMatch(id: String, preselected: Option<LaunchMode>) -> impl IntoView {
             .game(),
         preselected,
     ));
+    restore_after_document_navigation(state);
 
     view! {
         <div class="setup">
@@ -53,6 +55,32 @@ pub fn NewMatch(id: String, preselected: Option<LaunchMode>) -> impl IntoView {
                 body(&messages, entry.game(), state, &id)
             }}
         </div>
+    }
+}
+
+/// Own one listener for this setup's lifetime. Browser Back may restore the
+/// suspended shell rather than mount a new one; a completed handoff must not
+/// leave its controls locked or reactivate an old launch.
+fn restore_after_document_navigation(state: RwSignal<SetupState>) {
+    let browser = window();
+    let on_show = Closure::<dyn FnMut(web_sys::Event)>::new(move |_| {
+        state.try_update(SetupState::navigation_returned);
+    });
+    if browser
+        .add_event_listener_with_callback("pageshow", on_show.as_ref().unchecked_ref())
+        .is_ok()
+    {
+        let listener = StoredValue::new_local(Some((browser, on_show)));
+        on_cleanup(move || {
+            listener.try_update_value(|listener| {
+                if let Some((browser, on_show)) = listener.take() {
+                    let _ = browser.remove_event_listener_with_callback(
+                        "pageshow",
+                        on_show.as_ref().unchecked_ref(),
+                    );
+                }
+            });
+        });
     }
 }
 
@@ -425,9 +453,9 @@ fn summary(messages: &Messages, game: &dyn ErasedGame, state: RwSignal<SetupStat
     let not_validated_label = messages.text("setup.state.editing");
     let not_validated_value = messages.text("setup.notvalidated");
     let lines: Option<Vec<SummaryLine>> = match current.phase() {
-        Phase::Ready(config) | Phase::Pending(config) => Some(config.summary.clone()),
+        Phase::Ready(config) | Phase::Pending(config) => Some(config.summary().to_vec()),
         // A refused start keeps showing exactly what it refused.
-        Phase::Unavailable { config, .. } => config.as_ref().map(|c| c.summary.clone()),
+        Phase::Unavailable { config, .. } => config.as_ref().map(|c| c.summary().to_vec()),
         _ => None,
     };
 
@@ -509,14 +537,12 @@ fn duration_text(messages: &Messages, millis: u64) -> String {
     }
 }
 
-/// Validate and start. Start is enabled only for a Ready revision whose
-/// gameplay document this build can actually resolve.
+/// Validate and start. Start admits only a Ready revision; the resolver reports
+/// a missing or unsupported gameplay deployment as a recoverable reason.
 fn actions(messages: &Messages, game: &dyn ErasedGame, state: RwSignal<SetupState>) -> AnyView {
     let current = state.get();
     let ready = matches!(current.phase(), Phase::Ready(_));
     let busy = current.phase().locks_fields();
-    let form = game.form();
-    let _ = form;
 
     // The catalog is re-resolved inside the handler so the closure borrows
     // nothing from this render.
@@ -534,25 +560,42 @@ fn actions(messages: &Messages, game: &dyn ErasedGame, state: RwSignal<SetupStat
         let request = state.try_update(SetupState::begin_validation).flatten();
         if let Some((revision, request)) = request {
             let result = entry.game().normalize(&request);
-            state.update(|draft| {
+            state.try_update(|draft| {
                 draft.validated(revision, result);
             });
         }
     };
 
     let start = move |_| {
-        let Some(config) = state.try_update(SetupState::submit).flatten() else {
+        let Some((revision, config)) = state.try_update(SetupState::submit).flatten() else {
             return;
         };
-        match tabula_registry::resolve_launch(runtime_binding(), &config) {
+        match tabula_registry::resolve_launch_with_locale(
+            runtime_binding(),
+            &config,
+            locale.get_untracked(),
+        ) {
             Ok(handoff) => {
                 let url = handoff.url.clone();
-                state.update(|draft| draft.handed_off(handoff));
                 // ADR-011: a real document navigation, not a router transition
                 // into a canvas mounted in this document.
-                let _ = window().location().set_href(&url);
+                match window().location().set_href(&url) {
+                    Ok(()) => {
+                        state.try_update(|draft| draft.handed_off(revision, handoff));
+                    }
+                    Err(_) => {
+                        state.try_update(|draft| {
+                            draft.start_unavailable(
+                                revision,
+                                tabula_registry::UnavailableReason::NavigationFailed,
+                            );
+                        });
+                    }
+                }
             }
-            Err(reason) => state.update(|draft| draft.start_unavailable(reason)),
+            Err(reason) => {
+                state.try_update(|draft| draft.start_unavailable(revision, reason));
+            }
         }
     };
 

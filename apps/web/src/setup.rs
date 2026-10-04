@@ -46,7 +46,8 @@ impl Phase {
         match self {
             Self::Unavailable { .. } => "setup.state.unavailable",
             Self::Editing => "setup.state.editing",
-            Self::Validating | Self::Pending(_) | Self::Handoff(_) => "setup.state.validating",
+            Self::Validating => "setup.state.validating",
+            Self::Pending(_) | Self::Handoff(_) => "setup.state.opening",
             Self::Ready(_) => "setup.state.ready",
             Self::Rejected(_) => "setup.state.rejected",
         }
@@ -237,30 +238,45 @@ impl SetupState {
     }
 
     /// Submit the accepted configuration exactly once.
-    pub fn submit(&mut self) -> Option<NormalizedConfig> {
+    pub fn submit(&mut self) -> Option<(u64, NormalizedConfig)> {
         let Phase::Ready(config) = &self.phase else {
             return None;
         };
         let config = config.clone();
         self.phase = Phase::Pending(config.clone());
-        Some(config)
+        Some((self.revision, config))
     }
 
     /// A gameplay document was resolved for the pending configuration.
-    pub fn handed_off(&mut self, handoff: LaunchHandoff) {
-        if matches!(self.phase, Phase::Pending(_)) {
+    pub fn handed_off(&mut self, revision: u64, handoff: LaunchHandoff) {
+        if revision == self.revision && matches!(self.phase, Phase::Pending(_)) {
             self.phase = Phase::Handoff(handoff);
         }
     }
 
     /// The pending start could not be resolved. The accepted configuration is
     /// kept and the reason stays visible; nothing claims a started match.
-    pub fn start_unavailable(&mut self, reason: UnavailableReason) {
+    pub fn start_unavailable(&mut self, revision: u64, reason: UnavailableReason) {
+        if revision != self.revision {
+            return;
+        }
         if let Phase::Pending(config) = &self.phase {
             self.phase = Phase::Unavailable {
                 reason,
                 config: Some(config.clone()),
             };
+        }
+    }
+
+    /// Browser Back can restore this document from its back-forward cache,
+    /// including a completed handoff. Retire that readiness so restored input
+    /// never starts another game without a new validation and activation.
+    pub fn navigation_returned(&mut self) {
+        if matches!(
+            self.phase,
+            Phase::Validating | Phase::Pending(_) | Phase::Handoff(_)
+        ) {
+            self.invalidate();
         }
     }
 
@@ -320,7 +336,18 @@ mod tests {
     #[test]
     fn a_supported_preselection_is_kept() {
         let catalog = catalog();
-        let state = SetupState::new(first_game(&catalog), Some(LaunchMode::LocalBots));
+        let game =
+            catalog
+                .entries()
+                .iter()
+                .find(|entry| {
+                    entry.game().modes().iter().any(|support| {
+                        support.mode == LaunchMode::LocalBots && support.is_available()
+                    })
+                })
+                .expect("a linked bot mode")
+                .game();
+        let state = SetupState::new(game, Some(LaunchMode::LocalBots));
         assert_eq!(state.mode(), Some(LaunchMode::LocalBots));
     }
 
@@ -392,7 +419,7 @@ mod tests {
         let mut state = SetupState::new(game, None);
         let (revision, request) = state.begin_validation().expect("a mode is selected");
         state.validated(revision, game.normalize(&request));
-        let first = state.submit().expect("a ready draft submits once");
+        let (_, first) = state.submit().expect("a ready draft submits once");
         assert_eq!(state.submit(), None, "a second submission is refused");
 
         let seats_before = state.seats();
@@ -403,7 +430,7 @@ mod tests {
             "fields are locked while pending"
         );
         assert!(matches!(state.phase(), Phase::Pending(_)));
-        assert!(!first.launch_args.is_empty());
+        assert!(!first.launch_args().is_empty());
     }
 
     #[test]
@@ -413,11 +440,11 @@ mod tests {
         let mut state = SetupState::new(game, None);
         let (revision, request) = state.begin_validation().expect("a mode is selected");
         state.validated(revision, game.normalize(&request));
-        let config = state.submit().expect("ready");
+        let (revision, config) = state.submit().expect("ready");
 
         match tabula_registry::resolve_launch(RuntimeBinding::unbound(), &config) {
-            Ok(handoff) => state.handed_off(handoff),
-            Err(reason) => state.start_unavailable(reason),
+            Ok(handoff) => state.handed_off(revision, handoff),
+            Err(reason) => state.start_unavailable(revision, reason),
         }
         assert!(matches!(
             state.phase(),
@@ -439,7 +466,18 @@ mod tests {
         let (_, request) = state.begin_validation().expect("a mode is selected");
         assert_eq!(request.bot_level, None);
 
-        let mut state = SetupState::new(game, Some(LaunchMode::LocalBots));
+        let bot_game =
+            catalog
+                .entries()
+                .iter()
+                .find(|entry| {
+                    entry.game().modes().iter().any(|support| {
+                        support.mode == LaunchMode::LocalBots && support.is_available()
+                    })
+                })
+                .expect("a linked bot mode")
+                .game();
+        let mut state = SetupState::new(bot_game, Some(LaunchMode::LocalBots));
         state.set_bot_level(BotLevel::Easy);
         let (_, request) = state.begin_validation().expect("a mode is selected");
         assert_eq!(request.bot_level, Some(BotLevel::Easy));
@@ -450,5 +488,95 @@ mod tests {
         let catalog = catalog();
         let unknown = GameId::new("com.tabula.unlisted").expect("literal id");
         assert!(catalog.get(&unknown).is_none());
+    }
+
+    #[test]
+    fn restored_setup_retires_a_handoff_without_starting_another_game() {
+        let catalog = catalog();
+        let game = first_game(&catalog);
+        let mut state = SetupState::new(game, None);
+        let original = state.draft().clone();
+        for _ in 0..50 {
+            let (revision, request) = state.begin_validation().unwrap();
+            assert!(state.validated(revision, game.normalize(&request)));
+            let (revision, config) = state.submit().unwrap();
+            let handoff =
+                tabula_registry::resolve_launch(RuntimeBinding::bound("/play"), &config).unwrap();
+            state.handed_off(revision, handoff);
+            assert!(matches!(state.phase(), Phase::Handoff(_)));
+            assert_eq!(state.submit(), None);
+            state.navigation_returned();
+            assert_eq!(state.phase(), &Phase::Editing);
+            assert!(!state.phase().locks_fields());
+            assert_eq!(state.draft(), &original);
+            assert_eq!(state.submit(), None, "restoration requires validation");
+        }
+    }
+
+    #[test]
+    fn an_interrupted_validation_is_retired_before_its_result_returns() {
+        let catalog = catalog();
+        let game = first_game(&catalog);
+        let mut state = SetupState::new(game, None);
+        let (revision, request) = state.begin_validation().unwrap();
+        state.navigation_returned();
+        assert!(!state.validated(revision, game.normalize(&request)));
+        assert_eq!(state.phase(), &Phase::Editing);
+    }
+
+    #[test]
+    fn an_old_launch_result_cannot_finish_or_fail_a_new_pending_revision() {
+        let catalog = catalog();
+        let game = first_game(&catalog);
+        let mut state = SetupState::new(game, None);
+        let (revision, request) = state.begin_validation().unwrap();
+        state.validated(revision, game.normalize(&request));
+        let (old_revision, old_config) = state.submit().unwrap();
+        let old_handoff =
+            tabula_registry::resolve_launch(RuntimeBinding::bound("/play"), &old_config).unwrap();
+        state.navigation_returned();
+        let (revision, request) = state.begin_validation().unwrap();
+        state.validated(revision, game.normalize(&request));
+        let (new_revision, _) = state.submit().unwrap();
+        assert_ne!(new_revision, old_revision);
+        state.handed_off(old_revision, old_handoff);
+        state.start_unavailable(old_revision, UnavailableReason::NavigationFailed);
+        assert!(matches!(state.phase(), Phase::Pending(_)));
+        assert_eq!(state.submit(), None);
+    }
+
+    #[test]
+    fn a_refused_navigation_keeps_the_validated_config_for_recovery() {
+        let catalog = catalog();
+        let game = first_game(&catalog);
+        let mut state = SetupState::new(game, None);
+        let (revision, request) = state.begin_validation().unwrap();
+        state.validated(revision, game.normalize(&request));
+        let (revision, config) = state.submit().unwrap();
+        state.start_unavailable(revision, UnavailableReason::NavigationFailed);
+        assert_eq!(
+            state.phase(),
+            &Phase::Unavailable {
+                reason: UnavailableReason::NavigationFailed,
+                config: Some(config)
+            }
+        );
+        state.resume_editing();
+        assert_eq!(state.phase(), &Phase::Editing);
+        assert_eq!(state.submit(), None);
+    }
+
+    #[test]
+    fn restored_editing_and_ready_states_are_not_an_automatic_launch() {
+        let catalog = catalog();
+        let game = first_game(&catalog);
+        let mut state = SetupState::new(game, None);
+        state.navigation_returned();
+        assert_eq!(state.phase(), &Phase::Editing);
+        let (revision, request) = state.begin_validation().unwrap();
+        state.validated(revision, game.normalize(&request));
+        state.navigation_returned();
+        assert!(matches!(state.phase(), Phase::Ready(_)));
+        assert_eq!(state.revision(), revision);
     }
 }

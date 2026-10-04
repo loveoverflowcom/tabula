@@ -236,12 +236,39 @@ pub enum TimeControlKind {
 
 /// A draft that parsed, passed its game's validation for the resolved seat
 /// plan, and can be submitted exactly as summarized.
+///
+/// Shell consumers cannot replace validated launch facts independently of the
+/// summary or insert their own redirect target:
+///
+/// ```compile_fail
+/// fn replace_launch(mut config: tabula_registry::NormalizedConfig) {
+///     config.launch_args.clear();
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormalizedConfig {
-    pub summary: Vec<SummaryLine>,
+    pub(crate) summary: Vec<SummaryLine>,
     /// Canonical, adapter-produced launch arguments for the gameplay document.
     ///
     /// The shell forwards these verbatim; it does not read or rewrite them, so
     /// no game-specific key reaches shell code (I-9).
-    pub launch_args: Vec<(String, String)>,
+    pub(crate) launch_args: Vec<(String, String)>,
+    /// Registry-generated setup path, present only for a linked local runtime.
+    /// It cannot be supplied or changed by the shell's address bar (I-9).
+    pub(crate) local_return_to: Option<String>,
+}
+
+impl NormalizedConfig {
+    /// The exact validated summary. Consumers cannot change it independently
+    /// of the launch arguments it describes.
+    #[must_use]
+    pub fn summary(&self) -> &[SummaryLine] {
+        &self.summary
+    }
+
+    /// Canonical configuration arguments, immutable after validation.
+    #[must_use]
+    pub fn launch_args(&self) -> &[(String, String)] {
+        &self.launch_args
+    }
 }
