@@ -394,7 +394,7 @@ semi-transparent descendants can differ from a true group composite. A shipped n
 is the migration trigger for an explicitly different render-target capability; it must not silently
 change this command's semantics.
 
-`renderer-headless` has two roles. Its recorder preserves every valid list verbatim. Its CPU
+`tabula-headless` has two roles. Its recorder preserves every valid list verbatim. Its CPU
 rasterizer implements only solid, square rectangles (and their borders), scopes, camera, and the
 semantics above; it returns a structured unsupported-command diagnostic for sprites, text, paths,
 linear gradients, and rounded rectangles rather than producing an incomplete golden image.
@@ -497,7 +497,7 @@ flowchart TB
         MQ["renderer-macroquad<br/>NOW: web · desktop · Android · iOS"]
         MINI["renderer-miniquad<br/>IF Macroquad blocks us"]
         WGPU["renderer-wgpu<br/>DEFER: winit + wgpu"]
-        HEADLESS["renderer-headless<br/>golden-image + RenderList tests"]
+        HEADLESS["tabula-headless<br/>golden-image + RenderList tests"]
     end
     GAMES["game presenters"] --> RL
     UI["shell widgets (native)"] --> RL
@@ -507,7 +507,7 @@ flowchart TB
     RL --> HEADLESS
 ```
 
-### 6.1 `renderer-headless` exists from day one
+### 6.1 `tabula-headless` exists from day one
 
 A backend that records the `RenderList` (and optionally rasterizes it with `tiny-skia` for golden
 images) is how presentation gets tested in CI without a GPU. It is ~200 lines and it pays for the
@@ -538,7 +538,7 @@ MVP renderer boundary yet.
 |---|---|---|
 | Macroquad → Miniquad | Need custom render targets or shader pipelines Macroquad hides; text shaping requires direct control; input handling bugs we cannot patch around; Macroquad maintenance stalls | Rewrite one crate (`renderer-*`), ~2–4 weeks; games unaffected |
 | Miniquad → winit+wgpu | Need compute, modern pipeline features, better multi-window, or a 3D game | 6–10 weeks; games unaffected if the command set held |
-| Add `renderer-headless` | Immediately (Phase 2) | ~1 week |
+| Add `tabula-headless` | Immediately (Phase 2) | ~1 week |
 
 **Anti-trigger:** "wgpu is more modern" is not a trigger. The trigger must be a blocked feature or
 a shipped-quality problem.
@@ -1301,7 +1301,7 @@ Feedback: state layers · focus ring · shake(invalid) · confetti(win, reduced-
 
 | Phase | Frontend deliverable |
 |---|---|
-| 2 | `tabula-design` tokens + `xtask gen-tokens`; `tabula-presentation` with the §5.2 command set; `renderer-macroquad`; `renderer-headless`; chess board renders and is playable locally hot-seat |
+| 2 | `tabula-design` tokens + `xtask gen-tokens`; `tabula-presentation` with the §5.2 command set; `renderer-macroquad`; `tabula-headless`; chess board renders and is playable locally hot-seat |
 | 3 | Card fan, tile board with camera/zoom/rotation; animation engine + motion tokens; audio cues; asset packs |
 | 4 | `tabula-net-client`; networked play in the native client; reconnect UI; spectator view |
 | 5 | Leptos shell (all routes in §2.1); handoff; a11y `status`+`actions`; settings incl. motion/contrast; admin skeleton |

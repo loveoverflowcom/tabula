@@ -1770,16 +1770,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
-name = "renderer-headless"
-version = "0.0.0"
-dependencies = [
- "glam 0.29.3",
- "tabula-design",
- "tabula-presentation",
- "tiny-skia",
-]
-
-[[package]]
 name = "renderer-macroquad"
 version = "0.0.0"
 dependencies = [
@@ -2273,6 +2263,16 @@ dependencies = [
  "tabula-presentation",
  "tabula-testkit",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "tabula-headless"
+version = "0.0.0"
+dependencies = [
+ "glam 0.29.3",
+ "tabula-design",
+ "tabula-presentation",
+ "tiny-skia",
 ]
 
 [[package]]
