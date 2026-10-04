@@ -166,7 +166,7 @@ crates/tabula-presentation:  RenderList + the nine RenderCmd variants; Layer sch
                              (springs + tokens); AudioSink/AudioCue; GamePresentation trait;
                              the ~20 shared widgets (buttons, cards, lists, dialogs, sheets)
 crates/renderer-macroquad:   Renderer impl, atlas/font management, input normalization, audio
-crates/renderer-headless:    RenderList recorder + tiny-skia rasterizer for golden images
+crates/tabula-headless:    RenderList recorder + tiny-skia rasterizer for golden images
 apps/game-client:            native + wasm targets; scene stack; hot-seat local match driver
 games/chess/src/ui.rs:       board, pieces, drag+tap interaction, clocks, move list, motion tokens
 ```
@@ -538,7 +538,7 @@ Phase C — untrusted third-party modules
 |---|---|---|
 | 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `xtask` | — |
 | 1 | `games/chess` | `tabula-testkit`, `tabula-game-api` (last chance for churn) |
-| 2 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `renderer-headless`, `apps/game-client` | `games/chess` (+ui) |
+| 2 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `tabula-headless`, `apps/game-client` | `games/chess` (+ui) |
 | 3 | `tabula-assets`, `games/caro`, `games/tiles`, `games/werewolf` (rules) | `tabula-presentation` |
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server`, `tests/integration`, `tests/load` | `apps/game-client` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin`, (`apps/desktop` spike) | `services/tabula-server` |
