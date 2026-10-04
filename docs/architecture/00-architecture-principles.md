@@ -432,7 +432,7 @@ Rows are consumers, columns are what they are permitted to depend on.
 | `tabula-design` | Y | — | — | — | – | — | — | — | — | — | — | — | — | f |
 | `tabula-presentation` | Y | Y | — | — | Y | – | Y | — | — | — | — | — | — | — |
 | `tabula-assets` | Y | — | Y | — | — | — | – | — | — | f | — | — | — | — |
-| `renderer-macroquad` | Y | — | — | — | Y | Y | Y | — | — | — | — | — | Y | — |
+| `tabula-render-macroquad` | Y | — | — | — | Y | Y | Y | — | — | — | — | — | Y | — |
 | `tabula-net-client` | Y | — | Y | Y | — | — | — | — | — | Y | — | — | — | — |
 | `tabula-match` | Y | Y | Y | Y | — | — | — | – | — | Y | — | — | — | — |
 | `tabula-lobby` | Y | — | Y | Y | — | — | — | Y | — | Y | — | — | — | — |

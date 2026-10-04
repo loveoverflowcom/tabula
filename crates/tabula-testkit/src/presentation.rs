@@ -19,7 +19,7 @@
 //!
 //! - **RenderList Oracle (this module)**: Verifies the exact semantic trace that a game
 //!   presenter submitted to the renderer. Covers 100% of draw commands and themes.
-//! - **Raster Oracle ([`tabula_headless`])**: Verifies that the CPU rasterizer executes
+//! - **Raster Oracle ([`tabula_render_headless`])**: Verifies that the CPU rasterizer executes
 //!   its documented subset (solid rects, borders, scissors, transforms, opacity) faithfully.
 
 #![forbid(unsafe_code)]

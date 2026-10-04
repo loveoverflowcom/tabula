@@ -349,7 +349,7 @@ mod tests {
             unconstrained = ["test", "tooling"]
 
             [categories.by_name]
-            rendering = ["macroquad", "renderer-macroquad"]
+            rendering = ["macroquad", "tabula-render-macroquad"]
 
             [categories.by_path_prefix]
             application = ["apps", "services"]
@@ -368,7 +368,7 @@ mod tests {
             tier = "client"
             allow = ["tabula-core"]
 
-            [crate."renderer-macroquad"]
+            [crate."tabula-render-macroquad"]
             tier = "client"
             allow = ["macroquad", "tabula-presentation"]
 
@@ -418,12 +418,12 @@ mod tests {
                 node(
                     "tabula-core",
                     Some("crates/tabula-core"),
-                    &["serde", "renderer-macroquad"],
+                    &["serde", "tabula-render-macroquad"],
                 ),
                 node("serde", None, &[]),
                 node(
-                    "renderer-macroquad",
-                    Some("crates/renderer-macroquad"),
+                    "tabula-render-macroquad",
+                    Some("crates/tabula-render-macroquad"),
                     &["macroquad", "tabula-presentation"],
                 ),
                 node("macroquad", None, &[]),
@@ -443,7 +443,7 @@ mod tests {
         assert!(
             violations
                 .iter()
-                .any(|v| v.subject == "tabula-core" && v.offender == "renderer-macroquad"),
+                .any(|v| v.subject == "tabula-core" && v.offender == "tabula-render-macroquad"),
             "expected a rendering violation, got {violations:?}"
         );
     }

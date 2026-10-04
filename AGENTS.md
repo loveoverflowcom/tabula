@@ -84,7 +84,7 @@ crates/           platform libraries — the real product
   tabula-net-client    client session: connect, resume, sequence, idempotency
   tabula-voice         VoiceService trait + provider adapters
   tabula-testkit       the conformance suite every game must pass
-  renderer-macroquad   the first Renderer backend — deliberately replaceable
+  tabula-render-macroquad   the first Renderer backend — deliberately replaceable
 
 games/            one crate per game; feature-split into rules / bots / presentation
 apps/             game-client (Macroquad), web (Leptos), admin, desktop (optional Tauri)
@@ -112,7 +112,7 @@ permission to implement them early.
 |---|---|
 | 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `xtask` |
 | 1 | `games/chess` |
-| 2 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `tabula-headless`, `apps/game-client` |
+| 2 | `tabula-design`, `tabula-presentation`, `tabula-render-macroquad`, `tabula-render-headless`, `apps/game-client` |
 | 3 | `tabula-assets`, `games/caro`, `games/tiles` (Carcassonne-like), `games/werewolf` (rules only) |
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin` |

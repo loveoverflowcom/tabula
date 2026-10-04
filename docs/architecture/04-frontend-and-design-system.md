@@ -20,7 +20,7 @@ flowchart TB
         PRES["Presenter (per game): View → RenderList"]
         ANIM["animation engine · motion tokens"]
         DS2["design tokens → Theme struct"]
-        REND["renderer-macroquad"]
+        REND["tabula-render-macroquad"]
     end
     subgraph SHARED["Shared Rust crates (both runtimes)"]
         NET["tabula-net-client"]
@@ -394,7 +394,7 @@ semi-transparent descendants can differ from a true group composite. A shipped n
 is the migration trigger for an explicitly different render-target capability; it must not silently
 change this command's semantics.
 
-`tabula-headless` has two roles. Its recorder preserves every valid list verbatim. Its CPU
+`tabula-render-headless` has two roles. Its recorder preserves every valid list verbatim. Its CPU
 rasterizer implements only solid, square rectangles (and their borders), scopes, camera, and the
 semantics above; it returns a structured unsupported-command diagnostic for sprites, text, paths,
 linear gradients, and rounded rectangles rather than producing an incomplete golden image.
@@ -443,8 +443,8 @@ Keeping these *outside* the abstraction is what prevents building a UI framework
 
 | Concern | Where it lives | Why not abstracted yet |
 |---|---|---|
-| Window/canvas creation, resize, DPI | `renderer-macroquad` | Every backend does this differently; the presenter only needs a logical size |
-| Font loading, atlas packing, glyph caching | `renderer-macroquad` | Text is the most backend-specific area; we expose `TextStyleToken` + measured extents only |
+| Window/canvas creation, resize, DPI | `tabula-render-macroquad` | Every backend does this differently; the presenter only needs a logical size |
+| Font loading, atlas packing, glyph caching | `tabula-render-macroquad` | Text is the most backend-specific area; we expose `TextStyleToken` + measured extents only |
 | Text *shaping* (bidi, ligatures, complex scripts) | Macroquad's capability today | If we need it, `cosmic-text` lands in the backend, not in the contract |
 | Particle systems, shaders, post-processing | Not supported | No game needs it yet. When one does, it arrives as `RenderCmd::Effect { id, params }` with a backend-provided registry (§5.4) |
 | Render targets / offscreen passes | Not supported | Needed for real group opacity and blur; deferred until a design requires it |
@@ -494,10 +494,10 @@ flowchart TB
         RL["RenderList + InputEvent + AudioCue + Theme"]
     end
     subgraph BACKENDS["Backends (replaceable)"]
-        MQ["renderer-macroquad<br/>NOW: web · desktop · Android · iOS"]
+        MQ["tabula-render-macroquad<br/>NOW: web · desktop · Android · iOS"]
         MINI["renderer-miniquad<br/>IF Macroquad blocks us"]
         WGPU["renderer-wgpu<br/>DEFER: winit + wgpu"]
-        HEADLESS["tabula-headless<br/>golden-image + RenderList tests"]
+        HEADLESS["tabula-render-headless<br/>golden-image + RenderList tests"]
     end
     GAMES["game presenters"] --> RL
     UI["shell widgets (native)"] --> RL
@@ -507,7 +507,7 @@ flowchart TB
     RL --> HEADLESS
 ```
 
-### 6.1 `tabula-headless` exists from day one
+### 6.1 `tabula-render-headless` exists from day one
 
 A backend that records the `RenderList` (and optionally rasterizes it with `tiny-skia` for golden
 images) is how presentation gets tested in CI without a GPU. It is ~200 lines and it pays for the
@@ -538,7 +538,7 @@ MVP renderer boundary yet.
 |---|---|---|
 | Macroquad → Miniquad | Need custom render targets or shader pipelines Macroquad hides; text shaping requires direct control; input handling bugs we cannot patch around; Macroquad maintenance stalls | Rewrite one crate (`renderer-*`), ~2–4 weeks; games unaffected |
 | Miniquad → winit+wgpu | Need compute, modern pipeline features, better multi-window, or a 3D game | 6–10 weeks; games unaffected if the command set held |
-| Add `tabula-headless` | Immediately (Phase 2) | ~1 week |
+| Add `tabula-render-headless` | Immediately (Phase 2) | ~1 week |
 
 **Anti-trigger:** "wgpu is more modern" is not a trigger. The trigger must be a blocked feature or
 a shipped-quality problem.
@@ -1042,7 +1042,7 @@ flowchart TB
     CACHE --> LOAD["tabula-assets loader → OwnedVerifiedAssetBytes"]
     LOAD --> DECODE["future decoder / backend boundary"]
     DECODE --> HANDLE["future AssetHandle"]
-    HANDLE --> REND["renderer-macroquad: upload textures"]
+    HANDLE --> REND["tabula-render-macroquad: upload textures"]
 ```
 
 ### 12.2 Target delivery rules
@@ -1126,7 +1126,7 @@ Implemented now:
 - platform-neutral `AssetSource` port with explicit `UnverifiedAssetBytes` output;
 - deterministic `MemoryAssetSource` reference adapter and source-to-integrity composition;
 - owned verified payload construction and the `load_verified` source-to-integrity boundary;
-- `renderer-macroquad::assets`: PNG-only bounded decode of owned verified bytes,
+- `tabula-render-macroquad::assets`: PNG-only bounded decode of owned verified bytes,
   decoded atlas bounds, pack/version/hash/density texture identity, bounded
   residency including live leases, explicit missing/ready/failed states, and
   safe release/reuse through managed backend texture ownership;
@@ -1257,7 +1257,7 @@ region = { x = 0, y = 0, width = 128, height = 128 }
 ### 13.1 Stable Phase-2 contract
 
 - `tabula-presentation` owns the synchronous, renderer-neutral `AudioCue` / `AudioSink` contract;
-  `renderer-macroquad` supplies the MVP sink.
+  `tabula-render-macroquad` supplies the MVP sink.
 - A presenter derives ordered, pack-local one-shot cue IDs from authoritative projected
   `ViewEvent`s, never canonical `State` or speculative `Intent`. The active
   `GamePresentation::asset_pack()` scopes IDs, so platform code never branches on `game_id`.
@@ -1301,7 +1301,7 @@ Feedback: state layers · focus ring · shake(invalid) · confetti(win, reduced-
 
 | Phase | Frontend deliverable |
 |---|---|
-| 2 | `tabula-design` tokens + `xtask gen-tokens`; `tabula-presentation` with the §5.2 command set; `renderer-macroquad`; `tabula-headless`; chess board renders and is playable locally hot-seat |
+| 2 | `tabula-design` tokens + `xtask gen-tokens`; `tabula-presentation` with the §5.2 command set; `tabula-render-macroquad`; `tabula-render-headless`; chess board renders and is playable locally hot-seat |
 | 3 | Card fan, tile board with camera/zoom/rotation; animation engine + motion tokens; audio cues; asset packs |
 | 4 | `tabula-net-client`; networked play in the native client; reconnect UI; spectator view |
 | 5 | Leptos shell (all routes in §2.1); handoff; a11y `status`+`actions`; settings incl. motion/contrast; admin skeleton |

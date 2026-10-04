@@ -63,8 +63,8 @@ tabula-assets       = { path = "crates/tabula-assets" }
 tabula-net-client   = { path = "crates/tabula-net-client" }
 tabula-voice        = { path = "crates/tabula-voice" }
 tabula-testkit      = { path = "crates/tabula-testkit" }
-renderer-macroquad  = { path = "crates/renderer-macroquad" }
-tabula-headless     = { path = "crates/tabula-headless" }
+tabula-render-macroquad    = { path = "crates/tabula-render-macroquad" }
+tabula-render-headless     = { path = "crates/tabula-render-headless" }
 # Tooling-only reuse of the local authority/presentation owner in issue 60.
 tabula-game-client  = { path = "apps/game-client" }
 

@@ -18,7 +18,6 @@ mod standalone_setup;
 
 use clock_options::{LocalClockControl, LocalClockOptions};
 use macroquad::prelude as mq;
-use renderer_macroquad::{MacroquadAudioSink, MacroquadRenderer};
 #[cfg(feature = "tiles")] // xtask-allow-game-id: optional Phase 3 local vertical slice wiring.
 use tabula_core::BotLevel;
 use tabula_core::{
@@ -43,6 +42,7 @@ use tabula_game_tiles::{ // xtask-allow-game-id: direct Phase 3 local vertical s
     Config as TilesConfig, TilesModule, TilesRules,
 };
 use tabula_presentation::{AudioSink, GamePresentation, Renderer};
+use tabula_render_macroquad::{MacroquadAudioSink, MacroquadRenderer};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum SelectedGame {
@@ -251,7 +251,7 @@ async fn run_setup(
             mq::next_frame().await;
             continue;
         };
-        let density = renderer_macroquad::density_for_dpi(dpi);
+        let density = tabula_render_macroquad::density_for_dpi(dpi);
         if prepared_density != Some(density) {
             resources
                 .prepare(renderer, LocalAssetScene::Setup, dpi)
@@ -476,7 +476,7 @@ async fn run_local<R, P>(
         // The prior next_frame has flushed submitted texture leases. A changed
         // DPI may now fetch/decode its selected variant before begin_frame,
         // never during synchronous rendering or after claiming readiness.
-        let density = renderer_macroquad::density_for_dpi(dpi);
+        let density = tabula_render_macroquad::density_for_dpi(dpi);
         if let Some(resources) = resources.filter(|_| prepared_density != Some(density)) {
             if let Err(error) = resources
                 .prepare(renderer, LocalAssetScene::Gameplay, dpi)

@@ -87,7 +87,7 @@ pub(crate) fn execute(
         } => {
             let sprite = sprite.ok_or_else(|| {
                 RenderError::Execution(String::from(
-                    "renderer-macroquad sprite was not prepared before execution",
+                    "tabula-render-macroquad sprite was not prepared before execution",
                 ))
             })?;
             draw_sprite(
@@ -107,7 +107,7 @@ pub(crate) fn execute(
         | RenderCmd::PushOpacity { .. }
         | RenderCmd::PopOpacity { .. } => {
             return Err(RenderError::Execution(String::from(
-                "renderer-macroquad received a scope command as a primitive",
+                "tabula-render-macroquad received a scope command as a primitive",
             )));
         }
     }
@@ -128,7 +128,7 @@ pub(crate) fn validate(
         || !transform.translation.is_finite()
     {
         return Err(RenderError::Execution(String::from(
-            "renderer-macroquad effective transform is not finite",
+            "tabula-render-macroquad effective transform is not finite",
         )));
     }
 
@@ -153,7 +153,7 @@ pub(crate) fn validate(
         RenderCmd::Path { points, fill, .. } => {
             if fill.is_some() && points.len() > usize::from(u16::MAX) {
                 return Err(RenderError::Execution(String::from(
-                    "renderer-macroquad polygon exceeds mesh index capacity",
+                    "tabula-render-macroquad polygon exceeds mesh index capacity",
                 )));
             }
             validate_transformed_points(points, transform)
@@ -169,7 +169,7 @@ pub(crate) fn validate(
         | RenderCmd::PopTransform { .. }
         | RenderCmd::PushOpacity { .. }
         | RenderCmd::PopOpacity { .. } => Err(RenderError::Execution(String::from(
-            "renderer-macroquad received a scope command as a primitive",
+            "tabula-render-macroquad received a scope command as a primitive",
         ))),
     }
 }
@@ -180,7 +180,7 @@ fn validate_transformed_points(points: &[Vec2], transform: Affine2) -> Result<()
         .any(|point| !transform.transform_point2(*point).is_finite())
     {
         return Err(RenderError::Execution(String::from(
-            "renderer-macroquad transformed geometry is not finite",
+            "tabula-render-macroquad transformed geometry is not finite",
         )));
     }
     Ok(())
@@ -245,7 +245,7 @@ fn device_coordinate(value: f32) -> Result<i32, RenderError> {
         || f64::from(rounded) > f64::from(i32::MAX)
     {
         return Err(RenderError::Execution(String::from(
-            "renderer-macroquad scissor exceeds supported device coordinates",
+            "tabula-render-macroquad scissor exceeds supported device coordinates",
         )));
     }
     Ok(rounded as i32)
@@ -269,7 +269,7 @@ fn sprite_quad(
     .map(|point| transform.transform_point2(rotation.transform_vector2(point - pivot) + pivot));
     if points.iter().any(|point| !point.is_finite()) {
         return Err(RenderError::Execution(String::from(
-            "renderer-macroquad transformed sprite geometry is not finite",
+            "tabula-render-macroquad transformed sprite geometry is not finite",
         )));
     }
     Ok(points)
@@ -288,7 +288,7 @@ fn sprite_uvs(
         || source.y() + source.height() > u32::from(height)
     {
         return Err(RenderError::Execution(String::from(
-            "renderer-macroquad sprite source region exceeds its ready texture",
+            "tabula-render-macroquad sprite source region exceeds its ready texture",
         )));
     }
     let start = Vec2::new(
@@ -396,7 +396,7 @@ fn draw_path(
 fn fill_convex(points: &[Vec2], colors: &[Color], transform: Affine2) -> Result<(), RenderError> {
     if points.len() != colors.len() || points.len() < 3 {
         return Err(RenderError::Execution(String::from(
-            "renderer-macroquad received invalid convex fill geometry",
+            "tabula-render-macroquad received invalid convex fill geometry",
         )));
     }
     let mut vertices = Vec::with_capacity(points.len());
@@ -408,12 +408,12 @@ fn fill_convex(points: &[Vec2], colors: &[Color], transform: Affine2) -> Result<
         let first = 0_u16;
         let second = u16::try_from(index).map_err(|_| {
             RenderError::Execution(String::from(
-                "renderer-macroquad polygon exceeds mesh index capacity",
+                "tabula-render-macroquad polygon exceeds mesh index capacity",
             ))
         })?;
         let third = u16::try_from(index + 1).map_err(|_| {
             RenderError::Execution(String::from(
-                "renderer-macroquad polygon exceeds mesh index capacity",
+                "tabula-render-macroquad polygon exceeds mesh index capacity",
             ))
         })?;
         indices.extend([first, second, third]);
@@ -727,7 +727,7 @@ mod tests {
         assert_eq!(
             sprite_quad(rect, 0.0, Vec2::ZERO, Affine2::from_scale(Vec2::splat(8.0))),
             Err(RenderError::Execution(String::from(
-                "renderer-macroquad transformed sprite geometry is not finite"
+                "tabula-render-macroquad transformed sprite geometry is not finite"
             )))
         );
         let rect = Rect::new(Vec2::splat(f32::MAX / 4.0), Vec2::ONE).unwrap();

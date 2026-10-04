@@ -48,8 +48,8 @@ impl Graph {
     /// reason `classify` gave for it.
     ///
     /// Stopping at the first forbidden node on a branch keeps the report
-    /// focused: once `tabula-core -> renderer-macroquad` is reported, we do
-    /// not also walk into `renderer-macroquad`'s own dependencies. Stopping
+    /// focused: once `tabula-core -> tabula-render-macroquad` is reported, we do
+    /// not also walk into `tabula-render-macroquad`'s own dependencies. Stopping
     /// at a boundary keeps a deliberately unconstrained crate's own
     /// dependency choices (e.g. a test harness pulling `tempfile`) from
     /// being blamed on whatever depends on it.

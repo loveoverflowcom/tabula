@@ -49,7 +49,7 @@ pub fn density_for_dpi(dpi: Dpi) -> AssetDensity {
 pub(crate) fn preflight(list: &RenderList, frame: &FrameCtx) -> Result<(), RenderError> {
     preflight_with_resolver(list, frame, |asset| {
         Err(RenderError::Execution(format!(
-            "renderer-macroquad sprite resource '{}' is not ready: no asset cache supplied",
+            "tabula-render-macroquad sprite resource '{}' is not ready: no asset cache supplied",
             asset.as_str(),
         )))
     })
@@ -239,7 +239,7 @@ mod tests {
         assert_eq!(
             preflight(&list, &frame()),
             Err(RenderError::Execution(String::from(
-                "renderer-macroquad sprite resource 'deferred/asset' is not ready: no asset cache supplied",
+                "tabula-render-macroquad sprite resource 'deferred/asset' is not ready: no asset cache supplied",
             )))
         );
     }

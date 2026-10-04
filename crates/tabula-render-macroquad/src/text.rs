@@ -118,7 +118,7 @@ pub(crate) fn measure(
         .fold(0.0, f32::max);
     let line_count = u16::try_from(lines.len()).map_err(|_| {
         RenderError::Execution(String::from(
-            "renderer-macroquad text has more than u16::MAX lines",
+            "tabula-render-macroquad text has more than u16::MAX lines",
         ))
     })?;
     TextMetrics::new(
@@ -193,7 +193,7 @@ pub(crate) fn draw(
         let baseline = style.line_height().get()
             * f32::from(u16::try_from(index + 1).map_err(|_| {
                 RenderError::Execution(String::from(
-                    "renderer-macroquad text has more than u16::MAX lines",
+                    "tabula-render-macroquad text has more than u16::MAX lines",
                 ))
             })?);
         layout_line(

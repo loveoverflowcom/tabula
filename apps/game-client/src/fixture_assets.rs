@@ -5,16 +5,16 @@
 //! pack paths through Macroquad's safe file port; the checked-in bootstrap owns
 //! their bounded, same-origin content-hashed delivery (ADR-0030), not a CDN service.
 
-use renderer_macroquad::{
-    assets::{AssetLoadState, SpriteAssetCache, TextureUploader},
-    density_for_dpi, MacroquadRenderer,
-};
 use tabula_assets::{
     load_verified, AssetDensity, AssetFile, AssetPackManifest, AssetPackRef, AssetPath,
     AssetSource, MemoryAssetSource, UnverifiedAssetBytes,
 };
 use tabula_core::GameId;
 use tabula_presentation::{AssetRef, Dpi};
+use tabula_render_macroquad::{
+    assets::{AssetLoadState, SpriteAssetCache, TextureUploader},
+    density_for_dpi, MacroquadRenderer,
+};
 
 /// The independently declared local scene that needs resources. (ADR-0030)
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -299,7 +299,6 @@ pub async fn preload_named_sprite_fixture(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use renderer_macroquad::assets::{AssetCacheLimits, DecodedRaster};
     use std::{
         cell::RefCell,
         future::Future,
@@ -307,6 +306,7 @@ mod tests {
     };
     #[rustfmt::skip]
     use tabula_game_chess::presentation::assets; // xtask-allow-game-id: local Phase 2 fixture boundary regression only.
+    use tabula_render_macroquad::assets::{AssetCacheLimits, DecodedRaster};
 
     fn ready<F: Future>(future: F) -> F::Output {
         let mut future = std::pin::pin!(future);

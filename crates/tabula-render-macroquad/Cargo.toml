@@ -1,5 +1,5 @@
 [package]
-name        = "renderer-macroquad"
+name        = "tabula-render-macroquad"
 version     = "0.0.0"
 description = "Macroquad backend: executes a RenderList, maps input to InputEvent, implements AudioSink."
 edition.workspace      = true

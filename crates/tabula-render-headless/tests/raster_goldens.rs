@@ -9,11 +9,11 @@
 use glam::{Affine2, Vec2};
 use std::path::Path;
 use tabula_design::{Color, Theme, ThemeKind};
-use tabula_headless::{compare_raster, HeadlessRenderer, RasterImage, RasterTolerance};
 use tabula_presentation::{
     Border, Camera2D, Corners, Dpi, FrameCtx, Layer, Opacity, Paint, Rect, RenderCmd,
     RenderListBuilder, Viewport,
 };
+use tabula_render_headless::{compare_raster, HeadlessRenderer, RasterImage, RasterTolerance};
 
 const GOLDENS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/goldens");
 
@@ -245,7 +245,7 @@ fn deliberate_pixel_corruption_fails_golden_comparison() {
 
 /// Explicit opt-in regeneration helper for golden image fixtures.
 ///
-/// Run with: `cargo test -p tabula-headless --test raster_goldens -- --ignored regenerate_goldens`
+/// Run with: `cargo test -p tabula-render-headless --test raster_goldens -- --ignored regenerate_goldens`
 #[test]
 #[ignore = "only run explicitly to regenerate committed golden image fixtures"]
 fn regenerate_goldens() {
