@@ -1,0 +1,5 @@
+{
+ "comment": "Fractions of the canvas (412x800 CSS px, board measured from the 2x screenshot): e2 and e4 centres.",
+ "e2": [0.5546, 0.5344],
+ "e4": [0.5546, 0.4219]
+}

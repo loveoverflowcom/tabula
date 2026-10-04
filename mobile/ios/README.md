@@ -1,8 +1,10 @@
 # iOS
 
-> **Foundation slice** of [ADR-0032](../../docs/adr/0032-compose-multiplatform-mobile-host.md).
-> Phase 6's gate (the Phase 5 exit) is not met. **This Xcode project has not been built or run**:
-> it was authored on Linux, where neither the iOS framework link nor Xcode exists.
+> **Foundation slice** of [ADR-0032](../../docs/adr/0032-compose-multiplatform-mobile-host.md) with the
+> first-party WKWebView host of [ADR-0033](../../docs/adr/0033-webview-gamehost-first-party-embedding.md).
+> Phase 6's gate (the Phase 5 exit) is not met. **This Xcode project has not been built or run, and the
+> WKWebView host has never executed**: it was authored on Linux, where the iOS framework link and Xcode do
+> not exist. Kotlin/Native compiles the host to a klib; that is all that has been shown.
 
 A thin SwiftUI container over the `TabulaShared` static framework from `:shared`. `TabulaApp.swift`
 presents `TabulaViewController()` (Compose Multiplatform) and nothing else. It supersedes the earlier
@@ -17,6 +19,16 @@ mobile/shared  --(Kotlin/Native iosArm64 | iosSimulatorArm64)-->  TabulaShared.f
 
 On a Mac: open `TabulaApp.xcodeproj`, choose the `Tabula` scheme and an iOS simulator. Signing is
 automatic and needs your team. Deployment target is iOS 15.
+
+## The WKWebView host and its first macOS check
+
+`WKWebViewGameHost` / `IosGameRuntime` (Kotlin, in `:shared/iosMain`) serve the bundle through a
+`WKURLSchemeHandler` on `tabula-game://app/`, inject the bridge port with a main-frame document-start
+script, accept messages only from the main frame of that origin and cancel every other navigation. The
+Xcode "Package game bundle" phase copies `target/tabula-mobile-game` into the app (and fails if it was not
+staged). **First thing to verify on a Mac:** that the game's loader finds `crypto.subtle` and streamed
+response bodies in a custom-scheme document. It fails closed with a visible error if not; the recorded
+fallback is a loopback `http://127.0.0.1` document (ADR-0033), never a weaker loader.
 
 ## What the Swift side owns
 
