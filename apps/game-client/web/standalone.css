@@ -169,3 +169,14 @@ dialog p{line-height:1.7}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+.simulator-entry{max-width:760px;padding:48px 24px 72px;margin:auto;color:var(--sys-color-on-surface)}
+.simulator-entry h1{font:700 clamp(36px,6vw,60px)/1.1 Noto Serif,var(--sys-type-family-display)}
+.simulator-entry p{line-height:1.7}
+.simulator-entry form{display:grid;gap:14px;padding:24px;border-radius:var(--sys-shape-xl);background:var(--sys-color-container)}
+.simulator-entry select{min-height:48px;border:1px solid var(--sys-color-outline);border-radius:var(--sys-shape-md);padding:12px;background:var(--sys-color-surface);color:var(--sys-color-on-surface)}
+.simulator-entry .button{background:var(--sys-color-primary);color:var(--sys-color-on-primary)}
+.sim-eyebrow{font-size:12px;font-weight:600;letter-spacing:2px;color:var(--sys-color-primary)}
+
+.privacy-shield{position:absolute;inset:0;z-index:2;background:var(--game-art-werewolf-page,var(--sys-color-surface));color:var(--game-art-werewolf-ink,var(--sys-color-on-surface));display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px} /* xtask-allow-game-id: ADR-0035 opaque local privacy surface. */
+.privacy-shield .button{background:var(--sys-color-primary);color:var(--sys-color-on-primary)}

@@ -2216,6 +2216,7 @@ dependencies = [
  "tabula-game-api",
  "tabula-game-chess",
  "tabula-game-tiles",
+ "tabula-game-werewolf",
  "tabula-presentation",
  "tabula-render-macroquad",
 ]
@@ -2924,6 +2925,7 @@ dependencies = [
  "tabula-game-chess",
  "tabula-game-client",
  "tabula-game-tiles",
+ "tabula-game-werewolf",
  "tabula-presentation",
  "tabula-registry",
  "tabula-testkit",

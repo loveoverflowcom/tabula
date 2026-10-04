@@ -121,7 +121,7 @@ fn role_assignment_exhaustive_across_all_supported_seat_counts() {
                 assert_eq!(timer_id.0, 1);
                 assert_eq!(ends_at, state.phase_ends_at());
             }
-            Event::RolesAssigned { .. } => panic!("expected PhaseChanged event as second event"),
+            _ => panic!("expected PhaseChanged event as second event"),
         }
     }
 }

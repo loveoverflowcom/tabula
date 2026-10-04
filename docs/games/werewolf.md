@@ -4,6 +4,12 @@
 > Architectural role: [doc 08 §5](../architecture/08-first-games-validation-plan.md).
 > Implementation sequence: [`todos/werewolf/`](../../todos/werewolf/).
 
+The owner-requested local standalone extension is bounded by
+[ADR-0035](../adr/0035-werewolf-local-simulator.md): a deterministic ClassicV1
+referee and explicit isolated-seat simulator using authorized projections. It is
+an opt-in presentation exception, not a Phase-7 online/social or voice release.
+Rollout remains disabled. See [verification](../verification/werewolf-standalone/README.md).
+
 ---
 
 ## 1. Architectural role
@@ -46,7 +52,7 @@ Night  →  Dawn  →  Day discussion  →  Vote  →  Dusk
   └──────────────── Next round ──────────────────┘
 ```
 
-- **Night:** living players with active roles submit private actions or pass.
+- **Night:** living players with active roles submit one immutable private action or pass per window. A submitted choice is committed until resolution; only day ballots are replaceable.
 - **Dawn:** simultaneous night resolution; Seer receives alignment report; public deaths are announced (seat and role revealed, cause hidden).
 - **Day discussion:** living players discuss publicly.
 - **Vote:** living players cast public, replaceable ballots or abstain.
@@ -125,7 +131,7 @@ Villager   Werewolf   Seer   Doctor   Hunter   Witch
 ### Hunter (`Alignment::Village`, W-D5)
 - **Precommitted retaliation:** the Hunter selects an optional precommitted target during Night, which remains active through that round's Vote.
 - If the Hunter dies (by wolves, poison, or elimination vote), the Hunter's precommitted target is killed if still living.
-- Triggers once per match before the final victory check.
+- Triggers once per match before the final victory check. Its own retained mark remains available through Day/Vote, then resets before the next Night.
 - **Why precommit instead of reactive shot:** dead players in Tabula immediately acquire full vision (`Viewer::Seat` sees all roles). A reactive shot after death would allow dead players to act with omniscient knowledge, functioning as a cheating oracle. Precommitting before death completely eliminates this vector.
 
 ### Villager (`Alignment::Village`)
@@ -293,3 +299,20 @@ These findings are architectural issues for platform crates or ADRs, not Werewol
 | Deserialization barrier | `validated-deserialization-barrier` | example-tested | `games/werewolf/tests/config.rs::deserialization_rejects_*` |
 | Canonical round trip | `canonical-round-trip` | example-tested | `games/werewolf/tests/config.rs::config_canonical_round_trip` |
 | Roster validation | `roster-validation-rules` | example-tested | `games/werewolf/tests/config.rs::roster_validation_enforces_boundaries_and_rules` |
+
+
+## 15. Rules2 implementation and retained history
+
+The implemented pure referee uses rules identity2. Its complete canonical input stream
+supports fixed timers, transactional rejection, one committed private Night choice,
+replaceable day ballots, seat lifecycle and authorized operator termination. State
+reconstruction additionally rejects pending potion choices without consumed inventory,
+consecutive Doctor protection, inconsistent Hunter marks and malformed retained history.
+Canonical retained history excludes replaceable ballot and lifecycle spam, is bounded by
+3000events, and remains private behind per-viewer projection. Outsiders never receive
+private logs, hidden event frames, seeds or canonical counters. Dead seats acquire full
+vision after their completed death transition; they cannot issue gameplay commands.
+
+The legacy `todos/werewolf` plans contain historical sketches, not current acceptance.
+The current [rules / privacy / replay / simulator evidence](../verification/werewolf-standalone/README.md)
+records executed checks separately from remaining target/online/social/voice gates.

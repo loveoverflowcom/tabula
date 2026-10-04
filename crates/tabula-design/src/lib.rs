@@ -176,13 +176,17 @@ pub struct Theme {
 /// Functional focus, selection, legal targets and threats retain `ColorTokens`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GameArtTokens {
+    pub werewolf: WerewolfArtTokens, // xtask-allow-game-id: declarative approved artwork namespace, never runtime dispatch.
     pub chess: ChessArtTokens, // xtask-allow-game-id: declarative approved artwork namespace, never runtime dispatch.
 }
 
 impl GameArtTokens {
     /// Used by generated themes after authored art values are validated.
-    pub(crate) const fn generated(value: ChessArtTokens) -> Self {
-        Self { chess: value } // xtask-allow-game-id: decorative data construction, not dispatch.
+    pub(crate) const fn generated(value: ChessArtTokens, private_cards: WerewolfArtTokens) -> Self {
+        Self {
+            werewolf: private_cards, // xtask-allow-game-id: decorative data construction, not dispatch.
+            chess: value, // xtask-allow-game-id: decorative data construction, not dispatch.
+        } // xtask-allow-game-id: decorative data construction, not dispatch.
     }
 }
 
@@ -202,6 +206,21 @@ pub struct ChessArtTokens {
     pub board_dark: Color,
     pub brass: Color,
     /// Multiplicative identity preserving the authored colored piece raster.
+    pub piece_tint: Color,
+}
+
+/// Werewolf's approved ink, lavender, gold and cream card material. (ADR-0035)
+/// Functional selection and focus still use shared semantic color roles.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WerewolfArtTokens {
+    pub page: Color,
+    pub surface: Color,
+    pub soft: Color,
+    pub ink: Color,
+    pub muted: Color,
+    pub gold: Color,
+    pub card: Color,
+    pub card_ink: Color,
     pub piece_tint: Color,
 }
 

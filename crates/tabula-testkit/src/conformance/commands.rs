@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use tabula_core::{canonical_decode, canonical_encode, InputIndex, MatchSeed, SeatId};
+use tabula_core::{canonical_decode, canonical_encode, InputIndex, LogicalTime, MatchSeed, SeatId};
 use tabula_game_api::{GameRules, Input, LegalCommands};
 
 use super::support;
@@ -72,13 +72,22 @@ pub fn check_legal<F: GameTestFixture>() {
 
     let seed = F::seed();
     for seat in F::roster().iter().map(|entry| entry.seat) {
-        check_one::<F>("initial state", &initial_state, seat, &seed, 0, &game);
+        check_one::<F>(
+            "initial state",
+            &initial_state,
+            seat,
+            &seed,
+            0,
+            LogicalTime::ZERO,
+            &game,
+        );
         check_one::<F>(
             "post-script state",
             &final_state,
             seat,
             &seed,
             script_len + 1,
+            LogicalTime(script_len * 1_000),
             &game,
         );
     }
@@ -90,6 +99,7 @@ fn check_one<F: GameTestFixture>(
     seat: SeatId,
     seed: &MatchSeed,
     probe_index_base: u64,
+    probe_now: LogicalTime,
     game: &str,
 ) {
     let LegalCommands::Enumerated(commands) = RulesOf::<F>::legal_commands(state, seat) else {
@@ -149,11 +159,15 @@ fn check_one<F: GameTestFixture>(
         );
     }
 
+    // RNG stream identity varies independently; legality belongs to the instant
+    // at which this state was observed, not an artificial billion-ms future.
     for (i, command) in commands.into_iter().enumerate() {
         let mut probe_state = state.clone();
         let index = InputIndex(probe_index_base + 1_000_000 + i as u64);
         let input = Input::Player { seat, command };
-        if let Err(err) = support::apply_at::<RulesOf<F>>(&mut probe_state, input, seed, index) {
+        if let Err(err) =
+            support::apply_at_time::<RulesOf<F>>(&mut probe_state, input, seed, index, probe_now)
+        {
             panic!(
                 "{}",
                 support::failure(

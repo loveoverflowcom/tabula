@@ -272,6 +272,15 @@
   --game-art-chess-board-dark: #5D8A80; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
   --game-art-chess-brass: #D5AB54; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
   --game-art-chess-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-page: #151319; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-surface: #211D2E; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-soft: #2B263B; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-ink: #F5F0E6; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-muted: #C7BBD7; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-gold: #E3C787; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-card: #F0E7D1; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-card-ink: #28251F; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
 }
 
 :root[data-theme="dark"] {
@@ -547,6 +556,15 @@
   --game-art-chess-board-dark: #5D8A80; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
   --game-art-chess-brass: #D5AB54; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
   --game-art-chess-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-page: #151319; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-surface: #211D2E; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-soft: #2B263B; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-ink: #F5F0E6; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-muted: #C7BBD7; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-gold: #E3C787; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-card: #F0E7D1; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-card-ink: #28251F; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
 }
 
 :root[data-theme="hc-light"] {
@@ -822,6 +840,15 @@
   --game-art-chess-board-dark: #5D8A80; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
   --game-art-chess-brass: #D5AB54; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
   --game-art-chess-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-page: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-surface: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-soft: #1C1C1C; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-ink: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-muted: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-gold: #FFE19B; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-card: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-card-ink: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
 }
 
 :root[data-theme="hc-dark"] {
@@ -1097,4 +1124,13 @@
   --game-art-chess-board-dark: #5D8A80; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
   --game-art-chess-brass: #D5AB54; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
   --game-art-chess-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-page: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-surface: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-soft: #1C1C1C; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-ink: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-muted: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-gold: #FFE19B; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-card: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-card-ink: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-werewolf-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
 }
