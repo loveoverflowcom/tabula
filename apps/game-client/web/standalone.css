@@ -1,0 +1,171 @@
+/* Game-art values come from generated tokens.css, never this adapter. */
+@font-face{font-family:Open Sans;src:url('assets/OpenSans-Regular.ttf');font-display:swap}
+
+@font-face{font-family:Open Sans;src:url('assets/OpenSans-Semibold.ttf');font-weight:600;font-display:swap}
+
+@font-face{font-family:Noto Serif;src:url('assets/NotoSerif-Bold.ttf');font-weight:700;font-display:swap}
+
+*{box-sizing:border-box}
+html{font-family:Open Sans,var(--sys-type-family-text);color:var(--sys-color-on-surface);background:var(--sys-color-surface)}
+body{margin:0}
+button,input,select{font:inherit}
+button,a,select,input{touch-action:manipulation}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed}
+a{color:inherit}
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sys-color-primary);outline-offset:3px}
+[hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.skip-link{position:fixed;z-index:10;left:12px;top:-70px;padding:12px;background:var(--sys-color-primary);color:var(--sys-color-on-primary)}
+.skip-link:focus{top:12px}
+
+.shared-header{min-height:76px;display:flex;align-items:center;gap:64px;max-width:1440px;margin:auto;padding:10px 5%;background:var(--sys-color-surface)}
+.brand{font:700 30px/1.2 Noto Serif,var(--sys-type-family-display);text-decoration:none}
+.shared-header nav{display:flex;gap:8px;align-items:center}
+.shared-header nav a{padding:14px 30px;border-radius:var(--sys-shape-lg);font-weight:600;text-decoration:none}
+.shared-header nav .current{background:var(--sys-color-container);color:var(--sys-color-primary)}
+.shared-header nav span,.locale span{font-size:13px;color:var(--sys-color-on-surface-variant)}
+.locale{margin-left:auto;display:flex;gap:20px;align-items:center}
+.locale select{border:0;min-height:46px;padding:0 15px;border-radius:var(--sys-shape-lg);background:var(--sys-color-container);color:var(--sys-color-on-surface)}
+
+.chess{--ch-page:var(--game-art-chess-page,var(--sys-color-surface));--ch-surface:var(--game-art-chess-surface,var(--sys-color-surface));--ch-soft:var(--game-art-chess-soft,var(--sys-color-container));--ch-ink:var(--game-art-chess-ink,var(--sys-color-on-surface));--ch-muted:var(--game-art-chess-muted,var(--sys-color-on-surface-variant));--ch-deep:var(--game-art-chess-deep,var(--sys-color-primary));--ch-on-deep:var(--game-art-chess-on-deep,var(--sys-color-on-primary));--ch-brass:var(--game-art-chess-brass,var(--sys-color-last-action));background:var(--ch-page);color:var(--ch-ink);min-height:calc(100vh - 76px);padding:32px max(24px,calc((100vw - 1296px)/2)) 48px} /* xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. */
+.breadcrumb{font-size:14px;color:var(--ch-muted);margin:0 0 40px}
+.entry-grid{display:grid;grid-template-columns:minmax(0,568fr) minmax(0,678fr);gap:48px;align-items:start}
+.cover{border-radius:28px;overflow:hidden;background:var(--ch-deep);color:var(--ch-on-deep)}
+.cover>img{display:block;width:100%;height:505px;object-fit:cover;object-position:65% center}
+.cover-copy{padding:32px 36px}
+.eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--ch-brass);margin:0 0 12px}
+.cover h1{font:700 56px/1.1 Noto Serif,var(--sys-type-family-display);margin:0 0 14px}
+.cover-copy>p:last-child{font-size:16px;margin:0}
+.setup{display:flex;flex-direction:column;gap:28px;padding-top:2px;min-width:0}
+.setup h2{font:700 36px/1.25 Noto Serif,var(--sys-type-family-display);margin:0}
+.subtitle{color:var(--ch-muted);margin:10px 0 0;line-height:1.5}
+.modes{border:0;padding:0;margin:0;min-width:0}
+.modes legend{font-size:14px;font-weight:600;margin-bottom:16px}
+.mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mode{min-height:94px;padding:19px 20px;background:var(--ch-soft);color:var(--ch-ink);border-radius:22px;position:relative;display:flex;gap:6px;align-items:center}
+.mode strong{display:block;font-size:18px;font-weight:600;line-height:1.3}
+.mode small{display:block;font-size:12px;line-height:1.4;margin-top:10px}
+.mode input{position:absolute;left:12px;top:10px;opacity:0;width:20px;height:20px}
+.mode:has(input:focus-visible){outline:3px solid var(--sys-color-primary);outline-offset:3px}
+.mode.selected{background:var(--ch-deep);color:var(--ch-on-deep)}
+.mode-check{margin-left:auto;align-self:start;color:var(--ch-deep);background:var(--ch-brass);width:18px;height:18px;display:grid;place-items:center;border-radius:50%;font-size:12px;flex:none}
+.mode.unavailable{color:var(--ch-muted)}
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.player-panel,.clock-panel{padding:22px 16px;border-radius:24px;background:var(--ch-soft);min-width:0}
+.clock-panel{background:color-mix(in srgb,var(--ch-brass) 18%,var(--ch-page))}
+.setup h3{font-size:20px;font-weight:600;margin:0 8px 26px}
+.seat{background:var(--ch-surface);padding:15px 16px;border-radius:16px;display:flex;align-items:center;gap:12px;margin:12px 0;font-size:14px;min-height:62px}
+.seat-dot{width:30px;height:30px;border:1px solid var(--ch-deep);border-radius:50%;flex:none}
+.seat-dot.white{background:var(--ch-surface)}
+.seat-dot.black{background:var(--ch-deep)}
+.hint{font-size:12px;color:var(--ch-muted);line-height:1.6;margin:20px 8px 0}
+.setup select,.setup input{width:100%;min-height:48px;border:1px solid transparent;border-radius:14px;padding:10px 14px;background:var(--ch-surface);color:var(--ch-ink)}
+.clock-panel>select{margin-bottom:20px}
+.clock-fields{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.clock-fields label>span,.preference-grid label>span{display:block;font-size:12px;line-height:1.5;color:var(--ch-muted);margin:0 0 8px}
+.preferences{font-size:13px;color:var(--ch-muted)}
+.preferences summary{cursor:pointer;min-height:24px}
+.preference-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+.launch-summary{display:flex;gap:16px;align-items:center;padding:16px 18px;background:var(--ch-soft);border-radius:22px;margin:0;font-size:14px;line-height:1.6}
+.summary-check{width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--sys-color-success);color:var(--sys-color-on-success)}
+.button{border:0;min-height:48px;border-radius:22px;padding:14px 24px;background:var(--game-art-chess-deep,var(--sys-color-primary));color:var(--game-art-chess-on-deep,var(--sys-color-on-primary));font-weight:600;text-align:center;text-decoration:none} /* xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. */
+.button.secondary{background:var(--sys-color-container-high);color:var(--sys-color-on-surface)}
+.start{width:100%;min-height:64px;font-size:18px}
+.footnote{font-size:12px;color:var(--ch-muted);line-height:1.6;margin:0}
+.error{color:var(--sys-color-danger);line-height:1.6}
+.setup .error{margin:0}
+
+.play-page{height:100vh;height:100dvh;overflow:hidden;background:var(--sys-color-surface)}
+#runtime{height:100%;position:relative}
+#glcanvas{display:block;width:100%;height:100%;touch-action:none}
+#glcanvas:focus-visible{outline-offset:-4px}
+.runtime-overlay{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;padding:24px;background:var(--sys-color-surface);color:var(--sys-color-on-surface);text-align:center;overflow:auto}
+.runtime-overlay img{width:min(440px,80vw);height:220px;object-fit:cover;object-position:65% center;border-radius:var(--sys-shape-xl)}
+.runtime-overlay h1{font:700 32px/1.3 Noto Serif,var(--sys-type-family-display);margin:0}
+.runtime-overlay p{margin:0;max-width:560px;line-height:1.6}
+.runtime-overlay progress{width:min(360px,80vw);accent-color:var(--sys-color-primary)}
+.runtime-access{position:absolute;z-index:2;right:8px;bottom:8px;display:flex;gap:8px;opacity:.85}
+.runtime-access:focus-within{opacity:1;pointer-events:auto}
+.runtime-access button{border:1px solid var(--sys-color-outline);border-radius:var(--sys-shape-sm);padding:12px;background:var(--sys-color-surface);color:var(--sys-color-on-surface);min-height:44px}
+.recovery-actions,.dialog-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.play-page dialog{max-width:min(520px,calc(100vw - 32px));border:1px solid var(--sys-color-outline);border-radius:var(--sys-shape-xl);padding:24px;background:var(--sys-color-surface);color:var(--sys-color-on-surface)}
+dialog::backdrop{background:color-mix(in srgb,var(--sys-color-on-surface) 50%,transparent)}
+dialog h2{margin-top:0}
+dialog p{line-height:1.7}
+.dialog-actions{margin-top:24px}
+
+:root[data-theme^="hc-"] .chess{--ch-page:var(--sys-color-surface);--ch-surface:var(--sys-color-surface);--ch-soft:var(--sys-color-container);--ch-ink:var(--sys-color-on-surface);--ch-muted:var(--sys-color-on-surface-variant);--ch-deep:var(--sys-color-primary);--ch-on-deep:var(--sys-color-on-primary)} /* xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. */
+:root[data-theme^="hc-"] .clock-panel{background:var(--ch-soft)}
+:root[data-theme^="hc-"] .mode,:root[data-theme^="hc-"] .setup input,:root[data-theme^="hc-"] .setup select,:root[data-theme^="hc-"] .launch-summary{border:1px solid var(--sys-color-outline)}
+
+@media(max-width:1100px){.shared-header{gap:32px;padding:10px 24px}
+.chess{padding:26px 24px 40px} /* xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. */
+.entry-grid{gap:28px}
+.cover>img{height:465px}
+.cover h1{font-size:44px}
+.config-grid{gap:14px}
+.mode{padding:16px 12px}
+.mode strong{font-size:15px}
+.mode small{font-size:11px}
+.clock-fields{gap:12px}
+.setup{gap:24px}
+.setup h2{font-size:32px}
+}
+
+@media(max-width:760px){.shared-header{min-height:60px;padding:10px 16px;gap:20px}
+.brand{font-size:24px}
+.shared-header nav a{font-size:12px;padding:10px 18px}
+.shared-header nav span,.locale span{display:none}
+.locale{gap:0}
+.locale select{min-height:40px;padding:0 10px}
+.chess{min-height:calc(100vh - 60px);padding:20px 16px 32px} /* xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. */
+.breadcrumb{font-size:12px;margin-bottom:18px}
+.entry-grid{grid-template-columns:1fr;gap:22px}
+.cover{border-radius:22px}
+.cover>img{height:153px;object-position:65% 50%}
+.cover-copy{padding:12px 16px}
+.cover .eyebrow{display:none}
+.cover h1{font-size:32px;margin:0 0 2px}
+.cover-copy>p:last-child{font-size:12px;line-height:1.5}
+.setup h2{font-size:28px}
+.subtitle{font-size:13px;margin-top:6px}
+.setup{gap:20px}
+.modes legend{font-size:13px;margin-bottom:8px}
+.mode{min-height:76px;padding:13px 12px;border-radius:18px;justify-content:center;text-align:center}
+.mode strong{font-size:13px}
+.mode small{font-size:10px;margin-top:8px}
+.mode-check{display:none}
+.config-grid{grid-template-columns:1fr;gap:16px}
+.player-panel,.clock-panel{padding:16px;border-radius:22px}
+.setup h3{font-size:16px;margin:0 0 14px}
+.seat{padding:0;background:transparent;min-height:24px;font-size:13px;margin:10px 0;gap:12px}
+.seat-dot{width:18px;height:18px}
+.player-panel .hint{display:none}
+.clock-panel>select{margin-bottom:16px}
+.clock-fields{gap:16px}
+.clock-fields label>span{font-size:12px}
+.hint{margin:20px 0 0}
+.launch-summary{padding:12px 0;background:transparent;border-radius:0;font-size:12px}
+.summary-check{display:none}
+.start{font-size:16px;min-height:58px;border-radius:20px}
+.footnote{font-size:11px;text-align:center}
+.runtime-overlay h1{font-size:26px}
+.runtime-overlay img{height:180px}
+.preference-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:360px){.shared-header{padding:10px 12px;gap:12px}
+.shared-header nav a{padding:10px 12px}
+.chess{padding-left:12px;padding-right:12px} /* xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. */
+.mode-grid{gap:6px}
+.mode{padding:12px 8px}
+.mode strong{font-size:12px}
+.clock-fields{gap:10px}
+}
+
+@media(prefers-reduced-motion:no-preference){.button{transition:filter var(--sys-motion-short)}
+.button:hover{filter:brightness(1.08)}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}

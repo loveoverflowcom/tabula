@@ -13,6 +13,10 @@
 //! is the Phase-2 local vertical slice's deliberate leaf wiring: Phase 4
 //! replaces it with `tabula-registry` (doc 01 §5.1).
 
+mod clock_options;
+mod standalone_setup;
+
+use clock_options::{LocalClockControl, LocalClockOptions};
 use macroquad::prelude as mq;
 use renderer_macroquad::{MacroquadAudioSink, MacroquadRenderer};
 use tabula_core::{
@@ -69,7 +73,14 @@ fn window_conf() -> mq::Conf {
 async fn main() {
     let mut renderer = MacroquadRenderer::new();
     let mut audio = MacroquadAudioSink::new();
-    let options = parse_options();
+    if let Err(error) = renderer.set_builtin_font_bytes(
+        include_bytes!("../../../assets/fonts/OpenSans-Regular.ttf"),
+        include_bytes!("../../../assets/fonts/OpenSans-Semibold.ttf"),
+        include_bytes!("../../../assets/fonts/NotoSerif-Bold.ttf"),
+    ) {
+        macroquad::logging::error!("{error:?}");
+    }
+    let options = parse_options().await;
     let theme = tabula_design::Theme::by_kind(options.theme);
 
     // The only place a game is named. Each arm is a one-liner so rustfmt keeps
@@ -90,22 +101,32 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
     renderer: &mut MacroquadRenderer,
     audio: &mut MacroquadAudioSink,
     theme: &tabula_design::Theme,
-    options: Options,
+    mut options: Options,
 ) {
-    let local_match = LocalMatch::<ChessRules, ChessPresentation>::new(
+    if let Err(error) = tabula_game_client::fixture_assets::preload_named_sprite_fixture(
+        renderer,
+        tabula_game_chess::presentation::assets::MANIFEST, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+        tabula_game_chess::ChessModule::metadata().id(), // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+        &ChessPresentation::asset_pack(),
+        tabula_game_chess::presentation::assets::ALL_IMAGES, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+    ).await {
+        macroquad::logging::error!("{error}");
+        show_asset_failure(renderer, theme, &error).await;
+        return;
+    }
+    if !options.skip_setup {
+        options.clock = run_setup(renderer, theme, options.clock).await;
+    }
+    let mut local_match = LocalMatch::<ChessRules, ChessPresentation>::new(
         &ChessConfig {
-            clock: Some(ClockConfig {
-                initial: Millis::from_secs(5 * 60),
-                control: ClockControl::Fischer {
-                    increment: Millis::from_secs(2),
-                },
-            }),
+            clock: configured_clock(options.clock),
         },
         &human_roster(2),
         MatchSeed::from_bytes([0; 32]),
         Viewer::Seat(SeatId(0)),
     )
-    .expect("the fixed local configuration is valid");
+    .expect("the bounded local configuration is valid");
+    local_match.local_mut().set_hot_seat_controls(true);
     run_local(
         local_match,
         renderer,
@@ -117,6 +138,148 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
         options.reduced_motion,
     )
     .await;
+}
+
+fn configured_clock(options: LocalClockOptions) -> Option<ClockConfig> {
+    match options.control {
+        LocalClockControl::Untimed => None,
+        control => Some(ClockConfig {
+            initial: Millis(options.initial_ms),
+            control: match control {
+                LocalClockControl::Bronstein => ClockControl::Bronstein {
+                    delay: Millis(options.adjustment_ms),
+                },
+                LocalClockControl::Fischer | LocalClockControl::Untimed => ClockControl::Fischer {
+                    increment: Millis(options.adjustment_ms),
+                },
+            },
+        }),
+    }
+}
+
+/// The native entry owns setup only; constructing a match starts its clock.
+async fn run_setup(
+    renderer: &mut MacroquadRenderer,
+    theme: &tabula_design::Theme,
+    clock: LocalClockOptions,
+) -> LocalClockOptions {
+    let mut setup = standalone_setup::StandaloneSetup::new(clock);
+    for (key, native) in [
+        (tabula_presentation::Key::Enter, mq::KeyCode::Enter),
+        (tabula_presentation::Key::Space, mq::KeyCode::Space),
+    ] {
+        if mq::is_key_down(native) {
+            setup.suppress_held_key(key);
+        }
+    }
+    loop {
+        let Some((viewport, dpi)) = resolve_display_geometry(
+            mq::screen_width(),
+            mq::screen_height(),
+            mq::screen_dpi_scale(),
+        ) else {
+            mq::next_frame().await;
+            continue;
+        };
+        let frame = renderer.begin_frame(viewport, dpi, 0, *theme);
+        for event in renderer.drain_input() {
+            if let Some(clock) = setup.on_input(&event, &frame) {
+                let _ = renderer.end_frame();
+                mq::next_frame().await;
+                return clock;
+            }
+        }
+        let cover = tabula_game_chess::presentation::assets::cover_asset(); // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+        if let Ok(scene) = setup.present(&frame, cover) {
+            let _ = renderer.submit(&scene);
+        }
+        let _ = renderer.end_frame();
+        mq::next_frame().await;
+    }
+}
+
+/// Asset failure never produces a false ready game or an invisible board.
+#[allow(clippy::float_arithmetic)] // Screen-space recovery geometry never enters canonical state.
+async fn show_asset_failure(
+    renderer: &mut MacroquadRenderer,
+    theme: &tabula_design::Theme,
+    error: &str,
+) {
+    use tabula_presentation::{
+        ActionButton, Align, ButtonInteraction, ButtonTone, Camera2D, FocusGraph, FocusId,
+        FocusNode, FocusState, Layer, NavigationAction, Rect, RenderCmd, RenderListBuilder,
+        TextStyleToken,
+    };
+    let mut interaction = ButtonInteraction::default();
+    let mut focus = FocusState::default();
+    let id = FocusId::new(0);
+    focus.set_keyboard_focus(Some(id));
+    for (key, native) in [
+        (tabula_presentation::Key::Enter, mq::KeyCode::Enter),
+        (tabula_presentation::Key::Space, mq::KeyCode::Space),
+    ] {
+        if mq::is_key_down(native) {
+            interaction.suppress_activation_until_release(key);
+        }
+    }
+    loop {
+        let Some((viewport, dpi)) = resolve_display_geometry(
+            mq::screen_width(),
+            mq::screen_height(),
+            mq::screen_dpi_scale(),
+        ) else {
+            mq::next_frame().await;
+            continue;
+        };
+        let _frame = renderer.begin_frame(viewport, dpi, 0, *theme);
+        let size = viewport.size();
+        let rect = Rect::new(
+            glam::Vec2::new(24.0, 220.0),
+            glam::Vec2::new((size.x - 48.0).max(44.0), 48.0),
+        )
+        .expect("bounded recovery target");
+        let button = ActionButton::new(id, rect, "Retry assets", theme.density.min_target)
+            .expect("44dp recovery")
+            .tone(ButtonTone::Filled);
+        let graph =
+            FocusGraph::new(vec![FocusNode::new(id, rect)]).expect("single recovery action");
+        for event in renderer.drain_input() {
+            if matches!(
+                interaction.on_input(&event, &[button], &graph, &mut focus),
+                NavigationAction::Activate(_)
+            ) {
+                let _ = renderer.end_frame();
+                mq::next_frame().await;
+                return;
+            }
+        }
+        let mut builder = RenderListBuilder::new(Camera2D::default());
+        for (text, y, style) in [
+            (
+                "Local artwork could not load",
+                48.0,
+                TextStyleToken::HeadlineMd,
+            ),
+            (error, 110.0, TextStyleToken::BodyMd),
+        ] {
+            let _ = builder.push(RenderCmd::Text {
+                text: text.to_owned(),
+                at: glam::Vec2::new(24.0, y),
+                style,
+                align: Align::Start,
+                max_width: tabula_design::Positive::new((size.x - 48.0).max(1.0)).ok(),
+                color: theme.color.on_surface,
+                layer: Layer::HUD,
+                z: 0,
+            });
+        }
+        let _ = button.draw(&mut builder, theme, &interaction, &focus, Layer::HUD);
+        if let Ok(scene) = builder.finish() {
+            let _ = renderer.submit(&scene);
+        }
+        let _ = renderer.end_frame();
+        mq::next_frame().await;
+    }
 }
 
 #[rustfmt::skip]
@@ -179,7 +342,7 @@ async fn run_tiles( // xtask-allow-game-id: direct Phase 3 local vertical slice 
 /// seats nobody is sitting at — a bot is a seat whose commands come from a
 /// function of that seat's projection (doc 00 §6.5), so its answer goes in
 /// through the ordinary player path and can be rejected like anyone else's.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Keep frame/input/effect ordering explicit in the one local loop.
 async fn run_local<R, P>(
     mut local_match: LocalMatch<R, P>,
     renderer: &mut MacroquadRenderer,
@@ -201,6 +364,7 @@ async fn run_local<R, P>(
     let mut feedback = fresh_feedback();
     local_match.local_mut().set_reduced_motion(reduced_motion);
     let started_at_ms = presentation_now_ms();
+    let mut ready_notified = false;
 
     'game_loop: loop {
         let Some((viewport, dpi)) = resolve_display_geometry(
@@ -231,6 +395,12 @@ async fn run_local<R, P>(
         sync_local_frame(&mut local_match, &mut feedback, &frame);
 
         for event in renderer.drain_input() {
+            if bot_seats.is_empty() {
+                let override_viewer = local_match.local_mut().viewer_override();
+                local_match.set_viewer(
+                    override_viewer.unwrap_or_else(|| Viewer::Seat(turn_of(local_match.view()))),
+                );
+            }
             match feedback.route_input(&mut local_match, &event, &frame) {
                 FeedbackInput::NewLocalGame => {
                     renderer.end_frame().expect("an active frame can be ended");
@@ -300,7 +470,10 @@ async fn run_local<R, P>(
         // Hot seat: show whoever is on turn. With bots, the human at seat 0
         // keeps their own view.
         let viewer = if bot_seats.is_empty() {
-            Viewer::Seat(turn_of(local_match.view()))
+            local_match
+                .local_mut()
+                .viewer_override()
+                .unwrap_or_else(|| Viewer::Seat(turn_of(local_match.view())))
         } else {
             Viewer::Seat(SeatId(0))
         };
@@ -308,10 +481,25 @@ async fn run_local<R, P>(
 
         let board_frame = sync_local_frame(&mut local_match, &mut feedback, &frame);
         present_local_scenes(&local_match, &mut feedback, renderer, &frame, &board_frame);
-        if renderer.end_frame().is_err() {
+        let frame_ok = renderer.end_frame().is_ok();
+        if !frame_ok {
             feedback.note_render_error();
         }
         mq::next_frame().await;
+        if frame_ok && feedback.allows_gameplay(false) && !ready_notified {
+            // Readiness follows a real submitted gameplay frame and its flush,
+            // not an async preloading frame or merely a fetched WASM binary.
+            ready_notified = true;
+            notify_runtime_ready().await;
+        }
+    }
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
+async fn notify_runtime_ready() {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = mq::load_file("tabula-ready.txt").await;
     }
 }
 
@@ -364,6 +552,9 @@ where
 trait SetViewport {
     fn sync_frame(&mut self, frame: &tabula_presentation::FrameCtx);
     fn set_reduced_motion(&mut self, _reduced: bool) {}
+    fn viewer_override(&self) -> Option<Viewer> {
+        None
+    }
 }
 
 #[rustfmt::skip]
@@ -371,6 +562,8 @@ impl SetViewport for tabula_game_chess::presentation::ChessLocal { // xtask-allo
     fn sync_frame(&mut self, frame: &tabula_presentation::FrameCtx) {
         Self::set_viewport(self, frame.viewport());
     }
+    fn set_reduced_motion(&mut self, reduced: bool) { Self::set_reduced_motion(self, reduced); }
+    fn viewer_override(&self) -> Option<Viewer> { Self::viewer_override(self) }
 }
 
 #[rustfmt::skip]
@@ -390,6 +583,8 @@ struct Options {
     fill: SeatFill,
     theme: tabula_design::ThemeKind,
     reduced_motion: bool,
+    clock: LocalClockOptions,
+    skip_setup: bool,
 }
 
 impl Default for Options {
@@ -400,12 +595,32 @@ impl Default for Options {
             fill: SeatFill::default(),
             theme: tabula_design::ThemeKind::Light,
             reduced_motion: false,
+            clock: LocalClockOptions::default(),
+            skip_setup: false,
         }
     }
 }
 
-fn parse_options() -> Options {
-    parse_options_from(std::env::args().skip(1))
+#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
+async fn parse_options() -> Options {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        parse_options_from(std::env::args().skip(1))
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        // The checked-in host exposes exactly this bounded virtual file through
+        // Macroquad's ordinary safe file API. It contains configuration only.
+        match mq::load_file("tabula-launch.txt").await {
+            Ok(bytes) if bytes.len() <= 4096 => match String::from_utf8(bytes) {
+                Ok(value) if value.lines().count() <= 64 => {
+                    parse_options_from(value.lines().map(str::to_owned))
+                }
+                _ => Options::default(),
+            },
+            _ => Options::default(),
+        }
+    }
 }
 
 fn parse_options_from(mut args: impl Iterator<Item = String>) -> Options {
@@ -421,6 +636,28 @@ fn parse_options_from(mut args: impl Iterator<Item = String>) -> Options {
                 if let Some(value) = args.next() {
                     if let Ok(seats) = value.parse() {
                         options.seats = seats;
+                    }
+                }
+            }
+            "--skip-setup" => options.skip_setup = true,
+            "--clock" => {
+                if let Some(value) = args.next() {
+                    if let Err(error) = options.clock.set_control(&value) {
+                        eprintln!("{error}");
+                    }
+                }
+            }
+            "--initial-ms" => {
+                if let Some(value) = args.next() {
+                    if let Err(error) = options.clock.set_initial(&value) {
+                        eprintln!("{error}");
+                    }
+                }
+            }
+            "--increment-ms" | "--delay-ms" => {
+                if let Some(value) = args.next() {
+                    if let Err(error) = options.clock.set_adjustment(&value) {
+                        eprintln!("{error}");
                     }
                 }
             }
@@ -539,5 +776,61 @@ mod tests {
         assert_eq!(session_elapsed_ms(900_000, 900_000), 0);
         assert_eq!(session_elapsed_ms(900_000, 900_012), 12);
         assert_eq!(session_elapsed_ms(900_000, 899_999), 0);
+    }
+    #[test]
+    fn local_launch_configures_real_untimed_fischer_and_bronstein_rules() {
+        for name in ["untimed", "fischer", "bronstein"] {
+            let options = parse_options_from(
+                [
+                    "--clock",
+                    name,
+                    "--initial-ms",
+                    "120000",
+                    "--increment-ms",
+                    "5000",
+                    "--skip-setup",
+                ]
+                .into_iter()
+                .map(str::to_owned),
+            );
+            assert!(options.skip_setup);
+            let clock = configured_clock(options.clock);
+            if name == "untimed" {
+                assert_eq!(clock, None);
+                continue;
+            }
+            let clock = clock.unwrap();
+            assert_eq!(clock.initial, Millis(120_000));
+            assert_eq!(
+                clock.control,
+                if name == "bronstein" {
+                    ClockControl::Bronstein {
+                        delay: Millis(5_000),
+                    }
+                } else {
+                    ClockControl::Fischer {
+                        increment: Millis(5_000),
+                    }
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn hostile_clock_launch_keeps_the_bounded_default() {
+        let options = parse_options_from(
+            [
+                "--clock",
+                "ranked",
+                "--initial-ms",
+                "0",
+                "--delay-ms",
+                "18446744073709551615",
+            ]
+            .into_iter()
+            .map(str::to_owned),
+        );
+        assert_eq!(options.clock, LocalClockOptions::default());
+        assert!(!options.skip_setup);
     }
 }

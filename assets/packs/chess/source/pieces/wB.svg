@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Ivory bishop</title>
+  <desc id="desc">Original carved Staunton-style bishop for Tabula, with ivory body and warm brass detailing.</desc>
+  <g fill="#F7F1E4" stroke="#273638" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M48 11 C43 18 30 23 30 34 C30 43 36 48 42 51 Q42 60 32 70 L31 73 H65 L64 70 Q54 60 54 51 C60 48 66 43 66 34 C66 23 53 18 48 11 Z"/>
+  <path d="M44 22 Q34 28 35 35 Q36 43 44 47 L43 52 Q43 60 36 68 H33 Q43 59 42 51 Q32 44 32 34 Q33 27 44 22 Z" fill="#FFFFFF" fill-opacity=".66" stroke="none"/>
+  <path d="M54 23 L44 36" stroke="#273638" stroke-width="4.5"/><path d="M40 52 H56" stroke="#B58D42" stroke-width="3"/>
+  <path d="M28 71 H68 Q68 75 71 77 Q76 81 77 86 H19 Q20 81 25 77 Q28 75 28 71 Z"/>
+  <path d="M29 72 H67" fill="none" stroke="#B58D42" stroke-width="3"/>
+  <path d="M25 82 H71" fill="none" stroke="#273638" stroke-opacity=".46" stroke-width="2"/>
+  </g>
+</svg>

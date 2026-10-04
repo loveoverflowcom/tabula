@@ -125,6 +125,9 @@ impl GameRules for ChessRules {
         } else {
             Vec::new()
         };
+        let actions = you
+            .filter(|_| matches!(state.status, Status::Playing))
+            .map_or_else(Vec::new, |color| actions_for(state, color));
         View {
             board: state.board,
             turn: state.turn,
@@ -136,7 +139,9 @@ impl GameRules for ChessRules {
             draw_offer: state.draw_offer,
             clock: state.clock,
             you,
+            in_check: in_check(state, state.turn),
             legal_moves,
+            actions,
         }
     }
 
@@ -248,6 +253,7 @@ fn apply_non_move(
     // Resolve command validity before the deadline. Once a non-move command
     // is valid, the current turn's expiry preempts it even if its timer effect
     // has not yet been delivered by the platform.
+    validate_non_move(state, color, command)?;
     match command {
         Command::Resign => {
             if turn_is_expired(state, now) {
@@ -261,12 +267,6 @@ fn apply_non_move(
             Ok(end(state, outcome))
         }
         Command::OfferDraw => {
-            // Offers are made after the offerer's move, while the opponent is
-            // on turn. This keeps a pending offer alive until that opponent
-            // responds or makes the next move.
-            if color == state.turn || state.fullmove_number == 1 || state.draw_offer.is_some() {
-                return Err(RuleError::code(RuleErrorCode::WrongPhase));
-            }
             if turn_is_expired(state, now) {
                 return Ok(timeout(state, state.turn, now));
             }
@@ -277,18 +277,12 @@ fn apply_non_move(
             })
         }
         Command::AcceptDraw => {
-            if state.draw_offer != Some(color.other()) {
-                return Err(RuleError::code(RuleErrorCode::WrongPhase));
-            }
             if turn_is_expired(state, now) {
                 return Ok(timeout(state, state.turn, now));
             }
             Ok(end(state, draw("draw agreed")))
         }
         Command::DeclineDraw => {
-            if state.draw_offer != Some(color.other()) {
-                return Err(RuleError::code(RuleErrorCode::WrongPhase));
-            }
             if turn_is_expired(state, now) {
                 return Ok(timeout(state, state.turn, now));
             }
@@ -299,9 +293,6 @@ fn apply_non_move(
             })
         }
         Command::ClaimDraw => {
-            if !can_claim_draw(state) {
-                return Err(RuleError::code(RuleErrorCode::WrongPhase));
-            }
             if turn_is_expired(state, now) {
                 return Ok(timeout(state, state.turn, now));
             }
@@ -309,6 +300,45 @@ fn apply_non_move(
         }
         Command::Move { .. } => Err(RuleError::code(RuleErrorCode::IllegalMove)),
     }
+}
+
+/// The shared validation barrier for reducer actions and projected affordances.
+/// Time is deliberately resolved by `apply`, not by timeless projections.
+fn validate_non_move(state: &State, color: Color, command: Command) -> Result<(), RuleError> {
+    let valid = match command {
+        Command::Resign => true,
+        Command::OfferDraw => {
+            // An offer follows the offerer's move and lasts until the opponent
+            // responds or moves. The opening full move cannot contain an offer.
+            color != state.turn && state.fullmove_number != 1 && state.draw_offer.is_none()
+        }
+        Command::AcceptDraw | Command::DeclineDraw => state.draw_offer == Some(color.other()),
+        Command::ClaimDraw => {
+            if color != state.turn {
+                return Err(RuleError::code(RuleErrorCode::NotYourTurn));
+            }
+            can_claim_draw(state)
+        }
+        Command::Move { .. } => return Err(RuleError::code(RuleErrorCode::IllegalMove)),
+    };
+    if valid {
+        Ok(())
+    } else {
+        Err(RuleError::code(RuleErrorCode::WrongPhase))
+    }
+}
+
+fn actions_for(state: &State, color: Color) -> Vec<Command> {
+    [
+        Command::Resign,
+        Command::OfferDraw,
+        Command::AcceptDraw,
+        Command::DeclineDraw,
+        Command::ClaimDraw,
+    ]
+    .into_iter()
+    .filter(|command| validate_non_move(state, color, *command).is_ok())
+    .collect()
 }
 
 fn apply_timer(

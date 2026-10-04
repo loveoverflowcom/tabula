@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Ivory rook</title>
+  <desc id="desc">Original carved Staunton-style rook for Tabula, with ivory body and warm brass detailing.</desc>
+  <g fill="#F7F1E4" stroke="#273638" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M25 15 H36 V25 H43 V15 H53 V25 H60 V15 H71 V36 L64 42 H61 L64 70 L65 73 H31 L32 70 L35 42 H32 L25 36 Z"/>
+  <path d="M36 43 H43 L42 65 L38 69 H35 Z" fill="#FFFFFF" fill-opacity=".66" stroke="none"/>
+  <path d="M29 35 H67" stroke="#B58D42" stroke-width="3"/><path d="M35 43 H61" stroke="#273638" stroke-width="2.4"/>
+  <path d="M28 71 H68 Q68 75 71 77 Q76 81 77 86 H19 Q20 81 25 77 Q28 75 28 71 Z"/>
+  <path d="M29 72 H67" fill="none" stroke="#B58D42" stroke-width="3"/>
+  <path d="M25 82 H71" fill="none" stroke="#273638" stroke-opacity=".46" stroke-width="2"/>
+  </g>
+</svg>

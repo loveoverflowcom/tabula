@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Ink knight</title>
+  <desc id="desc">Original carved Staunton-style knight for Tabula, with ink body and warm brass detailing.</desc>
+  <g fill="#243E42" stroke="#C0A671" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M30 71 Q32 62 40 55 L42 43 L29 47 L19 41 L23 31 L36 23 L39 11 L49 19 Q58 18 64 27 Q72 39 68 55 L64 71 L64 73 H31 Z"/>
+  <path d="M49 24 Q58 24 61 33 Q65 44 61 56 L57 68 H50 Q58 53 58 42 Q57 31 49 24 Z" fill="#5D8A80" fill-opacity=".48" stroke="none"/>
+  <circle cx="40" cy="30" r="2.7" fill="#C0A671" stroke="none"/><path d="M24 38 L29 40" stroke="#C0A671" stroke-width="2.8"/><path d="M42 43 L49 40" stroke="#C0A671" stroke-width="2.8"/>
+  <path d="M28 71 H68 Q68 75 71 77 Q76 81 77 86 H19 Q20 81 25 77 Q28 75 28 71 Z"/>
+  <path d="M29 72 H67" fill="none" stroke="#C0A671" stroke-width="3"/>
+  <path d="M25 82 H71" fill="none" stroke="#C0A671" stroke-opacity=".46" stroke-width="2"/>
+  </g>
+</svg>

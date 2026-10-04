@@ -27,7 +27,9 @@ use crate::{
 pub struct MacroquadRenderer {
     input: InputState,
     frame: Option<FrameCtx>,
+    frame_started: bool,
     assets: SpriteAssetCache,
+    fonts: text::BuiltinFonts,
     queued: Vec<(RenderList, Vec<ResolvedSprite<mq::Texture2D>>)>,
     // End-frame queues GPU draws, while the host's next_frame performs the actual flush. Keep
     // strong handles across that await; the following begin_frame is the retirement boundary.
@@ -38,6 +40,22 @@ impl MacroquadRenderer {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Loads the host's bounded built-in typefaces once before any frame.
+    /// Macroquad fonts never cross the renderer-neutral contract. Replacement
+    /// after the first frame begins is rejected to preserve atlas lifetime.
+    pub fn set_builtin_font_bytes(
+        &mut self,
+        text: &[u8],
+        strong: &[u8],
+        display: &[u8],
+    ) -> Result<(), RenderError> {
+        if self.frame_started || self.frame.is_some() || !self.queued.is_empty() {
+            return Err(RenderError::InvalidLifecycle);
+        }
+        self.fonts = text::BuiltinFonts::load(text, strong, display)?;
+        Ok(())
     }
 
     /// Checks primitive geometry and support without a graphics context or asset cache.
@@ -94,6 +112,7 @@ impl MacroquadRenderer {
 impl Renderer for MacroquadRenderer {
     fn begin_frame(&mut self, viewport: Viewport, dpi: Dpi, now_ms: u64, theme: Theme) -> FrameCtx {
         // The outer application's next_frame must have flushed the previous frame first.
+        self.frame_started = true;
         self.submitted_sprites.clear();
         self.queued.clear();
         self.assets.collect_released();
@@ -120,7 +139,7 @@ impl Renderer for MacroquadRenderer {
         // Macroquad's glyph atlas can replace its unmanaged texture when new glyphs appear.
         // Prepare the whole accepted frame before the first primitive references that atlas.
         for (list, _) in &self.queued {
-            text::prepare(list, &frame)?;
+            text::prepare(list, &frame, &self.fonts)?;
         }
         let mut result = Ok(());
         for (list, sprites) in self.queued.drain(..) {
@@ -133,7 +152,14 @@ impl Renderer for MacroquadRenderer {
                     } else {
                         None
                     };
-                    result = draw::execute(command, draw_state, list.camera(), &frame, sprite);
+                    result = draw::execute(
+                        command,
+                        draw_state,
+                        list.camera(),
+                        &frame,
+                        sprite,
+                        &self.fonts,
+                    );
                 }
             });
             self.submitted_sprites.extend(sprites);
@@ -153,7 +179,7 @@ impl Renderer for MacroquadRenderer {
             || Theme::by_kind(tabula_design::ThemeKind::Light),
             FrameCtx::theme,
         );
-        text::measure(value, theme.text_style(style), max_width)
+        text::measure(value, theme.text_style(style), max_width, &self.fonts)
     }
 
     fn drain_input(&mut self) -> Vec<InputEvent> {
@@ -221,5 +247,19 @@ mod tests {
         ));
         assert!(renderer.queued.is_empty());
         assert!(renderer.submitted_sprites.is_empty());
+    }
+    #[test]
+    fn built_in_font_loading_is_bounded_before_graphics_and_cannot_replace_live_atlases() {
+        let mut renderer = MacroquadRenderer::new();
+        let oversized = vec![0; 256 * 1024 + 1];
+        assert!(matches!(
+            renderer.set_builtin_font_bytes(&oversized, &[], &[]),
+            Err(tabula_presentation::RenderError::Execution(_))
+        ));
+        renderer.frame_started = true;
+        assert_eq!(
+            renderer.set_builtin_font_bytes(&[], &[], &[]),
+            Err(tabula_presentation::RenderError::InvalidLifecycle)
+        );
     }
 }

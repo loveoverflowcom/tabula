@@ -1493,13 +1493,144 @@ mod tests {
     }
 
     #[test]
-    fn presenter_produces_a_macroquad_supported_render_list() {
+    fn presenter_produces_a_macroquad_supported_render_list_with_verified_art() {
+        use local_game::presentation::assets;
+        use renderer_macroquad::assets::{
+            AssetCacheLimits, DecodedRaster, SpriteAssetCache, TextureUploader,
+        };
+        struct CpuUploader;
+        impl TextureUploader for CpuUploader {
+            type Texture = (u16, u16);
+            fn upload(&mut self, image: &DecodedRaster) -> Result<Self::Texture, String> {
+                Ok((image.width(), image.height()))
+            }
+        }
         let match_ = match_for_rules(&Config::default());
         let frame = frame(0);
+        let scene = match_.present(&frame);
+        // Figurative art must never be accepted without ready verified resources.
+        assert!(matches!(
+            MacroquadRenderer::preflight(&scene, &frame),
+            Err(tabula_presentation::RenderError::Execution(_))
+        ));
+        let manifest = tabula_assets::AssetPackManifest::from_toml(assets::MANIFEST).unwrap();
+        let limits = AssetCacheLimits::new(
+            320 * 1024,
+            1024,
+            256 * 1024,
+            2 * 1024 * 1024,
+            4 * 1024 * 1024,
+            4,
+        )
+        .unwrap();
+        let mut cache = SpriteAssetCache::new(CpuUploader, limits);
+        cache
+            .bind_pack(
+                &manifest,
+                <local_game::ChessModule as tabula_game_api::GameModule>::metadata().id(),
+                &assets::asset_pack(),
+            )
+            .unwrap(); // xtask-allow-game-id: local Phase 2 fixture boundary regression only.
+        for file in manifest.files() {
+            let bytes = assets::ALL_IMAGES
+                .iter()
+                .find(|(name, _)| *name == file.name().as_str())
+                .unwrap()
+                .1;
+            cache
+                .insert_verified(
+                    file.verify_owned_bytes(tabula_assets::UnverifiedAssetBytes::new(
+                        bytes.to_vec(),
+                    ))
+                    .unwrap(),
+                )
+                .unwrap();
+        }
         assert_eq!(
-            MacroquadRenderer::preflight(&match_.present(&frame), &frame),
+            MacroquadRenderer::preflight_with_cache(&scene, &frame, &cache),
             Ok(())
         );
+        // This exercises bounded decode/resource acceptance, never actual pixels.
+    }
+
+    #[test]
+    fn completed_feedback_keeps_keyboard_inspection_flip_and_intentional_restart_reachable() {
+        use crate::runtime_ui::{FeedbackInput, LocalFeedback};
+        use tabula_presentation::{FocusId, Key};
+        let mut match_ = match_for_rules(&Config::default());
+        let full_frame = frame(0);
+        match_
+            .submit_bot_move(SeatId(0), local_game::Command::Resign, &full_frame)
+            .unwrap();
+        assert!(match_.ended().is_some());
+        let recorded = match_.recorded_inputs().len();
+        let mut feedback = LocalFeedback::default();
+        assert!(feedback.sync_match(&match_));
+        let board_frame = feedback.board_frame(&full_frame);
+        match_.local_mut().set_viewport(board_frame.viewport());
+        match_
+            .local_mut()
+            .focus_mut()
+            .set_keyboard_focus(Some(FocusId::new(0)));
+        for event in [
+            InputEvent::Key {
+                key: Key::Escape,
+                pressed: true,
+            },
+            InputEvent::Key {
+                key: Key::Escape,
+                pressed: false,
+            },
+            InputEvent::Key {
+                key: Key::ArrowDown,
+                pressed: true,
+            },
+            InputEvent::Key {
+                key: Key::ArrowDown,
+                pressed: false,
+            },
+            InputEvent::Key {
+                key: Key::Enter,
+                pressed: true,
+            },
+            InputEvent::Key {
+                key: Key::Enter,
+                pressed: false,
+            },
+        ] {
+            assert_eq!(
+                feedback.route_input(&mut match_, &event, &full_frame),
+                FeedbackInput::PassThrough
+            );
+            match_
+                .handle_presentation_input(&event, &board_frame)
+                .unwrap();
+        }
+        assert!(match_.local_mut().is_flipped());
+        assert_eq!(match_.recorded_inputs().len(), recorded);
+        assert_eq!(
+            feedback.route_input(
+                &mut match_,
+                &InputEvent::Key {
+                    key: Key::Tab,
+                    pressed: true
+                },
+                &full_frame
+            ),
+            FeedbackInput::Consumed
+        );
+        assert_eq!(
+            feedback.route_input(
+                &mut match_,
+                &InputEvent::Key {
+                    key: Key::Enter,
+                    pressed: true
+                },
+                &full_frame
+            ),
+            FeedbackInput::NewLocalGame
+        );
+        assert_eq!(match_.recorded_inputs().len(), recorded);
     }
 
     #[test]

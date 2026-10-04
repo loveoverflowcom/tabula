@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Ivory king</title>
+  <desc id="desc">Original carved Staunton-style king for Tabula, with ivory body and warm brass detailing.</desc>
+  <g fill="#F7F1E4" stroke="#273638" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M43 7 H53 V16 H62 V26 H53 V34 H61 Q63 37 60 42 L57 48 Q55 59 66 70 L65 73 H31 L30 70 Q41 59 39 48 L36 42 Q33 37 35 34 H43 V26 H34 V16 H43 Z"/>
+  <path d="M43 40 H48 V48 Q48 58 39 68 H34 Q44 58 43 48 Z" fill="#FFFFFF" fill-opacity=".66" stroke="none"/>
+  <path d="M38 38 H58" stroke="#B58D42" stroke-width="3"/><path d="M39 48 H57" stroke="#273638" stroke-width="2.4"/>
+  <path d="M28 71 H68 Q68 75 71 77 Q76 81 77 86 H19 Q20 81 25 77 Q28 75 28 71 Z"/>
+  <path d="M29 72 H67" fill="none" stroke="#B58D42" stroke-width="3"/>
+  <path d="M25 82 H71" fill="none" stroke="#273638" stroke-opacity=".46" stroke-width="2"/>
+  </g>
+</svg>

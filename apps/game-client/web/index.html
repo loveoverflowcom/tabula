@@ -1,36 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="vi" data-theme="light">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tabula</title>
-    <style>
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: black;
-        }
-
-        #glcanvas {
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            outline: none;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Tabula · Cờ vua</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="standalone.css">
+  <script src="launch-options.js" defer></script>
+  <script src="setup.js" defer></script>
 </head>
 <body>
-    <canvas id="glcanvas" tabindex="1"></canvas>
-    <script src="mq_js_bundle.js"></script>
-    <script>
-        load("tabula-game-client.wasm");
-    </script>
+  <a class="skip-link" href="#setup" data-i18n="skip">Đến thiết lập ván</a>
+  <header class="shared-header">
+    <a class="brand" href="index.html" aria-label="Tabula">Tabula</a>
+    <nav aria-label="Tabula"><a class="current" href="#setup" aria-current="page" data-i18n="game">Cờ vua</a><span data-i18n="local">Chơi cục bộ</span></nav>
+    <label class="locale"><span data-i18n="language">Ngôn ngữ</span><select id="locale" aria-label="Ngôn ngữ"><option value="vi">VI</option><option value="en">EN</option></select></label>
+  </header>
+  <main class="chess"> <!-- xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. -->
+    <p class="breadcrumb" data-i18n="breadcrumb">Cờ vua / Ván mới</p>
+    <div class="entry-grid">
+      <section class="cover" aria-labelledby="game-title">
+        <img src="assets/chess-cover.png" srcset="assets/chess-cover-small.png 480w, assets/chess-cover.png 1536w" sizes="(max-width: 760px) calc(100vw - 32px), 45vw" alt="" width="1536" height="1024" fetchpriority="high"> <!-- xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. -->
+        <div class="cover-copy"><p class="eyebrow" data-i18n="game">Cờ vua</p><h1 id="game-title" data-i18n="game">Cờ vua</h1><p data-i18n="meta">2 người · Bàn cờ 8 × 8 · Chiến thuật</p></div>
+      </section>
+      <form id="setup" tabindex="-1" class="setup" aria-labelledby="setup-title">
+        <div><h2 id="setup-title" data-i18n="setup">Thiết lập ván</h2><p class="subtitle" data-i18n="subtitle">Một ván cờ thật, trên cùng thiết bị</p></div>
+        <fieldset class="modes"><legend data-i18n="mode">Cách chơi</legend>
+          <div class="mode-grid">
+            <label class="mode selected"><input type="radio" name="mode" value="hot-seat" checked><span><strong data-i18n="hotSeat">Cùng thiết bị</strong><small data-i18n="hotSeatHint">2 người trên một máy</small></span><span class="mode-check" aria-hidden="true">✓</span></label>
+            <label class="mode unavailable"><input type="radio" name="mode" value="ai" disabled><span><strong data-i18n="ai">Bot cục bộ</strong><small data-i18n="aiHint">Chưa có trong bản này</small></span></label>
+            <label class="mode unavailable"><input type="radio" name="mode" value="online" disabled><span><strong data-i18n="online">Trực tuyến</strong><small data-i18n="onlineHint">Chưa có dịch vụ mạng</small></span></label>
+          </div>
+        </fieldset>
+        <div class="config-grid">
+          <section class="player-panel" aria-labelledby="players-title"><h3 id="players-title" data-i18n="players">Người chơi</h3><p class="seat"><span class="seat-dot white" aria-hidden="true"></span><span data-i18n="white">Người chơi 1 · Trắng</span></p><p class="seat"><span class="seat-dot black" aria-hidden="true"></span><span data-i18n="black">Người chơi 2 · Đen</span></p><p class="hint" data-i18n="playersHint">Luân phiên trên cùng thiết bị</p></section>
+          <section class="clock-panel" aria-labelledby="clock-title"><h3 id="clock-title" data-i18n="clock">Đồng hồ</h3>
+            <label class="sr-only" for="clock" data-i18n="clock">Đồng hồ</label>
+            <select id="clock" name="clock" aria-describedby="clock-hint"><option value="untimed" data-i18n="untimed">Không tính giờ</option><option value="fischer" selected>Fischer</option><option value="bronstein">Bronstein</option></select>
+            <div id="clock-fields" class="clock-fields"><label><span data-i18n="initial">Thời gian ban đầu (phút)</span><input id="initial" name="initial" type="number" inputmode="numeric" min="1" max="180" step="1" value="5" required></label><label><span id="adjustment-label" data-i18n="increment">Giờ cộng (giây)</span><input id="adjustment" name="adjustment" type="number" inputmode="numeric" min="0" max="60" step="1" value="2" required></label></div>
+            <p id="clock-hint" class="hint">Cộng 2 giây sau mỗi nước đi</p>
+          </section>
+        </div>
+        <details class="preferences"><summary data-i18n="preferences">Giao diện và chuyển động</summary><div class="preference-grid"><label><span data-i18n="theme">Giao diện</span><select id="theme"><option value="system" data-i18n="system">Theo hệ thống</option><option value="light" data-i18n="light">Sáng</option><option value="dark" data-i18n="dark">Tối</option><option value="hc-light" data-i18n="hcLight">Tương phản cao · sáng</option><option value="hc-dark" data-i18n="hcDark">Tương phản cao · tối</option></select></label><label><span data-i18n="motion">Chuyển động</span><select id="motion"><option value="system" data-i18n="system">Theo hệ thống</option><option value="reduced" data-i18n="reduced">Giảm chuyển động</option></select></label></div></details>
+        <p class="launch-summary"><span class="summary-check" aria-hidden="true">✓</span><span id="summary" aria-live="polite">Ván chơi cục bộ · 2 người · Fischer 5 phút + 2 giây</span></p>
+        <p id="setup-error" class="error" role="alert" hidden></p>
+        <button class="button start" type="submit" data-i18n="start">Bắt đầu ván cờ</button>
+        <p class="footnote" data-i18n="localNotice">Ván cục bộ không được lưu. Bàn cờ dùng Macroquad; hỗ trợ trình đọc màn hình cho toàn bộ ván chưa có</p>
+      </form>
+    </div>
+    <noscript><p class="error">JavaScript is required to configure and load the WebAssembly game. Enable JavaScript, then reload this page.</p></noscript>
+  </main>
 </body>
 </html>

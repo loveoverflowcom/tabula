@@ -6,14 +6,19 @@
 
 #![allow(clippy::doc_markdown)]
 
+/// Bounded original Chess artwork, resolved through the renderer asset pack.
+pub mod assets;
+
+mod hud;
+
 use glam::Vec2;
 use tabula_design::{Color as SemanticTint, Theme};
 use tabula_game_api::{A11yAction, A11yDescription, A11yItem, A11yRegion, ActionId, GameRules};
 use tabula_presentation::{
     handle_navigation, lerp_vec2, ActionButton, Align, AssetPackRef, AudioCue, AudioCues, Border,
     ButtonInteraction, ButtonShape, ButtonTone, Camera2D, Corners, FocusGraph, FocusId,
-    FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation, InputEvent, Intent, Layer,
-    MotionMode, MotionTimeline, NavigationAction, Paint, PointerButton, PointerPhase,
+    FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation, InputEvent, Intent, Key,
+    Layer, MotionMode, MotionTimeline, NavigationAction, Paint, PointerButton, PointerPhase,
     PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError,
     TextStyleToken, Viewport,
 };
@@ -30,8 +35,6 @@ const PROMOTION_CHOICES: [PromotionChoice; 4] = [
 ];
 const PROMOTION_BASE_FOCUS_ID: u32 = 100;
 const PROMOTION_CANCEL_FOCUS_ID: FocusId = FocusId::new(104);
-const STATUS_HEIGHT_FRACTION: f32 = 0.5;
-const STATUS_MAX_HEIGHT: f32 = 88.0;
 const IN_TRANSIT_PIECE_Z: i16 = 100;
 
 /// The closed set of pieces a pawn may become at the end of a Chess move.
@@ -99,10 +102,25 @@ fn chess_board_focus_graph(layout: BoardLayout) -> FocusGraph {
             let square = Square::new(file + rank * 8).expect("valid board square");
             let id = FocusId::new(u32::from(square.0));
             let rect = layout.square_rect(square).expect("valid square geometry");
-            let up = (rank < 7).then(|| FocusId::new(u32::from(square.0 + 8)));
-            let down = (rank > 0).then(|| FocusId::new(u32::from(square.0 - 8)));
-            let left = (file > 0).then(|| FocusId::new(u32::from(square.0 - 1)));
-            let right = (file < 7).then(|| FocusId::new(u32::from(square.0 + 1)));
+            let increasing_rank = (rank < 7).then(|| FocusId::new(u32::from(square.0 + 8)));
+            let decreasing_rank = (rank > 0).then(|| FocusId::new(u32::from(square.0 - 8)));
+            let decreasing_file = (file > 0).then(|| FocusId::new(u32::from(square.0 - 1)));
+            let increasing_file = (file < 7).then(|| FocusId::new(u32::from(square.0 + 1)));
+            let (up, down, left, right) = if layout.flipped {
+                (
+                    decreasing_rank,
+                    increasing_rank,
+                    increasing_file,
+                    decreasing_file,
+                )
+            } else {
+                (
+                    increasing_rank,
+                    decreasing_rank,
+                    decreasing_file,
+                    increasing_file,
+                )
+            };
             nodes.push(FocusNode::with_neighbors(id, rect, up, down, left, right));
         }
     }
@@ -131,8 +149,8 @@ fn chess_promotion_focus_graph(layout: BoardLayout) -> FocusGraph {
 /// The validated, responsive geometry shared by board rendering and hit testing.
 ///
 /// The board uses the smaller remaining content axis, so its rectangle is always
-/// square and centered beside a compact status dock (bottom at compact widths,
-/// top otherwise). A `Square` is converted to a
+/// square between two player bars, beside a compact status rail on wide or short
+/// landscape layouts and above a wrapped HUD on compact portrait layouts. A `Square` is converted to a
 /// rectangle only through this type, which keeps rendering and pointer mapping
 /// on the same coordinate calculation.
 ///
@@ -150,6 +168,12 @@ pub struct BoardLayout {
     board: Rect,
     status: Rect,
     square_size: f32,
+    flipped: bool,
+    top_player: Rect,
+    bottom_player: Rect,
+    controls: Rect,
+    title: Rect,
+    table: Rect,
 }
 
 impl BoardLayout {
@@ -157,31 +181,108 @@ impl BoardLayout {
     #[must_use]
     #[allow(clippy::float_arithmetic)]
     pub fn from_viewport(viewport: Viewport) -> Self {
-        let viewport_size = viewport.size();
-        let status_height = (viewport_size.y * STATUS_HEIGHT_FRACTION).min(STATUS_MAX_HEIGHT);
-        let compact = viewport_size.x < 600.0;
-        let status_origin = if compact {
-            Vec2::new(0.0, viewport_size.y - status_height)
+        Self::oriented(viewport, false)
+    }
+
+    /// Reverses board geometry only; square identities and command ownership stay fixed.
+    #[must_use]
+    #[allow(clippy::float_arithmetic, clippy::similar_names)]
+    pub fn oriented(viewport: Viewport, flipped: bool) -> Self {
+        let size = viewport.size();
+        let margin = (size.x * 0.035).min(size.y * 0.025).min(24.0);
+        let gap = (size.y * 0.008).min(8.0);
+        let title_h = (size.y * 0.06).min(40.0);
+        let player_h = if size.y >= 160.0 {
+            (size.y * 0.07).clamp(if size.y >= 450.0 { 44.0 } else { 24.0 }, 56.0)
         } else {
-            Vec2::ZERO
+            size.y * 0.08
         };
-        let status = Rect::new(status_origin, Vec2::new(viewport_size.x, status_height))
-            .expect("a finite positive viewport produces finite status geometry");
-        let content_origin = if compact {
-            Vec2::ZERO
+        let rail = (size.x >= 760.0 && size.y >= 420.0) || (size.x >= 600.0 && size.y < 420.0);
+        let status_h = if rail { 0.0 } else { (size.y * 0.1).min(64.0) };
+        let rail_w = if rail {
+            (size.x * 0.28).min(360.0)
         } else {
-            Vec2::new(0.0, status_height)
+            0.0
         };
-        let content_size = Vec2::new(viewport_size.x, viewport_size.y - status_height);
-        let side = content_size.x.min(content_size.y);
-        let board_origin = content_origin + (content_size - Vec2::splat(side)) * 0.5;
-        let board = Rect::new(board_origin, Vec2::splat(side))
-            .expect("a finite positive viewport produces finite board geometry");
+        let game_w = (size.x - margin * 2.0 - rail_w - if rail { gap * 2.0 } else { 0.0 }).max(0.0);
+        let rail_toolbar = rail && size.y < 450.0;
+        let columns = ((game_w + 4.0) / 76.0).floor().max(1.0);
+        let controls_h = if size.y >= 200.0 && size.x >= 280.0 && !rail_toolbar {
+            (6.0 / columns).ceil() * 48.0 - 4.0
+        } else {
+            0.0
+        };
+        let coordinate = (game_w * 0.03).min(if size.y < 420.0 { 12.0 } else { 16.0 });
+        let remaining_h = (size.y
+            - margin * 2.0
+            - title_h
+            - player_h * 2.0
+            - controls_h
+            - status_h
+            - gap * 6.0
+            - coordinate * 2.0)
+            .max(0.0);
+        let side = (game_w - coordinate * 2.0)
+            .max(0.0)
+            .min(remaining_h)
+            .min(680.0);
+        let left = margin + (game_w - side) * 0.5;
+        let title = Rect::new(Vec2::new(margin, margin), Vec2::new(game_w, title_h))
+            .expect("validated viewport gives finite title geometry");
+        let top_player = Rect::new(
+            Vec2::new(left, margin + title_h + gap),
+            Vec2::new(side, player_h),
+        )
+        .expect("validated viewport gives finite player geometry");
+        let board_y = top_player.origin().y + player_h + gap + coordinate;
+        let board = Rect::new(Vec2::new(left, board_y), Vec2::splat(side))
+            .expect("validated viewport gives finite square geometry");
+        let bottom_player = Rect::new(
+            Vec2::new(left, board_y + side + coordinate + gap),
+            Vec2::new(side, player_h),
+        )
+        .expect("validated viewport gives finite player geometry");
+        let controls_y = bottom_player.origin().y + player_h + gap;
+        let status = if rail {
+            Rect::new(
+                Vec2::new(margin + game_w + gap * 2.0, top_player.origin().y),
+                Vec2::new(rail_w, (size.y - margin - top_player.origin().y).max(0.0)),
+            )
+        } else {
+            Rect::new(
+                Vec2::new(margin, controls_y + controls_h + gap),
+                Vec2::new(game_w, status_h),
+            )
+        }
+        .expect("validated viewport gives finite status geometry");
+        let controls = if rail_toolbar {
+            Rect::new(
+                status.origin() + Vec2::new(0.0, 28.0),
+                Vec2::new(status.size().x, (status.size().y - 28.0).max(0.0)),
+            )
+        } else {
+            Rect::new(Vec2::new(margin, controls_y), Vec2::new(game_w, controls_h))
+        }
+        .expect("validated viewport gives finite controls geometry");
+        let table = Rect::new(
+            Vec2::new(left - coordinate, top_player.origin().y - gap * 0.5),
+            Vec2::new(
+                side + coordinate * 2.0,
+                bottom_player.origin().y + player_h - top_player.origin().y + gap,
+            ),
+        )
+        .expect("validated viewport gives finite table geometry");
         Self {
             viewport,
             board,
             status,
             square_size: side / 8.0,
+            flipped,
+            top_player,
+            bottom_player,
+            controls,
+            title,
+            table,
         }
     }
 
@@ -210,10 +311,19 @@ impl BoardLayout {
         if square.0 >= 64 {
             return None;
         }
-        let row = 7 - square.rank();
+        let row = if self.flipped {
+            square.rank()
+        } else {
+            7 - square.rank()
+        };
+        let file = if self.flipped {
+            7 - square.file()
+        } else {
+            square.file()
+        };
         let origin = self.board.origin()
             + Vec2::new(
-                f32::from(square.file()) * self.square_size,
+                f32::from(file) * self.square_size,
                 f32::from(row) * self.square_size,
             );
         Rect::new(origin, Vec2::splat(self.square_size)).ok()
@@ -243,7 +353,11 @@ impl BoardLayout {
         if file >= 8 || row >= 8 {
             return None;
         }
-        Square::new(file + (7 - row) * 8)
+        if self.flipped {
+            Square::new(7 - file + row * 8)
+        } else {
+            Square::new(file + (7 - row) * 8)
+        }
     }
 
     /// The deterministic pointer distance required to transition from a pressed
@@ -330,6 +444,13 @@ pub struct ChessMoveAnimation {
     pub timeline: MotionTimeline,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct ActivationKeys {
+    enter_held: bool,
+    space_held: bool,
+    pointer_cancelled: bool,
+}
+
 /// Chess presentation state that is never sent to rules or treated as truth.
 ///
 /// @ai.role presentation-state
@@ -343,8 +464,17 @@ pub struct ChessLocal {
     last_move: Option<(Square, Square)>,
     focus: FocusState,
     promotion_buttons: ButtonInteraction,
+    promotion_observed: Option<hud::VisiblePosition>,
     move_animation: Option<ChessMoveAnimation>,
     viewport: Viewport,
+    flipped: bool,
+    hud_buttons: ButtonInteraction,
+    confirmation: Option<hud::ControlConfirmation>,
+    hot_seat_controls: bool,
+    control_color: Option<ChessColor>,
+    move_history: Vec<hud::ObservedMove>,
+    activation_keys: ActivationKeys,
+    reduced_motion: bool,
 }
 
 impl Default for ChessLocal {
@@ -355,13 +485,54 @@ impl Default for ChessLocal {
             last_move: None,
             focus: FocusState::new(Some(FocusId::new(0)), FocusModality::Pointer, true),
             promotion_buttons: ButtonInteraction::default(),
+            promotion_observed: None,
             move_animation: None,
             viewport: Viewport::new(Vec2::splat(1.0)).expect("unit viewport is valid"),
+            flipped: false,
+            hud_buttons: ButtonInteraction::default(),
+            confirmation: None,
+            hot_seat_controls: false,
+            control_color: None,
+            move_history: Vec::new(),
+            activation_keys: ActivationKeys::default(),
+            reduced_motion: false,
         }
     }
 }
 
 impl ChessLocal {
+    /// Applies the shell's local motion preference without changing the projection.
+    pub fn set_reduced_motion(&mut self, reduced: bool) {
+        self.reduced_motion = reduced;
+        if reduced {
+            self.move_animation = None;
+        }
+    }
+
+    /// Enables local seat selection only for the shell's admitted hot-seat session.
+    pub fn set_hot_seat_controls(&mut self, enabled: bool) {
+        self.hot_seat_controls = enabled;
+        if !enabled {
+            self.control_color = None;
+        }
+    }
+
+    /// Local hot-seat viewing choice; a network client must never enable this control.
+    #[must_use]
+    pub fn viewer_override(&self) -> Option<tabula_core::Viewer> {
+        if !self.hot_seat_controls {
+            return None;
+        }
+        self.control_color
+            .map(|color| tabula_core::Viewer::Seat(color.seat()))
+    }
+
+    /// Current local board orientation. This never changes the controlling seat.
+    #[must_use]
+    pub const fn is_flipped(&self) -> bool {
+        self.flipped
+    }
+
     #[must_use]
     pub const fn interaction(&self) -> Interaction {
         self.interaction
@@ -412,6 +583,7 @@ impl ChessLocal {
     pub fn clear_interaction(&mut self) {
         self.interaction = Interaction::Idle;
         self.promotion_buttons = ButtonInteraction::default();
+        self.promotion_observed = None;
     }
 }
 
@@ -424,7 +596,7 @@ impl GamePresentation for ChessPresentation {
     type Local = ChessLocal;
 
     fn asset_pack() -> AssetPackRef {
-        AssetPackRef::from_static("chess", "0.1.0")
+        assets::asset_pack()
     }
 
     fn present(view: &View, local: &ChessLocal, frame: &FrameCtx) -> RenderList {
@@ -452,12 +624,21 @@ impl GamePresentation for ChessPresentation {
                 captured,
             } => {
                 local.last_move = Some((*from, *to));
+                if let Some(color) = ChessColor::from_seat(*seat) {
+                    hud::record_move(local, color, *from, *to, *promotion, captured.is_some());
+                }
+                local.control_color = None;
+                local.confirmation = None;
                 local.clear_interaction();
                 let timeline = MotionTimeline::from_profile(
                     frame.now_ms(),
                     frame.theme().motion.piece_move,
                     &frame.theme(),
-                    MotionMode::Full,
+                    if local.reduced_motion {
+                        MotionMode::Reduced
+                    } else {
+                        MotionMode::Full
+                    },
                 );
                 if let Some(color) = ChessColor::from_seat(*seat) {
                     local.move_animation = Some(ChessMoveAnimation {
@@ -478,6 +659,7 @@ impl GamePresentation for ChessPresentation {
             }
             crate::ViewEvent::Ended { .. } => {
                 local.clear_interaction();
+                local.confirmation = None;
                 one_cue("game-end")
             }
             crate::ViewEvent::ClockUpdated { .. }
@@ -492,7 +674,47 @@ impl GamePresentation for ChessPresentation {
         view: &View,
         local: &mut ChessLocal,
     ) -> Option<Intent<Command>> {
-        let layout = BoardLayout::from_viewport(local.viewport);
+        let layout = BoardLayout::oriented(local.viewport, local.flipped);
+        if matches!(input, InputEvent::Focus(false)) {
+            if let Interaction::Pressed { from, .. } | Interaction::Dragging { from, .. } =
+                local.interaction
+            {
+                local.interaction = Interaction::Selected { square: from };
+            }
+            local.hud_buttons = ButtonInteraction::default();
+            local.promotion_buttons = ButtonInteraction::default();
+            local.activation_keys.enter_held = false;
+            local.activation_keys.space_held = false;
+            local.activation_keys.pointer_cancelled = true;
+        }
+        if !matches!(input, InputEvent::Focus(_)) && !local.focus.is_window_focused() {
+            return None;
+        }
+        if let InputEvent::Pointer { phase, .. } = input {
+            if *phase == PointerPhase::Down {
+                local.activation_keys.pointer_cancelled = false;
+            }
+            if *phase == PointerPhase::Up && local.activation_keys.pointer_cancelled {
+                return None;
+            }
+        }
+        if let InputEvent::Key { key, pressed } = input {
+            if matches!(key, Key::Enter | Key::Space) {
+                let held = if *key == Key::Enter {
+                    &mut local.activation_keys.enter_held
+                } else {
+                    &mut local.activation_keys.space_held
+                };
+                let repeated = *held;
+                *held = *pressed;
+                if repeated && *pressed {
+                    return None;
+                }
+            }
+        }
+        if let hud::HudInput::Handled(result) = hud::on_input(input, view, local, layout) {
+            return result;
+        }
         if let Interaction::Promotion { from, to, selected } = local.interaction {
             let graph = chess_promotion_focus_graph(layout);
             if !local.focus.current().is_some_and(|id| graph.contains(id)) {
@@ -540,6 +762,14 @@ impl GamePresentation for ChessPresentation {
                 phase,
             } => match phase {
                 PointerPhase::Down => {
+                    if *button == PointerButton::Primary
+                        && matches!(
+                            local.interaction,
+                            Interaction::Pressed { .. } | Interaction::Dragging { .. }
+                        )
+                    {
+                        return None;
+                    }
                     local.hover = layout.square_at(*position);
                     if let Some(square) = local.hover {
                         local
@@ -616,6 +846,7 @@ impl GamePresentation for ChessPresentation {
                     None
                 }
                 PointerPhase::Cancel => {
+                    local.activation_keys.pointer_cancelled = true;
                     match local.interaction {
                         Interaction::Dragging { from, .. } | Interaction::Pressed { from, .. } => {
                             local.interaction = Interaction::Selected { square: from };
@@ -641,6 +872,8 @@ impl GamePresentation for ChessPresentation {
                         Interaction::Dragging { from, .. } => {
                             if let Some(to) = square {
                                 if has_promotion_command(view, from, to) {
+                                    local.promotion_observed =
+                                        Some(hud::VisiblePosition::new(view));
                                     local.interaction = Interaction::Promotion {
                                         from,
                                         to,
@@ -768,6 +1001,7 @@ fn click_square(
                 return None;
             }
             if has_promotion_command(view, from, square) {
+                local.promotion_observed = Some(hud::VisiblePosition::new(view));
                 local.interaction = Interaction::Promotion {
                     from,
                     to: square,
@@ -852,7 +1086,12 @@ impl PromotionLayout {
             group_width + padding * 2.0,
             padding * 2.0 + heading_height + section_gap * 2.0 + button_size + minimum,
         );
-        let panel = Rect::new((viewport - panel_size) * 0.5, panel_size).ok()?;
+        let origin = if viewport.x < 600.0 {
+            Vec2::new((viewport.x - panel_size.x) * 0.5, viewport.y - panel_size.y)
+        } else {
+            (viewport - panel_size) * 0.5
+        };
+        let panel = Rect::new(origin, panel_size).ok()?;
         let first = panel.origin() + Vec2::new(padding, padding + heading_height + section_gap);
         let choice = |x| {
             Rect::new(
@@ -889,11 +1128,16 @@ fn promotion_cancel_rect(layout: BoardLayout) -> Option<Rect> {
 
 fn promotion_choice_enabled(
     view: &View,
+    local: &ChessLocal,
     from: Square,
     to: Square,
     choice: PromotionChoice,
 ) -> bool {
     matches!(view.status, Status::Playing)
+        && local
+            .promotion_observed
+            .as_ref()
+            .is_some_and(|observed| *observed == hud::VisiblePosition::new(view))
         && view.you == Some(view.turn)
         && view
             .legal_moves
@@ -915,19 +1159,15 @@ fn promotion_buttons(
         .enumerate()
         .filter_map(|(index, choice)| {
             let rect = promotion_choice_rect(layout, index)?;
-            let enabled = promotion_choice_enabled(view, from, to, choice);
+            let enabled = promotion_choice_enabled(view, local, from, to, choice);
             Some(
                 ActionButton::new(
                     promotion_choice_focus_id(choice),
                     rect,
-                    piece_name(choice.piece_kind()),
+                    "",
                     metrics.density.min_target,
                 )
                 .ok()?
-                .with_icon(piece_glyph(Piece {
-                    color: view.turn,
-                    kind: choice.piece_kind(),
-                }))
                 .tone(if choice == selected {
                     ButtonTone::Filled
                 } else {
@@ -972,8 +1212,9 @@ fn build_render_list(
     frame: &FrameCtx,
 ) -> Result<RenderList, RenderListError> {
     let theme = frame.theme();
-    let layout = BoardLayout::from_viewport(frame.viewport());
+    let layout = BoardLayout::oriented(frame.viewport(), local.flipped);
     let mut builder = RenderListBuilder::new(Camera2D::default());
+    hud::draw_material(&mut builder, frame, layout)?;
 
     for row in 0..8_u8 {
         for file in 0..8_u8 {
@@ -987,9 +1228,9 @@ fn build_render_list(
                 rect,
                 radii: Corners::uniform(0.0)?,
                 fill: Some(Paint::Solid(if light_square {
-                    theme.color.surface_container
+                    theme.game_art.chess.board_light
                 } else {
-                    theme.color.surface_container_high
+                    theme.game_art.chess.board_dark
                 })),
                 border: None,
                 layer: Layer::BOARD,
@@ -1026,7 +1267,44 @@ fn build_render_list(
             .square_rect(square)
             .ok_or(RenderListError::InvalidGeometry)?;
 
+        if view.in_check
+            && view.board[usize::from(square.0)]
+                .is_some_and(|piece| piece.color == view.turn && piece.kind == PieceKind::King)
+        {
+            builder.push(contrast_plate(rect, &theme, Layer::OVERLAY, 124)?)?;
+            builder.push(outline(
+                rect,
+                theme.color.danger,
+                Layer::OVERLAY,
+                125,
+                &theme,
+            )?)?;
+            if rect.size().x >= 44.0 {
+                builder.push(RenderCmd::Rect {
+                    rect: Rect::new(
+                        rect.origin(),
+                        Vec2::new(rect.size().x, (rect.size().y * 0.3).min(18.0)),
+                    )?,
+                    radii: Corners::uniform(0.0)?,
+                    fill: Some(Paint::Solid(theme.color.danger)),
+                    border: None,
+                    layer: Layer::OVERLAY,
+                    z: 126,
+                })?;
+                builder.push(RenderCmd::Text {
+                    text: "CHECK".into(),
+                    at: rect.origin(),
+                    style: TextStyleToken::LabelSm,
+                    align: Align::Start,
+                    max_width: None,
+                    color: theme.color.on_danger,
+                    layer: Layer::OVERLAY,
+                    z: 127,
+                })?;
+            }
+        }
         if is_last_move {
+            builder.push(contrast_plate(rect, &theme, Layer::OVERLAY, -1)?)?;
             builder.push(outline(
                 rect,
                 theme.color.last_action,
@@ -1036,20 +1314,34 @@ fn build_render_list(
             )?)?;
         }
         if is_legal_destination {
-            let marker_size = Vec2::splat(layout.square_size() * 0.22);
-            builder.push(RenderCmd::Rect {
-                rect: Rect::new(
-                    rect.origin() + (rect.size() - marker_size) * 0.5,
-                    marker_size,
-                )?,
-                radii: Corners::uniform(marker_size.x * 0.5)?,
-                fill: Some(Paint::Solid(theme.color.legal_target)),
-                border: None,
-                layer: Layer::OVERLAY,
-                z: i16::from(square.0),
-            })?;
+            if view.board[usize::from(square.0)].is_some() {
+                builder.push(contrast_plate(rect, &theme, Layer::OVERLAY, 60)?)?;
+                builder.push(outline(
+                    rect,
+                    theme.color.legal_target,
+                    Layer::OVERLAY,
+                    61,
+                    &theme,
+                )?)?;
+            } else {
+                let marker_size = Vec2::splat(layout.square_size() * 0.22);
+                for (size, color, z) in [
+                    (marker_size + Vec2::splat(4.0), theme.color.surface, 60),
+                    (marker_size, theme.color.legal_target, 61),
+                ] {
+                    builder.push(RenderCmd::Rect {
+                        rect: Rect::new(rect.origin() + (rect.size() - size) * 0.5, size)?,
+                        radii: Corners::uniform(size.x * 0.5)?,
+                        fill: Some(Paint::Solid(color)),
+                        border: None,
+                        layer: Layer::OVERLAY,
+                        z,
+                    })?;
+                }
+            }
         }
         if is_selected {
+            builder.push(contrast_plate(rect, &theme, Layer::OVERLAY, 99)?)?;
             builder.push(outline(
                 rect,
                 theme.color.selected,
@@ -1087,6 +1379,7 @@ fn build_render_list(
             }
         }
         if is_focused {
+            builder.push(contrast_plate(rect, &theme, Layer::OVERLAY, 149)?)?;
             builder.push(outline(
                 rect,
                 theme.focus.ring_color,
@@ -1132,19 +1425,13 @@ fn build_render_list(
         let rect = layout
             .square_rect(square)
             .ok_or(RenderListError::InvalidGeometry)?;
-        let style = TextStyleToken::DisplaySm;
-        let line_height = theme.text_style(style).line_height().get();
-        builder.push(RenderCmd::Text {
-            text: piece_glyph(*piece).to_owned(),
-            at: rect.origin()
-                + Vec2::new(rect.size().x * 0.5, rect.size().y * 0.5 - line_height * 0.5),
-            style,
-            align: Align::Center,
-            max_width: None,
-            color: piece_color(*piece, &theme),
-            layer: Layer::PIECES,
-            z: i16::try_from(index).map_err(|_| RenderListError::InvalidGeometry)?,
-        })?;
+        builder.push(piece_sprite(
+            *piece,
+            rect,
+            &theme,
+            Layer::PIECES,
+            i16::try_from(index).map_err(|_| RenderListError::InvalidGeometry)?,
+        )?)?;
     }
 
     if let Some((anim, sample)) = move_sample {
@@ -1164,46 +1451,54 @@ fn build_render_list(
                     .square_rect(anim.to)
                     .ok_or(RenderListError::InvalidGeometry)?;
                 let current_origin = lerp_vec2(from_rect.origin(), to_rect.origin(), sample.factor);
-                let style = TextStyleToken::DisplaySm;
-                let line_height = theme.text_style(style).line_height().get();
-                builder.push(RenderCmd::Text {
-                    text: piece_glyph(piece).to_owned(),
-                    at: current_origin
-                        + Vec2::new(
-                            from_rect.size().x * 0.5,
-                            from_rect.size().y * 0.5 - line_height * 0.5,
-                        ),
-                    style,
-                    align: Align::Center,
-                    max_width: None,
-                    color: piece_color(piece, &theme),
-                    layer: Layer::PIECES,
-                    z: IN_TRANSIT_PIECE_Z,
-                })?;
+                let current_rect = Rect::new(current_origin, from_rect.size())?;
+                builder.push(piece_sprite(
+                    piece,
+                    current_rect,
+                    &theme,
+                    Layer::PIECES,
+                    IN_TRANSIT_PIECE_Z,
+                )?)?;
             }
         }
     }
 
     if let Interaction::Dragging { from, pointer, .. } = local.interaction {
         if let Some(Some(piece)) = view.board.get(usize::from(from.0)) {
-            let style = TextStyleToken::DisplaySm;
-            let line_height = theme.text_style(style).line_height().get();
-            builder.push(RenderCmd::Text {
-                text: piece_glyph(*piece).to_owned(),
-                at: Vec2::new(pointer.get().x, pointer.get().y - line_height * 0.5),
-                style,
-                align: Align::Center,
-                max_width: None,
-                color: piece_color(*piece, &theme),
-                layer: Layer::PIECES,
-                z: IN_TRANSIT_PIECE_Z + 10,
-            })?;
+            let rect = Rect::new(
+                pointer.get() - Vec2::splat(layout.square_size() * 0.5),
+                Vec2::splat(layout.square_size()),
+            )?;
+            let mut sprite =
+                piece_sprite(*piece, rect, &theme, Layer::PIECES, IN_TRANSIT_PIECE_Z + 10)?;
+            if let RenderCmd::Sprite { pivot, .. } = &mut sprite {
+                *pivot = pointer.get();
+            }
+            builder.push(sprite)?;
         }
     }
 
-    draw_status(&mut builder, view, frame, layout)?;
+    hud::draw(&mut builder, view, local, frame, layout)?;
 
     if is_promotion {
+        builder.push(RenderCmd::PushOpacity {
+            opacity: tabula_presentation::Opacity::try_from(0.38)
+                .map_err(|_| RenderListError::InvalidGeometry)?,
+            layer: Layer::MODAL,
+            z: -1,
+        })?;
+        builder.push(RenderCmd::Rect {
+            rect: Rect::new(Vec2::ZERO, layout.viewport.size())?,
+            radii: Corners::uniform(0.0)?,
+            fill: Some(Paint::Solid(theme.color.hidden)),
+            border: None,
+            layer: Layer::MODAL,
+            z: -1,
+        })?;
+        builder.push(RenderCmd::PopOpacity {
+            layer: Layer::MODAL,
+            z: -1,
+        })?;
         let buttons = promotion_buttons(view, local, layout);
         if let Some(panel) = promotion_panel_rect(layout) {
             builder.push(RenderCmd::Rect {
@@ -1241,10 +1536,74 @@ fn build_render_list(
                 &local.focus,
                 Layer::MODAL,
             )?;
+            if let Some(choice) = focus_id_to_promotion_choice(button.id()) {
+                let rect = button.rect();
+                let sprite_size = rect.size().x * 0.72;
+                let sprite_rect = Rect::new(
+                    rect.origin() + Vec2::new((rect.size().x - sprite_size) * 0.5, 2.0),
+                    Vec2::splat(sprite_size),
+                )?;
+                builder.push(piece_sprite(
+                    Piece {
+                        color: view.turn,
+                        kind: choice.piece_kind(),
+                    },
+                    sprite_rect,
+                    &theme,
+                    Layer::MODAL,
+                    2,
+                )?)?;
+                builder.push(RenderCmd::Text { text: piece_name(choice.piece_kind()).into(),
+                    at: rect.origin() + Vec2::new(rect.size().x * 0.5, rect.size().y - 24.0),
+                    style: TextStyleToken::LabelMd, align: Align::Center, max_width: None,
+                    color: if button.is_enabled() && matches!(local.interaction, Interaction::Promotion { selected, .. } if selected == choice) {
+                        theme.color.on_primary } else { theme.color.on_surface }, layer: Layer::MODAL, z: 2 })?;
+            }
         }
     }
 
     builder.finish()
+}
+
+#[allow(clippy::float_arithmetic)]
+fn piece_sprite(
+    piece: Piece,
+    cell: Rect,
+    theme: &Theme,
+    layer: Layer,
+    z: i16,
+) -> Result<RenderCmd, RenderListError> {
+    let inset = cell.size() * 0.055;
+    let rect = Rect::new(cell.origin() + inset, cell.size() - inset * 2.0)?;
+    Ok(RenderCmd::Sprite {
+        asset: assets::piece_asset(piece),
+        rect,
+        tint: theme.game_art.chess.piece_tint,
+        rotation: 0.0,
+        pivot: cell.origin() + cell.size() * 0.5,
+        layer,
+        z,
+    })
+}
+
+#[allow(clippy::float_arithmetic)]
+fn contrast_plate(
+    rect: Rect,
+    theme: &Theme,
+    layer: Layer,
+    z: i16,
+) -> Result<RenderCmd, RenderListError> {
+    Ok(RenderCmd::Rect {
+        rect,
+        radii: Corners::uniform(0.0)?,
+        fill: None,
+        border: Some(Border::new(
+            theme.focus.ring_width.get() + 4.0,
+            theme.color.surface,
+        )?),
+        layer,
+        z,
+    })
 }
 
 fn outline(
@@ -1281,13 +1640,43 @@ fn status_text(view: &View) -> String {
     match &view.status {
         Status::Playing => {
             if view.you == Some(view.turn) {
-                format!("Your turn / {}", color_name(view.turn))
+                format!(
+                    "Your turn / {}{}",
+                    color_name(view.turn),
+                    if view.in_check { " / CHECK" } else { "" }
+                )
             } else {
-                format!("{} to move", color_name(view.turn))
+                format!(
+                    "{} to move{}",
+                    color_name(view.turn),
+                    if view.in_check { " / CHECK" } else { "" }
+                )
             }
         }
-        Status::Ended { outcome } => format!("Game over / {}", outcome.summary()),
+        Status::Ended { .. } => format!(
+            "Game over / {}",
+            result_title(view).unwrap_or_else(|| "Finished".into())
+        ),
     }
+}
+
+fn result_title(view: &View) -> Option<String> {
+    let Status::Ended { outcome } = &view.status else {
+        return None;
+    };
+    Some(match outcome.kind() {
+        tabula_core::OutcomeKind::Draw => "Draw".into(),
+        tabula_core::OutcomeKind::Aborted { .. } => "Game cancelled".into(),
+        tabula_core::OutcomeKind::Decisive => outcome
+            .standings()
+            .iter()
+            .find(|standing| standing.rank == 0)
+            .and_then(|standing| ChessColor::from_seat(standing.seat))
+            .map_or_else(
+                || "Game finished".into(),
+                |color| format!("{} wins", color_name(color)),
+            ),
+    })
 }
 
 /// Derives a presentation-only live clock from the last authoritative clock
@@ -1311,112 +1700,12 @@ fn clock_remaining(view: &View, frame: &FrameCtx) -> Option<[u64; 2]> {
     Some([remaining[0].0, remaining[1].0])
 }
 
-/// A compact tonal HUD with textual turn/low-time markers. The board and HUD
-/// have disjoint bounds; clocks are estimates, never authority (I-10/I-12).
-#[allow(clippy::float_arithmetic)]
-fn draw_status(
-    builder: &mut RenderListBuilder,
-    view: &View,
-    frame: &FrameCtx,
-    layout: BoardLayout,
-) -> Result<(), RenderListError> {
-    let rect = layout.status();
-    if rect.size().x < 120.0 || rect.size().y < 32.0 {
-        return Ok(());
-    }
-    let theme = frame.theme();
-    builder.push(RenderCmd::Rect {
-        rect,
-        radii: Corners::uniform(theme.shape.card.get().min(rect.size().y / 2.0))?,
-        fill: Some(Paint::Solid(theme.color.surface_container)),
-        border: None,
-        layer: Layer::HUD,
-        z: 0,
-    })?;
-    builder.push(RenderCmd::Text {
-        text: status_text(view),
-        at: rect.origin() + Vec2::new(rect.size().x / 2.0, 2.0),
-        style: TextStyleToken::TitleSm,
-        align: Align::Center,
-        max_width: Some(
-            tabula_design::Positive::new(rect.size().x - 16.0)
-                .map_err(|_| RenderListError::InvalidGeometry)?,
-        ),
-        color: theme.color.on_surface,
-        layer: Layer::HUD,
-        z: 1,
-    })?;
-    if rect.size().y < 80.0 {
-        return Ok(());
-    }
-    let Some(remaining) = clock_remaining(view, frame) else {
-        return Ok(());
-    };
-    let width = ((rect.size().x - 24.0) / 2.0).min(240.0);
-    let start = rect.origin().x + (rect.size().x - width * 2.0 - 8.0) / 2.0;
-    for (index, color) in [ChessColor::White, ChessColor::Black]
-        .into_iter()
-        .enumerate()
-    {
-        let active = matches!(view.status, Status::Playing) && view.turn == color;
-        let low = active && remaining[index] <= 30_000;
-        let (fill, content) = if low {
-            (theme.color.danger, theme.color.on_danger)
-        } else if active {
-            (theme.color.primary, theme.color.on_primary)
-        } else {
-            (theme.color.surface_container_high, theme.color.on_surface)
-        };
-        let x = start + if index == 0 { 0.0 } else { width + 8.0 };
-        let card = Rect::new(Vec2::new(x, rect.origin().y + 30.0), Vec2::new(width, 52.0))?;
-        builder.push(RenderCmd::Rect {
-            rect: card,
-            radii: Corners::uniform(theme.shape.button.get())?,
-            fill: Some(Paint::Solid(fill)),
-            border: None,
-            layer: Layer::HUD,
-            z: 1,
-        })?;
-        for (text, y, style) in [
-            (
-                format!(
-                    "{}{}",
-                    color_name(color),
-                    if active { " / turn" } else { "" }
-                ),
-                0.0,
-                TextStyleToken::LabelSm,
-            ),
-            (
-                format!(
-                    "{}{}",
-                    format_clock("", remaining[index]).trim(),
-                    if low { " LOW" } else { "" }
-                ),
-                19.0,
-                TextStyleToken::MonoMd,
-            ),
-        ] {
-            builder.push(RenderCmd::Text {
-                text,
-                at: card.origin() + Vec2::new(width / 2.0, y),
-                style,
-                align: Align::Center,
-                max_width: None,
-                color: content,
-                layer: Layer::HUD,
-                z: 2,
-            })?;
-        }
-    }
-    Ok(())
-}
-
 fn format_clock(color: &str, millis: u64) -> String {
     let seconds = millis / 1_000;
     format!("{color} {}:{:02}", seconds / 60, seconds % 60)
 }
 
+#[allow(clippy::too_many_lines)]
 fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
     let items = view
         .board
@@ -1428,11 +1717,34 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
                 || String::from("Empty square"),
                 |piece| format!("{} {}", color_name(piece.color), piece_name(piece.kind)),
             );
-            let state = if piece.is_some() {
+            let mut state = if piece.is_some() {
                 String::from("occupied")
             } else {
                 String::from("empty")
             };
+            if view.in_check
+                && piece
+                    .is_some_and(|piece| piece.color == view.turn && piece.kind == PieceKind::King)
+            {
+                state.push_str(", in check");
+            }
+            if local
+                .last_move
+                .is_some_and(|(from, to)| from == square || to == square)
+            {
+                state.push_str(", last move");
+            }
+            if let Interaction::Selected { square: from }
+            | Interaction::Pressed { from, .. }
+            | Interaction::Dragging { from, .. } = local.interaction
+            {
+                if square == from {
+                    state.push_str(", selected");
+                }
+                if legal_destination(view, from, square) {
+                    state.push_str(", legal destination");
+                }
+            }
             let activates = piece
                 .filter(|piece| view.you == Some(piece.color) && view.you == Some(view.turn))
                 .map(|_| ActionId(String::from("move-square")));
@@ -1446,6 +1758,7 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
         .collect();
 
     let promotion_active = matches!(local.interaction, Interaction::Promotion { .. });
+    let confirmation_active = local.confirmation.is_some();
     let mut description = A11yDescription {
         status: status_text(view),
         regions: vec![A11yRegion {
@@ -1457,10 +1770,15 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
             label: String::from("Select a piece and move it"),
             enabled: matches!(view.status, Status::Playing)
                 && view.you == Some(view.turn)
-                && !promotion_active,
+                && !promotion_active
+                && !confirmation_active,
         }],
     };
 
+    if let Status::Ended { outcome } = &view.status {
+        description.status.push_str(" / ");
+        description.status.push_str(outcome.summary());
+    }
     if let Interaction::Promotion { from, to, selected } = local.interaction {
         description.status = format!(
             "{} / choose promotion, {} selected",
@@ -1476,14 +1794,14 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
                 .map(|(index, choice)| A11yItem {
                     label: format!("Promote to {}", piece_name(choice.piece_kind())),
                     position: format!("choice {}", index + 1),
-                    state: if !promotion_choice_enabled(view, from, to, choice) {
+                    state: if !promotion_choice_enabled(view, local, from, to, choice) {
                         String::from("unavailable: position changed")
                     } else if choice == selected {
                         String::from("selected")
                     } else {
                         String::from("available")
                     },
-                    activates: promotion_choice_enabled(view, from, to, choice)
+                    activates: promotion_choice_enabled(view, local, from, to, choice)
                         .then(|| ActionId(String::from(choice.action_id()))),
                 })
                 .collect(),
@@ -1493,7 +1811,7 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
             .extend(PROMOTION_CHOICES.iter().copied().map(|choice| A11yAction {
                 id: ActionId(String::from(choice.action_id())),
                 label: format!("Promote to {}", piece_name(choice.piece_kind())),
-                enabled: promotion_choice_enabled(view, from, to, choice),
+                enabled: promotion_choice_enabled(view, local, from, to, choice),
             }));
     }
 
@@ -1504,31 +1822,44 @@ fn chess_a11y(view: &View, local: &ChessLocal) -> A11yDescription {
             enabled: true,
         });
     }
+    if !promotion_active {
+        for (id, label, command) in [
+            ("resign", "Resign with confirmation", Command::Resign),
+            (
+                "offer-draw",
+                "Offer a draw with confirmation",
+                Command::OfferDraw,
+            ),
+            (
+                "accept-draw",
+                "Accept the offered draw with confirmation",
+                Command::AcceptDraw,
+            ),
+            (
+                "decline-draw",
+                "Decline the offered draw",
+                Command::DeclineDraw,
+            ),
+            (
+                "claim-draw",
+                "Claim an eligible draw with confirmation",
+                Command::ClaimDraw,
+            ),
+        ] {
+            description.actions.push(A11yAction {
+                id: ActionId(id.into()),
+                label: label.into(),
+                enabled: !confirmation_active && view.actions.contains(&command),
+            });
+        }
+        description.actions.push(A11yAction {
+            id: ActionId("flip-board".into()),
+            label: "Flip board orientation".into(),
+            enabled: !confirmation_active,
+        });
+    }
+    hud::describe_confirmation(&mut description, view, local);
     description
-}
-
-fn piece_glyph(piece: Piece) -> &'static str {
-    match (piece.color, piece.kind) {
-        (ChessColor::White, PieceKind::Pawn) => "P",
-        (ChessColor::White, PieceKind::Knight) => "N",
-        (ChessColor::White, PieceKind::Bishop) => "B",
-        (ChessColor::White, PieceKind::Rook) => "R",
-        (ChessColor::White, PieceKind::Queen) => "Q",
-        (ChessColor::White, PieceKind::King) => "K",
-        (ChessColor::Black, PieceKind::Pawn) => "p",
-        (ChessColor::Black, PieceKind::Knight) => "n",
-        (ChessColor::Black, PieceKind::Bishop) => "b",
-        (ChessColor::Black, PieceKind::Rook) => "r",
-        (ChessColor::Black, PieceKind::Queen) => "q",
-        (ChessColor::Black, PieceKind::King) => "k",
-    }
-}
-
-fn piece_color(piece: Piece, theme: &Theme) -> SemanticTint {
-    match piece.color {
-        ChessColor::White => theme.color.on_surface,
-        ChessColor::Black => theme.color.on_surface_variant,
-    }
 }
 
 fn color_name(color: ChessColor) -> &'static str {
@@ -1601,11 +1932,7 @@ mod tests {
     #[allow(clippy::float_arithmetic)]
     fn piece_position(layout: BoardLayout, square: Square) -> Vec2 {
         let rect = layout.square_rect(square).expect("test square is valid");
-        let line_height = Theme::by_kind(tabula_design::ThemeKind::Light)
-            .text_style(TextStyleToken::DisplaySm)
-            .line_height()
-            .get();
-        rect.origin() + Vec2::new(rect.size().x * 0.5, rect.size().y * 0.5 - line_height * 0.5)
+        rect.origin() + rect.size() * 0.5
     }
 
     fn key(key: Key) -> InputEvent {
@@ -1806,7 +2133,7 @@ mod tests {
             (1440.0, 900.0),
         ] {
             let frame = frame(width, height);
-            let status = BoardLayout::from_viewport(frame.viewport()).status();
+            let layout = BoardLayout::from_viewport(frame.viewport());
             let scene = ChessPresentation::present(&projected, &ChessLocal::default(), &frame);
             let cards: Vec<_> = scene
                 .commands()
@@ -1820,13 +2147,37 @@ mod tests {
                     _ => None,
                 })
                 .collect();
-            assert_eq!(cards.len(), 3, "dock and both clocks must remain visible");
+            assert!(
+                cards.len() >= 5,
+                "player bars, clocks and status stay visible"
+            );
             for rect in cards {
-                assert!(rect.origin().cmpge(status.origin()).all());
+                assert!(rect.origin().cmpge(Vec2::ZERO).all());
                 assert!((rect.origin() + rect.size())
-                    .cmple(status.origin() + status.size())
+                    .cmple(Vec2::new(width, height))
                     .all());
             }
+            assert!(
+                layout.top_player.origin().y + layout.top_player.size().y
+                    <= layout.board.origin().y
+            );
+            assert!(
+                layout.bottom_player.origin().y >= layout.board.origin().y + layout.board.size().y
+            );
+            assert_eq!(
+                scene
+                    .commands()
+                    .iter()
+                    .filter(|cmd| matches!(
+                        cmd,
+                        RenderCmd::Text {
+                            style: TextStyleToken::MonoMd,
+                            ..
+                        }
+                    ))
+                    .count(),
+                2
+            );
         }
     }
 
@@ -1997,6 +2348,8 @@ mod tests {
             assert!(
                 board.origin().y >= status.origin().y + status.size().y
                     || board.origin().y + board.size().y <= status.origin().y
+                    || board.origin().x + board.size().x <= status.origin().x
+                    || status.origin().x + status.size().x <= board.origin().x
             );
             assert_eq!(
                 (0..64)
@@ -2086,8 +2439,9 @@ mod tests {
                     command,
                     RenderCmd::Rect {
                         layer: Layer::BOARD,
+                        z,
                         ..
-                    }
+                    } if *z >= 0
                 ))
                 .count(),
             64
@@ -2098,7 +2452,7 @@ mod tests {
                 .iter()
                 .filter(|command| matches!(
                     command,
-                    RenderCmd::Text {
+                    RenderCmd::Sprite {
                         layer: Layer::PIECES,
                         ..
                     }
@@ -2226,6 +2580,14 @@ mod tests {
         local.focus_mut().set_keyboard_focus(Some(FocusId::new(52)));
 
         assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).is_none());
+        ChessPresentation::on_input(
+            &InputEvent::Key {
+                key: Key::Enter,
+                pressed: false,
+            },
+            &view,
+            &mut local,
+        );
         local.focus_mut().set_keyboard_focus(Some(FocusId::new(60)));
         assert!(ChessPresentation::on_input(&key(Key::Enter), &view, &mut local).is_none());
 
@@ -2632,23 +2994,23 @@ mod tests {
         assert!(intermediate.commands().iter().any(|command| {
             matches!(
                 command,
-                RenderCmd::Text {
-                    text,
+                RenderCmd::Sprite {
+                    asset,
                     layer: Layer::PIECES,
                     z: IN_TRANSIT_PIECE_Z,
                     ..
-                } if text == "P"
+                } if asset.as_str() == "pieces/white-pawn"
             )
         }));
         assert!(!intermediate.commands().iter().any(|command| {
             matches!(
                 command,
-                RenderCmd::Text {
-                    text,
+                RenderCmd::Sprite {
+                    asset,
                     layer: Layer::PIECES,
                     z: IN_TRANSIT_PIECE_Z,
                     ..
-                } if text == "Q"
+                } if asset.as_str() == "pieces/white-queen"
             )
         }));
 
@@ -2658,12 +3020,12 @@ mod tests {
         assert!(terminal.commands().iter().any(|command| {
             matches!(
                 command,
-                RenderCmd::Text {
-                    text,
-                    at,
+                RenderCmd::Sprite {
+                    asset,
+                    pivot,
                     layer: Layer::PIECES,
                     ..
-                } if text == "Q" && *at == destination_position
+                } if asset.as_str() == "pieces/white-queen" && *pivot == destination_position
             )
         }));
     }
@@ -2686,15 +3048,18 @@ mod tests {
         assert!(matches!(local.interaction(), Interaction::Promotion { .. }));
 
         let rendered = ChessPresentation::present(&view, &local, &frame(640.0, 640.0));
-        for glyph in ["q", "r", "b", "n"] {
-            assert!(rendered.commands().iter().any(|command| matches!(
-                command,
-                RenderCmd::Text {
-                    text,
-                    layer: Layer::MODAL,
-                    ..
-                } if text == glyph
-            )));
+        for kind in [
+            PieceKind::Queen,
+            PieceKind::Rook,
+            PieceKind::Bishop,
+            PieceKind::Knight,
+        ] {
+            let expected = assets::piece_asset(Piece {
+                color: ChessColor::Black,
+                kind,
+            });
+            assert!(rendered.commands().iter().any(|command| matches!(command,
+                RenderCmd::Sprite { asset, layer: Layer::MODAL, .. } if *asset == expected)));
         }
     }
 
@@ -3198,7 +3563,7 @@ mod tests {
             .filter(|cmd| {
                 matches!(
                     cmd,
-                    RenderCmd::Text {
+                    RenderCmd::Sprite {
                         layer: Layer::PIECES,
                         ..
                     }
@@ -3216,13 +3581,13 @@ mod tests {
             .commands()
             .iter()
             .find_map(|command| match command {
-                RenderCmd::Text {
-                    text,
-                    at,
+                RenderCmd::Sprite {
+                    asset,
+                    pivot,
                     layer: Layer::PIECES,
                     z: IN_TRANSIT_PIECE_Z,
                     ..
-                } if text == "P" => Some(*at),
+                } if asset.as_str() == "pieces/white-pawn" => Some(*pivot),
                 _ => None,
             });
         let focal_position = focal_position.expect("one focal pawn is rendered in transit");
@@ -3231,13 +3596,13 @@ mod tests {
         assert!(!mid_render.commands().iter().any(|command| {
             matches!(
                 command,
-                RenderCmd::Text {
-                    text,
-                    at,
+                RenderCmd::Sprite {
+                    asset,
+                    pivot,
                     layer: Layer::PIECES,
                     z: 28,
                     ..
-                } if text == "P" && *at == destination_position
+                } if asset.as_str() == "pieces/white-pawn" && *pivot == destination_position
             )
         }));
     }
@@ -4405,7 +4770,7 @@ mod tests {
             .filter(|cmd| {
                 matches!(
                     cmd,
-                    RenderCmd::Text {
+                    RenderCmd::Sprite {
                         layer: Layer::PIECES,
                         z,
                         ..
@@ -4419,12 +4784,12 @@ mod tests {
         let e2_resting_pos = piece_position(layout, Square(12));
         assert!(!list.commands().iter().any(|cmd| matches!(
             cmd,
-            RenderCmd::Text {
-                at,
+            RenderCmd::Sprite {
+                pivot,
                 layer: Layer::PIECES,
                 z,
                 ..
-            } if *z < IN_TRANSIT_PIECE_Z && *at == e2_resting_pos
+            } if *z < IN_TRANSIT_PIECE_Z && *pivot == e2_resting_pos
         )));
 
         // 3. Exactly one focal dragged piece exists in Layer::PIECES with z=IN_TRANSIT_PIECE_Z + 10
@@ -4434,7 +4799,7 @@ mod tests {
             .filter(|cmd| {
                 matches!(
                     cmd,
-                    RenderCmd::Text {
+                    RenderCmd::Sprite {
                         layer: Layer::PIECES,
                         z,
                         ..
@@ -4444,16 +4809,14 @@ mod tests {
             .collect();
         assert_eq!(dragged_pieces.len(), 1);
 
-        let style = TextStyleToken::DisplaySm;
-        let line_height = frame.theme().text_style(style).line_height().get();
-        let expected_lifted_at = mid_pos.get() - Vec2::new(0.0, line_height * 0.5);
+        let expected_lifted_at = mid_pos.get();
 
         match dragged_pieces[0] {
-            RenderCmd::Text { text, at, .. } => {
-                assert_eq!(text, "P");
-                assert_eq!(*at, expected_lifted_at);
+            RenderCmd::Sprite { asset, pivot, .. } => {
+                assert_eq!(asset.as_str(), "pieces/white-pawn");
+                assert_eq!(*pivot, expected_lifted_at);
             }
-            _ => panic!("expected RenderCmd::Text"),
+            _ => panic!("expected RenderCmd::Sprite"),
         }
 
         // 4. Source square has selected outline cue (z=100)

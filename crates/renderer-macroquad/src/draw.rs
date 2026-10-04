@@ -22,6 +22,7 @@ pub(crate) fn execute(
     camera: tabula_presentation::Camera2D,
     frame: &tabula_presentation::FrameCtx,
     sprite: Option<&ResolvedSprite<mq::Texture2D>>,
+    fonts: &text::BuiltinFonts,
 ) -> Result<(), RenderError> {
     configure_clip_viewport(state.clip, frame)?;
     let transform = logical_transform(camera, state.transform);
@@ -61,6 +62,7 @@ pub(crate) fn execute(
             transform,
             &frame.theme(),
             frame.dpi().get(),
+            fonts,
         )?,
         RenderCmd::Path {
             points,

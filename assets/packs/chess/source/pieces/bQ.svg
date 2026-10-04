@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Ink queen</title>
+  <desc id="desc">Original carved Staunton-style queen for Tabula, with ink body and warm brass detailing.</desc>
+  <g fill="#243E42" stroke="#C0A671" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M28 44 L19 20 L33 31 L35 17 L43 31 L48 12 L53 31 L61 17 L63 31 L77 20 L68 44 Q66 49 56 51 Q56 61 66 70 L65 73 H31 L30 70 Q40 61 40 51 Q30 49 28 44 Z"/>
+  <path d="M32 44 H42 L43 50 Q43 60 36 68 H33 Q42 59 40 50 Z" fill="#5D8A80" fill-opacity=".48" stroke="none"/>
+  <circle cx="19" cy="20" r="3.4"/>
+  <circle cx="35" cy="17" r="3.4"/>
+  <circle cx="48" cy="12" r="3.4"/>
+  <circle cx="61" cy="17" r="3.4"/>
+  <circle cx="77" cy="20" r="3.4"/>
+  <path d="M29 44 H67" stroke="#C0A671" stroke-width="3"/><path d="M40 52 H56" stroke="#C0A671" stroke-width="2.4"/>
+  <path d="M28 71 H68 Q68 75 71 77 Q76 81 77 86 H19 Q20 81 25 77 Q28 75 28 71 Z"/>
+  <path d="M29 72 H67" fill="none" stroke="#C0A671" stroke-width="3"/>
+  <path d="M25 82 H71" fill="none" stroke="#C0A671" stroke-opacity=".46" stroke-width="2"/>
+  </g>
+</svg>

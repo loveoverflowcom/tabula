@@ -25,3 +25,9 @@ The [#52 history/replay slice](backlog/issue-52-history-replay.md) remains gated
 [engine/resources](backlog/issue-53-engine-evidence.md) and
 [Learn](backlog/issue-53-learn.md) follow their explicit prerequisites.
 Passing existing baseline checks does not open these gates or close #52/#53.
+
+The standalone Chess local vertical slice retains ADR-010/011/029. Its next
+specific check is [real platform evidence](010-standalone-chess-platform-evidence.md).
+The [implementation ledger](../verification/standalone-chess/README.md) separates
+executed rules/presentation/build checks from unavailable real runtime pixels.
+Observed coordinate history does not close the gated #52 replay slice.

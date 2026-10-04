@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Ink pawn</title>
+  <desc id="desc">Original carved Staunton-style pawn for Tabula, with ink body and warm brass detailing.</desc>
+  <g fill="#243E42" stroke="#C0A671" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M42 39 H54 V47 Q54 60 65 70 L64 73 H32 L31 70 Q42 60 42 47 Z"/>
+  <path d="M42 48 H47 Q47 59 39 68 H34 Q42 59 42 48 Z" fill="#5D8A80" fill-opacity=".48" stroke="none"/>
+  <circle cx="48" cy="27" r="13"/>
+  <path d="M45 18 Q39 20 38 26" fill="none" stroke="#5D8A80" stroke-opacity=".48" stroke-width="3.4"/>
+  <path d="M38 45 H58" stroke="#C0A671" stroke-width="3"/>
+  <path d="M28 71 H68 Q68 75 71 77 Q76 81 77 86 H19 Q20 81 25 77 Q28 75 28 71 Z"/>
+  <path d="M29 72 H67" fill="none" stroke="#C0A671" stroke-width="3"/>
+  <path d="M25 82 H71" fill="none" stroke="#C0A671" stroke-opacity=".46" stroke-width="2"/>
+  </g>
+</svg>

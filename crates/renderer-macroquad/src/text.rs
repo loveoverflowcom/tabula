@@ -17,8 +17,60 @@
 
 use glam::{Affine2, Vec2};
 use macroquad::prelude as mq;
-use tabula_design::{Color, Positive, TextStyle, TextStyleToken, Theme};
+use tabula_design::{Color, FontFamilyRole, Positive, TextStyle, TextStyleToken, Theme};
 use tabula_presentation::{Align, FrameCtx, RenderCmd, RenderError, RenderList, TextMetrics};
+
+/// Host-owned built-in fonts, not game pack delivery or a persistent cache.
+/// Their semantic selection stays entirely inside the replaceable renderer.
+#[derive(Default)]
+pub(crate) struct BuiltinFonts {
+    display: Option<mq::Font>,
+    text: Option<mq::Font>,
+    strong: Option<mq::Font>,
+}
+
+impl core::fmt::Debug for BuiltinFonts {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("BuiltinFonts")
+            .field("text_loaded", &self.text.is_some())
+            .field("display_loaded", &self.display.is_some())
+            .field("strong_loaded", &self.strong.is_some())
+            .finish()
+    }
+}
+
+impl BuiltinFonts {
+    pub(crate) fn load(text: &[u8], strong: &[u8], display: &[u8]) -> Result<Self, RenderError> {
+        // Only the explicitly bounded two families and one weight enter this
+        // tiny built-in path. General font asset delivery remains deferred.
+        if [text, strong, display]
+            .iter()
+            .any(|bytes| bytes.len() > 256 * 1024)
+        {
+            return Err(RenderError::Execution(String::from(
+                "built-in font exceeds 256 KiB",
+            )));
+        }
+        let load = |bytes| {
+            mq::load_ttf_font_from_bytes(bytes)
+                .map_err(|error| RenderError::Execution(format!("built-in font: {error}")))
+        };
+        Ok(Self {
+            text: Some(load(text)?),
+            strong: Some(load(strong)?),
+            display: Some(load(display)?),
+        })
+    }
+
+    fn get(&self, style: TextStyle) -> Option<&mq::Font> {
+        match style.family() {
+            FontFamilyRole::Display => self.display.as_ref(),
+            FontFamilyRole::Text if style.weight().get() >= 600 => self.strong.as_ref(),
+            FontFamilyRole::Text | FontFamilyRole::Mono => self.text.as_ref(),
+        }
+    }
+}
 
 /// Warms every glyph at its actual backend size before any frame primitive is queued.
 ///
@@ -26,7 +78,11 @@ use tabula_presentation::{Align, FrameCtx, RenderCmd, RenderError, RenderList, T
 /// character that triggers growth after earlier glyphs were queued can therefore
 /// leave those draws with deleted unmanaged texture IDs. The renderer calls this
 /// for all accepted lists before executing the frame (doc 04 §6).
-pub(crate) fn prepare(list: &RenderList, frame: &FrameCtx) -> Result<(), RenderError> {
+pub(crate) fn prepare(
+    list: &RenderList,
+    frame: &FrameCtx,
+    fonts: &BuiltinFonts,
+) -> Result<(), RenderError> {
     for command in list.commands() {
         if let RenderCmd::Text {
             text: value,
@@ -38,10 +94,10 @@ pub(crate) fn prepare(list: &RenderList, frame: &FrameCtx) -> Result<(), RenderE
             validate(value, *token, *max_width, frame)?;
             let style = frame.theme().text_style(*token);
             let size = font_size(style);
-            raw_measure(value, size);
+            raw_measure(value, size, fonts.get(style));
             if style.tabular_figures() {
                 // TextLayout measures every digit to choose one shared advance.
-                raw_measure("0123456789", size);
+                raw_measure("0123456789", size, fonts.get(style));
             }
         }
     }
@@ -52,8 +108,9 @@ pub(crate) fn measure(
     text: &str,
     style: TextStyle,
     max_width: Option<Positive>,
+    fonts: &BuiltinFonts,
 ) -> Result<TextMetrics, RenderError> {
-    let layout = TextLayout::new(style);
+    let layout = TextLayout::new(style, fonts.get(style));
     let lines = wrap_lines(text, max_width, |line| layout.width(line));
     let width = lines
         .iter()
@@ -115,6 +172,7 @@ pub(crate) fn draw(
     transform: Affine2,
     theme: &Theme,
     _dpi: f32,
+    fonts: &BuiltinFonts,
 ) -> Result<(), RenderError> {
     let Some(scale) = uniform_positive_scale(transform) else {
         return Err(RenderError::Unsupported(
@@ -122,7 +180,7 @@ pub(crate) fn draw(
         ));
     };
     let style = theme.text_style(token);
-    let layout = TextLayout::new(style);
+    let layout = TextLayout::new(style, fonts.get(style));
     let lines = wrap_lines(value, max_width, |line| layout.width(line));
     let container_width = max_width.map(Positive::get);
     for (index, line) in lines.iter().enumerate() {
@@ -152,7 +210,7 @@ pub(crate) fn draw(
                         font_size: layout.font_size,
                         font_scale: scale * layout.logical_font_scale,
                         font_scale_aspect: 1.0,
-                        font: None,
+                        font: layout.font,
                         color: with_opacity(color, opacity),
                         rotation: 0.0,
                     },
@@ -164,19 +222,23 @@ pub(crate) fn draw(
 }
 
 /// One unscaled fallback layout, shared by wrapping, measuring, and drawing.
-struct TextLayout {
+struct TextLayout<'a> {
+    font: Option<&'a mq::Font>,
     font_size: u16,
     logical_font_scale: f32,
     digit_advance: Option<f32>,
 }
 
-impl TextLayout {
-    fn new(style: TextStyle) -> Self {
+impl<'a> TextLayout<'a> {
+    fn new(style: TextStyle, font: Option<&'a mq::Font>) -> Self {
         let (font_size, logical_font_scale) = font_raster(style);
         let digit_advance = style.tabular_figures().then(|| {
-            tabular_digit_advance(|digit| raw_measure(digit, font_size).width * logical_font_scale)
+            tabular_digit_advance(|digit| {
+                raw_measure(digit, font_size, font).width * logical_font_scale
+            })
         });
         Self {
+            font,
             font_size,
             logical_font_scale,
             digit_advance,
@@ -193,7 +255,7 @@ impl TextLayout {
     }
 
     fn run_width(&self, value: &str) -> f32 {
-        raw_measure(value, self.font_size).width * self.logical_font_scale
+        raw_measure(value, self.font_size, self.font).width * self.logical_font_scale
     }
 }
 
@@ -241,8 +303,8 @@ fn layout_line(
     x
 }
 
-fn raw_measure(text: &str, font_size: u16) -> mq::TextDimensions {
-    mq::measure_text(text, None, font_size, 1.0)
+fn raw_measure(text: &str, font_size: u16, font: Option<&mq::Font>) -> mq::TextDimensions {
+    mq::measure_text(text, font, font_size, 1.0)
 }
 
 #[allow(

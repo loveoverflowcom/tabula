@@ -1,0 +1,110 @@
+{
+  "name": "Tabula Carved Staunton",
+  "version": "1.0",
+  "viewBox": "0 0 96 96",
+  "intendedSize": "36\u201364px",
+  "palette": {
+    "w": {
+      "name": "Ivory",
+      "fill": "#F7F1E4",
+      "edge": "#273638",
+      "accent": "#B58D42",
+      "facet": "#FFFFFF",
+      "facet_opacity": ".66"
+    },
+    "b": {
+      "name": "Ink",
+      "fill": "#243E42",
+      "edge": "#C0A671",
+      "accent": "#C0A671",
+      "facet": "#5D8A80",
+      "facet_opacity": ".48"
+    }
+  },
+  "pieces": [
+    {
+      "id": "wK",
+      "color": "w",
+      "kind": "K",
+      "name": "Ivory king",
+      "file": "wK.svg"
+    },
+    {
+      "id": "wQ",
+      "color": "w",
+      "kind": "Q",
+      "name": "Ivory queen",
+      "file": "wQ.svg"
+    },
+    {
+      "id": "wB",
+      "color": "w",
+      "kind": "B",
+      "name": "Ivory bishop",
+      "file": "wB.svg"
+    },
+    {
+      "id": "wN",
+      "color": "w",
+      "kind": "N",
+      "name": "Ivory knight",
+      "file": "wN.svg"
+    },
+    {
+      "id": "wR",
+      "color": "w",
+      "kind": "R",
+      "name": "Ivory rook",
+      "file": "wR.svg"
+    },
+    {
+      "id": "wP",
+      "color": "w",
+      "kind": "P",
+      "name": "Ivory pawn",
+      "file": "wP.svg"
+    },
+    {
+      "id": "bK",
+      "color": "b",
+      "kind": "K",
+      "name": "Ink king",
+      "file": "bK.svg"
+    },
+    {
+      "id": "bQ",
+      "color": "b",
+      "kind": "Q",
+      "name": "Ink queen",
+      "file": "bQ.svg"
+    },
+    {
+      "id": "bB",
+      "color": "b",
+      "kind": "B",
+      "name": "Ink bishop",
+      "file": "bB.svg"
+    },
+    {
+      "id": "bN",
+      "color": "b",
+      "kind": "N",
+      "name": "Ink knight",
+      "file": "bN.svg"
+    },
+    {
+      "id": "bR",
+      "color": "b",
+      "kind": "R",
+      "name": "Ink rook",
+      "file": "bR.svg"
+    },
+    {
+      "id": "bP",
+      "color": "b",
+      "kind": "P",
+      "name": "Ink pawn",
+      "file": "bP.svg"
+    }
+  ]
+}

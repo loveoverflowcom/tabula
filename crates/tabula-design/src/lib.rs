@@ -167,6 +167,42 @@ pub struct Theme {
     pub state: StateLayerTokens,
     pub density: Density,
     pub focus: FocusTokens,
+    /// Approved game artwork roles, separate from shared functional semantics.
+    pub game_art: GameArtTokens,
+}
+
+/// Decorative game material authored in `tokens.toml`. (doc 04 §8, ADR-027)
+///
+/// Functional focus, selection, legal targets and threats retain `ColorTokens`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GameArtTokens {
+    pub chess: ChessArtTokens, // xtask-allow-game-id: declarative approved artwork namespace, never runtime dispatch.
+}
+
+impl GameArtTokens {
+    /// Used by generated themes after authored art values are validated.
+    pub(crate) const fn generated(value: ChessArtTokens) -> Self {
+        Self { chess: value } // xtask-allow-game-id: decorative data construction, not dispatch.
+    }
+}
+
+/// Chess's approved ivory, petrol, teal, bone and brass material roles.
+///
+/// These do not override shared navigation or announce interactive state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChessArtTokens {
+    pub page: Color,
+    pub surface: Color,
+    pub soft: Color,
+    pub ink: Color,
+    pub muted: Color,
+    pub deep: Color,
+    pub on_deep: Color,
+    pub board_light: Color,
+    pub board_dark: Color,
+    pub brass: Color,
+    /// Multiplicative identity preserving the authored colored piece raster.
+    pub piece_tint: Color,
 }
 
 impl Theme {
@@ -629,6 +665,34 @@ mod tests {
             ] {
                 assert!(ratio(foreground, background) >= minimum, "{kind:?}: {name}");
             }
+        }
+    }
+
+    #[test]
+    fn game_art_text_pairs_and_identity_tint_preserve_accessibility() {
+        for kind in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            let art = Theme::by_kind(kind).game_art.chess; // xtask-allow-game-id: tests one authored decorative namespace.
+            let minimum = match kind {
+                ThemeKind::HighContrastLight | ThemeKind::HighContrastDark => 7.0,
+                ThemeKind::Light | ThemeKind::Dark => 4.5,
+            };
+            for background in [art.page, art.surface, art.soft] {
+                assert!(ratio(art.ink, background) >= minimum, "{kind:?}: art text");
+                assert!(
+                    ratio(art.muted, background) >= minimum,
+                    "{kind:?}: supporting art text"
+                );
+            }
+            assert!(
+                ratio(art.on_deep, art.deep) >= minimum,
+                "{kind:?}: deep-panel text"
+            );
+            assert_eq!(art.piece_tint, Color::rgb(255, 255, 255));
         }
     }
 

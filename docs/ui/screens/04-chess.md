@@ -1,22 +1,29 @@
 # 04 — Chess gameplay
 
 Issue #51; shared [gameplay contract](gameplay.md) and [foundation](foundation.md).
-Reviewed `develop @ 1d8fab294931750f45ef5d7b498f34b5b0417188` against
-the pinned `03-gameplay/screens/04-chess.svg`, its desktop PNG and mobile board.
-Those are sample artwork, not runtime screenshots or a supplied Chess position.
+The original #51 review used `develop @ 1d8fab294931750f45ef5d7b498f34b5b0417188`.
+The standalone material/player/control slice was implemented from
+`develop @ c0a62088c159cc1f20409de41af245c98dcfcfee` using the approved ivory/petrol
+design and original piece/cover art. Its [evidence ledger](../../verification/standalone-chess/README.md)
+distinguishes tests/builds from blocked real runtime screenshots.
 
 ## Owner and data
 
 [`ChessPresentation`](../../../games/chess/src/presentation/mod.rs) owns the
 board, local interaction, promotion, event motion and descriptions.
 [`View`](../../../games/chess/src/rules/state.rs) supplies board, turn,
-status, draw offer, clock checkpoint, viewer identity and legal commands.
+status, draw offer, clock checkpoint, viewer identity and legal moves.
+`View.actions` supplies non-move eligibility from the reducer validation and
+`View.in_check` supplies the side-to-move check fact without reconstructing State.
 Chess has public information but still uses a distinct projected type (I-5).
 `ChessLocal` owns selection/press/drag, hover, focus, last move, promotion
 button interaction, animation and viewport. Rules and clock semantics remain
 unchanged by this presentation spec.
 
-The current local driver follows the seat on turn in hot seat. A spectator
+The standalone local driver follows the seat on turn in hot seat by default.
+It explicitly admits player-bar seat selection for off-turn offers/resignation
+and a Follow turn action. That presentation-local override is disabled unless
+the local shell admits two-human hot seat; a network host must not enable it. A spectator
 or off-turn viewer may inspect/focus the board but cannot command a move.
 The future web entry is the separate `/play/:match_id` document; catalog
 navigation, account UI and post-match documents remain shell-owned.
@@ -43,11 +50,13 @@ at zero. That display is an estimate. A zero display waits for the actual
 rules/authority result; disconnect does not grant a pause or stop the rules
 clock. Resync replaces the estimate from the new projected checkpoint.
 
-The current `View` has no chronological move-list field. The artwork's
-notation rows/history arrows, flip/fullscreen, guide/settings and resign
-buttons are references for future consumers. Do not manufacture move history,
-expose unsupported toolbar actions, or use those arrows to mutate the live
-match. A future history viewer needs its own projected/history contract.
+`View` still has no chronological move-list field. A bounded local strip records
+at most 256 observed `ViewEvent::Moved` entries in coordinate notation. It is
+labelled accordingly and does not invent SAN, complete chronology, saved replay
+or engine analysis. Flip changes local geometry only. Eligible resign, offer,
+accept/decline and claim controls use projected actions and confirmation against
+the same visible position. Fullscreen, online/rated/AI and saved/server replay
+remain unavailable. The #52 replay viewer still needs its own approved contract.
 
 ## UI action to intent/input
 
@@ -61,13 +70,15 @@ match. A future history viewer needs its own projected/history contract.
 | Promotion destination | Enter a local modal before submitting; projected legal upgrades only | None until a choice is activated |
 | Queen/Rook/Bishop/Knight | Shared `ActionButton`/`ButtonInteraction`; unavailable choice is disabled with reason | One `Move` carrying that exact `promotion` |
 | Promotion Cancel / Escape | Modal closes; source-square focus restored; release armed activation | None |
-| Resign/draw controls | Rule command variants exist, but current HUD has no corresponding controls | Future adapter must map supported command explicitly; no fake toolbar |
+| Resign/draw controls | Only `View.actions`-eligible choices; confirmation captures the visible position, viewer and actions; Cancel/stale/repeat/blur cannot submit | One existing command through ordinary `Intent` → `Input::Player`; rules decide timeout/result |
+| Flip / hot-seat seat control | Local geometry/viewer choice only; cancel armed interaction before changing orientation/seat | None; shell-admitted hot seat reprojection only |
 | Retry/leave or local fatal acknowledgement | Runtime adapter, outside game rules | No game command except a separately authorized rules action |
 
 Promotion captures pointer/keyboard input so the board cannot activate
 through it. An opening Enter press cannot repeat into a choice. Up without
 Down, release outside, lost focus and repeated keydowns do not activate a
-choice twice. A changed projection disables stale promotion choices; Cancel
+choice twice. A changed board/turn/castling/en-passant/offer/status/viewer projection disables
+stale promotion choices even if the same from/to remains superficially legal; Cancel
 remains reachable. Animation completion never decides when a move may submit.
 
 ## Description, focus and snapshots
@@ -94,3 +105,22 @@ reduced motion. Preserve pointer/keyboard/drag command equivalence and
 canonical bytes. Inspect changed RenderList snapshots deliberately; snapshot
 assertions establish command content, not font metrics or rendered pixels.
 Execution and remaining scope belong in [the ledger](gameplay-verification.md).
+
+## Standalone startup and distribution
+
+`apps/game-client/web/index.html` is accessible setup, with only hot seat enabled.
+`play.html` runs the separate Macroquad gameplay WASM; configuration uses bounded
+allowlisted arguments through the existing safe file-loading seam. Readiness follows
+a real submitted gameplay frame and flush, not merely WASM download/compile.
+DOM leave/help dialogs cancel board-local input and restore board focus; leaving or
+reloading starts a fresh unsaved local game. Ordinary Tab reaches presenter controls;
+Shift+Tab returns to host Leave/Help. Full Board Reader play is not claimed.
+
+Native default startup uses bounded keyboard/pointer ActionButtons, supports compact
+setup down to 320×390 dp, and starts clock authority only after Start.
+Explicit direct launch can skip setup with validated untimed/Fischer/Bronstein values.
+
+The tiny pinned local art pack is verified before bounded texture decoding. Canonical
+SVG/cover originals and licenses are retained outside the inline export paths. The
+shared system token values and navigation remain unchanged; decorative game roles
+are authored once and generated for all four schemes.

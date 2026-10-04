@@ -274,7 +274,16 @@ pub struct View {
     pub draw_offer: Option<Color>,
     pub clock: Option<ClockState>,
     pub you: Option<Color>,
+    /// Whether the side to move is in check, computed at the projection boundary (I-5).
+    pub in_check: bool,
+    /// Legal movement hints for this viewer; never contains match-control commands.
     pub legal_moves: Vec<Command>,
+    /// Eligible non-move commands for this seated viewer (doc 02 §7).
+    ///
+    /// Claim eligibility is derived from canonical repetition history without
+    /// projecting that history. Like movement hints, these are affordances:
+    /// `apply` still validates the command and resolves any expired clock.
+    pub actions: Vec<Command>,
 }
 
 /// Public event form. Kept distinct to preserve the `view_event` boundary.

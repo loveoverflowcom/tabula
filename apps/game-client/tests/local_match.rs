@@ -493,7 +493,7 @@ fn completion_never_comes_from_a_rejection_and_reserves_the_final_chess_hud() {
                     || status.origin().x + status.size().x <= panel.origin().x
             );
             assert!(match_.present(&board).commands().iter().any(
-                |command| matches!(command, RenderCmd::Text { text, at, .. } if text.starts_with("Game over") && status.contains(*at))
+                |command| matches!(command, RenderCmd::Text { text, at, .. } if (text == "Black wins" || text == "Game over / Black wins") && status.contains(*at))
             ));
             assert!(dock.commands().iter().any(|command| matches!(command,
                 RenderCmd::Rect { rect, fill: Some(tabula_presentation::Paint::Solid(color)), .. }
@@ -512,11 +512,60 @@ fn completion_never_comes_from_a_rejection_and_reserves_the_final_chess_hud() {
 }
 
 #[test]
-fn chess_presenter_produces_macroquad_supported_render_list() {
+fn chess_presenter_produces_macroquad_supported_render_list_with_verified_art() {
+    use renderer_macroquad::assets::{
+        AssetCacheLimits, DecodedRaster, SpriteAssetCache, TextureUploader,
+    };
+    use tabula_game_chess::presentation::assets;
+    struct CpuUploader;
+    impl TextureUploader for CpuUploader {
+        type Texture = (u16, u16);
+        fn upload(&mut self, image: &DecodedRaster) -> Result<Self::Texture, String> {
+            Ok((image.width(), image.height()))
+        }
+    }
     let match_ = chess_match();
     let frame = frame(0);
+    let scene = match_.present(&frame);
+    assert!(matches!(
+        MacroquadRenderer::preflight(&scene, &frame),
+        Err(tabula_presentation::RenderError::Execution(_))
+    ));
+    let manifest = tabula_assets::AssetPackManifest::from_toml(assets::MANIFEST).unwrap();
+    let mut cache = SpriteAssetCache::new(
+        CpuUploader,
+        AssetCacheLimits::new(
+            320 * 1024,
+            1024,
+            256 * 1024,
+            2 * 1024 * 1024,
+            4 * 1024 * 1024,
+            4,
+        )
+        .unwrap(),
+    );
+    cache
+        .bind_pack(
+            &manifest,
+            &tabula_core::GameId::new("com.tabula.chess").unwrap(),
+            &assets::asset_pack(),
+        )
+        .unwrap();
+    for file in manifest.files() {
+        let bytes = assets::ALL_IMAGES
+            .iter()
+            .find(|(name, _)| *name == file.name().as_str())
+            .unwrap()
+            .1;
+        cache
+            .insert_verified(
+                file.verify_owned_bytes(tabula_assets::UnverifiedAssetBytes::new(bytes.to_vec()))
+                    .unwrap(),
+            )
+            .unwrap();
+    }
     assert_eq!(
-        MacroquadRenderer::preflight(&match_.present(&frame), &frame),
+        MacroquadRenderer::preflight_with_cache(&scene, &frame, &cache),
         Ok(())
     );
 }

@@ -261,6 +261,17 @@
   --sys-elevation-low: 1;
   --sys-elevation-medium: 2;
   --sys-elevation-high: 3;
+  --game-art-chess-page: #F5F0E6; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-surface: #FEFBF4; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-soft: #E7E8DB; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-ink: #193A3E; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-muted: #526662; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-deep: #153F44; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-on-deep: #F7F1E4; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-board-light: #ECE4D3; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-board-dark: #5D8A80; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-brass: #D5AB54; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
 }
 
 :root[data-theme="dark"] {
@@ -525,6 +536,17 @@
   --sys-elevation-low: 1;
   --sys-elevation-medium: 2;
   --sys-elevation-high: 3;
+  --game-art-chess-page: #102B30; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-surface: #193A3F; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-soft: #284A4D; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-ink: #F2EBDB; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-muted: #B3C9C3; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-deep: #0B252B; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-on-deep: #F7F1E4; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-board-light: #ECE4D3; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-board-dark: #5D8A80; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-brass: #D5AB54; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
 }
 
 :root[data-theme="hc-light"] {
@@ -789,6 +811,17 @@
   --sys-elevation-low: 1;
   --sys-elevation-medium: 2;
   --sys-elevation-high: 3;
+  --game-art-chess-page: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-surface: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-soft: #F5F5F5; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-ink: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-muted: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-deep: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-on-deep: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-board-light: #ECE4D3; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-board-dark: #5D8A80; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-brass: #D5AB54; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
 }
 
 :root[data-theme="hc-dark"] {
@@ -1053,4 +1086,15 @@
   --sys-elevation-low: 1;
   --sys-elevation-medium: 2;
   --sys-elevation-high: 3;
+  --game-art-chess-page: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-surface: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-soft: #1C1C1C; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-ink: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-muted: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-deep: #000000; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-on-deep: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-board-light: #ECE4D3; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-board-dark: #5D8A80; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-brass: #D5AB54; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
+  --game-art-chess-piece-tint: #FFFFFF; /* xtask-allow-game-id: generated decorative art token, no runtime dispatch. */
 }
