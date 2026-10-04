@@ -38,17 +38,24 @@ ceiling.
 
 ## The handoff (doc 04 §3.4)
 
+This is the future network flow under
+[ADR-0031](../docs/adr/0031-browser-native-session-contract.md). Credentials stay
+in the browser HttpOnly cookie/native secure store; public handoff hints grant
+no authority. ADR-0030 local play has neither identity nor network resume.
+
 ```text
-shell:  POST /matches → { match_id, join_token }
-shell:  sessionStorage["match.ctx"] = { match_id, join_token, game_id@version, pack }
+shell:  POST /matches → { match_id, public runtime metadata }
+shell:  sessionStorage["match.ctx"] = { match_id, game_id@version, pack }
 shell:  prefetch game.wasm + pack manifest DURING the room screen
 shell:  navigate to /play/:match_id
 game:   read match.ctx → branded loader with real byte-level progress
-game:   WS Hello + Attach(join_token) → Welcome { view, capabilities }
+game:   authenticated HTTP + CSRF → fresh memory-only scoped attach grant
+game:   cookie + Origin WS upgrade; Hello + Attach(grant) → Welcome { view, capabilities }
 game:   ... play ... → in-canvas result → navigate to /matches/:id
 ```
 
-Back/forward and deep links must work; re-entering `/play/:id` resumes.
+Back/forward and deep links revalidate the current session and permissions
+before network resume. Stored cursors/IDs cannot authorize attachment.
 
 **Native has no navigation — it swaps a scene.** The same `MatchContext` struct
 is passed in-process, so the runtime code is identical everywhere.

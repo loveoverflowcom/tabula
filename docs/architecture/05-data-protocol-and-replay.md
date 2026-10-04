@@ -26,6 +26,12 @@ serialization, streaming/chunked payloads, and RPC-style request/response semant
 
 ## 2. Message envelopes
 
+The following shapes remain unimplemented protocol sketches.
+[ADR-0031](../adr/0031-browser-native-session-contract.md) supersedes the former
+`Hello.auth` sketch: HTTP upgrade authenticates browser cookie/native bearer;
+Hello only negotiates. No executable wire type changes here. Future implementation
+and compatibility changes still require I-13 vectors/version evidence.
+
 ```rust
 // crates/tabula-protocol/src/lib.rs
 
@@ -48,7 +54,6 @@ pub enum ClientMessage {
     Hello {
         protocol: ProtocolVersion,
         client: ClientIdent,          // build, platform, locale
-        auth: AuthCredential,         // Bearer session token
         codec: Codec,                 // must match the negotiated subprotocol
     },
     Platform(PlatformCommand),
@@ -74,7 +79,7 @@ pub struct GameCommandFrame {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum PlatformCommand {
-    Attach { match_id: MatchId, join_token: Option<JoinToken>, as_: AttachAs,
+    Attach { match_id: MatchId, join_token: JoinToken, as_: AttachAs,
              resume_from: Option<StateVersion>, last_client_seq: Option<u32> },
     Detach { match_id: MatchId },
     Chat { channel: ChannelKey, body: String },

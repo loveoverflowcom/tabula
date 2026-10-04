@@ -40,3 +40,12 @@ checks and release bundles; new publication is not authorized. The same next
 platform-evidence task now includes discovery/launch/return and real BFCache/
 resource behavior. Native catalog, server resume, online/rated/AI and phase exits
 remain gated.
+
+[#54 session policy](../adr/0031-browser-native-session-contract.md) is now
+reconciled in a separate prerequisite contract from
+[PR #62 specification A](https://github.com/loveoverflowcom/tabula/pull/62).
+The [session backlog](backlog/issue-54-session-contract.md) and
+[adversarial acceptance matrix](../verification/session-contract/README.md)
+retain actual platform/portfolio/Phase-4/server/Phase-5/API gates for B/C.
+The ADR resolves the policy choice only; PR A is independently reviewable and
+no auth/social service or online match is activated.
