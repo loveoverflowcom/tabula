@@ -176,9 +176,8 @@ fn dispatch(
 fn response_error_key(status: u16, joining: bool) -> Option<&'static str> {
     match status {
         200 | 201 => None,
-        401 => Some("online.signin"),
         403 if joining => Some("online.invalid_code"),
-        403 => Some("online.signin"),
+        401 | 403 => Some("online.signin"),
         404 | 409 => Some("online.invalid_code"),
         _ => Some("online.unavailable"),
     }
