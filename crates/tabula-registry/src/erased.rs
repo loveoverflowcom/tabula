@@ -51,8 +51,15 @@ pub trait GameSetup: Send + Sync + 'static {
         false
     }
 
-    /// Direct browser host declaration, consumed by the opt-in shell/gateway.
+    /// Deployable direct browser host declaration for the handoff resolver.
+    /// Remains false until an actual online document and gateway are available.
     fn direct_document() -> bool {
+        false
+    }
+    /// This package has a first-party direct-play presenter/transport contract.
+    /// Consumed by explicit `RuntimeBinding` handoff and isolated gateway admission;
+    /// eligibility alone never advertises a deployed document or grants a seat.
+    fn direct_host_supported() -> bool {
         false
     }
     /// Configs the direct slice can execute, including its effect adapters.
@@ -97,7 +104,10 @@ pub trait ErasedGame: Send + Sync {
     fn modes(&self) -> &'static [ModeSupport];
     /// Explicit direct browser host declaration, never capability inference.
     fn direct_document(&self) -> bool;
-    /// Parse/validate a direct draft; the server later checks its actual roster.
+    /// Package eligibility for the explicitly opted-in direct host consumer.
+    fn direct_host_supported(&self) -> bool;
+    /// Parse a candidate direct draft without asserting runtime availability.
+    /// The server must re-normalize the request and validate its actual roster.
     fn normalize_direct(
         &self,
         seats: u8,
@@ -139,89 +149,12 @@ pub trait ErasedGame: Send + Sync {
 pub struct Adapter<S: GameSetup>(core::marker::PhantomData<S>);
 
 impl<S: GameSetup> Adapter<S> {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self(core::marker::PhantomData)
-    }
-}
-
-impl<S: GameSetup> ErasedGame for Adapter<S> {
-    fn create_match(
-        &self,
-        config: &[u8],
-        roster: &SeatRoster,
-        seed: MatchSeed,
-    ) -> Result<crate::runtime::CreatedMatch, crate::runtime::RuntimeError> {
-        crate::runtime::TypedMatch::<S::Module>::create(config, roster, seed)
-    }
-
-    fn restore_match(
-        &self,
-        identity: &crate::runtime::RuntimeIdentity,
-        config: &[u8],
-        roster: &SeatRoster,
-        snapshot: &[u8],
-    ) -> Result<Box<dyn crate::runtime::ErasedMatch>, crate::runtime::RuntimeError> {
-        crate::runtime::TypedMatch::<S::Module>::restore(identity, config, roster, snapshot)
-    }
-
-    fn metadata(&self) -> &'static GameMetadata {
-        S::Module::metadata()
-    }
-
-    fn capabilities(&self) -> &'static GameCapabilities {
-        S::Module::capabilities()
-    }
-
-    fn form(&self) -> &'static ConfigForm {
-        S::form()
-    }
-
-    fn modes(&self) -> &'static [ModeSupport] {
-        S::modes()
-    }
-
-    fn direct_document(&self) -> bool {
-        S::direct_document()
-    }
-    fn normalize_direct(
-        &self,
-        seats: u8,
-        draft: &crate::ConfigDraft,
+    /// Shared typed validation and serialization for both setup paths.
+    /// The roster here is a hypothetical plan, never authenticated membership.
+    fn normalize_parsed(
+        request: &SetupRequest,
+        parsed: ParseResult<S>,
     ) -> Result<NormalizedConfig, ConfigRejection> {
-        if !S::direct_document() || draft.keys().any(|key| S::form().field(key).is_none()) {
-            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
-        }
-        let (typed, _, _) = S::parse(draft)?;
-        if !S::direct_config_supported(&typed) {
-            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
-        }
-        let mut normalized = self.normalize(&SetupRequest {
-            mode: LaunchMode::LocalHotSeat,
-            seats,
-            bot_level: None,
-            draft: draft.clone(),
-        })?;
-        normalized.local_return_to = None;
-        Ok(normalized)
-    }
-    fn messages(&self, locale: Locale) -> Messages {
-        S::messages(locale)
-    }
-
-    fn bot_levels(&self) -> Vec<BotLevel> {
-        S::Module::declared_bot_levels().to_vec()
-    }
-
-    fn normalize(&self, request: &SetupRequest) -> Result<NormalizedConfig, ConfigRejection> {
-        let modes = S::modes();
-        if !modes
-            .iter()
-            .any(|support| support.mode == request.mode && support.is_available())
-        {
-            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
-        }
-
         let allowed = S::Module::capabilities().seats().allowed();
         if !allowed.contains(request.seats) {
             return Err(ConfigRejection::whole(RejectionReason::SeatCount));
@@ -233,7 +166,7 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
             (false, _) => None,
         };
 
-        let (config, mut summary, mut launch_args) = S::parse(&request.draft)?;
+        let (config, mut summary, mut launch_args) = parsed?;
         let roster = roster_for(request.seats, bot_level);
 
         S::Module::validate_config(&config, &roster).map_err(map_config_error::<S>)?;
@@ -279,13 +212,103 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
                 .then(|| format!("/games/{}?setup=1", metadata.id().as_str())),
         })
     }
+
+    #[must_use]
+    pub const fn new() -> Self {
+        Self(core::marker::PhantomData)
+    }
 }
 
-/// Build the roster a local seat plan resolves to.
+impl<S: GameSetup> ErasedGame for Adapter<S> {
+    fn create_match(
+        &self,
+        config: &[u8],
+        roster: &SeatRoster,
+        seed: MatchSeed,
+    ) -> Result<crate::runtime::CreatedMatch, crate::runtime::RuntimeError> {
+        crate::runtime::TypedMatch::<S::Module>::create(config, roster, seed)
+    }
+
+    fn restore_match(
+        &self,
+        identity: &crate::runtime::RuntimeIdentity,
+        config: &[u8],
+        roster: &SeatRoster,
+        snapshot: &[u8],
+    ) -> Result<Box<dyn crate::runtime::ErasedMatch>, crate::runtime::RuntimeError> {
+        crate::runtime::TypedMatch::<S::Module>::restore(identity, config, roster, snapshot)
+    }
+
+    fn metadata(&self) -> &'static GameMetadata {
+        S::Module::metadata()
+    }
+
+    fn capabilities(&self) -> &'static GameCapabilities {
+        S::Module::capabilities()
+    }
+
+    fn form(&self) -> &'static ConfigForm {
+        S::form()
+    }
+
+    fn modes(&self) -> &'static [ModeSupport] {
+        S::modes()
+    }
+
+    fn direct_document(&self) -> bool {
+        S::direct_document()
+    }
+    fn direct_host_supported(&self) -> bool {
+        S::direct_host_supported()
+    }
+    fn normalize_direct(
+        &self,
+        seats: u8,
+        draft: &crate::ConfigDraft,
+    ) -> Result<NormalizedConfig, ConfigRejection> {
+        if draft.keys().any(|key| S::form().field(key).is_none()) {
+            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
+        }
+        let parsed = S::parse(draft)?;
+        if !S::direct_config_supported(&parsed.0) {
+            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
+        }
+        Self::normalize_parsed(
+            &SetupRequest {
+                mode: LaunchMode::Network,
+                seats,
+                bot_level: None,
+                draft: draft.clone(),
+            },
+            Ok(parsed),
+        )
+    }
+    fn messages(&self, locale: Locale) -> Messages {
+        S::messages(locale)
+    }
+
+    fn bot_levels(&self) -> Vec<BotLevel> {
+        S::Module::declared_bot_levels().to_vec()
+    }
+
+    fn normalize(&self, request: &SetupRequest) -> Result<NormalizedConfig, ConfigRejection> {
+        let modes = S::modes();
+        if !modes
+            .iter()
+            .any(|support| support.mode == request.mode && support.is_available())
+        {
+            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
+        }
+
+        Self::normalize_parsed(request, S::parse(&request.draft))
+    }
+}
+
+/// Build a hypothetical roster to validate a setup seat plan.
 ///
 /// Seat 0 is the player at this device; bot modes fill every other seat with
-/// the game's own bot. Network seat plans are not occupied rosters and are not
-/// built here (docs/ui/screens/03-new-match.md).
+/// the game's own bot. Direct setup uses placeholder humans only; the server
+/// must validate its real authenticated roster again (doc 02 §4).
 fn roster_for(seats: u8, bot_level: Option<BotLevel>) -> SeatRoster {
     SeatRoster::new(
         (0..seats)

@@ -132,12 +132,12 @@ impl ConfigDraft {
         self.values.insert(key.to_owned(), value.into());
     }
 
-    #[must_use]
     /// Raw key inventory for strict declarative form-boundary validation.
     pub fn keys(&self) -> impl Iterator<Item = &str> {
         self.values.keys().map(String::as_str)
     }
 
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<&str> {
         self.values.get(key).map(String::as_str)
     }
