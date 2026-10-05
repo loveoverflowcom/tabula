@@ -117,3 +117,6 @@
 //! ```
 
 #![forbid(unsafe_code)]
+
+/// Bounded direct-play core; robust resume remains gated.
+pub mod direct;
