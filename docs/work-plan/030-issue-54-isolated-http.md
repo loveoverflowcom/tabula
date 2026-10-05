@@ -1,6 +1,8 @@
 # Issue #54 PR2 — isolated session and self-profile HTTP
 
-**Status:** waits for PR1's verified completion; fresh work session required.
+**Status:** implemented on PR71's exact verified head in a fresh work session;
+final real-database/aggregate/publication receipts are pending. See the
+[bounded ledger](../verification/issue-54-isolated-http/README.md).
 
 **Outcome:** exercise current durable session authority through a same-origin
 isolated HTTP context and permitted read-only self-profile boundary.

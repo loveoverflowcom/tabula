@@ -14,7 +14,7 @@ publish.workspace      = true
 [features]
 default = []
 # ADR-0036: isolated durable session validation only. Neither service opts in.
-session-postgres = ["dep:tabula-session", "dep:sqlx", "dep:uuid"]
+session-postgres = ["dep:tabula-session", "dep:sqlx", "dep:uuid", "dep:tokio"]
 
 # Optional native infrastructure has its own documented MSRV; default/storage
 # and the deterministic SDK retain the workspace declaration (ADR-0036).
@@ -40,6 +40,7 @@ thiserror       = { workspace = true }
 tabula-session = { workspace = true, optional = true }
 sqlx = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { workspace = true }

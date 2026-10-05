@@ -3,8 +3,8 @@ use std::fmt;
 use tabula_core::UserId;
 
 use crate::{
-    AccountEpoch, AuthSessionId, CredentialDigest, CredentialGeneration, SessionChannel,
-    SessionContextId, SessionError, UnixMillis,
+    AccountEpoch, AuthSessionId, CredentialDigest, CredentialGeneration, CredentialOperation,
+    RotateCredential, SessionChannel, SessionContextId, SessionError, UnixMillis,
 };
 
 /// Initial ADR-0031 §5 idle policy, measured in server milliseconds.
@@ -421,6 +421,97 @@ impl SessionRecord {
             return Err(SessionError::Unauthenticated);
         }
         Ok(snapshot)
+    }
+
+    /// Current HTTP credential/channel plus optional independently verified context.
+    /// The adapter must call this inside its actual account/session ordering boundary.
+    pub fn observe_operation(
+        &mut self,
+        account: &AccountRecord,
+        request: CredentialOperation,
+        now: UnixMillis,
+    ) -> Result<SessionSnapshot, SessionError> {
+        let observed = self.observe_credential(account, request.digest, request.channel, now)?;
+        self.check_operation_context(request, false)?;
+        Ok(observed)
+    }
+
+    /// Current verifier/channel facts for idempotent terminal logout only.
+    /// This snapshot is not current authentication or a private publication permit.
+    pub fn observe_logout_context(
+        &mut self,
+        account: &AccountRecord,
+        request: CredentialOperation,
+        now: UnixMillis,
+    ) -> Result<SessionSnapshot, SessionError> {
+        let observed = self.observe(account, now);
+        if matches!(observed, Err(SessionError::Unavailable)) {
+            return Err(SessionError::Unavailable);
+        }
+        if self.credential_digest != request.digest || self.channel != request.channel {
+            return Err(SessionError::Unauthenticated);
+        }
+        self.check_operation_context(request, false)?;
+        Ok(self.snapshot())
+    }
+
+    fn check_operation_context(
+        &self,
+        request: CredentialOperation,
+        mutation: bool,
+    ) -> Result<(), SessionError> {
+        if (mutation
+            && request.channel == SessionChannel::BrowserCookie
+            && request.context.is_none())
+            || request.context.is_some_and(|context| {
+                context.context_id != self.context_id
+                    || context.authorization_epoch != self.authorization_epoch
+            })
+        {
+            return Err(SessionError::InvalidInput);
+        }
+        Ok(())
+    }
+
+    /// Credential-only rotation: context is checked before verifier/generation mutation.
+    /// Rotation remains a same-record CAS and never extends idle (ADR-0031 §5).
+    pub fn rotate_credential(
+        &mut self,
+        account: &AccountRecord,
+        request: RotateCredential,
+        now: UnixMillis,
+    ) -> Result<SessionSnapshot, SessionError> {
+        self.observe_operation(account, request.credential, now)?;
+        self.check_operation_context(request.credential, true)?;
+        self.rotate(
+            account,
+            request.credential.digest,
+            request.credential.channel,
+            request.expected_generation,
+            request.replacement_digest,
+            now,
+        )
+    }
+
+    /// Idempotent HTTP revocation still requires the exact currently stored verifier,
+    /// channel and browser context. A historical binding or replaced digest never
+    /// authorizes this operation. Terminal/corrupt epoch observations are persisted
+    /// by storage even on rejection, preserving ADR-0036's durable fences.
+    pub fn revoke_credential(
+        &mut self,
+        account: &AccountRecord,
+        request: CredentialOperation,
+        now: UnixMillis,
+    ) -> Result<(), SessionError> {
+        let observed = self.observe(account, now);
+        if matches!(observed, Err(SessionError::Unavailable)) {
+            return Err(SessionError::Unavailable);
+        }
+        if self.credential_digest != request.digest || self.channel != request.channel {
+            return Err(SessionError::Unauthenticated);
+        }
+        self.check_operation_context(request, true)?;
+        self.revoke(now)
     }
 
     /// Atomic generation/digest CAS policy. The adapter owns the transaction.

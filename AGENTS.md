@@ -77,6 +77,7 @@ crates/           platform libraries — the real product
   tabula-registry      the catalog: the ONLY crate that names games; type erasure
   tabula-match         authoritative match runtime: actor, pipeline, ports
   tabula-lobby         rooms, matchmaking, presence
+  tabula-session-http  isolated native context/self-profile HTTP (ADR-0036)
   tabula-storage       the ONLY crate that knows SQL exists
   tabula-presentation  View -> RenderList, input model, animation (renderer-independent)
   tabula-design        semantic design tokens, generated into CSS + a Theme struct

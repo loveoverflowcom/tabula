@@ -13,11 +13,16 @@
 #![forbid(unsafe_code)]
 
 mod credential;
+mod http_ports;
 mod policy;
 mod ports;
 mod types;
 
 pub use credential::{CredentialDigest, SessionCredential};
+pub use http_ports::{
+    CredentialOperation, HttpSessionAuthority, RotateCredential, SelfProfileSnapshot,
+    SessionContextBinding, SessionPublication,
+};
 pub use policy::{
     AccountRecord, ActivityKind, RawAccountRecord, RawSessionRecord, SessionBinding, SessionRecord,
     SessionSnapshot, ABSOLUTE_LIFETIME_MS, IDLE_LIFETIME_MS,

@@ -121,6 +121,7 @@ tabula/
 │   ├── tabula-match/              # match actor, mailbox, command pipeline, snapshot policy, ports
 │   ├── tabula-lobby/              # rooms, matchmaking, presence (domain + ports)
 │   ├── tabula-session/            # isolated identity/session policy and ports (ADR-0036)
+│   ├── tabula-session-http/       # opt-in isolated HTTP context/profile boundary (ADR-0036)
 │   ├── tabula-storage/            # sqlx/Postgres implementations of the ports; migrations
 │   ├── tabula-presentation/       # View → RenderList, input model, animation, layout
 │   ├── tabula-design/             # semantic tokens + theme; css/macroquad adapters (features)
@@ -720,3 +721,13 @@ and requires Rust 1.94 (the pinned build toolchain remains 1.96). It does not
 change the workspace/default or deterministic game SDK declaration of 1.85.
 SQLx 0.8 was rejected because RNG feature unification violated I-1; the newer
 runtime dependency keeps the kernel RNG package identity separate.
+
+The second isolated slice adds `tabula-session-http`: serde DTOs by default,
+opt-in native `isolated` Axum/Tokio handlers and independent HMAC-SHA256 CSRF,
+and `postgres` composition for disposable acceptance. It has no SQL or service
+imports. Axum's WS/macros features remain disabled here: this slice has no WS,
+and Tungstenite's rand 0.8 entropy feature unification would violate I-1.
+Storage owns cross-process account advisory ordering and bounded first-frame
+publication guards. The HTTP adapter holds that guard through one private Body
+frame; committed clock facts precede release. Hyper buffering/TCP arrival and
+all gameplay/WS output remain separate, so S09 is still partial.

@@ -3,8 +3,9 @@
 //! These tests are deliberately ignored by ordinary workspace runs. CI must run
 //! the non-empty ignored selection with `DATABASE_URL` pointing to its ephemeral
 //! `PostgreSQL` 16 service. Missing setup fails; there is no in-memory substitute.
-//! Socket/private-outbound fencing and HTTP credential release are outside this
-//! storage harness and must not be reported as S09/S08 integration acceptance.
+//! These tests cover durable publication-lease exclusion and its backend-loss
+//! behavior, not actual HTTP frame delivery, socket receipt or WebSocket fencing.
+//! Full S09/S08 integration acceptance remains outside this storage harness.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -13,9 +14,10 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::{AssertSqlSafe, PgConnection, PgPool, Row};
 use tabula_core::UserId;
 use tabula_session::{
-    AccountEpoch, AuthSessionId, CredentialDigest, CredentialGeneration, IssueSession,
-    ProviderIdentityKey, RotateSession, SessionAuthority, SessionChannel, SessionContextId,
-    SessionCredential, SessionError, SessionSnapshot,
+    AccountEpoch, AuthSessionId, CredentialDigest, CredentialGeneration, CredentialOperation,
+    HttpSessionAuthority, IssueSession, ProviderIdentityKey, RotateCredential, RotateSession,
+    SessionAuthority, SessionChannel, SessionContextBinding, SessionContextId, SessionCredential,
+    SessionError, SessionPublication, SessionSnapshot,
 };
 use uuid::Uuid;
 
@@ -1775,5 +1777,662 @@ async fn postgres_impossible_future_session_epoch_is_retired_before_account_catc
     );
     assert_eq!(marker_count(&db.first, "future-epoch").await, 0);
     assert_eq!(stored(&db.first, 10).await.revoked, Some(1_000_100_000));
+    db.close().await;
+}
+
+fn http_operation(snapshot: &SessionSnapshot, digest: CredentialDigest) -> CredentialOperation {
+    CredentialOperation {
+        digest,
+        channel: snapshot.channel(),
+        context: Some(SessionContextBinding {
+            context_id: snapshot.context_id(),
+            authorization_epoch: snapshot.authorization_epoch(),
+        }),
+    }
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_http_context_rejections_and_current_credential_logout_are_atomic() {
+    let db = DatabaseFixture::new().await;
+    let (first, controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    controls.clock.store(START_MS + 100, Ordering::SeqCst);
+    for invalid in [
+        CredentialOperation {
+            context: None,
+            ..request
+        },
+        CredentialOperation {
+            context: Some(SessionContextBinding {
+                context_id: SessionContextId::new(999).unwrap(),
+                authorization_epoch: snapshot.authorization_epoch(),
+            }),
+            ..request
+        },
+        CredentialOperation {
+            context: Some(SessionContextBinding {
+                context_id: snapshot.context_id(),
+                authorization_epoch: AccountEpoch::new(1).unwrap(),
+            }),
+            ..request
+        },
+    ] {
+        assert_eq!(
+            first.revoke_credential(invalid).await,
+            Err(SessionError::InvalidInput)
+        );
+        assert_eq!(
+            first
+                .rotate_credential(RotateCredential {
+                    credential: invalid,
+                    expected_generation: snapshot.credential_generation(),
+                    replacement_digest: SessionCredential::generate().unwrap().digest(),
+                })
+                .await,
+            Err(SessionError::InvalidInput)
+        );
+        let row = stored(&db.first, 10).await;
+        assert_eq!(row.revoked, None);
+        assert_eq!(row.generation, 0);
+        assert_eq!(row.digest.as_slice(), digest.as_bytes());
+        assert_eq!(row.observed, i64::try_from(START_MS + 100).unwrap());
+        assert_eq!(row.activity, i64::try_from(START_MS).unwrap());
+    }
+    let (second, _) = store(&db.second, START_MS + 100);
+    let profile = second.read_self_profile(request).await.unwrap();
+    assert_eq!(profile.user_id(), UserId(1));
+    first.revoke_credential(request).await.unwrap();
+    second.revoke_credential(request).await.unwrap();
+    assert_eq!(
+        second.read_self_profile(request).await,
+        Err(SessionError::Unauthenticated)
+    );
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_http_logout_and_refresh_have_one_current_credential_order() {
+    for logout_first in [true, false] {
+        let db = DatabaseFixture::new().await;
+        let (first, first_controls) = store(&db.first, START_MS);
+        first.migrate().await.unwrap();
+        let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+        let old = SessionCredential::generate().unwrap().digest();
+        let replacement = SessionCredential::generate().unwrap().digest();
+        let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, old).await;
+        let request = http_operation(&snapshot, old);
+        let rotation = RotateCredential {
+            credential: request,
+            expected_generation: snapshot.credential_generation(),
+            replacement_digest: replacement,
+        };
+        first_controls.clock.store(START_MS + 100, Ordering::SeqCst);
+        let (second, _) = store(&db.second, START_MS + 100);
+        let first_pid = backend_pid(&db.first).await;
+        let second_pid = backend_pid(&db.second).await;
+        let gate = install_gate(&first_controls);
+        let leading = tokio::spawn(async move {
+            if logout_first {
+                first.revoke_credential(request).await
+            } else {
+                first.rotate_credential(rotation).await.map(|_| ())
+            }
+        });
+        entered(&gate).await;
+        let trailing = tokio::spawn(async move {
+            if logout_first {
+                second.rotate_credential(rotation).await.map(|_| ())
+            } else {
+                second.revoke_credential(request).await
+            }
+        });
+        wait_blocked(&db.admin, second_pid, first_pid).await;
+        gate.release.add_permits(1);
+        assert_eq!(finish(leading).await, Ok(()));
+        assert_eq!(finish(trailing).await, Err(SessionError::Unauthenticated));
+        let row = stored(&db.first, 10).await;
+        assert_eq!(row.generation, i64::from(!logout_first));
+        assert_eq!(row.revoked.is_some(), logout_first);
+        assert_eq!(
+            row.digest.as_slice(),
+            if logout_first {
+                old.as_bytes()
+            } else {
+                replacement.as_bytes()
+            }
+        );
+        // An adapter reconstructed after the competing operation sees the same
+        // durable winner and cannot authorize a profile with the old verifier.
+        let (restarted, _) = store(&db.second, START_MS + 100);
+        assert_eq!(
+            restarted.read_self_profile(request).await,
+            Err(SessionError::Unauthenticated)
+        );
+        if !logout_first {
+            let current = http_operation(&snapshot, replacement);
+            assert_eq!(
+                restarted
+                    .read_self_profile(current)
+                    .await
+                    .unwrap()
+                    .user_id(),
+                UserId(1)
+            );
+            restarted.revoke_credential(current).await.unwrap();
+        }
+        db.close().await;
+    }
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_publication_commits_floors_and_blocks_independent_logout_until_body_drop() {
+    let db = DatabaseFixture::new().await;
+    let (first, controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    let first_pid = backend_pid(&db.first).await;
+    let second_pid = backend_pid(&db.second).await;
+    controls.clock.store(START_MS + 100, Ordering::SeqCst);
+    let mut publication = first.begin_publication(request).await.unwrap();
+    // No account/session row transaction remains: an unrelated raw read can
+    // independently see the durable floor while the advisory guard stays live.
+    assert_eq!(
+        stored(&db.second, 10).await.observed,
+        i64::try_from(START_MS + 100).unwrap()
+    );
+    let (second, _) = store(&db.second, START_MS + 100);
+    let logout = tokio::spawn(async move { second.revoke_credential(request).await });
+    wait_blocked(&db.admin, second_pid, first_pid).await;
+    assert_eq!(publication.snapshot().user_id(), UserId(1));
+    assert_eq!(
+        publication.publish(|current| current.user_id()).unwrap(),
+        UserId(1)
+    );
+    let mut repeated_callback = false;
+    assert_eq!(
+        publication.publish(|_| repeated_callback = true),
+        Err(SessionError::Unauthenticated)
+    );
+    assert!(!repeated_callback);
+    drop(publication);
+    assert_eq!(finish(logout).await, Ok(()));
+    let (restarted, _) = store(&db.second, START_MS + 100);
+    assert_eq!(
+        restarted.read_self_profile(request).await,
+        Err(SessionError::Unauthenticated)
+    );
+    // Close-on-drop replaced the physical backend rather than pooling a backend
+    // with a lingering session-level advisory lock.
+    assert_ne!(backend_pid(&db.first).await, first_pid);
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_unpolled_publication_expires_and_never_invokes_late_frame_callback() {
+    let db = DatabaseFixture::new().await;
+    let (first, controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    let first_pid = backend_pid(&db.first).await;
+    let second_pid = backend_pid(&db.second).await;
+    controls.clock.store(START_MS + 100, Ordering::SeqCst);
+    let mut publication = first.begin_publication(request).await.unwrap();
+    let (second, _) = store(&db.second, START_MS + 100);
+    let logout = tokio::spawn(async move { second.revoke_credential(request).await });
+    wait_blocked(&db.admin, second_pid, first_pid).await;
+    // The actual durable logout proves the lease released its cross-process
+    // lock while the unpolled body still owns the publication object.
+    assert_eq!(finish(logout).await, Ok(()));
+    let mut callback_ran = false;
+    assert_eq!(
+        publication.publish(|_| callback_ran = true),
+        Err(SessionError::Unauthenticated)
+    );
+    assert!(!callback_ran);
+    drop(publication);
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_publication_commit_faults_never_return_a_guard_or_retain_locks() {
+    let db = DatabaseFixture::new().await;
+    let (first, controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    for fault in [1, 2] {
+        let now = START_MS + u64::from(fault) * 100;
+        controls.clock.store(now, Ordering::SeqCst);
+        controls.fault.store(fault, Ordering::SeqCst);
+        assert!(matches!(
+            first.begin_publication(request).await,
+            Err(SessionError::Unavailable)
+        ));
+        let (second, _) = store(&db.second, now);
+        assert_eq!(
+            tokio::time::timeout(WAIT_LIMIT, second.read_self_profile(request))
+                .await
+                .unwrap()
+                .unwrap()
+                .user_id(),
+            UserId(1)
+        );
+    }
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_publication_lease_starts_after_waiting_for_current_authority() {
+    let db = DatabaseFixture::new().await;
+    let (first, first_controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    let first_pid = backend_pid(&db.first).await;
+    let second_pid = backend_pid(&db.second).await;
+    let gate = install_gate(&first_controls);
+    let observation = tokio::spawn(async move { first.read_session(request).await });
+    entered(&gate).await;
+    let (second, second_controls) = store(&db.second, START_MS);
+    let publication = tokio::spawn(async move { second.begin_publication(request).await });
+    wait_blocked(&db.admin, second_pid, first_pid).await;
+    // This measures the publication lease's monotonic policy only. PostgreSQL's
+    // lock graph above, rather than a sleep, establishes the authority wait.
+    tokio::time::sleep(Duration::from_millis(2_100)).await;
+    second_controls
+        .clock
+        .store(START_MS + 100, Ordering::SeqCst);
+    gate.release.add_permits(1);
+    finish(observation).await.unwrap();
+    let mut publication = finish(publication).await.unwrap();
+    assert_eq!(
+        publication.snapshot().last_observed_at().get(),
+        START_MS + 100
+    );
+    assert_eq!(
+        publication.publish(|current| current.user_id()).unwrap(),
+        UserId(1)
+    );
+    drop(publication);
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_publication_earlier_idle_deadline_suppresses_queued_profile_frame() {
+    let db = DatabaseFixture::new().await;
+    let (first, controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    let first_pid = backend_pid(&db.first).await;
+    let second_pid = backend_pid(&db.second).await;
+    let idle_deadline = 1_001_800_000;
+    controls.clock.store(idle_deadline - 300, Ordering::SeqCst);
+    let mut publication = first.begin_publication(request).await.unwrap();
+    let (second, second_controls) = store(&db.second, idle_deadline - 300);
+    let profile = tokio::spawn(async move { second.read_self_profile(request).await });
+    wait_blocked(&db.admin, second_pid, first_pid).await;
+    second_controls.clock.store(idle_deadline, Ordering::SeqCst);
+    // The 300ms remaining idle deadline must release sooner than the ordinary
+    // two-second publication lease, independently observed by this backend.
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(1), profile)
+            .await
+            .unwrap()
+            .unwrap(),
+        Err(SessionError::Unauthenticated)
+    );
+    let mut callback_ran = false;
+    assert_eq!(
+        publication.publish(|_| callback_ran = true),
+        Err(SessionError::Unauthenticated)
+    );
+    assert!(!callback_ran);
+    assert_eq!(
+        stored(&db.second, 10).await.expired,
+        Some(i64::try_from(idle_deadline).unwrap())
+    );
+    drop(publication);
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_logout_winner_denies_waiting_publication_and_corrupt_profile_fails_closed() {
+    let db = DatabaseFixture::new().await;
+    let (first, controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    let first_pid = backend_pid(&db.first).await;
+    let second_pid = backend_pid(&db.second).await;
+    controls.clock.store(START_MS + 100, Ordering::SeqCst);
+    let gate = install_gate(&controls);
+    let logout = tokio::spawn(async move { first.revoke_credential(request).await });
+    entered(&gate).await;
+    let (second, _) = store(&db.second, START_MS + 100);
+    let publication = tokio::spawn(async move { second.begin_publication(request).await });
+    wait_blocked(&db.admin, second_pid, first_pid).await;
+    gate.release.add_permits(1);
+    assert_eq!(finish(logout).await, Ok(()));
+    assert!(matches!(
+        finish(publication).await,
+        Err(SessionError::Unauthenticated)
+    ));
+    // Independently corrupt a persisted absolute deadline while retaining the
+    // digest locator. Constraint rejection and checked-row rejection are both
+    // exercised; no profile is fabricated from a partly decoded record.
+    let checks: Vec<String> = sqlx::query_scalar(
+        "SELECT conname::text FROM pg_constraint WHERE conrelid = 'session_auth_sessions'::regclass AND contype = 'c'",
+    ).fetch_all(&db.second).await.unwrap();
+    for check in checks {
+        sqlx::raw_sql(drop_session_check(&check))
+            .execute(&db.second)
+            .await
+            .unwrap();
+    }
+    sqlx::query("UPDATE session_auth_sessions SET absolute_deadline_ms = absolute_deadline_ms + 1 WHERE id = $1")
+        .bind(Uuid::from_u128(10)).execute(&db.second).await.unwrap();
+    let (restarted, _) = store(&db.second, START_MS + 100);
+    assert_eq!(
+        restarted.read_self_profile(request).await,
+        Err(SessionError::Unavailable)
+    );
+    assert!(matches!(
+        restarted.begin_publication(request).await,
+        Err(SessionError::Unavailable)
+    ));
+    db.close().await;
+}
+
+async fn stored_publication_until(pool: &PgPool, id: u128) -> i64 {
+    sqlx::query_scalar("SELECT publication_lease_until_ms FROM session_accounts WHERE user_id = $1")
+        .bind(Uuid::from_u128(id))
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_backend_loss_retains_durable_exclusion_until_local_frame_is_invalid() {
+    let db = DatabaseFixture::new().await;
+    let (first, controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    let first_pid = backend_pid(&db.first).await;
+    controls.clock.store(START_MS + 100, Ordering::SeqCst);
+    let mut publication = first.begin_publication(request).await.unwrap();
+    let until = stored_publication_until(&db.second, 1).await;
+    assert!(database_clock(&db.admin).await < until);
+    let terminated: bool = sqlx::query_scalar("SELECT pg_terminate_backend($1)")
+        .bind(first_pid)
+        .fetch_one(&db.admin)
+        .await
+        .unwrap();
+    assert!(
+        terminated,
+        "acceptance must kill the actual publishing backend"
+    );
+    let (second, second_controls) = store(&db.second, START_MS + 100);
+    let gate = install_gate(&second_controls);
+    let logout = tokio::spawn(async move { second.revoke_credential(request).await });
+    entered(&gate).await;
+    // This hook is beyond lock_account's durable-lease wait. The independent
+    // database clock makes skipping that wait an observable test failure even
+    // though pg_terminate_backend removed the original advisory lock.
+    assert!(database_clock(&db.admin).await >= until);
+    gate.release.add_permits(1);
+    assert_eq!(finish(logout).await, Ok(()));
+    let mut callback_ran = false;
+    assert_eq!(
+        publication.publish(|_| callback_ran = true),
+        Err(SessionError::Unauthenticated)
+    );
+    assert!(!callback_ran);
+    drop(publication);
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_differing_search_paths_share_the_resolved_account_publication_lock() {
+    let db = DatabaseFixture::new().await;
+    let (first, controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    let first_schema = format!("{}_a", db.schema);
+    let second_schema = format!("{}_b", db.schema);
+    for schema in [&first_schema, &second_schema] {
+        sqlx::raw_sql(schema_ddl(schema, SchemaDdl::Create))
+            .execute(&db.admin)
+            .await
+            .unwrap();
+    }
+    for (pool, prefix) in [(&db.first, &first_schema), (&db.second, &second_schema)] {
+        sqlx::query("SELECT set_config('search_path', $1, false)")
+            .bind(format!("{prefix},{}", db.schema))
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+    let first_path: String = sqlx::query_scalar("SELECT current_schema()::text")
+        .fetch_one(&db.first)
+        .await
+        .unwrap();
+    let second_path: String = sqlx::query_scalar("SELECT current_schema()::text")
+        .fetch_one(&db.second)
+        .await
+        .unwrap();
+    assert_ne!(first_path, second_path);
+    let first_relation: i64 =
+        sqlx::query_scalar("SELECT 'session_accounts'::regclass::oid::bigint")
+            .fetch_one(&db.first)
+            .await
+            .unwrap();
+    let second_relation: i64 =
+        sqlx::query_scalar("SELECT 'session_accounts'::regclass::oid::bigint")
+            .fetch_one(&db.second)
+            .await
+            .unwrap();
+    assert_eq!(first_relation, second_relation);
+    let first_pid = backend_pid(&db.first).await;
+    let second_pid = backend_pid(&db.second).await;
+    controls.clock.store(START_MS + 100, Ordering::SeqCst);
+    let publication = first.begin_publication(request).await.unwrap();
+    let (second, _) = store(&db.second, START_MS + 100);
+    let invalidation = tokio::spawn(async move {
+        second
+            .invalidate_account_epoch(UserId(1), AccountEpoch::new(0).unwrap())
+            .await
+    });
+    wait_blocked(&db.admin, second_pid, first_pid).await;
+    drop(publication);
+    assert_eq!(
+        finish(invalidation)
+            .await
+            .unwrap()
+            .authorization_epoch()
+            .get(),
+        1
+    );
+    for schema in [&first_schema, &second_schema] {
+        sqlx::raw_sql(schema_ddl(schema, SchemaDdl::Drop))
+            .execute(&db.admin)
+            .await
+            .unwrap();
+    }
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_corrupt_publication_lease_is_unavailable_and_cannot_authorize_profile() {
+    let db = DatabaseFixture::new().await;
+    let (first, _) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    let rejected = sqlx::query("UPDATE session_accounts SET publication_lease_started_at_ms = 1, publication_lease_until_ms = 2002 WHERE user_id = $1")
+        .bind(Uuid::from_u128(1)).execute(&db.first).await;
+    assert!(
+        rejected.is_err(),
+        "the additive lease constraint must reject an overlong lease"
+    );
+    sqlx::raw_sql(
+        "ALTER TABLE session_accounts DROP CONSTRAINT session_accounts_publication_lease_bounds",
+    )
+    .execute(&db.first)
+    .await
+    .unwrap();
+    for (started, until) in [
+        (None::<i64>, Some(1_i64)),
+        (Some(-1), Some(1)),
+        (Some(1), Some(2002)),
+        (Some(2), Some(1)),
+    ] {
+        sqlx::query("UPDATE session_accounts SET publication_lease_started_at_ms = $2, publication_lease_until_ms = $3 WHERE user_id = $1")
+            .bind(Uuid::from_u128(1)).bind(started).bind(until).execute(&db.first).await.unwrap();
+        let (restarted, _) = store(&db.second, START_MS);
+        assert_eq!(
+            restarted.read_self_profile(request).await,
+            Err(SessionError::Unavailable)
+        );
+        assert_eq!(
+            restarted.account_snapshot(identity.clone()).await,
+            Err(SessionError::Unavailable)
+        );
+        assert!(matches!(
+            restarted.begin_publication(request).await,
+            Err(SessionError::Unavailable)
+        ));
+    }
+    db.close().await;
+}
+
+#[test]
+fn publication_lease_raw_pair_validates_boundaries_without_overflow() {
+    use super::PublicationLease;
+
+    assert!(PublicationLease::checked(None, None).unwrap().is_none());
+    for (started, until) in [(0, 1), (0, 2000), (i64::MAX - 1, i64::MAX)] {
+        let lease = PublicationLease::checked(Some(started), Some(until))
+            .unwrap()
+            .unwrap();
+        assert_eq!(lease.started_at.get(), u64::try_from(started).unwrap());
+        assert_eq!(lease.until.get(), u64::try_from(until).unwrap());
+    }
+    for (started, until) in [
+        (None, Some(1)),
+        (Some(1), None),
+        (Some(-1), Some(1)),
+        (Some(0), Some(0)),
+        (Some(0), Some(2001)),
+        (Some(i64::MAX), Some(0)),
+    ] {
+        assert!(matches!(
+            PublicationLease::checked(started, until),
+            Err(SessionError::Unavailable)
+        ));
+    }
+}
+
+#[test]
+fn local_publication_budget_reserves_literal_millisecond_quantization_margin() {
+    use super::local_publication_budget;
+
+    assert_eq!(
+        local_publication_budget(0),
+        Err(SessionError::Unauthenticated)
+    );
+    assert_eq!(
+        local_publication_budget(1),
+        Err(SessionError::Unauthenticated)
+    );
+    assert_eq!(local_publication_budget(2), Ok(Duration::from_millis(1)));
+    assert_eq!(
+        local_publication_budget(2000),
+        Ok(Duration::from_millis(1999))
+    );
+    assert_eq!(
+        local_publication_budget(2001),
+        Err(SessionError::Unavailable)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
+async fn postgres_backend_loss_and_delayed_frame_construction_cannot_publish_after_logout() {
+    let db = DatabaseFixture::new().await;
+    let (first, controls) = store(&db.first, START_MS);
+    first.migrate().await.unwrap();
+    let identity = seed_identity(&db.first, 1, "issuer", "subject").await;
+    let digest = SessionCredential::generate().unwrap().digest();
+    let snapshot = issue(&first, &identity, 10, SessionChannel::BrowserCookie, digest).await;
+    let request = http_operation(&snapshot, digest);
+    let first_pid = backend_pid(&db.first).await;
+    controls.clock.store(START_MS + 100, Ordering::SeqCst);
+    let mut publication = first.begin_publication(request).await.unwrap();
+    let terminated: bool = sqlx::query_scalar("SELECT pg_terminate_backend($1)")
+        .bind(first_pid)
+        .fetch_one(&db.admin)
+        .await
+        .unwrap();
+    assert!(terminated);
+    let (entered_callback, callback_entered) = std::sync::mpsc::channel();
+    let (release_callback, released_callback) = std::sync::mpsc::channel();
+    let construction = tokio::task::spawn_blocking(move || {
+        publication.publish(|current| {
+            // Test-only suspension models preemption of pure frame creation.
+            // No private result is externally sent inside this callback.
+            entered_callback.send(()).unwrap();
+            released_callback.recv_timeout(WAIT_LIMIT).unwrap();
+            current.user_id()
+        })
+    });
+    tokio::task::spawn_blocking(move || callback_entered.recv_timeout(WAIT_LIMIT).unwrap())
+        .await
+        .unwrap();
+    let (second, _) = store(&db.second, START_MS + 100);
+    let logout = tokio::spawn(async move { second.revoke_credential(request).await });
+    assert_eq!(finish(logout).await, Ok(()));
+    release_callback.send(()).unwrap();
+    assert_eq!(
+        finish(construction).await,
+        Err(SessionError::Unauthenticated)
+    );
     db.close().await;
 }

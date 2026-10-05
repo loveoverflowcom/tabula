@@ -58,6 +58,7 @@ tabula-match        = { path = "crates/tabula-match" }
 tabula-lobby        = { path = "crates/tabula-lobby" }
 tabula-storage      = { path = "crates/tabula-storage" }
 tabula-session      = { path = "crates/tabula-session" }
+tabula-session-http = { path = "crates/tabula-session-http" }
 tabula-presentation = { path = "crates/tabula-presentation" }
 tabula-design       = { path = "crates/tabula-design" }
 tabula-assets       = { path = "crates/tabula-assets" }
@@ -93,7 +94,9 @@ tiny-skia   = "0.11"
 # `{ workspace = true }`; the matrix says which crates may.
 tokio              = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }
 futures            = "0.3"
-axum               = { version = "0.7", features = ["ws", "macros"] }
+# ADR-0036's isolated HTTP needs no WS/macros; enabling ws would unify
+# Tungstenite rand 0.8 OS features with the frozen kernel RNG (I-1).
+axum               = { version = "0.7", default-features = false, features = ["http1", "tokio"] }
 tower              = "0.5"
 tower-http         = { version = "0.6", features = ["trace", "cors", "compression-gzip"] }
 tower-governor     = "0.4"
@@ -101,6 +104,8 @@ sqlx               = { version = "0.9", default-features = false, features = ["r
 # ADR-0036: runtime session credentials, never reachable from deterministic games.
 sha2               = { version = "0.10", default-features = false }
 base64             = "0.22"
+hmac               = "0.12"
+http-body          = "1"
 getrandom          = "0.3"
 tracing            = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }

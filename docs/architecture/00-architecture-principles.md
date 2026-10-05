@@ -437,6 +437,7 @@ Rows are consumers, columns are what they are permitted to depend on.
 | `tabula-match` | Y | Y | Y | Y | — | — | — | – | — | Y | — | — | — | — |
 | `tabula-lobby` | Y | — | Y | Y | — | — | — | Y | — | Y | — | — | — | — |
 | `tabula-session` | Y | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `tabula-session-http` (isolated) | Y | — | — | — | — | — | — | — | f | f | f | f | — | — |
 | `tabula-storage` | Y | Y | Y | — | — | — | — | — | – | Y | — | Y | — | — |
 | `services/tabula-server` | Y | — | Y | Y | — | — | — | Y | Y | Y | Y | Y | — | — |
 | `services/tabula-auth` | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
@@ -459,6 +460,7 @@ Notes on the interesting cells:
   `tabula-match`/`tabula-lobby`, and `tabula-session` for ADR-0036; the implementations live here. This is the seam that makes
   "swap Postgres deployment model" and "add a read replica" non-invasive.
 - **`tabula-session` owns internal session policy and ports under ADR-0036.** Its runtime credential dependencies are forbidden in deterministic games. Storage may reference it only for the explicit isolated native session adapter; no service or client is activated.
+- **`tabula-session-http` is an isolated HTTP library under ADR-0036.** Default/WASM exposes versioned DTOs only; opt-in native `isolated` uses Axum/Tokio and session ports, while `postgres` composes the storage adapter for disposable acceptance. It contains no SQL, provider verification, production bootstrap or game authority
 - **Nothing depends on `services/*`.** Services are leaves (binaries).
 - **ADR-0034 reserves `tabula-auth` as a std-only skeleton.** Account authentication
   uses Kanidm; Tabula sessions retain ADR-0031's guarantees. Provider/runtime
