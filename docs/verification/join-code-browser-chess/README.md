@@ -194,16 +194,59 @@ No cap, wire schema, rules identity, asset ownership or default deployment gate
 is relaxed. Recorded capture build commands match that exact pipeline. The
 final source must rerun all gates and actual Chrome acceptance after publication.
 
+## Executed actual-browser partial receipt (2026-10-05)
+
+Checkpoint `521ab711a89a7a0572a02b06010e2663b2a92adf`, tree
+`0bdd7b7569979feaf616d4493d9dcdda9d346a99`, ran the
+[actual browser job](https://github.com/loveoverflowcom/tabula/actions/runs/37366102093/job/111951541124).
+Its clean CI checkout `9d2d38f8274ece6eccf9b7b4b65149e5eb225502` has the
+same tree. The job selected and passed all 14 real composed PostgreSQL cases.
+Three separate Chromium 151 processes had distinct HOME/profile/cookies,
+accounts and storage, verified HTTPS, and two opposite server-owned seats.
+Actual pointer moves `f2f3`, `e7e5`, `g2g4`, `d8h4` each received HTTP200 and
+Ack. Both players rendered the exact rules-owned
+`Game over / Black wins / checkmate` status at public revision4.
+
+Exact duplicate commands did not publish another projection. Third-client,
+full-roster, cross-match, hostile-envelope/header and revoked-command/output
+probes passed. Same-session reattach retained its next sequence and denied the
+old attachment. The nonempty actual native poll body was held until committed
+logout; release produced zero body bytes and a guarded stream error.
+
+**Overall browser result remains FAIL.** Its later, separate live-board
+authority-loss auxiliary step failed; independent durable CLI audit did not run
+on this attempt. No complete acceptance or merge is inferred from the terminal
+screenshots. The narrow fixture correction observes the actual401 without
+forcing a JSON read of the response body deliberately aborted by the transport,
+foregrounds the animation-frame-driven game, and adds closed subphase facts.
+The complete neutral hidden/zero-sized canvas and cleared-status predicate,
+independent revoked-output JSON probes, and native zero-byte oracle are unchanged.
+
+The owner-requested single [review issue82](https://github.com/loveoverflowcom/tabula/issues/82)
+contains seven real create/join/initial-board images and three terminal/result
+images. Original PNGs and capture manifests are immutable. Separate dated
+assistant pixel-inspection receipts record later visual/hash inspection,
+including independent verification of ten SHA-256 values and dimensions. These
+images use disposable fixture identities through real session authority; they
+do not picture Kanidm sign-in. Visual inspection covers the captured pixels,
+not every browser memory/network surface. The issue tracks two nonblocking
+copy notes: default discovery's no-online wording beside the opt-in panel and
+the board's `Local player` cards.
+
+Portable aggregate at `d954b1e4fabbcf2814d2dd31f9e300064dcb5814`, tree
+`13523657fde8170af76e6f1c98d047014817bb32`, passed 1,223 cases with18 ignored;
+its66 fixture helper cases passed. Independent exact-source security review
+approved the unchanged authority/privacy oracles, conditional on final runtime
+acceptance. These receipts do not substitute for final-head reruns.
+
 ## Pending online delivery gates
 
-- Final capacity/lifecycle review fixes and their focused regressions
-- Portable aggregate and feature/native/WASM/resource gates on the final composition
-- Actual composed PostgreSQL scenarios, native body-frame oracle and independent Chromium complete game
-- Screenshot capture, secret scan and pixel inspection, then the owner-requested GitHub review issue
-- Independent exact-source security/UI review
-- Exact published head/tree, terminal CI, normal merge ancestry and post-merge CI
+- Final exact-source portable, feature/native/WASM/resource and independent review receipts
+- Actual independent Chromium full acceptance including the auxiliary live-board concealment and independent durable terminal audit
+- Final secret-free error screenshot capture and pixel inspection in the same review issue
+- All18 applicable exact-head CI jobs terminal success, normal merge ancestry and post-merge CI
 
-These pending stages remain NOT_RUN until their explicit receipts are recorded.
+These pending gates require their own explicit successful receipts.
 Production/listener/live migration/provider setup, robust network-drop/refresh/
 server-crash/resync, timers/outage policy, private effects, lobby/social/voice/
 ranking, load/backup and broad phase exits remain outside PR2. Mobile native

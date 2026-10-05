@@ -138,6 +138,14 @@ session operation scopes, one terminal transition, atomic terminal snapshot,
 and the decisive Checkmate verdict with Black as winner. No client output can
 be emitted by the audit. Only closed boolean/count/verdict results are published;
 the private account input and canonical data never become browser frames.
+The private audit input is created only after both exact actual terminal views
+are confirmed, outside the public artifact directory. After browser teardown the
+real audit still runs if a later auxiliary check fails, preserving independent
+main-stream evidence. `audit-result.json` separates audit pass/fail/not-run from
+the mandatory browser exit. A later browser/auxiliary failure always keeps the
+overall job failed and removes any PASS receipt; `result.txt` exists only when
+every mandatory browser check and the real durable audit both pass. This ordering
+does not skip or replace the live authority-loss/neutral-surface requirement.
 
 ## Actual UI image review
 
