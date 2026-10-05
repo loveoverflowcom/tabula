@@ -64,7 +64,8 @@ python3 tests/online-match/tls_frontend.py --dist apps/web/dist \
     --listen-port 9443 --upstream-port 3000 > "$private/tls.log" 2>&1 &
 tls_pid=$!
 python3 tests/online-match/browser_acceptance.py --private "$private" \
-    --artifacts "$artifacts" --ca "$private/ca.pem"
+    --artifacts "$artifacts" --ca "$private/ca.pem" \
+    --native-pid "$fixture_pid" --tls-pid "$tls_pid"
 # Synthetic account identifiers stay in the private file, outside artifacts.
 # Claim a new fence only after browser teardown; recover verifies full history.
 "$fixture" audit "$private/audit-input.json" > "$artifacts/durable-verdict.json"

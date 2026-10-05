@@ -83,7 +83,15 @@ fn failure(status: StatusCode) -> Response {
 }
 
 async fn enrollment_page() -> Response {
-    public_response(StatusCode::OK, ENROLL_HTML, "text/html; charset=utf-8")
+    let mut response = public_response(StatusCode::OK, ENROLL_HTML, "text/html; charset=utf-8");
+    // Fetch's non-CORS form Origin algorithm turns no-referrer into Origin:null.
+    // This document-only policy keeps the exact same-origin form authenticated;
+    // protected/API responses retain no-referrer and enrollment rejects null.
+    response.headers_mut().insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("same-origin"),
+    );
+    response
 }
 
 fn random_id() -> Checked<u128> {
@@ -501,7 +509,25 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{checked_id, AuditInput};
+    use super::{checked_id, enrollment_page, failure, AuditInput};
+
+    #[tokio::test]
+    async fn enrollment_document_preserves_form_origin_without_changing_api_policy() {
+        let document = enrollment_page().await;
+        assert_eq!(
+            document.headers()[axum::http::header::REFERRER_POLICY],
+            "same-origin"
+        );
+        assert_eq!(
+            document.headers()[axum::http::header::CACHE_CONTROL],
+            "no-store"
+        );
+        let protected = failure(axum::http::StatusCode::FORBIDDEN);
+        assert_eq!(
+            protected.headers()[axum::http::header::REFERRER_POLICY],
+            "no-referrer"
+        );
+    }
 
     #[test]
     fn private_audit_ids_require_canonical_nonzero_fixed_width_hex() {
