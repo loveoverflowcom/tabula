@@ -555,3 +555,208 @@ fn impossible_future_session_epoch_is_retired_before_account_can_catch_up() {
         Err(SessionError::Unauthenticated)
     );
 }
+
+fn browser_operation(value: u8) -> CredentialOperation {
+    CredentialOperation {
+        digest: digest(value),
+        channel: SessionChannel::BrowserCookie,
+        context: Some(crate::SessionContextBinding {
+            context_id: SessionContextId::new(30).unwrap(),
+            authorization_epoch: epoch(0),
+        }),
+    }
+}
+
+#[test]
+fn http_mutations_require_current_credential_channel_and_context_atomically() {
+    let mut initial = record();
+    let account = account();
+    for request in [
+        CredentialOperation {
+            context: None,
+            ..browser_operation(1)
+        },
+        CredentialOperation {
+            context: Some(crate::SessionContextBinding {
+                context_id: SessionContextId::new(31).unwrap(),
+                authorization_epoch: epoch(0),
+            }),
+            ..browser_operation(1)
+        },
+        CredentialOperation {
+            context: Some(crate::SessionContextBinding {
+                context_id: SessionContextId::new(30).unwrap(),
+                authorization_epoch: epoch(1),
+            }),
+            ..browser_operation(1)
+        },
+    ] {
+        assert_eq!(
+            initial.revoke_credential(&account, request, time(1_000)),
+            Err(SessionError::InvalidInput)
+        );
+        assert_eq!(initial.revoked_at(), None);
+        assert_eq!(
+            initial.rotate_credential(
+                &account,
+                RotateCredential {
+                    credential: request,
+                    expected_generation: generation(0),
+                    replacement_digest: digest(2),
+                },
+                time(1_000),
+            ),
+            Err(SessionError::InvalidInput)
+        );
+        assert_eq!(initial.credential_digest(), digest(1));
+        assert_eq!(initial.credential_generation(), generation(0));
+    }
+    for request in [
+        browser_operation(2),
+        CredentialOperation {
+            channel: SessionChannel::NativeBearer,
+            ..browser_operation(1)
+        },
+    ] {
+        assert_eq!(
+            initial.revoke_credential(&account, request, time(1_000)),
+            Err(SessionError::Unauthenticated)
+        );
+        assert_eq!(initial.revoked_at(), None);
+    }
+    // Bootstrap reads require the credential, but do not need a prior CSRF token.
+    assert!(initial
+        .observe_operation(
+            &account,
+            CredentialOperation {
+                context: None,
+                ..browser_operation(1)
+            },
+            time(1_000),
+        )
+        .is_ok());
+}
+
+#[test]
+fn http_rotated_out_credentials_cannot_revoke_but_current_logout_is_idempotent() {
+    let mut record = record();
+    let account = account();
+    let initial = record.snapshot();
+    record
+        .rotate_credential(
+            &account,
+            RotateCredential {
+                credential: browser_operation(1),
+                expected_generation: generation(0),
+                replacement_digest: digest(2),
+            },
+            time(1_001),
+        )
+        .unwrap();
+    assert_eq!(record.context_id(), initial.context_id());
+    assert_eq!(record.idle_deadline(), initial.idle_deadline());
+    assert_eq!(
+        record.revoke_credential(&account, browser_operation(1), time(1_002)),
+        Err(SessionError::Unauthenticated)
+    );
+    assert_eq!(record.revoked_at(), None);
+    record
+        .revoke_credential(&account, browser_operation(2), time(1_002))
+        .unwrap();
+    record
+        .revoke_credential(&account, browser_operation(2), time(1_003))
+        .unwrap();
+    assert_eq!(record.revoked_at(), Some(time(1_002)));
+    assert_eq!(
+        record.observe_operation(&account, browser_operation(2), time(1_003)),
+        Err(SessionError::Unauthenticated)
+    );
+}
+
+#[test]
+fn native_http_mutation_has_no_browser_context_fallback() {
+    let mut raw = record().into_raw();
+    raw.channel = SessionChannel::NativeBearer.as_str().to_owned();
+    let mut record = SessionRecord::try_from(raw).unwrap();
+    let request = CredentialOperation {
+        digest: digest(1),
+        channel: SessionChannel::NativeBearer,
+        context: None,
+    };
+    record
+        .rotate_credential(
+            &account(),
+            RotateCredential {
+                credential: request,
+                expected_generation: generation(0),
+                replacement_digest: digest(2),
+            },
+            time(1_001),
+        )
+        .unwrap();
+    record
+        .revoke_credential(
+            &account(),
+            CredentialOperation {
+                digest: digest(2),
+                ..request
+            },
+            time(1_002),
+        )
+        .unwrap();
+}
+
+#[test]
+fn terminal_logout_context_never_authenticates_or_accepts_replaced_verifiers() {
+    let mut revoked = record();
+    let account = account();
+    revoked
+        .revoke_credential(&account, browser_operation(1), time(1_001))
+        .unwrap();
+    let context = revoked
+        .observe_logout_context(&account, browser_operation(1), time(1_002))
+        .unwrap();
+    assert_eq!(context.revoked_at(), Some(time(1_001)));
+    assert_eq!(
+        revoked.observe_operation(&account, browser_operation(1), time(1_002)),
+        Err(SessionError::Unauthenticated)
+    );
+    assert_eq!(
+        revoked.observe_logout_context(&account, browser_operation(2), time(1_002)),
+        Err(SessionError::Unauthenticated)
+    );
+    assert_eq!(
+        revoked.observe_logout_context(
+            &account,
+            CredentialOperation {
+                channel: SessionChannel::NativeBearer,
+                ..browser_operation(1)
+            },
+            time(1_002)
+        ),
+        Err(SessionError::Unauthenticated)
+    );
+    assert_eq!(
+        revoked.observe_logout_context(&account, browser_operation(1), time(1_001)),
+        Err(SessionError::Unavailable)
+    );
+
+    let mut expired = record();
+    let context = expired
+        .observe_logout_context(&account, browser_operation(1), time(1_801_000))
+        .unwrap();
+    assert_eq!(context.expired_at(), Some(time(1_801_000)));
+    assert_eq!(
+        expired.observe_operation(&account, browser_operation(1), time(1_801_000)),
+        Err(SessionError::Unauthenticated)
+    );
+
+    let mut future = record().into_raw();
+    future.authorization_epoch = 1;
+    let mut future = SessionRecord::try_from(future).unwrap();
+    assert_eq!(
+        future.observe_logout_context(&account, browser_operation(1), time(1_001)),
+        Err(SessionError::Unavailable)
+    );
+    assert_eq!(future.revoked_at(), Some(time(1_001)));
+}

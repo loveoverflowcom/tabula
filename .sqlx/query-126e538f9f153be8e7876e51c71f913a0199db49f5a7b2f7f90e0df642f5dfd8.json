@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT user_id, authorization_epoch, enabled, last_observed_at_ms FROM session_accounts WHERE user_id = $1 FOR UPDATE\n",
+  "query": "SELECT user_id, authorization_epoch, enabled, last_observed_at_ms, publication_lease_started_at_ms, publication_lease_until_ms FROM session_accounts WHERE user_id = $1 FOR UPDATE\n",
   "describe": {
     "columns": [
       {
@@ -46,6 +46,28 @@
             "name": "last_observed_at_ms"
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "publication_lease_started_at_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "publication_lease_started_at_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "publication_lease_until_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "publication_lease_until_ms"
+          }
+        }
       }
     ],
     "parameters": {
@@ -57,8 +79,10 @@
       false,
       false,
       false,
-      false
+      false,
+      true,
+      true
     ]
   },
-  "hash": "cc2e0f6c8e1b5b2bf401230ee871f36212d9f970cb0f87ecec64f40020777c60"
+  "hash": "126e538f9f153be8e7876e51c71f913a0199db49f5a7b2f7f90e0df642f5dfd8"
 }

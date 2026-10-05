@@ -1,29 +1,36 @@
 //! Durable PostgreSQL session authority for isolated ADR-0036 validation.
 //!
 //! Every state-changing boundary uses READ COMMITTED and the order account
-//! `FOR UPDATE` → session `FOR UPDATE` → protected resource. Candidate digest
-//! lookups confer no authority: checked records are reread after waiting. Time
+//! advisory lock → `FOR UPDATE` → session `FOR UPDATE` → protected resource.
+//! Candidate digest lookups confer no authority: checked records are reread after waiting. Time
 //! is sampled with `clock_timestamp()` only after those locks. Known success
 //! is returned only after durable commit. SQL/storage details never escape.
 //!
-//! Neither production service enables this module. In particular a returned
-//! observation/binding does not fence a later effect or private socket send.
+//! Neither production service enables this module. Observations/bindings remain
+//! snapshots. The explicit bounded publication guard fences only isolated server
+//! body/frame handoff, not client receipt, buffered bytes or WebSocket delivery.
 
 use std::fmt;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::{Connection, PgPool, Postgres, Transaction};
 use tabula_core::UserId;
 use tabula_session::{
-    AccountEpoch, AccountRecord, CredentialDigest, IssueSession, ProviderIdentityKey,
-    RawAccountRecord, RawSessionRecord, RotateSession, SessionAuthority, SessionBinding,
-    SessionChannel, SessionError, SessionRecord, SessionSnapshot, UnixMillis,
+    AccountEpoch, AccountRecord, CredentialDigest, CredentialOperation, HttpSessionAuthority,
+    IssueSession, ProviderIdentityKey, RawAccountRecord, RawSessionRecord, RotateCredential,
+    RotateSession, SelfProfileSnapshot, SessionAuthority, SessionBinding, SessionChannel,
+    SessionError, SessionPublication, SessionRecord, SessionSnapshot, UnixMillis,
 };
+use tokio::sync::oneshot;
+use tokio::time::Instant;
 use uuid::Uuid;
 
 #[cfg(test)]
 use std::sync::{
-    atomic::{AtomicU64, AtomicU8, Ordering},
-    Arc, Mutex,
+    atomic::{AtomicU64, AtomicU8},
+    Mutex,
 };
 
 /// `PostgreSQL` implementation of the internal durable authority port (ADR-0036).
@@ -51,6 +58,33 @@ struct AccountRow {
     authorization_epoch: i64,
     enabled: bool,
     last_observed_at_ms: i64,
+    publication_lease_started_at_ms: Option<i64>,
+    publication_lease_until_ms: Option<i64>,
+}
+
+#[derive(Clone, Copy)]
+struct PublicationLease {
+    started_at: UnixMillis,
+    until: UnixMillis,
+}
+
+impl PublicationLease {
+    fn checked(started: Option<i64>, until: Option<i64>) -> Result<Option<Self>, SessionError> {
+        match (started, until) {
+            (None, None) => Ok(None),
+            (Some(started), Some(until)) => {
+                let started_at = UnixMillis::new(unsigned(started)?).map_err(unavailable)?;
+                let until = UnixMillis::new(unsigned(until)?).map_err(unavailable)?;
+                until
+                    .get()
+                    .checked_sub(started_at.get())
+                    .filter(|duration| (1..=PUBLICATION_LEASE_MS).contains(duration))
+                    .ok_or(SessionError::Unavailable)?;
+                Ok(Some(Self { started_at, until }))
+            }
+            _ => Err(SessionError::Unavailable),
+        }
+    }
 }
 
 struct SessionRow {
@@ -83,6 +117,10 @@ fn unsigned(value: i64) -> Result<u64, SessionError> {
 impl TryFrom<AccountRow> for AccountRecord {
     type Error = SessionError;
     fn try_from(row: AccountRow) -> Result<Self, Self::Error> {
+        PublicationLease::checked(
+            row.publication_lease_started_at_ms,
+            row.publication_lease_until_ms,
+        )?;
         Self::try_from(RawAccountRecord {
             user_id: row.user_id.as_u128(),
             authorization_epoch: unsigned(row.authorization_epoch)?,
@@ -149,6 +187,7 @@ impl PgSessionStore {
         let epoch = signed(raw.authorization_epoch)?;
         let observed = signed(raw.last_observed_at_ms)?;
         let mut tx = self.begin().await?;
+        Self::lock_account_publication_order(&mut tx, user_id).await?;
         sqlx::query_file!(
             "src/session/sql/insert_fixture_account.sql",
             user_id,
@@ -192,15 +231,20 @@ impl PgSessionStore {
 
     async fn begin(&self) -> Result<Transaction<'_, Postgres>, SessionError> {
         let mut tx = self.pool.begin().await.map_err(unavailable)?;
+        Self::configure_transaction(&mut tx).await?;
+        Ok(tx)
+    }
+
+    async fn configure_transaction(tx: &mut Transaction<'_, Postgres>) -> Result<(), SessionError> {
         sqlx::query_file!("src/session/sql/isolation.sql")
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await
             .map_err(unavailable)?;
         sqlx::query_file!("src/session/sql/synchronous_commit.sql")
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await
             .map_err(unavailable)?;
-        Ok(tx)
+        Ok(())
     }
 
     async fn commit(&self, tx: Transaction<'_, Postgres>) -> Result<(), SessionError> {
@@ -246,6 +290,12 @@ impl PgSessionStore {
         if let Some(controls) = &self.controls {
             return UnixMillis::new(controls.clock.load(Ordering::SeqCst)).map_err(unavailable);
         }
+        Self::database_clock(tx).await
+    }
+
+    async fn database_clock(
+        tx: &mut Transaction<'_, Postgres>,
+    ) -> Result<UnixMillis, SessionError> {
         let row = sqlx::query_file!("src/session/sql/clock.sql")
             .fetch_one(&mut **tx)
             .await
@@ -257,7 +307,8 @@ impl PgSessionStore {
         tx: &mut Transaction<'_, Postgres>,
         user_id: Uuid,
     ) -> Result<AccountRecord, SessionError> {
-        sqlx::query_file_as!(
+        Self::lock_account_publication_order(tx, user_id).await?;
+        let row = sqlx::query_file_as!(
             AccountRow,
             "src/session/sql/account_for_update.sql",
             user_id
@@ -265,8 +316,70 @@ impl PgSessionStore {
         .fetch_optional(&mut **tx)
         .await
         .map_err(unavailable)?
-        .ok_or(SessionError::Unauthenticated)?
-        .try_into()
+        .ok_or(SessionError::Unauthenticated)?;
+        let lease = PublicationLease::checked(
+            row.publication_lease_started_at_ms,
+            row.publication_lease_until_ms,
+        )?;
+        let account = AccountRecord::try_from(row)?;
+        if let Some(lease) = lease {
+            // A dead publication backend releases its advisory lock, but cannot
+            // erase this committed exclusion. Hold the account row until its
+            // bounded database-clock lease expires. Sample operation time only
+            // after this wait, never from the earlier locator or lease check.
+            loop {
+                let now = Self::database_clock(tx).await?;
+                if now < lease.started_at {
+                    return Err(SessionError::Unavailable);
+                }
+                if now >= lease.until {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(lease.until.get() - now.get())).await;
+            }
+            Self::save_publication_lease(tx, user_id, None).await?;
+        }
+        Ok(account)
+    }
+
+    async fn save_publication_lease(
+        tx: &mut Transaction<'_, Postgres>,
+        user_id: Uuid,
+        lease: Option<PublicationLease>,
+    ) -> Result<(), SessionError> {
+        let started = lease
+            .map(|lease| signed(lease.started_at.get()))
+            .transpose()?;
+        let until = lease.map(|lease| signed(lease.until.get())).transpose()?;
+        let written = sqlx::query_file!(
+            "src/session/sql/update_account_publication_lease.sql",
+            user_id,
+            started,
+            until
+        )
+        .execute(&mut **tx)
+        .await
+        .map_err(unavailable)?;
+        if written.rows_affected() != 1 {
+            return Err(SessionError::Unavailable);
+        }
+        Ok(())
+    }
+
+    async fn lock_account_publication_order(
+        tx: &mut Transaction<'_, Postgres>,
+        user_id: Uuid,
+    ) -> Result<(), SessionError> {
+        // A session-level publication guard holds the same key across the
+        // durable observation commit and bounded first-frame handoff. Hash
+        // collisions merely serialize unrelated accounts. The resolved owning
+        // relation OID, not search_path/current_schema, makes independent pool
+        // paths resolving the same account table share one authority lock.
+        sqlx::query_file!("src/session/sql/account_advisory_transaction.sql", user_id)
+            .execute(&mut **tx)
+            .await
+            .map_err(unavailable)?;
+        Ok(())
     }
 
     async fn lock_session(
@@ -599,6 +712,256 @@ impl SessionAuthority for PgSessionStore {
         Self::save_account(&mut tx, &account).await?;
         self.commit(tx).await?;
         result.map(|()| account)
+    }
+}
+
+/// Maximum isolated first-frame authority lease. This is not a session lifetime.
+/// The earlier idle/absolute deadline also bounds every publication guard.
+const PUBLICATION_LEASE_MS: u64 = 2_000;
+// clock_timestamp is floored to integer milliseconds. A local monotonic lease
+// must end at least one millisecond before its persisted exclusion/deadline.
+const PUBLICATION_QUANTIZATION_MARGIN_MS: u64 = 1;
+
+fn local_publication_budget(lease_ms: u64) -> Result<Duration, SessionError> {
+    if lease_ms > PUBLICATION_LEASE_MS {
+        return Err(SessionError::Unavailable);
+    }
+    lease_ms
+        .checked_sub(PUBLICATION_QUANTIZATION_MARGIN_MS)
+        .filter(|remaining| *remaining > 0)
+        .map(Duration::from_millis)
+        .ok_or(SessionError::Unauthenticated)
+}
+
+/// Owned isolated server-frame guard, never a transferable credential (ADR-0036).
+///
+/// Its worker owns a dedicated close-on-drop database connection with the account
+/// advisory lock. Durable facts are committed before this type is returned.
+/// Cancellation, body drop, lease expiry or worker shutdown closes that physical
+/// connection, so a pooled connection never retains a publication advisory lock.
+/// The separately committed bounded lease still fences all account operations
+/// if that backend dies, until this local guard is unusable. This relies on the
+/// same trusted database-clock assumption as ADR-0036: an unobserved forward
+/// clock correction is not solved by a monotonic local timer.
+pub struct PgSessionPublication {
+    snapshot: SessionSnapshot,
+    active: Arc<AtomicBool>,
+    published: bool,
+    expires_at: Instant,
+    release: Option<oneshot::Sender<()>>,
+}
+
+impl fmt::Debug for PgSessionPublication {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("PgSessionPublication([REDACTED])")
+    }
+}
+
+impl SessionPublication for PgSessionPublication {
+    fn snapshot(&self) -> &SessionSnapshot {
+        &self.snapshot
+    }
+
+    fn publish<R>(
+        &mut self,
+        publication: impl FnOnce(&SessionSnapshot) -> R,
+    ) -> Result<R, SessionError> {
+        if !self.active.load(Ordering::Acquire)
+            || self.published
+            || Instant::now() >= self.expires_at
+        {
+            return Err(SessionError::Unauthenticated);
+        }
+        self.published = true;
+        // The body owns this guard through its first frame. Cleanup never
+        // blocks on construction: the committed exclusion still fences other
+        // operations, and the post-construction check drops any late result.
+        let frame = publication(&self.snapshot);
+        // Frame construction is pure and must not perform I/O or send data.
+        // A paused/scheduled callback can cross the lease, especially after
+        // publication-backend loss. Drop its value rather than hand a late
+        // frame to the transport. The atomic liveness check also observes
+        // independent cleanup without locking or starving Tokio workers.
+        if !self.active.load(Ordering::Acquire) || Instant::now() >= self.expires_at {
+            return Err(SessionError::Unauthenticated);
+        }
+        Ok(frame)
+    }
+}
+
+impl Drop for PgSessionPublication {
+    fn drop(&mut self) {
+        if let Some(release) = self.release.take() {
+            let _ = release.send(());
+        }
+    }
+}
+
+impl HttpSessionAuthority for PgSessionStore {
+    type Publication = PgSessionPublication;
+
+    async fn read_session(
+        &self,
+        request: CredentialOperation,
+    ) -> Result<SessionSnapshot, SessionError> {
+        let mut tx = self.begin().await?;
+        let (mut account, mut session) = Self::lock_digest(&mut tx, request.digest).await?;
+        #[cfg(test)]
+        self.after_lock().await;
+        let now = self.clock(&mut tx).await?;
+        account.observe(now)?;
+        let result = session.observe_operation(&account, request, now);
+        Self::save_account(&mut tx, &account).await?;
+        Self::save_session(&mut tx, &session).await?;
+        self.commit(tx).await?;
+        result
+    }
+
+    async fn read_logout_context(
+        &self,
+        request: CredentialOperation,
+    ) -> Result<SessionSnapshot, SessionError> {
+        let mut tx = self.begin().await?;
+        let (mut account, mut session) = Self::lock_digest(&mut tx, request.digest).await?;
+        #[cfg(test)]
+        self.after_lock().await;
+        let now = self.clock(&mut tx).await?;
+        account.observe(now)?;
+        let result = session.observe_logout_context(&account, request, now);
+        Self::save_account(&mut tx, &account).await?;
+        Self::save_session(&mut tx, &session).await?;
+        self.commit(tx).await?;
+        result
+    }
+
+    async fn read_self_profile(
+        &self,
+        request: CredentialOperation,
+    ) -> Result<SelfProfileSnapshot, SessionError> {
+        self.read_session(request)
+            .await
+            .map(|session| SelfProfileSnapshot::from_session(&session))
+    }
+
+    async fn rotate_credential(
+        &self,
+        request: RotateCredential,
+    ) -> Result<SessionSnapshot, SessionError> {
+        let mut tx = self.begin().await?;
+        let (mut account, mut session) =
+            Self::lock_digest(&mut tx, request.credential.digest).await?;
+        #[cfg(test)]
+        self.after_lock().await;
+        let now = self.clock(&mut tx).await?;
+        account.observe(now)?;
+        let result = session.rotate_credential(&account, request, now);
+        Self::save_account(&mut tx, &account).await?;
+        Self::save_session(&mut tx, &session).await?;
+        self.commit(tx).await?;
+        result
+    }
+
+    async fn revoke_credential(&self, request: CredentialOperation) -> Result<(), SessionError> {
+        let mut tx = self.begin().await?;
+        let (mut account, mut session) = Self::lock_digest(&mut tx, request.digest).await?;
+        #[cfg(test)]
+        self.after_lock().await;
+        let now = self.clock(&mut tx).await?;
+        account.observe(now)?;
+        let result = session.revoke_credential(&account, request, now);
+        Self::save_account(&mut tx, &account).await?;
+        Self::save_session(&mut tx, &session).await?;
+        self.commit(tx).await?;
+        result
+    }
+
+    async fn begin_publication(
+        &self,
+        request: CredentialOperation,
+    ) -> Result<Self::Publication, SessionError> {
+        let mut connection = self.pool.acquire().await.map_err(unavailable)?;
+        // SQLx closes rather than returning this physical connection on every
+        // error/cancellation path, including a failed/indeterminate COMMIT.
+        connection.close_on_drop();
+        let mut tx = connection.begin().await.map_err(unavailable)?;
+        Self::configure_transaction(&mut tx).await?;
+        let (mut account, mut session) = Self::lock_digest(&mut tx, request.digest).await?;
+        #[cfg(test)]
+        self.after_lock().await;
+        let user_id = Uuid::from_u128(account.user_id().0);
+        sqlx::query_file!("src/session/sql/account_advisory_publication.sql", user_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(unavailable)?;
+        // Start the conservative monotonic lease before sampling the database
+        // clock. SQL/COMMIT delays consume the lease rather than extending it.
+        let lease_started = Instant::now();
+        let now = self.clock(&mut tx).await?;
+        account.observe(now)?;
+        let result = session.observe_operation(&account, request, now);
+        let lease_ms = if let Ok(snapshot) = &result {
+            snapshot
+                .idle_deadline()
+                .min(snapshot.absolute_deadline())
+                .get()
+                .checked_sub(now.get())
+                .ok_or(SessionError::Unauthenticated)?
+                .min(PUBLICATION_LEASE_MS)
+        } else {
+            0
+        };
+        if lease_ms > 0 {
+            // Use the actual database clock for durable publication exclusion,
+            // including acceptance with independently injected policy clocks.
+            // This sample follows the local monotonic start, so persisted
+            // exclusion cannot expire before the local guard under the trusted
+            // deployment-clock assumption already required by ADR-0036.
+            let database_now = Self::database_clock(&mut tx).await?;
+            let until = database_now
+                .get()
+                .checked_add(lease_ms)
+                .and_then(|until| UnixMillis::new(until).ok())
+                .ok_or(SessionError::Unavailable)?;
+            Self::save_publication_lease(
+                &mut tx,
+                user_id,
+                Some(PublicationLease {
+                    started_at: database_now,
+                    until,
+                }),
+            )
+            .await?;
+        }
+        Self::save_account(&mut tx, &account).await?;
+        Self::save_session(&mut tx, &session).await?;
+        self.commit(tx).await?;
+        let snapshot = result?;
+        let expires_at = lease_started + local_publication_budget(lease_ms)?;
+        if Instant::now() >= expires_at {
+            return Err(SessionError::Unauthenticated);
+        }
+        let active = Arc::new(AtomicBool::new(true));
+        let cleanup_active = active.clone();
+        let (release, cancelled) = oneshot::channel();
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = cancelled => {},
+                () = tokio::time::sleep_until(expires_at) => {},
+            }
+            // Never block a runtime worker on frame construction. Cancellation
+            // and expiry independently mark the guard dead and close its backend,
+            // even while a callback is paused. Its post-construction check will
+            // suppress that result; the committed lease survives backend loss.
+            cleanup_active.store(false, Ordering::Release);
+            let _ = connection.close().await;
+        });
+        Ok(PgSessionPublication {
+            snapshot,
+            active,
+            published: false,
+            expires_at,
+            release: Some(release),
+        })
     }
 }
 

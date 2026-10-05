@@ -105,7 +105,8 @@
 
 /// Isolated PostgreSQL identity/session authority (ADR-0036).
 ///
-/// This optional slice does not enable either production service or private
-/// outbound delivery. Observations are snapshots, never later-effect permits.
+/// This optional slice does not enable either production service or `WebSocket`
+/// delivery. Observations remain snapshots; the isolated HTTP publication guard
+/// fences only a bounded server-frame handoff under ADR-0036.
 #[cfg(all(feature = "session-postgres", not(target_arch = "wasm32")))]
 pub mod session;

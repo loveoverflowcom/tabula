@@ -138,10 +138,36 @@ checks, feature modes and target builds still apply. Real DB lifecycle receipts
 refine S01/S02/S07/S08/S09 only within their stated storage/policy domains;
 S03/S04/S05/S06/S10/S11/S12/S13/S14 and UI acceptance are not silently passed.
 
-Revisit before a listener, provider-backed issuance, shipping credential store,
+Revisit before a production listener, provider-backed issuance, shipping credential store,
 production migration, private outbound publication or broad phase-exit claim.
 That review requires actual target/provider evidence and coherent cross-service
 revocation/expiry, trusted proxy/TLS, outage/restart and rollback behavior.
 
 SQLx version/dependency evidence: [official 0.9 changelog](https://docs.rs/crate/sqlx/0.9.0/source/CHANGELOG.md),
 [PostgreSQL driver source](https://docs.rs/crate/sqlx-postgres/0.9.0/source/Cargo.toml).
+
+## PR2 refinement: isolated HTTP and bounded body publication
+
+The second approved slice adds the internal `tabula-session-http` library.
+Its default/WASM surface is versioned JSON DTOs only; non-default native
+`isolated` composes the authority ports and Axum/Tokio, while `postgres` is
+for disposable acceptance. Actual loopback listeners belong only to the
+explicit test harness, not either production service. No verified provider
+issuance path, OAuth grant or production rollout is opened.
+
+The exact HTTP/data contract and evidence are in the
+[PR2 ledger](../verification/issue-54-isolated-http/README.md). Self-profile
+returns the existing immutable subject ID only. Browser synchronizer tokens
+use an independent per-adapter HMAC key bound to immutable record/context,
+subject/epoch/channel; process restart refetches context. IDs/snapshots cannot
+replace current verifier/channel checks, CSRF or later effect authority.
+
+The account ordering boundary gains a resolved-table advisory key plus an
+additive committed exclusion lease bounded by 2 seconds and the session
+remaining deadline. A first-frame guard commits observed facts before it is
+returned, holds a dedicated close-on-drop connection, and all current authority
+acquisitions honor its persisted exclusion even after backend loss. The private
+Body owns the one-shot guard through frame handoff. This is bounded server-frame
+ordering under the existing trusted-clock assumption, not client arrival of
+already released buffered bytes, silent clock correction, WS delivery/connection
+fencing or all S09. Production bootstraps and broad phase exits remain closed.

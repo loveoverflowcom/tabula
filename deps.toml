@@ -163,6 +163,13 @@ tier = "runtime"
 allow = ["tabula-core", "thiserror", "sha2", "base64", "getrandom"]
 forbidden_categories = ["rendering", "ui_framework", "web_framework", "networking", "persistence", "application", "game_specific"]
 
+[crate."tabula-session-http"]
+tier = "runtime"
+# core/tower are native test-only dependencies for authority/wire boundaries.
+allow = ["serde", "serde_json", "tabula-core", "tower"]
+feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body"], postgres = ["tabula-storage", "sqlx"] }
+forbidden_categories = ["rendering", "ui_framework", "application", "game_specific"]
+
 [crate."tabula-storage"]
 tier  = "runtime"
 allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session"]
