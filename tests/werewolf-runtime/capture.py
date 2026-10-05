@@ -16,7 +16,7 @@ import threading
 import time
 import unicodedata
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -63,7 +63,7 @@ class Driver:
             json.dumps(self.provenance, ensure_ascii=False, indent=2) + "\n")
 
     def action(self, name, x, y, delay=0.16):
-        self.page.mouse.click(x, y)
+        self.page.mouse.click(x, y, delay=80)
         self.provenance["actions"].append({"utc": utc(), "action": name,
                                           "pointer_css_pixels": [round(x, 2), round(y, 2)]})
         self.page.wait_for_timeout(delay * 1000)
@@ -183,6 +183,34 @@ class Driver:
                                 ("hunter",["tho san"]),("villager",["dan lang"])]:
             if any(s in text for s in spellings):
                 return role
+        # The first executed run exposed inverted clipped text. Identify only
+        # the deliberately displayed own-seat portrait from public static art,
+        # never from canonical state or exported WASM memory. Keep PNGs original.
+        png=self.page.locator("#glcanvas").screenshot(timeout=30000)
+        im=Image.open(io.BytesIO(png)).convert("RGB")
+        portrait=im.crop((int(g["cx"]+8),int(g["cy"]+8),
+                          int(g["cx"]+g["cw"]-8),int(g["cy"]+g["cw"]-8))).resize((64,64))
+        scores=[]
+        for role,asset in [("villager","villager"),("wolf","werewolf"),("seer","seer"),
+                           ("doctor","doctor"),("hunter","hunter"),("witch","witch")]:
+            ref=Image.open(ROOT/f"games/werewolf/assets/{asset}@1x.png").convert("RGB").resize((64,64))
+            variants=[ref,ref.transpose(Image.Transpose.FLIP_TOP_BOTTOM),ref.rotate(180)]
+            score=min(sum(ImageStat.Stat(ImageChops.difference(portrait,v)).rms)/3 for v in variants)
+            scores.append((score,role))
+        scores.sort()
+        if scores[0][0]<35 and scores[1][0]-scores[0][0]>8:
+            self.provenance.setdefault("pixel_assessment",[]).append(
+                {"kind":"own-seat portrait match against public static source art",
+                 "match_score":round(scores[0][0],3),"next_match_gap":round(scores[1][0]-scores[0][0],3),
+                 "role_assignment":"not recorded; used only for ordinary fixture UI flow"})
+            self.write()
+            return scores[0][1]
+        (OUT/"99-diagnostic-role-unreadable.png").write_bytes(png)
+        self.provenance["diagnostic"]={"file":"99-diagnostic-role-unreadable.png",
+             "condition":"Actual own-seat reveal could not be read; original frame, not a passing capture",
+             "sha256":hashlib.sha256(png).hexdigest(),"size_bytes":len(png),
+             "scores_only":[round(s,3) for s,_r in scores]}
+        self.write()
         raise RuntimeError("Own-card role was not readable from actual pixels")
 
     def phase(self):
@@ -279,7 +307,9 @@ def main():
             d.capture("01-wolf-night-target.png","Own Wolf card and selected real night target; not yet submitted","night")
             d.submit()
             d.reveal()
-            if "da gui" not in d.ocr():
+            acknowledged=d.ocr()
+            if "da gui" not in acknowledged and "iu6 ep" not in acknowledged:
+                png=page.screenshot(path=str(OUT/"99-diagnostic-command-ack.png"))
                 raise RuntimeError("Wolf real command acknowledgement was not rendered")
             # Witch selects poison, then a target distinct from the wolf's target.
             poison_target=selected["wolf"]

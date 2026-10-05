@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ !cancelled() }}
       - name: Install official pinned real browser and screenshot reader
         run: |
           sudo apt-get update
