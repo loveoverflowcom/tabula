@@ -20,7 +20,7 @@ class StageAtlasIntegrity(unittest.TestCase):
         cls.tool.resolve(strict=True)
 
     def test_exact_snapshot_has_native_blake3_receipt(self):
-        data, receipt = stage.verified_atlas_bytes(stage.REPO / "assets/packs/tiles", self.tool)
+        data, receipt = stage.verified_atlas_bytes(stage.REPO / "games/tiles/assets", self.tool)
         self.assertEqual(receipt["status"], "PASS")
         self.assertEqual(len(receipt["files"]), 2)
         self.assertEqual(len(data["tiles@1x.png"]), 4587)
@@ -30,7 +30,7 @@ class StageAtlasIntegrity(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="tabula60-stage-negative-") as directory:
             source = Path(directory)
             for name in ["tiles@1x.png", "tiles@2x.png"]:
-                (source / name).write_bytes((stage.REPO / "assets/packs/tiles" / name).read_bytes())
+                (source / name).write_bytes((stage.REPO / "games/tiles/assets" / name).read_bytes())
             original = (source / "tiles@1x.png").read_bytes()
             corrupt = bytearray(original)
             corrupt[100] ^= 1

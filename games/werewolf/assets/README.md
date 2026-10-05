@@ -24,10 +24,10 @@ through the same verified LocalSpriteResources path as browser-fetched files.
 
 Rebuild with Pillow, from repository root:
 
-    python3 assets/packs/werewolf/generate.py
+    python3 games/werewolf/assets/generate.py
     cargo xtask pack-assets werewolf
-    cp target/asset-packs/werewolf/0.1.0/pack.toml assets/packs/werewolf/fixture.pack.toml
-    python3 assets/packs/werewolf/generate.py --check
+    cp target/asset-packs/werewolf/0.1.0/pack.toml games/werewolf/assets/fixture.pack.toml
+    python3 games/werewolf/assets/generate.py --check
     cargo test -p tabula-game-werewolf --features presentation --lib presentation
 
 The generator needs Pillow only during authoring. Runtime does not need Python,

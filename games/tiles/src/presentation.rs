@@ -90,11 +90,11 @@ const HUD_STATUS_HEIGHT: f32 = 64.0;
 /// ADR-017's external-delivery policy; this tiny fixture is local proof only.
 pub mod fixture {
     /// Exact pinned pack metadata built with `cargo xtask pack-assets tiles`.
-    pub const MANIFEST: &str = include_str!("../../../assets/packs/tiles/fixture.pack.toml");
+    pub const MANIFEST: &str = include_str!("../assets/fixture.pack.toml");
     /// White-mask RGBA atlas at explicitly declared density 1.
-    pub const ATLAS_1X: &[u8] = include_bytes!("../../../assets/packs/tiles/tiles@1x.png");
+    pub const ATLAS_1X: &[u8] = include_bytes!("../assets/tiles@1x.png");
     /// White-mask RGBA atlas at explicitly declared density 2.
-    pub const ATLAS_2X: &[u8] = include_bytes!("../../../assets/packs/tiles/tiles@2x.png");
+    pub const ATLAS_2X: &[u8] = include_bytes!("../assets/tiles@2x.png");
 }
 
 /// One accepted placement's bounded, presentation-only settling timeline.

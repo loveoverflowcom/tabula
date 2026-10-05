@@ -26,7 +26,7 @@ function manifestFor(files) {
     return [alias, {url:`resources/${hash}.${extension}`, bytes:bytes.byteLength, sha256:hash}];
   }))};
 }
-const fixturePaths = [...fs.readFileSync(path.join(__dirname, "../../../../assets/packs/chess/fixture.pack.toml"), "utf8").matchAll(/^path = "([^"]+)"$/gm)].map((match) => match[1]);
+const fixturePaths = [...fs.readFileSync(path.join(__dirname, "../../../../games/chess/assets/fixture.pack.toml"), "utf8").matchAll(/^path = "([^"]+)"$/gm)].map((match) => match[1]);
 const assetAlias = fixturePaths[2];
 function runtimeFiles() {
   const wasm = new Uint8Array([0,97,115,109,1,0,0,0]);

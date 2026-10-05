@@ -93,7 +93,7 @@ dependency tree (I-15). No new production crate or dependency arrow is required.
 ## Fixture and rendering contract
 
 Reuse [the #59 reproduction protocol](../perf/tiles-renderer-baseline.md) and
-[the editable CC0 fixture pack](../../assets/packs/tiles/README.md).
+[the editable CC0 fixture pack](../../games/tiles/assets/README.md).
 The baseline is seed `[47; 32]`, three seats, no turn deadline, 24 accepted
 Easy-bot commands, 13 board cells, and checkpoint
 `e4ed3465b826a55c12d68d8f8bcbef5422fa5d128a251da1f4f659470060d032`.

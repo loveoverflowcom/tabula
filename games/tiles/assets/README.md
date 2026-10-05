@@ -19,9 +19,9 @@ density is explicitly declared, never inferred from a filename.
 Rebuild from the repository root:
 
 ```bash
-python3 assets/packs/tiles/generate.py
+python3 games/tiles/assets/generate.py
 cargo xtask pack-assets tiles
-cp target/asset-packs/tiles/0.1.0/pack.toml assets/packs/tiles/fixture.pack.toml
+cp target/asset-packs/tiles/0.1.0/pack.toml games/tiles/assets/fixture.pack.toml
 ```
 
 The pack builder validates the generated manifest and checks every staged size

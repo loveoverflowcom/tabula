@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {webcrypto,createHash} from 'node:crypto';
 import {verifiedBytes,inspectPng} from '../pixi-backend.mjs';
-const source=readFileSync(new URL('../../../assets/packs/tiles/tiles@1x.png',import.meta.url));
+const source=readFileSync(new URL('../../../games/tiles/assets/tiles@1x.png',import.meta.url));
 const file={name:'atlas',path:'assets/tiles.png',bytes:source.byteLength,sha256:createHash('sha256').update(source).digest('hex')};
 const fetchBytes=bytes=>async()=>new Response(bytes);
 test('current authored atlas bytes verify and decoded allocation bounds match PNG dimensions',async()=>{const bytes=await verifiedBytes(file,'http://localhost:8760/',{fetch:fetchBytes(source),crypto:webcrypto});const dimensions=inspectPng(bytes);assert.equal(dimensions.width,432);assert.equal(dimensions.height,288);});

@@ -13,7 +13,11 @@ CDN/cache implementation.
 - `source/pieces/PROVENANCE.md` records original authorship; no third-party piece
   images, fonts, icon sets or external SVG dependencies were used
 - `source/chess-atmosphere.png` is the retained full-resolution original, with its
-  generation prompt and provenance alongside it; it is never embedded in Rust
+  generation prompt and provenance alongside it; it is never embedded in the
+  gameplay binary. `xtask` includes it only for build-time host packaging
+- `source/standalone-cover-provenance.md` records the standalone host's
+  decorative cover aliases; staging derives both from this game-owned pack,
+  without retaining app-owned copies of the art
 - No third-party font is used by this pack. The surrounding software's existing
   license is unchanged; the retained original-art provenance adds no new license
   grant or third-party attribution requirement
@@ -45,10 +49,10 @@ through `MemoryAssetSource` and `load_verified` before renderer decode/upload.
 From the repository root, with Inkscape and Pillow installed:
 
 ```sh
-python3 assets/packs/chess/generate.py
+python3 games/chess/assets/generate.py
 cargo xtask pack-assets chess
-cp target/asset-packs/chess/0.1.0/pack.toml assets/packs/chess/fixture.pack.toml
-python3 assets/packs/chess/generate.py --check
+cp target/asset-packs/chess/0.1.0/pack.toml games/chess/assets/fixture.pack.toml
+python3 games/chess/assets/generate.py --check
 cargo test -p tabula-game-chess --features presentation --lib presentation::assets::tests
 ```
 
