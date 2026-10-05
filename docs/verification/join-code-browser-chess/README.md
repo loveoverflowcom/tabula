@@ -22,7 +22,9 @@ PR2 of the [three-PR series](../../work-plan/README.md#authorized-durable-to-onl
 The owner requested review and sequential merge of gateway, browser and client
 recovery into develop `d5b37d3`. Initial checkpoints `83f05bf`, `62a3c8b` and
 `f330c11` were reviewed first. Remote updates discovered before publication were
-reviewed in the same order: gateway `9b79c79`, browser `e88511a`, client `604cb0d`.
+reviewed in the same order: gateway `9b79c79`, browser `e88511a`, client `604cb0d`,
+then browser `fa9bb60` and client `1973db1`. These are the frozen reviewed heads;
+later remote changes are outside this integration.
 This integrates the recovered sources only; PR2 gameplay is still incomplete.
 The initial gateway checkpoint was documentation; its updated head adds HTTP DTOs
 and authority hooks, but still no native gateway implementation.
@@ -33,7 +35,8 @@ are **NOT_IMPLEMENTED**, not an environmental failure or passing acceptance.
 Review fixes:
 
 - Reconciled ADR-0035/0037 with already-merged develop and removed the nonexistent
-  gateway crate from the implemented dependency matrix.
+  gateway implementation claim from the dependency matrix; the later recovered
+  crate is recorded only as a pure HTTP DTO contract.
 - Kept the incomplete workflow out of `.github/workflows`; its runner rejects
   missing sources before creating credentials, processes or DB connections.
 - Updated the lockfile for the removed net-client → registry dependency.
@@ -64,8 +67,41 @@ fails. JSON-extension tests cover exact Origin/CSRF/channel/body limits and prov
 that an observation cannot authorize publication after revocation. Python TLS
 helper tests use memory doubles, not real TLS/browser execution.
 
-Aggregate/target verification is recorded after the final checks below. These
-source and unit checks do not satisfy the online delivery gates above.
+The final client recovery adds an opt-in generic projection presenter and WASM
+loop. Its tests make every canonical rules operation panic if called, check
+malformed-batch atomicity, and verify pending/disconnected input gating. The
+existing local Chess/Tiles/Werewolf wiring is preserved. The online loop compiles,
+but its special loader transport names are not implemented by the deployed
+loader; direct registry launch stays unavailable. No browser gameplay is inferred
+from the native presenter tests or WASM compilation.
+
+### Executed local verification
+
+Commands ran in the isolated recovery worktree on the integrated source, with
+Rust/Cargo 1.96.1 and the shared target directory noted above. Counts overlap;
+they must not be added into a unique-test total. Empty feature-gated targets
+and ignored tests are not passes.
+
+| Command | Result | Scope |
+|---|---|---|
+| `cargo xtask check` | PASS, 1,222 tests; 18 ignored | All portable gates, including workspace all-feature lint, dependencies, manifests, tokens, raw colors and cargo-deny |
+| `cargo test -p tabula-match --features isolated --locked` | PASS, 25 | In-memory actor authority/fault cases, not PostgreSQL fencing |
+| `cargo test -p tabula-session-http --features isolated --test isolated_http --locked` | PASS, 33 | HTTP/session boundary including new extension methods |
+| `cargo test -p tabula-game-chess --features presentation --locked` | PASS, 165; 1 ignored | Projection codec roundtrips and existing rules/conformance/replay/presentation tests |
+| `cargo test -p tabula-game-client --features online --no-fail-fast` | PASS, 72 | Native projection-only presenter and existing local client tests |
+| `node --test apps/game-client/web/tests/standalone.test.cjs` | PASS, 57 | Loader unit tests, not browser execution |
+| `python3 -m unittest discover -s tests/online-match -p 'test_*.py' -v` | PASS, 46 | Offline TLS/browser helper tests |
+| `cargo check --workspace --no-default-features --locked` | PASS | Native compilation |
+| `cargo check --workspace --all-features --locked` | PASS | Native compilation |
+| `cargo check -p tabula-game-client --target wasm32-unknown-unknown --no-default-features --features web,online` | PASS | Opt-in online WASM compilation only |
+| `cargo clippy -p tabula-game-client --target wasm32-unknown-unknown --no-default-features --features web,online -- -D warnings` | PASS | WASM-only loop lint |
+| `cargo check -p tabula-web -p tabula-protocol -p tabula-registry -p tabula-match -p tabula-match-http -p tabula-net-client --target wasm32-unknown-unknown --all-features --locked` | PASS | Shared/browser target compilation |
+
+Local logs are `/tmp/tabula-recovery-integrated-check.log`,
+`/tmp/tabula-recovery-{actor,session,chess,online-client,loader,browser-helpers}.log`
+and `/tmp/tabula-recovery-{final-features,online-wasm,online-wasm-clippy,final-wasm}.log`.
+Cargo-deny reports existing allowed dependency warnings; no gate failed.
+These source and unit checks do not satisfy the online delivery gates above.
 
 ## Historical cloud recovery context
 
@@ -86,14 +122,15 @@ grant, CA key or canonical state is included in artifacts.
 
 ## Pending online delivery gates
 
-- Focused admission/session/codec/client/UI tests and strict lint
-- Authoritative cargo xtask check
-- Feature/native/WASM-release/staging/resource-budget gates
+- Missing admission/gateway/loader implementation and its focused security/UI tests
+- Portable and feature gates rerun once that complete composition exists
+- Online WASM-release/staging/resource-budget gates
 - Actual independent Chromium/PG acceptance and screenshot inspection
 - Independent exact-source security/UI review
 - Exact published head/tree, terminal CI, normal merge ancestry and post-merge CI
 
-All pending stages are NOT_RUN until a nonempty executed receipt is recorded.
+The remaining delivery stages are NOT_RUN (or NOT_IMPLEMENTED where noted);
+the local recovery-source receipts above do not close them.
 Production/listener/live migration/provider setup, robust network-drop/refresh/
 server-crash/resync, timers/outage policy, private effects, lobby/social/voice/
 ranking, load/backup and broad phase exits remain outside PR2.

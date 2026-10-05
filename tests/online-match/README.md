@@ -13,7 +13,7 @@ Missing at integration:
 
 - `tabula-match-http` native gateway (the recovered DTO-only crate now builds);
 - `tabula-storage/online-match-postgres`, composed migration/authority scenarios;
-- `apps/web` and `apps/game-client` online features and projection-only transport;
+- `apps/web` online shell and the loader transport used by the opt-in client loop;
 - standalone fixture lockfile and its unavailable runtime dependencies;
 - the remaining online shell/loader bridge needed by the recovered browser script.
 
@@ -25,7 +25,7 @@ The acceptance requirements remain in [ADR-0041](../../docs/adr/0041-isolated-di
 and its [delivery ledger](../../docs/verification/join-code-browser-chess/README.md).
 
 The updated recovery adds `browser_acceptance.py`, `src/main.rs` (native serve/audit source) and
-`tls_frontend.py` with 37 passing offline helper tests. The native fixture is
+`tls_frontend.py` with 46 passing offline helper tests (37 TLS, 9 browser helpers). The native fixture is
 still **NOT_COMPILED**, because its required gateway and storage adapter do not
 exist. The Python tests use memory streams/doubles; they do not run TLS or browsers.
 

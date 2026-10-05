@@ -34,6 +34,12 @@ glam                = { workspace = true }
 # this leaf dependency when the online runtime is introduced.
 tabula-game-chess   = { workspace = true, features = ["rules", "presentation"], optional = true }
 tabula-game-tiles     = { workspace = true, features = ["rules", "presentation", "bots"], optional = true }
+# Opt-in DTO surface; no native authority.
+tabula-protocol = { workspace = true, optional = true }
+tabula-net-client = { workspace = true, optional = true }
+tabula-match-http = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 # Phase 4+
 # tabula-protocol   = { workspace = true }
 # tabula-registry   = { workspace = true }
@@ -62,6 +68,8 @@ werewolf = ["dep:tabula-game-werewolf"]
 native = []
 web    = ["chess"]
 web-werewolf = ["werewolf"]
+# Separate authenticated document; default local hot seat is unchanged.
+online = ["dep:tabula-protocol", "dep:tabula-net-client", "dep:tabula-match-http", "dep:serde_json", "dep:serde"]
 
 # Preserve the existing cross-game unit/integration/renderer-example evidence
 # under native test builds, including --no-default-features. This development

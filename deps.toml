@@ -215,7 +215,7 @@ forbidden_categories = ["game_specific", "rendering", "ui_framework"]
 tier    = "binary"
 allow   = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-presentation", "tabula-assets", "tabula-net-client", "tabula-render-macroquad", "macroquad", "glam"]
 allow_games = true # Phase 2 local vertical slice; Phase 4 moves selection behind registry.
-feature = { native = ["tokio"], web = ["web-sys", "wasm-bindgen"] }
+feature = { native = ["tokio"], web = ["web-sys", "wasm-bindgen"], online = ["tabula-match-http", "serde", "serde_json"] }
 # I-15: `leptos` must NEVER appear in this graph, native or wasm.
 forbid  = ["leptos", "tauri"]
 

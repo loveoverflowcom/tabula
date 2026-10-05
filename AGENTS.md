@@ -173,8 +173,9 @@ fence or broad phase exit is authorized by this storage slice.
 
 [ADR-0041](docs/adr/0041-isolated-direct-match-browser-play.md) opens only PR2's
 non-default authenticated HTTPS direct-match/code slice and shared projection-only
-browser gameplay. Real independent browser/PG acceptance is a merge gate.
-Production remains closed; robust reconnect/resync/refresh/network-drop/server-crash
+browser gameplay. The owner-requested recovery integration contains partial,
+gated source only; it does not deliver PR2. Real independent browser/PG acceptance
+remains required before merging a completed online feature. Production remains closed; robust reconnect/resync/refresh/network-drop/server-crash
 acceptance is PR3 in a separate chat. No social/lobby/ranked/phase exit is implied.
 
 ---

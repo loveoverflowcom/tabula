@@ -3191,6 +3191,8 @@ version = "0.0.0"
 dependencies = [
  "glam 0.29.3",
  "macroquad",
+ "serde",
+ "serde_json",
  "tabula-assets",
  "tabula-core",
  "tabula-design",
@@ -3198,7 +3200,10 @@ dependencies = [
  "tabula-game-chess",
  "tabula-game-tiles",
  "tabula-game-werewolf",
+ "tabula-match-http",
+ "tabula-net-client",
  "tabula-presentation",
+ "tabula-protocol",
  "tabula-render-macroquad",
 ]
 
