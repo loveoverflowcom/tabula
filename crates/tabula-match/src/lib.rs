@@ -1,6 +1,6 @@
 //! # `tabula-match` — the authoritative match runtime
 //!
-//! > ## PHASE 4 — isolated actor exception only (ADR-0039)
+//! > ## PHASE 4 — isolated actor/durable journal exceptions (ADR-0039/0040)
 //! >
 //! > This is the hardest, most correctness-critical async code in the product.
 //! > It is also where the ordering and idempotency bugs live — doc 09 §6 lists
@@ -11,12 +11,15 @@
 //!
 //! Native `isolated` exposes `runtime` and its guarded offline ports. One bounded
 //! owner serializes inputs, uses per-match logical elapsed time, commits one
-//! in-memory journal receipt, executes keyed effects, then submits Ack and
+//! authoritative journal receipt, executes keyed effects, then submits Ack and
 //! projected updates through fresh authority. Operation scopes are reserved at
 //! authorized attach; watermark/receipt semantics are in `runtime` and ADR-0039.
 //! Only observable per-attachment revisions/frame counters appear in output.
-//! There is no production listener, SQL match adapter, timer scheduler, recovery,
-//! reconnect/resume, watchdog, snapshot drain or durable session/output fence.
+//! ADR-0040 adds a SQL-free durable journal contract and bounded exact-identity
+//! recovery. Native opt-in `tabula-storage/match-postgres` implements atomic
+//! checkpoints and durable receipt watermarks without importing the registry.
+//! There is no production listener, timer scheduler, network reconnect/resume,
+//! watchdog, snapshot drain or durable session/commit/output authority fence.
 //!
 //! **Every section below is an unimplemented full-production architecture
 //! sketch**, not a description of the isolated implementation. Where its planned
@@ -147,9 +150,13 @@
 
 #![forbid(unsafe_code)]
 
+pub mod durable;
 pub mod ports;
 
 #[cfg(all(feature = "isolated", not(target_arch = "wasm32")))]
 pub mod runtime;
 #[cfg(all(feature = "isolated", not(target_arch = "wasm32")))]
 pub mod runtime_ports;
+
+#[cfg(all(feature = "isolated", not(target_arch = "wasm32")))]
+mod runtime_recovery;

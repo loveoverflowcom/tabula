@@ -15,17 +15,25 @@ publish.workspace      = true
 default = []
 # ADR-0036: isolated durable session validation only. Neither service opts in.
 session-postgres = ["dep:tabula-session", "dep:sqlx", "dep:uuid", "dep:tokio"]
+# ADR-0040: isolated atomic match journal; SQL-free contract has no registry.
+match-postgres = ["dep:tabula-match-journal", "dep:sqlx", "dep:uuid", "dep:tokio", "dep:serde", "dep:blake3"]
+
+match-postgres-test-support = ["match-postgres"]
 
 # Optional native infrastructure has its own documented MSRV; default/storage
 # and the deterministic SDK retain the workspace declaration (ADR-0036).
 [package.metadata.tabula-msrv]
 session-postgres = "1.94"
+match-postgres = "1.94"
+match-postgres-test-support = "1.94"
 
 [dependencies]
 tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
 tabula-protocol = { workspace = true }
 thiserror       = { workspace = true }
+serde = { workspace = true, optional = true }
+blake3 = { workspace = true, optional = true }
 
 # General Phase 4 storage stays gated. The separate optional session slice uses
 # compile-time-checked SQL and committed PostgreSQL-generated .sqlx/ metadata
@@ -38,6 +46,7 @@ thiserror       = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tabula-session = { workspace = true, optional = true }
+tabula-match-journal = { workspace = true, optional = true }
 sqlx = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }

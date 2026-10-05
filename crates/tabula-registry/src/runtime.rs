@@ -1,6 +1,7 @@
 //! Typed game authority behind the generic match boundary (doc 02 §8).
 //!
-//! ADR-0039 opens only this isolated, canonical offline bridge. Canonical state
+//! ADR-0039 opens the isolated canonical offline authority bridge; ADR-0040
+//! adds its bounded server-only persistence/recovery operations. Canonical state
 //! stays private; client reads pass through `project` and `view_event` (I-5/I-6).
 
 use core::fmt;
@@ -24,6 +25,13 @@ pub const MAX_RUNTIME_EVENT_BYTES: usize = tabula_protocol::MAX_EVENT_BYTES;
 pub const MAX_RUNTIME_EVENTS: usize = tabula_protocol::MAX_EVENTS;
 /// Maximum bytes in a client projection.
 pub const MAX_RUNTIME_VIEW_BYTES: usize = tabula_protocol::MAX_VIEW_BYTES;
+/// Maximum server-only canonical state in the isolated durable bridge (ADR-0040).
+/// Larger states require a separately authorized snapshot-storage policy
+/// (doc 03 §9.2); this does not change any client payload limit.
+pub const MAX_RUNTIME_STATE_BYTES: usize = 1024 * 1024;
+/// Maximum canonical recorded input, allowing bounded stream framing around
+/// the existing player-command limit (doc 05 §8.1).
+pub const MAX_RUNTIME_INPUT_BYTES: usize = MAX_RUNTIME_PAYLOAD_BYTES + 16;
 
 /// Immutable rules/package identity bound when a match is created (I-16).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -135,15 +143,18 @@ pub enum RuntimeError {
     Rule(#[source] RuleError),
     #[error("seat {0:?} is outside the match roster")]
     UnknownSeat(SeatId),
-    #[error("runtime payload, event, or projection exceeded its bound")]
+    #[error("runtime payload, input, state, event, or projection exceeded its bound")]
     LimitExceeded,
     #[error("canonical serialization failed: {0}")]
     Serialization(#[source] CanonicalError),
     #[error("module metadata and rules implementation have different rules versions")]
     IdentityMismatch,
+    #[error("stored match identity differs from the linked game package and rules")]
+    RestoreIdentityMismatch,
 }
 
-/// One actor's exclusively owned game authority (I-14), without state access.
+/// One actor's exclusively owned game authority (I-14).
+/// Canonical snapshots and replay are server-only persistence operations.
 /// The client-facing methods accept only [`ClientViewer`], never `Viewer::Audit`.
 ///
 /// ```compile_fail
@@ -154,9 +165,31 @@ pub enum RuntimeError {
 pub trait ErasedMatch: Send {
     fn identity(&self) -> &RuntimeIdentity;
     fn roster(&self) -> &SeatRoster;
+    /// Original validated canonical creation config, retained immutably for
+    /// deterministic reconstruction (I-16; doc 05 §8.1).
+    ///
+    /// ```compile_fail
+    /// fn change_config(runtime: &mut dyn tabula_registry::ErasedMatch) {
+    ///     runtime.creation_config()[0] = 2;
+    /// }
+    /// ```
+    fn creation_config(&self) -> &[u8];
+    /// Encode canonical state for server-owned persistence only (I-5; ADR-0040).
+    /// Never use this value in a client-output DTO.
+    fn snapshot(&self) -> Result<Vec<u8>, RuntimeError>;
     fn apply(
         &mut self,
         input: ErasedInput,
+        now: LogicalTime,
+        index: InputIndex,
+        rng: &mut DetRng,
+    ) -> Result<ErasedTransition, RuntimeError>;
+    /// Replay one accepted canonical input at its exact recorded logical time,
+    /// input index, and per-input RNG root (doc 05 §8.1; ADR-0040). The actor verifies
+    /// resulting events and state hashes against the durable records.
+    fn replay(
+        &mut self,
+        canonical_input: &[u8],
         now: LogicalTime,
         index: InputIndex,
         rng: &mut DetRng,
@@ -175,6 +208,7 @@ pub trait ErasedMatch: Send {
 pub struct TypedMatch<M: GameModule> {
     identity: RuntimeIdentity,
     roster: SeatRoster,
+    creation_config: Vec<u8>,
     state: <M::Rules as GameRules>::State,
 }
 
@@ -196,21 +230,12 @@ impl<M: GameModule> TypedMatch<M> {
         roster: &SeatRoster,
         seed: MatchSeed,
     ) -> Result<CreatedMatch, RuntimeError> {
-        let config = decode_payload::<<M::Rules as GameRules>::Config>(config)?;
-        M::validate_config(&config, roster).map_err(RuntimeError::Config)?;
-        let metadata = M::metadata();
-        if metadata.rules_version() != M::Rules::RULES_VERSION {
-            return Err(RuntimeError::IdentityMismatch);
-        }
-        let identity = RuntimeIdentity {
-            game: metadata.id().clone(),
-            game_version: metadata.version().clone(),
-            rules_version: metadata.rules_version(),
-            rules_hash: M::rules_hash(),
-        };
+        let typed_config = decode_payload::<<M::Rules as GameRules>::Config>(config)?;
+        M::validate_config(&typed_config, roster).map_err(RuntimeError::Config)?;
+        let identity = Self::linked_identity()?;
         let mut rng = DetRng::for_input(&seed, InputIndex(0));
         let init = M::Rules::create(
-            &config,
+            &typed_config,
             roster,
             &mut Ctx {
                 now: LogicalTime(0),
@@ -222,17 +247,56 @@ impl<M: GameModule> TypedMatch<M> {
         .map_err(RuntimeError::Init)?;
         // Fail before returning a live authority if its state/events cannot be
         // encoded. State bytes remain private and are never a client payload.
-        canonical_encode(&init.state).map_err(RuntimeError::Serialization)?;
+        encode_state(&init.state)?;
         let events = encode_events(init.events.iter())?;
         Ok(CreatedMatch {
             runtime: Box::new(Self {
                 identity,
                 roster: roster.clone(),
+                creation_config: config.to_vec(),
                 state: init.state,
             }),
             seed,
             events,
             effects: init.effects.into_vec(),
+        })
+    }
+
+    /// Restore a server-owned canonical snapshot under its exact immutable
+    /// package/rules identity (I-16; doc 05 §§7–8; ADR-0040). No migration or version
+    /// substitution occurs. The actor must verify the returned state hash and
+    /// reconcile this snapshot with deterministic replay before using it.
+    pub fn restore(
+        identity: &RuntimeIdentity,
+        config: &[u8],
+        roster: &SeatRoster,
+        snapshot: &[u8],
+    ) -> Result<Box<dyn ErasedMatch>, RuntimeError> {
+        let linked_identity = Self::linked_identity()?;
+        if identity != &linked_identity {
+            return Err(RuntimeError::RestoreIdentityMismatch);
+        }
+        let typed_config = decode_payload::<<M::Rules as GameRules>::Config>(config)?;
+        M::validate_config(&typed_config, roster).map_err(RuntimeError::Config)?;
+        let state = decode_bounded(snapshot, MAX_RUNTIME_STATE_BYTES)?;
+        Ok(Box::new(Self {
+            identity: linked_identity,
+            roster: roster.clone(),
+            creation_config: config.to_vec(),
+            state,
+        }))
+    }
+
+    fn linked_identity() -> Result<RuntimeIdentity, RuntimeError> {
+        let metadata = M::metadata();
+        if metadata.rules_version() != M::Rules::RULES_VERSION {
+            return Err(RuntimeError::IdentityMismatch);
+        }
+        Ok(RuntimeIdentity {
+            game: metadata.id().clone(),
+            game_version: metadata.version().clone(),
+            rules_version: metadata.rules_version(),
+            rules_hash: M::rules_hash(),
         })
     }
 
@@ -273,26 +337,25 @@ impl<M: GameModule> TypedMatch<M> {
             ErasedInput::Admin(input) => Input::Admin(input),
         })
     }
-}
 
-impl<M: GameModule> ErasedMatch for TypedMatch<M> {
-    fn identity(&self) -> &RuntimeIdentity {
-        &self.identity
-    }
-
-    fn roster(&self) -> &SeatRoster {
-        &self.roster
-    }
-
-    fn apply(
+    fn apply_typed(
         &mut self,
-        input: ErasedInput,
+        input: Input<<M::Rules as GameRules>::Command>,
         now: LogicalTime,
         index: InputIndex,
         rng: &mut DetRng,
     ) -> Result<ErasedTransition, RuntimeError> {
-        let input = self.decode_input(input)?;
+        match &input {
+            Input::Player { seat, command } => {
+                self.require_seat(*seat)?;
+                let encoded = canonical_encode(command).map_err(RuntimeError::Serialization)?;
+                require_size(&encoded, MAX_RUNTIME_PAYLOAD_BYTES)?;
+            }
+            Input::Seat { seat, .. } => self.require_seat(*seat)?,
+            Input::Timer { .. } | Input::Admin(_) => {}
+        }
         let canonical_input = canonical_encode(&input).map_err(RuntimeError::Serialization)?;
+        require_size(&canonical_input, MAX_RUNTIME_INPUT_BYTES)?;
         // Defensive R2/R8 containment for a module that mutates or draws before
         // rejecting. A panic also unwinds these candidates without committing;
         // catching and terminating the match belongs to its actor (doc 03 §6.4).
@@ -310,7 +373,7 @@ impl<M: GameModule> ErasedMatch for TypedMatch<M> {
         )
         .map_err(RuntimeError::Rule)?;
         let events = encode_events(outcome.events.iter())?;
-        canonical_encode(&state).map_err(RuntimeError::Serialization)?;
+        encode_state(&state)?;
         self.state = state;
         *rng = candidate_rng;
         Ok(ErasedTransition {
@@ -318,6 +381,46 @@ impl<M: GameModule> ErasedMatch for TypedMatch<M> {
             events,
             effects: outcome.effects.into_vec(),
         })
+    }
+}
+
+impl<M: GameModule> ErasedMatch for TypedMatch<M> {
+    fn identity(&self) -> &RuntimeIdentity {
+        &self.identity
+    }
+
+    fn roster(&self) -> &SeatRoster {
+        &self.roster
+    }
+
+    fn creation_config(&self) -> &[u8] {
+        &self.creation_config
+    }
+
+    fn snapshot(&self) -> Result<Vec<u8>, RuntimeError> {
+        encode_state(&self.state)
+    }
+
+    fn apply(
+        &mut self,
+        input: ErasedInput,
+        now: LogicalTime,
+        index: InputIndex,
+        rng: &mut DetRng,
+    ) -> Result<ErasedTransition, RuntimeError> {
+        let input = self.decode_input(input)?;
+        self.apply_typed(input, now, index, rng)
+    }
+
+    fn replay(
+        &mut self,
+        canonical_input: &[u8],
+        now: LogicalTime,
+        index: InputIndex,
+        rng: &mut DetRng,
+    ) -> Result<ErasedTransition, RuntimeError> {
+        let input = decode_bounded(canonical_input, MAX_RUNTIME_INPUT_BYTES)?;
+        self.apply_typed(input, now, index, rng)
     }
 
     fn project(&self, viewer: ClientViewer) -> Result<Vec<u8>, RuntimeError> {
@@ -361,7 +464,14 @@ fn require_size(bytes: &[u8], maximum: usize) -> Result<(), RuntimeError> {
 }
 
 fn decode_payload<T: DeserializeOwned + Serialize>(bytes: &[u8]) -> Result<T, RuntimeError> {
-    require_size(bytes, MAX_RUNTIME_PAYLOAD_BYTES)?;
+    decode_bounded(bytes, MAX_RUNTIME_PAYLOAD_BYTES)
+}
+
+fn decode_bounded<T: DeserializeOwned + Serialize>(
+    bytes: &[u8],
+    maximum: usize,
+) -> Result<T, RuntimeError> {
+    require_size(bytes, maximum)?;
     let value = canonical_decode(bytes).map_err(RuntimeError::Malformed)?;
     let encoded = canonical_encode(&value).map_err(RuntimeError::Serialization)?;
     if encoded != bytes {
@@ -370,6 +480,12 @@ fn decode_payload<T: DeserializeOwned + Serialize>(bytes: &[u8]) -> Result<T, Ru
         )));
     }
     Ok(value)
+}
+
+fn encode_state<T: Serialize>(state: &T) -> Result<Vec<u8>, RuntimeError> {
+    let encoded = canonical_encode(state).map_err(RuntimeError::Serialization)?;
+    require_size(&encoded, MAX_RUNTIME_STATE_BYTES)?;
+    Ok(encoded)
 }
 
 fn encode_events<'a, T: Serialize + 'a>(
@@ -436,6 +552,55 @@ pub mod test_support {
             }),
         })
         .expect("derived clocked fixture config is canonical");
+        fixture
+    }
+
+    /// Twenty-four accepted nonterminal inputs for snapshot-cadence and
+    /// partial-history recovery checks. The unclocked Ruy Lopez opening stays
+    /// game-owned and opaque to platform tests (I-9).
+    #[must_use]
+    pub fn approved_long_fixture() -> RuntimeFixture {
+        let mut fixture = approved_checkmate_fixture();
+        fixture.commands = [
+            (12, 28), // e4
+            (52, 36), // e5
+            (6, 21),  // Nf3
+            (57, 42), // Nc6
+            (5, 33),  // Bb5
+            (48, 40), // a6
+            (33, 24), // Ba4
+            (62, 45), // Nf6
+            (4, 6),   // O-O
+            (61, 52), // Be7
+            (5, 4),   // Re1
+            (49, 33), // b5
+            (24, 17), // Bb3
+            (51, 43), // d6
+            (10, 18), // c3
+            (60, 62), // O-O
+            (15, 23), // h3
+            (42, 57), // Nb8
+            (11, 27), // d4
+            (57, 51), // Nbd7
+            (1, 11),  // Nbd2
+            (50, 34), // c5
+            (27, 35), // d5
+            (34, 26), // c4
+        ]
+        .into_iter()
+        .zip([SeatId(0), SeatId(1)].into_iter().cycle())
+        .map(|((from, to), seat)| {
+            (
+                seat,
+                canonical_encode(&Command::Move {
+                    from,
+                    to,
+                    promotion: None,
+                })
+                .expect("derived long fixture command is canonical"),
+            )
+        })
+        .collect();
         fixture
     }
 

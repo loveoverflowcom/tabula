@@ -255,7 +255,7 @@ For each crate: responsibility, allowed deps, forbidden deps, why separate, when
   persist → project → broadcast), `state_version`, idempotency cache, timer wheel driver, snapshot
   policy, reconnect/resume, spectator attach, effect execution, ports:
   `EventLog`, `SnapshotStore`, `MatchRepo`, `Clock`, `BotRunner`, `Broadcast`.
-- **Allowed:** `tabula-core`, `tabula-game-api`, `tabula-protocol`, `tabula-registry`, `tokio`,
+- **Allowed:** `tabula-core`, `tabula-game-api`, `tabula-protocol`, `serde`; `tabula-registry` and `tokio` only behind the non-default native `isolated` actor feature (ADR-0040),
   `tracing`, `async-trait` (or AFIT), `futures`.
 - **Forbidden:** `sqlx`, `axum`, any game crate directly, any renderer.
 - **Why separate:** this is the hardest, most correctness-critical async code in the product; it
@@ -282,6 +282,8 @@ For each crate: responsibility, allowed deps, forbidden deps, why separate, when
 - **Responsibility:** `sqlx` implementations of all ports; `migrations/`; batching for event
   appends; snapshot (de)serialization to Postgres or object storage; query modules per aggregate.
 - **Allowed:** `sqlx`, `tokio`, `tabula-core`, `tabula-game-api` (for snapshot/event byte types),
+  the SQL-free `tabula-match-journal` contract (reexported by `tabula-match::durable`) only behind native non-default
+  `match-postgres` (ADR-0040),
   `tabula-protocol`, `tracing`, `uuid`, `time`.
 - **Forbidden:** `axum`, game crates, renderers, `tabula-registry`.
 - **Why separate:** the only crate allowed to know SQL. Everything above it is testable with
@@ -731,3 +733,24 @@ Storage owns cross-process account advisory ordering and bounded first-frame
 publication guards. The HTTP adapter holds that guard through one private Body
 frame; committed clock facts precede release. Hyper buffering/TCP arrival and
 all gameplay/WS output remain separate, so S09 is still partial.
+
+### Bounded durable match implementation exception
+
+[ADR-0040](../adr/0040-isolated-durable-match-postgres.md) permits native non-default
+`tabula-storage/match-postgres` after ADR-0039. The dedicated contract crate
+`tabula-match-journal` owns serializable server-only DTOs and journal ports with
+no registry, Tokio or SQL dependency; `tabula-match::durable` reexports them.
+Registry and Tokio remain optional behind the isolated actor feature. A separate
+contract crate is required because Cargo all-feature unification would otherwise
+pull actor registry/game dependencies into storage and account-authentication
+graphs. Storage consumes only this pure contract, not actor orchestration. The
+SQL ownership boundary and dependency bans remain unchanged.
+
+The adapter owns one consistent transaction for canonical head/input/events/hash,
+due snapshot and complete bounded operation ledger, durable expected-version/
+owner-generation checks, and one consistent committed load. Explicit isolated
+migrations and real PostgreSQL 16 fault/reopen/process fixtures do not authorize
+a live migration. Both service entrypoints remain closed. Production seed
+encryption, session/commit/private-output fencing, online transport and broad
+phase gates remain separate obligations; exact executed evidence belongs in the
+[durability ledger](../verification/durable-match-postgres/README.md).

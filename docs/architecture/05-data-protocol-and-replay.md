@@ -37,6 +37,11 @@ is unchanged and every event is invisible. Future changes to these executable
 types need a version bump and compatibility fixtures; future xtask protocol
 commands remain unimplemented and are not reported as passing gates.
 
+[ADR-0040](../adr/0040-isolated-durable-match-postgres.md) adds only a server-internal
+durable journal format. It neither changes isolated wire 0.1 nor authorizes global
+canonical resume counters in client frames. Network resume and any executable
+wire change require separate privacy/version/compatibility evidence.
+
 The following shapes remain unimplemented protocol sketches.
 [ADR-0031](../adr/0031-browser-native-session-contract.md) supersedes the former
 `Hello.auth` sketch: HTTP upgrade authenticates browser cookie/native bearer;
@@ -567,6 +572,26 @@ plus a re-fold from the nearest checkpoint.
 | Canonical replay files | Generated on demand for audit; never stored long-term | Ephemeral |
 
 ---
+
+### 8.5 Isolated durable reopening versus replay compatibility
+
+[ADR-0040](../adr/0040-isolated-durable-match-postgres.md) recovery must match the
+exact recorded approved package/rules version and nonzero rules hash before
+creating live authority. It has no CompatibleVersion or migration fallback;
+the tooling policy in §10.2 is not permission to resume a match with altered
+rules. The persisted config/roster/seed and original logical times/input indices
+drive deterministic replay. The isolated actor's accepted input indices and
+state versions are contiguous from creation zero; rejected attempts exist in
+the durable receipt ledger, not canonical replay rows. This does not compact or
+change the Phase-1 replay format's original attempt-index gaps (§8.1).
+
+Recovery verifies the consistent committed head, creation and every input's
+derived canonical events/hash, snapshot metadata/bytes/hash and bounded ledger
+before admitting work. Invalid encoding/identity, gaps/extra/partial rows or
+event/hash/snapshot/ledger mismatch are explicit recovery failures. A snapshot
+cannot vouch for an unchecked earlier log. Snapshots can accelerate only after
+the relevant consistency proof. This stronger live-reopen contract is distinct
+from `ReplayRunner::seek`'s honestly labeled reconstructed position.
 
 ## 9. Protocol security and testing
 

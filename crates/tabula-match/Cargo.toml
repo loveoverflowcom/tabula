@@ -16,9 +16,11 @@ publish.workspace      = true
 tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
 tabula-protocol = { workspace = true }
-tabula-registry = { workspace = true }
+tabula-match-journal = { workspace = true }
+tabula-registry = { workspace = true, optional = true }
 thiserror       = { workspace = true }
 smallvec        = { workspace = true }
+serde           = { workspace = true }
 
 # Phase 4 — the actor loop needs these; the PORT TRAITS do not (native AFIT
 # means an async trait needs no runtime dependency at all).
@@ -31,7 +33,7 @@ tokio = { workspace = true, optional = true }
 
 [features]
 default = []
-isolated = ["dep:tokio"]
+isolated = ["dep:tokio", "dep:tabula-registry"]
 
 [dev-dependencies]
 tabula-registry = { workspace = true, features = ["test-support"] }

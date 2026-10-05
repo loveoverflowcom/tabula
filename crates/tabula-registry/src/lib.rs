@@ -9,7 +9,9 @@
 //! > phase gate protects that is **not** listed here remains gated. ADR-0039
 //! > additionally opens an isolated canonical match-creation/runtime bridge:
 //! > `ErasedMatch`, typed canonical decode, projected reads and ordered apply.
-//! > Network codecs, restore/migration, rollout tables, multi-version resolution
+//! > ADR-0040 adds the bounded server-only durable bridge: canonical snapshots,
+//! > exact-identity decoding and recorded-input replay (I-5/I-16).
+//! > Network codecs, migration, rollout tables, multi-version resolution
 //! > and `register!` still wait for their gates.
 //! > ADR-0030 additionally permits the opt-in separate-document handoff to the
 //! > existing local hot-seat runtime. It adds no match authority, network,

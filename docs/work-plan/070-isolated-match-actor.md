@@ -1,8 +1,9 @@
 # Isolated authoritative match actor
 
-**Status:** implemented; focused and full local checks passed; independent
-security source review has no unresolved blocker. Draft publication and exact-tree
-terminal CI remain pending; normal merge is authorized only after those gates.
+**Status:** delivered in merged PR78, baseline develop
+`fd0f1e496251a05722de1a0891be9548a6ee7f75`, tree
+`f8b10c34dcc02bb93e9568fd817bf1476fa4aab1`. Its historical local checks and source
+review belong in the delivery ledger/PR; no current-tree check is inferred.
 
 **Outcome:** one owner validates resolved seat/session authority, serializes
 opaque game commands, applies actual approved game rules, commits one journal
@@ -30,4 +31,6 @@ and terminal CI before normal Ready/self-merge; merge ancestry/post-merge CI.
 reconnect/resume, network quotas/traffic shaping, actual provider-bound match
 authority/commit/private-delivery fences, spectator delay, real sockets, target
 browser/native proof, deployment/SLO/load and full Phase 3/4/5 exits.
-Neither service listener is opened. Further work requires a new owner task.
+Neither service listener is opened. The new owner task now opens only
+[PR1 durable journaling/recovery](080-durable-match-postgres.md) under ADR0040;
+all other remaining gates retain their distinct implementation/evidence boundary.

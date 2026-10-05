@@ -1,9 +1,9 @@
-//! Offline actor ports. ADR-0039 narrows these to in-memory acceptance.
+//! Isolated actor ports. ADR-0039/0040 separate authority/output from storage.
 //!
 //! `Authority` covers synchronous apply/submission, not durable commit or
 //! eventual buffered delivery. Production adapters need their own review.
 
-use tabula_core::{InputIndex, LogicalTime, MatchId, StateHash, StateVersion};
+use tabula_core::{InputIndex, MatchId};
 use tabula_game_api::Effect;
 use tabula_protocol::ServerEnvelope;
 use tabula_registry::runtime::ClientViewer;
@@ -36,29 +36,7 @@ pub trait Authority: Send + Sync + 'static {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AuthorityLost;
 
-/// One canonical journal record, never a client frame (I-5/I-8).
-#[derive(Clone, Debug)]
-pub struct JournalRecord {
-    pub match_id: MatchId,
-    pub index: InputIndex,
-    pub version: StateVersion,
-    pub now: LogicalTime,
-    /// Empty at creation, otherwise canonical `Input<Command>`.
-    pub input: Vec<u8>,
-    pub events: Vec<Vec<u8>>,
-    pub hash: StateHash,
-}
-
-/// Atomic append of one input/events/version/hash. A known-success receipt only.
-///
-/// Failure includes indeterminate commit. The actor stops instead of retrying.
-/// In-memory implementations establish ordering, not disk durability.
-pub trait Journal: Send + Sync + 'static {
-    fn append(
-        &self,
-        record: JournalRecord,
-    ) -> impl std::future::Future<Output = Result<(), RuntimePortError>> + Send;
-}
+pub use crate::durable::{Journal, JournalRecord, RuntimePortError};
 
 /// Synchronous bounded output submission, called inside current authority.
 ///
@@ -82,12 +60,4 @@ pub trait Effects: Send + Sync + 'static {
         index: InputIndex,
         effects: Vec<Effect>,
     ) -> impl std::future::Future<Output = Result<(), RuntimePortError>> + Send;
-}
-
-/// No port diagnostics enter the client protocol.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RuntimePortError {
-    Unavailable,
-    Busy,
-    Indeterminate,
 }
