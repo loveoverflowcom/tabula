@@ -26,7 +26,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-/// PostgreSQL implementation of the internal durable authority port (ADR-0035).
+/// `PostgreSQL` implementation of the internal durable authority port (ADR-0035).
 ///
 /// The caller owns pool configuration and explicit migration opt-in. Neither
 /// constructing this adapter nor observing it activates provider login, HTTP,
@@ -222,8 +222,8 @@ impl PgSessionStore {
         Ok(())
     }
 
+    #[cfg(test)]
     async fn after_lock(&self) {
-        #[cfg(test)]
         if let Some(controls) = &self.controls {
             let gate = controls
                 .gate
@@ -444,6 +444,7 @@ impl SessionAuthority for PgSessionStore {
         .map_err(unavailable)?
         .ok_or(SessionError::Unauthenticated)?;
         let mut account = Self::lock_account(&mut tx, linked.user_id).await?;
+        #[cfg(test)]
         self.after_lock().await;
         // Fixture linkage is immutable through this adapter. Still reread the
         // exact pair after a potential account-lock wait; the earlier lookup
@@ -490,6 +491,7 @@ impl SessionAuthority for PgSessionStore {
     ) -> Result<SessionSnapshot, SessionError> {
         let mut tx = self.begin().await?;
         let (mut account, mut session) = Self::lock_digest(&mut tx, digest).await?;
+        #[cfg(test)]
         self.after_lock().await;
         let now = self.clock(&mut tx).await?;
         account.observe(now)?;
@@ -512,6 +514,7 @@ impl SessionAuthority for PgSessionStore {
             Uuid::from_u128(binding.user_id().0),
         )
         .await?;
+        #[cfg(test)]
         self.after_lock().await;
         let now = self.clock(&mut tx).await?;
         account.observe(now)?;
@@ -533,6 +536,7 @@ impl SessionAuthority for PgSessionStore {
     ) -> Result<SessionSnapshot, SessionError> {
         let mut tx = self.begin().await?;
         let (mut account, mut session) = Self::lock_digest(&mut tx, request.current_digest).await?;
+        #[cfg(test)]
         self.after_lock().await;
         let now = self.clock(&mut tx).await?;
         account.observe(now)?;
@@ -559,6 +563,7 @@ impl SessionAuthority for PgSessionStore {
             Uuid::from_u128(binding.user_id().0),
         )
         .await?;
+        #[cfg(test)]
         self.after_lock().await;
         let now = self.clock(&mut tx).await?;
         account.observe(now)?;
@@ -587,6 +592,7 @@ impl SessionAuthority for PgSessionStore {
     ) -> Result<AccountRecord, SessionError> {
         let mut tx = self.begin().await?;
         let mut account = Self::lock_account(&mut tx, Uuid::from_u128(user_id.0)).await?;
+        #[cfg(test)]
         self.after_lock().await;
         let now = self.clock(&mut tx).await?;
         let result = account.invalidate(expected_epoch, now);
@@ -659,6 +665,7 @@ impl PgSessionStore {
     ) -> Result<SessionSnapshot, SessionError> {
         let mut tx = self.begin().await?;
         let (mut account, mut session) = Self::lock_digest(&mut tx, digest).await?;
+        #[cfg(test)]
         self.after_lock().await;
         let now = self.clock(&mut tx).await?;
         account.observe(now)?;

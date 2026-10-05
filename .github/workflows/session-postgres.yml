@@ -51,7 +51,7 @@ jobs:
         with: { toolchain: '1.96' }
       - uses: Swatinem/rust-cache@v2
       - name: Install the approved SQLx metadata tool
-        run: cargo install sqlx-cli --version 0.8.6 --no-default-features --features rustls,postgres --locked
+        run: cargo install sqlx-cli --version 0.9.0 --no-default-features --features rustls,postgres --locked
       - name: Migrate disposable PostgreSQL
         run: cargo sqlx migrate run --source crates/tabula-storage/session_migrations
       - name: Generate offline descriptions against real PostgreSQL

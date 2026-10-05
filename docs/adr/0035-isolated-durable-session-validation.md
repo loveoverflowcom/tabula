@@ -59,9 +59,15 @@ contracts and wire types. Services remain leaves. SQL, migrations and row
 mapping remain exclusively in storage. Dependencies and doc 00's matrix are
 updated with this owner. The coarse cargo-deny entropy wrapper allow-list adds
 only `tabula-session`; deterministic I-1/I-4 bans remain unchanged in the
-per-crate resolved graph. Newly introduced `home` is locked at 0.5.11 because
-0.5.12 declares Rust 1.88, beyond the unchanged workspace 1.85 declaration.
-This compatibility pin is not a new MSRV execution claim.
+per-crate resolved graph. SQLx 0.8 was rejected by that actual gate: its
+PostgreSQL `rand` 0.8 feature unification enabled OS entropy on the kernel
+`rand_core` 0.6 dependency. The optional native adapter and metadata CLI use
+official SQLx 0.9, whose separate RNG dependency preserves the frozen kernel
+graph. This native `session-postgres` feature requires Rust 1.94; the existing
+pinned toolchain is 1.96. The workspace/default storage and deterministic SDK
+retain their unchanged 1.85 declaration. The feature-specific requirement is
+explicit in storage manifest metadata and here, never silently applied to game
+authors. Source/MSRV metadata inspection is not an executed 1.85 build claim.
 No game-state, rules algorithm or executable protocol
 encoding changes; I-13 wire vectors are therefore not activated by this PR.
 
@@ -130,3 +136,6 @@ Revisit before a listener, provider-backed issuance, shipping credential store,
 production migration, private outbound publication or broad phase-exit claim.
 That review requires actual target/provider evidence and coherent cross-service
 revocation/expiry, trusted proxy/TLS, outage/restart and rollback behavior.
+
+SQLx version/dependency evidence: [official 0.9 changelog](https://docs.rs/crate/sqlx/0.9.0/source/CHANGELOG.md),
+[PostgreSQL driver source](https://docs.rs/crate/sqlx-postgres/0.9.0/source/Cargo.toml).

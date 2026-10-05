@@ -1,8 +1,8 @@
-//! Isolated real-PostgreSQL acceptance for the ADR-0035 durable authority slice.
+//! Isolated real-`PostgreSQL` acceptance for the ADR-0035 durable authority slice.
 //!
 //! These tests are deliberately ignored by ordinary workspace runs. CI must run
 //! the non-empty ignored selection with `DATABASE_URL` pointing to its ephemeral
-//! PostgreSQL 16 service. Missing setup fails; there is no in-memory substitute.
+//! `PostgreSQL` 16 service. Missing setup fails; there is no in-memory substitute.
 //! Socket/private-outbound fencing and HTTP credential release are outside this
 //! storage harness and must not be reported as S09/S08 integration acceptance.
 
@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{PgPool, Row};
+use sqlx::{AssertSqlSafe, PgConnection, PgPool, Row};
 use tabula_core::UserId;
 use tabula_session::{
     AccountEpoch, AuthSessionId, CredentialDigest, CredentialGeneration, IssueSession,
@@ -24,6 +24,41 @@ use super::{PgSessionStore, ProtectedOperation, TestControls, TestGate};
 static NEXT_SCHEMA: AtomicU64 = AtomicU64::new(1);
 const WAIT_LIMIT: Duration = Duration::from_secs(15);
 const START_MS: u64 = 1_000_000_000;
+
+#[derive(Clone, Copy)]
+enum SchemaDdl {
+    Create,
+    Drop,
+}
+
+fn is_owned_identifier(identifier: &str, prefix: &str) -> bool {
+    identifier.starts_with(prefix)
+        && identifier.len() <= 63
+        && identifier.len() > prefix.len()
+        && identifier
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+}
+
+/// The only dynamic DDL identifiers are generated disposable schema names.
+/// Validate the full identifier and choose SQL from this closed action enum
+/// before asserting `SQLx`'s test-only string safety boundary.
+fn schema_ddl(schema: &str, action: SchemaDdl) -> AssertSqlSafe<String> {
+    assert!(is_owned_identifier(schema, "tabula_session_acceptance_"));
+    AssertSqlSafe(match action {
+        SchemaDdl::Create => format!("CREATE SCHEMA {schema}"),
+        SchemaDdl::Drop => format!("DROP SCHEMA {schema} CASCADE"),
+    })
+}
+
+/// Catalog-derived names still pass a closed identifier check before DDL.
+/// The target table and statement shape are fixed in this private test helper.
+fn drop_session_check(check: &str) -> AssertSqlSafe<String> {
+    assert!(is_owned_identifier(check, "session_auth_sessions_"));
+    AssertSqlSafe(format!(
+        "ALTER TABLE session_auth_sessions DROP CONSTRAINT {check}"
+    ))
+}
 
 /// Every test owns a fresh schema and two physically independent one-connection
 /// pools. The observer/admin connection never supplies session authority.
@@ -61,7 +96,7 @@ impl DatabaseFixture {
             version >= 160_000,
             "acceptance requires PostgreSQL 16 or newer"
         );
-        sqlx::raw_sql(&format!("CREATE SCHEMA {schema}"))
+        sqlx::raw_sql(schema_ddl(&schema, SchemaDdl::Create))
             .execute(&admin)
             .await
             .expect("PostgreSQL acceptance isolated schema creation failed");
@@ -88,26 +123,13 @@ impl DatabaseFixture {
     }
 
     async fn pool(database_url: &str, schema: &str) -> PgPool {
-        let search_path = format!("SET search_path TO {schema}");
+        let schema = schema.to_owned();
         tokio::time::timeout(
             WAIT_LIMIT,
             PgPoolOptions::new()
                 .max_connections(1)
                 .after_connect(move |connection, _metadata| {
-                    let search_path = search_path.clone();
-                    Box::pin(async move {
-                        sqlx::raw_sql(&search_path)
-                            .execute(&mut *connection)
-                            .await?;
-                        sqlx::raw_sql(
-                            "SET statement_timeout = '10s'; \
-                             SET lock_timeout = '10s'; \
-                             SET idle_in_transaction_session_timeout = '10s'",
-                        )
-                        .execute(&mut *connection)
-                        .await?;
-                        Ok(())
-                    })
+                    Box::pin(configure_connection(connection, schema.clone()))
                 })
                 .connect(database_url),
         )
@@ -119,12 +141,35 @@ impl DatabaseFixture {
     async fn close(self) {
         self.first.close().await;
         self.second.close().await;
-        sqlx::raw_sql(&format!("DROP SCHEMA {} CASCADE", self.schema))
+        sqlx::raw_sql(schema_ddl(&self.schema, SchemaDdl::Drop))
             .execute(&self.admin)
             .await
             .expect("PostgreSQL acceptance isolated schema cleanup failed");
         self.admin.close().await;
     }
+}
+
+/// A concrete connection helper keeps `SQLx`'s after-connect higher-ranked borrow
+/// explicit. Parameters carry the generated schema value; no identifier supplied
+/// by an external caller is interpolated into connection configuration SQL.
+async fn configure_connection(
+    connection: &mut PgConnection,
+    schema: String,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("SELECT set_config('search_path', $1, false)")
+        .bind(schema)
+        .execute(&mut *connection)
+        .await?;
+    sqlx::query("SET statement_timeout = '10s'")
+        .execute(&mut *connection)
+        .await?;
+    sqlx::query("SET lock_timeout = '10s'")
+        .execute(&mut *connection)
+        .await?;
+    sqlx::query("SET idle_in_transaction_session_timeout = '10s'")
+        .execute(&mut *connection)
+        .await?;
+    Ok(())
 }
 
 async fn backend_pid(pool: &PgPool) -> i32 {
@@ -328,6 +373,37 @@ async fn marker_table(pool: &PgPool) {
         .expect("test-only protected marker table must be created");
 }
 
+async fn assert_identity_key_boundaries(pool: &PgPool, store: &PgSessionStore) {
+    let maximum_issuer = maximum_component(0x1456_789a_bcde_f013);
+    let maximum_subject = maximum_component(0xa51c_e72d_9860_431f);
+    assert_ne!(maximum_issuer, maximum_subject);
+    assert_eq!(maximum_issuer.len(), 1024);
+    assert_eq!(maximum_subject.len(), 1024);
+    let maximum_key = seed_identity(pool, 4, &maximum_issuer, &maximum_subject).await;
+    assert_eq!(
+        ProviderIdentityKey::new(format!("{maximum_issuer}x"), &maximum_subject),
+        Err(SessionError::InvalidInput)
+    );
+    assert_eq!(
+        ProviderIdentityKey::new(&maximum_issuer, format!("{maximum_subject}x")),
+        Err(SessionError::InvalidInput)
+    );
+    assert_eq!(
+        store.account_snapshot(maximum_key).await.unwrap().user_id(),
+        UserId(4)
+    );
+    let composed = seed_identity(pool, 5, "unicode-issuer", "é").await;
+    let decomposed = seed_identity(pool, 6, "unicode-issuer", "e\u{301}").await;
+    assert_eq!(
+        store.account_snapshot(composed).await.unwrap().user_id(),
+        UserId(5)
+    );
+    assert_eq!(
+        store.account_snapshot(decomposed).await.unwrap().user_id(),
+        UserId(6)
+    );
+}
+
 #[tokio::test]
 #[ignore = "requires isolated real PostgreSQL 16 via DATABASE_URL"]
 async fn postgres_migrations_repeat_and_provider_linkage_is_exact_pair() {
@@ -381,38 +457,7 @@ async fn postgres_migrations_repeat_and_provider_linkage_is_exact_pair() {
             Err(SessionError::Unauthenticated)
         );
     }
-    let maximum_issuer = maximum_component(0x1456_789a_bcde_f013);
-    let maximum_subject = maximum_component(0xa51c_e72d_9860_431f);
-    assert_ne!(maximum_issuer, maximum_subject);
-    assert_eq!(maximum_issuer.len(), 1024);
-    assert_eq!(maximum_subject.len(), 1024);
-    let maximum_key = seed_identity(&db.first, 4, &maximum_issuer, &maximum_subject).await;
-    assert_eq!(
-        ProviderIdentityKey::new(format!("{maximum_issuer}x"), &maximum_subject),
-        Err(SessionError::InvalidInput)
-    );
-    assert_eq!(
-        ProviderIdentityKey::new(&maximum_issuer, format!("{maximum_subject}x")),
-        Err(SessionError::InvalidInput)
-    );
-    assert_eq!(
-        second
-            .account_snapshot(maximum_key)
-            .await
-            .unwrap()
-            .user_id(),
-        UserId(4)
-    );
-    let composed = seed_identity(&db.first, 5, "unicode-issuer", "é").await;
-    let decomposed = seed_identity(&db.first, 6, "unicode-issuer", "e\u{301}").await;
-    assert_eq!(
-        second.account_snapshot(composed).await.unwrap().user_id(),
-        UserId(5)
-    );
-    assert_eq!(
-        second.account_snapshot(decomposed).await.unwrap().user_id(),
-        UserId(6)
-    );
+    assert_identity_key_boundaries(&db.first, &second).await;
     let duplicate = sqlx::query(
         "INSERT INTO session_provider_identities (issuer, subject, user_id) VALUES ($1, $2, $3)",
     )
@@ -606,31 +651,27 @@ async fn postgres_checked_rows_reject_corruption_instead_of_restoring_authority(
     ).fetch_all(&db.first).await.unwrap();
     assert!(!checks.is_empty());
     for check in checks {
-        sqlx::raw_sql(&format!(
-            "ALTER TABLE session_auth_sessions DROP CONSTRAINT \"{check}\""
-        ))
-        .execute(&db.first)
-        .await
-        .unwrap();
+        sqlx::raw_sql(drop_session_check(&check))
+            .execute(&db.first)
+            .await
+            .unwrap();
     }
-    let corruptions = [
-        "credential_digest = decode('00', 'hex')",
-        "credential_generation = -1",
-        "channel = 'unknown-channel'",
-        "context_id = '00000000-0000-0000-0000-000000000000'::uuid",
-        "last_activity_at_ms = 999999999",
-        "last_observed_at_ms = 999999999",
-        "idle_deadline_ms = 1086400001",
-        "absolute_deadline_ms = 1086400001",
+    let corruptions: [&'static str; 8] = [
+        "UPDATE session_auth_sessions SET credential_digest = decode('00', 'hex') WHERE id = $1",
+        "UPDATE session_auth_sessions SET credential_generation = -1 WHERE id = $1",
+        "UPDATE session_auth_sessions SET channel = 'unknown-channel' WHERE id = $1",
+        "UPDATE session_auth_sessions SET context_id = '00000000-0000-0000-0000-000000000000'::uuid WHERE id = $1",
+        "UPDATE session_auth_sessions SET last_activity_at_ms = 999999999 WHERE id = $1",
+        "UPDATE session_auth_sessions SET last_observed_at_ms = 999999999 WHERE id = $1",
+        "UPDATE session_auth_sessions SET idle_deadline_ms = 1086400001 WHERE id = $1",
+        "UPDATE session_auth_sessions SET absolute_deadline_ms = 1086400001 WHERE id = $1",
     ];
     for (binding, corruption) in bindings.into_iter().zip(corruptions) {
-        sqlx::query(&format!(
-            "UPDATE session_auth_sessions SET {corruption} WHERE id = $1"
-        ))
-        .bind(Uuid::from_u128(binding.id().get()))
-        .execute(&db.first)
-        .await
-        .unwrap();
+        sqlx::query(corruption)
+            .bind(Uuid::from_u128(binding.id().get()))
+            .execute(&db.first)
+            .await
+            .unwrap();
         assert_eq!(
             second.observe_binding(binding).await,
             Err(SessionError::Unavailable)

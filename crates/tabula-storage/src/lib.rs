@@ -20,7 +20,7 @@
 //! workspace builds in CI and on a fresh checkout without a live database
 //! (doc 01 §1.2). Regenerate future workspace queries with `just sqlx-prepare`.
 //! The opt-in ADR-0035 session adapter uses `just sqlx-prepare-session` against
-//! its explicitly migrated disposable PostgreSQL database.
+//! its explicitly migrated disposable `PostgreSQL` database.
 //!
 //! If macro compile times become painful, fall back to `sqlx::query` with
 //! hand-mapped rows in the hot files — not to an ORM.

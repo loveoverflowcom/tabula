@@ -97,7 +97,7 @@ axum               = { version = "0.7", features = ["ws", "macros"] }
 tower              = "0.5"
 tower-http         = { version = "0.6", features = ["trace", "cors", "compression-gzip"] }
 tower-governor     = "0.4"
-sqlx               = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "uuid", "macros", "migrate"] }
+sqlx               = { version = "0.9", default-features = false, features = ["runtime-tokio", "postgres", "uuid", "macros", "migrate"] }
 # ADR-0035: runtime session credentials, never reachable from deterministic games.
 sha2               = { version = "0.10", default-features = false }
 base64             = "0.22"

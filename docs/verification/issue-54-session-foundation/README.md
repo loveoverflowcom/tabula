@@ -48,7 +48,7 @@ BFCache/AT/IME/password manager, native secure stores and UI layout are
 NOT_IMPLEMENTED/NOT_RUN. No fallback auth, plaintext credentials or fabricated
 provider login is introduced.
 
-## Initial local receipts before metadata bootstrap
+## Historical initial local receipts before metadata bootstrap
 
 - Focused core policy/credential tests: PASS, 21 passed, 0 failed, 0 ignored
 - Core strict all-target Clippy and focused WASM compilation: PASS
@@ -62,3 +62,22 @@ Initial publication exists to generate actual PostgreSQL query descriptions in
 CI; missing metadata may fail preliminary optional-feature gates. Such a run is
 not reported as PASS. The final PR description records subsequent authentic
 metadata import, repaired checks and terminal exact-head results.
+
+## Bootstrap architecture repair
+
+The first actual dependency check rejected SQLx 0.8: PostgreSQL RNG feature
+unification introduced a kernel → rand_core → OS-entropy path. I-1 was not
+weakened. The isolated native adapter/CLI now use official SQLx 0.9 and carry
+an explicit feature-specific Rust 1.94 requirement; the pinned build toolchain
+is 1.96, and workspace/default storage/game SDK remain declared 1.85. Final
+resolved-graph and CI receipts must verify that repair. Preliminary 0.8 metadata
+was genuinely generated against PostgreSQL but is historical, not final 0.9
+verification.
+
+The repaired SQLx 0.9 resolved graph passes `cargo xtask check-deps`: 27
+workspace crates, no violations. Direct transitive inspection confirms the
+core/game-api reach only kernel `rand_core` 0.6 without OS entropy. Cargo-deny
+advisories/bans/licenses/sources also pass on this repaired graph. SQLx 0.9
+source/all-target compilation initially used authentic historical 0.8 query
+descriptions for diagnostics only; the final metadata generation and exact-head
+DB/aggregate receipts are still required.

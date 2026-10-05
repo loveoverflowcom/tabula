@@ -714,3 +714,9 @@ never SQL, networking, rendering, a service or a game. `tabula-storage`
 implements those ports behind non-default native `session-postgres`, with
 compile-time checked PostgreSQL queries and isolated additive migrations.
 Neither service consumes it yet. Kanidm, ADR-0031 and production gates stand.
+
+The non-default native `session-postgres` infrastructure feature uses SQLx 0.9
+and requires Rust 1.94 (the pinned build toolchain remains 1.96). It does not
+change the workspace/default or deterministic game SDK declaration of 1.85.
+SQLx 0.8 was rejected because RNG feature unification violated I-1; the newer
+runtime dependency keeps the kernel RNG package identity separate.

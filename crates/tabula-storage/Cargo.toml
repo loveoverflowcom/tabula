@@ -16,6 +16,11 @@ default = []
 # ADR-0035: isolated durable session validation only. Neither service opts in.
 session-postgres = ["dep:tabula-session", "dep:sqlx", "dep:uuid"]
 
+# Optional native infrastructure has its own documented MSRV; default/storage
+# and the deterministic SDK retain the workspace declaration (ADR-0035).
+[package.metadata.tabula-msrv]
+session-postgres = "1.94"
+
 [dependencies]
 tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
