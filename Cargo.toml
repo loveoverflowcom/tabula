@@ -60,6 +60,7 @@ tabula-lobby        = { path = "crates/tabula-lobby" }
 tabula-storage      = { path = "crates/tabula-storage" }
 tabula-session      = { path = "crates/tabula-session" }
 tabula-session-http = { path = "crates/tabula-session-http" }
+tabula-match-http   = { path = "crates/tabula-match-http" }
 tabula-presentation = { path = "crates/tabula-presentation" }
 tabula-design       = { path = "crates/tabula-design" }
 tabula-assets       = { path = "crates/tabula-assets" }
