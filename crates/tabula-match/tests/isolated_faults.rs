@@ -183,26 +183,50 @@ impl GameRules for HiddenRules {
 }
 
 #[derive(Default)]
-struct Auth(Mutex<BTreeMap<SessionId, (Binding, ClientViewer)>>);
+struct Auth {
+    current: Mutex<BTreeMap<SessionId, (Binding, ClientViewer)>>,
+    preparations: Mutex<Vec<(SessionId, Purpose)>>,
+    deny_prepare: AtomicBool,
+    pause_prepare: AtomicBool,
+    prepare_entered: Notify,
+    prepare_release: Notify,
+    apply_checks: AtomicU64,
+    expire_after_apply: AtomicBool,
+}
 impl Auth {
     fn grant(&self, binding: &Binding, viewer: ClientViewer) {
-        self.0
+        self.current
             .lock()
             .unwrap()
             .insert(binding.session(), (binding.clone(), viewer));
     }
     fn revoke(&self, binding: &Binding) {
-        self.0.lock().unwrap().remove(&binding.session());
+        self.current.lock().unwrap().remove(&binding.session());
     }
 }
 impl Authority for Auth {
+    async fn prepare(&self, binding: &Binding, purpose: Purpose) -> Result<(), AuthorityLost> {
+        self.preparations
+            .lock()
+            .unwrap()
+            .push((binding.session(), purpose));
+        if self.pause_prepare.swap(false, Ordering::SeqCst) {
+            self.prepare_entered.notify_one();
+            self.prepare_release.notified().await;
+        }
+        if self.deny_prepare.load(Ordering::SeqCst) {
+            Err(AuthorityLost)
+        } else {
+            Ok(())
+        }
+    }
     fn with_current<T>(
         &self,
         binding: &Binding,
         purpose: Purpose,
         action: impl FnOnce() -> T,
     ) -> Result<T, AuthorityLost> {
-        let guard = self.0.lock().unwrap();
+        let guard = self.current.lock().unwrap();
         let (current, viewer) = guard.get(&binding.session()).ok_or(AuthorityLost)?;
         if current != binding {
             return Err(AuthorityLost);
@@ -214,7 +238,17 @@ impl Authority for Auth {
         if *viewer != required {
             return Err(AuthorityLost);
         }
-        Ok(action())
+        let check = if matches!(purpose, Purpose::Apply(_)) {
+            self.apply_checks.fetch_add(1, Ordering::SeqCst)
+        } else {
+            u64::MAX
+        };
+        let result = action();
+        if check == 1 && self.expire_after_apply.load(Ordering::SeqCst) {
+            Err(AuthorityLost)
+        } else {
+            Ok(result)
+        }
     }
 }
 
@@ -1040,4 +1074,70 @@ async fn cancellation_after_apply_cannot_undo_commit_and_drain_closes_following_
         2,
         "started input persisted despite its dropped ticket"
     );
+}
+
+#[tokio::test]
+async fn async_output_preparation_follows_commit_and_cannot_revive_lost_authority() {
+    let h = Harness::new(1, Limits::default());
+    let owner = h.attach(1, ClientViewer::Seat(SeatId(0))).await;
+    h.auth.pause_prepare.store(true, Ordering::SeqCst);
+    let ticket = h
+        .handle
+        .command(owner.clone(), Harness::command(1, 0))
+        .unwrap();
+    h.auth.prepare_entered.notified().await;
+    assert_eq!(
+        h.log.records.lock().unwrap().len(),
+        2,
+        "commit precedes output preparation"
+    );
+    h.auth.revoke(&owner);
+    h.auth.prepare_release.notify_one();
+    assert_eq!(ticket.wait().await.unwrap(), Completion::Suppressed);
+    assert_eq!(h.frames_for(owner.session()).len(), 1);
+    assert_eq!(h.end().await.version.0, 1);
+}
+#[tokio::test]
+async fn async_prepare_failure_suppresses_the_initial_projection() {
+    let h = Harness::new(1, Limits::default());
+    let b = Binding::new(SessionId(55), UserId(1), 55, 0, 1);
+    h.auth.grant(&b, ClientViewer::Seat(SeatId(0)));
+    h.auth.deny_prepare.store(true, Ordering::SeqCst);
+    assert_eq!(
+        h.handle
+            .attach(b.clone(), ClientViewer::Seat(SeatId(0)))
+            .unwrap()
+            .wait()
+            .await
+            .unwrap(),
+        Completion::Suppressed
+    );
+    assert!(h.frames_for(b.session()).is_empty());
+    assert_eq!(
+        *h.auth.preparations.lock().unwrap(),
+        vec![(b.session(), Purpose::Observe(ClientViewer::Seat(SeatId(0))))]
+    );
+    h.end().await;
+}
+#[tokio::test]
+async fn post_apply_authority_expiry_retires_potentially_unjournaled_owner() {
+    let h = Harness::new(1, Limits::default());
+    let owner = h.attach(1, ClientViewer::Seat(SeatId(0))).await;
+    h.auth.expire_after_apply.store(true, Ordering::SeqCst);
+    let ticket = h
+        .handle
+        .command(owner.clone(), Harness::command(1, 0))
+        .unwrap();
+    assert!(matches!(ticket.wait().await, Err(AdmissionError::Closed)));
+    let out = h.out.clone();
+    let summary = h.join.await.unwrap();
+    assert_eq!(summary.exit, Exit::AuthorityLost);
+    assert_eq!(summary.version.0, 0);
+    assert!(h.handle.is_closed());
+    assert_eq!(h.log.records.lock().unwrap().len(), 1);
+    assert_eq!(out.frames.lock().unwrap().len(), 1);
+    assert!(matches!(
+        h.handle.command(owner, Harness::command(2, 0)),
+        Err(AdmissionError::Closed)
+    ));
 }

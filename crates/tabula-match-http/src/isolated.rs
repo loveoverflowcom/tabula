@@ -30,6 +30,8 @@ use tabula_match::{
     runtime::{self, Binding, Completion, Ports},
 };
 use tabula_registry::{ConfigDraft, ErasedGame};
+#[cfg(feature = "acceptance-test-support")]
+use tabula_session::AuthSessionId;
 use tabula_session::{CredentialOperation, SessionCredential, SessionError};
 use tabula_session_http::isolated::IsolatedSessionHttp;
 use tabula_storage::{
@@ -58,6 +60,37 @@ pub struct IsolatedMatchHttp {
 impl fmt::Debug for IsolatedMatchHttp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("IsolatedMatchHttp").finish_non_exhaustive()
+    }
+}
+/// Non-wire witness for the disposable actual-network acceptance fixture.
+/// Created only from a real authenticated poll and its actual private queue.
+#[cfg(feature = "acceptance-test-support")]
+#[derive(Clone)]
+pub struct PollCaptureWitness {
+    match_id: String,
+    attachment_id: String,
+    record: AuthSessionId,
+    projected_frames: usize,
+}
+#[cfg(feature = "acceptance-test-support")]
+impl fmt::Debug for PollCaptureWitness {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PollCaptureWitness").finish_non_exhaustive()
+    }
+}
+#[cfg(feature = "acceptance-test-support")]
+impl PollCaptureWitness {
+    pub fn match_id(&self) -> &str {
+        &self.match_id
+    }
+    pub fn attachment_id(&self) -> &str {
+        &self.attachment_id
+    }
+    pub const fn record(&self) -> AuthSessionId {
+        self.record
+    }
+    pub const fn projected_frames(&self) -> usize {
+        self.projected_frames
     }
 }
 struct GatewayState {
@@ -755,7 +788,7 @@ async fn poll(
     Path(id): Path<String>,
     request: Request,
 ) -> Response {
-    let (op, _, body) = match state
+    let (op, snapshot, body) = match state
         .session_http
         .authenticate_json::<MatchPollRequest>(request, MAX_REQUEST_BYTES)
         .await
@@ -784,8 +817,32 @@ async fn poll(
         Ok(f) => f,
         Err(e) => return e.response(),
     };
+    #[cfg(feature = "acceptance-test-support")]
+    let witness = PollCaptureWitness {
+        match_id: format!("{:032x}", id.0),
+        attachment_id: body.attachment_id().to_owned(),
+        record: snapshot.id(),
+        projected_frames: frames
+            .iter()
+            .filter(|frame| {
+                matches!(
+                    frame.body(),
+                    tabula_protocol::ServerMessage::MatchUpdate { .. }
+                )
+            })
+            .count(),
+    };
+    #[cfg(not(feature = "acceptance-test-support"))]
+    let _ = snapshot;
     let Ok(value) = MatchFrames::new(frames) else {
         return unavailable();
     };
-    private_response(&state, op, &value, Some((live.output.clone(), binding))).await
+    #[allow(unused_mut)]
+    let mut response =
+        private_response(&state, op, &value, Some((live.output.clone(), binding))).await;
+    #[cfg(feature = "acceptance-test-support")]
+    if response.status().is_success() {
+        response.extensions_mut().insert(witness);
+    }
+    response
 }
