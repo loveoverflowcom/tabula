@@ -120,6 +120,7 @@ tabula/
 │   ├── tabula-registry/           # compile-time catalog, manifests, ErasedGame, version resolution
 │   ├── tabula-match/              # match actor, mailbox, command pipeline, snapshot policy, ports
 │   ├── tabula-lobby/              # rooms, matchmaking, presence (domain + ports)
+│   ├── tabula-session/            # isolated identity/session policy and ports (ADR-0035)
 │   ├── tabula-storage/            # sqlx/Postgres implementations of the ports; migrations
 │   ├── tabula-presentation/       # View → RenderList, input model, animation, layout
 │   ├── tabula-design/             # semantic tokens + theme; css/macroquad adapters (features)
@@ -702,3 +703,14 @@ Adding any of these requires an ADR that names the measurable symptom that force
 ---
 
 **Next:** [`02-game-module-and-sdk-design.md`](./02-game-module-and-sdk-design.md)
+
+### Bounded session implementation exception
+
+[ADR-0035](../adr/0035-isolated-durable-session-validation.md) adds the runtime
+`tabula-session` library: exact identity keys, redacted opaque credentials,
+checked session lifecycle policy and durable ports. It may depend on
+`tabula-core`, `thiserror`, `sha2`, `base64` and native OS entropy (`getrandom`);
+never SQL, networking, rendering, a service or a game. `tabula-storage`
+implements those ports behind non-default native `session-postgres`, with
+compile-time checked PostgreSQL queries and isolated additive migrations.
+Neither service consumes it yet. Kanidm, ADR-0031 and production gates stand.

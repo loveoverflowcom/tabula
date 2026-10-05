@@ -1,0 +1,23 @@
+[package]
+name = "tabula-session"
+version = "0.0.0"
+description = "Internal auth-session policy, checked records, and durable authority ports."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# ADR-0035 opens this isolated foundation only. No framework, SQL, service,
+# provider, wire format, or production bootstrap belongs here.
+[dependencies]
+tabula-core = { workspace = true }
+thiserror = { workspace = true }
+base64 = { workspace = true }
+sha2 = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+getrandom = { workspace = true }
+
+[lints]
+workspace = true

@@ -158,9 +158,14 @@ allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "t
 # Forbidden: sqlx, axum, game crates, AND tabula-game-api — the lobby reasons
 # about GameCapabilities, never about rules (ADR-023).
 
+[crate."tabula-session"]
+tier = "runtime"
+allow = ["tabula-core", "thiserror", "sha2", "base64", "getrandom"]
+forbidden_categories = ["rendering", "ui_framework", "web_framework", "networking", "persistence", "application", "game_specific"]
+
 [crate."tabula-storage"]
 tier  = "runtime"
-allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror"]
+allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session"]
 # The ONLY crate allowed to know SQL exists. Forbidden: axum, game crates,
 # renderers, tabula-registry.
 

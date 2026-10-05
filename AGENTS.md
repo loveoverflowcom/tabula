@@ -152,6 +152,11 @@ their own change and evidence. Kotlin and Swift own mobile UI, navigation and
 device services only; rules, projection and protocol decisions stay in Rust (ADR-001, as
 amended).
 
+[ADR-0035](docs/adr/0035-isolated-durable-session-validation.md) authorizes the
+bounded #54 isolated session/PostgreSQL → HTTP → account-state UI sequence.
+It keeps both production service entrypoints closed and does not prove phase
+exits, provider login or actual private-output fencing. Other phase gates stand.
+
 ---
 
 ## 5. Before you open a pull request

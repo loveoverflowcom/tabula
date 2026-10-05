@@ -11,19 +11,33 @@ publish.workspace      = true
 # PHASE 4. Everything above this crate is testable with in-memory fakes, which
 # keeps the test suite fast and the design honest.
 # FORBIDDEN: axum, game crates, renderers, tabula-registry.
+[features]
+default = []
+# ADR-0035: isolated durable session validation only. Neither service opts in.
+session-postgres = ["dep:tabula-session", "dep:sqlx", "dep:uuid"]
+
 [dependencies]
 tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
 tabula-protocol = { workspace = true }
 thiserror       = { workspace = true }
 
-# Phase 4 — sqlx with COMPILE-TIME-CHECKED queries and a committed .sqlx/ so the
-# workspace builds without a live database (doc 01 §1.2).
+# General Phase 4 storage stays gated. The separate optional session slice uses
+# compile-time-checked SQL and committed PostgreSQL-generated .sqlx/ metadata
+# so native workspace builds need no live database (doc 01 §1.2, ADR-0035).
 # sqlx    = { workspace = true }
 # tokio   = { workspace = true }
 # tracing = { workspace = true }
 # uuid    = { workspace = true }
 # bytes   = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tabula-session = { workspace = true, optional = true }
+sqlx = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tokio = { workspace = true }
 
 [lints]
 workspace = true

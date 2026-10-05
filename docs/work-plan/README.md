@@ -61,3 +61,19 @@ contracts; C needs real typed social/lobby authority. The ADR resolves the
 policy choice only; PR A is independently reviewable and no auth/social service
 or online match is activated. Existing discovery/local-play ADRs do not authorize
 account services. Passing aggregate checks does not close #54 or open Phase 4/5.
+
+## Authorized isolated #54 implementation series
+
+[ADR-0035](../adr/0035-isolated-durable-session-validation.md) records the owner's
+bounded exception without opening production or claiming phase exits. These are
+three new implementation PRs; the merged specifications/ADR/service frames are
+prerequisites and are not counted again:
+
+1. [Durable session policy and real PostgreSQL authority](020-issue-54-session-foundation.md)
+2. [Isolated session/context and self-profile HTTP](030-issue-54-isolated-http.md), after PR1 completes
+3. [Isolated account-state/profile UI](040-issue-54-account-state-ui.md), after PR2 completes
+
+The historical B/C production backlog remains valid outside this exception.
+Whole-issue login/register/friends acceptance, actual provider and browser/native
+proof, output fences and Phase 2/3/4/5 exits remain separate gates. Native voice
+is outside this series.
