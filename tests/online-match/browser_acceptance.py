@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import ssl
 import subprocess
+import threading
 import time
 from urllib.parse import urlsplit
 from PIL import Image
@@ -97,7 +98,7 @@ def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -
     therefore use a separate real, explicitly CA-validated HTTPS client; actual
     create/join/rendered gameplay remains driven by genuine browser UI events.
     """
-    require(path.startswith("/api/v1/matches/"), "invalid hostile probe path")
+    require(path.startswith(("/api/v1/matches/", "/__fixture/publication/")), "invalid hostile probe path")
     connection = http.client.HTTPSConnection("localhost", 9443, timeout=30,
                                             context=ssl.create_default_context(cafile=str(ca)))
     encoded = body.encode("utf-8")
@@ -135,6 +136,126 @@ def hostile_header_probes(ca: Path, match_id: str, cookie: str, csrf: str) -> in
         denied(wire_probe(ca, path, headers, body), {expected},
                "hostile HTTP transport partition was not rejected")
     return len(cases)
+
+
+def publication_control(ca: Path, operation: str, token: str) -> dict:
+    require(operation in ("status", "release"), "invalid publication control operation")
+    return wire_probe(ca, f"/__fixture/publication/{operation}",
+                      [("Origin", ORIGIN), ("Content-Type", "application/json"),
+                       ("X-Tabula-Fixture-Control", token)], '{"version":1}')
+
+
+def start_native_poll(match_id: str, attachment_id: str, cookie: str, csrf: str):
+    """CI-only real upstream TCP observer, before TLS-edge body buffering.
+
+    The browser game still uses verified HTTPS. This separate native-server
+    boundary oracle counts actual bytes from the approved private Rust listener;
+    it retains no response body, headers, credential, or grant in artifacts.
+    """
+    require(os.environ.get("CI") in ("true", "1")
+            and os.environ.get("TABULA_ONLINE_MATCH_DISPOSABLE") == "1",
+            "native publication oracle requires disposable CI opt-in")
+    done = threading.Event()
+    result = {"status": None, "json_content_type": False, "no_store": False,
+              "body_bytes": 0, "body_error": False}
+    body = json.dumps({"version": 1, "attachment_id": attachment_id})
+
+    def observe():
+        connection = http.client.HTTPConnection("127.0.0.1", 3000, timeout=90)
+        try:
+            connection.request("POST", f"/api/v1/matches/{match_id}/poll", body,
+                               {"Origin": ORIGIN, "Content-Type": "application/json",
+                                "Cookie": f"{SESSION_COOKIE}={cookie}", "X-Tabula-CSRF": csrf})
+            response = connection.getresponse()
+            result["status"] = response.status
+            result["json_content_type"] = response.getheader("Content-Type", "").split(";")[0] == "application/json"
+            result["no_store"] = "no-store" in response.getheader("Cache-Control", "").split(",")
+            while True:
+                chunk = response.read(65_536)
+                if not chunk:
+                    break
+                result["body_bytes"] += len(chunk)
+                require(result["body_bytes"] <= 2_097_152, "native publication body exceeded budget")
+        except http.client.IncompleteRead as error:
+            result["body_bytes"] += len(error.partial)
+            result["body_error"] = True
+        except Exception:
+            result["body_error"] = True
+        finally:
+            connection.close()
+            done.set()
+
+    thread = threading.Thread(target=observe, name="native-publication-byte-oracle", daemon=True)
+    thread.start()
+    return thread, done, result
+
+
+def prove_held_publication(white, black, match_id: str, white_attachment: dict,
+                          original_command: str, facts: list[dict], cookie: str, ca: Path) -> dict:
+    grant = api(black, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[1]["csrf_token"])
+    require(grant["status"] == 200 and grant["body"]["ready"], "passive opponent grant setup failed")
+    attachment = api(black, f"/api/v1/matches/{match_id}/attach",
+                     {"version": 1, "binding_id": grant["body"]["binding_id"]}, facts[1]["csrf_token"])
+    require(attachment["status"] == 200, "passive opponent attachment setup failed")
+    # This second actor has no browser runtime polling it. Initial snapshots
+    # were consumed above, and Black has issued no command or receipt request.
+    command = json.loads(original_command)
+    command["attachment_id"] = white_attachment["attachment_id"]
+    command["command"]["command"]["match_id"] = int(match_id, 16)
+    accepted = api(white, f"/api/v1/matches/{match_id}/command", json.dumps(command), facts[0]["csrf_token"])
+    require(accepted["status"] == 200 and any("Ack" in frame.get("body", {})
+            for frame in accepted["body"]["frames"]), "actual visible queued move was not accepted")
+    armed = api(black, "/__fixture/publication/arm",
+                {"version": 1, "match_id": match_id,
+                 "attachment_id": attachment["body"]["attachment_id"]}, facts[1]["csrf_token"])
+    require(armed["status"] == 200, "native held-body control setup failed")
+    token = armed["body"]["control_token"]
+    thread, done, observed = start_native_poll(match_id, attachment["body"]["attachment_id"],
+                                              cookie, facts[1]["csrf_token"])
+    released = False
+    try:
+        deadline = time.monotonic() + 30
+        while True:
+            status = publication_control(ca, "status", token)
+            require(status["status"] == 200, "native capture witness status unavailable")
+            phase = status["body"]["phase"]
+            require(phase not in ("failed", "expired"), "real poll lacked a nonempty projected capture witness")
+            if phase == "held":
+                break
+            require(not done.is_set() and time.monotonic() < deadline,
+                    "native poll did not reach a held nonempty first-frame boundary")
+            time.sleep(.1)
+        require(not done.is_set(), "native poll body completed before its fixture release")
+        # Existing storage publication exclusions expire independently within2s;
+        # the actual inner body remains unpolled while the separate logout commits.
+        time.sleep(2.5)
+        logout = api(black, "/api/v1/auth/logout", {}, facts[1]["csrf_token"])
+        require(logout["status"] == 204, "separate real authority logout did not commit while body held")
+        require(not done.is_set(), "held native body was released before actual revocation committed")
+        release = publication_control(ca, "release", token)
+        require(release["status"] == 200, "native publication release failed")
+        released = True
+        thread.join(timeout=45)
+        require(done.is_set(), "released actual native poll did not terminate")
+        require(observed["status"] == 200 and observed["json_content_type"] and observed["no_store"],
+                "native held request did not carry the real successful guarded poll headers")
+        require(observed["body_bytes"] == 0, "revoked held native poll delivered protected body bytes")
+        suppressed = publication_control(ca, "status", token)
+        require(suppressed["status"] == 200 and suppressed["body"]["phase"] == "suppressed",
+                "held fixture did not forward an actual inner publication-guard error")
+        return {"actual_native_nonempty_capture_held": True,
+                "separate_real_logout_before_release": True,
+                "actual_inner_publication_guard_error": True,
+                "native_poll_status": observed["status"],
+                "native_poll_body_bytes": observed["body_bytes"],
+                "native_poll_body_error": observed["body_error"],
+                "observer_before_tls_edge_buffering": True}
+    finally:
+        if not released:
+            try:
+                publication_control(ca, "release", token)
+            except Exception:
+                pass
 
 
 def context_facts(page) -> dict:
@@ -385,6 +506,12 @@ def run(args) -> None:
             results["full_game_pointer_moves"] = ["f2f3", "e7e5", "g2g4", "d8h4"]
             actions.append("Black tapped d8-h4; both independently rendered Game over / Black wins")
 
+            # Stop White's live polling before a positive duplicate receipt can
+            # be consumed outside its Rust client. Reuse only its own cookie jar.
+            white.close()
+            white = browsers[0].new_page()
+            white.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+
             results["stage"] = "replay exact committed command after actual rendered gameplay completes"
             # Consuming a fresh Ack outside Rust during play would create an
             # artificial transport-frame gap, so this probe follows both captures.
@@ -397,6 +524,9 @@ def run(args) -> None:
                     "duplicate command advanced the opponent projection")
             results["exact_duplicate_command_ack_without_new_projection"] = True
             actions.append("Exact original f2-f3 command returned its stored Ack without advancing the opponent projection")
+            black.close()
+            black = browsers[1].new_page()
+            black.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
 
             results["stage"] = "deny third-client commands and private output"
             denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, third_csrf),
@@ -480,8 +610,10 @@ def run(args) -> None:
             results["stage"] = "revoke through real authority and deny stale credential replay"
             revoked_cookie = {"name": SESSION_COOKIE, "value": cookies[1][0]["value"],
                               "url": ORIGIN + "/", "secure": True, "httpOnly": True, "sameSite": "Lax"}
-            logout = api(black, "/api/v1/auth/logout", {}, facts[1]["csrf_token"])
-            require(logout["status"] == 204, "real authority revocation failed")
+            results["held_body_publication"] = prove_held_publication(
+                white, black, other_id, second_attach["body"], first, facts,
+                cookies[1][0]["value"], ca)
+            actions.append("A real nonempty native poll body stayed held through committed logout; release delivered zero protected bytes")
             # Replay the exact previous runtime credential in the same browser.
             browsers[1].add_cookies([revoked_cookie])
             denied(api(black, f"/api/v1/matches/{match_id}/poll",

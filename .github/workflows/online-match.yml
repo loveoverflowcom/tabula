@@ -75,9 +75,9 @@ jobs:
           bash -n tests/online-match/run.sh
           python3 -m unittest discover -s tests/online-match -p 'test_*.py' -v
           cargo fmt --manifest-path tests/online-match/Cargo.toml --all -- --check
-          cargo clippy --manifest-path tests/online-match/Cargo.toml --locked --all-targets -- -D warnings
-          cargo test --manifest-path tests/online-match/Cargo.toml --locked --bin online-match-fixture
-          cargo build --manifest-path tests/online-match/Cargo.toml --locked --bin online-match-fixture
+          cargo clippy --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --all-targets -- -D warnings
+          cargo test --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
+          cargo build --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
       - name: Assert nonempty real composed-authority transaction scenarios
         run: |
           mkdir -p verification/online-match-artifacts

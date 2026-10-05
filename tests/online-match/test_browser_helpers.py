@@ -1,11 +1,45 @@
 """Offline fixture correctness tests, never actual-browser acceptance evidence."""
 import unittest
+import http.client
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, api, board_square, denied, private_frame_keys, require, run
+from browser_acceptance import AcceptanceFailure, api, board_square, denied, private_frame_keys, require, run, start_native_poll
 
 
 class BrowserHelperTests(unittest.TestCase):
+    def test_native_byte_oracle_requires_disposable_ci_before_connecting(self):
+        with mock.patch.dict("os.environ", {}, clear=True), mock.patch("browser_acceptance.http.client.HTTPConnection") as connect:
+            with self.assertRaises(AcceptanceFailure):
+                start_native_poll("1" * 32, "2" * 32, "synthetic-cookie", "synthetic-csrf")
+            connect.assert_not_called()
+
+    def native_observation(self, response):
+        connection = mock.Mock()
+        connection.getresponse.return_value = response
+        with mock.patch.dict("os.environ", {"CI": "true", "TABULA_ONLINE_MATCH_DISPOSABLE": "1"}, clear=True), mock.patch("browser_acceptance.http.client.HTTPConnection", return_value=connection):
+            thread, done, observed = start_native_poll("1" * 32, "2" * 32, "synthetic-cookie", "synthetic-csrf")
+            thread.join(timeout=5)
+        self.assertTrue(done.is_set())
+        connection.close.assert_called_once()
+        return observed
+
+    def test_native_byte_oracle_counts_private_partial_data_on_transport_error(self):
+        response = mock.Mock(status=200)
+        response.getheader.side_effect = lambda name, default: {"Content-Type": "application/json", "Cache-Control": "no-store"}.get(name, default)
+        response.read.side_effect = http.client.IncompleteRead(b"synthetic-private", 1)
+        observed = self.native_observation(response)
+        self.assertEqual(observed["body_bytes"], len(b"synthetic-private"))
+        self.assertTrue(observed["body_error"])
+        self.assertTrue(observed["json_content_type"] and observed["no_store"])
+
+    def test_native_byte_oracle_records_zero_bytes_on_empty_partial_transport_error(self):
+        response = mock.Mock(status=200)
+        response.getheader.side_effect = lambda name, default: {"Content-Type": "application/json", "Cache-Control": "no-store"}.get(name, default)
+        response.read.side_effect = http.client.IncompleteRead(b"", 1)
+        observed = self.native_observation(response)
+        self.assertEqual(observed["body_bytes"], 0)
+        self.assertTrue(observed["body_error"])
+
     def test_browser_launch_requires_exact_disposable_ci_opt_in_before_any_setup(self):
         for environment in ({}, {"CI": "true"}, {"TABULA_ONLINE_MATCH_DISPOSABLE": "1"}):
             with self.subTest(environment=environment), mock.patch.dict("os.environ", environment, clear=True):
