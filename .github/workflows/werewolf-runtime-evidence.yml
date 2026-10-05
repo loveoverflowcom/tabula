@@ -1,0 +1,47 @@
+name: werewolf-runtime-evidence
+on:
+  push:
+    branches: ['evidence/werewolf-runtime-20261005']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: werewolf-runtime-evidence-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  actual-local-simulator:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.96'
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install official pinned real browser and screenshot reader
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes tesseract-ocr tesseract-ocr-vie
+          python3 -m pip install -r tests/online-match/requirements.txt
+          python3 -m playwright install --with-deps chromium
+      - name: Build unmodified actual Werewolf runtime and resource bundle
+        run: |
+          cargo build --locked -p tabula-game-client --no-default-features --features web-werewolf --bin tabula-werewolf-client --target wasm32-unknown-unknown --profile wasm-release
+          cargo xtask stage-wasm-game --game werewolf
+      - name: Capture real user-input flows on the isolated local simulator
+        run: python3 -u tests/werewolf-runtime/capture.py
+      - name: Preserve actual PNGs and exact provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: werewolf-actual-runtime-evidence
+          path: verification/werewolf-runtime-artifacts/*
+          if-no-files-found: error
+          retention-days: 7
