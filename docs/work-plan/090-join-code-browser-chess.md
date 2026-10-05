@@ -1,7 +1,9 @@
 # Connect two browsers by join code
 
-**Status:** owner-requested PR2; deferred to a separate later chat after PR1's
-verified normal merge. No network implementation or target acceptance is claimed.
+**Status:** PR2 active in its own fresh chat/worktree after verified PR79 merge.
+[ADR0041](../adr/0041-isolated-direct-match-browser-play.md) records the bounded
+contract; the [ledger](../verification/join-code-browser-chess/README.md) records
+actual implementation/check status. Browser acceptance is not yet claimed.
 
 **Outcome:** two independent browser sessions join the same server-owned Chess
 match by code and complete a game through the actual projection/command path.
@@ -29,8 +31,9 @@ terminal CI before the authorized normal self-merge.
 **Non-goals:** PR3 reconnect/resync/fault campaign, public signup, lobby/queue,
 friends, voice, deployment/live migration or broad phase completion.
 
-**Risks / unknowns:** code entropy/expiry/admission policy and online fence/wire
-changes need source inspection and a bounded contract in that chat. Do not invent
+**Risks / unknowns:** strict composed migrations and current durable commit/body
+publication authority need real PG proof; independent HTTPS rendered gameplay
+needs the dedicated actual-browser CI fixture. Do not invent
 routes/schemas or weaken wire privacy to make browser integration easier.
 
 **Next handoff:** once PR2's actual browser evidence and normal merge are verified,
