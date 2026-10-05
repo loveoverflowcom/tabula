@@ -3,10 +3,49 @@ import unittest
 import http.client
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, api, board_square, denied, game_status_class, private_frame_keys, record_live_poll_denial, require, run, start_native_poll
+from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, require, run, start_native_poll
 
 
 class BrowserHelperTests(unittest.TestCase):
+    def test_protected_http_diagnostics_discard_ids_queries_and_foreign_routes(self):
+        self.assertEqual(protected_endpoint_class("https://localhost:9443/api/v1/matches/" + "a" * 32 + "/attach"), "attach")
+        self.assertEqual(protected_endpoint_class("https://localhost:9443/api/v1/auth/context"), "context")
+        for invalid in ("https://localhost:9443/api/v1/auth/context?token=synthetic-secret", "https://foreign.invalid/api/v1/auth/context", "https://localhost:9443/__fixture/enroll"):
+            self.assertIsNone(protected_endpoint_class(invalid))
+
+    def test_failure_snapshot_occurs_before_outer_browser_driver_teardown(self):
+        events = []
+        class OuterDriver:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                events.append("driver_stopped")
+        class Page:
+            url = "https://localhost:9443/play/local/?match_id=public"
+            def is_closed(self):
+                return False
+        page = Page()
+        connection = mock.Mock()
+        connection.is_connected.return_value = True
+        context = SimpleNamespace(pages=[page], browser=connection)
+        results = {}
+        def visible_snapshot(*args):
+            self.assertNotIn("driver_stopped", events)
+            events.append("snapshot")
+            return {"status_class": "white_turn"}
+        with mock.patch("browser_acceptance.visible_game_facts", side_effect=visible_snapshot):
+            with self.assertRaises(TypeError):
+                with OuterDriver(), active_browser_diagnostics([context], results, {}):
+                    raise TypeError("synthetic-secret must never enter diagnostics")
+        self.assertEqual(events, ["snapshot", "driver_stopped"])
+        self.assertEqual(results["failure_class"], "python_type_error")
+        self.assertNotIn("synthetic-secret", str(results))
+        self.assertTrue(results["failure_views"][0]["browser_connected"])
+
+    def test_exception_class_never_echoes_arbitrary_text(self):
+        self.assertEqual(exception_class(KeyError("synthetic-secret")), "python_key_error")
+        self.assertEqual(exception_class(RuntimeError("synthetic-secret")), "other_error")
+
     def test_live_poll401_observation_does_not_read_an_intentionally_aborted_body(self):
         response = mock.Mock(status=401)
         response.json.side_effect = RuntimeError("synthetic body unavailable after transport abort")

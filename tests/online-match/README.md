@@ -233,6 +233,17 @@ HTTP status and Ack-presence flag. Failed terminal waits retain only role, seat,
 expected-range visible revision and fixed status/connection/availability enums,
 never raw projected status, DOM, command body or protocol payload. A reasonless
 Black-win title or another terminal reason cannot satisfy the exact predicate.
+Failure diagnostics are captured inside a nested context that exits before the
+active Playwright driver is stopped. They retain only a fixed exception-class
+partition, bounded actual attachment status/public-seat/readiness subphases,
+current public game-state enums and page-crash/closed/browser-connected flags.
+Protected HTTP diagnostics count only fixed endpoint classes (context, grant,
+attach, poll, command) and bounded status/count pairs per synthetic browser role;
+queries, routing IDs and foreign endpoints are discarded.
+No exception text, stack trace, URL, attachment body, routing ID or grant is
+stored. The existing private in-memory attachment parsing/seat validation stays
+unchanged; these facts locate a failure without replacing rendering or authority
+assertions.
 Its TCP observer establishes the native server first-frame/network boundary
 before the buffering TLS edge; actual browser TLS/gameplay is proved separately.
 It does not establish recall of already released TCP bytes or PR3 reconnect.
