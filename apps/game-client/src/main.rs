@@ -15,6 +15,8 @@
 
 mod clock_options;
 mod standalone_setup;
+#[cfg(all(feature = "online", target_arch = "wasm32"))]
+mod online_runtime;
 
 use clock_options::{LocalClockControl, LocalClockOptions};
 use macroquad::prelude as mq;
@@ -97,9 +99,9 @@ async fn main() {
     // suppression marker instead of the whole block sharing one.
     loop {
         match options.game {
-            SelectedGame::Chess => run_chess(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+            SelectedGame::Chess => run_chess(&mut renderer, &mut audio, &theme, options.clone()).await, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
             #[cfg(feature = "tiles")] // xtask-allow-game-id: optional Phase 3 local vertical slice wiring.
-            SelectedGame::Tiles => run_tiles(&mut renderer, &mut audio, &theme, options).await, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
+            SelectedGame::Tiles => run_tiles(&mut renderer, &mut audio, &theme, options.clone()).await, // xtask-allow-game-id: direct Phase 3 local vertical slice wiring.
         }
         // A completed or stopped session returns only after New local game.
         // activation. Reconstruct the match, local state, clocks and bot RNG.
@@ -182,6 +184,13 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
     // Initial I/O completes before constructing the match and starting its clock.
     if let Err(error) = resources.prepare(renderer, LocalAssetScene::Gameplay, display_dpi().await).await {
         show_asset_failure(renderer, theme, &error).await;
+        return;
+    }
+    if let Some(match_id) = options.online_match.as_deref() {
+        #[cfg(all(feature = "online", target_arch = "wasm32"))]
+        online_runtime::run_online::<tabula_game_chess::ChessModule, ChessPresentation>(renderer, audio, theme, match_id, options.reduced_motion, &resources).await; // xtask-allow-game-id: existing typed leaf presenter wiring; online loop is generic.
+        #[cfg(not(all(feature = "online", target_arch = "wasm32")))]
+        { let _ = match_id; show_asset_failure(renderer, theme, "Online play is unavailable in this build").await; }
         return;
     }
     let mut local_match = LocalMatch::<ChessRules, ChessPresentation>::new(
@@ -381,6 +390,10 @@ async fn run_tiles( // xtask-allow-game-id: direct Phase 3 local vertical slice 
     theme: &tabula_design::Theme,
     options: Options,
 ) {
+    if options.online_match.is_some() {
+        show_asset_failure(renderer, theme, "This selected game has no direct online host").await;
+        return;
+    }
     if let Err(error) = tabula_game_client::fixture_assets::preload_sprite_fixture(
         renderer,
         fixture::MANIFEST,
@@ -686,7 +699,7 @@ impl SetViewport for tabula_game_tiles::presentation::TilesLocal { // xtask-allo
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct Options {
     game: SelectedGame,
     seats: u8,
@@ -695,6 +708,7 @@ struct Options {
     reduced_motion: bool,
     clock: LocalClockOptions,
     skip_setup: bool,
+    online_match: Option<String>,
 }
 
 impl Default for Options {
@@ -707,6 +721,7 @@ impl Default for Options {
             reduced_motion: false,
             clock: LocalClockOptions::default(),
             skip_setup: false,
+            online_match: None,
         }
     }
 }
@@ -750,6 +765,7 @@ fn parse_options_from(mut args: impl Iterator<Item = String>) -> Options {
                 }
             }
             "--skip-setup" => options.skip_setup = true,
+            "--online-match" => { options.online_match = Some(args.next().unwrap_or_default()); options.skip_setup = true; },
             "--clock" => {
                 if let Some(value) = args.next() {
                     if let Err(error) = options.clock.set_control(&value) {
@@ -856,6 +872,13 @@ fn session_elapsed_ms(started_at_ms: u64, now_ms: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn malformed_online_intent_never_falls_back_to_local_authority() {
+        let options = parse_options_from(["--online-match".to_owned()].into_iter());
+        assert_eq!(options.online_match, Some(String::new()));
+        assert!(options.skip_setup);
+    }
 
     #[test]
     fn native_theme_options_keep_the_selected_game_and_invalid_values_keep_light() {
