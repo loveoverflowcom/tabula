@@ -296,51 +296,81 @@ NEUTRAL_UNAVAILABLE = """() => {
 }"""
 
 
+def record_live_poll_denial(response, progress: dict) -> None:
+    progress["actual_live_poll_status"] = http_status(response.status)
+    require(response.status == 401, "live authority-loss poll was not denied")
+    # The real transport aborts non-200 bodies immediately. Body retrieval may
+    # therefore fail in Playwright and is not a UI-concealment precondition.
+    # Separate revoked-output and held-body probes retain frame/byte denial.
+
+
 def capture_live_authority_loss(white, third, csrf: str, evidence: CaptureEvidence,
-                                secrets: list[str]) -> dict:
+                                secrets: list[str], progress: dict) -> dict:
     """Actual live-board poll401 concealment after normal current-session logout.
 
     A separate auxiliary actor keeps the passive held-body recipient untouched.
     This proves one active-document authority-loss boundary, not reconnect,
     interrupted-command handling or browser page-cache lifecycle guarantees.
     """
+    progress.update({"phase": "navigate_create_controls", "create_status": None,
+                     "join_status": None, "actual_live_board_before_logout": False,
+                     "game_document_visible_before_logout": False, "logout_status": None,
+                     "current_session_logout_committed": False, "actual_live_poll_status": None,
+                     "neutral_error_visible": False, "canvas_hidden_zero_sized_and_status_cleared": False})
     white.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
     white.get_by_test_id("online-create").wait_for(state="visible", timeout=30_000)
     with white.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches", timeout=30_000) as created_response:
         white.get_by_test_id("online-create").click()
     created = created_response.value.json()
+    progress["create_status"] = http_status(created_response.value.status)
     require(created_response.value.status == 200 and created["seat"] == 0,
             "live concealment actual create setup failed")
     match_id, code = created["match_id"], created["join_code"]
     secrets.append(code)
+    progress["phase"] = "join_actual_opponent"
     third.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
     third.get_by_test_id("online-join-code").fill(code)
     with third.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches/join", timeout=30_000) as joined_response:
         third.get_by_test_id("online-join").click()
     joined = joined_response.value.json()
+    progress["join_status"] = http_status(joined_response.value.status)
     require(joined_response.value.status == 200 and joined["match_id"] == match_id
             and joined["seat"] == 1 and joined["ready"],
             "live concealment actual opponent join setup failed")
+    progress["phase"] = "attach_and_render_live_board"
     enter_game(white, match_id, 0)
     white.wait_for_function("() => document.documentElement.dataset.onlineRevision === '0'", timeout=30_000)
     rendered_canvas_pixels(white)
+    progress["actual_live_board_before_logout"] = True
+    progress["phase"] = "open_same_context_control"
     control = white.context.new_page()
     try:
         control.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+        # Macroquad's real transport is driven by animation frames. The separate
+        # control document must not leave the live game in a background tab.
+        progress["phase"] = "foreground_live_game"
+        white.bring_to_front()
+        progress["game_document_visible_before_logout"] = white.evaluate("document.visibilityState === 'visible'") is True
+        require(progress["game_document_visible_before_logout"], "live authority-loss game was not foreground-visible")
+        progress["phase"] = "commit_current_logout_and_observe_live_poll"
         with white.expect_response(lambda response: urlsplit(response.url).path == f"/api/v1/matches/{match_id}/poll"
                                    and response.status == 401, timeout=60_000) as rejected_poll:
             logout = api(control, "/api/v1/auth/logout", {}, csrf)
+            progress["logout_status"] = http_status(logout["status"])
             require(logout["status"] == 204, "live board authority logout did not commit")
+            progress["current_session_logout_committed"] = True
         rejected = rejected_poll.value
-        denied({"status": rejected.status, "body": rejected.json()}, {401},
-               "live authority-loss poll was not denied")
-        white.wait_for_function(NEUTRAL_UNAVAILABLE, timeout=30_000)
+        record_live_poll_denial(rejected, progress)
+        progress["phase"] = "verify_neutral_concealment"
+        white.wait_for_function(NEUTRAL_UNAVAILABLE, polling=100, timeout=30_000)
         white.locator("#runtime-error").wait_for(state="visible", timeout=30_000)
+        progress["neutral_error_visible"] = True
+        progress["canvas_hidden_zero_sized_and_status_cleared"] = True
+        progress["phase"] = "capture_actual_neutral_ui"
         evidence.capture(white, "10-authority-unavailable.png", "Actual live-board authority loss: neutral unavailable UI", "White browser",
                          "A previously rendered live initial board received real poll401 after committed normal logout; canvas hidden and zero-sized, projected status cleared, moves unavailable", secrets=secrets)
-        return {"actual_live_board_before_logout": True, "current_session_logout_committed": True,
-                "actual_live_poll_status": 401, "neutral_error_visible": True,
-                "canvas_hidden_zero_sized_and_status_cleared": True}
+        progress["phase"] = "complete"
+        return progress
     finally:
         control.close()
 
@@ -806,8 +836,10 @@ def run(args) -> None:
             actions.append("Third-client, cross-match, and revoked-verifier commands and output were denied")
 
             results["stage"] = "conceal an actual live board after current authority loss"
+            results["live_board_authority_loss"] = {}
             results["live_board_authority_loss"] = capture_live_authority_loss(
-                white, third, facts[0]["csrf_token"], evidence, redacted_values)
+                white, third, facts[0]["csrf_token"], evidence, redacted_values,
+                results["live_board_authority_loss"])
             actions.append("A separate actual live Chess board received poll401 after normal logout and rendered neutral unavailable UI with projected pixels and status concealed")
 
             # Private account identities do not enter uploaded artifacts.

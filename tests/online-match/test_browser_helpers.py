@@ -3,10 +3,22 @@ import unittest
 import http.client
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, api, board_square, denied, game_status_class, private_frame_keys, require, run, start_native_poll
+from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, api, board_square, denied, game_status_class, private_frame_keys, record_live_poll_denial, require, run, start_native_poll
 
 
 class BrowserHelperTests(unittest.TestCase):
+    def test_live_poll401_observation_does_not_read_an_intentionally_aborted_body(self):
+        response = mock.Mock(status=401)
+        response.json.side_effect = RuntimeError("synthetic body unavailable after transport abort")
+        response.body.side_effect = RuntimeError("synthetic body unavailable after transport abort")
+        progress = {}
+        record_live_poll_denial(response, progress)
+        self.assertEqual(progress["actual_live_poll_status"], 401)
+        response.json.assert_not_called()
+        response.body.assert_not_called()
+        with self.assertRaises(AcceptanceFailure):
+            record_live_poll_denial(mock.Mock(status=403), {})
+
     def test_terminal_accessibility_status_requires_the_exact_checkmate_reason(self):
         self.assertEqual(TERMINAL_STATUS, "Game over / Black wins / checkmate")
         self.assertEqual(game_status_class(TERMINAL_STATUS), "black_checkmate")
