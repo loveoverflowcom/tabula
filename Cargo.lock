@@ -3257,6 +3257,7 @@ dependencies = [
  "tabula-protocol",
  "tabula-registry",
  "thiserror 1.0.69",
+ "tokio",
 ]
 
 [[package]]
@@ -3286,7 +3287,9 @@ dependencies = [
 name = "tabula-protocol"
 version = "0.0.0"
 dependencies = [
+ "postcard",
  "serde",
+ "serde_json",
  "tabula-core",
  "thiserror 1.0.69",
 ]

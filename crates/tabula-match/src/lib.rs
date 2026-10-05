@@ -1,11 +1,26 @@
 //! # `tabula-match` — the authoritative match runtime
 //!
-//! > ## PHASE 4 — DO NOT IMPLEMENT BEFORE PHASE 3 EXITS
+//! > ## PHASE 4 — isolated actor exception only (ADR-0039)
 //! >
 //! > This is the hardest, most correctness-critical async code in the product.
 //! > It is also where the ordering and idempotency bugs live — doc 09 §6 lists
 //! > "Phase 4 ordering/idempotency bugs under load" among the five things most
 //! > likely to go wrong.
+//!
+//! ## Implemented isolated slice (ADR-0039)
+//!
+//! Native `isolated` exposes `runtime` and its guarded offline ports. One bounded
+//! owner serializes inputs, uses per-match logical elapsed time, commits one
+//! in-memory journal receipt, executes keyed effects, then submits Ack and
+//! projected updates through fresh authority. Operation scopes are reserved at
+//! authorized attach; watermark/receipt semantics are in `runtime` and ADR-0039.
+//! Only observable per-attachment revisions/frame counters appear in output.
+//! There is no production listener, SQL match adapter, timer scheduler, recovery,
+//! reconnect/resume, watchdog, snapshot drain or durable session/output fence.
+//!
+//! **Every section below is an unimplemented full-production architecture
+//! sketch**, not a description of the isolated implementation. Where its planned
+//! wire counters or pipeline differ, ADR-0039 governs the executable slice.
 //!
 //! ## The one structural rule: one match, one owner
 //!
@@ -133,3 +148,8 @@
 #![forbid(unsafe_code)]
 
 pub mod ports;
+
+#[cfg(all(feature = "isolated", not(target_arch = "wasm32")))]
+pub mod runtime;
+#[cfg(all(feature = "isolated", not(target_arch = "wasm32")))]
+pub mod runtime_ports;
