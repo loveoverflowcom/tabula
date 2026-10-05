@@ -10,10 +10,12 @@ around a denied local-browser, networking, or certificate-security boundary.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import http.client
 import io
 import json
 import os
+import re
 from pathlib import Path
 import ssl
 import subprocess
@@ -21,8 +23,8 @@ import threading
 import time
 from urllib.parse import urlsplit
 from PIL import Image
-from playwright.sync_api import TimeoutError as BrowserTimeout, sync_playwright
-from capture_evidence import CaptureEvidence
+from playwright.sync_api import Error as BrowserError, TimeoutError as BrowserTimeout, sync_playwright
+from capture_evidence import CaptureEvidence, CaptureFailure
 from startup_diagnostics import http_status, navigation_failure, origin_class, process_diagnostics
 
 ORIGIN = "https://localhost:9443"
@@ -338,7 +340,8 @@ def capture_live_authority_loss(white, third, csrf: str, evidence: CaptureEviden
             and joined["seat"] == 1 and joined["ready"],
             "live concealment actual opponent join setup failed")
     progress["phase"] = "attach_and_render_live_board"
-    enter_game(white, match_id, 0)
+    progress["attachment"] = []
+    enter_game(white, match_id, 0, progress["attachment"])
     white.wait_for_function("() => document.documentElement.dataset.onlineRevision === '0'", timeout=30_000)
     rendered_canvas_pixels(white)
     progress["actual_live_board_before_logout"] = True
@@ -429,6 +432,66 @@ def visible_game_facts(page, role: str) -> dict:
             "availability": values["availability"] if values["availability"] in ("available", "unavailable") else "not_reported"}
 
 
+def exception_class(error: Exception) -> str:
+    if isinstance(error, AcceptanceFailure):
+        return "required_condition_failed"
+    if isinstance(error, BrowserTimeout):
+        return "browser_timeout"
+    if isinstance(error, BrowserError):
+        return "browser_target_closed" if type(error).__name__ == "TargetClosedError" else "browser_error"
+    if isinstance(error, CaptureFailure):
+        return "capture_condition_failed"
+    for kind, label in ((json.JSONDecodeError, "json_decode_error"), (AttributeError, "python_attribute_error"),
+                        (TypeError, "python_type_error"), (KeyError, "python_key_error"),
+                        (NameError, "python_name_error"), (OSError, "local_io_error")):
+        if isinstance(error, kind):
+            return label
+    return "other_error"
+
+
+def protected_endpoint_class(url: str) -> str | None:
+    parsed = urlsplit(url)
+    if parsed.scheme != "https" or parsed.netloc != "localhost:9443" or parsed.query:
+        return None
+    if parsed.path == "/api/v1/auth/context":
+        return "context"
+    match = re.fullmatch(r"/api/v1/matches/[0-9a-f]{32}/(grant|attach|poll|command)", parsed.path)
+    return match.group(1) if match else None
+
+
+@contextmanager
+def active_browser_diagnostics(browsers: list, results: dict, lifecycle: dict):
+    # This context exits BEFORE sync_playwright, while page/channel RPCs remain
+    # available. The outer finally must never query a stopped Playwright driver.
+    try:
+        yield
+    except Exception as error:
+        results["failure_class"] = exception_class(error)
+        results["failure_views"] = []
+        for browser, role in zip(browsers[:2], ("white", "black")):
+            try:
+                pages = list(browser.pages)
+            except Exception:
+                results["failure_views"].append({"role": role, "diagnostic": "context_unavailable"})
+                continue
+            for page in pages[-4:]:
+                try:
+                    if urlsplit(page.url).path != "/play/local/":
+                        continue
+                    facts = {"role": role, "page_closed": page.is_closed(),
+                             "page_crashed": lifecycle.get(page, {}).get("crashed", False),
+                             "browser_connected": browser.browser is not None and browser.browser.is_connected()}
+                    if not facts["page_closed"] and not facts["page_crashed"]:
+                        try:
+                            facts.update(visible_game_facts(page, role))
+                        except Exception as diagnostic_error:
+                            facts["diagnostic"] = exception_class(diagnostic_error)
+                    results["failure_views"].append(facts)
+                except Exception:
+                    results["failure_views"].append({"role": role, "diagnostic": "page_unavailable"})
+        raise
+
+
 def move(page, source: str, target: str, flipped: bool, match_id: str,
          trace: list[dict] | None = None) -> str:
     require(source + target in ("f2f3", "e7e5", "g2g4", "d8h4"), "unexpected scripted acceptance move")
@@ -459,21 +522,47 @@ def move(page, source: str, target: str, flipped: bool, match_id: str,
     return command
 
 
-def enter_game(page, match_id: str, expected_seat: int) -> tuple[dict, str]:
+def enter_game(page, match_id: str, expected_seat: int,
+               trace: list[dict] | None = None) -> tuple[dict, str]:
+    observed = {"expected_seat": expected_seat, "phase": "navigate_and_request_attach",
+                "response_observed": False, "http_status": None,
+                "typed_seat_matches": False, "native_status_observed": False,
+                "loader_hidden": False, "actual_canvas_visible": False}
+    if trace is not None:
+        trace.append(observed)
     path = f"/api/v1/matches/{match_id}/attach"
-    with page.expect_response(lambda r: urlsplit(r.url).path == path, timeout=60_000) as result:
-        page.get_by_test_id("online-enter").click()
+    def is_attachment(response):
+        return urlsplit(response.url).path == path and response.request.method == "POST"
+    def attachment_response_observed(response):
+        if is_attachment(response):
+            observed.update({"response_observed": True, "http_status": http_status(response.status)})
+    page.on("response", attachment_response_observed)
+    try:
+        with page.expect_response(is_attachment, timeout=60_000) as result:
+            page.get_by_test_id("online-enter").click()
+    finally:
+        page.remove_listener("response", attachment_response_observed)
     response = result.value
+    observed.update({"response_observed": True, "http_status": http_status(response.status),
+                     "phase": "validate_existing_attach_contract"})
     require(response.status == 200, "actual gameplay attachment failed")
     attachment = response.json()
     require(attachment["seat"] == expected_seat, "browser entered the wrong opponent seat")
+    observed["typed_seat_matches"] = True
     require(not private_frame_keys(attachment), "canonical facts leaked on attach")
+    observed["phase"] = "wait_native_projection_status"
     page.wait_for_function("expected => document.documentElement.dataset.onlineSeat === String(expected)",
                            arg=expected_seat, timeout=60_000)
+    observed["native_status_observed"] = True
+    observed["phase"] = "wait_loader_hidden"
     page.locator("#loader").wait_for(state="hidden", timeout=60_000)
+    observed["loader_hidden"] = True
+    observed["phase"] = "require_actual_canvas_visible"
     require(page.locator("#glcanvas").is_visible(), "WASM game failed to render")
+    observed["actual_canvas_visible"] = True
     grant_body = response.request.post_data
     require(grant_body is not None, "actual grant-bound attachment request was absent")
+    observed["phase"] = "complete"
     return attachment, grant_body
 
 
@@ -525,12 +614,13 @@ def run(args) -> None:
                      "authority_mode": "isolated fixture identities through real durable session authority",
                      "browser_processes": 3, "independent_homes_profiles_cookie_jars": True,
                      "tls_errors_ignored": False, "chromium_sandbox": True,
-                     "moves": [], "startup": {"https_get": {"attempts": 0, "status": None,
+                     "moves": [], "attachments": [], "protected_http": {}, "startup": {"https_get": {"attempts": 0, "status": None,
                                  "fixture_page_ready": False, "last_navigation_failure": "none"},
                                  "enrollment": []}}
     browsers = []
+    lifecycle = {}
     try:
-        with sync_playwright() as playwright:
+        with sync_playwright() as playwright, active_browser_diagnostics(browsers, results, lifecycle):
             results["stage"] = "launch separate Chromium processes with scoped CA trust"
             for role in ("white", "black", "third"):
                 home, profile = setup_browser_trust(private, role, ca)
@@ -543,6 +633,27 @@ def run(args) -> None:
                     reduced_motion="reduce", locale="en-US",
                 )
                 browsers.append(browser)
+                counters = {}
+                results["protected_http"][role] = counters
+                def observe_response(response, counts=counters):
+                    endpoint = protected_endpoint_class(response.url)
+                    status = http_status(response.status)
+                    if endpoint is not None and status is not None:
+                        key = str(status)
+                        bucket = counts.setdefault(endpoint, {})
+                        if len(bucket) < 16 or key in bucket:
+                            bucket[key] = min(bucket.get(key, 0) + 1, 255)
+                browser.on("response", observe_response)
+                def observe_page(page):
+                    if len(lifecycle) >= 16:
+                        return
+                    state = {"crashed": False, "closed": False}
+                    lifecycle[page] = state
+                    page.on("crash", lambda *_: state.update({"crashed": True}))
+                    page.on("close", lambda *_: state.update({"closed": True}))
+                browser.on("page", observe_page)
+                for existing_page in browser.pages:
+                    observe_page(existing_page)
             white, black, third = [browser.new_page() for browser in browsers]
             browser_pids = []
             for browser in browsers:
@@ -680,8 +791,8 @@ def run(args) -> None:
                    {403, 409}, "third player changed a full live opponent roster")
             results["third_client_full_live_roster_join_denied"] = True
             results["stage"] = "attach and render opposing actual browser seats"
-            white_attachment, white_grant_body = enter_game(white, match_id, 0)
-            black_attachment, _black_grant_body = enter_game(black, match_id, 1)
+            white_attachment, white_grant_body = enter_game(white, match_id, 0, results["attachments"])
+            black_attachment, _black_grant_body = enter_game(black, match_id, 1, results["attachments"])
             initial_white = evidence.capture(white, "05-white-initial-board.png", "White independent rendered Chess board", "White browser",
                                              "Actual Rust-decoded seat0 initial projection rendered", canvas=True, secrets=redacted_values)
             evidence.capture(black, "06-black-initial-board.png", "Black independent rendered Chess board", "Black browser",
@@ -850,14 +961,6 @@ def run(args) -> None:
             results["status"] = "pass"
             results["stage"] = "complete"
     finally:
-        if results["status"] != "pass":
-            results["failure_views"] = []
-            for variable, role in ((locals().get("white"), "white"), (locals().get("black"), "black")):
-                try:
-                    if variable is not None and not variable.is_closed() and urlsplit(variable.url).path == "/play/local/":
-                        results["failure_views"].append(visible_game_facts(variable, role))
-                except Exception:
-                    results["failure_views"].append({"role": role, "diagnostic": "unavailable"})
         results["startup"]["processes"] = process_diagnostics(
             private, getattr(args, "native_pid", None), getattr(args, "tls_pid", None))
         (artifacts / "browser-result.json").write_text(json.dumps(results, indent=2) + "\n")
