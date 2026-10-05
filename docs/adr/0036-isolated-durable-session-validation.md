@@ -1,4 +1,4 @@
-# ADR-0035: isolated durable session validation ahead of runtime gates
+# ADR-0036: isolated durable session validation ahead of runtime gates
 
 - **Status:** accepted bounded implementation exception; production remains closed
 - **Date:** 2026-10-04
@@ -10,6 +10,12 @@
   [ADR-0034](0034-kanidm-auth-service-skeleton.md)
 
 ## Context and authorization
+
+The initial draft used 0035, which collides with the separately published
+Werewolf ADR in unmerged PR #69. Before handoff this exception is numbered
+0036; PR #69/#70 are unchanged and remain independent dependencies only where
+actually needed. No phase completion or acceptance of their unmerged code is
+inferred from reserving the identifier.
 
 Fresh source on 2026-10-04 is `develop @
 729417ffb6de4b376d2736bdfbf78c46f455630e`. The account specification and session

@@ -120,7 +120,7 @@ tabula/
 │   ├── tabula-registry/           # compile-time catalog, manifests, ErasedGame, version resolution
 │   ├── tabula-match/              # match actor, mailbox, command pipeline, snapshot policy, ports
 │   ├── tabula-lobby/              # rooms, matchmaking, presence (domain + ports)
-│   ├── tabula-session/            # isolated identity/session policy and ports (ADR-0035)
+│   ├── tabula-session/            # isolated identity/session policy and ports (ADR-0036)
 │   ├── tabula-storage/            # sqlx/Postgres implementations of the ports; migrations
 │   ├── tabula-presentation/       # View → RenderList, input model, animation, layout
 │   ├── tabula-design/             # semantic tokens + theme; css/macroquad adapters (features)
@@ -706,7 +706,7 @@ Adding any of these requires an ADR that names the measurable symptom that force
 
 ### Bounded session implementation exception
 
-[ADR-0035](../adr/0035-isolated-durable-session-validation.md) adds the runtime
+[ADR-0036](../adr/0036-isolated-durable-session-validation.md) adds the runtime
 `tabula-session` library: exact identity keys, redacted opaque credentials,
 checked session lifecycle policy and durable ports. It may depend on
 `tabula-core`, `thiserror`, `sha2`, `base64` and native OS entropy (`getrandom`);

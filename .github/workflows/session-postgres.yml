@@ -1,4 +1,4 @@
-# ADR-0035: isolated validation only. No production binary, provider or deployment.
+# ADR-0036: isolated validation only. No production binary, provider or deployment.
 name: session-postgres
 
 on:

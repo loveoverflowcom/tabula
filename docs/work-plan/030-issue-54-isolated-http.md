@@ -8,7 +8,7 @@ isolated HTTP context and permitted read-only self-profile boundary.
 **Why:** storage receipts cannot prove transport channel separation, CSRF,
 origin, no-store or HTTP authority. Those must precede account-state UI.
 
-**Dependencies:** PR1 exact verified head; ADR-0031/0034/0035. Use an explicit
+**Dependencies:** PR1 exact verified head; ADR-0031/0034/0036. Use an explicit
 stacked base if PR1 is unmerged. Resolve the small proposed HTTP/data contract
 against actual library/storage APIs without inventing handles/statistics or
 interpreting a provider fixture as verified authentication.

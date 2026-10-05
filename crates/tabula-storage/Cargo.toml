@@ -13,11 +13,11 @@ publish.workspace      = true
 # FORBIDDEN: axum, game crates, renderers, tabula-registry.
 [features]
 default = []
-# ADR-0035: isolated durable session validation only. Neither service opts in.
+# ADR-0036: isolated durable session validation only. Neither service opts in.
 session-postgres = ["dep:tabula-session", "dep:sqlx", "dep:uuid"]
 
 # Optional native infrastructure has its own documented MSRV; default/storage
-# and the deterministic SDK retain the workspace declaration (ADR-0035).
+# and the deterministic SDK retain the workspace declaration (ADR-0036).
 [package.metadata.tabula-msrv]
 session-postgres = "1.94"
 
@@ -29,7 +29,7 @@ thiserror       = { workspace = true }
 
 # General Phase 4 storage stays gated. The separate optional session slice uses
 # compile-time-checked SQL and committed PostgreSQL-generated .sqlx/ metadata
-# so native workspace builds need no live database (doc 01 §1.2, ADR-0035).
+# so native workspace builds need no live database (doc 01 §1.2, ADR-0036).
 # sqlx    = { workspace = true }
 # tokio   = { workspace = true }
 # tracing = { workspace = true }

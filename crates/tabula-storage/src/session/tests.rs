@@ -1,4 +1,4 @@
-//! Isolated real-`PostgreSQL` acceptance for the ADR-0035 durable authority slice.
+//! Isolated real-`PostgreSQL` acceptance for the ADR-0036 durable authority slice.
 //!
 //! These tests are deliberately ignored by ordinary workspace runs. CI must run
 //! the non-empty ignored selection with `DATABASE_URL` pointing to its ephemeral

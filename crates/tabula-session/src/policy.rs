@@ -23,7 +23,7 @@ pub struct RawAccountRecord {
 }
 
 /// Checked durable account facts, independent of provider authentication proof.
-/// (ADR-0034/0035)
+/// (ADR-0034/0036)
 #[derive(Clone, PartialEq, Eq)]
 pub struct AccountRecord {
     user_id: UserId,
@@ -118,7 +118,7 @@ impl TryFrom<RawAccountRecord> for AccountRecord {
 }
 
 /// Untrusted session row, containing only a digest, never the bearer credential.
-/// Every adapter must validate it via [`SessionRecord::try_from`] (ADR-0035).
+/// Every adapter must validate it via [`SessionRecord::try_from`] (ADR-0036).
 #[derive(Clone, PartialEq, Eq)]
 pub struct RawSessionRecord {
     pub id: u128,
@@ -466,7 +466,7 @@ impl SessionRecord {
 
     /// Pure activity policy for a successfully ordered effect. A prior observation
     /// alone is insufficient: storage must recheck and commit the protected effect
-    /// and this change under its one authority lock/transaction (ADR-0035).
+    /// and this change under its one authority lock/transaction (ADR-0036).
     pub fn record_activity(
         &mut self,
         account: &AccountRecord,

@@ -30,7 +30,7 @@ pub struct RotateSession {
     pub replacement_digest: CredentialDigest,
 }
 
-/// Durable session lifecycle authority, implemented by storage (ADR-0034/0035).
+/// Durable session lifecycle authority, implemented by storage (ADR-0034/0036).
 ///
 /// Operations sample trusted server time **after** acquiring their ordering
 /// locks. All account/session changes are atomic. Observations persist the clock

@@ -1,6 +1,6 @@
 # Isolated session migrations
 
-ADR-0035 permits these additive migrations for disposable PostgreSQL acceptance
+ADR-0036 permits these additive migrations for disposable PostgreSQL acceptance
 validation only. `PgSessionStore::migrate` explicitly selects this directory;
 neither production service loads it. The future general storage migrations stay
 separate and phase-gated.
@@ -19,5 +19,5 @@ handwritten metadata is not evidence of a compile-time checked query.
 
 Native `session-postgres` uses SQLx 0.9 and requires Rust 1.94; the pinned
 repository toolchain is 1.96. The default storage and deterministic SDK retain
-the workspace 1.85 declaration. ADR-0035 explains the feature-specific policy
+the workspace 1.85 declaration. ADR-0036 explains the feature-specific policy
 and the rejected SQLx 0.8 kernel-entropy unification.

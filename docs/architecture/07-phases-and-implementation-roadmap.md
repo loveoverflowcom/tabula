@@ -600,7 +600,7 @@ Phase 11  "Someone else's game runs safely, and can be revoked in minutes."
 
 ## Isolated #54 implementation exception
 
-[ADR-0035](../adr/0035-isolated-durable-session-validation.md) permits three
+[ADR-0036](../adr/0036-isolated-durable-session-validation.md) permits three
 sequential isolated implementation slices: durable session policy/PostgreSQL
 validation, then HTTP session/self-profile, then account-state/profile UI.
 The first slice does not implement game networking or activate either service.

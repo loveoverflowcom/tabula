@@ -9,7 +9,7 @@ flows use the isolated current-authority HTTP adapter and shared foundation.
 behavior must use authority, not saved mock login or CSS permission flags.
 
 **Dependencies:** PR2 exact verified head; explicit stacked base if unmerged;
-ADR-0031/0035, screens 15/16/20/21 and existing foundation/design references.
+ADR-0031/0036, screens 15/16/20/21 and existing foundation/design references.
 Login, registration and friends remain unavailable until their actual backend
 contracts are ready. This does not close every #54 acceptance criterion.
 

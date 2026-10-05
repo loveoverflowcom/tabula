@@ -2,7 +2,7 @@
 
 Source: `develop @ 729417ffb6de4b376d2736bdfbf78c46f455630e`, rechecked
 2026-10-04 and 2026-10-05. Authorized boundary:
-[ADR-0035](../../adr/0035-isolated-durable-session-validation.md).
+[ADR-0036](../../adr/0036-isolated-durable-session-validation.md).
 
 This is the first of three new implementation PRs, following the merged
 specification/session-policy/service frames. It provides checked internal
@@ -51,7 +51,7 @@ unavailable; real DB cases execute in the disposable CI service.
 - `cargo check --workspace --no-default-features` and `--all-features`: PASS
 - Game-client web-feature and web-shell `wasm32-unknown-unknown` checks: PASS
 - `cargo build -p tabula-auth -p tabula-server`, then both binaries: compiled, each exits 1 with its original closed gate and no listener
-- Workspace formatting/whitespace, 59 relative link targets, skill drift and its 32 + 6 validator tests: PASS
+- Workspace formatting/whitespace, 62 relative link targets, skill drift and its 32 + 6 validator tests: PASS
 - Independent source/security/metadata review: no remaining blocking finding
 
 The aggregate's default storage target selects no DB cases. Ignored/empty
@@ -89,3 +89,13 @@ upgrade/grants, private delivery/connection fences, anti-enumeration, native
 secure stores, browser BFCache/AT/IME/password-manager and UI layout remain
 NOT_IMPLEMENTED/NOT_RUN. Production services, registration/friends and phase
 exits remain gated. Account-free existing local play is unchanged.
+
+## ADR identifier reconciliation
+
+The preliminary draft used 0035, already occupied by independent unmerged
+Werewolf PR #69. This exception is ADR-0036 after an explicit correction; all
+owned filename/index/code/test references were updated without changing PR
+#69/#70, session behavior or any of the 13 query descriptions. The canonical
+aggregate, feature modes, target checks and all-feature deny were rerun after
+this correction. Publication records new-head CI separately from the historical
+13/13 passing 44a86f4 runs.

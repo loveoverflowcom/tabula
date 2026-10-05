@@ -151,7 +151,7 @@ db-migrate:
 sqlx-prepare:
     cargo sqlx prepare --workspace -- --all-targets
 
-# ADR-0035 isolated adapter; requires migrated disposable PostgreSQL via DATABASE_URL.
+# ADR-0036 isolated adapter; requires migrated disposable PostgreSQL via DATABASE_URL.
 sqlx-prepare-session:
     cargo sqlx prepare --workspace -- --package tabula-storage --features session-postgres --all-targets
 

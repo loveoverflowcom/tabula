@@ -1,4 +1,4 @@
--- ADR-0035 isolated validation slice. Additive only. Kanidm owns credentials;
+-- ADR-0036 isolated validation slice. Additive only. Kanidm owns credentials;
 -- no password, provider token, e-mail matching or plaintext session is stored.
 CREATE TABLE session_accounts (
     user_id UUID PRIMARY KEY,

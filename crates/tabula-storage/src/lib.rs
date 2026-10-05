@@ -7,7 +7,7 @@
 //! inverts that: the ports end up shaped by SQL, and the fast test suite never
 //! materialises. Build ports → fakes → runtime → **then** this crate.
 //!
-//! ADR-0035 opens one narrower exception: the non-default, native-only
+//! ADR-0036 opens one narrower exception: the non-default, native-only
 //! `session-postgres` feature provides durable identity/session authority for
 //! isolated validation. Its explicit migrations live in `session_migrations/`;
 //! the general schema below and both production service entrypoints stay gated.
@@ -19,7 +19,7 @@
 //! `sqlx` with the macros and a **committed `.sqlx/`** directory, so the
 //! workspace builds in CI and on a fresh checkout without a live database
 //! (doc 01 §1.2). Regenerate future workspace queries with `just sqlx-prepare`.
-//! The opt-in ADR-0035 session adapter uses `just sqlx-prepare-session` against
+//! The opt-in ADR-0036 session adapter uses `just sqlx-prepare-session` against
 //! its explicitly migrated disposable `PostgreSQL` database.
 //!
 //! If macro compile times become painful, fall back to `sqlx::query` with
@@ -103,7 +103,7 @@
 
 #![forbid(unsafe_code)]
 
-/// Isolated PostgreSQL identity/session authority (ADR-0035).
+/// Isolated PostgreSQL identity/session authority (ADR-0036).
 ///
 /// This optional slice does not enable either production service or private
 /// outbound delivery. Observations are snapshots, never later-effect permits.

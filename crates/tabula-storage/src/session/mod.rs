@@ -1,4 +1,4 @@
-//! Durable PostgreSQL session authority for isolated ADR-0035 validation.
+//! Durable PostgreSQL session authority for isolated ADR-0036 validation.
 //!
 //! Every state-changing boundary uses READ COMMITTED and the order account
 //! `FOR UPDATE` → session `FOR UPDATE` → protected resource. Candidate digest
@@ -26,7 +26,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-/// `PostgreSQL` implementation of the internal durable authority port (ADR-0035).
+/// `PostgreSQL` implementation of the internal durable authority port (ADR-0036).
 ///
 /// The caller owns pool configuration and explicit migration opt-in. Neither
 /// constructing this adapter nor observing it activates provider login, HTTP,
@@ -126,7 +126,7 @@ impl PgSessionStore {
     }
 
     /// Explicitly applies only the additive, isolated session migrations.
-    /// Production bootstrap does not call this (ADR-0035).
+    /// Production bootstrap does not call this (ADR-0036).
     pub async fn migrate(&self) -> Result<(), SessionError> {
         sqlx::migrate!("./session_migrations")
             .run(&self.pool)

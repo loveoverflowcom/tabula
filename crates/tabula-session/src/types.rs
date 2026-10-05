@@ -1,7 +1,7 @@
 use std::fmt;
 
 /// Generic boundary outcomes, with no identity, credential or storage detail.
-/// (ADR-0031 §3, ADR-0035)
+/// (ADR-0031 §3, ADR-0036)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum SessionError {
     #[error("unauthenticated")]
@@ -89,7 +89,7 @@ macro_rules! bounded_counter {
 
 bounded_counter!(
     UnixMillis,
-    "Server wall-clock milliseconds, sampled inside the adapter's ordering boundary (ADR-0035)."
+    "Server wall-clock milliseconds, sampled inside the adapter's ordering boundary (ADR-0036)."
 );
 bounded_counter!(
     AccountEpoch,
@@ -148,7 +148,7 @@ macro_rules! nonzero_id {
 }
 
 nonzero_id!(AuthSessionId, "Internal durable session record identity; never a credential or connection routing ID (ADR-0031 §1).");
-nonzero_id!(SessionContextId, "Stable non-authorizing session context binding ID. This is not a CSRF token, bearer or token verifier; token issuance stays gated (ADR-0035).");
+nonzero_id!(SessionContextId, "Stable non-authorizing session context binding ID. This is not a CSRF token, bearer or token verifier; token issuance stays gated (ADR-0036).");
 
 /// The credential transport channel; browser and native cannot cross-use it.
 /// (ADR-0031 §2–§3)

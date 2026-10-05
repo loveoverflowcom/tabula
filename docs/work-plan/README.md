@@ -64,7 +64,7 @@ account services. Passing aggregate checks does not close #54 or open Phase 4/5.
 
 ## Authorized isolated #54 implementation series
 
-[ADR-0035](../adr/0035-isolated-durable-session-validation.md) records the owner's
+[ADR-0036](../adr/0036-isolated-durable-session-validation.md) records the owner's
 bounded exception without opening production or claiming phase exits. These are
 three new implementation PRs; the merged specifications/ADR/service frames are
 prerequisites and are not counted again:

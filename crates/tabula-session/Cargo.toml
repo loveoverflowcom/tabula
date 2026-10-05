@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
-# ADR-0035 opens this isolated foundation only. No framework, SQL, service,
+# ADR-0036 opens this isolated foundation only. No framework, SQL, service,
 # provider, wire format, or production bootstrap belongs here.
 [dependencies]
 tabula-core = { workspace = true }

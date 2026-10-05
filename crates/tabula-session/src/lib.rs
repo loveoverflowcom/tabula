@@ -1,6 +1,6 @@
 //! Internal auth-session lifecycle policy and durable authority ports.
 //!
-//! ADR-0035 opens only this isolated foundation of Phase 4. Both service
+//! ADR-0036 opens only this isolated foundation of Phase 4. Both service
 //! bootstraps, provider verification, HTTP/WS enforcement, CSRF issuance and
 //! production deployment remain gated. This library is owned by the auth
 //! lifecycle boundary in ADR-0034, never by deterministic game rules.
