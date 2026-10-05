@@ -165,9 +165,9 @@ forbidden_categories = ["rendering", "ui_framework", "web_framework", "networkin
 
 [crate."tabula-session-http"]
 tier = "runtime"
-# core/tower are native test-only dependencies for authority/wire boundaries.
-allow = ["serde", "serde_json", "tabula-core", "tower"]
-feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body"], postgres = ["tabula-storage", "sqlx"] }
+# core/tower/proptest are native test-only authority/wire/Origin evidence.
+allow = ["serde", "serde_json", "tabula-core", "tower", "proptest"]
+feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body", "url"], postgres = ["tabula-storage", "sqlx"] }
 forbidden_categories = ["rendering", "ui_framework", "application", "game_specific"]
 
 [crate."tabula-storage"]

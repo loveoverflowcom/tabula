@@ -85,3 +85,12 @@ production work is still the existing prerequisite/backlog work, including
 actual provider/TLS/cookie/AT/BFCache evidence, bounded non-secret cross-reload
 logout suppression and live deadline/revocation delivery. Do not extend the
 exception into voice, invitations or provider provisioning by inference.
+
+## Review #74 follow-up
+
+The merged-tree review's confirmed P3 configuration finding is handled by
+[canonical trusted HTTPS Origin validation](050-issue-74-trusted-origin.md),
+with [its own evidence](../verification/issue-74-trusted-origin/README.md).
+The [remaining review follow-ups](backlog/issue-74-session-followups.md) retain
+G2→G1→G3→G4/G5 ordering and their prerequisites. This fix neither depends on
+unmerged native voice work nor opens account-dependent production consumers.

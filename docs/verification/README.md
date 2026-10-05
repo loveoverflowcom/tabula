@@ -18,6 +18,7 @@ shared evidence/status vocabulary.
 | [Isolated session foundation](issue-54-session-foundation/README.md) | ADR-0036 bounded policy and genuine PostgreSQL authority evidence |
 | [Isolated session HTTP](issue-54-isolated-http/README.md) | Current credential/CSRF/context/self-profile and bounded server-frame evidence |
 | [Isolated account-state shell](issue-54-account-state-ui/README.md) | Third isolated slice; browser-memory lifecycle, typed adapter consumption and remaining platform gates |
+| [Trusted HTTPS Origin](issue-74-trusted-origin/README.md) | #74 F1 fail-fast configuration, constructor/property/wire regressions and remaining session-review gates |
 
 UI-specific ledgers remain beside their contracts in
 [`docs/ui/screens/`](../ui/screens/README.md). Optional tool installation and
