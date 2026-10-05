@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO session_auth_sessions (id, user_id, authorization_epoch, channel, credential_generation,\n       credential_digest, context_id, created_at_ms, last_activity_at_ms,\n       last_observed_at_ms, idle_deadline_ms, absolute_deadline_ms,\n       revoked_at_ms, expired_at_ms)\nVALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Text",
+        "Int8",
+        "Bytea",
+        "Uuid",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8757b7d604fbe75bef011b9ccd5e46c18777fd1637ddbc5e344b1a02667194a2"
+}

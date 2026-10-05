@@ -1,6 +1,6 @@
 # Issue #54 PR1 — durable session authority
 
-**Status:** implementing the owner-authorized isolated exception in ADR-0035.
+**Status:** implemented and locally validated under ADR-0035; final metadata-import head CI must pass before the next PR starts.
 
 **Outcome:** checked internal session policy and an opt-in PostgreSQL adapter
 provide durable expiry, verifier rotation, current-device revocation and account

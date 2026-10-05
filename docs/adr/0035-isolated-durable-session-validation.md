@@ -58,7 +58,7 @@ The shared library keeps provider/session policy out of deterministic game
 contracts and wire types. Services remain leaves. SQL, migrations and row
 mapping remain exclusively in storage. Dependencies and doc 00's matrix are
 updated with this owner. The coarse cargo-deny entropy wrapper allow-list adds
-only `tabula-session`; deterministic I-1/I-4 bans remain unchanged in the
+`tabula-session` and SQLx 0.9's `rand` 0.10 SCRAM wrapper; deterministic I-1/I-4 bans remain unchanged in the
 per-crate resolved graph. SQLx 0.8 was rejected by that actual gate: its
 PostgreSQL `rand` 0.8 feature unification enabled OS entropy on the kernel
 `rand_core` 0.6 dependency. The optional native adapter and metadata CLI use

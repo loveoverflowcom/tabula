@@ -1,83 +1,91 @@
 # Issue #54 PR1 — isolated durable session foundation
 
-Source: `develop @ 729417ffb6de4b376d2736bdfbf78c46f455630e`, 2026-10-04.
-Authorized boundary: [ADR-0035](../../adr/0035-isolated-durable-session-validation.md).
+Source: `develop @ 729417ffb6de4b376d2736bdfbf78c46f455630e`, rechecked
+2026-10-04 and 2026-10-05. Authorized boundary:
+[ADR-0035](../../adr/0035-isolated-durable-session-validation.md).
 
-The first of three new implementation PRs provides internal session policy and
-an opt-in real PostgreSQL authority adapter. Both service entrypoints remain
-closed. Provider identity fixtures are synthetic; structural key validation is
-not authentication. No browser/native login, production listener, deployment,
-profile/social UI or phase exit is claimed.
+This is the first of three new implementation PRs, following the merged
+specification/session-policy/service frames. It provides checked internal
+session policy and an opt-in native PostgreSQL authority adapter. Both service
+entrypoints remain closed. Provider fixtures are synthetic; identity-key
+structure is not authentication. No production migration/listener/deployment,
+account/profile/social UI, whole-issue completion or phase exit is claimed.
 
-## Claims and independent oracles
+## Claims and executed evidence
 
-| Claim | Owner / failure | Evidence | Residual |
+| Claim | Owner / failure and independent oracle | Evidence | Residual |
 |---|---|---|---|
-| Canonical opaque credentials, digest-only persistence and redaction | session credential boundary; public record IDs/alternate encodings/secrets in diagnostics | Focused constructor/digest/entropy and real-row checks; exact result recorded in PR | Real provider, cookie/native store and transport remain gated |
-| Checked identity/session storage | exact issuer+subject and validated raw rows; email merge, corruption or invalid arithmetic | Real migrations/uniqueness/row conversion tests; exact result recorded in PR | No handle/registration/privilege policy |
-| Expiry and activity classification | pure policy + locked storage; deadline equality, lock waits, regression, revival | Literal boundary oracles, durable terminal expiry, independent adapters and fixed-clock controls | Trustworthy deployment clock and silent socket timer unproven |
-| Rotation / revocation / epoch ordering | account→session locking and CAS; duplicate winner or stale authority | Barrier-controlled PostgreSQL interleavings in both orders; durable marker is storage-private | Database commit fence is only partial S09; actual private output/WS fence NOT_IMPLEMENTED |
-| Honest commit failures | transaction owner; rolled-back or uncertain result reported successful | Precommit and lost-ack controls fail closed; exact result recorded in PR | Fault hook models lost acknowledgement, not a real network fault campaign |
-| Gates and dependency direction | new runtime owner + optional SQL feature | Aggregate, matrix, targets and unchanged service failure exits | No Phase 2/3/4/5 exit or whole #54 completion |
+| Canonical opaque credentials and redaction | session credential boundary; alternate encoding/public ID/entropy failure/digest disclosure | PASS: 21 focused core tests, literal SHA-256/encoding vectors, checked raw records and real digest-only row inspection | Real provider, browser cookie, native store and transport remain gated |
+| Exact identity/session storage | issuer+subject linkage, UTF-8 byte bounds, reassignment/corruption | PASS: real PostgreSQL migrations repeated, high-variation maximum keys, explicit row corruption and fixture rollback | No handle/registration/privilege policy |
+| Expiry and activity classification | deadline equality, stale sampled time, resource waits, regression or revival | PASS: literal boundaries, terminal expiry/rejection floors across independent adapters, both injected clock and actual post-lock database clock | Deployment-clock guarantees and silent socket expiry unproven |
+| Rotation/revocation/epoch ordering | duplicate refresh winner, stale issuance/authority, effect ordered after revoke | PASS: 19 real PostgreSQL cases with independent backend PIDs and observed lock graphs; both commit orders, immediate old-verifier rejection, stable binding, device revoke and epoch fencing | Protected marker is storage-private; actual HTTP/WS/private-output S09 fence NOT_IMPLEMENTED |
+| Honest commit failures | rollback or lost acknowledgement reported successful | PASS: precommit rollback and simulated postcommit lost-ack controls; no known-success snapshot on uncertainty | This is a test fault hook, not a network fault campaign or browser credential-release test |
+| Dependency/gate honesty | shell entropy reaches kernel, activated production or fabricated receipt | PASS: 27-crate all-feature resolved dependency gate, all-feature deny, unchanged service sources and actual failure exits | No provider/output/phase proof |
 
-## Commands and execution boundary
+Real PostgreSQL 16 receipt: [session-postgres run 37247778233](https://github.com/loveoverflowcom/tabula/actions/runs/37247778233),
+job 111568997384. CLI 0.9.0 migration/prepare and **19 passed, 0 failed,
+0 ignored, 0 filtered** cases succeeded. The overall bootstrap job failed only
+because metadata was not yet committed; its final offline step was skipped.
+It is not reported as a successful complete CI run.
 
-Existing toolchain: Rust 1.96.1, two build jobs, incremental disabled and dev/test
-debug information disabled. Local PostgreSQL, psql/container tools and nextest
-are unavailable. The canonical local `cargo xtask check` uses `cargo test`.
+That run is associated with head `ec4027aa95b1f438e8307e61121e6e944cad7546`.
+Actions checked synthetic merge `8fe36757aaadb1b5ca562841a0abdd11e4f5c28c`;
+its tree `daf3ac5a10e09c853ea59b5a276f11f5e2032dbe` equals the head tree against
+unchanged develop. The 13 unchanged query descriptions were imported from its
+authenticated artifact; ZIP digest, every filename/internal query hash and
+current SQL source bytes were independently verified. See
+[offline-cache provenance](../../../.sqlx/README.md).
 
-- `cargo test -p tabula-session`
-- `cargo xtask check`
-- `cargo check --workspace --no-default-features`
-- `cargo check --workspace --all-features`
-- `cargo check -p tabula-game-client --target wasm32-unknown-unknown --no-default-features --features web`
-- `cargo check -p tabula-web --target wasm32-unknown-unknown`
-- CI: `cargo sqlx migrate run --source crates/tabula-storage/session_migrations`
-- CI: `cargo sqlx prepare --workspace -- --package tabula-storage --features session-postgres --all-targets`
-- CI: `cargo test -p tabula-storage --features session-postgres session::tests:: -- --ignored --test-threads=2`
+## Final-content local receipts
 
-DB tests are deliberately ignored by ordinary offline workspace runs. CI selects
-them explicitly against an ephemeral PostgreSQL 16 service, requires setup to
-succeed, regenerates actual query descriptions and compares committed metadata.
-Ignored/zero-selected tests are never reported as PASS. Publication records each
-command, exact final head/tree and final CI links in the PR description.
+Existing Rust 1.96.1 toolchain, two build jobs, incremental disabled and dev/test
+debug information disabled. SQLX_OFFLINE=true; no DATABASE_URL or historical
+metadata-directory override. Local PostgreSQL/client/container/nextest are
+unavailable; real DB cases execute in the disposable CI service.
 
-S01/S02/S07/S08/S09 are addressed only within policy/storage domains. Real HTTP,
-CSRF, upgrade/grants, private delivery, provider anti-enumeration, browser
-BFCache/AT/IME/password manager, native secure stores and UI layout are
-NOT_IMPLEMENTED/NOT_RUN. No fallback auth, plaintext credentials or fabricated
-provider login is introduced.
-
-## Historical initial local receipts before metadata bootstrap
-
-- Focused core policy/credential tests: PASS, 21 passed, 0 failed, 0 ignored
+- `cargo test -p tabula-session`: PASS, 21 passed, 0 failed/ignored
 - Core strict all-target Clippy and focused WASM compilation: PASS
-- Workspace formatting, whitespace, maintained-skill check and its 32 + 6 validator tests: PASS
-- Cargo-deny advisories/bans/licenses/sources: PASS after adding only the approved runtime session entropy wrapper; deterministic bans remain
-- Resolved dependency metadata: PASS; newly added packages do not exceed the unchanged declared Rust 1.85 bound. This is metadata inspection, not an executed 1.85 build
-- Default storage target: compiled, 0 unit/0 doc tests selected; no behavioral test claim
-- Real PostgreSQL: 19 ignored cases implemented, NOT_RUN locally. Authentic offline query metadata and final aggregate/feature/head CI remain pending
+- `cargo check -p tabula-storage --features session-postgres --all-targets`: PASS using the authentic 0.9 cache
+- `cargo xtask check`: PASS, ordered fmt, all-target/all-feature Clippy, workspace tests and internal/deny gates; 1,025 passed, 0 failed, 21 ignored across 75 Rust summaries, 44 non-empty
+- `cargo deny --all-features check`: PASS advisories/bans/licenses/sources; existing non-failing duplicate-version warnings
+- `cargo check --workspace --no-default-features` and `--all-features`: PASS
+- Game-client web-feature and web-shell `wasm32-unknown-unknown` checks: PASS
+- `cargo build -p tabula-auth -p tabula-server`, then both binaries: compiled, each exits 1 with its original closed gate and no listener
+- Workspace formatting/whitespace, 59 relative link targets, skill drift and its 32 + 6 validator tests: PASS
+- Independent source/security/metadata review: no remaining blocking finding
 
-Initial publication exists to generate actual PostgreSQL query descriptions in
-CI; missing metadata may fail preliminary optional-feature gates. Such a run is
-not reported as PASS. The final PR description records subsequent authentic
-metadata import, repaired checks and terminal exact-head results.
+The aggregate's default storage target selects no DB cases. Ignored/empty
+targets never establish behavior; the separately executed 19-case CI receipt
+supplies database evidence. The dedicated workflow enforces non-empty ignored
+inventory, actual setup, regeneration/comparison of committed metadata and
+subsequent offline compilation. Final publication/CI are recorded at their
+exact head in the PR description, including tested-merge/tree equivalence.
 
-## Bootstrap architecture repair
+## Bootstrap repairs and compatibility
 
-The first actual dependency check rejected SQLx 0.8: PostgreSQL RNG feature
-unification introduced a kernel → rand_core → OS-entropy path. I-1 was not
-weakened. The isolated native adapter/CLI now use official SQLx 0.9 and carry
-an explicit feature-specific Rust 1.94 requirement; the pinned build toolchain
-is 1.96, and workspace/default storage/game SDK remain declared 1.85. Final
-resolved-graph and CI receipts must verify that repair. Preliminary 0.8 metadata
-was genuinely generated against PostgreSQL but is historical, not final 0.9
-verification.
+Initial SQLx 0.8 violated I-1 through PostgreSQL RNG feature unification with
+kernel rand_core 0.6. I-1 was not weakened: official SQLx 0.9 uses a separate
+runtime RNG package, and the final resolved graph leaves the kernel without OS
+entropy. The opt-in native feature explicitly requires Rust 1.94; the pinned
+toolchain is 1.96 and workspace/default storage/game SDK retain declared 1.85.
+No executed Rust 1.85 build is claimed.
 
-The repaired SQLx 0.9 resolved graph passes `cargo xtask check-deps`: 27
-workspace crates, no violations. Direct transitive inspection confirms the
-core/game-api reach only kernel `rand_core` 0.6 without OS entropy. Cargo-deny
-advisories/bans/licenses/sources also pass on this repaired graph. SQLx 0.9
-source/all-target compilation initially used authentic historical 0.8 query
-descriptions for diagnostics only; the final metadata generation and exact-head
-DB/aggregate receipts are still required.
+The coarse deny wrappers add the runtime session owner and SQLx 0.9's direct
+rand 0.10 SCRAM wrapper; deterministic reachability remains forbidden by the
+unchanged per-crate gate. Default-graph deny success is not substituted for
+all-feature verification. Preliminary container health quoting, hidden-artifact
+upload, test connection lifetime and documentation lints were repaired; early
+failed/incomplete runs are historical rather than final passes. Authentic 0.8
+metadata was used temporarily for source diagnostics only and is not the
+committed 0.9 cache.
+
+## Remaining security and product gates
+
+S01/S02/S07/S08/S09 are addressed only in policy/storage domains. A context
+binding ID is not a CSRF token; an observation/binding is trusted internal
+historical data, never raw HTTP credential proof or a later effect permit.
+Real provider authentication/auth-time synchronization, HTTP/CSRF/no-store,
+upgrade/grants, private delivery/connection fences, anti-enumeration, native
+secure stores, browser BFCache/AT/IME/password-manager and UI layout remain
+NOT_IMPLEMENTED/NOT_RUN. Production services, registration/friends and phase
+exits remain gated. Account-free existing local play is unchanged.

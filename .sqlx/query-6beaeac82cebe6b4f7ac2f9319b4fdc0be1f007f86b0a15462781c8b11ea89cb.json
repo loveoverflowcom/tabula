@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO session_provider_identities (issuer, subject, user_id)\nVALUES ($1, $2, $3) ON CONFLICT (issuer, subject) DO NOTHING\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6beaeac82cebe6b4f7ac2f9319b4fdc0be1f007f86b0a15462781c8b11ea89cb"
+}
