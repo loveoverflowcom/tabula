@@ -133,6 +133,9 @@ impl ConfigDraft {
     }
 
     #[must_use]
+    /// Raw key inventory for strict declarative form-boundary validation.
+    pub fn keys(&self) -> impl Iterator<Item = &str> { self.values.keys().map(String::as_str) }
+
     pub fn get(&self, key: &str) -> Option<&str> {
         self.values.get(key).map(String::as_str)
     }
@@ -248,6 +251,8 @@ pub enum TimeControlKind {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormalizedConfig {
     pub(crate) summary: Vec<SummaryLine>,
+    /// Typed config encoded after module validation, never client authority.
+    pub(crate) canonical_config: Vec<u8>,
     /// Canonical, adapter-produced launch arguments for the gameplay document.
     ///
     /// The shell forwards these verbatim; it does not read or rewrite them, so
@@ -259,6 +264,11 @@ pub struct NormalizedConfig {
 }
 
 impl NormalizedConfig {
+    /// Validated config for the server factory. The server must re-normalize
+    /// the raw request rather than trust bytes supplied by a browser.
+    #[must_use]
+    pub fn canonical_config(&self) -> &[u8] { &self.canonical_config }
+
     /// The exact validated summary. Consumers cannot change it independently
     /// of the launch arguments it describes.
     #[must_use]
