@@ -73,9 +73,11 @@ impl std::fmt::Debug for SelfProfileSnapshot {
 /// before and after synchronous first-frame construction. Cleanup is independent
 /// of construction; an expired callback result is suppressed. Keep the
 /// guard in the response body through its first frame. The callback must build one
-/// bounded frame synchronously without blocking or awaiting. It must be pure
-/// frame construction with no external I/O, transmission or other side effects.
-/// The guard rechecks expiry after construction and drops an expired result.
+/// bounded private frame/candidate synchronously without blocking or awaiting.
+/// ADR-0041 permits private candidate staging only when it is unreleasable until
+/// guard success and is discarded on failure. No external I/O, transmission or
+/// irreversible effect is allowed. The guard rechecks expiry after construction
+/// and drops an expired result.
 ///
 /// This fences the server body handoff, not arrival of already released/buffered
 /// bytes, TCP client receipt, subsequent frames, `WebSockets` or all of S09.

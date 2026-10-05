@@ -135,6 +135,8 @@ pub enum Exit {
     RulesPanic,
     ProjectionFailed,
     CounterExhausted,
+    /// A final apply guard failed; candidate state may have been touched.
+    AuthorityLost,
 }
 
 /// Host-only known-committed counters, never serialized on the wire.
@@ -187,6 +189,12 @@ pub struct MatchHandle {
 }
 
 impl MatchHandle {
+    /// Current mailbox liveness, without inventing an owner recovery cursor.
+    /// Native adapters retire subscriptions when the sole owner closes (doc03 §6).
+    pub fn is_closed(&self) -> bool {
+        self.tx.is_closed()
+    }
+
     fn permit(&self, session: SessionId) -> Result<Permit, AdmissionError> {
         let mut counts = self
             .admission
@@ -793,6 +801,14 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
             },
         )
         .map_err(|_| Exit::ProjectionFailed)?;
+        if self
+            .authority
+            .prepare(&binding, Purpose::Observe(viewer))
+            .await
+            .is_err()
+        {
+            return Ok(Completion::Suppressed);
+        }
         let submitted = self
             .authority
             .with_current(&binding, Purpose::Observe(viewer), || {
@@ -816,7 +832,7 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         Ok(Completion::Submitted)
     }
 
-    fn reply(
+    async fn reply(
         &mut self,
         binding: &Binding,
         corr: u64,
@@ -839,6 +855,15 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         };
         let frame = ServerEnvelope::new(Some(corr), frame_index, body)
             .map_err(|_| Exit::ProjectionFailed)?;
+        if self
+            .authority
+            .prepare(binding, Purpose::Receipt(attached.viewer))
+            .await
+            .is_err()
+        {
+            self.attached.remove(&binding.session);
+            return Ok(Completion::Suppressed);
+        }
         let submitted =
             self.authority
                 .with_current(binding, Purpose::Receipt(attached.viewer), || {
@@ -943,7 +968,9 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
             return Ok(Completion::Suppressed);
         };
         let ClientViewer::Seat(seat) = attached.viewer else {
-            return self.reply(&binding, corr, seq, Err(ErrorCode::Unauthorized));
+            return self
+                .reply(&binding, corr, seq, Err(ErrorCode::Unauthorized))
+                .await;
         };
         if self
             .authority
@@ -958,13 +985,13 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         self.observed_ms = now_ms;
         if let Some(result) = self.check_sequence(scope, &command, now_ms) {
             self.persist_ledger().await?;
-            return self.reply(&binding, corr, seq, result);
+            return self.reply(&binding, corr, seq, result).await;
         }
         let rejection = self.command_rejection(&command);
         if let Some(error) = rejection {
             self.remember(scope, &command, Err(error), now_ms, None);
             self.persist_ledger().await?;
-            return self.reply(&binding, corr, seq, Err(error));
+            return self.reply(&binding, corr, seq, Err(error)).await;
         }
         let index = InputIndex(self.index.0.checked_add(1).ok_or(Exit::CounterExhausted)?);
         let version = StateVersion(
@@ -987,10 +1014,10 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
                 }))
             });
         let transition = match applied {
-            Err(_) => {
-                self.detach(&binding);
-                return Ok(Completion::Suppressed);
-            }
+            // A bounded native permit may fail its post-callback deadline
+            // check after apply touched state. Stop this owner; only recovery
+            // may reconstruct the known committed prefix (ADR-0041).
+            Err(_) => return Err(Exit::AuthorityLost),
             Ok(Err(_)) => return Err(Exit::RulesPanic),
             Ok(Ok(Err(error))) => {
                 let error = match error {
@@ -1002,7 +1029,7 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
                 };
                 self.remember(scope, &command, Err(error), now_ms, None);
                 self.persist_ledger().await?;
-                return self.reply(&binding, corr, seq, Err(error));
+                return self.reply(&binding, corr, seq, Err(error)).await;
             }
             Ok(Ok(Ok(transition))) => transition,
         };
@@ -1023,8 +1050,8 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         )?;
         self.commit(record, transition.effects).await?;
         let updates = self.prepare_updates(&transition.events)?;
-        let reply = self.reply(&binding, corr, seq, Ok(()))?;
-        self.publish_updates(updates);
+        let reply = self.reply(&binding, corr, seq, Ok(())).await?;
+        self.publish_updates(updates).await;
         Ok(reply)
     }
 
@@ -1060,7 +1087,7 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         )?;
         self.commit(record, transition.effects).await?;
         let updates = self.prepare_updates(&transition.events)?;
-        self.publish_updates(updates);
+        self.publish_updates(updates).await;
         Ok(Completion::Submitted)
     }
 
@@ -1107,7 +1134,7 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         Ok(updates)
     }
 
-    fn publish_updates(&mut self, updates: Vec<PendingUpdate>) {
+    async fn publish_updates(&mut self, updates: Vec<PendingUpdate>) {
         let mut lost = Vec::new();
         for update in updates {
             let Some(attached) = self.attached.get_mut(&update.session) else {
@@ -1128,6 +1155,15 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
                 };
                 frame
             };
+            if self
+                .authority
+                .prepare(&attached.binding, Purpose::Observe(attached.viewer))
+                .await
+                .is_err()
+            {
+                lost.push(update.session);
+                continue;
+            }
             let submitted = self.authority.with_current(
                 &attached.binding,
                 Purpose::Observe(attached.viewer),
