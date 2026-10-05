@@ -21,8 +21,9 @@ import threading
 import time
 from urllib.parse import urlsplit
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import TimeoutError as BrowserTimeout, sync_playwright
 from capture_evidence import CaptureEvidence
+from startup_diagnostics import http_status, navigation_failure, origin_class, process_diagnostics
 
 ORIGIN = "https://localhost:9443"
 SESSION_COOKIE = "__Host-tabula_session"
@@ -418,6 +419,37 @@ def wait_revision(page, revision: int) -> None:
                            arg=revision, timeout=30_000)
 
 
+def enroll_actual_page(page, role: str, results: dict) -> None:
+    require(role in ("white", "black", "third"), "unknown disposable browser role")
+    results["stage"] = f"submit {role} actual enrollment form"
+    observed = {"role": role, "status": None, "origin_class": "not_observed",
+                "form_media_type_expected": False, "redirect_completed": False}
+    results["startup"]["enrollment"].append(observed)
+    def is_enrollment(response):
+        return urlsplit(response.url).path == "/__fixture/enroll" and response.request.method == "POST"
+    def response_observed(response):
+        if is_enrollment(response):
+            observed.update({"status": http_status(response.status),
+                             "origin_class": origin_class(response.request.header_value("origin"), ORIGIN),
+                             "form_media_type_expected": (response.request.header_value("content-type") or "").split(";")[0].strip().lower() == "application/x-www-form-urlencoded"})
+    page.on("response", response_observed)
+    try:
+        with page.expect_response(is_enrollment, timeout=20_000) as submitted:
+            page.get_by_test_id("fixture-enroll").click(timeout=20_000)
+        response = submitted.value
+        response_observed(response)
+    finally:
+        page.remove_listener("response", response_observed)
+    # A denied real form must fail here, rather than disappear into a generic
+    # 60s redirect timeout. Header values and response bodies remain private.
+    require(observed["origin_class"] == "exact", "actual enrollment form did not carry exact HTTPS Origin")
+    require(observed["form_media_type_expected"], "actual enrollment form media type was unexpected")
+    require(response.status == 303, "actual enrollment form was rejected before session issuance redirect")
+    results["stage"] = f"complete {role} enrollment redirect"
+    page.wait_for_url(ORIGIN + GAME_PATH, timeout=30_000)
+    observed["redirect_completed"] = True
+
+
 def run(args) -> None:
     require(os.environ.get("CI") in ("true", "1")
             and os.environ.get("TABULA_ONLINE_MATCH_DISPOSABLE") == "1",
@@ -429,7 +461,10 @@ def run(args) -> None:
     results: dict = {"status": "fail", "stage": "start",
                      "authority_mode": "isolated fixture identities through real durable session authority",
                      "browser_processes": 3, "independent_homes_profiles_cookie_jars": True,
-                     "tls_errors_ignored": False, "chromium_sandbox": True}
+                     "tls_errors_ignored": False, "chromium_sandbox": True,
+                     "startup": {"https_get": {"attempts": 0, "status": None,
+                                 "fixture_page_ready": False, "last_navigation_failure": "none"},
+                                 "enrollment": []}}
     browsers = []
     try:
         with sync_playwright() as playwright:
@@ -458,19 +493,35 @@ def run(args) -> None:
                     inspector.detach()
             require(len(set(browser_pids)) == 3, "acceptance contexts share an actual browser process")
             results["distinct_actual_browser_processes_verified"] = True
+            results["chromium_version"] = browsers[0].browser.version
             # Navigation validates TLS in actual Chromium. Before issuance there
             # is no interception, route mock, cookie injection or shared storageState.
-            results["stage"] = "validate HTTPS and issue independent sessions through actual pages"
+            results["stage"] = "validate HTTPS enrollment document in actual Chromium"
+            probe = results["startup"]["https_get"]
+            def failed_navigation(request):
+                if request.method == "GET" and request.url == ORIGIN + "/__fixture/enroll":
+                    probe["last_navigation_failure"] = navigation_failure(request.failure)
+            white.on("requestfailed", failed_navigation)
             deadline = time.monotonic() + 45
             while True:
+                probe["attempts"] += 1
+                probe["status"] = None
+                probe["last_navigation_failure"] = "none"
                 try:
-                    startup = white.goto(ORIGIN + "/__fixture/enroll", wait_until="domcontentloaded")
+                    startup = white.goto(ORIGIN + "/__fixture/enroll", wait_until="domcontentloaded", timeout=5_000)
+                    probe["status"] = http_status(startup.status if startup is not None else None)
                     if startup is not None and startup.status == 200 and white.get_by_test_id("fixture-enroll").is_visible():
+                        probe["fixture_page_ready"] = True
                         break
+                except BrowserTimeout:
+                    probe["last_navigation_failure"] = "navigation_timeout"
                 except Exception:
-                    pass
+                    if probe["last_navigation_failure"] == "none":
+                        probe["last_navigation_failure"] = "other_navigation_failure"
                 require(time.monotonic() < deadline, "validated fixture HTTPS and real authority startup failed")
+                require(probe["attempts"] < 60, "fixture readiness exceeded bounded navigation attempts")
                 time.sleep(.25)
+            white.remove_listener("requestfailed", failed_navigation)
             for page, role in ((white, "white"), (black, "black")):
                 if page is black:
                     page.goto(ORIGIN + "/__fixture/enroll", wait_until="domcontentloaded")
@@ -480,8 +531,7 @@ def run(args) -> None:
                         and page.evaluate("sessionStorage.getItem('tabula-acceptance-isolation')") is None,
                         "fresh browser shares another process's document storage")
                 page.evaluate("role => { localStorage.setItem('tabula-acceptance-isolation', role); sessionStorage.setItem('tabula-acceptance-isolation', role); }", role)
-                page.get_by_test_id("fixture-enroll").click()
-                page.wait_for_url(ORIGIN + GAME_PATH, timeout=60_000)
+                enroll_actual_page(page, role, results)
             third.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
             require(third.evaluate("localStorage.getItem('tabula-acceptance-isolation')") is None
                     and third.evaluate("sessionStorage.getItem('tabula-acceptance-isolation')") is None,
@@ -558,8 +608,7 @@ def run(args) -> None:
             actions.append("White created a real code; Black joined it as the opposite seat; duplicate join preserved binding")
             # Test full-roster admission before completion can mask that boundary.
             third.goto(ORIGIN + "/__fixture/enroll")
-            third.get_by_test_id("fixture-enroll").click()
-            third.wait_for_url(ORIGIN + GAME_PATH, timeout=60_000)
+            enroll_actual_page(third, "third", results)
             third_facts = context_facts(third)
             third_csrf = third_facts["csrf_token"]
             require(third_facts["account_id"] not in [f["account_id"] for f in facts],
@@ -733,6 +782,8 @@ def run(args) -> None:
             results["status"] = "pass"
             results["stage"] = "complete"
     finally:
+        results["startup"]["processes"] = process_diagnostics(
+            private, getattr(args, "native_pid", None), getattr(args, "tls_pid", None))
         (artifacts / "browser-result.json").write_text(json.dumps(results, indent=2) + "\n")
         (artifacts / "actions.json").write_text(json.dumps(actions, indent=2) + "\n")
         for browser in reversed(browsers):
@@ -747,6 +798,8 @@ def main() -> int:
     parser.add_argument("--private", required=True)
     parser.add_argument("--artifacts", required=True)
     parser.add_argument("--ca", required=True)
+    parser.add_argument("--native-pid", type=int)
+    parser.add_argument("--tls-pid", type=int)
     args = parser.parse_args()
     try:
         run(args)

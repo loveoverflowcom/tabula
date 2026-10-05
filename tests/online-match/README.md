@@ -44,6 +44,25 @@ normal certificate verification. No system/global CA, persistent access, ignored
 HTTPSErrors, security-warning bypass flag, local tunnel or denied-route workaround
 is used. Private keys and temporary profiles are removed on success or failure.
 
+The fixture enrollment HTML and served static HTML documents use the narrowly
+scoped `Referrer-Policy: same-origin`. The Fetch standard otherwise changes a
+non-CORS form POST's Origin to `null` under `no-referrer`; that would correctly
+fail the unchanged exact HTTPS Origin check. Protected/API replies still use
+`no-referrer`, and missing/null/foreign Origin remains denied. The document
+policy suppresses cross-origin referrers; no credential or invitation is ever
+placed in a document URL.
+
+Startup evidence is closed and bounded. `browser-result.json` records real
+HTTPS enrollment-page status/readiness, an allowlisted Chromium network-error
+enum, browser version, each actual form POST's HTTP status and Origin class
+(`exact`, `missing`, `null`, `foreign`), expected form media type and successful
+redirect flag. A non-303 form response fails before a generic redirect timeout.
+Native/TLS child probes retain only process-phase enums and exact source-owned
+failure classes from bounded private log reads. No raw error, URL, header, body,
+request failure text, private log or process ID enters those artifacts. These
+diagnostics do not bypass normal certificate validation or replace actual
+browser enrollment, rendering and gameplay.
+
 Each opponent actually navigates to the labeled fixture page and presses its
 enrollment button. A same-origin HTTPS form POST issues an independently random
 credential through PgSessionStore and returns a Secure/HttpOnly/__Host cookie.
@@ -200,3 +219,6 @@ Primary infrastructure references:
 - [Playwright persistent-context process/profile isolation](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 - [Playwright browser-level Chromium CDP session](https://playwright.dev/python/docs/api/class-browser#browser-new-browser-cdp-session)
 - [Chromium Linux certificate management and existing NSS database selection](https://chromium.googlesource.com/chromium/src.git/+/refs/heads/main/docs/linux/cert_management.md)
+- [Fetch Standard: append a request Origin header](https://fetch.spec.whatwg.org/#append-a-request-origin-header)
+- [Referrer Policy: same-origin](https://w3c.github.io/webappsec-referrer-policy/#referrer-policy-same-origin)
+- [Playwright request failures versus HTTP error responses](https://playwright.dev/python/docs/api/class-request#request-failure)

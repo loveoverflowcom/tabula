@@ -283,7 +283,13 @@ class FixtureHandler(BaseHTTPRequestHandler):
             if length > STATIC_FILE_LIMIT:
                 raise RejectedRequest(413)
             content_type = CONTENT_TYPES.get(file.suffix.lower()) or mimetypes.guess_type(str(file))[0] or "application/octet-stream"
-            self._reply(200, [("Content-Type", content_type), ("Cache-Control", "no-store")], b"", length)
+            response_headers = [("Content-Type", content_type), ("Cache-Control", "no-store")]
+            if content_type.startswith("text/html"):
+                # Document-only: preserve exact Origin on same-origin non-CORS
+                # POSTs, while suppressing cross-origin referrers. Never rewrite
+                # the protected upstream/API no-referrer policy in _proxy.
+                response_headers.append(("Referrer-Policy", "same-origin"))
+            self._reply(200, response_headers, b"", length)
             if self.command == "HEAD":
                 return
             remaining = length
