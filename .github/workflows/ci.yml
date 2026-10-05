@@ -36,6 +36,7 @@ jobs:
       - run: python3 .agents/skills/tabula-engineering/scripts/check_skills.py
       - run: python3 .agents/skills/tabula-engineering/scripts/test_check_skills.py
       - run: python3 .agents/skills/tabula-engineering/scripts/test_ai_doc_contracts.py
+      - run: python3 tools/native-voice-harness/test_run.py
 
   # ---------------------------------------------------------------- fast gates
   fmt-clippy:
@@ -136,6 +137,46 @@ jobs:
         run: ./gradlew --console=plain -Ptabula.requireGameBundle=true :shared:testAndroidHostTest :previewApp:test :android:assembleDebug
       - working-directory: mobile
         run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-shell-doubles-evidence
+          path: |
+            mobile/previewApp/build/reports/shell-screenshots
+            mobile/previewApp/build/test-results/test
+            mobile/shared/build/test-results
+          if-no-files-found: warn
+
+  # ADR-0037: actual Swift SDK adapter + Kotlin framework compile/link. No simulator
+  # launch, microphone, real SFU or two-client voice acceptance is implied by this build.
+  mobile-ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96"
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release
+      - run: cargo xtask stage-mobile-game
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: xcodebuild -version && swift --version
+      - working-directory: mobile
+        run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
+      - working-directory: mobile/ios
+        run: xcodebuild -project TabulaApp.xcodeproj -scheme Tabula -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/tabula-ios" CODE_SIGNING_ALLOWED=NO build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-ios-generated-headers
+          path: |
+            mobile/shared/build/bin/**/*Framework/TabulaShared.framework/Headers
+            mobile/shared/build/xcode-frameworks/**/TabulaShared.framework/Headers
+          if-no-files-found: warn
 
   # -------------------------------------------------------------------- tests
   test:

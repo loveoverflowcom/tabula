@@ -6,6 +6,8 @@ import android.content.pm.ApplicationInfo
 import android.content.res.AssetManager
 import android.net.Uri
 import android.util.Log
+import android.webkit.PermissionRequest
+import android.webkit.WebChromeClient
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -64,6 +66,10 @@ internal class AndroidGameRuntime(
             onPortMessage(message, source, isMainFrame, proxy)
         }
         view.webViewClient = Client()
+        // Native RECORD_AUDIO permission never grants capture to the game document (ADR-0037).
+        view.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) { request.deny() }
+        }
         view.loadUrl(game.documentUrl(ORIGIN))
         view.postDelayed(helloDeadline, HELLO_DEADLINE_MS)
     }

@@ -35,6 +35,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(libs.coroutines.core)
             api(libs.compose.runtime)
             api(libs.compose.foundation)
             api(libs.compose.ui.backhandler)
@@ -43,6 +44,8 @@ kotlin {
         androidMain.dependencies {
             api(libs.activity.compose)
             implementation(libs.androidx.webkit)
+            implementation(libs.coroutines.android)
+            implementation(libs.livekit.android)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

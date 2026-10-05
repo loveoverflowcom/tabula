@@ -90,6 +90,18 @@ actual provider/TLS/cookie/AT/BFCache evidence, bounded non-secret cross-reload
 logout suppression and live deadline/revocation delivery. Do not extend the
 exception into voice, invitations or provider provisioning by inference.
 
+## Bounded native mobile voice
+
+The owner explicitly requested [ADR-0037](../adr/0037-native-mobile-voice-client.md)
+after the merged isolated account series. This separate client/loopback-dev slice
+adds CMP controls and native LiveKit adapters without broad backend authority or
+production activation. [Actual native audio acceptance](backlog/native-mobile-voice-acceptance.md)
+remains the next target check when authorized hardware/SFU prerequisites exist;
+[its ledger](../verification/native-mobile-voice/README.md) separates compilation,
+controller/UI doubles and real audio. The unrelated trusted-Origin defect in
+[issue #74](https://github.com/loveoverflowcom/tabula/issues/74) is not folded into
+this voice change.
+
 ## Review #74 follow-up
 
 The merged-tree review's confirmed P3 configuration finding is handled by

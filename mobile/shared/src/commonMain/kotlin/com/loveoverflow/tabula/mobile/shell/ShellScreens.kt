@@ -36,6 +36,8 @@ import com.loveoverflow.tabula.mobile.host.GameBackPort
 import com.loveoverflow.tabula.mobile.host.GameHost
 import com.loveoverflow.tabula.mobile.host.GameHostEvent
 import com.loveoverflow.tabula.mobile.host.GameLaunch
+import com.loveoverflow.tabula.mobile.voice.VoiceController
+import com.loveoverflow.tabula.mobile.voice.VoiceControls
 
 /** Visible copy of the shell; kept in one place until a localisation owner exists. */
 object ShellText {
@@ -69,7 +71,7 @@ fun ShellPage(title: String, modifier: Modifier = Modifier, content: @Composable
 
 /** A labelled action at least [TabulaAccessibility.minTarget] dp tall. [filled] marks the principal action. */
 @Composable
-fun ShellButton(label: String, filled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ShellButton(label: String, filled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val colors = LocalTabulaColors.current
     val container = if (filled) colors.primary else colors.containerHigh
     val content = if (filled) colors.onPrimary else colors.onSurface
@@ -78,7 +80,7 @@ fun ShellButton(label: String, filled: Boolean, onClick: () -> Unit, modifier: M
             .heightIn(min = TabulaAccessibility.minTarget.dp)
             .clip(RoundedCornerShape(TabulaShape.button.dp))
             .background(container)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = TabulaSpace.xl.dp, vertical = TabulaSpace.md.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -117,13 +119,14 @@ fun HomeScreen(games: List<BundledGame>, languageTag: String, onOpen: (BundledGa
 @OptIn(ExperimentalComposeUiApi::class)
 @Suppress("DEPRECATION")
 @Composable
-fun GameScreen(title: String, launch: GameLaunch, host: GameHost, onLeave: () -> Unit) {
+fun GameScreen(title: String, launch: GameLaunch, host: GameHost, onLeave: () -> Unit, voice: VoiceController? = null, vietnamese: Boolean = false) {
     val back = remember { GameBackPort() }
     var failure by remember { mutableStateOf<String?>(null) }
     val leave = { if (!back.requestBack()) onLeave() }
     BackHandler(enabled = true, onBack = leave)
     ShellPage(title) {
         Row { ShellButton(ShellText.Back, filled = false, onClick = leave) }
+        if (voice != null) VoiceControls(voice, vietnamese)
         val reason = failure
         if (reason != null) {
             FailurePanel(reason, onRetry = { failure = null }, modifier = Modifier.fillMaxWidth().weight(1f))
