@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_id, authorization_epoch, enabled, last_observed_at_ms FROM session_accounts WHERE user_id = $1 FOR UPDATE\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "authorization_epoch",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "authorization_epoch"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "last_observed_at_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "last_observed_at_ms"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cc2e0f6c8e1b5b2bf401230ee871f36212d9f970cb0f87ecec64f40020777c60"
+}

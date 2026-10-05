@@ -120,7 +120,10 @@ deny = [
   # is never linked into the shipped wasm — and `apps/web` is a binary that no
   # rules crate can depend on. The per-crate net in deps.toml still forbids
   # `getrandom` everywhere it would matter.
-  { name = "getrandom", wrappers = ["rand_core", "tempfile", "uuid"] },
+  # ADR-0036 permits OS entropy only in the runtime session credential owner.
+  # SQLx 0.9 uses rand 0.10 as its direct OS-entropy wrapper for SCRAM.
+  # The deterministic per-crate ban remains enforced by xtask check-deps.
+  { name = "getrandom", wrappers = ["rand_core", "tempfile", "uuid", "tabula-session", "rand"] },
 ]
 
 skip-tree = []

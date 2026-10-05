@@ -1,0 +1,81 @@
+# ADR-0036: isolated validation only. No production binary, provider or deployment.
+name: session-postgres
+
+on:
+  pull_request:
+    paths:
+      - 'crates/tabula-session/**'
+      - 'crates/tabula-storage/**'
+      - '.sqlx/**'
+      - '.github/workflows/session-postgres.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'deps.toml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: session-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  durable-session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tabula_session_acceptance
+          POSTGRES_USER: tabula_test
+          # A disposable, runner-local test database, never a persistent account.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          PGUSER: tabula_test
+          PGDATABASE: tabula_session_acceptance
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_session_acceptance
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: '1.96' }
+      - uses: Swatinem/rust-cache@v2
+      - name: Install the approved SQLx metadata tool
+        run: cargo install sqlx-cli --version 0.9.0 --no-default-features --features rustls,postgres --locked
+      - name: Migrate disposable PostgreSQL
+        run: cargo sqlx migrate run --source crates/tabula-storage/session_migrations
+      - name: Generate offline descriptions against real PostgreSQL
+        run: cargo sqlx prepare --workspace -- --package tabula-storage --features session-postgres --all-targets
+      - name: Exercise real durable authority and interleavings
+        run: |
+          cargo test -p tabula-storage --features session-postgres session::tests:: -- --list --ignored > session-test-list.txt
+          grep -Eq '^session::tests::.*: test$' session-test-list.txt
+          cat session-test-list.txt
+          cargo test -p tabula-storage --features session-postgres session::tests:: -- --ignored --test-threads=2
+      - name: Preserve authentic query descriptions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: session-sqlx-metadata
+          path: .sqlx/query-*.json
+          if-no-files-found: error
+          include-hidden-files: true
+      - name: Committed offline metadata is exact
+        run: |
+          test -n "$(git ls-files '.sqlx/query-*.json')"
+          test -z "$(git ls-files --others --exclude-standard '.sqlx/query-*.json')"
+          git diff --exit-code -- .sqlx
+      - name: Offline adapter compilation
+        env:
+          SQLX_OFFLINE: 'true'
+        run: cargo check -p tabula-storage --features session-postgres --all-targets

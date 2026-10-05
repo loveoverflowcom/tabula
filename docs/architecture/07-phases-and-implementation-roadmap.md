@@ -597,3 +597,13 @@ Phase 11  "Someone else's game runs safely, and can be revoked in minutes."
 ---
 
 **Next:** [`08-first-games-validation-plan.md`](./08-first-games-validation-plan.md)
+
+## Isolated #54 implementation exception
+
+[ADR-0036](../adr/0036-isolated-durable-session-validation.md) permits three
+sequential isolated implementation slices: durable session policy/PostgreSQL
+validation, then HTTP session/self-profile, then account-state/profile UI.
+The first slice does not implement game networking or activate either service.
+Its database commit-fence receipt is not actual private-output fencing. All
+Phase 2/3/4/5 exits, provider proof and target-specific evidence remain owed;
+login/register/friends stay unavailable where their backend gates are unmet.
