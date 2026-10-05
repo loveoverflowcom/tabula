@@ -45,9 +45,17 @@ struct Fixture {
     observer: PgPool,
     schema: String,
 }
-async fn configure(connection: &mut PgConnection, schema: String) -> Result<(), sqlx::Error> {
+async fn configure(
+    connection: &mut PgConnection,
+    schema: String,
+    application: String,
+) -> Result<(), sqlx::Error> {
     sqlx::query("SELECT set_config('search_path',$1,false)")
         .bind(schema)
+        .execute(&mut *connection)
+        .await?;
+    sqlx::query("SELECT set_config('application_name',$1,false)")
+        .bind(application)
         .execute(&mut *connection)
         .await?;
     sqlx::query("SET statement_timeout='10s'")
@@ -55,11 +63,17 @@ async fn configure(connection: &mut PgConnection, schema: String) -> Result<(), 
         .await?;
     Ok(())
 }
-async fn fixture_pool(url: &str, schema: &str) -> PgPool {
+async fn fixture_pool(url: &str, schema: &str, role: &str) -> PgPool {
+    let application = format!("{schema}_{role}");
+    assert!(application.len() <= 63);
     let schema = schema.to_owned();
     PgPoolOptions::new()
-        .max_connections(2)
-        .after_connect(move |connection, _| Box::pin(configure(connection, schema.clone())))
+        // Publication and apply own distinct backends; leave a third slot for
+        // genuine independent observation instead of assuming pool PID reuse.
+        .max_connections(4)
+        .after_connect(move |connection, _| {
+            Box::pin(configure(connection, schema.clone(), application.clone()))
+        })
         .connect(url)
         .await
         .unwrap()
@@ -91,9 +105,9 @@ impl Fixture {
             .execute(&admin)
             .await
             .unwrap();
-        let first = fixture_pool(&url, &schema).await;
-        let second = fixture_pool(&url, &schema).await;
-        let observer = fixture_pool(&url, &schema).await;
+        let first = fixture_pool(&url, &schema, "first").await;
+        let second = fixture_pool(&url, &schema, "second").await;
+        let observer = fixture_pool(&url, &schema, "observer").await;
         PgOnlineMatchStore::migrate(&first)
             .await
             .expect("strict combined migration must execute");
@@ -316,30 +330,17 @@ async fn started(f: &Fixture) -> (Enrolled, Enrolled, PgMatchJournal) {
     );
     (owner, opponent, journal)
 }
-async fn pid(pool: &PgPool) -> i32 {
-    sqlx::query_scalar("SELECT pg_backend_pid()")
-        .fetch_one(pool)
-        .await
-        .unwrap()
-}
-async fn blocked(admin: &PgPool, waiting: i32, blocking: i32) {
+/// Read the actual lock graph using a uniquely tagged fixture pool. Sampling a
+/// backend from a pool before a later checkout cannot identify that operation.
+async fn blocked(admin: &PgPool, application: &str, blocking: i32) -> i32 {
     tokio::time::timeout(WAIT, async {
         loop {
-            let is_blocked: bool =
-                sqlx::query_scalar("SELECT $2::integer=ANY(pg_blocking_pids($1::integer))")
-                    .bind(waiting)
-                    .bind(blocking)
-                    .fetch_one(admin)
-                    .await
-                    .unwrap();
-            if is_blocked {
-                break;
-            }
+            let waiting: Option<i32> = sqlx::query_scalar("SELECT pid FROM pg_stat_activity WHERE application_name=$1 AND $2::integer=ANY(pg_blocking_pids(pid))")
+                .bind(application).bind(blocking).fetch_optional(admin).await.unwrap();
+            if let Some(waiting) = waiting { return waiting; }
             tokio::task::yield_now().await;
         }
-    })
-    .await
-    .expect("independent current-authority operation must demonstrably wait");
+    }).await.expect("independent current-authority operation must demonstrably wait")
 }
 
 #[test]
@@ -389,6 +390,9 @@ async fn real_postgres_online_composition_and_server_seat_roster() {
         checksums, expected,
         "strict composition preserves original migration checksums"
     );
+    // A failed strict migrator must close its session advisory backend before
+    // returning. Both another pool and the original pool can immediately rerun.
+    PgOnlineMatchStore::migrate(&f.observer).await.unwrap();
     PgOnlineMatchStore::migrate(&f.first).await.unwrap();
     let owner = enroll(&f.first, 42, 501).await;
     let opponent = enroll(&f.second, 43, 502).await;
@@ -566,8 +570,6 @@ async fn real_postgres_online_commit_serializes_with_current_session_revocation(
         )
         .await
         .unwrap();
-    let blocker = pid(&f.first).await;
-    let waiting = pid(&f.second).await;
     let guard = PgOnlineMatchStore::new(f.first.clone())
         .begin_operation(owner.operation, MATCH)
         .await
@@ -576,10 +578,24 @@ async fn real_postgres_online_commit_serializes_with_current_session_revocation(
         guard.with_current(OnlineMembership::scope).unwrap(),
         guard.scope()
     );
+    let (publication_pid, transaction_pid) = {
+        let state = guard.state.lock().unwrap();
+        let pending = state.as_ref().unwrap();
+        (pending.publication.backend_pid, pending.backend_pid)
+    };
+    assert_ne!(publication_pid, transaction_pid);
     let store = PgSessionStore::new(f.second.clone());
     let credential = owner.operation;
     let revoke = tokio::spawn(async move { store.revoke_credential(credential).await });
-    blocked(&f.admin, waiting, blocker).await;
+    let waiting = blocked(&f.admin, &format!("{}_second", f.schema), publication_pid).await;
+    assert_ne!(waiting, publication_pid);
+    assert_ne!(waiting, transaction_pid);
+    // Revocation first waits on the actual publication advisory lock. Waiting
+    // for the apply row lock instead could observe only an already-expired lease.
+    assert_eq!(
+        guard.with_current(OnlineMembership::scope).unwrap(),
+        guard.scope()
+    );
     journal
         .append_authenticated(accepted(guard.membership()), &guard)
         .await
@@ -1007,9 +1023,11 @@ async fn real_postgres_online_join_resamples_code_expiry_after_actual_room_wait(
             .await
             .unwrap();
     sqlx::query("UPDATE online_match_rooms SET created_at_ms=$2-599500,code_deadline_ms=$2+500 WHERE match_id=$1").bind(Uuid::from_u128(MATCH.0)).bind(now).execute(&f.first).await.unwrap();
-    let blocking = pid(&f.observer).await;
-    let waiting = pid(&f.second).await;
     let mut held = f.observer.begin().await.unwrap();
+    let blocking: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *held)
+        .await
+        .unwrap();
     sqlx::query("SELECT match_id FROM online_match_rooms WHERE match_id=$1 FOR UPDATE")
         .bind(Uuid::from_u128(MATCH.0))
         .fetch_one(&mut *held)
@@ -1018,11 +1036,18 @@ async fn real_postgres_online_join_resamples_code_expiry_after_actual_room_wait(
     let store = PgOnlineMatchStore::new(f.second.clone());
     let operation = joining.operation;
     let join = tokio::spawn(async move { store.join(operation, [1; 32]).await });
-    blocked(&f.admin, waiting, blocking).await;
-    sqlx::query("SELECT pg_sleep(0.55)")
-        .execute(&f.first)
-        .await
-        .unwrap();
+    let waiting = blocked(&f.admin, &format!("{}_second", f.schema), blocking).await;
+    assert_ne!(waiting, blocking);
+    let before_expiry: bool = sqlx::query_scalar("SELECT floor(EXTRACT(EPOCH FROM clock_timestamp())*1000)::bigint < code_deadline_ms FROM online_match_rooms WHERE match_id=$1")
+        .bind(Uuid::from_u128(MATCH.0)).fetch_one(&f.first).await.unwrap();
+    assert!(
+        before_expiry,
+        "join genuinely waits before the code deadline"
+    );
+    // The database deadline, not an assumed client-side sleep duration, controls
+    // the hold; the subsequent clock assertion remains the expiry oracle.
+    sqlx::query("SELECT pg_sleep(GREATEST(code_deadline_ms-floor(EXTRACT(EPOCH FROM clock_timestamp())*1000)::bigint,0)::double precision/1000.0+0.05) FROM online_match_rooms WHERE match_id=$1")
+        .bind(Uuid::from_u128(MATCH.0)).execute(&f.first).await.unwrap();
     let expired:bool = sqlx::query_scalar("SELECT floor(EXTRACT(EPOCH FROM clock_timestamp())*1000)::bigint >= code_deadline_ms FROM online_match_rooms WHERE match_id=$1").bind(Uuid::from_u128(MATCH.0)).fetch_one(&f.first).await.unwrap();
     assert!(expired);
     held.commit().await.unwrap();
