@@ -161,11 +161,13 @@ class Driver:
         self.action("Advance actual logical deadline through the runtime's Next phase control",
                     g["m"]+width/2,g["h"]-78,delay)
 
-    def ocr(self, region=None):
+    def ocr(self, region=None, flipped=False):
         png = self.page.locator("#glcanvas").screenshot(timeout=30000)
         im = Image.open(io.BytesIO(png)).convert("RGB")
         if region:
             im = im.crop(region)
+        if flipped:
+            im = im.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
         # This is assessment-only OCR of actual pixels, never a generated UI.
         with tempfile.TemporaryDirectory(prefix="werewolf-ocr-") as folder:
             p = Path(folder)/"frame.png"
@@ -176,8 +178,10 @@ class Driver:
 
     def role(self):
         g = self.geometry()
-        y = g["cy"]+g["cw"]+2
-        text = self.ocr((int(g["cx"]),int(y),int(g["cx"]+g["cw"]),int(y+85)))
+        # The existing renderer vertically reflects clipped surfaces. OCR only
+        # transforms temporary assessment bytes, never the captured evidence.
+        text = self.ocr((int(g["cx"]),int(g["cy"]),int(g["cx"]+g["cw"]),
+                         int(g["cy"]+g["cw"]*1.5)),flipped=True)
         for role, spellings in [("witch",["phu thuy"]),("wolf",["ma soi"]),
                                 ("seer",["tien tri"]),("doctor",["bac si"]),
                                 ("hunter",["tho san"]),("villager",["dan lang"])]:
@@ -188,8 +192,8 @@ class Driver:
         # never from canonical state or exported WASM memory. Keep PNGs original.
         png=self.page.locator("#glcanvas").screenshot(timeout=30000)
         im=Image.open(io.BytesIO(png)).convert("RGB")
-        portrait=im.crop((int(g["cx"]+8),int(g["cy"]+8),
-                          int(g["cx"]+g["cw"]-8),int(g["cy"]+g["cw"]-8))).resize((64,64))
+        portrait=im.crop((int(g["cx"]+8),int(g["cy"]+g["cw"]*.5+8),
+                          int(g["cx"]+g["cw"]-8),int(g["cy"]+g["cw"]*1.5-8))).resize((64,64))
         scores=[]
         for role,asset in [("villager","villager"),("wolf","werewolf"),("seer","seer"),
                            ("doctor","doctor"),("hunter","hunter"),("witch","witch")]:
@@ -307,8 +311,9 @@ def main():
             d.capture("01-wolf-night-target.png","Own Wolf card and selected real night target; not yet submitted","night")
             d.submit()
             d.reveal()
-            acknowledged=d.ocr()
-            if "da gui" not in acknowledged and "iu6 ep" not in acknowledged:
+            g=d.geometry()
+            acknowledged=d.ocr((int(g["tx"]),g["cy"],g["w"],g["h"]-110),flipped=True)
+            if "da gui" not in acknowledged:
                 png=page.screenshot(path=str(OUT/"99-diagnostic-command-ack.png"))
                 raise RuntimeError("Wolf real command acknowledgement was not rendered")
             # Witch selects poison, then a target distinct from the wolf's target.
