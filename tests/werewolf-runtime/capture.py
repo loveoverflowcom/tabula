@@ -163,6 +163,9 @@ class Driver:
 
     def ocr(self, region=None, flipped=False, psm=6):
         png = self.page.locator("#glcanvas").screenshot(timeout=30000)
+        return self.ocr_png(png,region,flipped,psm)
+
+    def ocr_png(self, png, region=None, flipped=False, psm=6):
         im = Image.open(io.BytesIO(png)).convert("RGB")
         if region:
             im = im.crop(region)
@@ -217,17 +220,20 @@ class Driver:
         self.write()
         raise RuntimeError("Own-card role was not readable from actual pixels")
 
-    def phase(self):
+    def phase(self, png=None):
         g = self.geometry()
         # OCR the complete visible public phase header; long labels may extend
         # past a half-width crop. No DOM state or internal WASM exports are read.
-        text=self.ocr((0,0,g["w"],52),psm=11)
+        region=(0,0,g["w"],52)
+        text=self.ocr_png(png,region,psm=6) if png else self.ocr(region,psm=6)
         for phase, words in [("ended",["ket thuc"]),("dawn",["binh minh"]),
                              ("day",["thao luan"]),("vote",["bo phieu"]),
                              ("dusk",["hoang hon"]),("night",["ban dem"])]:
             if any(word in text for word in words):
                 return phase
-        png=self.page.screenshot(path=str(OUT/"99-diagnostic-phase-unreadable.png"))
+        if png is None:
+            png=self.page.screenshot()
+        (OUT/"99-diagnostic-phase-unreadable.png").write_bytes(png)
         self.provenance["public_header_diagnostic"]={"ocr_normalized":text,
               "file":"99-diagnostic-phase-unreadable.png","sha256":hashlib.sha256(png).hexdigest(),
               "size_bytes":len(png),"condition":"Unreadable public phase header; not passing evidence"}
@@ -244,20 +250,23 @@ class Driver:
         raise RuntimeError("Expected actual elapsed-time phase did not appear")
 
     def capture(self, filename, label, expected_phase=None):
-        if expected_phase and self.phase() != expected_phase:
-            raise RuntimeError("Actual rendered phase differs from screenshot condition")
         if not self.page.locator("#loader").is_hidden() or not self.page.locator("#runtime-error").is_hidden():
             raise RuntimeError("Actual runtime is loading or failed")
         if self.page.locator("#privacy-shield").is_visible():
             raise RuntimeError("Actual private surface remains shielded")
         path=OUT/filename
         png=self.page.screenshot(path=str(path),timeout=30000)
+        captured_at=utc()
+        # Short announcement phases are verified against the exact captured
+        # PNG, not an earlier canvas frame while the runtime clock moves on.
+        if expected_phase and self.phase(png) != expected_phase:
+            raise RuntimeError("Actual rendered phase differs from screenshot condition")
         image=Image.open(io.BytesIO(png)).convert("RGB")
         colors=image.resize((160,120)).getcolors(19201)
         if image.width < 320 or image.height < 500 or len(colors or []) < 32:
             raise RuntimeError("Actual screenshot is blank or invalid")
         self.provenance["captures"].append({
-            "file": filename,"label":label,"captured_at_utc":utc(),
+            "file": filename,"label":label,"captured_at_utc":captured_at,
             "perspective":"public outsider" if self.current_seat is None else f"disposable simulator seat {self.current_seat+1}",
             "phase_condition":expected_phase,"actions_completed":len(self.provenance["actions"]),
             "browser_version":self.page.context.browser.version,
@@ -373,7 +382,7 @@ def main():
             page.bring_to_front()
             if page.locator("#privacy-shield").is_visible():
                 page.locator("#resume-private").click()
-                page.wait_for_timeout(250)
+                page.locator("#privacy-shield").wait_for(state="hidden",timeout=10000)
             d.public()
             # Ordinary Next phase presses eventually reach the bounded real terminal state.
             for _ in range(55):
