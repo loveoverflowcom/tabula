@@ -15,7 +15,7 @@ use std::{
 use axum::{
     body::{to_bytes, Body},
     extract::{Request, State},
-    http::{header, HeaderMap, HeaderValue, Method, StatusCode, Uri},
+    http::{header, HeaderMap, HeaderValue, Method, StatusCode},
     middleware::{self, Next},
     response::Response,
     routing::{get, post},
@@ -30,6 +30,8 @@ use tabula_session::{
     CredentialOperation, HttpSessionAuthority, RotateCredential, SessionChannel,
     SessionContextBinding, SessionCredential, SessionError, SessionPublication, SessionSnapshot,
 };
+
+use url::Url;
 
 use crate::{
     AccountCapabilities, ContextResponse, NativeRefreshResponse, PublicProblem,
@@ -76,19 +78,19 @@ impl<A> fmt::Debug for IsolatedSessionHttp<A> {
 }
 
 impl<A: HttpSessionAuthority + 'static> IsolatedSessionHttp<A> {
+    /// Construct the ADR-0031/0036 adapter with one canonical HTTPS Origin.
+    ///
+    /// The input must equal its WHATWG ASCII Origin serialization: lowercase
+    /// scheme/host, ASCII IDNA, canonical IP literals, no default port, userinfo,
+    /// path (even `/`), query or fragment. Noncanonical inputs fail fast rather
+    /// than silently changing the allow-list. Domain trailing dots remain
+    /// distinct origins. This validates syntax, not DNS, TLS or reachability.
     pub fn new(authority: A, trusted_origin: &str) -> Result<Self, SessionError> {
-        let uri: Uri = trusted_origin
-            .parse()
-            .map_err(|_| SessionError::InvalidInput)?;
-        let authority_text = trusted_origin
-            .strip_prefix("https://")
-            .ok_or(SessionError::InvalidInput)?;
-        if uri.scheme_str() != Some("https")
-            || uri.host().is_none()
-            || authority_text.is_empty()
-            || authority_text
-                .chars()
-                .any(|c| matches!(c, '/' | '?' | '#' | '@') || c.is_whitespace())
+        let url = Url::parse(trusted_origin).map_err(|_| SessionError::InvalidInput)?;
+        let origin = url.origin();
+        if url.scheme() != "https"
+            || !origin.is_tuple()
+            || origin.ascii_serialization() != trusted_origin
         {
             return Err(SessionError::InvalidInput);
         }

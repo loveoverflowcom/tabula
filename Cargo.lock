@@ -3026,6 +3026,7 @@ dependencies = [
  "bytes",
  "hmac 0.12.1",
  "http-body",
+ "proptest",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -3035,6 +3036,7 @@ dependencies = [
  "tabula-storage",
  "tokio",
  "tower",
+ "url",
 ]
 
 [[package]]
