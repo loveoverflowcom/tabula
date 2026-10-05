@@ -19,6 +19,8 @@ session-postgres = ["dep:tabula-session", "dep:sqlx", "dep:uuid", "dep:tokio"]
 match-postgres = ["dep:tabula-match-journal", "dep:sqlx", "dep:uuid", "dep:tokio", "dep:serde", "dep:blake3"]
 
 match-postgres-test-support = ["match-postgres"]
+# Isolated join-code composition only; production startup remains closed.
+online-match-postgres = ["session-postgres", "match-postgres"]
 
 # Optional native infrastructure has its own documented MSRV; default/storage
 # and the deterministic SDK retain the workspace declaration (ADR-0036).
@@ -26,6 +28,7 @@ match-postgres-test-support = ["match-postgres"]
 session-postgres = "1.94"
 match-postgres = "1.94"
 match-postgres-test-support = "1.94"
+online-match-postgres = "1.94"
 
 [dependencies]
 tabula-core     = { workspace = true }
@@ -56,3 +59,4 @@ tokio = { workspace = true }
 
 [lints]
 workspace = true
+

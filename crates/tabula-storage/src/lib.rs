@@ -115,3 +115,8 @@ pub mod session;
 #[cfg(all(feature = "match-postgres", not(target_arch = "wasm32")))]
 #[clippy::msrv = "1.94"]
 pub mod match_postgres;
+
+/// Bounded durable join-code admission and live session/commit fencing.
+#[cfg(all(feature = "online-match-postgres", not(target_arch = "wasm32")))]
+#[clippy::msrv = "1.94"]
+pub mod online_match;
