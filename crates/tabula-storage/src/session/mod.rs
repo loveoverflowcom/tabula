@@ -269,10 +269,17 @@ impl PgSessionStore {
     /// Explicitly applies only the additive, isolated session migrations.
     /// Production bootstrap does not call this (ADR-0036).
     pub async fn migrate(&self) -> Result<(), SessionError> {
-        sqlx::migrate!("./session_migrations")
-            .run(&self.pool)
+        let mut connection = self.pool.acquire().await.map_err(unavailable)?;
+        // SQLx's session-level migration lock survives early validation errors.
+        // Closing this backend also releases it if the migration is canceled;
+        // it must never return to the pool with a retained advisory lock.
+        connection.close_on_drop();
+        let result = sqlx::migrate!("./session_migrations")
+            .run(&mut *connection)
             .await
-            .map_err(unavailable)
+            .map_err(unavailable);
+        let closed = connection.close().await.map_err(unavailable);
+        result.and(closed)
     }
 
     /// Links a structurally checked identity fixture to a checked account.
