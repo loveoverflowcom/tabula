@@ -11,10 +11,11 @@ Do not activate either until the missing implementation and checks exist.
 
 Missing at integration:
 
-- `tabula-match-http` gateway and DTO crate, workspace/dependency policy entries;
+- `tabula-match-http` native gateway (the recovered DTO-only crate now builds);
 - `tabula-storage/online-match-postgres`, composed migration/authority scenarios;
 - `apps/web` and `apps/game-client` online features and projection-only transport;
-- fixture `src/main.rs`, lockfile, TLS frontend, browser acceptance and Python tests.
+- standalone fixture lockfile and its unavailable runtime dependencies;
+- `browser_acceptance.py` and the real two-browser action/verification path.
 
 Completion must include nonempty helper/test selections, strict fixture lint,
 real disposable PostgreSQL and two independent HTTPS-validated Chromium processes,
@@ -22,3 +23,8 @@ plus inspection of public-only screenshots and the durable terminal verdict.
 Do not count workflow syntax or this source inventory as executed online evidence.
 The acceptance requirements remain in [ADR-0041](../../docs/adr/0041-isolated-direct-match-browser-play.md)
 and its [delivery ledger](../../docs/verification/join-code-browser-chess/README.md).
+
+The updated recovery adds `src/main.rs` (native serve/audit source) and
+`tls_frontend.py` with 37 passing offline helper tests. The native fixture is
+still **NOT_COMPILED**, because its required gateway and storage adapter do not
+exist. The Python tests use memory streams/doubles; they do not run TLS or browsers.
