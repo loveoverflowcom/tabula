@@ -3,7 +3,7 @@
   "use strict";
   const themes = ["system", "light", "dark", "hc-light", "hc-dark"];
   const clocks = ["untimed", "fischer", "bronstein"];
-  const allowed = new Set(["game", "mode", "clock", "initial-ms", "increment-ms", "delay-ms", "theme", "motion", "locale", "chess.clock", "chess.initial-ms", "chess.increment-ms", "chess.delay-ms", "source", "return_to", "seats", "initial_ms", "increment_ms", "delay_ms"]); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
+  const allowed = new Set(["game", "mode", "clock", "initial-ms", "increment-ms", "delay-ms", "theme", "motion", "locale", "chess.clock", "chess.initial-ms", "chess.increment-ms", "chess.delay-ms", "source", "return_to", "seats", "initial_ms", "increment_ms", "delay_ms", "match_id"]); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
   function integer(value, fallback, min, max, name) {
     if (value === null || value === undefined) return fallback;
     if (!/^\d+$/.test(String(value))) throw new Error(`${name}: enter a whole number`);
@@ -30,9 +30,15 @@
       if (query.getAll(key).length !== 1) throw new Error(`Repeated launch option: ${key}`);
     }
     const handoff = navigation(search);
+    const online = handoff && query.get("mode") === "network";
+    const matchId = query.get("match_id");
+    if (online) {
+      if (!/^[0-9a-f]{32}$/.test(matchId ?? "") || /^0+$/.test(matchId)) throw new Error("Invalid public match identifier");
+      for (const key of ["clock", "initial_ms", "increment_ms", "delay_ms"]) if (query.has(key)) throw new Error("Online configuration belongs to the server");
+    } else if (query.has("match_id")) throw new Error("Match identifiers require direct online play");
     if (handoff) {
-      for (const key of ["game", "mode", "seats", "clock", "locale"]) if (!query.has(key)) throw new Error(`Missing Tabula launch option: ${key}`);
-      if (query.get("game") !== registryGame || query.get("mode") !== "local" || query.get("seats") !== "2") throw new Error("Only two-player local Chess is available"); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
+      for (const key of online ? ["game", "mode", "seats", "locale"] : ["game", "mode", "seats", "clock", "locale"]) if (!query.has(key)) throw new Error(`Missing Tabula launch option: ${key}`);
+      if (query.get("game") !== registryGame || !online && query.get("mode") !== "local" || query.get("seats") !== "2") throw new Error("Only two-player local Chess is available"); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
       for (const key of ["initial-ms", "increment-ms", "delay-ms", "chess.clock", "chess.initial-ms", "chess.increment-ms", "chess.delay-ms"]) if (query.has(key)) throw new Error(`Noncanonical Tabula launch option: ${key}`); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
       const control = query.get("clock");
       const required = control === "fischer" ? ["initial_ms", "increment_ms"] : control === "bronstein" ? ["initial_ms", "delay_ms"] : [];
@@ -49,7 +55,7 @@
       if (query.has(key) && query.has(`chess.${key}`)) throw new Error(`Conflicting launch option: ${key}`); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
       return query.get(key) ?? query.get(`chess.${key}`); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
     }
-    const clock = field("clock") ?? "fischer";
+    const clock = online ? "untimed" : field("clock") ?? "fischer";
     const theme = query.get("theme") ?? "system";
     const motion = query.get("motion") ?? "system";
     const locale = query.get("locale") ?? "vi";
@@ -57,7 +63,7 @@
     if (!themes.includes(theme)) throw new Error("Unknown theme");
     if (!["system", "reduced"].includes(motion)) throw new Error("Unknown motion preference");
     if (!["vi", "en"].includes(locale)) throw new Error("Unknown language");
-    return Object.freeze({...handoff, clock, initialMs: integer(field("initial-ms"), 300000, 1000, 10800000, "Starting time"), incrementMs: integer(field("increment-ms"), 2000, 0, 60000, "Increment"), delayMs: integer(field("delay-ms"), 2000, 0, 60000, "Delay"), theme, motion, locale});
+    return Object.freeze({...handoff, online:Boolean(online), matchId:online ? matchId : null, gameId:registryGame, clock, initialMs: integer(field("initial-ms"), 300000, 1000, 10800000, "Starting time"), incrementMs: integer(field("increment-ms"), 2000, 0, 60000, "Increment"), delayMs: integer(field("delay-ms"), 2000, 0, 60000, "Delay"), theme, motion, locale});
   }
   function resolve(config, media) {
     const dark = media("(prefers-color-scheme: dark)").matches;
@@ -83,6 +89,7 @@
   function argumentsFor(config) {
     const result = ["--game", "chess", "--skip-setup", "--clock", config.clock, "--theme", config.resolvedTheme]; // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
     if (config.clock !== "untimed") result.push("--initial-ms", String(config.initialMs), config.clock === "fischer" ? "--increment-ms" : "--delay-ms", String(config.clock === "fischer" ? config.incrementMs : config.delayMs));
+    if (config.online) result.push("--online-match", config.matchId);
     if (config.reducedMotion) result.push("--reduced-motion");
     const text = result.join("\n");
     if (result.length > 64 || new TextEncoder().encode(text).length > 4096) throw new Error("Launch argument budget exceeded");

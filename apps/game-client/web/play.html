@@ -13,6 +13,7 @@
     <canvas id="glcanvas" tabindex="0" aria-label="Chess board. Arrow keys move focus, Enter selects, Escape cancels selection. The full board reader is not available." aria-describedby="keyboard-help"></canvas> <!-- xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. -->
     <div id="loader" class="runtime-overlay" role="status" aria-live="polite"><h1 id="loading-title">Đang mở bàn cờ…</h1><p id="loading-status">Đang tải chương trình WebAssembly</p><progress id="load-progress" aria-label="Download progress"></progress><a class="button secondary" href="index.html" id="cancel-load">Về thiết lập</a></div>
     <section id="runtime-error" class="runtime-overlay" role="alert" aria-labelledby="error-title" hidden><h1 id="error-title">Không thể mở bàn cờ</h1><p id="error-detail"></p><p id="restart-notice">Tải lại sẽ bắt đầu một ván mới. Ván cục bộ không được lưu</p><div class="recovery-actions"><a class="button secondary" href="index.html" id="error-back">Về thiết lập</a><button class="button" id="retry" type="button">Thử lại</button></div></section>
+    <div id="online-status-container" class="sr-only" hidden aria-live="polite"><span data-testid="online-seat"></span><span data-testid="online-revision"></span><span data-testid="online-status"></span><span data-testid="online-connection"></span></div>
     <div class="runtime-access"><button id="leave" type="button">Về thiết lập</button><button id="help" type="button">Trợ giúp bàn phím</button><span id="keyboard-help" class="sr-only">Use arrow keys and Enter on the focused board. Escape cancels selection or promotion. Tab reaches the in-game controls from the last square; Shift+Tab reaches leave and help. Local games are not saved.</span></div>
   </main>
   <dialog id="leave-dialog" aria-labelledby="leave-title"><h2 id="leave-title">Rời ván cờ?</h2><p id="leave-detail">Ván cục bộ này không được lưu. Bạn có thể ở lại hoặc quay về thiết lập để bắt đầu ván mới</p><div class="dialog-actions"><button class="button secondary" id="stay" type="button">Ở lại</button><button class="button" id="confirm-leave" type="button">Rời ván cờ</button></div></dialog>
@@ -26,6 +27,7 @@
   <!-- Inert unless a native mobile host injects its port (ADR-0033); a browser document never uses it. -->
   <script src="host-bridge.js"></script>
   <!-- Only explicit launch loads manifest-listed game resources. -->
+  <script src="direct-transport.js"></script>
   <script src="bootstrap.js"></script>
 </body>
 </html>

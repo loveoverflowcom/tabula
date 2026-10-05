@@ -16,6 +16,7 @@ const HOST_FILES: &[&str] = &[
     "play.html",
     "standalone.css",
     "launch-options.js",
+    "direct-transport.js",
     "host-bridge.js",
     "setup.js",
     "bootstrap.js",
@@ -565,6 +566,7 @@ fn stage_versioned_resources(directory: &Path) -> Result<usize, WasmStageError> 
         "resource-manifest.js",
         "resources.js",
         "launch-options.js",
+        "direct-transport.js",
         "host-bridge.js",
         "setup.js",
         "bootstrap.js",
@@ -929,7 +931,7 @@ mod tests {
         assert!(!out_dir.path().join("stale.txt").exists());
         // Top-level entries: the HOST_FILES roots (including the host bridge), the bootstrap,
         // WASM, tokens, manifest script and the hashed resources directory.
-        assert_eq!(std::fs::read_dir(out_dir.path()).unwrap().count(), 14);
+        assert_eq!(std::fs::read_dir(out_dir.path()).unwrap().count(), 15);
     }
 
     #[test]
@@ -1122,7 +1124,7 @@ mod tests {
     fn staging_pins_every_runtime_payload_and_static_host_reference() {
         let directory = tempdir().unwrap();
         write_valid_html(&directory.path().join("index.html"));
-        let html = "<canvas id=\"glcanvas\"></canvas><script src=\"mq_js_bundle.js\"></script><script src=\"resource-manifest.js\"></script><script src=\"resources.js\"></script><script src=\"launch-options.js\"></script><script src=\"bootstrap.js\"></script><link rel=\"stylesheet\" href=\"standalone.css\">";
+        let html = "<canvas id=\"glcanvas\"></canvas><script src=\"mq_js_bundle.js\"></script><script src=\"resource-manifest.js\"></script><script src=\"resources.js\"></script><script src=\"launch-options.js\"></script><script src=\"direct-transport.js\"></script><script src=\"bootstrap.js\"></script><link rel=\"stylesheet\" href=\"standalone.css\">";
         std::fs::write(directory.path().join("play.html"), html).unwrap();
         std::fs::write(
             directory.path().join("mq_js_bundle.js"),
@@ -1161,6 +1163,7 @@ mod tests {
             "resource-manifest.js",
             "resources.js",
             "launch-options.js",
+            "direct-transport.js",
             "bootstrap.js",
             "standalone.css",
         ] {
