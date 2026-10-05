@@ -28,6 +28,7 @@ from startup_diagnostics import http_status, navigation_failure, origin_class, p
 ORIGIN = "https://localhost:9443"
 SESSION_COOKIE = "__Host-tabula_session"
 GAME_PATH = "/games/com.tabula.chess"
+TERMINAL_STATUS = "Game over / Black wins / checkmate"
 FORBIDDEN_FRAME_FIELDS = frozenset(
     {"canonical_state", "canonical_version", "input_index", "logical_ms",
      "state_hash", "rules_hash", "seed", "ledger", "canonical_events"}
@@ -374,7 +375,37 @@ def board_square(width: float, height: float, name: str, flipped: bool) -> tuple
     return left + (column + .5) * side / 8, top + (row + .5) * side / 8
 
 
-def move(page, source: str, target: str, flipped: bool, match_id: str) -> str:
+def game_status_class(status: str | None) -> str:
+    return {"White to move": "white_turn", "Black to move": "black_turn",
+            "White to move / CHECK": "white_in_check", "Black to move / CHECK": "black_in_check",
+            TERMINAL_STATUS: "black_checkmate", None: "not_available"}.get(status, "other_status")
+
+
+def visible_game_facts(page, role: str) -> dict:
+    require(role in ("white", "black"), "unknown game diagnostic role")
+    values = page.evaluate("""() => {
+        const data = document.documentElement.dataset;
+        return {revision:data.onlineRevision ?? null, seat:data.onlineSeat ?? null,
+                status:data.onlineStatus ?? null, connection:data.onlineConnection ?? null,
+                availability:data.onlineAvailability ?? null};
+    }""")
+    return {"role": role,
+            "revision": int(values["revision"]) if values["revision"] in ("0", "1", "2", "3", "4") else "not_observed_in_expected_range",
+            "seat": int(values["seat"]) if values["seat"] in ("0", "1") else "not_available",
+            "status_class": game_status_class(values["status"]),
+            "connection_class": {"Connected · server-authoritative": "ready", "Sending move…": "sending",
+                                 "The server rejected that action. Choose another move": "rejected",
+                                 "Moves are blocked": "blocked", None: "not_available"}.get(values["connection"], "other_connection"),
+            "availability": values["availability"] if values["availability"] in ("available", "unavailable") else "not_reported"}
+
+
+def move(page, source: str, target: str, flipped: bool, match_id: str,
+         trace: list[dict] | None = None) -> str:
+    require(source + target in ("f2f3", "e7e5", "g2g4", "d8h4"), "unexpected scripted acceptance move")
+    observed = {"move": source + target, "response_observed": False,
+                "http_status": None, "ack_present": False}
+    if trace is not None:
+        trace.append(observed)
     canvas = page.locator("#glcanvas")
     bounds = canvas.bounding_box()
     require(bounds is not None, "actual canvas has no pointer bounds")
@@ -384,10 +415,12 @@ def move(page, source: str, target: str, flipped: bool, match_id: str) -> str:
             x, y = board_square(bounds["width"], bounds["height"] - 56, square, flipped)
             canvas.click(position={"x": x, "y": y}, delay=70)
     response = result.value
+    observed.update({"response_observed": True, "http_status": http_status(response.status)})
     require(response.status == 200, "rendered legal move was not accepted by real server")
     body = response.json()
     require(not private_frame_keys(body), "canonical facts leaked in command result")
-    require(any("Ack" in frame.get("body", {}) for frame in body["frames"]),
+    observed["ack_present"] = any("Ack" in frame.get("body", {}) for frame in body["frames"])
+    require(observed["ack_present"],
             "rendered legal move lacks durable acknowledgement")
     # Keep exact bytes in memory: parsing into JS numbers would round a u128
     # identity and turn the intended exact retry into a different command.
@@ -462,7 +495,7 @@ def run(args) -> None:
                      "authority_mode": "isolated fixture identities through real durable session authority",
                      "browser_processes": 3, "independent_homes_profiles_cookie_jars": True,
                      "tls_errors_ignored": False, "chromium_sandbox": True,
-                     "startup": {"https_get": {"attempts": 0, "status": None,
+                     "moves": [], "startup": {"https_get": {"attempts": 0, "status": None,
                                  "fixture_page_ready": False, "last_navigation_failure": "none"},
                                  "enrollment": []}}
     browsers = []
@@ -625,31 +658,32 @@ def run(args) -> None:
                              "Actual Rust-decoded seat1 initial projection rendered", canvas=True, secrets=redacted_values)
 
             results["stage"] = "tap f2-f3"
-            first = move(white, "f2", "f3", False, match_id)
+            first = move(white, "f2", "f3", False, match_id, results["moves"])
             wait_revision(black, 1)
             actions.append("White tapped f2-f3")
             results["stage"] = "tap e7-e5"
             # Both actual presenters start White-bottom; no flip control is used.
-            move(black, "e7", "e5", False, match_id)
+            move(black, "e7", "e5", False, match_id, results["moves"])
             wait_revision(white, 2)
             actions.append("Black tapped e7-e5")
             results["stage"] = "tap g2-g4"
-            move(white, "g2", "g4", False, match_id)
+            move(white, "g2", "g4", False, match_id, results["moves"])
             wait_revision(black, 3)
             actions.append("White tapped g2-g4")
             results["stage"] = "tap d8-h4 and render identical terminal verdicts"
-            last = move(black, "d8", "h4", False, match_id)
+            last = move(black, "d8", "h4", False, match_id, results["moves"])
             for page in (white, black):
                 wait_revision(page, 4)
-                page.wait_for_function("() => document.documentElement.dataset.onlineStatus === 'Game over / Black wins'", timeout=30_000)
+                page.wait_for_function("expected => document.documentElement.dataset.onlineStatus === expected", arg=TERMINAL_STATUS, timeout=30_000)
+            results["terminal_views"] = [visible_game_facts(white, "white"), visible_game_facts(black, "black")]
             white_terminal = evidence.capture(white, "07-white-terminal-result.png", "White actual terminal result", "White browser",
-                                              "Rendered Game over / Black wins after four actual legal pointer moves", canvas=True, secrets=redacted_values)
+                                              "Rendered Black wins and checkmate after four actual legal pointer moves; exact game-owned accessibility status includes checkmate", canvas=True, secrets=redacted_values)
             evidence.capture(black, "08-black-terminal-result.png", "Black actual terminal result", "Black browser",
-                             "Independently rendered Game over / Black wins after four actual legal pointer moves", canvas=True, secrets=redacted_values)
+                             "Independently rendered Black wins and checkmate after four actual legal pointer moves; exact game-owned accessibility status includes checkmate", canvas=True, secrets=redacted_values)
             evidence.capture(white, "09-terminal-result-page.png", "Authorized terminal result page and connection UI", "White browser",
                              "Actual completed game remains authorized before its document is closed", secrets=redacted_values)
             require(initial_white != white_terminal, "actual canvas pixels did not change after full game")
-            results["both_rendered_terminal_verdicts"] = "Game over / Black wins"
+            results["both_rendered_terminal_verdicts"] = TERMINAL_STATUS
             results["full_game_pointer_moves"] = ["f2f3", "e7e5", "g2g4", "d8h4"]
             actions.append("Black tapped d8-h4; both independently rendered Game over / Black wins")
 
@@ -782,6 +816,14 @@ def run(args) -> None:
             results["status"] = "pass"
             results["stage"] = "complete"
     finally:
+        if results["status"] != "pass":
+            results["failure_views"] = []
+            for variable, role in ((locals().get("white"), "white"), (locals().get("black"), "black")):
+                try:
+                    if variable is not None and not variable.is_closed() and urlsplit(variable.url).path == "/play/local/":
+                        results["failure_views"].append(visible_game_facts(variable, role))
+                except Exception:
+                    results["failure_views"].append({"role": role, "diagnostic": "unavailable"})
         results["startup"]["processes"] = process_diagnostics(
             private, getattr(args, "native_pid", None), getattr(args, "tls_pid", None))
         (artifacts / "browser-result.json").write_text(json.dumps(results, indent=2) + "\n")
