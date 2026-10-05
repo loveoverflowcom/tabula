@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "inspection_at_utc": "2026-10-05T20:05:37.744710+00:00",
+  "inspection_kind": "assistant_visual_pixel_review_and_independent_image_verification",
+  "scope": "All7 captured PNGs00\u201306 viewed directly; SHA256, byte counts and dimensions matched original CI provenance. No visible credentials, active code or private canonical values observed. Magenta masks are intentional capture redactions. This is not full-game, terminal, mobile/theme/accessibility or interruption acceptance.",
+  "original_provenance_unchanged": true,
+  "source_tree": "83a792208706a9f724310afcee1b1692ff92f676",
+  "ci_checkout": "0a91879b289ebc5230c2329d276ffd72eb107884",
+  "ci_run": 37362092309,
+  "ci_job": 111938885727,
+  "overall_ci_status": "fail_at_terminal_wait",
+  "visible_copy_notes": [
+    "Default no session/online service copy remains beside opted-in direct controls",
+    "Player cards use Local player labels"
+  ],
+  "images": [
+    {
+      "file": "00-dashboard-discovery.png",
+      "sha256": "5f6535f365b58948514e697a44c8e2a1e079aa7113a6563d6951f1426080aec2",
+      "dimensions": {
+        "width": 1100,
+        "height": 850
+      },
+      "visually_reviewed": true,
+      "hash_dimensions_verified": true
+    },
+    {
+      "file": "01-game-library.png",
+      "sha256": "e282b30c15c10fe9185e91a61179ed6b39c095d269ec3c0a36d9c8c22e181d5b",
+      "dimensions": {
+        "width": 1100,
+        "height": 850
+      },
+      "visually_reviewed": true,
+      "hash_dimensions_verified": true
+    },
+    {
+      "file": "02-create-join-controls.png",
+      "sha256": "853fdcb9e1722bd1293ee939ef7812af4a3ca84af462ded1d4621c451ca4cf30",
+      "dimensions": {
+        "width": 1100,
+        "height": 1528
+      },
+      "visually_reviewed": true,
+      "hash_dimensions_verified": true
+    },
+    {
+      "file": "03-created-code-waiting.png",
+      "sha256": "0869e86b2fd6baadb6bf6fe9742da11d461f1dbaf4dd2ade9a2c193cd0c1ea03",
+      "dimensions": {
+        "width": 1100,
+        "height": 1686
+      },
+      "visually_reviewed": true,
+      "hash_dimensions_verified": true
+    },
+    {
+      "file": "04-opponent-joined.png",
+      "sha256": "f619f88e055c849b8712f991e0103e860b15744b6dd0edefd3094feb02cd9965",
+      "dimensions": {
+        "width": 1100,
+        "height": 1652
+      },
+      "visually_reviewed": true,
+      "hash_dimensions_verified": true
+    },
+    {
+      "file": "05-white-initial-board.png",
+      "sha256": "cfdba3698e0f17034aefca13c4dfadb963949dfeaa8e74fc9bfba65cb2d41255",
+      "dimensions": {
+        "width": 1100,
+        "height": 850
+      },
+      "visually_reviewed": true,
+      "hash_dimensions_verified": true
+    },
+    {
+      "file": "06-black-initial-board.png",
+      "sha256": "71273358f40a4aff490b8ef87d2292d2f45e423dbefab3bfac33d9d33083abf7",
+      "dimensions": {
+        "width": 1100,
+        "height": 850
+      },
+      "visually_reviewed": true,
+      "hash_dimensions_verified": true
+    }
+  ]
+}
