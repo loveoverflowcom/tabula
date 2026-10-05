@@ -17,17 +17,34 @@ publish.workspace      = true
 tabula-registry = { workspace = true }
 leptos          = { workspace = true }
 leptos_router   = { workspace = true }
-# Only for the media queries that select a generated scheme, and the change
-# listeners that keep it current; the shell reads no other browser API directly.
-web-sys         = { workspace = true, features = ["Window", "MediaQueryList", "EventTarget"] }
-wasm-bindgen    = { workspace = true }
+# ADR-0036 PR3: default dependency exposes DTOs only, never the runtime owner.
+tabula-session-http = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+web-sys = { workspace = true, features = ["Window", "MediaQueryList", "EventTarget"] }
+wasm-bindgen = { workspace = true }
 
-# Phase 5 — uncomment with the first networked route.
-# tabula-protocol   = { workspace = true }
-# tabula-assets     = { workspace = true }
-# tabula-net-client = { workspace = true, features = ["web"] }
-# serde             = { workspace = true }
-# serde_json        = { workspace = true }
+[features]
+default = []
+# Explicit native test harness; no production listener or service activation.
+account-http-acceptance = ["tabula-session-http/isolated", "dep:tabula-session", "dep:tabula-core", "dep:axum", "dep:tokio", "dep:http-body", "dep:bytes"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = ["Location", "Storage", "StorageEvent", "BroadcastChannel", "AbortController", "AbortSignal", "Request", "RequestInit", "RequestMode", "RequestCache", "RequestCredentials", "RequestRedirect", "Response", "Headers", "ReadableStream", "ReadableStreamDefaultReader", "Document", "Element", "NodeList", "VisibilityState", "Event"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tabula-session = { workspace = true, optional = true }
+tabula-core = { workspace = true, optional = true }
+axum = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["net", "io-util"] }
+http-body = { workspace = true, optional = true }
+bytes = { workspace = true, optional = true }
+
+[[test]]
+name = "account_http"
+required-features = ["account-http-acceptance"]
 
 [lints]
 workspace = true

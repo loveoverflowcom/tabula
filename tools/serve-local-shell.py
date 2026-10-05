@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Serve the built shell and separate local play document for development.
 
-Only implemented Leptos discovery routes receive SPA fallback. Missing gameplay
+Only implemented Leptos discovery/account documents receive SPA fallback. Missing gameplay
 artifacts return HTTP 404, never a misleading successful shell response.
 This is a loopback development server, not deployment infrastructure.
 """
@@ -16,10 +16,15 @@ from urllib.parse import unquote, urlsplit
 
 
 def shell_route(path):
-    """The bounded routes actually implemented by apps/web (ADR-0030)."""
+    """Implemented public shell documents (ADR-0030/0036), never account APIs.
+
+    The account documents do not activate this HTTP fixture as an authenticated
+    deployment. Their real Fetch adapter requires the trusted same-origin HTTPS
+    setup; this server creates no identity, session or API response.
+    """
     path = unquote(urlsplit(path).path)
-    return path in ("/", "/games", "/games/") or (
-        path.startswith("/games/") and len(path.split("/")) == 3
+    return path in ("/", "/games", "/games/", "/account", "/me", "/login", "/register", "/friends") or (
+        path.startswith(("/games/", "/u/")) and len(path.split("/")) == 3 and bool(path.split("/")[-1])
     )
 
 

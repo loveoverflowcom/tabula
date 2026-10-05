@@ -17,7 +17,7 @@ members = ["crates/*", "games/*", "apps/*", "services/*", "xtask"]
 
 # `tests/` holds standalone harnesses (integration, load generator) that are NOT
 # workspace members yet — they are added in Phase 4 when a server exists to test.
-exclude = ["tests/load"]
+exclude = ["tests/load", "tests/match-postgres"]
 
 [workspace.package]
 edition = "2021"
@@ -54,9 +54,12 @@ tabula-core         = { path = "crates/tabula-core" }
 tabula-game-api     = { path = "crates/tabula-game-api" }
 tabula-protocol     = { path = "crates/tabula-protocol" }
 tabula-registry     = { path = "crates/tabula-registry" }
-tabula-match        = { path = "crates/tabula-match" }
+tabula-match        = { path = "crates/tabula-match", default-features = false }
+tabula-match-journal = { path = "crates/tabula-match-journal" }
 tabula-lobby        = { path = "crates/tabula-lobby" }
 tabula-storage      = { path = "crates/tabula-storage" }
+tabula-session      = { path = "crates/tabula-session" }
+tabula-session-http = { path = "crates/tabula-session-http" }
 tabula-presentation = { path = "crates/tabula-presentation" }
 tabula-design       = { path = "crates/tabula-design" }
 tabula-assets       = { path = "crates/tabula-assets" }
@@ -92,11 +95,21 @@ tiny-skia   = "0.11"
 # `{ workspace = true }`; the matrix says which crates may.
 tokio              = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }
 futures            = "0.3"
-axum               = { version = "0.7", features = ["ws", "macros"] }
+# ADR-0036's isolated HTTP needs no WS/macros; enabling ws would unify
+# Tungstenite rand 0.8 OS features with the frozen kernel RNG (I-1).
+axum               = { version = "0.7", default-features = false, features = ["http1", "tokio"] }
 tower              = "0.5"
 tower-http         = { version = "0.6", features = ["trace", "cors", "compression-gzip"] }
 tower-governor     = "0.4"
-sqlx               = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "time", "json", "macros", "migrate"] }
+sqlx               = { version = "0.9", default-features = false, features = ["runtime-tokio", "postgres", "uuid", "macros", "migrate"] }
+# ADR-0036: runtime session credentials, never reachable from deterministic games.
+sha2               = { version = "0.10", default-features = false }
+base64             = "0.22"
+hmac               = "0.12"
+http-body          = "1"
+# WHATWG HTTPS Origin validation in the opt-in native session HTTP adapter.
+url                = "2"
+getrandom          = "0.3"
 tracing            = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 opentelemetry      = "0.27"
@@ -105,7 +118,7 @@ serde_json         = "1"
 uuid               = { version = "1", features = ["v7", "serde"] }
 figment            = { version = "0.10", features = ["toml", "env"] }
 argon2             = "0.5"
-jsonwebtoken       = "9"
+jsonwebtoken       = { version = "9", default-features = false }
 openidconnect      = "3"
 bytes              = { version = "1", features = ["serde"] }
 toml               = "0.8"
@@ -118,6 +131,8 @@ leptos        = { version = "0.7", features = ["csr"] }
 leptos_router = "0.7"
 web-sys       = "0.3"
 wasm-bindgen  = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
 gloo-timers   = "0.3"
 directories   = "5"
 

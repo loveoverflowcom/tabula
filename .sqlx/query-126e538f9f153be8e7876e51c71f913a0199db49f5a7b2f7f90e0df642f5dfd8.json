@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_id, authorization_epoch, enabled, last_observed_at_ms, publication_lease_started_at_ms, publication_lease_until_ms FROM session_accounts WHERE user_id = $1 FOR UPDATE\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "authorization_epoch",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "authorization_epoch"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "last_observed_at_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "last_observed_at_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "publication_lease_started_at_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "publication_lease_started_at_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "publication_lease_until_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_accounts",
+            "name": "publication_lease_until_ms"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "126e538f9f153be8e7876e51c71f913a0199db49f5a7b2f7f90e0df642f5dfd8"
+}

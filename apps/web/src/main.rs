@@ -8,7 +8,10 @@
 //! > `/`, `/games` and `/games/:id` (with its `?setup=1` substate) are
 //! > implemented anyway, as a recorded decision: see
 //! > `docs/adr/0028-discovery-shell-ahead-of-phase-gate.md`. Every other route
-//! > below still waits for the gate. The optional `/play/local/` handoff opens
+//! > remains gated except the isolated account-state/read-only self routes
+//! > `/account` and `/me` under ADR-0036. `/login`, `/register`, `/friends` and
+//! > `/u/:handle` explain their unavailable capabilities and collect nothing.
+//! > The optional `/play/local/` handoff opens
 //! > the existing standalone hot-seat runtime as a separate document
 //! > (ADR-0030, retaining ADR-011). The shell creates no match and provides no
 //! > network authority.
@@ -20,7 +23,8 @@
 //!
 //! ```text
 //! /                     home · continue playing · featured games
-//! /login  /register     auth
+//! /account  /me         isolated account state · immutable read-only self ID
+//! /login  /register     unavailable provider auth explanation
 //! /games                catalog (filter by category, players, duration, complexity)
 //! /games/:id            game detail · rules · config presets · play buttons
 //! /rooms                room browser
@@ -28,8 +32,8 @@
 //! /queue                matchmaking status
 //! /play/:match_id       → HANDS OFF to the game runtime (a separate document)
 //! /matches/:id          post-match summary · replay viewer · rematch
-//! /u/:handle            profile · stats · history
-//! /friends              social
+//! /u/:handle            unavailable other-profile lookup explanation
+//! /friends              unavailable social explanation
 //! /settings             account · appearance · motion · accessibility · audio · privacy
 //! /shop                 cosmetics (later)
 //! /admin/*              operator tooling — role-gated, SEPARATE BUNDLE
@@ -87,6 +91,7 @@
 //! ```text
 //! src/main.rs       mount
 //! src/views/        one module per implemented route, plus shared chrome
+//! src/account.rs    isolated account lifecycle + same-origin Fetch adapter
 //! src/i18n.rs       shell copy merged with the catalog's own tables
 //! src/query.rs      Library constraints <-> the address bar
 //! src/setup.rs      the setup draft and its state machine
@@ -97,7 +102,8 @@
 //!
 //! Still to come with the gate: `src/state.rs` (`AppState`, doc 04 §2.2) and
 //! `src/api.rs` (a typed client over `tabula-protocol`). Neither exists yet
-//! because neither has anything to talk to.
+//! for the future lobby/networked shell. The bounded `src/account.rs` adapter
+//! consumes `tabula-session-http` DTOs only; it is not that broad AppState/API.
 //!
 //! ## What this crate must never know
 //!
@@ -106,6 +112,7 @@
 //! copy arrives as data from `Catalog::messages` (I-9, enforced by
 //! `xtask check-no-game-ids`, which treats this crate as restricted).
 
+mod account;
 mod i18n;
 mod query;
 mod setup;

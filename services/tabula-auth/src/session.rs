@@ -1,11 +1,11 @@
-//! PHASE 4 — Tabula session lifecycle; ADR-0031/0034.
+//! Session ownership after ADR-0038's isolated browser implementation.
 //!
-//! TODO(phase 4, #54): after verified identity, mint channel-bound opaque sessions
-//! with OS entropy; persist only credential digests behind tabula-storage ports.
-//! Browser: `__Host-tabula_session`, `Secure; HttpOnly; SameSite=Lax; Path=/`, no Domain.
-//! Native: explicit bearer held in the OS secure store; no plaintext fallback.
-//! Preserve ADR-0031's 30-minute idle and 24-hour absolute deadlines, atomic
-//! credential rotation, account epochs and durable current-session logout.
-//! TODO(phase 4, #54): define and test cross-service revocation/expiry fences with
-//! tabula-server before enabling auth; unavailable storage/provider fails closed.
-//! Profile/friends/presence, seat authorization and match grants are not owned here.
+//! Verified exact provider identity and the epoch captured before redirect cross
+//! the trusted BrowserLoginProvider port. tabula-session-http issues through the
+//! injected durable SessionAuthority; tabula-storage owns atomic SQL and stores
+//! only credential digests. Provider tokens never become Tabula credentials.
+//! Browser HttpOnly cookie, current /me, rotation/logout and terminal expiry use
+//! the existing ADR-0031/0036 adapter; this service owns no parallel session store.
+//!
+//! TODO(phase 4, #54): shipping native secure-store login and production security-
+//! event synchronization/output fencing remain gated and have no fallback.

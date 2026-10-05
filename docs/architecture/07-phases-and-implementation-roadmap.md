@@ -597,3 +597,31 @@ Phase 11  "Someone else's game runs safely, and can be revoked in minutes."
 ---
 
 **Next:** [`08-first-games-validation-plan.md`](./08-first-games-validation-plan.md)
+
+## Isolated #54 implementation exception
+
+[ADR-0039](../adr/0039-isolated-match-actor-runtime.md) additionally permits the
+owner-requested second offline actor/wire PR after invited OIDC PR77. Its
+single-owner ordering, scoped receipts and projected-output acceptance do not
+prove Phase 3 stability, full Phase 4, SQL durability, network auth, reconnect,
+private-delivery fences or either service activation. Its SQL/recovery boundary
+is now narrowly extended by [ADR-0040](../adr/0040-isolated-durable-match-postgres.md),
+not by reinterpreting that offline evidence.
+
+ADR0040 authorizes PR1's consistent PostgreSQL journal, durable receipt watermarks
+and owner fence, exact bounded corruption-rejecting reopen and real DB/process
+acceptance. It begins the owner's new three-PR sequence after PR78: storage first,
+then actual join-code two-browser Chess, then online reconnect/resync/network/
+revocation/server-crash recovery. PR2 and PR3 are separate later-chat work items;
+PR1 does not implement their network/target outcomes. Both production listeners,
+live migration and all broad phase exits remain closed. See the
+[current queue](../work-plan/README.md#authorized-durable-to-online-match-series)
+and [durability ledger](../verification/durable-match-postgres/README.md).
+
+[ADR-0036](../adr/0036-isolated-durable-session-validation.md) permits three
+sequential isolated implementation slices: durable session policy/PostgreSQL
+validation, then HTTP session/self-profile, then account-state/profile UI.
+The first slice does not implement game networking or activate either service.
+Its database commit-fence receipt is not actual private-output fencing. All
+Phase 2/3/4/5 exits, provider proof and target-specific evidence remain owed;
+login/register/friends stay unavailable where their backend gates are unmet.

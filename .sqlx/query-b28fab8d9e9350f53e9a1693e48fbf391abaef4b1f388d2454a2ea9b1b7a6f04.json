@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pg_advisory_lock(hashtextextended('session_accounts'::regclass::oid::text || ':' || $1::uuid::text, 541))\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pg_advisory_lock",
+        "type_info": "Void",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b28fab8d9e9350f53e9a1693e48fbf391abaef4b1f388d2454a2ea9b1b7a6f04"
+}

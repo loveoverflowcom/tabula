@@ -19,6 +19,7 @@ in [`deps.toml`](../deps.toml), and repeated in each crate's `src/lib.rs` header
 | [`tabula-protocol`](tabula-protocol) | 4 | The wire: envelopes, versions, dual codec, error codes |
 | [`tabula-registry`](tabula-registry) | 4 | The catalog — the **only** crate that names games |
 | [`tabula-match`](tabula-match) | 4 | Authoritative match runtime: actor, pipeline, ports |
+| [`tabula-session`](tabula-session) | 4, isolated ADR-0036 | Internal identity/session policy and ports; no production activation |
 | [`tabula-storage`](tabula-storage) | 4 | The **only** crate that knows SQL exists |
 | [`tabula-net-client`](tabula-net-client) | 4 | Client session: connect, resume, sequencing, idempotency |
 | [`tabula-lobby`](tabula-lobby) | 5 | Rooms, matchmaking, presence |
@@ -65,3 +66,7 @@ stabilises. Trigger: zero changes to either crate for two consecutive phases
 
 Everything else is "never" — each split earns its keep by being the seam that
 makes something replaceable.
+
+[ADR-0036](../docs/adr/0036-isolated-durable-session-validation.md) is the explicit
+exception for internal session policy and opt-in PostgreSQL validation. It does
+not turn other skeletons into implemented services or prove phase exits.

@@ -15,6 +15,57 @@ use tabula_registry::{I18nKey, Locale, Localizer};
 ///
 /// Keys here describe the *shell's* vocabulary only.
 const SHELL_EN: &[(&str, &str)] = &[
+    ("nav.account", "Account"),
+    ("accounts.title", "Account"),
+    ("accounts.scope", "Check your session and read your account ID. Invited-account sign-in is available when the provider is configured. Registration and social features remain unavailable."),
+    ("accounts.profile.title", "Profile"),
+    ("accounts.profile.self", "Your profile"),
+    ("accounts.profile.read_only", "Read-only self profile"),
+    ("accounts.profile.id", "Account ID"),
+    ("accounts.profile.only_id", "Only your immutable account ID is available here. Names, handles, profile editing, history and statistics are not provided."),
+    ("accounts.action.check", "Check session"),
+    ("accounts.action.login", "Continue with Kanidm"),
+    ("accounts.login.invited", "Use an account already provided by the test operator. Continue to Kanidm to sign in; this page does not collect your credentials. You'll return to Account."),
+    ("accounts.login.switch", "To use a different account, sign out of this browser session first."),
+    ("accounts.login.starting", "Preparing sign-in…"),
+    ("accounts.login.redirecting", "Opening Kanidm sign-in…"),
+    ("accounts.login.failed", "Sign-in couldn't be started. Account data stays hidden."),
+    ("accounts.login.retry", "Check the session again before retrying sign-in."),
+    ("accounts.logout.storage_unavailable", "Browser sign-out protection is unavailable. Account data stays hidden."),
+    ("accounts.logout.storage_help", "Allow this site's browser storage, then check the session again. If sign-out was interrupted, reloading may lose its local protection; server sign-out is not confirmed by this warning."),
+    ("accounts.action.refresh", "Refresh session"),
+    ("accounts.action.logout", "Sign out"),
+    ("accounts.action.logout_retry", "Retry sign-out"),
+    ("accounts.action.cancel", "Cancel"),
+    ("accounts.action.library", "Browse games"),
+    ("accounts.action.back_account", "Back to account"),
+    ("accounts.local.explanation", "Supported local games can be played without an account."),
+    ("accounts.session.checking", "Checking your session…"),
+    ("accounts.session.refreshing", "Refreshing and checking your session…"),
+    ("accounts.session.signed_out", "You're signed out."),
+    ("accounts.session.confirmed", "The latest check confirmed your session and self profile."),
+    ("accounts.session.ended", "Your previous session is no longer confirmed. Check the session again to continue with account features."),
+    ("accounts.session.unconfirmed", "Your session couldn't be confirmed. Account data is hidden."),
+    ("accounts.service.unavailable", "Account services aren't available. You can still browse games."),
+    ("accounts.error.generic", "Couldn't check this account request. Try checking the session again."),
+    ("accounts.connection.disconnected", "Can't connect right now. This doesn't confirm sign-out. Check the session when your connection is available."),
+    ("accounts.operation.cancelled", "Account checking was cancelled and account data is hidden. You can check the session again."),
+    ("accounts.logout.title", "Sign out of this browser?"),
+    ("accounts.logout.explanation", "Other tabs sharing this session may lose account access. Local games remain available."),
+    ("accounts.logout.pending", "Signing out. Account data is hidden while the server result is checked…"),
+    ("accounts.logout.unknown", "Account data is hidden, but server sign-out isn't confirmed. Check the session or retry sign-out."),
+    ("accounts.logout.context_changed", "The session no longer matches the earlier sign-out target. That sign-out remains unconfirmed, and its retry cannot target this session. Account data stays hidden. Check again or contact the test operator for recovery."),
+    ("accounts.features.title", "Unavailable account features"),
+    ("accounts.login.title", "Sign in"),
+    ("accounts.login.unavailable", "Sign-in cannot start from this session check. Check the session again; sign-in requires a configured provider. No email or password is collected here."),
+    ("accounts.login.link_unavailable", "Sign in · unavailable"),
+    ("accounts.register.title", "Create account"),
+    ("accounts.register.unavailable", "Account registration isn't available in this build. No account or sign-in session can be created here."),
+    ("accounts.register.link_unavailable", "Create account · unavailable"),
+    ("accounts.friends.title", "Friends"),
+    ("accounts.friends.unavailable", "Friends services aren't available. Friend lists, requests and presence cannot be checked here."),
+    ("accounts.friends.link_unavailable", "Friends · unavailable"),
+    ("accounts.profile.other_unavailable", "Other-profile lookup isn't available. This address doesn't select your self profile or confirm that an account exists."),
     ("app.title", "Tabula"),
     ("app.skip", "Skip to the main task"),
     ("app.locale", "Language"),
@@ -127,6 +178,57 @@ const SHELL_EN: &[(&str, &str)] = &[
 ];
 
 const SHELL_VI: &[(&str, &str)] = &[
+    ("nav.account", "Tài khoản"),
+    ("accounts.title", "Tài khoản"),
+    ("accounts.scope", "Kiểm tra phiên đăng nhập và đọc ID tài khoản của bạn. Tài khoản được cấp hoặc mời có thể đăng nhập khi nhà cung cấp đã được cấu hình. Đăng ký và tính năng xã hội chưa khả dụng."),
+    ("accounts.profile.title", "Hồ sơ"),
+    ("accounts.profile.self", "Hồ sơ của bạn"),
+    ("accounts.profile.read_only", "Hồ sơ của bạn, chỉ đọc"),
+    ("accounts.profile.id", "ID tài khoản"),
+    ("accounts.profile.only_id", "Tại đây chỉ có ID tài khoản cố định của bạn. Tên, tên tài khoản, chỉnh sửa hồ sơ, lịch sử và số liệu chưa được cung cấp."),
+    ("accounts.action.check", "Kiểm tra phiên đăng nhập"),
+    ("accounts.action.login", "Tiếp tục với Kanidm"),
+    ("accounts.login.invited", "Dùng tài khoản đã được người vận hành thử nghiệm cấp. Tiếp tục đến Kanidm để đăng nhập; trang này không thu thập thông tin đăng nhập. Sau đó bạn sẽ quay lại Tài khoản."),
+    ("accounts.login.switch", "Muốn dùng tài khoản khác, hãy đăng xuất phiên trình duyệt này trước."),
+    ("accounts.login.starting", "Đang chuẩn bị đăng nhập…"),
+    ("accounts.login.redirecting", "Đang mở trang đăng nhập Kanidm…"),
+    ("accounts.login.failed", "Chưa thể bắt đầu đăng nhập. Dữ liệu tài khoản vẫn được ẩn."),
+    ("accounts.login.retry", "Hãy kiểm tra lại phiên trước khi thử đăng nhập lại."),
+    ("accounts.logout.storage_unavailable", "Chưa thể dùng cơ chế bảo vệ đăng xuất của trình duyệt. Dữ liệu tài khoản vẫn được ẩn."),
+    ("accounts.logout.storage_help", "Cho phép trang này dùng bộ nhớ trình duyệt rồi kiểm tra lại phiên. Nếu đăng xuất bị gián đoạn, tải lại có thể làm mất trạng thái bảo vệ cục bộ; cảnh báo này không xác nhận đăng xuất trên máy chủ."),
+    ("accounts.action.refresh", "Làm mới phiên đăng nhập"),
+    ("accounts.action.logout", "Đăng xuất"),
+    ("accounts.action.logout_retry", "Thử đăng xuất lại"),
+    ("accounts.action.cancel", "Hủy"),
+    ("accounts.action.library", "Xem thư viện trò chơi"),
+    ("accounts.action.back_account", "Quay lại tài khoản"),
+    ("accounts.local.explanation", "Những trò chơi hỗ trợ chơi local không cần tài khoản."),
+    ("accounts.session.checking", "Đang kiểm tra phiên đăng nhập…"),
+    ("accounts.session.refreshing", "Đang làm mới và kiểm tra phiên đăng nhập…"),
+    ("accounts.session.signed_out", "Bạn chưa đăng nhập."),
+    ("accounts.session.confirmed", "Lần kiểm tra gần nhất đã xác nhận phiên đăng nhập và hồ sơ của bạn."),
+    ("accounts.session.ended", "Phiên đăng nhập trước của bạn không còn được xác nhận. Kiểm tra lại phiên để tiếp tục dùng tính năng tài khoản."),
+    ("accounts.session.unconfirmed", "Chưa thể xác nhận phiên đăng nhập. Dữ liệu tài khoản đã được ẩn."),
+    ("accounts.service.unavailable", "Dịch vụ tài khoản chưa khả dụng. Bạn vẫn có thể xem thư viện trò chơi."),
+    ("accounts.error.generic", "Chưa thể kiểm tra yêu cầu tài khoản này. Hãy thử kiểm tra lại phiên đăng nhập."),
+    ("accounts.connection.disconnected", "Hiện chưa thể kết nối. Điều này không xác nhận việc đăng xuất. Kiểm tra phiên đăng nhập khi có kết nối."),
+    ("accounts.operation.cancelled", "Đã hủy việc kiểm tra tài khoản và ẩn dữ liệu tài khoản. Bạn có thể kiểm tra lại phiên đăng nhập."),
+    ("accounts.logout.title", "Đăng xuất khỏi trình duyệt này?"),
+    ("accounts.logout.explanation", "Các thẻ khác dùng chung phiên này có thể mất quyền truy cập tài khoản. Bạn vẫn có thể chơi local."),
+    ("accounts.logout.pending", "Đang đăng xuất. Dữ liệu tài khoản được ẩn trong khi kiểm tra kết quả từ máy chủ…"),
+    ("accounts.logout.unknown", "Dữ liệu tài khoản đã được ẩn, nhưng chưa xác nhận đăng xuất trên máy chủ. Kiểm tra phiên đăng nhập hoặc thử đăng xuất lại."),
+    ("accounts.logout.context_changed", "Phiên này không còn khớp với phiên cần đăng xuất trước đó. Chưa xác nhận lần đăng xuất ấy và không thể dùng yêu cầu cũ để đăng xuất phiên này. Dữ liệu tài khoản vẫn được ẩn. Hãy kiểm tra lại hoặc liên hệ người vận hành thử nghiệm để khôi phục."),
+    ("accounts.features.title", "Tính năng tài khoản chưa khả dụng"),
+    ("accounts.login.title", "Đăng nhập"),
+    ("accounts.login.unavailable", "Chưa thể bắt đầu đăng nhập từ lần kiểm tra này. Hãy kiểm tra lại phiên; đăng nhập cần nhà cung cấp đã được cấu hình. Màn hình này không thu thập email hay mật khẩu."),
+    ("accounts.login.link_unavailable", "Đăng nhập · chưa khả dụng"),
+    ("accounts.register.title", "Tạo tài khoản"),
+    ("accounts.register.unavailable", "Bản dựng này chưa hỗ trợ đăng ký tài khoản. Màn hình này không thể tạo tài khoản hay phiên đăng nhập."),
+    ("accounts.register.link_unavailable", "Tạo tài khoản · chưa khả dụng"),
+    ("accounts.friends.title", "Bạn bè"),
+    ("accounts.friends.unavailable", "Dịch vụ bạn bè chưa khả dụng. Màn hình này chưa thể kiểm tra danh sách bạn bè, lời mời hay trạng thái online."),
+    ("accounts.friends.link_unavailable", "Bạn bè · chưa khả dụng"),
+    ("accounts.profile.other_unavailable", "Chưa hỗ trợ tra cứu hồ sơ người khác. Địa chỉ này không chọn hồ sơ của bạn hay xác nhận tài khoản có tồn tại."),
     ("app.title", "Tabula"),
     ("app.skip", "Tới nội dung chính"),
     ("app.locale", "Ngôn ngữ"),
@@ -307,4 +409,54 @@ pub fn shell(locale: Locale) -> (Messages, tabula_registry::Catalog) {
     let messages = Messages::new(locale);
     let catalog = tabula_registry::Catalog::new(tabula_registry::registered_games(), &messages);
     (messages, catalog)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Messages, SHELL_EN, SHELL_VI};
+    use std::collections::BTreeSet;
+    use tabula_registry::Locale;
+
+    fn arguments(text: &str) -> BTreeSet<&str> {
+        text.split('{')
+            .skip(1)
+            .filter_map(|part| part.split_once('}').map(|(argument, _)| argument))
+            .collect()
+    }
+
+    #[test]
+    fn shell_locales_have_unique_matching_keys_and_argument_shapes() {
+        let en: BTreeSet<_> = SHELL_EN.iter().map(|(key, _)| *key).collect();
+        let vi: BTreeSet<_> = SHELL_VI.iter().map(|(key, _)| *key).collect();
+        assert_eq!(en.len(), SHELL_EN.len(), "duplicate English key");
+        assert_eq!(vi.len(), SHELL_VI.len(), "duplicate Vietnamese key");
+        assert_eq!(en, vi, "a shell message is missing in one locale");
+        for (key, english) in SHELL_EN {
+            let vietnamese = SHELL_VI
+                .iter()
+                .find_map(|(candidate, text)| (candidate == key).then_some(*text))
+                .expect("Vietnamese key parity");
+            assert!(!english.is_empty(), "{key}");
+            assert!(!vietnamese.is_empty(), "{key}");
+            assert_eq!(arguments(english), arguments(vietnamese), "{key}");
+        }
+    }
+
+    #[test]
+    fn account_copy_is_installed_and_missing_keys_remain_visibly_labelled() {
+        for locale in Locale::ALL {
+            let messages = Messages::new(locale);
+            for (key, _) in SHELL_EN
+                .iter()
+                .filter(|(key, _)| key.starts_with("accounts."))
+            {
+                assert!(messages.lookup(key).is_some(), "{key}");
+                assert!(!messages.text(key).contains("{0}"), "{key}");
+            }
+            let missing = messages.text("accounts.not_installed");
+            assert!(missing.contains("accounts.not_installed"));
+            assert!(missing.starts_with('['));
+            assert!(missing.ends_with(']'));
+        }
+    }
 }

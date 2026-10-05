@@ -5,9 +5,9 @@
 # Weakening a check is how the invariants rot.
 #
 # Phase note: Only implemented / current-phase required gates run on normal PRs.
-# Future-phase capabilities (protocol wire vectors, integration databases) remain
-# documented in xtask and the architectural roadmap, and are activated when their
-# respective phases begin.
+# Narrow ADR exceptions additionally run executable isolated wire/actor vectors
+# and disposable session/provider database acceptance. Full Phase 4 transport,
+# match persistence/recovery and future xtask protocol commands remain gated.
 
 name: ci
 
@@ -139,6 +139,30 @@ jobs:
       - uses: taiki-e/install-action@nextest
       # Unit + property + replay. Every game crate's conformance! suite runs here.
       - run: cargo nextest run --workspace
+      # ADR-0039 is opt-in: default workspace tests cannot exercise the actor.
+      # Offline ports are not production auth, PostgreSQL or WebSocket proof.
+      - name: Isolated match actor and executable wire vectors
+        run: |
+          cargo nextest run -p tabula-match --features isolated
+          cargo test -p tabula-registry --test runtime
+          cargo test -p tabula-registry --doc
+          cargo test -p tabula-protocol
+          cargo clippy -p tabula-match --features isolated --all-targets -- -D warnings
+      # ADR-0038: optional provider code must have executed adversarial crypto
+      # tests, not only a default std-only service frame or a feature build.
+      - name: Isolated Kanidm verifier and login boundary
+        run: |
+          cargo test -p tabula-auth --features web-oidc --lib
+          cargo test -p tabula-session-http --features isolated --test browser_login_http
+      # ADR-0036 PR3: actual TCP adapter responses consumed by the isolated
+      # account lifecycle. Synthetic test identities do not prove provider login.
+      - name: Isolated account HTTP consumer
+        run: |
+          cargo test -p tabula-web --features account-http-acceptance --test account_http -- --list > account-http-test-list.txt
+          grep -Eq '^tcp_context_then_current_self_profile_is_required_to_publish_identity: test$' account-http-test-list.txt
+          grep -Eq '^private_body_failure_after_received_200_stays_masked_until_explicit_recheck: test$' account-http-test-list.txt
+          cat account-http-test-list.txt
+          cargo test -p tabula-web --features account-http-acceptance --test account_http
 
   # doc 01 §5.1 rule 1: every crate builds with no features AND with all features.
   features:
@@ -174,6 +198,7 @@ jobs:
       - run: cargo tree -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --edges normal > target/local-game-graph.txt
       - run: python3 tools/tests/check-loading-budgets.py --game-wasm target/wasm32-unknown-unknown/wasm-release/tabula-game-client.wasm --game-tree target/local-game-graph.txt
       - run: cargo check -p tabula-web --target wasm32-unknown-unknown
+      - run: cargo check -p tabula-protocol -p tabula-registry -p tabula-match --target wasm32-unknown-unknown --all-features
       # Bundle size cap: < 6 MB gzipped (doc 01 §7). Fail on a >10% regression.
       # - run: cargo xtask check-bundle-size
 
@@ -203,3 +228,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          arguments: --all-features

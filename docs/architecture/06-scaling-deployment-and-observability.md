@@ -154,6 +154,24 @@ statement_timeout        = 5s (app pool)
 
 ---
 
+### 3.5 Isolated durability evidence is not Stage-0 activation
+
+[ADR-0040](../adr/0040-isolated-durable-match-postgres.md) permits only native
+opt-in match journaling and explicit recovery with real disposable PostgreSQL 16
+transaction/fault/reopen/process evidence. Both production entrypoints stay
+closed; migrations are explicit isolated test operations, not live rollout.
+Expected-version plus durable owner generation excludes stale database writers
+after reopen. That fence is not the placement/lease/service split in §4.4/§5.1,
+or revocation of queued socket output and external effects.
+
+Known or indeterminate commit failure stops the isolated actor; a fresh verified
+reopen establishes durable truth. No AckAfterApply buffer, live read-only fallback,
+automatic supervisor, timer/outage policy, real online crash/resync, load/SLO,
+backup/PITR or production seed-encryption acceptance follows. Stage 0 exits and
+production deployment/at-rest/access-control obligations remain unchanged.
+The [delivery ledger](../verification/durable-match-postgres/README.md) separates
+planned checks from actual real-server, process, local and CI receipts.
+
 ## 4. Stage 1 — one tuned host (≤ ~1,000 CCU)
 
 Nothing structural changes. What changes:

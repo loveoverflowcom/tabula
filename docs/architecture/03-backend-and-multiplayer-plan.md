@@ -502,6 +502,19 @@ fn logical_now(&self) -> LogicalTime {
 
 ## 8. Ordering, idempotency, and versioning
 
+**Executable isolated exception:** [ADR-0039](../adr/0039-isolated-match-actor-runtime.md)
+implements the bounded offline actor and generic registry bridge under native
+`tabula-match/isolated`. The following production sketches remain plans outside
+that exception. Its receipts are scoped to resolved record/subject/epoch/seat
+generation; retained high-watermarks outlive bounded receipt expiry/eviction.
+Canonical counters stay internal; per-attachment visible revisions avoid hidden
+action-existence leaks through global gaps. [ADR-0040](../adr/0040-isolated-durable-match-postgres.md)
+subsequently opens only native opt-in consistent PostgreSQL journaling, durable
+operation scopes/receipts/owner fencing and exact bounded recovery (§9.7).
+Network listeners/resume and durable authority/private-delivery fences remain
+closed. The in-memory-cache/AckAfterApply/supervision sketches below do not
+override that adapter's stronger commit and fail-stop laws.
+
 ### 8.1 The three counters
 
 | Counter | Scope | Purpose |
@@ -765,6 +778,44 @@ final snapshot are retained longer, being much smaller.
 - `synchronous_commit = on` for the match transaction (we are claiming durability); consider
   `remote_write` only if a replica setup makes it meaningful.
 
+### 9.7 Implemented bounded journal contract (ADR-0040)
+
+The SQL-free `tabula-match::durable` port and DTOs are default contracts; registry
+and Tokio are separate optional actor dependencies. Native non-default
+`tabula-storage/match-postgres` owns the isolated SQL adapter and explicit test
+migrations. Neither production service consumes the adapter or opens a listener.
+
+Creation binds the exact approved game/package/rules identity, config, roster,
+seed, version/index zero and initial events/state/hash/snapshot. An accepted
+input's recorded bytes/time/index, events, version/hash, due snapshot and complete
+bounded operation ledger share one transaction and committed-head update.
+Reservation and rejected-command receipt-only changes use the same owner fence
+without advancing canonical version. Known success precedes Ack, projection
+output and keyed effects. Known/indeterminate write failure stops the actor;
+reopen, rather than continued speculative state or automatic apply retry,
+establishes the database's committed truth.
+
+Durable operation identity retains session record/subject/epoch/seat/generation;
+connection SessionId and correlation do not reset it. Scope high-watermarks
+persist for the match lifetime despite bounded receipt TTL/count eviction.
+New scopes are reserved at authorized attachment and refused at capacity, never
+allocated by a private command or made available by watermark eviction. Every
+mutation checks expected committed version and durable owner generation in the
+same database transaction. Reopen's newer generation excludes all stale-owner
+mutations, including same-version ledger-only updates.
+
+Reopening loads a consistent committed prefix and replays its contiguous isolated
+accepted stream with exact recorded identity/config/seed and original logical
+times. It compares creation and every input's events/hash, all snapshots and the
+head/ledger. Missing, extra, skewed, malformed, rejected or inconsistent stored
+data fails closed. Snapshots are checked reconstruction accelerators, never
+independent authority; they cannot conceal inconsistent earlier history.
+The isolated policy snapshots initial/every 20/terminal state, bounds snapshots
+to 1 MiB and ledgers to 4 MiB, and recovery to 10,001 records/64 MiB. This is a bounded
+integrity-first slice, not general streaming recovery, compaction or performance
+acceptance. [ADR0040](../adr/0040-isolated-durable-match-postgres.md) owns the laws;
+the [ledger](../verification/durable-match-postgres/README.md) owns actual evidence.
+
 ---
 
 ## 10. Reconnect and resume
@@ -900,6 +951,12 @@ Live matches never touch it.
 ---
 
 ## 13. Failure recovery
+
+The table and startup policy below are full-production plans. ADR0040's isolated
+adapter instead stops on a known/indeterminate commit failure and accepts fresh
+explicit reopening only after its exact consistent-log/ledger verification.
+It supplies no production supervisor, automatic socket Resync, outage/timer
+scheduling or policy that permits a live actor to continue after a failed write.
 
 | Failure | Detection | Recovery | Data loss |
 |---|---|---|---|
