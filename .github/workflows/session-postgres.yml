@@ -31,10 +31,12 @@ jobs:
           POSTGRES_USER: tabula_test
           # A disposable, runner-local test database, never a persistent account.
           POSTGRES_HOST_AUTH_METHOD: trust
+          PGUSER: tabula_test
+          PGDATABASE: tabula_session_acceptance
         ports:
           - '127.0.0.1:5432:5432'
         options: >-
-          --health-cmd 'pg_isready -U tabula_test -d tabula_session_acceptance'
+          --health-cmd pg_isready
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_session_acceptance
@@ -67,6 +69,7 @@ jobs:
           name: session-sqlx-metadata
           path: .sqlx/query-*.json
           if-no-files-found: error
+          include-hidden-files: true
       - name: Committed offline metadata is exact
         run: |
           test -n "$(git ls-files '.sqlx/query-*.json')"
