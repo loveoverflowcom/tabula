@@ -169,6 +169,13 @@ that live initial board. A separate page in White's own context then performs
 normal current-credential logout; the live game must receive an actual poll401.
 Before capture the real UI must positively show its neutral error, hide and
 zero-size the canvas, remove private status datasets and clear status spans.
+The live game is explicitly foregrounded after opening its separate control
+page, because Macroquad transport polling is animation-frame-driven. Closed
+auxiliary subphase/status facts identify setup, visibility, logout, actual401,
+neutral verification and capture failures. The host intentionally aborts a
+non200 response body, so the fixture observes the real401 without forcing a
+Playwright JSON read after that abort. The independent revoked-output JSON
+probes and native held-body zero-byte oracle remain required and unchanged.
 Stale game pixels or private status must never be captured after authority loss.
 This bounded active-document concealment check does not claim PR3 reconnect,
 interrupted-command or BFCache lifecycle acceptance.
