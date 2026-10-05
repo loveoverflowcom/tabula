@@ -34,34 +34,34 @@ class VoiceController(
     fun join() {
         val currentScope = scope ?: return
         if (closed || !foreground || state.connection in setOf(
-                VoiceConnection.ResolvingGrant, VoiceConnection.Connecting,
-                VoiceConnection.Connected, VoiceConnection.Reconnecting,
+                VoiceConnection.RESOLVING_GRANT, VoiceConnection.CONNECTING,
+                VoiceConnection.CONNECTED, VoiceConnection.RECONNECTING,
             )) return
         retire()
-        state = VoiceState(connection = VoiceConnection.ResolvingGrant)
+        state = VoiceState(connection = VoiceConnection.RESOLVING_GRANT)
         grants.request(currentScope, attempt, this)
     }
 
     override fun onGrant(request: Long, grant: VoiceJoinGrant) {
-        if (closed || !foreground || request != attempt || state.connection != VoiceConnection.ResolvingGrant) return
+        if (closed || !foreground || request != attempt || state.connection != VoiceConnection.RESOLVING_GRANT) return
         val now = clock.epochSeconds()
         if (grant.scope != scope || grant.expiresAtEpochSeconds <= now ||
             grant.expiresAtEpochSeconds - now > 600) {
-            state = VoiceState(connection = VoiceConnection.Failed, error = VoiceError.GrantExpired)
+            state = VoiceState(connection = VoiceConnection.FAILED, error = VoiceError.GRANT_EXPIRED)
             return
         }
         grantExpiry = grant.expiresAtEpochSeconds
-        state = VoiceState(connection = VoiceConnection.Connecting, canPublish = grant.canPublish)
+        state = VoiceState(connection = VoiceConnection.CONNECTING, canPublish = grant.canPublish)
         client.connect(attempt, grant, this)
     }
 
     override fun onGrantUnavailable(request: Long, error: VoiceError) {
-        if (closed || request != attempt || state.connection != VoiceConnection.ResolvingGrant) return
-        state = VoiceState(connection = VoiceConnection.Unavailable, error = error)
+        if (closed || request != attempt || state.connection != VoiceConnection.RESOLVING_GRANT) return
+        state = VoiceState(connection = VoiceConnection.UNAVAILABLE, error = error)
     }
 
     fun setMicrophoneEnabled(enabled: Boolean) {
-        if (closed || !foreground || state.connection != VoiceConnection.Connected ||
+        if (closed || !foreground || state.connection != VoiceConnection.CONNECTED ||
             state.microphoneBusy || (enabled && !state.canPublish)) return
         if (expireIfNeeded()) return
         if (enabled == state.microphoneEnabled) return
@@ -72,19 +72,19 @@ class VoiceController(
 
     override fun onMicrophone(attempt: Long, command: Long, enabled: Boolean, error: VoiceError?) {
         if (closed || attempt != this.attempt || command != microphoneCommand ||
-            state.connection !in setOf(VoiceConnection.Connected, VoiceConnection.Reconnecting) || !state.microphoneBusy) return
+            state.connection !in setOf(VoiceConnection.CONNECTED, VoiceConnection.RECONNECTING) || !state.microphoneBusy) return
         if (expireIfNeeded()) return
         state = state.copy(microphoneEnabled = enabled, microphoneBusy = false, error = error)
     }
 
     override fun onConnection(attempt: Long, connection: VoiceConnection, error: VoiceError?) {
         if (closed || attempt != this.attempt || scope == null || !foreground) return
-        if (state.connection !in setOf(VoiceConnection.Connecting, VoiceConnection.Connected, VoiceConnection.Reconnecting)) return
+        if (state.connection !in setOf(VoiceConnection.CONNECTING, VoiceConnection.CONNECTED, VoiceConnection.RECONNECTING)) return
         if (expireIfNeeded()) return
-        if (connection == VoiceConnection.Failed || connection == VoiceConnection.Idle) {
+        if (connection == VoiceConnection.FAILED || connection == VoiceConnection.IDLE) {
             retire()
-            state = VoiceState(connection = VoiceConnection.Failed, error = error ?: VoiceError.ConnectionFailed)
-        } else if (connection in setOf(VoiceConnection.Connecting, VoiceConnection.Connected, VoiceConnection.Reconnecting)) {
+            state = VoiceState(connection = VoiceConnection.FAILED, error = error ?: VoiceError.CONNECTION_FAILED)
+        } else if (connection in setOf(VoiceConnection.CONNECTING, VoiceConnection.CONNECTED, VoiceConnection.RECONNECTING)) {
             // Reconnect may finish an interrupted publication. The adapter must serialize microphone
             // work and report its actual current state; do not invent mic-on from a connection event.
             state = state.copy(connection = connection, error = error)
@@ -94,7 +94,7 @@ class VoiceController(
     override fun onAudioInterruption(attempt: Long) {
         if (closed || attempt != this.attempt) return
         retire()
-        state = VoiceState(connection = VoiceConnection.Failed, error = VoiceError.AudioInterrupted)
+        state = VoiceState(connection = VoiceConnection.FAILED, error = VoiceError.AUDIO_INTERRUPTED)
     }
 
     /** Called on each foreground lifecycle check; the SFU remains the authority for expiry/revoke. */
@@ -104,11 +104,11 @@ class VoiceController(
         if (closed || foreground == inForeground) return
         foreground = inForeground
         if (!inForeground && state.connection in setOf(
-                VoiceConnection.ResolvingGrant, VoiceConnection.Connecting,
-                VoiceConnection.Connected, VoiceConnection.Reconnecting,
+                VoiceConnection.RESOLVING_GRANT, VoiceConnection.CONNECTING,
+                VoiceConnection.CONNECTED, VoiceConnection.RECONNECTING,
             )) {
             retire()
-            state = VoiceState(connection = VoiceConnection.Idle, error = VoiceError.BackgroundStopped)
+            state = VoiceState(connection = VoiceConnection.IDLE, error = VoiceError.BACKGROUND_STOPPED)
         }
         // Deliberately no autojoin or autopublish on foreground/interruption/permission recovery.
     }
@@ -139,7 +139,7 @@ class VoiceController(
     private fun expireIfNeeded(): Boolean {
         if (grantExpiry == 0L || clock.epochSeconds() < grantExpiry) return false
         retire()
-        state = VoiceState(connection = VoiceConnection.Failed, error = VoiceError.GrantExpired)
+        state = VoiceState(connection = VoiceConnection.FAILED, error = VoiceError.GRANT_EXPIRED)
         return true
     }
 

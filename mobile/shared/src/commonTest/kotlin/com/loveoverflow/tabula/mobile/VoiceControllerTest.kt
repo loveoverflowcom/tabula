@@ -30,7 +30,7 @@ class VoiceControllerTest {
         }
         override fun disconnect() { disconnects++ }
         override fun close() { closes++ }
-        fun connected() = observer!!.onConnection(attempt, VoiceConnection.Connected, null)
+        fun connected() = observer!!.onConnection(attempt, VoiceConnection.CONNECTED, null)
         fun microphone(enabled: Boolean, error: VoiceError? = null) = observer!!.onMicrophone(attempt, command, enabled, error)
     }
     private class Grants : VoiceGrantSource {
@@ -61,7 +61,7 @@ class VoiceControllerTest {
         val client = Client()
         val c = VoiceController(client, UnavailableVoiceGrantSource, VoiceClock { 100 })
         c.enterSession("host-session"); c.join(); c.setMicrophoneEnabled(true)
-        assertEquals(VoiceConnection.Unavailable, c.state.connection)
+        assertEquals(VoiceConnection.UNAVAILABLE, c.state.connection)
         assertEquals(0, client.connects); assertEquals(0, client.micCalls)
     }
 
@@ -86,9 +86,9 @@ class VoiceControllerTest {
 
     @Test fun permissionDeniedKeepsListeningAndAllowsExplicitRetry() {
         val s = Setup(); s.connected(); s.controller.setMicrophoneEnabled(true)
-        s.client.microphone(false, VoiceError.PermissionDenied)
-        assertEquals(VoiceConnection.Connected, s.controller.state.connection)
-        assertEquals(VoiceError.PermissionDenied, s.controller.state.error)
+        s.client.microphone(false, VoiceError.PERMISSION_DENIED)
+        assertEquals(VoiceConnection.CONNECTED, s.controller.state.connection)
+        assertEquals(VoiceError.PERMISSION_DENIED, s.controller.state.error)
         assertFalse(s.controller.state.microphoneEnabled); assertFalse(s.controller.state.microphoneBusy)
         s.controller.setMicrophoneEnabled(true); assertEquals(2, s.client.micCalls)
     }
@@ -103,7 +103,7 @@ class VoiceControllerTest {
             val s = Setup(); s.controller.join()
             if (logout) s.controller.onLogout() else s.controller.leaveSession()
             s.grants.deliver()
-            assertEquals(0, s.client.connects); assertEquals(VoiceConnection.Idle, s.controller.state.connection)
+            assertEquals(0, s.client.connects); assertEquals(VoiceConnection.IDLE, s.controller.state.connection)
             s.controller.join(); assertEquals(1, s.grants.requests)
         }
     }
@@ -112,12 +112,12 @@ class VoiceControllerTest {
         val s = Setup(); s.connected(); s.controller.setMicrophoneEnabled(true)
         val old = s.client.attempt; val oldCommand = s.client.command
         s.controller.leaveVoice()
-        s.client.observer!!.onConnection(old, VoiceConnection.Connected, null)
+        s.client.observer!!.onConnection(old, VoiceConnection.CONNECTED, null)
         s.client.observer!!.onMicrophone(old, oldCommand, true, null)
-        assertEquals(VoiceConnection.Idle, s.controller.state.connection); assertFalse(s.controller.state.microphoneEnabled)
+        assertEquals(VoiceConnection.IDLE, s.controller.state.connection); assertFalse(s.controller.state.microphoneEnabled)
         s.connected(); assertFalse(s.controller.state.microphoneEnabled)
-        s.client.observer!!.onConnection(old, VoiceConnection.Failed, VoiceError.ConnectionFailed)
-        assertEquals(VoiceConnection.Connected, s.controller.state.connection)
+        s.client.observer!!.onConnection(old, VoiceConnection.FAILED, VoiceError.CONNECTION_FAILED)
+        assertEquals(VoiceConnection.CONNECTED, s.controller.state.connection)
     }
 
     @Test fun olderMicCompletionCannotOverrideNewerCommand() {
@@ -131,11 +131,11 @@ class VoiceControllerTest {
 
     @Test fun reconnectReportsNetworkLossAndPendingMicCompletionDoesNotStick() {
         val s = Setup(); s.connected(); s.controller.setMicrophoneEnabled(true)
-        s.client.observer!!.onConnection(s.client.attempt, VoiceConnection.Reconnecting, null)
-        s.client.microphone(false, VoiceError.PublicationFailed)
+        s.client.observer!!.onConnection(s.client.attempt, VoiceConnection.RECONNECTING, null)
+        s.client.microphone(false, VoiceError.PUBLICATION_FAILED)
         assertFalse(s.controller.state.microphoneBusy)
         s.controller.setMicrophoneEnabled(true); assertEquals(1, s.client.micCalls)
-        s.client.connected(); assertEquals(VoiceConnection.Connected, s.controller.state.connection)
+        s.client.connected(); assertEquals(VoiceConnection.CONNECTED, s.controller.state.connection)
         s.controller.setMicrophoneEnabled(true); assertEquals(2, s.client.micCalls)
     }
 
@@ -144,7 +144,7 @@ class VoiceControllerTest {
         val before = s.client.disconnects
         s.controller.onForegroundChanged(false)
         assertTrue(s.client.disconnects > before); assertFalse(s.controller.state.microphoneEnabled)
-        assertEquals(VoiceError.BackgroundStopped, s.controller.state.error)
+        assertEquals(VoiceError.BACKGROUND_STOPPED, s.controller.state.error)
         s.controller.join(); assertEquals(1, s.grants.requests)
         s.controller.onForegroundChanged(true)
         assertEquals(1, s.grants.requests)
@@ -154,27 +154,27 @@ class VoiceControllerTest {
     @Test fun interruptionStopsRoomAndLateNativeEventsCannotResumeIt() {
         val s = Setup(); s.connected(); val old = s.client.attempt
         s.client.observer!!.onAudioInterruption(old); s.client.connected()
-        assertEquals(VoiceError.AudioInterrupted, s.controller.state.error)
-        assertEquals(VoiceConnection.Failed, s.controller.state.connection)
+        assertEquals(VoiceError.AUDIO_INTERRUPTED, s.controller.state.error)
+        assertEquals(VoiceConnection.FAILED, s.controller.state.connection)
     }
 
     @Test fun grantWrongScopeExpiredBoundaryAndTooLongLifetimeFailClosed() {
         for ((expiry, scope) in listOf(100L to "host-session", 701L to "host-session", 700L to "foreign")) {
             val s = Setup(); s.controller.join(); s.grants.deliver(expiry = expiry, scope = scope)
-            assertEquals(0, s.client.connects); assertEquals(VoiceError.GrantExpired, s.controller.state.error)
+            assertEquals(0, s.client.connects); assertEquals(VoiceError.GRANT_EXPIRED, s.controller.state.error)
         }
     }
 
     @Test fun deadlineDisconnectsAtEqualityAndNeverResumesFromOldCallbacks() {
         val s = Setup(); s.connected(); s.now = 700; s.controller.checkAuthorityDeadline(); s.client.connected()
-        assertEquals(VoiceError.GrantExpired, s.controller.state.error)
-        assertEquals(VoiceConnection.Failed, s.controller.state.connection)
+        assertEquals(VoiceError.GRANT_EXPIRED, s.controller.state.error)
+        assertEquals(VoiceConnection.FAILED, s.controller.state.connection)
     }
 
     @Test fun closeIsIdempotentAndTerminalAndClearsGrantSource() {
         val s = Setup(); s.connected(); s.controller.close(); s.controller.close(); s.controller.join(); s.client.connected()
         assertEquals(1, s.client.closes); assertEquals(1, s.grants.clears)
-        assertEquals(1, s.client.connects); assertEquals(VoiceConnection.Idle, s.controller.state.connection)
+        assertEquals(1, s.client.connects); assertEquals(VoiceConnection.IDLE, s.controller.state.connection)
     }
 
     @Test fun gameDocumentHelloReloadDoesNotDisconnectNativeVoice() {
@@ -184,7 +184,7 @@ class VoiceControllerTest {
         game.onPageText("{\"v\":1,\"type\":\"hello\"}")
         game.onPageText("{\"v\":1,\"type\":\"hello\"}")
         assertEquals(2, game.generation)
-        assertEquals(before, s.client.disconnects); assertEquals(VoiceConnection.Connected, s.controller.state.connection)
+        assertEquals(before, s.client.disconnects); assertEquals(VoiceConnection.CONNECTED, s.controller.state.connection)
     }
 
     @Test fun devFixtureGrammarEndpointLifetimeAndDiagnosticsAreBounded() {

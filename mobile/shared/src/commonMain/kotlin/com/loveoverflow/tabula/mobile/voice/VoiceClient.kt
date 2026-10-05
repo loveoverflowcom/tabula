@@ -19,8 +19,11 @@ interface VoiceClientObserver {
     fun onAudioInterruption(attempt: Long)
 }
 
-enum class VoiceConnection { Idle, ResolvingGrant, Connecting, Connected, Reconnecting, Unavailable, Failed }
-enum class VoiceError { Unavailable, GrantExpired, PermissionDenied, ConnectionFailed, PublicationFailed, AudioInterrupted, BackgroundStopped }
+/** Upper-snake entries preserve word boundaries in Kotlin/Native's lowerCamelCase Swift export. */
+enum class VoiceConnection { IDLE, RESOLVING_GRANT, CONNECTING, CONNECTED, RECONNECTING, UNAVAILABLE, FAILED }
+
+/** Typed bounded failures; underscore-normalized entry names keep the native Swift selectors stable. */
+enum class VoiceError { UNAVAILABLE, GRANT_EXPIRED, PERMISSION_DENIED, CONNECTION_FAILED, PUBLICATION_FAILED, AUDIO_INTERRUPTED, BACKGROUND_STOPPED }
 
 /**
  * Memory-only provider credential. No data-class/serialization/diagnostic representation; never
@@ -52,7 +55,7 @@ interface VoiceGrantCallback {
 /** Production fails closed until backend grant issuance and session revocation fences exist. */
 object UnavailableVoiceGrantSource : VoiceGrantSource {
     override fun request(scope: String, request: Long, callback: VoiceGrantCallback) =
-        callback.onGrantUnavailable(request, VoiceError.Unavailable)
+        callback.onGrantUnavailable(request, VoiceError.UNAVAILABLE)
     override fun cancel(request: Long) {}
     override fun clear() {}
 }
@@ -62,7 +65,7 @@ fun interface VoiceClock { fun epochSeconds(): Long }
 
 /** Public UI state contains no endpoint, room, identity or credential. Mic means local publication. */
 data class VoiceState(
-    val connection: VoiceConnection = VoiceConnection.Idle,
+    val connection: VoiceConnection = VoiceConnection.IDLE,
     val microphoneEnabled: Boolean = false,
     val microphoneBusy: Boolean = false,
     val canPublish: Boolean = false,

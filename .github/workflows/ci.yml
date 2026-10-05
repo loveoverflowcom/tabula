@@ -160,6 +160,14 @@ jobs:
         run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
       - working-directory: mobile/ios
         run: xcodebuild -project TabulaApp.xcodeproj -scheme Tabula -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/tabula-ios" CODE_SIGNING_ALLOWED=NO build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-ios-generated-headers
+          path: |
+            mobile/shared/build/bin/**/*Framework/TabulaShared.framework/Headers
+            mobile/shared/build/xcode-frameworks/**/TabulaShared.framework/Headers
+          if-no-files-found: warn
 
   # -------------------------------------------------------------------- tests
   test:

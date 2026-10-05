@@ -25,16 +25,16 @@ import com.loveoverflow.tabula.mobile.shell.ShellButton
 fun VoiceControls(controller: VoiceController, vietnamese: Boolean) {
     val state = controller.state
     val colors = LocalTabulaColors.current
-    val active = state.connection in setOf(VoiceConnection.Connected, VoiceConnection.Reconnecting, VoiceConnection.Connecting, VoiceConnection.ResolvingGrant)
+    val active = state.connection in setOf(VoiceConnection.CONNECTED, VoiceConnection.RECONNECTING, VoiceConnection.CONNECTING, VoiceConnection.RESOLVING_GRANT)
     fun copy(en: String, vi: String) = if (vietnamese) vi else en
     val status = when (state.connection) {
-        VoiceConnection.Idle -> copy("Voice off", "Voice đang tắt")
-        VoiceConnection.ResolvingGrant -> copy("Checking voice access…", "Đang kiểm tra quyền voice…")
-        VoiceConnection.Connecting -> copy("Connecting voice…", "Đang kết nối voice…")
-        VoiceConnection.Connected -> if (state.microphoneEnabled) copy("Voice connected · Mic on", "Đã kết nối voice · Mic bật") else copy("Voice connected · Mic off", "Đã kết nối voice · Mic tắt")
-        VoiceConnection.Reconnecting -> copy("Reconnecting voice…", "Đang kết nối lại voice…")
-        VoiceConnection.Unavailable -> copy("Voice unavailable: backend grants are not connected", "Voice chưa khả dụng: backend chưa cấp grant")
-        VoiceConnection.Failed -> copy("Voice stopped", "Voice đã dừng")
+        VoiceConnection.IDLE -> copy("Voice off", "Voice đang tắt")
+        VoiceConnection.RESOLVING_GRANT -> copy("Checking voice access…", "Đang kiểm tra quyền voice…")
+        VoiceConnection.CONNECTING -> copy("Connecting voice…", "Đang kết nối voice…")
+        VoiceConnection.CONNECTED -> if (state.microphoneEnabled) copy("Voice connected · Mic on", "Đã kết nối voice · Mic bật") else copy("Voice connected · Mic off", "Đã kết nối voice · Mic tắt")
+        VoiceConnection.RECONNECTING -> copy("Reconnecting voice…", "Đang kết nối lại voice…")
+        VoiceConnection.UNAVAILABLE -> copy("Voice unavailable: backend grants are not connected", "Voice chưa khả dụng: backend chưa cấp grant")
+        VoiceConnection.FAILED -> copy("Voice stopped", "Voice đã dừng")
     }
     Column(
         Modifier.fillMaxWidth().background(colors.container, RoundedCornerShape(TabulaShape.card.dp))
@@ -43,12 +43,12 @@ fun VoiceControls(controller: VoiceController, vietnamese: Boolean) {
     ) {
         TabulaText(status, TabulaType.labelLg, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         val detail = when (state.error) {
-            VoiceError.PermissionDenied -> copy("Microphone permission denied. You can still listen; enable permission in system settings to speak.", "Quyền mic bị từ chối. Bạn vẫn nghe được; bật quyền trong cài đặt hệ thống để nói.")
-            VoiceError.GrantExpired -> copy("Voice grant expired. Join again to request current access.", "Grant voice đã hết hạn. Tham gia lại để yêu cầu quyền mới.")
-            VoiceError.ConnectionFailed -> copy("Could not connect. Check the network and join again.", "Không thể kết nối. Kiểm tra mạng rồi tham gia lại.")
-            VoiceError.PublicationFailed -> copy("Microphone could not start. Try again.", "Không thể bật mic. Hãy thử lại.")
-            VoiceError.AudioInterrupted -> copy("Audio was interrupted. Join again when ready.", "Âm thanh bị gián đoạn. Tham gia lại khi sẵn sàng.")
-            VoiceError.BackgroundStopped -> copy("Voice stopped in the background. Join again to resume; your mic stays off.", "Voice dừng khi chuyển nền. Tham gia lại để tiếp tục; mic vẫn tắt.")
+            VoiceError.PERMISSION_DENIED -> copy("Microphone permission denied. You can still listen; enable permission in system settings to speak.", "Quyền mic bị từ chối. Bạn vẫn nghe được; bật quyền trong cài đặt hệ thống để nói.")
+            VoiceError.GRANT_EXPIRED -> copy("Voice grant expired. Join again to request current access.", "Grant voice đã hết hạn. Tham gia lại để yêu cầu quyền mới.")
+            VoiceError.CONNECTION_FAILED -> copy("Could not connect. Check the network and join again.", "Không thể kết nối. Kiểm tra mạng rồi tham gia lại.")
+            VoiceError.PUBLICATION_FAILED -> copy("Microphone could not start. Try again.", "Không thể bật mic. Hãy thử lại.")
+            VoiceError.AUDIO_INTERRUPTED -> copy("Audio was interrupted. Join again when ready.", "Âm thanh bị gián đoạn. Tham gia lại khi sẵn sàng.")
+            VoiceError.BACKGROUND_STOPPED -> copy("Voice stopped in the background. Join again to resume; your mic stays off.", "Voice dừng khi chuyển nền. Tham gia lại để tiếp tục; mic vẫn tắt.")
             else -> null
         }
         if (detail != null) TabulaText(detail, TabulaType.bodyMd, color = colors.onSurfaceVariant)
@@ -58,7 +58,7 @@ fun VoiceControls(controller: VoiceController, vietnamese: Boolean) {
                 filled = !active,
                 onClick = { if (active) controller.leaveVoice() else controller.join() },
             )
-            if (state.connection == VoiceConnection.Connected && state.canPublish) {
+            if (state.connection == VoiceConnection.CONNECTED && state.canPublish) {
                 ShellButton(
                     if (state.microphoneBusy) copy("Changing mic…", "Đang đổi mic…")
                     else if (state.microphoneEnabled) copy("Turn mic off", "Tắt mic") else copy("Turn mic on", "Bật mic"),

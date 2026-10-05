@@ -71,14 +71,14 @@ internal class AndroidLiveKitVoiceClient(
             retiring?.join()
             if (!isCurrent(next)) return@launch
             if (cleanupFailed) {
-                fail(next, VoiceError.ConnectionFailed)
+                fail(next, VoiceError.CONNECTION_FAILED)
                 return@launch
             }
             try {
                 sdkCommands.withLock {
                     if (!isCurrent(next)) return@withLock
                     if (System.currentTimeMillis() / 1_000 >= next.expiry) {
-                        fail(next, VoiceError.GrantExpired)
+                        fail(next, VoiceError.GRANT_EXPIRED)
                         return@withLock
                     }
                     // The SDK's diagnostics can include URLs/credentials. Keep all provider logs off.
@@ -108,14 +108,14 @@ internal class AndroidLiveKitVoiceClient(
                             if (!isCurrent(next)) return@collect
                             when (event) {
                                 is RoomEvent.Reconnecting -> if (next.connected) {
-                                    next.observer.onConnection(next.id, VoiceConnection.Reconnecting, null)
+                                    next.observer.onConnection(next.id, VoiceConnection.RECONNECTING, null)
                                 }
                                 is RoomEvent.Reconnected -> if (next.connected) {
                                     if (microphoneEnabled(room) != next.microphoneEnabled) {
-                                        fail(next, VoiceError.PublicationFailed)
-                                    } else next.observer.onConnection(next.id, VoiceConnection.Connected, null)
+                                        fail(next, VoiceError.PUBLICATION_FAILED)
+                                    } else next.observer.onConnection(next.id, VoiceConnection.CONNECTED, null)
                                 }
-                                is RoomEvent.Disconnected -> fail(next, VoiceError.ConnectionFailed)
+                                is RoomEvent.Disconnected -> fail(next, VoiceError.CONNECTION_FAILED)
                                 is RoomEvent.TrackMuted -> onMicrophonePublicationChanged(
                                     next, room, event.participant, event.publication.source)
                                 is RoomEvent.TrackUnmuted -> onMicrophonePublicationChanged(
@@ -131,7 +131,7 @@ internal class AndroidLiveKitVoiceClient(
                                 ) {
                                     // The null -> initial permission event can be queued until after
                                     // connect() returns. It is setup, not a later authority change.
-                                    fail(next, VoiceError.PublicationFailed)
+                                    fail(next, VoiceError.PUBLICATION_FAILED)
                                 }
                                 else -> Unit
                             }
@@ -141,17 +141,17 @@ internal class AndroidLiveKitVoiceClient(
                     room.connect(grant.endpoint, grant.token, ConnectOptions(audio = false, video = false))
                     if (!isCurrent(next)) return@withLock
                     if (room.state != Room.State.CONNECTED) {
-                        fail(next, VoiceError.ConnectionFailed)
+                        fail(next, VoiceError.CONNECTION_FAILED)
                     } else {
                         next.connected = true
-                        next.observer.onConnection(next.id, VoiceConnection.Connected, null)
+                        next.observer.onConnection(next.id, VoiceConnection.CONNECTED, null)
                     }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
                 // No provider exception, URL, token, room identity or stack trace leaves this boundary.
-                if (isCurrent(next)) fail(next, VoiceError.ConnectionFailed)
+                if (isCurrent(next)) fail(next, VoiceError.CONNECTION_FAILED)
             }
         }
     }
@@ -164,25 +164,25 @@ internal class AndroidLiveKitVoiceClient(
         CoroutineScope(owner.coroutineContext + active.job).launch {
             if (enabled && (!active.canPublish || !permission.request())) {
                 if (isCurrent(active) && command == active.microphoneCommand) {
-                    active.observer.onMicrophone(attempt, command, active.microphoneEnabled, VoiceError.PermissionDenied)
+                    active.observer.onMicrophone(attempt, command, active.microphoneEnabled, VoiceError.PERMISSION_DENIED)
                 }
                 return@launch
             }
             // Permission may finish after leaving, logging out, backgrounding or a newer command.
             if (!isCurrent(active) || command != active.microphoneCommand) return@launch
             if (System.currentTimeMillis() / 1_000 >= active.expiry) {
-                active.observer.onMicrophone(attempt, command, false, VoiceError.GrantExpired)
+                active.observer.onMicrophone(attempt, command, false, VoiceError.GRANT_EXPIRED)
                 return@launch
             }
             sdkCommands.withLock {
                 if (!isCurrent(active) || command != active.microphoneCommand) return@withLock
                 if (System.currentTimeMillis() / 1_000 >= active.expiry) {
-                    active.observer.onMicrophone(attempt, command, false, VoiceError.GrantExpired)
+                    active.observer.onMicrophone(attempt, command, false, VoiceError.GRANT_EXPIRED)
                     return@withLock
                 }
                 val room = active.room ?: return@withLock
                 if (room.state != Room.State.CONNECTED) {
-                    fail(active, VoiceError.ConnectionFailed)
+                    fail(active, VoiceError.CONNECTION_FAILED)
                     return@withLock
                 }
                 active.microphoneMutationPending = true
@@ -194,7 +194,7 @@ internal class AndroidLiveKitVoiceClient(
                     if (isCurrent(active) && command == active.microphoneCommand) {
                         val actual = microphoneEnabled(room)
                         active.microphoneEnabled = actual
-                        active.observer.onMicrophone(attempt, command, actual, VoiceError.PermissionDenied)
+                        active.observer.onMicrophone(attempt, command, actual, VoiceError.PERMISSION_DENIED)
                     }
                     return@withLock
                 } catch (_: Exception) {
@@ -208,7 +208,7 @@ internal class AndroidLiveKitVoiceClient(
                 val actual = microphoneEnabled(room)
                 active.microphoneEnabled = actual
                 active.observer.onMicrophone(attempt, command, actual,
-                    if (success && actual == enabled) null else VoiceError.PublicationFailed)
+                    if (success && actual == enabled) null else VoiceError.PUBLICATION_FAILED)
             }
         }
     }
@@ -261,7 +261,7 @@ internal class AndroidLiveKitVoiceClient(
 
     private fun fail(attempt: Attempt, error: VoiceError) {
         if (!isCurrent(attempt)) return
-        attempt.observer.onConnection(attempt.id, VoiceConnection.Failed, error)
+        attempt.observer.onConnection(attempt.id, VoiceConnection.FAILED, error)
         // Usually the controller disconnects inside its callback; release even if another observer
         // does not, and never let that callback accidentally retire a newly created attempt.
         if (current === attempt) disconnect()
@@ -282,7 +282,7 @@ internal class AndroidLiveKitVoiceClient(
         // Own toggle events may arrive after the command completed; then current state already
         // matches its acknowledgement. An unsolicited difference cannot leave stale "Mic on" UI
         // or silently restore capture after "Mic off", so retire the room and require a new join.
-        if (microphoneEnabled(room) != attempt.microphoneEnabled) fail(attempt, VoiceError.PublicationFailed)
+        if (microphoneEnabled(room) != attempt.microphoneEnabled) fail(attempt, VoiceError.PUBLICATION_FAILED)
     }
 
     private fun microphoneEnabled(room: Room): Boolean =

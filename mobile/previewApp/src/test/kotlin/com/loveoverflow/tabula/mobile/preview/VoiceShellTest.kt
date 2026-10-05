@@ -40,7 +40,7 @@ class VoiceShellTest {
         }
         override fun disconnect() { disconnects++ }
         override fun close() { closes++ }
-        fun connected() = observer!!.onConnection(attempt, VoiceConnection.Connected, null)
+        fun connected() = observer!!.onConnection(attempt, VoiceConnection.CONNECTED, null)
         fun microphone(enabled: Boolean, error: VoiceError? = null) = observer!!.onMicrophone(attempt, command, enabled, error)
     }
     private fun source() = DevVoiceGrantSource.parse(
@@ -68,7 +68,7 @@ class VoiceShellTest {
         assertEquals(1, media.connects); assertEquals(0, media.micRequests)
         media.connected(); waitForIdle()
         onNodeWithText("Turn mic on").performClick(); waitForIdle()
-        media.microphone(false, VoiceError.PermissionDenied); waitForIdle()
+        media.microphone(false, VoiceError.PERMISSION_DENIED); waitForIdle()
         onNodeWithText("Voice connected · Mic off").assertIsDisplayed()
         assertFalse(voice.state.microphoneEnabled)
         onNodeWithText("Turn mic on").performClick(); waitForIdle()
@@ -80,7 +80,7 @@ class VoiceShellTest {
         onNodeWithText("Turn mic off").performClick(); waitForIdle()
         media.microphone(false); waitForIdle()
         onNodeWithText("Leave voice").performClick(); waitForIdle()
-        assertEquals(VoiceConnection.Idle, voice.state.connection)
+        assertEquals(VoiceConnection.IDLE, voice.state.connection)
         // The game surface remains mounted and no board input was sent by mic controls.
         assertEquals(1, SimulatedGameHost.createdCount); assertEquals(0, SimulatedGameHost.disposedCount)
     }
@@ -95,14 +95,14 @@ class VoiceShellTest {
         onNodeWithText("Join voice").performClick(); media.connected(); waitForIdle()
         val before = media.disconnects
         onNodeWithTag("sim-reload").performClick(); waitForIdle()
-        assertEquals(before, media.disconnects); assertEquals(VoiceConnection.Connected, voice.state.connection)
+        assertEquals(before, media.disconnects); assertEquals(VoiceConnection.CONNECTED, voice.state.connection)
         runtime.failHost("synthetic host failure"); waitForIdle()
         onNodeWithText(ShellText.Retry).performClick(); waitForIdle()
         assertEquals(before, media.disconnects)
         runtime = SimulatedGameHost.runtimes.last(); runtime.page.completeBoot(); waitForIdle()
         onNodeWithText(ShellText.Back).performClick(); waitForIdle()
         onNodeWithTag("sim-confirm").performClick(); waitForIdle()
-        assertTrue(media.disconnects > before); assertEquals(VoiceConnection.Idle, voice.state.connection)
+        assertTrue(media.disconnects > before); assertEquals(VoiceConnection.IDLE, voice.state.connection)
         onNodeWithText("Play Preview game on this device").assertIsDisplayed()
     }
 }

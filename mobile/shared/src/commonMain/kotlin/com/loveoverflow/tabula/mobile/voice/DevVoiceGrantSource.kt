@@ -11,7 +11,7 @@ import com.loveoverflow.tabula.mobile.bridge.StrictJson
 class DevVoiceGrantSource private constructor(private var grant: VoiceJoinGrant?) : VoiceGrantSource {
     override fun request(scope: String, request: Long, callback: VoiceGrantCallback) {
         val value = grant
-        if (scope != SCOPE || value == null) callback.onGrantUnavailable(request, VoiceError.Unavailable)
+        if (scope != SCOPE || value == null) callback.onGrantUnavailable(request, VoiceError.UNAVAILABLE)
         else callback.onGrant(request, value)
     }
     override fun cancel(request: Long) {}

@@ -97,9 +97,32 @@ but no skipped/aborted tests from that failed aggregate are claimed passed.
 
 macOS Xcode 16.4 / Swift 6.1 compiled both Kotlin iOS targets and linked the shared
 simulator framework, then caught Swift nullable Kotlin-enum member inference in
-the actual adapter. Explicit enum values correct that bridge; UI-thread confinement
-of the SDK Sendable delegate is stated explicitly. Full app compile/link and
+the actual adapter. The explicit-type retry exposed the underlying generated-symbol mismatch: the
+pinned Kotlin exporter lowercases whole underscore-delimited enum-name segments,
+so PascalCase multi-word values did not export as camelCase. Voice enums now use
+conventional UPPER_SNAKE constants, retaining ordinal/order and internal behavior
+while producing the intended Swift names. The actual generated header is retained
+by macOS CI. UI-thread confinement of the SDK Sendable delegate is stated explicitly. Full app compile/link and
 controller/CMP test acceptance require the terminal **final-head** result in
 [PR #75](https://github.com/loveoverflowcom/tabula/pull/75), where exact SHA/tree,
 job links and test counts are recorded. Earlier partial compilation is not a
 full native app pass. None of this executes a simulator or microphone.
+
+
+Second head `807ed79208bd9aa8c74ad8a7804fdd3b50791f77`,
+[run 37267495925](https://github.com/loveoverflowcom/tabula/actions/runs/37267495925):
+12/13 jobs PASS, including actual Android compilation/Debug APK and 65 nonempty
+common/CMP tests (0 failed, 0 skipped). The 16 VoiceController and 3 VoiceShell
+cases are **doubles**, not native audio. Their
+[JUnit/screenshot artifact](https://github.com/loveoverflowcom/tabula/actions/runs/37267495925/artifacts/11326748953)
+was downloaded and inspected; the 390 px screenshot reuses semantic theme/controls
+and labels the simulated game. Swift's actual app compile still failed on the
+enum names; explicit type spelling alone was not an adequate fix.
+
+The exact compiler rule is source-verified in
+[v2.4.20 ObjCExportNamer](https://github.com/JetBrains/kotlin/blob/v2.4.20/native/objcexport-header-generator/impl/k1/src/org/jetbrains/kotlin/backend/konan/objcexport/ObjCExportNamer.kt#L697-L721)
+and [K2 enum translation](https://github.com/JetBrains/kotlin/blob/v2.4.20/native/objcexport-header-generator/impl/analysis-api/src/org/jetbrains/kotlin/objcexport/translateEnumMembers.kt#L87-L102).
+UPPER_SNAKE normalization changes no wire, serialized values, persisted preferences
+or deployed API; none of those consume these new host-only enums. Final-head
+native/CMP gate status, exact SHA/tree and successful app-link receipt remain in
+PR #75 rather than being inferred from either failed iteration.
