@@ -11,7 +11,7 @@ and bot-seat values. Existing leaf wiring names Chess/Tiles using documented gam
 No Caro presenter exists. Current startup parses native `std::env::args`; web/index.html only loads
 one WASM binary and does not provide a game picker. A CLI arm alone is not proof of browser play.
 
-The pack builder reads **assets/packs/<slug>/pack.source.toml**, not games/<slug>/assets. Backend
+The pack builder reads **games/<slug>/assets/pack.source.toml** beside the game crate. Backend
 asset delivery/decoding is incomplete; stageable bytes do not imply live textures/audio load.
 
 ## Decisions
@@ -24,7 +24,7 @@ asset delivery/decoding is incomplete; stageable bytes do not imply live texture
 | Display | Coordinates, distinct stone shapes/labels, active seat, last move, actual WinLine, win/resign/timeout/draw banner, deadline if enabled | Read View; do not re-run win detection in presenter |
 | Preview | client_preview=false; accepted ViewEvents drive animation | Do not confuse local hover feedback with authoritative prediction |
 | Snapshots | Opening 15 light, opening 9 dark, focus/hover, line-win, terminal draw; include 19-cell compact layout and reduced-motion case | Stable RenderList snapshots pin layout, not rules truth |
-| Assets | Minimal versioned pack in assets/packs/caro; semantic resource names, density/priority entries, catalog assets and optional sound | Exercise pack hashing independently; use existing primitive/placeholder fallback for playable local rendering |
+| Assets | Minimal versioned pack in games/caro/assets; semantic resource names, density/priority entries, catalog assets and optional sound | Exercise pack hashing independently; use existing primitive/placeholder fallback for playable local rendering |
 
 ## Proposed architecture
 
@@ -48,8 +48,8 @@ Use native `--game caro --solo` and hot-seat; all game semantics stay inside gam
 
 Record changed files/lines outside the game against the actual starting develop commit, not an
 assumed main branch. Allowed additions include xtask dependency/dispatch, app leaf registration,
-root replay fixtures, docs, CI rows and assets/packs/caro. Count these honestly as integration cost;
-“four edits” is not an acceptance invariant. No platform crate/service game-id branch is permitted.
+root replay fixtures, docs and CI rows. The pack source stays in games/caro/assets. Count changes
+outside the game honestly as integration cost; “four edits” is not an acceptance invariant. No platform crate/service game-id branch is permitted.
 
 ### Existing browser-selection gap (B1)
 
@@ -84,7 +84,7 @@ Use target confirmation/keyboard fallback within existing contracts and document
 ## Expected file changes
 
 `games/caro/src/{presentation.rs,lib.rs,snapshots/*.snap}`, Cargo.toml;
-`assets/packs/caro/pack.source.toml` and source assets; app Cargo.toml, main.rs, tests/local_match.rs;
+`games/caro/assets/pack.source.toml` and source assets; app Cargo.toml, main.rs, tests/local_match.rs;
 `docs/games/caro.md`. B1, if needed, is a separate app PR with its own exact files and validation.
 Use semantic tokens and existing localization conventions; missing generic i18n infrastructure is
 recorded, not invented as part of a Caro presenter.

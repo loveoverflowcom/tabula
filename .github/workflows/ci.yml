@@ -72,16 +72,25 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask check-no-game-ids
 
-  # game.toml schema and Cargo feature shape. A future compiled-metadata
+  # Game-owned asset sources, game.toml schema and Cargo feature shape. A future compiled-metadata
   # cross-check is not implemented by check-manifests yet. (doc 02 §4.3)
   manifests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 tools/tests/check-game-asset-locality.py
       - uses: dtolnay/rust-toolchain@master
         with: { toolchain: "1.96" }
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask check-manifests
+      # Source relocation must preserve the pinned content-addressed manifests.
+      - run: |
+          for game in chess tiles werewolf; do
+            cargo xtask pack-assets "$game"
+            cmp "target/asset-packs/$game/0.1.0/pack.toml" "games/$game/assets/fixture.pack.toml"
+          done
 
   # Generated files are committed. If they are stale the diff is a silent lie.
   generated-current:

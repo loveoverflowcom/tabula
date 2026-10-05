@@ -1,9 +1,12 @@
 # assets/
 
 ```text
-brand/   logo, shared fonts, shared icons — the things that are the same in every game
-packs/   per-game source assets and pack build inputs
+brand/   shared logo and icons
+fonts/   shared fonts and their licenses
 ```
+
+Per-game source art, generators, provenance and pack build inputs live beside
+their owner under `games/<game>/assets/`. This directory holds shared resources only.
 
 ## Planned asset packs, not bundled assets (ADR-017)
 
@@ -29,7 +32,7 @@ cargo xtask pack-assets <game>
 
 The builder reads the game identity and pinned [assets].pack from
 games/<game>/game.toml, then reads the builder-only
-assets/packs/<game>/pack.source.toml. The source manifest contains only
+games/<game>/assets/pack.source.toml. The source manifest contains only
 explicit source files and logical-resource mappings; generated path, hash, and
 byte-size fields are not accepted:
 

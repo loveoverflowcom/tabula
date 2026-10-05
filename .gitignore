@@ -14,8 +14,8 @@ Cargo.lock.bak
 # /apps/web/style/tokens.css
 # /crates/tabula-design/src/generated.rs
 
-# built asset packs (sources live in assets/packs/<game>/src)
-/assets/packs/**/build
+# built asset packs (sources live in games/<game>/assets/)
+/games/*/assets/build
 
 # local env / secrets
 .env

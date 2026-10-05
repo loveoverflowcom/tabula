@@ -62,7 +62,7 @@ cargo build -p tabula-game-client
 cargo build -p tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
 cargo xtask stage-wasm-game
 node --test apps/game-client/web/tests/standalone.test.cjs
-python assets/packs/chess/generate.py --check
+python games/chess/assets/generate.py --check
 ```
 
 Native default entry opens local setup. Explicit direct launch:

@@ -292,6 +292,24 @@ pub fn stage_simulator_bundle(
     )
 }
 
+/// The runtime URL aliases stay stable; their source bytes belong to the game.
+/// No decorative game art is duplicated beneath the generic browser host.
+fn game_owned_host_bytes(kind: BundleKind, relative: &str) -> Option<&'static [u8]> {
+    if kind != BundleKind::Standard {
+        return None;
+    }
+    match relative {
+        "assets/chess-cover.png" => Some(include_bytes!(
+            "../../games/chess/assets/source/chess-atmosphere.png"
+        )), // xtask-allow-game-id: standalone game-owned source packaging.
+        "assets/chess-cover-small.png" => Some(tabula_game_chess::presentation::assets::COVER_2X), // xtask-allow-game-id: standalone game-owned cover export.
+        "assets/chess-cover-provenance.md" => Some(include_bytes!(
+            "../../games/chess/assets/source/standalone-cover-provenance.md"
+        )), // xtask-allow-game-id: source provenance travels with its owning game.
+        _ => None,
+    }
+}
+
 fn stage_bundle_kind(
     web_src_dir: &Path,
     tokens_src: &Path,
@@ -330,7 +348,7 @@ fn stage_bundle_kind(
     validate_host_html(&html_src, false)?;
     for relative in host_files {
         let source = web_src_dir.join(source_name(relative));
-        if !source.is_file() {
+        if game_owned_host_bytes(kind, relative).is_none() && !source.is_file() {
             return Err(WasmStageError::MissingHostFile(source));
         }
     }
@@ -368,7 +386,10 @@ fn stage_bundle_kind(
                 source,
             })?;
         }
-        copy_file(&source, &destination)?;
+        match game_owned_host_bytes(kind, relative) {
+            Some(bytes) => write_resource(&destination, bytes)?,
+            None => copy_file(&source, &destination)?,
+        }
         file_size(&destination)?;
     }
     let tokens_dst = staging_dir.path().join("tokens.css");
@@ -805,11 +826,13 @@ mod tests {
             std::fs::create_dir_all(target.parent().unwrap()).unwrap();
             std::fs::write(
                 &target,
-                if *relative == "play.html" {
-                    content
-                } else {
-                    "fixture resource"
-                },
+                game_owned_host_bytes(BundleKind::Standard, relative).unwrap_or_else(|| {
+                    if *relative == "play.html" {
+                        content.as_bytes()
+                    } else {
+                        b"fixture resource"
+                    }
+                }),
             )
             .unwrap();
         }
@@ -856,6 +879,40 @@ mod tests {
     }
 
     #[test]
+    fn stage_cover_aliases_use_only_game_owned_bytes() {
+        let web_dir = tempdir().unwrap();
+        let out_dir = tempdir().unwrap();
+        write_valid_html(&web_dir.path().join("index.html"));
+        std::fs::write(web_dir.path().join("mq_js_bundle.js"), "bootstrap").unwrap();
+        let wasm = web_dir.path().join("game.wasm");
+        std::fs::write(&wasm, VALID_WASM).unwrap();
+        for relative in HOST_FILES {
+            if game_owned_host_bytes(BundleKind::Standard, relative).is_some() {
+                std::fs::remove_file(web_dir.path().join(relative)).unwrap();
+            }
+        }
+        // A stale host-local copy cannot override the canonical game source.
+        let alias = "assets/chess-cover.png"; // xtask-allow-game-id: packaging ownership assertion.
+        std::fs::write(web_dir.path().join(alias), b"stale duplicate").unwrap();
+        stage_bundle(
+            web_dir.path(),
+            &web_dir.path().join("canonical.css"),
+            &wasm,
+            out_dir.path(),
+        )
+        .unwrap();
+        for relative in HOST_FILES {
+            if let Some(expected) = game_owned_host_bytes(BundleKind::Standard, relative) {
+                assert_eq!(
+                    std::fs::read(out_dir.path().join(relative)).unwrap(),
+                    expected
+                );
+                assert!(game_owned_host_bytes(BundleKind::PrivateSimulator, relative).is_none());
+            }
+        }
+    }
+
+    #[test]
     fn stage_bundle_fails_when_required_resource_is_missing() {
         let web_dir = tempdir().unwrap();
         let out_dir = tempdir().unwrap();
@@ -863,7 +920,7 @@ mod tests {
         std::fs::write(web_dir.path().join("mq_js_bundle.js"), "bootstrap").unwrap();
         let wasm = web_dir.path().join("game.wasm");
         std::fs::write(&wasm, VALID_WASM).unwrap();
-        let missing = web_dir.path().join("assets/chess-cover-small.png");
+        let missing = web_dir.path().join("assets/OpenSans-Regular.ttf");
         std::fs::remove_file(&missing).unwrap();
         let err = stage_bundle(
             web_dir.path(),

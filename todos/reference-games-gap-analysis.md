@@ -65,7 +65,9 @@ contracts must be settled in Phase 4 before protocol freeze. Spectator replay ne
 
 ## Architecture/document drift register
 
-Reported here; normative architecture is not silently rewritten.
+Reported here; normative architecture is not silently rewritten. G16 records the
+inspected 2026-09-04 source layout; current pack sources are game-owned at
+`games/<slug>/assets/pack.source.toml`, as used by the Caro C5 plan.
 
 | ID | Finding and source | Consequence / owner |
 |---|---|---|

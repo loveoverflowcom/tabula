@@ -78,7 +78,7 @@ rules/knowledge decisions remove more contract uncertainty. Caro C1 is independe
 | Prerequisites | C4; B1 generic browser selector if needed for browser launch |
 | Scope | CaroPresentation/Local, pointer and keyboard focus, snapshots/reduced-motion, minimal staged pack/fallback, app leaf wiring and LocalMatch/replay test |
 | Out of scope | Network, mobile wrappers, web application shell, generic renderer changes, deep Board Reader |
-| Expected files | games/caro/src/presentation.rs, src/snapshots, lib.rs, Cargo.toml; assets/packs/caro/*; apps/game-client/{Cargo.toml,src/main.rs,tests/local_match.rs}; docs/games/caro.md |
+| Expected files | games/caro/src/presentation.rs, src/snapshots, lib.rs, Cargo.toml; games/caro/assets/*; apps/game-client/{Cargo.toml,src/main.rs,tests/local_match.rs}; docs/games/caro.md |
 | Invariants | I-10/I-15; semantic tokens; no game logic in LocalMatch/run_local; each game-id marker narrow and justified |
 | Verification/evidence | RenderList snapshots/input tables; same semantic play across layout/animation states; native/browser manual demo; recorded changed-file/line accounting |
 | Acceptance criteria | Hot-seat/solo terminal play, valid replay, keyboard path, pack build; browser actually launches Caro; zero platform/service edits; gate/feature/WASM builds green |

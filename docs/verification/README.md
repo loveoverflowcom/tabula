@@ -27,3 +27,11 @@ UI-specific ledgers remain beside their contracts in
 bounded proof/mutation guidance live in [`verification/`](../../verification/README.md).
 Retain raw logs, manifests and images referenced by a ledger as one evidence set;
 documentation cleanup must not silently turn unavailable evidence into PASS.
+
+## Source-path history
+
+Game-owned pack sources now live under `games/<game>/assets/`. Retained logs,
+JSON manifests and receipts that record `assets/packs/<game>/` refer to their
+original source revisions and are intentionally unchanged. Reproduction commands
+and editable-source links use the current location; runtime pack URLs and hashes
+are unchanged by the source relocation.
