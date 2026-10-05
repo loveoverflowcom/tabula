@@ -16,7 +16,7 @@ import threading
 import time
 import unicodedata
 
-from PIL import Image, ImageChops, ImageStat
+from PIL import Image, ImageChops, ImageStat, ImageOps
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -165,17 +165,19 @@ class Driver:
         png = self.page.locator("#glcanvas").screenshot(timeout=30000)
         return self.ocr_png(png,region,flipped,psm)
 
-    def ocr_png(self, png, region=None, flipped=False, psm=6):
+    def ocr_png(self, png, region=None, flipped=False, psm=6, monochrome=False, language="vie+eng", scale=2):
         im = Image.open(io.BytesIO(png)).convert("RGB")
         if region:
             im = im.crop(region)
         if flipped:
             im = im.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        if monochrome:
+            im=ImageOps.invert(ImageOps.grayscale(im))
         # This is assessment-only OCR of actual pixels, never a generated UI.
         with tempfile.TemporaryDirectory(prefix="werewolf-ocr-") as folder:
             p = Path(folder)/"frame.png"
-            im.resize((im.width*2,im.height*2)).save(p)
-            text = subprocess.check_output(["tesseract",str(p),"stdout","-l","vie+eng","--psm",str(psm)],
+            im.resize((im.width*scale,im.height*scale)).save(p)
+            text = subprocess.check_output(["tesseract",str(p),"stdout","-l",language,"--psm",str(psm)],
                                             stderr=subprocess.DEVNULL,text=True)
         return normalized(text)
 
@@ -224,11 +226,15 @@ class Driver:
         g = self.geometry()
         # OCR the complete visible public phase header; long labels may extend
         # past a half-width crop. No DOM state or internal WASM exports are read.
-        region=(0,0,g["w"],52)
-        text=self.ocr_png(png,region,psm=6) if png else self.ocr(region,psm=6)
-        for phase, words in [("ended",["ket thuc"]),("dawn",["binh minh"]),
-                             ("day",["thao luan"]),("vote",["bo phieu"]),
-                             ("dusk",["hoang hon"]),("night",["ban dem"])]:
+        region=(int(g["w"]*.48),10,g["w"]-4,52)
+        if png is None:
+            png=self.page.locator("#glcanvas").screenshot(timeout=30000)
+        text=self.ocr_png(png,region,psm=6,monochrome=True,language="eng",scale=3)
+        # Each discriminator is a unique word of the closed, visible Vietnamese
+        # public phase label. ASCII OCR ignores accents; no internal state read.
+        for phase, words in [("ended",["thuc"]),("dawn",["minh"]),
+                             ("day",["luan"]),("vote",["phieu"]),
+                             ("dusk",["hoang","hon"]),("night",["dem"])]:
             if any(word in text for word in words):
                 return phase
         if png is None:
