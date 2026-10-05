@@ -1,0 +1,530 @@
+#!/usr/bin/env python3
+"""Actual, independently launched Chromium UI acceptance, never mocked HTTP.
+
+Secrets remain in runtime memory or the enclosing private temporary directory.
+Only closed result booleans, public build versions, action names, and screenshots
+of gameplay (after invitation/grant UI disappears) become artifacts. This script
+is intended for the explicitly authorized disposable CI route, not as a fallback
+around a denied local-browser, networking, or certificate-security boundary.
+"""
+from __future__ import annotations
+
+import argparse
+import http.client
+import io
+import json
+import os
+from pathlib import Path
+import ssl
+import subprocess
+import time
+from urllib.parse import urlsplit
+from PIL import Image
+from playwright.sync_api import sync_playwright
+
+ORIGIN = "https://localhost:9443"
+SESSION_COOKIE = "__Host-tabula_session"
+GAME_PATH = "/games/com.tabula.chess"
+FORBIDDEN_FRAME_FIELDS = frozenset(
+    {"canonical_state", "canonical_version", "input_index", "logical_ms",
+     "state_hash", "rules_hash", "seed", "ledger", "canonical_events"}
+)
+
+
+class AcceptanceFailure(Exception):
+    """Closed, secret-free failure label; never embed an HTTP body or credential."""
+
+
+def require(condition: bool, label: str) -> None:
+    if not condition:
+        raise AcceptanceFailure(label)
+
+
+def private_frame_keys(value: object) -> bool:
+    if isinstance(value, dict):
+        return any(key in FORBIDDEN_FRAME_FIELDS or private_frame_keys(item)
+                   for key, item in value.items())
+    if isinstance(value, list):
+        return any(private_frame_keys(item) for item in value)
+    return False
+
+
+def setup_browser_trust(private: Path, role: str, ca: Path) -> tuple[Path, Path]:
+    home = private / role / "home"
+    profile = private / role / "profile"
+    # Chromium uses an existing legacy path even on releases whose default is
+    # .local/share/pki/nssdb. Each process has its own HOME and NSS database.
+    nss = home / ".pki" / "nssdb"
+    nss.mkdir(parents=True, mode=0o700)
+    profile.mkdir(parents=True, mode=0o700)
+    subprocess.run(["certutil", "-N", "--empty-password", "-d", f"sql:{nss}"],
+                   check=True, capture_output=True)
+    subprocess.run(["certutil", "-A", "-d", f"sql:{nss}", "-n",
+                    "Tabula disposable browser acceptance CA", "-t", "C,,",
+                    "-i", str(ca)], check=True, capture_output=True)
+    return home, profile
+
+
+def api(page, path: str, body: dict | str | None = None, csrf: str | None = None) -> dict:
+    require(path.startswith(("/api/", "/__fixture/")), "invalid acceptance request path")
+    response = page.evaluate("""async ({path, body, csrf}) => {
+        const headers = {};
+        if (body !== null) headers['Content-Type'] = 'application/json';
+        if (csrf !== null) headers['X-Tabula-CSRF'] = csrf;
+        const response = await fetch(path, {
+            method: body === null ? 'GET' : 'POST', credentials: 'same-origin',
+            cache: 'no-store', headers,
+            body: body === null ? undefined : typeof body === 'string' ? body : JSON.stringify(body)
+        });
+        const text = await response.text();
+        return {status: response.status, body: text ? JSON.parse(text) : null};
+    }""", {"path": path, "body": body, "csrf": csrf})
+    require(not private_frame_keys(response["body"]), "canonical facts crossed browser boundary")
+    return response
+
+
+def denied(response: dict, allowed: set[int], label: str) -> None:
+    require(response["status"] in allowed, label)
+    body = response["body"]
+    require(not isinstance(body, dict) or not body.get("frames"),
+            "denied request released gameplay frames")
+
+
+def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -> dict:
+    """Real TLS/header-negative probe; values stay opaque and unlogged.
+
+    Browsers forbid changing Origin/Cookie headers. These security partitions
+    therefore use a separate real, explicitly CA-validated HTTPS client; actual
+    create/join/rendered gameplay remains driven by genuine browser UI events.
+    """
+    require(path.startswith("/api/v1/matches/"), "invalid hostile probe path")
+    connection = http.client.HTTPSConnection("localhost", 9443, timeout=30,
+                                            context=ssl.create_default_context(cafile=str(ca)))
+    encoded = body.encode("utf-8")
+    try:
+        connection.putrequest("POST", path)
+        for name, value in headers:
+            connection.putheader(name, value)
+        connection.putheader("Content-Length", str(len(encoded)))
+        connection.endheaders(encoded)
+        response = connection.getresponse()
+        payload = response.read(2_097_153)
+        require(len(payload) <= 2_097_152, "hostile probe response exceeded budget")
+        value = json.loads(payload) if payload else None
+        require(not private_frame_keys(value), "hostile header probe disclosed canonical facts")
+        return {"status": response.status, "body": value}
+    finally:
+        connection.close()
+
+
+def hostile_header_probes(ca: Path, match_id: str, cookie: str, csrf: str) -> int:
+    path, body = f"/api/v1/matches/{match_id}/grant", '{"version":1}'
+    baseline = [("Origin", ORIGIN), ("Cookie", f"{SESSION_COOKIE}={cookie}"),
+                ("Content-Type", "application/json"), ("X-Tabula-CSRF", csrf)]
+    cases = [
+        ([(k, v) for k, v in baseline if k != "Origin"], 403),
+        ([(k, "https://foreign.tabula.invalid" if k == "Origin" else v) for k, v in baseline], 403),
+        ([(k, "null" if k == "Origin" else v) for k, v in baseline], 403),
+        ([(k, v) for k, v in baseline if k != "X-Tabula-CSRF"], 403),
+        ([(k, "A" * 43 if k == "X-Tabula-CSRF" else v) for k, v in baseline], 403),
+        ([(k, "text/plain" if k == "Content-Type" else v) for k, v in baseline], 415),
+        (baseline + [("Cookie", f"{SESSION_COOKIE}={cookie}")], 400),
+        (baseline + [("Authorization", f"Bearer {cookie}")], 400),
+    ]
+    for headers, expected in cases:
+        denied(wire_probe(ca, path, headers, body), {expected},
+               "hostile HTTP transport partition was not rejected")
+    return len(cases)
+
+
+def context_facts(page) -> dict:
+    response = api(page, "/api/v1/auth/context")
+    require(response["status"] == 200, "real session context unavailable")
+    return response["body"]
+
+
+def snapshot_canvas(page, path: Path) -> bytes:
+    canvas = page.locator("#glcanvas")
+    require(canvas.is_visible(), "actual game canvas is not visible")
+    shot = canvas.screenshot(path=str(path), timeout=30_000)
+    image = Image.open(io.BytesIO(shot)).convert("RGB")
+    require(image.width >= 600 and image.height >= 400, "rendered canvas is unexpectedly small")
+    # A compiled WASM or empty/clear-colored WebGL canvas is never rendering proof.
+    require(len(image.resize((160, 120)).getcolors(19_201) or []) > 32,
+            "actual canvas pixels are blank or lack rendered game content")
+    return shot
+
+
+def board_square(width: float, height: float, name: str, flipped: bool) -> tuple[float, float]:
+    """Pointer geometry from maintained Chess BoardLayout, never a board oracle.
+
+    Actual page canvas bounds determine the viewport. Real UI events still pass
+    through Rust presentation and real server legality; the durable oracle checks
+    the exact commands that landed independently of this coordinate calculation.
+    """
+    require(len(name) == 2 and name[0] in "abcdefgh" and name[1] in "12345678",
+            "invalid scripted square")
+    margin = min(width * .035, height * .025, 24)
+    gap = min(height * .008, 8)
+    title = min(height * .06, 40)
+    player = min(max(height * .07, 44 if height >= 450 else 24), 56)
+    rail = (width >= 760 and height >= 420) or (width >= 600 and height < 420)
+    rail_width = min(width * .28, 360) if rail else 0
+    game_width = max(width - margin * 2 - rail_width - (gap * 2 if rail else 0), 0)
+    columns = max(int((game_width + 4) // 76), 1)
+    controls = ((6 + columns - 1) // columns) * 48 - 4
+    coordinate = min(game_width * .03, 12 if height < 420 else 16)
+    status = 0 if rail else min(height * .1, 64)
+    remaining = max(height - margin * 2 - title - player * 2 - controls
+                    - status - gap * 6 - coordinate * 2, 0)
+    side = min(max(game_width - coordinate * 2, 0), remaining, 680)
+    left = margin + (game_width - side) * .5
+    top = margin + title + gap + player + gap + coordinate
+    file, rank = ord(name[0]) - ord("a"), int(name[1]) - 1
+    column, row = (7 - file, rank) if flipped else (file, 7 - rank)
+    return left + (column + .5) * side / 8, top + (row + .5) * side / 8
+
+
+def move(page, source: str, target: str, flipped: bool, match_id: str) -> str:
+    canvas = page.locator("#glcanvas")
+    bounds = canvas.bounding_box()
+    require(bounds is not None, "actual canvas has no pointer bounds")
+    path = f"/api/v1/matches/{match_id}/command"
+    with page.expect_response(lambda r: urlsplit(r.url).path == path, timeout=30_000) as result:
+        for square in (source, target):
+            x, y = board_square(bounds["width"], bounds["height"] - 56, square, flipped)
+            canvas.click(position={"x": x, "y": y}, delay=70)
+    response = result.value
+    require(response.status == 200, "rendered legal move was not accepted by real server")
+    body = response.json()
+    require(not private_frame_keys(body), "canonical facts leaked in command result")
+    require(any("Ack" in frame.get("body", {}) for frame in body["frames"]),
+            "rendered legal move lacks durable acknowledgement")
+    # Keep exact bytes in memory: parsing into JS numbers would round a u128
+    # identity and turn the intended exact retry into a different command.
+    command = response.request.post_data
+    require(command is not None, "actual command request body is absent")
+    return command
+
+
+def enter_game(page, match_id: str, expected_seat: int) -> tuple[dict, str]:
+    path = f"/api/v1/matches/{match_id}/attach"
+    with page.expect_response(lambda r: urlsplit(r.url).path == path, timeout=60_000) as result:
+        page.get_by_test_id("online-enter").click()
+    response = result.value
+    require(response.status == 200, "actual gameplay attachment failed")
+    attachment = response.json()
+    require(attachment["seat"] == expected_seat, "browser entered the wrong opponent seat")
+    require(not private_frame_keys(attachment), "canonical facts leaked on attach")
+    page.wait_for_function("expected => document.documentElement.dataset.onlineSeat === String(expected)",
+                           arg=expected_seat, timeout=60_000)
+    page.locator("#loader").wait_for(state="hidden", timeout=60_000)
+    require(page.locator("#glcanvas").is_visible(), "WASM game failed to render")
+    grant_body = response.request.post_data
+    require(grant_body is not None, "actual grant-bound attachment request was absent")
+    return attachment, grant_body
+
+
+def wait_revision(page, revision: int) -> None:
+    page.wait_for_function("revision => Number(document.documentElement.dataset.onlineRevision) >= revision",
+                           arg=revision, timeout=30_000)
+
+
+def run(args) -> None:
+    require(os.environ.get("CI") in ("true", "1")
+            and os.environ.get("TABULA_ONLINE_MATCH_DISPOSABLE") == "1",
+            "explicit CI-only disposable browser acceptance opt-in is required")
+    private, artifacts, ca = Path(args.private), Path(args.artifacts), Path(args.ca)
+    require(private.is_dir() and ca.is_file(), "private runtime and approved test CA are required")
+    artifacts.mkdir(parents=True, exist_ok=True)
+    actions: list[str] = []
+    results: dict = {"status": "fail", "stage": "start",
+                     "authority_mode": "isolated fixture identities through real durable session authority",
+                     "browser_processes": 3, "independent_homes_profiles_cookie_jars": True,
+                     "tls_errors_ignored": False, "chromium_sandbox": True}
+    browsers = []
+    try:
+        with sync_playwright() as playwright:
+            results["stage"] = "launch separate Chromium processes with scoped CA trust"
+            for role in ("white", "black", "third"):
+                home, profile = setup_browser_trust(private, role, ca)
+                environment = os.environ.copy()
+                environment["HOME"] = str(home)
+                environment["XDG_DATA_HOME"] = str(home / ".local" / "share")
+                browser = playwright.chromium.launch_persistent_context(
+                    str(profile), headless=True, channel="chromium", chromium_sandbox=True,
+                    env=environment, viewport={"width": 1100, "height": 850},
+                    reduced_motion="reduce", locale="en-US",
+                )
+                browsers.append(browser)
+            white, black, third = [browser.new_page() for browser in browsers]
+            browser_pids = []
+            for browser in browsers:
+                inspector = browser.browser.new_browser_cdp_session()
+                try:
+                    processes = inspector.send("SystemInfo.getProcessInfo")["processInfo"]
+                    pids = [process["id"] for process in processes if process["type"] == "browser"]
+                    require(len(pids) == 1, "actual Chromium browser process identity unavailable")
+                    browser_pids.append(pids[0])
+                finally:
+                    inspector.detach()
+            require(len(set(browser_pids)) == 3, "acceptance contexts share an actual browser process")
+            results["distinct_actual_browser_processes_verified"] = True
+            # Navigation validates TLS in actual Chromium. Before issuance there
+            # is no interception, route mock, cookie injection or shared storageState.
+            results["stage"] = "validate HTTPS and issue independent sessions through actual pages"
+            deadline = time.monotonic() + 45
+            while True:
+                try:
+                    startup = white.goto(ORIGIN + "/__fixture/enroll", wait_until="domcontentloaded")
+                    if startup is not None and startup.status == 200 and white.get_by_test_id("fixture-enroll").is_visible():
+                        break
+                except Exception:
+                    pass
+                require(time.monotonic() < deadline, "validated fixture HTTPS and real authority startup failed")
+                time.sleep(.25)
+            for page, role in ((white, "white"), (black, "black")):
+                if page is black:
+                    page.goto(ORIGIN + "/__fixture/enroll", wait_until="domcontentloaded")
+                require(not any(cookie["name"] == SESSION_COOKIE for cookie in page.context.cookies()),
+                        "fresh independent browser unexpectedly shares a session")
+                require(page.evaluate("localStorage.getItem('tabula-acceptance-isolation')") is None
+                        and page.evaluate("sessionStorage.getItem('tabula-acceptance-isolation')") is None,
+                        "fresh browser shares another process's document storage")
+                page.evaluate("role => { localStorage.setItem('tabula-acceptance-isolation', role); sessionStorage.setItem('tabula-acceptance-isolation', role); }", role)
+                page.get_by_test_id("fixture-enroll").click()
+                page.wait_for_url(ORIGIN + GAME_PATH, timeout=60_000)
+            third.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+            require(third.evaluate("localStorage.getItem('tabula-acceptance-isolation')") is None
+                    and third.evaluate("sessionStorage.getItem('tabula-acceptance-isolation')") is None,
+                    "third browser inherited opponent local/session storage")
+            require(white.evaluate("localStorage.getItem('tabula-acceptance-isolation')") == "white"
+                    and black.evaluate("localStorage.getItem('tabula-acceptance-isolation')") == "black",
+                    "opponent browsers' isolated storage markers changed each other")
+            results["independent_local_and_session_storage_verified"] = True
+            require(not any(c["name"] == SESSION_COOKIE for c in third.context.cookies()),
+                    "third independent browser inherited opponent credentials")
+            facts = [context_facts(page) for page in (white, black)]
+            require(all(fact["disposition"] == "authenticated" for fact in facts),
+                    "fixture issuance did not create real authenticated sessions")
+            require(facts[0]["account_id"] != facts[1]["account_id"],
+                    "opponent browsers share the same actual account")
+            cookies = [[c for c in b.cookies() if c["name"] == SESSION_COOKIE] for b in browsers[:2]]
+            require(all(len(c) == 1 and c[0]["httpOnly"] and c[0]["secure"]
+                        and c[0]["path"] == "/" and c[0]["sameSite"] == "Lax" for c in cookies),
+                    "real issued session cookie violates browser channel protection")
+            require(cookies[0][0]["value"] != cookies[1][0]["value"],
+                    "opponent browsers share the same session credential")
+            require(all(SESSION_COOKIE not in page.evaluate("document.cookie") for page in (white, black)),
+                    "session credential is readable by document JavaScript")
+            results["distinct_actual_accounts_sessions_and_httponly_cookies"] = True
+            results["chromium_version"] = browsers[0].browser.version
+            actions.append("Independent White and Black pages issued separate durable HttpOnly sessions")
+
+            results["stage"] = "create and join a real code through the shell"
+            with white.expect_response(lambda r: urlsplit(r.url).path == "/api/v1/matches", timeout=30_000) as created_response:
+                white.get_by_test_id("online-create").click()
+            created = created_response.value.json()
+            require(created_response.value.status == 200 and created["seat"] == 0,
+                    "actual shell create action failed")
+            match_id, code = created["match_id"], created["join_code"]
+            require(white.get_by_test_id("online-code").inner_text().strip() == code,
+                    "shell did not display the real returned join code")
+            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, "A" * 43),
+                   {401}, "third unauthenticated browser obtained opponent output")
+            black.get_by_test_id("online-join-code").fill(code)
+            with black.expect_response(lambda r: urlsplit(r.url).path == "/api/v1/matches/join", timeout=30_000) as joined_response:
+                black.get_by_test_id("online-join").click()
+            joined = joined_response.value.json()
+            require(joined_response.value.status == 200 and joined["match_id"] == match_id
+                    and joined["seat"] == 1 and joined["ready"], "actual code join failed")
+            duplicate = api(black, "/api/v1/matches/join", {"version": 1, "code": code}, facts[1]["csrf_token"])
+            require(duplicate["status"] == 200 and duplicate["body"]["seat"] == 1
+                    and duplicate["body"]["match_id"] == match_id,
+                    "same-player duplicate join is not idempotent")
+            actions.append("White created a real code; Black joined it as the opposite seat; duplicate join preserved binding")
+            # Test full-roster admission before completion can mask that boundary.
+            third.goto(ORIGIN + "/__fixture/enroll")
+            third.get_by_test_id("fixture-enroll").click()
+            third.wait_for_url(ORIGIN + GAME_PATH, timeout=60_000)
+            third_facts = context_facts(third)
+            third_csrf = third_facts["csrf_token"]
+            require(third_facts["account_id"] not in [f["account_id"] for f in facts],
+                    "third fixture account is not independent")
+            denied(api(third, "/api/v1/matches/join", {"version": 1, "code": code}, third_csrf),
+                   {403, 409}, "third player changed a full live opponent roster")
+            results["third_client_full_live_roster_join_denied"] = True
+            results["stage"] = "attach and render opposing actual browser seats"
+            white_attachment, white_grant_body = enter_game(white, match_id, 0)
+            black_attachment, _black_grant_body = enter_game(black, match_id, 1)
+            initial_white = snapshot_canvas(white, artifacts / "01-white-initial-board.png")
+            snapshot_canvas(black, artifacts / "02-black-initial-board.png")
+
+            results["stage"] = "tap f2-f3"
+            first = move(white, "f2", "f3", False, match_id)
+            wait_revision(black, 1)
+            actions.append("White tapped f2-f3")
+            results["stage"] = "tap e7-e5"
+            # Both actual presenters start White-bottom; no flip control is used.
+            move(black, "e7", "e5", False, match_id)
+            wait_revision(white, 2)
+            actions.append("Black tapped e7-e5")
+            results["stage"] = "tap g2-g4"
+            move(white, "g2", "g4", False, match_id)
+            wait_revision(black, 3)
+            actions.append("White tapped g2-g4")
+            results["stage"] = "tap d8-h4 and render identical terminal verdicts"
+            last = move(black, "d8", "h4", False, match_id)
+            for page in (white, black):
+                wait_revision(page, 4)
+                page.wait_for_function("() => document.documentElement.dataset.onlineStatus === 'Game over / Black wins'", timeout=30_000)
+            white_terminal = snapshot_canvas(white, artifacts / "03-white-checkmate.png")
+            snapshot_canvas(black, artifacts / "04-black-checkmate.png")
+            require(initial_white != white_terminal, "actual canvas pixels did not change after full game")
+            results["both_rendered_terminal_verdicts"] = "Game over / Black wins"
+            results["full_game_pointer_moves"] = ["f2f3", "e7e5", "g2g4", "d8h4"]
+            actions.append("Black tapped d8-h4; both independently rendered Game over / Black wins")
+
+            results["stage"] = "replay exact committed command after actual rendered gameplay completes"
+            # Consuming a fresh Ack outside Rust during play would create an
+            # artificial transport-frame gap, so this probe follows both captures.
+            duplicate_move = api(white, f"/api/v1/matches/{match_id}/command", first, facts[0]["csrf_token"])
+            require(duplicate_move["status"] == 200 and any(
+                frame.get("body", {}).get("Ack", {}).get("seq") == 1
+                for frame in duplicate_move["body"]["frames"]),
+                "exact duplicate committed command did not return its original acknowledgement")
+            require(black.evaluate("document.documentElement.dataset.onlineRevision") == "4",
+                    "duplicate command advanced the opponent projection")
+            results["exact_duplicate_command_ack_without_new_projection"] = True
+            actions.append("Exact original f2-f3 command returned its stored Ack without advancing the opponent projection")
+
+            results["stage"] = "deny third-client commands and private output"
+            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, third_csrf),
+                   {403}, "third actual account obtained another player's grant")
+            denied(api(third, f"/api/v1/matches/{match_id}/poll",
+                       {"version": 1, "attachment_id": white_attachment["attachment_id"]}, third_csrf),
+                   {403, 404}, "third account obtained opponent projection output")
+            denied(api(third, f"/api/v1/matches/{match_id}/command", first, third_csrf),
+                   {403, 404}, "third account issued an opponent command")
+            results["third_client_command_and_output_denied"] = True
+
+            results["stage"] = "reject real hostile Origin, CSRF, credential and envelope requests"
+            results["hostile_header_partitions_denied"] = hostile_header_probes(
+                ca, match_id, cookies[0][0]["value"], facts[0]["csrf_token"])
+            fresh_grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[0]["csrf_token"])
+            require(fresh_grant["status"] == 200 and fresh_grant["body"]["ready"],
+                    "fresh signed grant security partition setup failed")
+            fresh_grant_body = {"version": 1, "binding_id": fresh_grant["body"]["binding_id"]}
+            denied(api(black, f"/api/v1/matches/{match_id}/attach", fresh_grant_body, facts[1]["csrf_token"]),
+                   {401}, "foreign-subject signed grant was accepted")
+            denied(api(white, f"/api/v1/matches/{match_id}/attach",
+                       {"version": 1, "binding_id": "invalid-grant"}, facts[0]["csrf_token"]),
+                   {400}, "malformed signed grant was accepted")
+            tampered = fresh_grant_body.copy()
+            token = tampered["binding_id"]
+            tampered["binding_id"] = token[:-2] + ("B" if token[-2] == "A" else "A") + token[-1]
+            denied(api(white, f"/api/v1/matches/{match_id}/attach", tampered, facts[0]["csrf_token"]),
+                   {401}, "invalid HMAC signed grant was accepted")
+            invented_seat = json.loads(first)
+            invented_seat["seat"] = 1
+            denied(api(white, f"/api/v1/matches/{match_id}/command", json.dumps(invented_seat), facts[0]["csrf_token"]),
+                   {400}, "client-selected seat bypassed DTO validation")
+            zero_seq = json.loads(first)
+            zero_seq["command"]["seq"] = 0
+            denied(api(white, f"/api/v1/matches/{match_id}/command", json.dumps(zero_seq), facts[0]["csrf_token"]),
+                   {400}, "zero-sequence envelope bypassed validation")
+            wrong_match = json.loads(first)
+            wrong_match["command"]["command"]["match_id"] = int(match_id, 16) ^ 1
+            denied(api(white, f"/api/v1/matches/{match_id}/command", json.dumps(wrong_match), facts[0]["csrf_token"]),
+                   {400}, "URL and opaque envelope match mismatch bypassed validation")
+            results["hostile_grant_seat_and_envelope_partitions_denied"] = 6
+
+            results["stage"] = "deny cross-match commands and private output"
+            other = api(white, "/api/v1/matches", {"version": 1, "game_id": created["game_id"],
+                        "seats": 2, "config": {"clock": "untimed"}}, facts[0]["csrf_token"])
+            require(other["status"] == 200, "independent cross-match admission fixture failed")
+            other_id = other["body"]["match_id"]
+            second_join = api(black, "/api/v1/matches/join",
+                              {"version": 1, "code": other["body"]["join_code"]}, facts[1]["csrf_token"])
+            require(second_join["status"] == 200 and second_join["body"]["ready"],
+                    "actual second-match opponent roster setup failed")
+            second_grant = api(white, f"/api/v1/matches/{other_id}/grant", {"version": 1}, facts[0]["csrf_token"])
+            require(second_grant["status"] == 200 and second_grant["body"]["ready"],
+                    "actual second-match current grant setup failed")
+            second_attach = api(white, f"/api/v1/matches/{other_id}/attach",
+                                {"version": 1, "binding_id": second_grant["body"]["binding_id"]}, facts[0]["csrf_token"])
+            require(second_attach["status"] == 200, "actual second-match actor setup failed")
+            denied(api(white, f"/api/v1/matches/{other_id}/poll",
+                       {"version": 1, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
+                   {403}, "same-account cross-match attachment released output")
+            cross_command = json.loads(first)
+            cross_command["command"]["command"]["match_id"] = int(other_id, 16)
+            denied(api(white, f"/api/v1/matches/{other_id}/command", json.dumps(cross_command), facts[0]["csrf_token"]),
+                   {403}, "same-account cross-match command was admitted")
+            results["cross_match_command_and_output_denied"] = True
+
+            results["stage"] = "rebind the same durable scope and fence its old attachment"
+            grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[0]["csrf_token"])
+            require(grant["status"] == 200 and grant["body"]["ready"], "fresh authorized reattach grant failed")
+            reattached = api(white, f"/api/v1/matches/{match_id}/attach",
+                             {"version": 1, "binding_id": grant["body"]["binding_id"]}, facts[0]["csrf_token"])
+            require(reattached["status"] == 200 and reattached["body"]["next_seq"] == 3,
+                    "same actual session reattachment reset durable command sequence")
+            denied(api(white, f"/api/v1/matches/{match_id}/poll",
+                       {"version": 1, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
+                   {403}, "old attachment released output after same-session rebind")
+            denied(api(white, f"/api/v1/matches/{match_id}/command", first, facts[0]["csrf_token"]),
+                   {403}, "old attachment issued a command after same-session rebind")
+            results["same_session_reattach_retained_next_seq_and_denied_old_attachment"] = True
+
+            results["stage"] = "revoke through real authority and deny stale credential replay"
+            revoked_cookie = {"name": SESSION_COOKIE, "value": cookies[1][0]["value"],
+                              "url": ORIGIN + "/", "secure": True, "httpOnly": True, "sameSite": "Lax"}
+            logout = api(black, "/api/v1/auth/logout", {}, facts[1]["csrf_token"])
+            require(logout["status"] == 204, "real authority revocation failed")
+            # Replay the exact previous runtime credential in the same browser.
+            browsers[1].add_cookies([revoked_cookie])
+            denied(api(black, f"/api/v1/matches/{match_id}/poll",
+                       {"version": 1, "attachment_id": black_attachment["attachment_id"]}, facts[1]["csrf_token"]),
+                   {401}, "revoked session obtained protected gameplay output")
+            denied(api(black, f"/api/v1/matches/{match_id}/command", last, facts[1]["csrf_token"]),
+                   {401}, "revoked session issued a cached opponent command")
+            results["revoked_command_and_output_denied"] = True
+            actions.append("Third-client, cross-match, and revoked-verifier commands and output were denied")
+
+            # Private account identities do not enter uploaded artifacts.
+            (private / "audit-input.json").write_text(json.dumps(
+                {"match_id": match_id, "accounts": [fact["account_id"] for fact in facts]}))
+            results["status"] = "pass"
+            results["stage"] = "complete"
+    finally:
+        (artifacts / "browser-result.json").write_text(json.dumps(results, indent=2) + "\n")
+        (artifacts / "actions.json").write_text(json.dumps(actions, indent=2) + "\n")
+        for browser in reversed(browsers):
+            try:
+                browser.close()
+            except Exception:
+                pass
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--private", required=True)
+    parser.add_argument("--artifacts", required=True)
+    parser.add_argument("--ca", required=True)
+    args = parser.parse_args()
+    try:
+        run(args)
+    except AcceptanceFailure as error:
+        print(f"FAIL: {error}")
+        return 1
+    except Exception:
+        # Playwright errors can embed URLs, DOM text and request diagnostics.
+        print("FAIL: browser acceptance infrastructure or actual interaction failed")
+        return 1
+    print("PASS: actual two-browser rendering and authority interaction")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
