@@ -1,6 +1,6 @@
 # ADR-0039: isolated authoritative match actor
 
-- **Status:** accepted narrow owner-requested implementation; production remains closed
+- **Status:** accepted narrow owner-requested implementation; persistence/recovery boundary extended by ADR-0040; production remains closed
 - **Date:** 2026-10-05
 - **Amends:** Phase 4 ordering for this offline slice; the unimplemented global-counter wire sketches in doc 03 §8 and doc 05 §2
 - **Invariants touched:** none relaxed; I-1–I-9, I-13–I-16 preserved
@@ -16,6 +16,13 @@ and remain unmerged. This decision records the already-approved bounded work,
 not a Phase 3/4/5 exit or permission to activate a service.
 
 ## Decision
+
+[ADR-0040](0040-isolated-durable-match-postgres.md) subsequently opens only an
+opt-in PostgreSQL consistent journal, durable operation ledger/owner fence and
+exact bounded recovery. The no-SQL/no-recovery and process-lifetime cache limits
+below describe this ADR's original delivered offline slice. They are superseded
+only for that explicit adapter; network, authority/output/effect and phase limits
+remain in force. The historical delivery ledger is not PostgreSQL evidence.
 
 The native opt-in `tabula-match/isolated` runtime owns one erased game instance
 in one Tokio task and one bounded FIFO mailbox. Registry's generic adapter owns
@@ -111,6 +118,6 @@ cannot authorize those deliveries. The host must also enforce unique logical
 MatchId ownership and capability-based spectator admission; exclusive ownership
 of this erased-state object is not a global directory or ownership lease.
 
-Revisit before any network consumer, persistence/recovery adapter, durable
+Revisit before any network consumer, persistence/recovery beyond ADR-0040, durable
 authority integration, delayed spectator, production listener or broad phase
 claim. Require actual adapter/target evidence and review at that boundary.

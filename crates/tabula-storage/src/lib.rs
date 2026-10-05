@@ -110,3 +110,8 @@
 /// fences only a bounded server-frame handoff under ADR-0036.
 #[cfg(all(feature = "session-postgres", not(target_arch = "wasm32")))]
 pub mod session;
+
+/// Isolated atomic PostgreSQL match journal and explicit migrations (ADR-0040).
+#[cfg(all(feature = "match-postgres", not(target_arch = "wasm32")))]
+#[clippy::msrv = "1.94"]
+pub mod match_postgres;

@@ -108,5 +108,27 @@ a synthetic fixture or compiled provider module cannot substitute for real login
 PR77 is normally merged with all 14 pre-/post-merge jobs and actual Kanidm
 acceptance passed; [060](060-invited-kanidm-web-auth.md) has the verified receipts.
 The second requested PR is the [offline match actor/wire slice](070-isolated-match-actor.md)
-under ADR0039, from develop0245dc72. This queue authorizes no third PR, SQL match
-store, lobby/queue/reconnect, production activation or broad phase completion.
+under ADR0039, from develop0245dc72, now merged as PR78 at develop fd0f1e4.
+That completed two-PR authorization did not include SQL/network/production work.
+The new owner-requested sequence below is a separate bounded authorization.
+
+## Authorized durable-to-online match series
+
+Fresh baseline: develop `fd0f1e496251a05722de1a0891be9548a6ee7f75`, tree
+`f8b10c34dcc02bb93e9568fd817bf1476fa4aab1`, after PR78. The owner requests three
+sequential implementation PRs, with normal self-merges after their checks and
+review; implement only PR1 in this chat, then begin PR2 and PR3 in separate later
+chats from fresh develop. They are not one expanding PR or broad phase exit.
+
+1. Current: [consistent PostgreSQL match commit and exact restart/write-failure recovery](080-durable-match-postgres.md), under [ADR0040](../adr/0040-isolated-durable-match-postgres.md)
+2. After PR1's verified merge: [join-by-code and two independent browsers completing Chess](090-join-code-browser-chess.md)
+3. After PR2's verified merge: [reconnect/resync and network/revocation/server-crash recovery](100-reconnect-resync-fault-recovery.md)
+
+The [PR1 ledger](../verification/durable-match-postgres/README.md) owns actual
+DB/process/local/CI evidence and the next-chat handoff contract. Carry exact
+merged refs, reproducible commands, verified receipts, durable operation/privacy
+laws and residual gates forward. PR2/PR3 need their own bounded online contracts
+and real target evidence; PR1's database generation fence is not session/commit/
+private socket delivery authority. Production activation, live migrations,
+provider provisioning, lobby/queue/voice and existing broad phase exits remain
+outside this series unless separately requested and proved.

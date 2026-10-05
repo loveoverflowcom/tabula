@@ -113,6 +113,13 @@ allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "serde", "toml", "
 # game. That containment is what makes I-9 checkable.
 allow_games = true
 
+# ADR-0040: immutable pure journal contract avoids all-feature actor/game
+# unification into the storage/authentication graph. No runtime or SQL edges.
+[crate."tabula-match-journal"]
+tier = "contract"
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "serde"]
+forbidden_categories = ["rendering", "ui_framework", "web_framework", "networking", "persistence", "application", "game_specific"]
+
 [crate."tabula-design"]
 tier    = "contract"
 allow   = ["serde"]
@@ -149,7 +156,7 @@ feature = { native = ["tokio", "tokio-tungstenite"], web = ["web-sys", "wasm-bin
 # -----------------------------------------------------------------------------
 [crate."tabula-match"]
 tier  = "runtime"
-allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tokio", "tracing", "futures", "bytes", "thiserror", "smallvec"]
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tokio", "tracing", "futures", "bytes", "thiserror", "smallvec", "serde", "tabula-match-journal"]
 # Forbidden: sqlx (ports only), axum, any game crate, any renderer.
 
 [crate."tabula-lobby"]
@@ -172,7 +179,7 @@ forbidden_categories = ["rendering", "ui_framework", "application", "game_specif
 
 [crate."tabula-storage"]
 tier  = "runtime"
-allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session"]
+allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session", "tabula-match-journal", "serde", "blake3"]
 # The ONLY crate allowed to know SQL exists. Forbidden: axum, game crates,
 # renderers, tabula-registry.
 

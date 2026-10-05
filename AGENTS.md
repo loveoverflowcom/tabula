@@ -158,6 +158,14 @@ bounded #54 isolated session/PostgreSQL → HTTP → account-state UI sequence.
 It keeps both production service entrypoints closed and does not prove phase
 exits, provider login or actual private-output fencing. Other phase gates stand.
 
+[ADR-0040](docs/adr/0040-isolated-durable-match-postgres.md) extends ADR-0039's
+offline actor only with SQL-free journal contracts, native opt-in PostgreSQL
+consistent commits, durable receipt watermarks/owner fencing and exact bounded
+recovery. It is PR1 of the owner's new three-PR sequence; join-code browser play
+and online reconnect/resync/fault acceptance follow in separate later chats.
+No production listener, live migration, durable online session/commit/output
+fence or broad phase exit is authorized by this storage slice.
+
 ---
 
 ## 5. Before you open a pull request

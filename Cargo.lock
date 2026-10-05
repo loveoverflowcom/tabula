@@ -3251,13 +3251,25 @@ dependencies = [
 name = "tabula-match"
 version = "0.0.0"
 dependencies = [
+ "serde",
  "smallvec",
  "tabula-core",
  "tabula-game-api",
+ "tabula-match-journal",
  "tabula-protocol",
  "tabula-registry",
  "thiserror 1.0.69",
  "tokio",
+]
+
+[[package]]
+name = "tabula-match-journal"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "tabula-core",
+ "tabula-game-api",
+ "tabula-protocol",
 ]
 
 [[package]]
@@ -3375,9 +3387,12 @@ dependencies = [
 name = "tabula-storage"
 version = "0.0.0"
 dependencies = [
+ "blake3",
+ "serde",
  "sqlx",
  "tabula-core",
  "tabula-game-api",
+ "tabula-match-journal",
  "tabula-protocol",
  "tabula-session",
  "thiserror 1.0.69",

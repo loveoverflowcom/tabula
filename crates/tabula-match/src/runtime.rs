@@ -1,4 +1,4 @@
-//! Bounded, single-owner offline actor (doc 03 §6–8, ADR-0039).
+//! Bounded, single-owner isolated actor (doc 03 §6–9, ADR-0039/0040).
 //!
 //! The sole erased state handle moves into `run`; no client gets a clone.
 //! Actual authority guards surround apply and output, with no unrelated await.
@@ -11,7 +11,8 @@ use std::{
 };
 
 use tabula_core::{
-    DetRng, InputIndex, LogicalTime, MatchId, MatchSeed, SeatId, SessionId, StateVersion, UserId,
+    canonical_encode, DetRng, InputIndex, LogicalTime, MatchId, MatchSeed, SeatId, SessionId,
+    StateVersion, UserId,
 };
 use tabula_game_api::Effect;
 use tabula_protocol::{ClientEnvelope, ErrorCode, ServerEnvelope, ServerMessage};
@@ -21,6 +22,10 @@ use tabula_registry::runtime::{
 use tokio::sync::{mpsc, oneshot};
 
 use crate::{
+    durable::{
+        LedgerLimits, MatchCreation, MatchIdentity, OperationKey, OperationReceipt, OperationScope,
+        ScopeState, JOURNAL_FORMAT,
+    },
     ports::Clock,
     runtime_ports::{Authority, Effects, Journal, JournalRecord, Output, Purpose},
 };
@@ -132,9 +137,9 @@ pub enum Exit {
     CounterExhausted,
 }
 
-/// Host-only applied in-memory counters, never serialized on the wire.
-/// On a failed/indeterminate append these may exceed the last known commit;
-/// they are not a recovery cursor or proof of journal durability.
+/// Host-only known-committed counters, never serialized on the wire.
+/// An indeterminate append may have committed beyond these counters. Recovery
+/// must validate the authoritative journal; this summary is not a recovery cursor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Summary {
     pub exit: Exit,
@@ -288,33 +293,18 @@ enum Work {
     Drain,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Scope {
-    record: u128,
-    subject: UserId,
-    epoch: u64,
-    seat: SeatId,
-    generation: u64,
-}
-impl Scope {
-    fn new(binding: &Binding, seat: SeatId) -> Self {
-        Self {
-            record: binding.record,
-            subject: binding.subject,
-            epoch: binding.epoch,
-            seat,
-            generation: binding.generation,
-        }
+type Scope = OperationScope;
+type Receipt = OperationReceipt;
+fn scope_for(binding: &Binding, seat: SeatId) -> Scope {
+    Scope {
+        record: binding.record,
+        subject: binding.subject,
+        epoch: binding.epoch,
+        seat,
+        generation: binding.generation,
     }
 }
 
-#[derive(Clone, Debug)]
-struct Receipt {
-    seq: u64,
-    command: tabula_protocol::GameCommandFrame,
-    result: Result<(), ErrorCode>,
-    at: u64,
-}
 #[derive(Debug, Default)]
 struct Sequence {
     highest: u64,
@@ -365,6 +355,21 @@ where
     } = ports;
     let anchor = clock.monotonic_ms();
     let (state, seed, events, initial_effects) = created.into_parts();
+    let identity = state.identity();
+    let creation = MatchCreation {
+        format: JOURNAL_FORMAT,
+        identity: MatchIdentity {
+            game: identity.game.clone(),
+            game_version: identity.game_version.clone(),
+            rules_version: identity.rules_version,
+            rules_hash: identity.rules_hash,
+        },
+        config: state.creation_config().to_vec(),
+        roster: state.roster().clone(),
+        seed: *seed.as_bytes(),
+        started_at_unix_ms: clock.now_unix_ms(),
+        limits: ledger_limits(limits),
+    };
     let (tx, rx) = mpsc::channel(limits.mailbox);
     let handle = MatchHandle {
         tx: tx.clone(),
@@ -382,6 +387,9 @@ where
         effects,
         clock,
         anchor,
+        base_time: 0,
+        observed_ms: 0,
+        creation,
         limits,
         rx,
         attached: BTreeMap::new(),
@@ -394,7 +402,129 @@ where
     Ok((
         handle,
         host,
-        tokio::spawn(actor.run(events, initial_effects)),
+        tokio::spawn(actor.run(events, initial_effects, None)),
+    ))
+}
+
+pub(crate) fn ledger_limits(limits: Limits) -> LedgerLimits {
+    LedgerLimits {
+        scopes: u16::try_from(limits.operation_scopes).expect("validated scope limit"),
+        receipts_per_scope: u16::try_from(limits.receipts_per_scope)
+            .expect("validated receipt limit"),
+        receipt_ttl_ms: limits.receipt_ttl_ms,
+    }
+}
+
+/// Recovery refuses corrupt/foreign journals before any client or effect output.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RecoveryError {
+    Unavailable,
+    Corrupt,
+    InvalidLimits,
+}
+impl core::fmt::Display for RecoveryError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for RecoveryError {}
+
+/// Claim a replacement journal outside this function, then validate its entire
+/// bounded committed prefix against the exact approved module (ADR-0040).
+/// No connection/view cursor is recovered; attachments require fresh authority.
+pub async fn recover<A, J, O, E, C>(
+    id: MatchId,
+    game: Arc<dyn tabula_registry::ErasedGame>,
+    ports: Ports<A, J, O, E, C>,
+    limits: Limits,
+) -> Result<(MatchHandle, HostControl, tokio::task::JoinHandle<Summary>), RecoveryError>
+where
+    A: Authority,
+    J: Journal,
+    O: Output,
+    E: Effects,
+    C: Clock + 'static,
+{
+    if !limits.valid() {
+        return Err(RecoveryError::InvalidLimits);
+    }
+    let loaded = ports
+        .journal
+        .load(id)
+        .await
+        .map_err(|_| RecoveryError::Unavailable)?;
+    let recovered = catch_unwind(AssertUnwindSafe(|| {
+        crate::runtime_recovery::validate(id, game.as_ref(), &loaded, limits)
+    }))
+    .map_err(|_| RecoveryError::Corrupt)??;
+    let Ports {
+        authority,
+        journal,
+        output,
+        effects,
+        clock,
+    } = ports;
+    let anchor = clock.monotonic_ms();
+    // Outage elapsed time counts in the isolated unpaused match. Clock rollback
+    // clamps to the durable observation watermark, never resets to process zero.
+    let base_time = clock
+        .now_unix_ms()
+        .saturating_sub(loaded.creation.started_at_unix_ms)
+        .max(loaded.observed_ms);
+    let (tx, rx) = mpsc::channel(limits.mailbox);
+    let handle = MatchHandle {
+        tx: tx.clone(),
+        admission: Arc::default(),
+        limits,
+    };
+    let host = HostControl { tx };
+    let committed_effects = loaded
+        .records
+        .iter()
+        .map(|record| (record.index, record.effects.clone()))
+        .collect();
+    let actor = Actor {
+        id,
+        state: recovered,
+        seed: MatchSeed::from_bytes(loaded.creation.seed),
+        authority,
+        journal,
+        output,
+        effects,
+        clock,
+        anchor,
+        base_time,
+        observed_ms: loaded.observed_ms,
+        creation: loaded.creation,
+        limits,
+        rx,
+        attached: BTreeMap::new(),
+        scopes: loaded
+            .ledger
+            .into_iter()
+            .map(|state| {
+                (
+                    state.scope,
+                    Sequence {
+                        highest: state.highest,
+                        recent: state.recent.into(),
+                    },
+                )
+            })
+            .collect(),
+        version: loaded.version,
+        index: loaded.index,
+        last_time: loaded.records.last().ok_or(RecoveryError::Corrupt)?.now,
+        terminal: loaded
+            .records
+            .last()
+            .ok_or(RecoveryError::Corrupt)?
+            .terminal,
+    };
+    Ok((
+        handle,
+        host,
+        tokio::spawn(actor.run(vec![], vec![], Some(committed_effects))),
     ))
 }
 
@@ -408,6 +538,9 @@ struct Actor<A, J, O, E, C> {
     effects: Arc<E>,
     clock: Arc<C>,
     anchor: u64,
+    base_time: u64,
+    observed_ms: u64,
+    creation: MatchCreation,
     limits: Limits,
     rx: mpsc::Receiver<Envelope>,
     attached: BTreeMap<SessionId, Attached>,
@@ -419,24 +552,37 @@ struct Actor<A, J, O, E, C> {
 }
 
 impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<A, J, O, E, C> {
-    async fn run(mut self, events: Vec<Vec<u8>>, effects: Vec<Effect>) -> Summary {
-        let start = match self.hash() {
-            Ok(hash) => {
-                self.commit(
-                    JournalRecord {
-                        match_id: self.id,
-                        index: self.index,
-                        version: self.version,
-                        now: self.last_time,
-                        input: vec![],
-                        events,
-                        hash,
-                    },
-                    effects,
-                )
-                .await
+    async fn run(
+        mut self,
+        events: Vec<Vec<u8>>,
+        effects: Vec<Effect>,
+        recovered: Option<Vec<(InputIndex, Vec<Effect>)>>,
+    ) -> Summary {
+        let start = if let Some(committed) = recovered {
+            let mut result = Ok(());
+            for (index, effects) in committed {
+                if self.effects.execute(self.id, index, effects).await.is_err() {
+                    result = Err(Exit::EffectsFailed);
+                    break;
+                }
             }
-            Err(exit) => Err(exit),
+            result
+        } else {
+            let start = self.record(
+                self.index,
+                self.version,
+                self.last_time,
+                vec![],
+                events,
+                &effects,
+                None,
+                true,
+            );
+            let start = match start {
+                Ok(record) => self.commit(record, effects).await,
+                Err(exit) => Err(exit),
+            };
+            start
         };
         let exit = match start {
             Err(exit) => exit,
@@ -448,7 +594,7 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
                     continue;
                 }
                 let result = match envelope.work {
-                    Work::Attach { binding, viewer } => self.attach(binding, viewer),
+                    Work::Attach { binding, viewer } => self.attach(binding, viewer).await,
                     Work::Command { binding, command } => self.command(binding, command).await,
                     Work::Detach { binding } => {
                         self.detach(&binding);
@@ -480,21 +626,102 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
     }
 
     async fn commit(&mut self, record: JournalRecord, effects: Vec<Effect>) -> Result<(), Exit> {
-        if effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::EndMatch { .. }))
-        {
-            self.terminal = true;
-        }
         let index = record.index;
+        let version = record.version;
+        let now = record.now;
+        let terminal = record.terminal;
         self.journal
             .append(record)
             .await
             .map_err(|_| Exit::JournalFailed)?;
+        // Host-visible committed counters advance only after known-success.
+        self.index = index;
+        self.version = version;
+        self.last_time = now;
+        self.observed_ms = self.observed_ms.max(now.0);
+        self.terminal = terminal;
         self.effects
             .execute(self.id, index, effects)
             .await
             .map_err(|_| Exit::EffectsFailed)
+    }
+
+    fn ledger(&self) -> Vec<ScopeState> {
+        self.scopes
+            .iter()
+            .map(|(scope, sequence)| ScopeState {
+                scope: *scope,
+                highest: sequence.highest,
+                recent: sequence.recent.iter().cloned().collect(),
+            })
+            .collect()
+    }
+
+    async fn persist_ledger(&mut self) -> Result<(), Exit> {
+        self.observed_ms = self.observed_ms.max(self.logical_now().0);
+        let ledger = self.ledger();
+        if canonical_encode(&ledger)
+            .map_err(|_| Exit::JournalFailed)?
+            .len()
+            > crate::durable::MAX_LEDGER_BYTES
+        {
+            return Err(Exit::JournalFailed);
+        }
+        self.journal
+            .update_ledger(self.id, self.version, self.observed_ms, ledger)
+            .await
+            .map_err(|_| Exit::JournalFailed)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn record(
+        &self,
+        index: InputIndex,
+        version: StateVersion,
+        now: LogicalTime,
+        input: Vec<u8>,
+        events: Vec<Vec<u8>>,
+        effects: &[Effect],
+        operation: Option<OperationKey>,
+        initial: bool,
+    ) -> Result<JournalRecord, Exit> {
+        let terminal = self.terminal
+            || effects
+                .iter()
+                .any(|effect| matches!(effect, Effect::EndMatch { .. }));
+        let snapshot = if initial || index.0 % 20 == 0 || terminal {
+            Some(
+                catch_unwind(AssertUnwindSafe(|| self.state.snapshot()))
+                    .map_err(|_| Exit::RulesPanic)?
+                    .map_err(|_| Exit::ProjectionFailed)?,
+            )
+        } else {
+            None
+        };
+        let ledger = self.ledger();
+        if canonical_encode(&ledger)
+            .map_err(|_| Exit::JournalFailed)?
+            .len()
+            > crate::durable::MAX_LEDGER_BYTES
+        {
+            return Err(Exit::JournalFailed);
+        }
+        Ok(JournalRecord {
+            match_id: self.id,
+            index,
+            version,
+            now,
+            input,
+            events,
+            hash: self.hash()?,
+            effects: effects.to_vec(),
+            operation,
+            terminal,
+            snapshot,
+            creation: initial.then(|| self.creation.clone()),
+            ledger,
+            expected_version: if initial { None } else { Some(self.version) },
+        })
     }
 
     fn hash(&self) -> Result<tabula_core::StateHash, Exit> {
@@ -506,7 +733,9 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
             self.clock
                 .monotonic_ms()
                 .saturating_sub(self.anchor)
-                .max(self.last_time.0),
+                .saturating_add(self.base_time)
+                .max(self.last_time.0)
+                .max(self.observed_ms),
         )
     }
 
@@ -520,7 +749,7 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         }
     }
 
-    fn attach(&mut self, binding: Binding, viewer: ClientViewer) -> Result<Completion, Exit> {
+    async fn attach(&mut self, binding: Binding, viewer: ClientViewer) -> Result<Completion, Exit> {
         if let ClientViewer::Seat(seat) = viewer {
             if !self.state.roster().iter().any(|entry| entry.seat == seat) {
                 return Ok(Completion::Suppressed);
@@ -532,13 +761,24 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
             return Ok(Completion::Suppressed);
         }
         let scope = match viewer {
-            ClientViewer::Seat(seat) => Some(Scope::new(&binding, seat)),
+            ClientViewer::Seat(seat) => Some(scope_for(&binding, seat)),
             ClientViewer::Spectator => None,
         };
         if scope.is_some_and(|scope| !self.scopes.contains_key(&scope))
             && self.scopes.len() >= self.limits.operation_scopes
         {
             return Ok(Completion::Suppressed);
+        }
+        if self
+            .authority
+            .with_current(&binding, Purpose::Observe(viewer), || ())
+            .is_err()
+        {
+            return Ok(Completion::Suppressed);
+        }
+        if let Some(scope) = scope {
+            self.scopes.entry(scope).or_default();
+            self.persist_ledger().await?;
         }
         let view = catch_unwind(AssertUnwindSafe(|| self.state.project(viewer)))
             .map_err(|_| Exit::RulesPanic)?
@@ -563,9 +803,6 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         }
         // Reserve at visible admission, never lazily on a potentially private
         // command. Otherwise another seat can probe Busy to infer that action.
-        if let Some(scope) = scope {
-            self.scopes.entry(scope).or_default();
-        }
         self.attached.insert(
             binding.session,
             Attached {
@@ -622,6 +859,7 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         command: &ClientEnvelope,
         result: Result<(), ErrorCode>,
         at: u64,
+        committed_index: Option<InputIndex>,
     ) {
         let sequence = self.scopes.entry(scope).or_default();
         sequence.highest = command.seq();
@@ -630,6 +868,7 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
             command: command.command().clone(),
             result,
             at,
+            committed_index,
         });
         while sequence.recent.len() > self.limits.receipts_per_scope {
             sequence.recent.pop_front();
@@ -674,6 +913,21 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         None
     }
 
+    fn command_rejection(&self, command: &ClientEnvelope) -> Option<ErrorCode> {
+        let identity = self.state.identity();
+        if command.command().match_id() != self.id {
+            Some(ErrorCode::WrongMatch)
+        } else if command.command().game() != &identity.game
+            || command.command().game_version() != &identity.game_version
+        {
+            Some(ErrorCode::WrongGame)
+        } else if self.terminal {
+            Some(ErrorCode::Terminal)
+        } else {
+            None
+        }
+    }
+
     async fn command(
         &mut self,
         binding: Binding,
@@ -699,25 +953,17 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
             self.detach(&binding);
             return Ok(Completion::Suppressed);
         }
-        let scope = Scope::new(&binding, seat);
-        let now_ms = self.clock.monotonic_ms();
+        let scope = scope_for(&binding, seat);
+        let now_ms = self.logical_now().0;
+        self.observed_ms = now_ms;
         if let Some(result) = self.check_sequence(scope, &command, now_ms) {
+            self.persist_ledger().await?;
             return self.reply(&binding, corr, seq, result);
         }
-        let identity = self.state.identity();
-        let rejection = if command.command().match_id() != self.id {
-            Some(ErrorCode::WrongMatch)
-        } else if command.command().game() != &identity.game
-            || command.command().game_version() != &identity.game_version
-        {
-            Some(ErrorCode::WrongGame)
-        } else if self.terminal {
-            Some(ErrorCode::Terminal)
-        } else {
-            None
-        };
+        let rejection = self.command_rejection(&command);
         if let Some(error) = rejection {
-            self.remember(scope, &command, Err(error), now_ms);
+            self.remember(scope, &command, Err(error), now_ms, None);
+            self.persist_ledger().await?;
             return self.reply(&binding, corr, seq, Err(error));
         }
         let index = InputIndex(self.index.0.checked_add(1).ok_or(Exit::CounterExhausted)?);
@@ -754,25 +1000,28 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
                     RuntimeError::Rule(_) | RuntimeError::UnknownSeat(_) => ErrorCode::RuleRejected,
                     _ => return Err(Exit::ProjectionFailed),
                 };
-                self.remember(scope, &command, Err(error), now_ms);
+                self.remember(scope, &command, Err(error), now_ms, None);
+                self.persist_ledger().await?;
                 return self.reply(&binding, corr, seq, Err(error));
             }
             Ok(Ok(Ok(transition))) => transition,
         };
-        self.index = index;
-        self.version = version;
-        self.last_time = now;
-        let record = JournalRecord {
-            match_id: self.id,
+        self.remember(scope, &command, Ok(()), now.0, Some(index));
+        let record = self.record(
             index,
             version,
             now,
-            input: transition.canonical_input,
-            events: transition.events.clone(),
-            hash: self.hash()?,
-        };
+            transition.canonical_input,
+            transition.events.clone(),
+            &transition.effects,
+            Some(OperationKey {
+                scope,
+                seq,
+                command: command.command().clone(),
+            }),
+            false,
+        )?;
         self.commit(record, transition.effects).await?;
-        self.remember(scope, &command, Ok(()), now_ms);
         let updates = self.prepare_updates(&transition.events)?;
         let reply = self.reply(&binding, corr, seq, Ok(()))?;
         self.publish_updates(updates);
@@ -799,18 +1048,16 @@ impl<A: Authority, J: Journal, O: Output, E: Effects, C: Clock + 'static> Actor<
         let Ok(transition) = applied else {
             return Ok(Completion::Suppressed);
         };
-        self.index = index;
-        self.version = version;
-        self.last_time = now;
-        let record = JournalRecord {
-            match_id: self.id,
+        let record = self.record(
             index,
             version,
             now,
-            input: transition.canonical_input,
-            events: transition.events.clone(),
-            hash: self.hash()?,
-        };
+            transition.canonical_input,
+            transition.events.clone(),
+            &transition.effects,
+            None,
+            false,
+        )?;
         self.commit(record, transition.effects).await?;
         let updates = self.prepare_updates(&transition.events)?;
         self.publish_updates(updates);
