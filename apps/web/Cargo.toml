@@ -15,6 +15,7 @@ publish.workspace      = true
 
 [dependencies]
 tabula-registry = { workspace = true }
+tabula-match-http = { workspace = true, optional = true }
 leptos          = { workspace = true }
 leptos_router   = { workspace = true }
 # ADR-0036 PR3: default dependency exposes DTOs only, never the runtime owner.
@@ -26,6 +27,8 @@ wasm-bindgen = { workspace = true }
 
 [features]
 default = []
+# Bounded direct-match controls; default shell stays account/local only.
+online = ["dep:tabula-match-http"]
 # Explicit native test harness; no production listener or service activation.
 account-http-acceptance = ["tabula-session-http/isolated", "dep:tabula-session", "dep:tabula-core", "dep:axum", "dep:tokio", "dep:http-body", "dep:bytes"]
 

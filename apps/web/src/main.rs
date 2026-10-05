@@ -114,6 +114,8 @@
 
 mod account;
 mod i18n;
+#[cfg(feature = "online")]
+mod online;
 mod query;
 mod setup;
 mod views;
