@@ -177,6 +177,13 @@ allow = ["serde", "serde_json", "tabula-core", "tower", "proptest"]
 feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body", "url"], postgres = ["tabula-storage", "sqlx"] }
 forbidden_categories = ["rendering", "ui_framework", "application", "game_specific"]
 
+[crate."tabula-match-http"]
+tier = "runtime"
+allow = ["serde", "serde_json", "tabula-core", "tabula-protocol"]
+feature = { isolated = ["tabula-session", "tabula-session-http", "tabula-match", "tabula-storage", "tabula-game-api", "tabula-registry", "axum", "tokio", "bytes", "http-body", "hmac", "sha2", "base64"] }
+forbidden_categories = ["ui_framework", "application"]
+forbid = ["macroquad", "miniquad", "wgpu", "tabula-render-macroquad", "tabula-render-headless"]
+
 [crate."tabula-storage"]
 tier  = "runtime"
 allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session", "tabula-match-journal", "serde", "blake3"]
@@ -198,7 +205,7 @@ allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry",
 # -----------------------------------------------------------------------------
 [crate."services/tabula-server"]
 tier  = "binary"
-allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-lobby", "tabula-storage", "tabula-voice", "tokio", "axum", "tower", "tower-http", "tower-governor", "sqlx", "tracing", "tracing-subscriber", "opentelemetry", "metrics", "figment", "argon2", "jsonwebtoken", "openidconnect", "uuid", "serde", "serde_json", "anyhow"]
+allow = ["tabula-core", "tabula-match-http", "tabula-session", "tabula-session-http", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-lobby", "tabula-storage", "tabula-voice", "tokio", "axum", "tower", "tower-http", "tower-governor", "sqlx", "tracing", "tracing-subscriber", "opentelemetry", "metrics", "figment", "argon2", "jsonwebtoken", "openidconnect", "uuid", "serde", "serde_json", "anyhow"]
 
 [crate."services/tabula-auth"]
 tier  = "binary"

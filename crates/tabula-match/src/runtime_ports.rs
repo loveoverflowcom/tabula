@@ -21,9 +21,23 @@ pub enum Purpose {
 /// Host-owned current session/seat authority, resolved outside game rules.
 ///
 /// The implementation must serialize revocation and `action` in one ordering
-/// domain, fail closed, and never invoke `action` twice. It must not await or
-/// recursively acquire itself. It cannot claim a database or socket fence.
+/// domain, fail closed, and never invoke `action` twice. Its synchronous
+/// `with_current` callback must not await or recursively acquire itself.
+/// `prepare` may acquire a fresh native storage lease; this port alone does not
+/// prove a combined durable commit or eventual transport/body delivery fence.
 pub trait Authority: Send + Sync + 'static {
+    /// Fresh native authority immediately before synchronous output submission
+    /// after durable commit (ADR-0041). Offline ordering domains need no await.
+    fn prepare(
+        &self,
+        _binding: &Binding,
+        _purpose: Purpose,
+    ) -> impl std::future::Future<Output = Result<(), AuthorityLost>> + Send {
+        async { Ok(()) }
+    }
+
+    /// Loss may be detected after a bounded callback. A mutation caller must
+    /// retire potentially touched state on failure, never continue unjournaled.
     fn with_current<T>(
         &self,
         binding: &Binding,

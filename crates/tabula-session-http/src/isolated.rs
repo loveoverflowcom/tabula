@@ -204,6 +204,70 @@ impl<A: HttpSessionAuthority + 'static> IsolatedSessionHttp<A> {
         })
     }
 
+    /// Reuse exact Origin/channel/CSRF checks for a bounded authenticated JSON
+    /// extension (ADR-0041). Observation grants no later effect/output authority.
+    pub async fn authenticate_json<T: serde::de::DeserializeOwned>(
+        &self,
+        request: Request,
+        limit: usize,
+    ) -> Result<(CredentialOperation, SessionSnapshot, T), Response> {
+        if !(1..=65_536).contains(&limit) || request.uri().query().is_some() {
+            return Err(problem(StatusCode::BAD_REQUEST, "request_rejected"));
+        }
+        let input = transport(&self.state, request.headers(), true).map_err(Rejection::response)?;
+        let content_type =
+            single(request.headers(), "content-type").map_err(Rejection::response)?;
+        if !matches!(
+            content_type,
+            Some("application/json" | "application/json; charset=utf-8")
+        ) || request.headers().contains_key(header::CONTENT_ENCODING)
+        {
+            return Err(problem(
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                "request_rejected",
+            ));
+        }
+        let token = single(request.headers(), "x-tabula-csrf")
+            .map_err(Rejection::response)?
+            .map(str::to_owned);
+        if input.channel == SessionChannel::BrowserCookie
+            && token.as_ref().is_none_or(|value| value.len() != 43)
+        {
+            return Err(problem(StatusCode::FORBIDDEN, "request_rejected"));
+        }
+        let bytes = tokio::time::timeout(BODY_DEADLINE, to_bytes(request.into_body(), limit))
+            .await
+            .map_err(|_| problem(StatusCode::REQUEST_TIMEOUT, "request_rejected"))?
+            .map_err(|_| problem(StatusCode::PAYLOAD_TOO_LARGE, "request_rejected"))?;
+        let body = serde_json::from_slice::<T>(&bytes)
+            .map_err(|_| problem(StatusCode::BAD_REQUEST, "request_rejected"))?;
+        let mut operation = operation(&input).map_err(Rejection::response)?;
+        let snapshot = self
+            .state
+            .authority
+            .read_session(operation)
+            .await
+            .map_err(session_problem)?;
+        if input.channel == SessionChannel::BrowserCookie {
+            if !verify_csrf(&self.state, &snapshot, token.as_deref().unwrap_or_default()) {
+                return Err(problem(StatusCode::FORBIDDEN, "request_rejected"));
+            }
+            operation.context = Some(SessionContextBinding {
+                context_id: snapshot.context_id(),
+                authorization_epoch: snapshot.authorization_epoch(),
+            });
+        }
+        Ok((operation, snapshot, body))
+    }
+
+    /// A fresh bounded publication fence for an extension's actual body handoff.
+    pub async fn begin_publication(
+        &self,
+        operation: CredentialOperation,
+    ) -> Result<A::Publication, SessionError> {
+        self.state.authority.begin_publication(operation).await
+    }
+
     /// Exact opt-in isolated routes. No CORS, listener, production startup or WS.
     pub fn router(self) -> Router {
         self.routes(None)

@@ -56,6 +56,7 @@ tabula-protocol     = { path = "crates/tabula-protocol" }
 tabula-registry     = { path = "crates/tabula-registry" }
 tabula-match        = { path = "crates/tabula-match", default-features = false }
 tabula-match-journal = { path = "crates/tabula-match-journal" }
+tabula-match-http = { path = "crates/tabula-match-http", default-features = false }
 tabula-lobby        = { path = "crates/tabula-lobby" }
 tabula-storage      = { path = "crates/tabula-storage" }
 tabula-session      = { path = "crates/tabula-session" }

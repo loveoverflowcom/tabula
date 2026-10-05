@@ -23,8 +23,18 @@ publish.workspace      = true
 # runtime wraps every apply() in catch_unwind, and a panicking game must abort
 # THAT MATCH, not the process (doc 01 §5.2).
 
+[features]
+default = []
+online-match = ["dep:tabula-match-http"]
+
+[package.metadata.tabula-msrv]
+online-match = "1.94"
+
 [dependencies]
 tabula-core = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tabula-match-http = { workspace = true, optional = true, features = ["isolated"] }
 
 # Phase 4 — uncomment with the first route.
 # tabula-protocol = { workspace = true }
