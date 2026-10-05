@@ -1,6 +1,8 @@
 //! Bounded isolated join-code admission and live durable apply/commit authority.
 //! SQL stays storage-owned (I-15). Registry owns game/config meaning. No production
 //! listener, automatic migration, seat replacement or reconnect acceptance is opened.
+//! The disposable dataset admits at most 128 distinct room IDs over its lifetime,
+//! including completed and expired waiting rooms. This is not reusable capacity.
 
 use crate::session::{LockedCredential, PgSessionPublication, PgSessionStore};
 use sqlx::{PgPool, Postgres, Transaction};
@@ -21,7 +23,9 @@ use uuid::Uuid;
 const CODE_LIFETIME_MS: u64 = 600_000;
 const ATTEMPT_WINDOW_MS: u64 = 60_000;
 const MAX_JOIN_ATTEMPTS: i16 = 8;
-const MAX_ACTIVE_ROOMS: i64 = 128;
+// Align the disposable dataset with the bounded resident gateway owner budget.
+// Retired room IDs are retained durably and never recycle this lifetime capacity.
+const MAX_DATASET_LIFETIME_ROOMS: i64 = 128;
 const MAX_USER_ROOMS: i64 = 4;
 const MAX_ADMISSIONS: i64 = 64;
 const MAX_CONFIG_BYTES: usize = 65_536;
@@ -202,6 +206,8 @@ impl PgOnlineMatchStore {
     }
     /// Creates a waiting room, reserving server-assigned creator seat zero.
     /// Host registry validation must establish game/config/capability meaning.
+    /// Completed/expired room IDs still consume the disposable dataset lifetime
+    /// budget; the separate per-user limit counts only active rooms.
     #[allow(clippy::too_many_arguments)]
     pub async fn create(
         &self,
@@ -228,7 +234,8 @@ impl PgOnlineMatchStore {
         lock_directory(&mut tx).await?;
         let (mut tx, snapshot) = observe_or_commit(tx, &mut authority).await?;
         let now = snapshot.last_observed_at().get();
-        check_room_capacity(&mut tx, snapshot.user_id(), now).await?;
+        check_user_capacity(&mut tx, snapshot.user_id(), now).await?;
+        check_dataset_lifetime_capacity(&mut tx).await?;
         let deadline = now
             .checked_add(CODE_LIFETIME_MS)
             .ok_or(OnlineMatchError::Unavailable)?;
@@ -462,18 +469,21 @@ async fn check_user_capacity(
     }
     Ok(())
 }
-async fn check_room_capacity(
+/// The caller owns the directory lock, so concurrent creates cannot overbook.
+/// Completion and code expiry do not release a resident-owner/dataset slot.
+async fn check_dataset_lifetime_capacity(
     tx: &mut Transaction<'_, Postgres>,
-    user: UserId,
-    now: u64,
 ) -> Result<(), OnlineMatchError> {
-    check_user_capacity(tx, user, now).await?;
-    let count:i64 = sqlx::query_scalar("SELECT count(*) FROM online_match_rooms WHERE NOT completed AND (started OR code_deadline_ms>$1)").bind(signed(now)?).fetch_one(&mut **tx).await.map_err(unavailable)?;
-    if count >= MAX_ACTIVE_ROOMS {
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM online_match_rooms")
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(unavailable)?;
+    if count >= MAX_DATASET_LIFETIME_ROOMS {
         return Err(OnlineMatchError::Busy);
     }
     Ok(())
 }
+
 async fn lock_room(
     tx: &mut Transaction<'_, Postgres>,
     match_id: MatchId,
