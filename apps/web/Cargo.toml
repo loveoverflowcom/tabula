@@ -32,7 +32,7 @@ account-http-acceptance = ["tabula-session-http/isolated", "dep:tabula-session",
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
-web-sys = { workspace = true, features = ["Location", "BroadcastChannel", "AbortController", "AbortSignal", "Request", "RequestInit", "RequestMode", "RequestCache", "RequestCredentials", "RequestRedirect", "Response", "Headers", "ReadableStream", "ReadableStreamDefaultReader", "Document", "Element", "NodeList", "VisibilityState", "Event"] }
+web-sys = { workspace = true, features = ["Location", "Storage", "StorageEvent", "BroadcastChannel", "AbortController", "AbortSignal", "Request", "RequestInit", "RequestMode", "RequestCache", "RequestCredentials", "RequestRedirect", "Response", "Headers", "ReadableStream", "ReadableStreamDefaultReader", "Document", "Element", "NodeList", "VisibilityState", "Event"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tabula-session = { workspace = true, optional = true }

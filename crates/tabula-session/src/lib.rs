@@ -13,12 +13,16 @@
 
 #![forbid(unsafe_code)]
 
+mod browser_login;
 mod credential;
 mod http_ports;
 mod policy;
 mod ports;
 mod types;
 
+pub use browser_login::{
+    BrowserLoginCallback, BrowserLoginProvider, BrowserLoginStart, CompletedBrowserLogin,
+};
 pub use credential::{CredentialDigest, SessionCredential};
 pub use http_ports::{
     CredentialOperation, HttpSessionAuthority, RotateCredential, SelfProfileSnapshot,

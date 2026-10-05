@@ -1,7 +1,8 @@
 //! Compact account state and immutable self-profile under ADR-0036.
 //!
 //! The isolated adapter owns authority and cleanup. This view only renders its
-//! structured dispositions; unavailable provider/social routes collect nothing
+//! structured dispositions; provider sign-in uses only a top-level redirect while
+//! unavailable registration/social routes collect nothing
 //! (docs/ui/screens/account-state-isolated.md). Fixed escapes deliberately ignore
 //! return parameters rather than interpreting a URL as authorization.
 
@@ -76,10 +77,38 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                 children={move |(_, account_id)| view! { <ProfileFacts account_id/> }}
             />
 
+            <Show when=move || login_allowed(&state.get())>
+                <p class="section__body">
+                    {move || Messages::new(locale.get()).text("accounts.login.invited")}
+                </p>
+            </Show>
+            <Show when=move || profile_for(&state.get()).is_some()>
+                <p class="section__body">
+                    {move || Messages::new(locale.get()).text("accounts.login.switch")}
+                </p>
+            </Show>
+            <Show when=move || {
+                let state = state.get();
+                state.busy.is_none() && !state.login_available
+                    && matches!(state.status, AccountStatus::SignedOut | AccountStatus::Expired)
+            }>
+                <p class="section__body">
+                    {move || Messages::new(locale.get()).text("accounts.login.unavailable")}
+                </p>
+            </Show>
             <div class="actions account__actions">
+                <Show when=move || login_allowed(&state.get())>
+                    <LoginAction on_start=move || {
+                        confirming.set(false);
+                        if let Some(element) = heading.get() {
+                            let _ = element.focus();
+                        }
+                        controller.login();
+                    }/>
+                </Show>
                 <button
                     type="button"
-                    class="btn btn--filled btn--principal"
+                    class=move || if login_allowed(&state.get()) { "btn btn--tonal" } else { "btn btn--filled btn--principal" }
                     disabled=move || state.get().busy.is_some()
                     on:click=move |_| {
                         confirming.set(false);
@@ -186,6 +215,17 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
     }
 }
 
+/// Explicit provider continuation; no credential fields or direct provider URL.
+#[component]
+fn LoginAction(on_start: impl Fn() + Send + Sync + Copy + 'static) -> impl IntoView {
+    let locale = use_locale();
+    view! {
+        <button type="button" class="btn btn--filled btn--principal" on:click=move |_| on_start()>
+            {move || Messages::new(locale.get()).text("accounts.action.login")}
+        </button>
+    }
+}
+
 /// Only the immutable ID is returned by PR2. No name, handle, avatar, statistics,
 /// history or edit fields are synthesized from that identity.
 #[component]
@@ -252,7 +292,6 @@ fn LogoutConfirmation(
 /// A visibly unavailable route is still a useful explanatory destination.
 #[derive(Clone, Copy)]
 enum UnavailableTask {
-    Login,
     Register,
     Friends,
     OtherProfile,
@@ -261,7 +300,6 @@ enum UnavailableTask {
 impl UnavailableTask {
     const fn keys(self) -> (&'static str, &'static str) {
         match self {
-            Self::Login => ("accounts.login.title", "accounts.login.unavailable"),
             Self::Register => ("accounts.register.title", "accounts.register.unavailable"),
             Self::Friends => ("accounts.friends.title", "accounts.friends.unavailable"),
             Self::OtherProfile => (
@@ -273,8 +311,9 @@ impl UnavailableTask {
 }
 
 #[component]
-pub fn LoginUnavailable() -> impl IntoView {
-    view! { <UnavailablePage task=UnavailableTask::Login/> }
+pub fn LoginPage() -> impl IntoView {
+    // Availability comes from fresh backend capabilities; no credential form.
+    view! { <AccountTask title_key="accounts.login.title"/> }
 }
 
 #[component]
@@ -332,11 +371,6 @@ fn UnavailableLinks() -> impl IntoView {
         <nav aria-label=move || Messages::new(locale.get()).text("accounts.features.title")>
             <ul class="rows">
                 <li class="row">
-                    <A href="/login" attr:class="account__feature-link">
-                        {move || Messages::new(locale.get()).text("accounts.login.link_unavailable")}
-                    </A>
-                </li>
-                <li class="row">
                     <A href="/register" attr:class="account__feature-link">
                         {move || Messages::new(locale.get()).text("accounts.register.link_unavailable")}
                     </A>
@@ -362,13 +396,26 @@ fn profile_for(snapshot: &AccountSnapshot) -> Option<(u64, String)> {
     }
 }
 
+fn login_allowed(snapshot: &AccountSnapshot) -> bool {
+    snapshot.login_available
+        && snapshot.busy.is_none()
+        && matches!(
+            snapshot.status,
+            AccountStatus::SignedOut | AccountStatus::Expired
+        )
+}
+
 fn logout_retry_allowed(snapshot: &AccountSnapshot) -> bool {
     snapshot.busy.is_none() && matches!(snapshot.status, AccountStatus::LogoutPending)
 }
 
 fn status_key(snapshot: &AccountSnapshot) -> &'static str {
+    if snapshot.status == AccountStatus::LoginRedirecting {
+        return "accounts.login.redirecting";
+    }
     if let Some(operation) = snapshot.busy {
         return match operation {
+            AccountOperation::Login => "accounts.login.starting",
             AccountOperation::Recheck => "accounts.session.checking",
             AccountOperation::Refresh => "accounts.session.refreshing",
             AccountOperation::Logout => "accounts.logout.pending",
@@ -384,6 +431,9 @@ fn status_key(snapshot: &AccountSnapshot) -> &'static str {
         AccountStatus::LogoutPending => "accounts.logout.unknown",
         AccountStatus::LogoutContextChanged => "accounts.logout.context_changed",
         AccountStatus::Cancelled => "accounts.operation.cancelled",
+        AccountStatus::LoginRedirecting => "accounts.login.redirecting",
+        AccountStatus::LoginUnavailable => "accounts.login.failed",
+        AccountStatus::LogoutStorageUnavailable => "accounts.logout.storage_unavailable",
     }
 }
 
@@ -392,6 +442,8 @@ fn failure_key(snapshot: &AccountSnapshot) -> Option<&'static str> {
         return None;
     }
     match snapshot.status {
+        AccountStatus::LoginUnavailable => Some("accounts.login.retry"),
+        AccountStatus::LogoutStorageUnavailable => Some("accounts.logout.storage_help"),
         AccountStatus::Error => Some("accounts.error.generic"),
         AccountStatus::Disconnected => Some("accounts.connection.disconnected"),
         _ => None,
@@ -401,8 +453,8 @@ fn failure_key(snapshot: &AccountSnapshot) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        failure_key, logout_retry_allowed, profile_for, status_key, AccountOperation,
-        AccountSnapshot, AccountStatus, UnavailableTask,
+        failure_key, login_allowed, logout_retry_allowed, profile_for, status_key,
+        AccountOperation, AccountSnapshot, AccountStatus, UnavailableTask,
     };
     use crate::i18n::Messages;
     use tabula_registry::Locale;
@@ -412,6 +464,72 @@ mod tests {
             status,
             busy,
             presentation_generation: 7,
+            login_available: false,
+        }
+    }
+
+    #[test]
+    fn login_control_requires_idle_signed_out_provider_capability() {
+        for status in [AccountStatus::SignedOut, AccountStatus::Expired] {
+            let mut state = snapshot(status, None);
+            assert!(!login_allowed(&state));
+            state.login_available = true;
+            assert!(login_allowed(&state));
+            for operation in [
+                AccountOperation::Login,
+                AccountOperation::Recheck,
+                AccountOperation::Logout,
+            ] {
+                state.busy = Some(operation);
+                assert!(!login_allowed(&state));
+            }
+        }
+        for status in [
+            AccountStatus::Resolving,
+            AccountStatus::Authenticated {
+                account_id: "private-id".into(),
+            },
+            AccountStatus::Unavailable,
+            AccountStatus::Disconnected,
+            AccountStatus::Error,
+            AccountStatus::LogoutPending,
+            AccountStatus::LogoutContextChanged,
+            AccountStatus::LogoutStorageUnavailable,
+            AccountStatus::Cancelled,
+            AccountStatus::LoginUnavailable,
+            AccountStatus::LoginRedirecting,
+        ] {
+            let mut state = snapshot(status, None);
+            state.login_available = true;
+            assert!(
+                !login_allowed(&state),
+                "even accidental capability retention cannot switch an account"
+            );
+        }
+    }
+
+    #[test]
+    fn static_login_action_is_a_labelled_explicit_button_without_credential_collection() {
+        use leptos::prelude::*;
+        for locale in Locale::ALL {
+            let owner = Owner::new();
+            let html = owner.with(|| {
+                provide_context(crate::views::LocaleSignal::new(locale));
+                view! { <super::LoginAction on_start=|| {}/> }.to_html()
+            });
+            assert!(html.contains(&Messages::new(locale).text("accounts.action.login")));
+            assert!(html.contains("type=\"button\""));
+            for forbidden in [
+                "<input",
+                "<textarea",
+                "type=\"password\"",
+                "authorization_url",
+                "return_url",
+                "href=",
+                "action=",
+            ] {
+                assert!(!html.contains(forbidden), "{forbidden}");
+            }
         }
     }
 
@@ -425,6 +543,7 @@ mod tests {
         );
         assert_eq!(profile_for(&ready), Some((7, "account-17".into())));
         for busy in [
+            AccountOperation::Login,
             AccountOperation::Recheck,
             AccountOperation::Refresh,
             AccountOperation::Logout,
@@ -441,6 +560,9 @@ mod tests {
             AccountStatus::LogoutPending,
             AccountStatus::LogoutContextChanged,
             AccountStatus::Cancelled,
+            AccountStatus::LoginRedirecting,
+            AccountStatus::LoginUnavailable,
+            AccountStatus::LogoutStorageUnavailable,
         ] {
             assert!(profile_for(&snapshot(status, None)).is_none());
         }
@@ -575,6 +697,9 @@ mod tests {
             AccountStatus::LogoutPending,
             AccountStatus::LogoutContextChanged,
             AccountStatus::Cancelled,
+            AccountStatus::LoginRedirecting,
+            AccountStatus::LoginUnavailable,
+            AccountStatus::LogoutStorageUnavailable,
         ];
         for locale in Locale::ALL {
             let messages = Messages::new(locale);
@@ -590,6 +715,7 @@ mod tests {
                 }
             }
             for operation in [
+                AccountOperation::Login,
                 AccountOperation::Recheck,
                 AccountOperation::Refresh,
                 AccountOperation::Logout,
@@ -599,7 +725,6 @@ mod tests {
                 assert_eq!(failure_key(&state), None);
             }
             for task in [
-                UnavailableTask::Login,
                 UnavailableTask::Register,
                 UnavailableTask::Friends,
                 UnavailableTask::OtherProfile,

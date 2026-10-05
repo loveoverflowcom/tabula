@@ -44,7 +44,7 @@ pub fn App() -> impl IntoView {
                     <Route path=path!("/games/:id") view=detail::GameDetail/>
                     <Route path=path!("/account") view=account::AccountPage/>
                     <Route path=path!("/me") view=account::SelfProfile/>
-                    <Route path=path!("/login") view=account::LoginUnavailable/>
+                    <Route path=path!("/login") view=account::LoginPage/>
                     <Route path=path!("/register") view=account::RegisterUnavailable/>
                     <Route path=path!("/friends") view=account::FriendsUnavailable/>
                     <Route path=path!("/u/:handle") view=account::OtherProfileUnavailable/>

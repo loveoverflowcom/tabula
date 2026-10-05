@@ -440,7 +440,7 @@ Rows are consumers, columns are what they are permitted to depend on.
 | `tabula-session-http` (isolated) | Y | — | — | — | — | — | — | — | f | f | f | f | — | — |
 | `tabula-storage` | Y | Y | Y | — | — | — | — | — | – | Y | — | Y | — | — |
 | `services/tabula-server` | Y | — | Y | Y | — | — | — | Y | Y | Y | Y | Y | — | — |
-| `services/tabula-auth` | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `services/tabula-auth` (opt-in) | Y | — | — | — | — | — | — | — | f | f | f | f | — | — |
 | `apps/game-client` | Y | Y | Y | Y | Y | Y | Y | — | — | f | — | — | Y | — |
 | `apps/web` (Leptos) | Y | — | Y | Y | Y | — | Y | — | — | f | f | — | — | Y |
 | `apps/desktop` (Tauri) | Y | — | Y | Y | Y | — | Y | — | — | Y | — | — | — | — |
@@ -463,9 +463,10 @@ Notes on the interesting cells:
 - **`tabula-session-http` is an isolated HTTP library under ADR-0036.** Default/WASM exposes versioned DTOs only; opt-in native `isolated` uses Axum/Tokio, session ports and WHATWG canonical HTTPS Origin validation, while `postgres` composes the storage adapter for disposable acceptance. It contains no SQL, provider verification, production bootstrap or game authority
 - **`apps/web` may consume only the default/WASM `tabula-session-http` DTO surface for ADR-0036 PR3.** Browser Fetch and document-memory CSRF remain in this leaf binary; no client-tier crate imports the runtime HTTP owner. Its non-default native `account-http-acceptance` feature composes the existing isolated authority/HTTP test fixture only; Axum/Tokio do not enable a production listener or either service.
 - **Nothing depends on `services/*`.** Services are leaves (binaries).
-- **ADR-0034 reserves `tabula-auth` as a std-only skeleton.** Account authentication
-  uses Kanidm; Tabula sessions retain ADR-0031's guarantees. Provider/runtime
-  dependencies require a later implementation and `deps.toml` update.
+- **ADR-0034 reserves `tabula-auth` as a service leaf.** Its default is std-only
+  and closed; ADR-0038 adds native-only opt-in invited Kanidm OIDC/session HTTP
+  dependencies in `deps.toml`. No deterministic/game/client DTO graph imports
+  provider/runtime authority; ADR-0031's guarantees remain in force.
 
 ### 8.2 CI enforcement
 
@@ -720,6 +721,7 @@ Longer discussion lives in the linked document.
 | **033** | The mobile `GameHost` is a WebView that serves the first-party packaged game from the app bundle on a virtual origin (the loader's origin, SHA-256 and size checks unchanged), with a typed, bounded, capability-gated bridge for lifecycle, launch preferences and one host service. Not a dynamic plugin system. Long form: [`docs/adr/0033-webview-gamehost-first-party-embedding.md`](../adr/0033-webview-gamehost-first-party-embedding.md). | ACCEPTED FOR THE FIRST-PARTY LOCAL SCOPE; ANDROID/IOS WEBVIEW EXECUTION NOT_RUN | Delivers ADR-0032's reserved embedding without moving rules, credentials or state across the bridge, and without weakening the loader. Networked play, voice, further services and third-party games stay closed. | A target's executed evidence misses ADR-0032's bars; the iOS custom-scheme secure-context check fails; a second host service, networked mode or third-party game is proposed. |
 | **034** | Kanidm owns credentials/OIDC; `tabula-auth` reserves account/session lifecycle, `tabula-server` enforces sessions and resource/match authority. Both are gated Rust frames. Long form: [ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md). | ACCEPTED SKELETON; RUNTIME GATED | Owner-requested preparation for #54; records the exception without copying provider code or weakening ADR-0031. | Before any auth runtime: prove shared durable authority, cross-service revocation/expiry, proxy trust and real Kanidm integration. |
 | **036** | Isolated durable session policy/ports and opt-in PostgreSQL acceptance, followed by isolated HTTP and shell UI in three sequential PRs. [ADR-0036](../adr/0036-isolated-durable-session-validation.md). | ACCEPTED BOUNDED IMPLEMENTATION; PRODUCTION CLOSED | Owner-authorized #54 progress without claiming provider, output-fence or phase exits. | Before provider-backed issuance, service activation, production migration or private-output delivery. |
+| **038** | Native opt-in invited Kanidm web OIDC, captured identity epochs, cookie-bound single-use callback and durable browser sessions, with actual disposable provider/PostgreSQL acceptance. [ADR-0038](../adr/0038-isolated-invited-kanidm-web-auth.md). | ACCEPTED NARROW IMPLEMENTATION; REAL PROVIDER MERGE GATE; PRODUCTION CLOSED | Owner-requested next implementation slice preserves existing phase, browser/native and deployment proof obligations. | Production, live provider provisioning, public signup, native login, additional provider/algorithm, security-event synchronization or private online transport. |
 
 ---
 

@@ -94,3 +94,13 @@ with [its own evidence](../verification/issue-74-trusted-origin/README.md).
 The [remaining review follow-ups](backlog/issue-74-session-followups.md) retain
 G2→G1→G3→G4/G5 ordering and their prerequisites. This fix neither depends on
 unmerged native voice work nor opens account-dependent production consumers.
+
+## Newly authorized invited OIDC slice
+
+After PR76 normal merge, the owner requested [real invited Kanidm web login](060-invited-kanidm-web-auth.md)
+followed by a separate fresh-develop match actor/wire PR. [ADR-0038](../adr/0038-isolated-invited-kanidm-web-auth.md)
+permits only the first opt-in implementation and actual disposable provider/DB
+proof. Production, persistent-provider setup, public signup, native credential
+stores, lobby/queue/friends/match SQL and existing phase exits stay separate.
+Normal self-merge needs independent review and exact-tree terminal CI success;
+a synthetic fixture or compiled provider module cannot substitute for real login.
