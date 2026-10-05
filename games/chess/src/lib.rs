@@ -23,6 +23,9 @@ pub mod bot;
 #[cfg(feature = "presentation")]
 pub mod presentation;
 
+#[cfg(feature = "presentation")]
+mod client_codec;
+
 pub use rules::{
     perft, CastlingRights, ChessRules, ClockConfig, ClockControl, ClockState, Color, Command,
     Config, Event, FenError, Piece, PieceKind, PositionKey, Square, State, Status, View, ViewEvent,

@@ -26,11 +26,11 @@ document. It does not establish broad Phase 3, 4 or 5 exits.
 
 The owner requested sequential review and integration of the three recovery
 branches on 2026-10-05. These are partial source checkpoints, not completed PR2
-acceptance. The gateway branch contains this contract only; the browser branch
-contains an incomplete harness/workflow; the client branch contains a pure
-sequencer and registry setup helpers. The gateway, durable admission adapter,
-HTTP DTOs and real online shell/game document are not implemented in these
-branches. No online runtime or browser acceptance is enabled by their merge.
+acceptance. The updated gateway branch recovers HTTP DTOs and authority hooks; the
+browser branch contains an incomplete native harness/workflow and TLS helper;
+the client branch contains a pure sequencer, registry setup helpers and projected
+Chess decoders. The native gateway, durable admission adapter and real online
+shell/game document are not implemented in these branches. No online runtime or browser acceptance is enabled by their merge.
 The required evidence below still gates delivery of the actual PR2 feature.
 
 ## Decision and ownership

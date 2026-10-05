@@ -19,10 +19,13 @@ PR2 of the [three-PR series](../../work-plan/README.md#authorized-durable-to-onl
 
 ## Recovery branch integration (2026-10-05)
 
-The owner requested review and sequential merge of gateway (`83f05bf`), browser
-(`62a3c8b`) and client (`f330c11`, including `1c23d9c`) into develop `d5b37d3`.
+The owner requested review and sequential merge of gateway, browser and client
+recovery into develop `d5b37d3`. Initial checkpoints `83f05bf`, `62a3c8b` and
+`f330c11` were reviewed first. Remote updates discovered before publication were
+reviewed in the same order: gateway `9b79c79`, browser `e88511a`, client `604cb0d`.
 This integrates the recovered sources only; PR2 gameplay is still incomplete.
-The gateway branch is documentation, not a recovered gateway implementation.
+The initial gateway checkpoint was documentation; its updated head adds HTTP DTOs
+and authority hooks, but still no native gateway implementation.
 The browser workflow and manifest are preserved as inactive drafts under
 [`tests/online-match`](../../../tests/online-match/README.md). Missing sources
 are **NOT_IMPLEMENTED**, not an environmental failure or passing acceptance.
@@ -52,6 +55,14 @@ Executed focused command: `cargo test -p tabula-net-client -p tabula-registry --
 rustdoc); 5 pre-existing illustrative rustdocs ignored, not counted as passes.
 Toolchain: Rust/Cargo 1.96.1, Linux x86_64. Shared build cache only:
 `CARGO_TARGET_DIR=/home/manhpd/Projects/tabula/target`.
+
+Updated-head review also removes broken references to the absent gateway module
+and `online-match-postgres` feature, retaining a pure DTO-only HTTP crate and
+closed production service. New actor tests cover failure of fresh authority before
+initial projection, receipts and updates, plus retirement after a post-apply guard
+fails. JSON-extension tests cover exact Origin/CSRF/channel/body limits and prove
+that an observation cannot authorize publication after revocation. Python TLS
+helper tests use memory doubles, not real TLS/browser execution.
 
 Aggregate/target verification is recorded after the final checks below. These
 source and unit checks do not satisfy the online delivery gates above.
