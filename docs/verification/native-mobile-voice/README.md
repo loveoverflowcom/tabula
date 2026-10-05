@@ -10,14 +10,14 @@ production/backend voice service implementation.
 
 | Claim / invariant | Owner and failure mode | Oracle/check | Evidence kind / status |
 |---|---|---|---|
-| Production unavailable before media/permission | default grant source + controller; accidental fallback | common test `productionUnavailableNeverConnectsOrRequestsMicrophone`, CMP unavailable interaction | doubles; local Kotlin execution BLOCKED, CI pending |
-| Native room/media path outside game | Android/Swift adapters; JS/WS audio or secret exposure | pinned SDK API/source, restricted WebView capture/network, unchanged bridge grammar | source-read; native compilation CI pending |
+| Production unavailable before media/permission | default grant source + controller; accidental fallback | common test `productionUnavailableNeverConnectsOrRequestsMicrophone`, CMP unavailable interaction | doubles; local Kotlin execution BLOCKED, exact-head CI recorded in PR #75 |
+| Native room/media path outside game | Android/Swift adapters; JS/WS audio or secret exposure | pinned SDK API/source, restricted WebView capture/network, unchanged bridge grammar | source-read; native compilation exact-head CI recorded in PR #75 |
 | Join starts receive-only | native SDK connect options; eager permission/capture | explicit Android audio=false/video=false, Swift enableMicrophone=false; common/CMP assertions | source-read + doubles, real capture NOT_RUN |
 | Mic acknowledges real publication/failure | native SDK result/publication; optimistic label | Boolean/publication verification, permission-denial tests | source-read + doubles, real microphone NOT_RUN |
-| Reload/retry preserves voice | app/session owner outside GameHost; WebView disposal owns voice | common hello-reload and `VoiceShellTest` reload/host-retry interactions | doubles; CI pending, native WebView NOT_RUN |
+| Reload/retry preserves voice | app/session owner outside GameHost; WebView disposal owns voice | common hello-reload and `VoiceShellTest` reload/host-retry interactions | doubles; exact-head CI recorded in PR #75, native WebView NOT_RUN |
 | Late grant/join/mic cannot restore state | attempt/command guards; reordered async completion | common stale/duplicate/terminal partitions, native cleanup chaining | doubles + source-read; native races NOT_RUN |
 | Leave/logout/background/dispose retires resources | controller + native adapters; capture outlives authority | common terminal/idempotence tests, native room disconnect/release after cancelled work | source-read + doubles; real resources/background NOT_RUN |
-| Ten-minute fixed local dev grants, no committed secrets | strict native-only source + ephemeral harness | Python fixture JWT signature/shape/private file tests; common hostile fixture partitions | Python 2 tests PASS; Kotlin tests CI pending; SFU NOT_RUN |
+| Ten-minute fixed local dev grants, no committed secrets | strict native-only source + ephemeral harness | Python fixture JWT signature/shape/private file tests; common hostile fixture partitions | Python 2 tests PASS; Kotlin tests exact-head CI recorded in PR #75; SFU NOT_RUN |
 | Backend/SFU enforces permission | backend VoiceService; client mute falsely presented as rule | explicit unavailable production source and unchanged backend gates | NOT_IMPLEMENTED for production; actual SFU scope suite NOT_RUN |
 
 ## Executed locally
@@ -83,3 +83,23 @@ and expiry recheck after prior room cleanup. Latest source-read verdict found no
 remaining concrete blocker. This is source evidence, not execution of the native
 race, microphone, transport or provider boundaries. Swift full mic-on reconnect
 is conservatively terminal; rejoin starts mic-off.
+
+## CI iteration record
+
+Initial head `46df768fc7a2dd387278dc7aefc4236624896e0a`,
+[run 37266195682](https://github.com/loveoverflowcom/tabula/actions/runs/37266195682):
+11/13 jobs PASS; Android and Swift app build jobs FAIL. The Android failure was
+Gradle validation of an intentionally absent dev fixture (`@InputFile.optional`
+allows an unset value, not a specified nonexistent file). The task now uses an
+empty filtered `InputFiles` collection while retaining add/change/removal tracking
+and stale resource cleanup. Shared Android/desktop compilation reached completion,
+but no skipped/aborted tests from that failed aggregate are claimed passed.
+
+macOS Xcode 16.4 / Swift 6.1 compiled both Kotlin iOS targets and linked the shared
+simulator framework, then caught Swift nullable Kotlin-enum member inference in
+the actual adapter. Explicit enum values correct that bridge; UI-thread confinement
+of the SDK Sendable delegate is stated explicitly. Full app compile/link and
+controller/CMP test acceptance require the terminal **final-head** result in
+[PR #75](https://github.com/loveoverflowcom/tabula/pull/75), where exact SHA/tree,
+job links and test counts are recorded. Earlier partial compilation is not a
+full native app pass. None of this executes a simulator or microphone.

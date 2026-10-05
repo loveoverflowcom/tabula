@@ -47,11 +47,11 @@ final class NativeVoiceClient: NSObject, VoiceClient {
         disconnect()
         guard !closed else { return }
         guard !cleanupFailed else {
-            observer.onConnection(attempt: attempt, connection: .failed, error: .publicationFailed)
+            observer.onConnection(attempt: attempt, connection: .failed, error: VoiceError.publicationFailed)
             return
         }
         guard grant.expiresAtEpochSeconds > Int64(Date().timeIntervalSince1970) else {
-            observer.onConnection(attempt: attempt, connection: .failed, error: .grantExpired)
+            observer.onConnection(attempt: attempt, connection: .failed, error: VoiceError.grantExpired)
             return
         }
         let session = VoiceSession(owner: self, attempt: attempt, grant: grant, observer: observer)
@@ -64,11 +64,11 @@ final class NativeVoiceClient: NSObject, VoiceClient {
             await previousCleanup?.value
             guard self?.isCurrent(session) == true, !Task.isCancelled else { await session.room.disconnect(); return }
             guard self?.cleanupFailed == false else {
-                self?.reportConnection(session, .failed, error: .publicationFailed)
+                self?.reportConnection(session, .failed, error: VoiceError.publicationFailed)
                 return
             }
             guard session.expiresAt > Int64(Date().timeIntervalSince1970) else {
-                self?.reportConnection(session, .failed, error: .grantExpired)
+                self?.reportConnection(session, .failed, error: VoiceError.grantExpired)
                 return
             }
             do {
@@ -83,7 +83,7 @@ final class NativeVoiceClient: NSObject, VoiceClient {
                 self?.reportConnection(session, .connected)
             } catch {
                 if self?.isCurrent(session) == true {
-                    self?.reportConnection(session, .failed, error: .connectionFailed)
+                    self?.reportConnection(session, .failed, error: VoiceError.connectionFailed)
                 }
                 // A cancelled or late connect can still finish provider work. Always tear its room down.
                 await session.room.disconnect()
@@ -103,31 +103,31 @@ final class NativeVoiceClient: NSObject, VoiceClient {
             await previous?.value
             guard self?.isCurrent(session, command: command) == true, !Task.isCancelled else { return }
             guard session.expiresAt > Int64(Date().timeIntervalSince1970) else {
-                self?.reportMicrophone(session, command: command, error: .grantExpired)
+                self?.reportMicrophone(session, command: command, error: VoiceError.grantExpired)
                 return
             }
             if enabled {
                 guard session.canPublishMicrophone else {
-                    self?.reportMicrophone(session, command: command, error: .publicationFailed)
+                    self?.reportMicrophone(session, command: command, error: VoiceError.publicationFailed)
                     return
                 }
                 let granted = await Self.requestMicrophonePermission()
                 guard self?.isCurrent(session, command: command) == true, !Task.isCancelled else { return }
                 guard granted else {
-                    self?.reportMicrophone(session, command: command, error: .permissionDenied)
+                    self?.reportMicrophone(session, command: command, error: VoiceError.permissionDenied)
                     return
                 }
             }
             guard session.expiresAt > Int64(Date().timeIntervalSince1970) else {
-                self?.reportMicrophone(session, command: command, error: .grantExpired)
+                self?.reportMicrophone(session, command: command, error: VoiceError.grantExpired)
                 return
             }
             if enabled && !session.canPublishMicrophone {
-                self?.reportMicrophone(session, command: command, error: .publicationFailed)
+                self?.reportMicrophone(session, command: command, error: VoiceError.publicationFailed)
                 return
             }
             guard session.room.connectionState == .connected else {
-                self?.reportMicrophone(session, command: command, error: .publicationFailed)
+                self?.reportMicrophone(session, command: command, error: VoiceError.publicationFailed)
                 return
             }
             do {
@@ -230,7 +230,7 @@ final class NativeVoiceClient: NSObject, VoiceClient {
 
     private func publicationFailed(_ session: VoiceSession) {
         guard isCurrent(session) else { return }
-        reportConnection(session, .failed, error: .publicationFailed)
+        reportConnection(session, .failed, error: VoiceError.publicationFailed)
         if isCurrent(session) { disconnect() }
     }
 
@@ -266,7 +266,7 @@ final class NativeVoiceClient: NSObject, VoiceClient {
         // This bounded host requires a fresh explicit join, with mic off, instead of accepting that
         // implicit microphone re-publication. Quick reconnect and receive-only full reconnect remain.
         if mode == .full && (session.microphoneEnabled || session.microphoneTask != nil) {
-            reportConnection(session, .failed, error: .connectionFailed)
+            reportConnection(session, .failed, error: VoiceError.connectionFailed)
             if isCurrent(session) { disconnect() }
         }
     }
@@ -297,7 +297,10 @@ final class NativeVoiceClient: NSObject, VoiceClient {
 }
 
 /// A delegate belongs to exactly one Room, so queued events carry an unambiguous attempt identity.
-fileprivate final class VoiceSession: NSObject, RoomDelegate {
+/// RoomDelegate is Sendable, but this session's mutable state belongs to the main thread. SDK delegate
+/// entrypoints read only SDK-owned thread-safe values and marshal session/owner access to main; adapter
+/// methods and owned async tasks also run on main. The unchecked conformance is limited to this bridge.
+fileprivate final class VoiceSession: NSObject, RoomDelegate, @unchecked Sendable {
     weak var owner: NativeVoiceClient?
     let attempt: Int64
     let canPublish: Bool
@@ -335,16 +338,16 @@ fileprivate final class VoiceSession: NSObject, RoomDelegate {
     }
 
     func roomDidConnect(_ room: Room) { connection(.connected) }
-    func room(_ room: Room, didFailToConnectWithError error: LiveKitError?) { connection(.failed, error: .connectionFailed) }
-    func room(_ room: Room, didDisconnectWithError error: LiveKitError?) { connection(.failed, error: .connectionFailed) }
+    func room(_ room: Room, didFailToConnectWithError error: LiveKitError?) { connection(.failed, error: VoiceError.connectionFailed) }
+    func room(_ room: Room, didDisconnectWithError error: LiveKitError?) { connection(.failed, error: VoiceError.connectionFailed) }
     func room(_ room: Room, didUpdateConnectionState state: ConnectionState, from old: ConnectionState) {
         switch state {
         case .connecting: connection(.connecting)
         case .connected: connection(.connected)
         case .reconnecting: connection(.reconnecting)
-        case .disconnected: connection(.failed, error: .connectionFailed)
+        case .disconnected: connection(.failed, error: VoiceError.connectionFailed)
         case .disconnecting: break
-        @unknown default: connection(.failed, error: .connectionFailed)
+        @unknown default: connection(.failed, error: VoiceError.connectionFailed)
         }
     }
     // These callbacks include quick reconnects that legacy roomIsReconnecting/roomDidReconnect omit.

@@ -56,13 +56,17 @@ dependencies {
 val voiceDevFixture = layout.projectDirectory.file("../voice-dev-grant.json")
 val voiceDevAssets = layout.buildDirectory.dir("generated/voice-dev-assets")
 val prepareVoiceDevFixture = tasks.register("prepareVoiceDevFixture") {
-    inputs.file(voiceDevFixture).optional()
+    // Missing local fixture is an empty collection, not a nonexistent @InputFile. Gradle's
+    // optional() permits an unset property; a supplied path still has to exist.
+    inputs.files(fileTree(layout.projectDirectory.dir("..")) {
+        include("voice-dev-grant.json")
+    }).withPropertyName("voiceDevFixture")
     outputs.dir(voiceDevAssets)
     val source = voiceDevFixture.asFile
     val destination = voiceDevAssets.get().asFile
     doLast {
         // A Sync would skip NO-SOURCE and retain a previous token after the fixture is removed.
-        // This task always clears stale generated assets when its optional input changes.
+        // This task clears stale generated assets when the fixture is added, changed or removed.
         check(!destination.exists() || destination.deleteRecursively()) { "Cannot clear voice dev assets" }
         if (source.isFile) {
             check(destination.mkdirs()) { "Cannot create voice dev assets" }
