@@ -208,7 +208,8 @@ forbid  = ["leptos", "tauri"]
 
 [crate."apps/web"]
 tier  = "binary"
-allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-assets", "tabula-net-client", "leptos", "leptos_router", "web-sys", "wasm-bindgen", "serde", "serde_json"]
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-assets", "tabula-net-client", "leptos", "leptos_router", "web-sys", "wasm-bindgen", "serde", "serde_json", "tabula-session-http", "js-sys", "wasm-bindgen-futures", "sha2"]
+feature = { account-http-acceptance = ["tabula-session", "axum", "tokio", "http-body", "bytes"] }
 
 [crate."apps/admin"]
 tier  = "binary"

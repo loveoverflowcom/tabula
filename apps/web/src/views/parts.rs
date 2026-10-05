@@ -32,6 +32,9 @@ pub fn TopBar() -> impl IntoView {
                 <A href="/games" attr:class="topbar__link">
                     {move || Messages::new(locale.get()).text("nav.library")}
                 </A>
+                <A href="/account" attr:class="topbar__link">
+                    {move || Messages::new(locale.get()).text("nav.account")}
+                </A>
             </nav>
             <div class="topbar__locale">
                 <label class="field__label" for="locale">

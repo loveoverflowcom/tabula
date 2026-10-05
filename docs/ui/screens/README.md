@@ -26,6 +26,7 @@ They describe intended behavior; implementation and platform evidence are record
 | 13 — user settings | [Settings](13-settings.md) | Leptos `/settings` after Phase 4 exit; native shell at its phase |
 | 14 — Xiangqi Resources | [Resources](14-resources.md) | Actual approved artifact rights, integrity, platform/budget/probe and provisioner required |
 | Accounts/social contract for issue #54 | [Authority, forms, navigation and privacy](accounts-social.md); [en/vi copy](accounts-social-copy.md); [verification](accounts-social-verification.md) | Specification slice A; identity/session/security contract and Phase 4/5 gates precede B/C |
+| Isolated account-state/self-profile slice | [Design delta](account-state-isolated.md); [bounded evidence](../../verification/issue-54-account-state-ui/README.md) | ADR-0036 `/account`/`/me` consumer only; provider/social/other-profile and production gates remain closed |
 | 15 — login | [Login](15-login.md) | Proposed `/login`; real identity/session adapter and shell gate required |
 | 16 — registration | [Register](16-register.md) | Proposed `/register`; approved form/handle/agreement/disclosure/session contract required |
 | 20 — profile | [Profile](20-profile.md) | Proposed `/u/:handle`; B starts with self read-only; other/edit/history remain separately permission-checked and gated |
@@ -71,6 +72,8 @@ friends and online badges are not functioning adapters. The
 and names its missing enforcement/evidence and identity/profile/social APIs.
 This specification does not mount account routes or infer permissions from local presentation.
 ADR-0028/0030 preserve only discovery and bounded local play.
+The subsequent ADR-0036 isolated slice adds the account-state documents above;
+its runtime and target receipts are separate from the historical specification.
 
 ```sh
 python3 -m http.server 8000 --directory .

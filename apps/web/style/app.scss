@@ -645,3 +645,108 @@ body {
     transition-duration: 1ms !important;
   }
 }
+
+// ------------------------------------------------------ isolated account tasks
+// ADR-0036 reuses the shell foundation rather than the design pack's sample
+// purple palette, hero, identity controls or statistics. All reasons remain
+// full-contrast text; no private field doubles as a live-status announcement.
+.account {
+  max-width: 760px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.account__state,
+.account__profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-md);
+}
+
+// The synchronous lifecycle mask must win over component display rules. The
+// browser's default [hidden] rule alone loses to .account__profile display:flex.
+[data-account-private][hidden] {
+  display: none !important;
+}
+
+.account__state {
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.account__facts {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.account__id {
+  min-width: 0;
+  font-family: var(--sys-type-mono-md-family);
+  font-size: var(--sys-type-mono-md-size);
+  line-height: var(--sys-type-mono-md-line-height);
+  overflow-wrap: anywhere;
+}
+
+.account__confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-md);
+  margin: 0;
+  padding: var(--sys-space-lg);
+  min-width: 0;
+  border: 0;
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.account__confirmation legend {
+  padding: 0 var(--sys-space-sm);
+}
+
+.btn--danger {
+  background: var(--sys-color-danger);
+  color: var(--sys-color-on-danger);
+}
+
+.account__actions {
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.account__actions > .btn {
+  white-space: normal;
+  text-align: center;
+  padding-block: var(--sys-space-sm);
+}
+
+.account__feature-link {
+  display: flex;
+  align-items: center;
+  min-height: var(--sys-density-min-target);
+  color: var(--sys-color-on-surface);
+  text-underline-offset: var(--sys-space-xxs);
+}
+
+.topbar__nav {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 599px) {
+  .account .section__title {
+    font-size: var(--sys-type-headline-sm-size);
+    line-height: var(--sys-type-headline-sm-line-height);
+  }
+}
+
+@media (min-width: 600px) {
+  .account__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .account__facts {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+}

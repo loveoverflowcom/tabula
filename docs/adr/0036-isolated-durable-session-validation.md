@@ -171,3 +171,37 @@ Body owns the one-shot guard through frame handoff. This is bounded server-frame
 ordering under the existing trusted-clock assumption, not client arrival of
 already released buffered bytes, silent clock correction, WS delivery/connection
 fencing or all S09. Production bootstraps and broad phase exits remain closed.
+
+## PR3 refinement: isolated shell consumer and memory-only scope
+
+The third slice consumes the default versioned HTTP DTOs from the `apps/web`
+binary, without reversing the client/runtime dependency arrows or enabling a
+service. `/account` and `/me` resolve context and fresh immutable self ID; login,
+registration, friends and other profiles stay unavailable. The
+[design delta](../ui/screens/account-state-isolated.md) and
+[evidence ledger](../verification/issue-54-account-state-ui/README.md) retain the
+exact predecessor, lifecycle partitions and target-specific limits.
+
+This isolated browser consumer keeps all account state and synchronizer tokens
+in document memory. Operation/step generations and abort invalidate old work;
+route departure and hiding synchronously mask and clear private output, and
+restoration starts with current context. Suppression after uncertain logout
+survives route owners in the current document and is not cleared by an ordinary
+recheck. It is never claimed as durable revocation or script-deleted cookie.
+An unresolved active route may retain the original revocation-only CSRF for
+explicit terminal retry. Cleanup erases that reusable token and retains only
+its non-authorizing SHA-256 fingerprint; a different account, replacement record
+or restarted adapter token never becomes the old logout target. After cleanup,
+terminal signed-out context alone cannot confirm the unresolved revocation.
+
+This is a bounded limitation of ADR-0031's full offline-logout requirement:
+closing/reloading the document loses the memory-only suppression intent. A new
+document may revalidate/display the old account if its surviving HttpOnly cookie
+remains valid. Cross-reload suppression requires a separately reviewed non-secret
+persistence design and actual target evidence before production; no credential
+or private profile persistence fallback is permitted. Event/core tests do not
+prove real BFCache first-restored-frame or accessibility privacy, and neither
+production service startup nor the original full #54 acceptance is opened.
+The context DTO supplies neither deadlines nor a live revocation stream; this
+consumer therefore establishes loss on fresh context/lifecycle recovery, not
+immediate autonomous visible-page clearing at server expiry or a missed signal.

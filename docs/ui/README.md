@@ -58,6 +58,13 @@ the [verification ledger](screens/accounts-social-verification.md) and
 [work queue](../work-plan/README.md) retain the runtime prerequisites.
 These specifications do not activate accounts or social services.
 
+The bounded [ADR-0036](../adr/0036-isolated-durable-session-validation.md)
+series subsequently adds isolated durable session/HTTP authority and an
+[account-state/self-profile shell](../verification/issue-54-account-state-ui/README.md).
+The [design delta](screens/account-state-isolated.md) keeps login, registration,
+friends, other profiles and both production service entrypoints unavailable.
+It does not establish the original full account/social or phase acceptance.
+
 Issue #53 adds [Xiangqi Play/Analyze/Learn/Resources contracts](screens/xiangqi.md)
 for screens 08, the Xiangqi extension of 11, 12 and 14. They preserve generic
 replay, separate branch/original authority and position-bound evidence.

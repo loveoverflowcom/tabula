@@ -139,6 +139,15 @@ jobs:
       - uses: taiki-e/install-action@nextest
       # Unit + property + replay. Every game crate's conformance! suite runs here.
       - run: cargo nextest run --workspace
+      # ADR-0036 PR3: actual TCP adapter responses consumed by the isolated
+      # account lifecycle. Synthetic test identities do not prove provider login.
+      - name: Isolated account HTTP consumer
+        run: |
+          cargo test -p tabula-web --features account-http-acceptance --test account_http -- --list > account-http-test-list.txt
+          grep -Eq '^tcp_context_then_current_self_profile_is_required_to_publish_identity: test$' account-http-test-list.txt
+          grep -Eq '^private_body_failure_after_received_200_stays_masked_until_explicit_recheck: test$' account-http-test-list.txt
+          cat account-http-test-list.txt
+          cargo test -p tabula-web --features account-http-acceptance --test account_http
 
   # doc 01 §5.1 rule 1: every crate builds with no features AND with all features.
   features:
