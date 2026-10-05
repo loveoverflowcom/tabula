@@ -30,19 +30,47 @@ pub struct DirectClient {
 }
 impl DirectClient {
     /// Build from a server binding and durable next-sequence hint, not authority.
-    pub fn new(match_id: MatchId, game: GameId, game_version: GameVersion, next_seq: u64) -> Result<Self, DirectError> {
-        if next_seq == 0 { return Err(DirectError::Sequence); }
-        Ok(Self { match_id, game, game_version, next_seq: Some(next_seq), pending: None, frame: 0, revision: None, state: DirectState::Connecting })
+    pub fn new(
+        match_id: MatchId,
+        game: GameId,
+        game_version: GameVersion,
+        next_seq: u64,
+    ) -> Result<Self, DirectError> {
+        if next_seq == 0 {
+            return Err(DirectError::Sequence);
+        }
+        Ok(Self {
+            match_id,
+            game,
+            game_version,
+            next_seq: Some(next_seq),
+            pending: None,
+            frame: 0,
+            revision: None,
+            state: DirectState::Connecting,
+        })
     }
     /// Current command gate.
-    pub const fn state(&self) -> DirectState { self.state }
+    pub const fn state(&self) -> DirectState {
+        self.state
+    }
     /// Per-attachment visible revision, never a canonical version.
-    pub const fn revision(&self) -> Option<u64> { self.revision }
+    pub const fn revision(&self) -> Option<u64> {
+        self.revision
+    }
     /// Allocate exactly one opaque intent without changing the projection.
     pub fn command(&mut self, payload: Vec<u8>) -> Result<ClientEnvelope, DirectError> {
-        if self.state != DirectState::Ready { return Err(DirectError::Blocked); }
+        if self.state != DirectState::Ready {
+            return Err(DirectError::Blocked);
+        }
         let seq = self.next_seq.ok_or(DirectError::Sequence)?;
-        let frame = GameCommandFrame::new(self.match_id, self.game.clone(), self.game_version.clone(), payload).map_err(|_| DirectError::Protocol)?;
+        let frame = GameCommandFrame::new(
+            self.match_id,
+            self.game.clone(),
+            self.game_version.clone(),
+            payload,
+        )
+        .map_err(|_| DirectError::Protocol)?;
         let command = ClientEnvelope::new(seq, seq, frame).map_err(|_| DirectError::Protocol)?;
         self.pending = Some(seq);
         self.next_seq = seq.checked_add(1);
@@ -51,21 +79,37 @@ impl DirectClient {
     }
     /// Validate the complete ordered batch before exposing its output.
     pub fn receive(&mut self, frames: &[ServerEnvelope]) -> Result<(), DirectError> {
-        if self.state == DirectState::Disconnected { return Err(DirectError::Blocked); }
+        if self.state == DirectState::Disconnected {
+            return Err(DirectError::Blocked);
+        }
         let mut next_frame = self.frame;
         let mut revision = self.revision;
         let mut pending = self.pending;
         for frame in frames {
-            if next_frame.checked_add(1) != Some(frame.frame()) { self.disconnect(); return Err(DirectError::Gap); }
+            if next_frame.checked_add(1) != Some(frame.frame()) {
+                self.disconnect();
+                return Err(DirectError::Gap);
+            }
             next_frame = frame.frame();
-            if revision.is_none() && !matches!(frame.body(), ServerMessage::MatchUpdate { revision: 0, .. }) { self.disconnect(); return Err(DirectError::Gap); }
+            if revision.is_none()
+                && !matches!(frame.body(), ServerMessage::MatchUpdate { revision: 0, .. })
+            {
+                self.disconnect();
+                return Err(DirectError::Gap);
+            }
             match frame.body() {
                 ServerMessage::MatchUpdate { revision: next, .. } => {
-                    if revision.map_or(*next != 0, |old| old.checked_add(1) != Some(*next)) { self.disconnect(); return Err(DirectError::Gap); }
+                    if revision.map_or(*next != 0, |old| old.checked_add(1) != Some(*next)) {
+                        self.disconnect();
+                        return Err(DirectError::Gap);
+                    }
                     revision = Some(*next);
                 }
                 ServerMessage::Ack { seq } | ServerMessage::Reject { seq, .. } => {
-                    if pending != Some(*seq) { self.disconnect(); return Err(DirectError::Sequence); }
+                    if pending != Some(*seq) {
+                        self.disconnect();
+                        return Err(DirectError::Sequence);
+                    }
                     pending = None;
                 }
             }
@@ -73,26 +117,57 @@ impl DirectClient {
         self.frame = next_frame;
         self.revision = revision;
         self.pending = pending;
-        self.state = if pending.is_some() { DirectState::Sending } else if revision.is_some() { DirectState::Ready } else { DirectState::Connecting };
+        self.state = if pending.is_some() {
+            DirectState::Sending
+        } else if revision.is_some() {
+            DirectState::Ready
+        } else {
+            DirectState::Connecting
+        };
         Ok(())
     }
     /// Failure closes the command gate; pending operations are never replayed.
-    pub fn disconnect(&mut self) { self.state = DirectState::Disconnected; }
+    pub fn disconnect(&mut self) {
+        self.state = DirectState::Disconnected;
+    }
 }
 /// Fixed public-safe boundary failures.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum DirectError {
-    #[error("the online board is not ready to send")] Blocked,
-    #[error("the online stream is incomplete")] Gap,
-    #[error("the online receipt does not match its command")] Sequence,
-    #[error("the online command is malformed or too large")] Protocol,
+    #[error("the online board is not ready to send")]
+    Blocked,
+    #[error("the online stream is incomplete")]
+    Gap,
+    #[error("the online receipt does not match its command")]
+    Sequence,
+    #[error("the online command is malformed or too large")]
+    Protocol,
 }
 #[cfg(test)]
 mod tests {
     use super::*;
     use tabula_protocol::ErrorCode;
-    fn client() -> DirectClient { DirectClient::new(MatchId(7), GameId::new("org.example.game").unwrap(), GameVersion::new("1.0.0").unwrap(), 4).unwrap() }
-    fn update(frame: u64, revision: u64) -> ServerEnvelope { ServerEnvelope::new(None, frame, ServerMessage::MatchUpdate { revision, view: vec![1], events: Vec::new() }).unwrap() }
+    fn client() -> DirectClient {
+        DirectClient::new(
+            MatchId(7),
+            GameId::new("org.example.game").unwrap(),
+            GameVersion::new("1.0.0").unwrap(),
+            4,
+        )
+        .unwrap()
+    }
+    fn update(frame: u64, revision: u64) -> ServerEnvelope {
+        ServerEnvelope::new(
+            None,
+            frame,
+            ServerMessage::MatchUpdate {
+                revision,
+                view: vec![1],
+                events: Vec::new(),
+            },
+        )
+        .unwrap()
+    }
     #[test]
     fn one_pending_command_until_matching_receipt() {
         let mut c = client();
@@ -100,7 +175,16 @@ mod tests {
         c.receive(&[update(1, 0)]).unwrap();
         assert_eq!(c.command(vec![2]).unwrap().seq(), 4);
         assert_eq!(c.command(vec![3]), Err(DirectError::Blocked));
-        c.receive(&[ServerEnvelope::new(Some(4), 2, ServerMessage::Reject { seq: 4, error: ErrorCode::RuleRejected }).unwrap()]).unwrap();
+        c.receive(&[ServerEnvelope::new(
+            Some(4),
+            2,
+            ServerMessage::Reject {
+                seq: 4,
+                error: ErrorCode::RuleRejected,
+            },
+        )
+        .unwrap()])
+            .unwrap();
         assert_eq!(c.revision(), Some(0));
         assert_eq!(c.command(vec![3]).unwrap().seq(), 5);
     }
@@ -123,12 +207,26 @@ mod tests {
         let mut c = client();
         c.receive(&[update(1, 0)]).unwrap();
         c.command(vec![2]).unwrap();
-        assert_eq!(c.receive(&[update(2, 1), ServerEnvelope::new(None, 3, ServerMessage::Ack { seq: 99 }).unwrap()]), Err(DirectError::Sequence));
+        assert_eq!(
+            c.receive(&[
+                update(2, 1),
+                ServerEnvelope::new(None, 3, ServerMessage::Ack { seq: 99 }).unwrap()
+            ]),
+            Err(DirectError::Sequence)
+        );
         assert_eq!(c.revision(), Some(0));
     }
     #[test]
     fn first_snapshot_and_visible_revisions_are_exact() {
-        for revision in [1, 9] { let mut c = client(); assert_eq!(c.receive(&[update(1, revision)]), Err(DirectError::Gap)); }
-        for next in [0, 2, u64::MAX] { let mut c = client(); c.receive(&[update(1, 0)]).unwrap(); assert_eq!(c.receive(&[update(2, next)]), Err(DirectError::Gap)); assert_eq!(c.revision(), Some(0)); }
+        for revision in [1, 9] {
+            let mut c = client();
+            assert_eq!(c.receive(&[update(1, revision)]), Err(DirectError::Gap));
+        }
+        for next in [0, 2, u64::MAX] {
+            let mut c = client();
+            c.receive(&[update(1, 0)]).unwrap();
+            assert_eq!(c.receive(&[update(2, next)]), Err(DirectError::Gap));
+            assert_eq!(c.revision(), Some(0));
+        }
     }
 }

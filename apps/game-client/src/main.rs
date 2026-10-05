@@ -14,9 +14,9 @@
 //! replaces it with `tabula-registry` (doc 01 §5.1).
 
 mod clock_options;
-mod standalone_setup;
 #[cfg(all(feature = "online", target_arch = "wasm32"))]
 mod online_runtime;
+mod standalone_setup;
 
 use clock_options::{LocalClockControl, LocalClockOptions};
 use macroquad::prelude as mq;
@@ -765,7 +765,10 @@ fn parse_options_from(mut args: impl Iterator<Item = String>) -> Options {
                 }
             }
             "--skip-setup" => options.skip_setup = true,
-            "--online-match" => { options.online_match = Some(args.next().unwrap_or_default()); options.skip_setup = true; },
+            "--online-match" => {
+                options.online_match = Some(args.next().unwrap_or_default());
+                options.skip_setup = true;
+            }
             "--clock" => {
                 if let Some(value) = args.next() {
                     if let Err(error) = options.clock.set_control(&value) {

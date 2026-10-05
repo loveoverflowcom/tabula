@@ -52,9 +52,15 @@ pub trait GameSetup: Send + Sync + 'static {
     }
 
     /// Direct browser host declaration, consumed by the opt-in shell/gateway.
-    fn direct_document() -> bool { false }
+    fn direct_document() -> bool {
+        false
+    }
     /// Configs the direct slice can execute, including its effect adapters.
-    fn direct_config_supported(_config: &<<Self::Module as GameModule>::Rules as GameRules>::Config) -> bool { false }
+    fn direct_config_supported(
+        _config: &<<Self::Module as GameModule>::Rules as GameRules>::Config,
+    ) -> bool {
+        false
+    }
 
     /// This game's own visible copy, including its metadata message keys.
     fn messages(locale: Locale) -> Messages;
@@ -92,7 +98,11 @@ pub trait ErasedGame: Send + Sync {
     /// Explicit direct browser host declaration, never capability inference.
     fn direct_document(&self) -> bool;
     /// Parse/validate a direct draft; the server later checks its actual roster.
-    fn normalize_direct(&self, seats: u8, draft: &crate::ConfigDraft) -> Result<NormalizedConfig, ConfigRejection>;
+    fn normalize_direct(
+        &self,
+        seats: u8,
+        draft: &crate::ConfigDraft,
+    ) -> Result<NormalizedConfig, ConfigRejection>;
     /// This game's own visible copy for one locale.
     fn messages(&self, locale: Locale) -> Messages;
     /// The package's declared bot policy levels, independent of linked factories.
@@ -171,14 +181,27 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
         S::modes()
     }
 
-    fn direct_document(&self) -> bool { S::direct_document() }
-    fn normalize_direct(&self, seats: u8, draft: &crate::ConfigDraft) -> Result<NormalizedConfig, ConfigRejection> {
+    fn direct_document(&self) -> bool {
+        S::direct_document()
+    }
+    fn normalize_direct(
+        &self,
+        seats: u8,
+        draft: &crate::ConfigDraft,
+    ) -> Result<NormalizedConfig, ConfigRejection> {
         if !S::direct_document() || draft.keys().any(|key| S::form().field(key).is_none()) {
             return Err(ConfigRejection::whole(RejectionReason::Unsupported));
         }
         let (typed, _, _) = S::parse(draft)?;
-        if !S::direct_config_supported(&typed) { return Err(ConfigRejection::whole(RejectionReason::Unsupported)); }
-        let mut normalized = self.normalize(&SetupRequest { mode: LaunchMode::LocalHotSeat, seats, bot_level: None, draft: draft.clone() })?;
+        if !S::direct_config_supported(&typed) {
+            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
+        }
+        let mut normalized = self.normalize(&SetupRequest {
+            mode: LaunchMode::LocalHotSeat,
+            seats,
+            bot_level: None,
+            draft: draft.clone(),
+        })?;
         normalized.local_return_to = None;
         Ok(normalized)
     }
@@ -243,8 +266,11 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
         }
         args.append(&mut launch_args);
 
-        let canonical_config = tabula_core::canonical_encode(&config).map_err(|_| ConfigRejection::whole(RejectionReason::Unsupported))?;
-        if canonical_config.len() > crate::runtime::MAX_RUNTIME_PAYLOAD_BYTES { return Err(ConfigRejection::whole(RejectionReason::Unsupported)); }
+        let canonical_config = tabula_core::canonical_encode(&config)
+            .map_err(|_| ConfigRejection::whole(RejectionReason::Unsupported))?;
+        if canonical_config.len() > crate::runtime::MAX_RUNTIME_PAYLOAD_BYTES {
+            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
+        }
         Ok(NormalizedConfig {
             summary,
             canonical_config,
