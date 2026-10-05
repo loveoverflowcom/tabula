@@ -552,3 +552,177 @@ impl Output for QueueOutput {
         Ok(())
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tabula_core::UserId;
+    use tabula_protocol::ServerMessage;
+    use tabula_session::{
+        AccountEpoch, AuthSessionId, CredentialDigest, SessionChannel, SessionContextId,
+        SessionError, SessionRecord, UnixMillis,
+    };
+    fn binding(n: u64) -> Binding {
+        Binding::new(SessionId(n), UserId(1), 1, 0, 1)
+    }
+    fn ack(n: u64) -> ServerEnvelope {
+        ServerEnvelope::new(Some(n), n, ServerMessage::Ack { seq: n }).unwrap()
+    }
+    fn submit(
+        output: &QueueOutput,
+        b: &Binding,
+        frame: ServerEnvelope,
+    ) -> Result<(), RuntimePortError> {
+        let stage = output.begin_stage(b)?;
+        output.submit(b, frame)?;
+        stage.commit()
+    }
+    #[test]
+    fn bounded_frame_overflow_discards_all_private_candidates() {
+        let output = QueueOutput::default();
+        let b = binding(1);
+        output.insert(b.clone()).unwrap();
+        for n in 1..=u64::try_from(MAX_BUFFERED_FRAMES).unwrap() {
+            submit(&output, &b, ack(n)).unwrap();
+        }
+        assert_eq!(submit(&output, &b, ack(17)), Err(RuntimePortError::Busy));
+        assert!(!output.active(&b));
+        assert!(output.drain(&b).is_err());
+        let entries = output.entries.lock().unwrap();
+        let e = &entries[&b.session()];
+        assert!(e.frames.is_empty());
+        assert_eq!(e.bytes, 0);
+        assert!(e.staged.is_none());
+    }
+    #[test]
+    fn encoded_response_bytes_and_attachment_count_are_bounded() {
+        let output = QueueOutput::default();
+        let b = binding(1);
+        output.insert(b.clone()).unwrap();
+        let large = |n| {
+            ServerEnvelope::new(
+                None,
+                n,
+                ServerMessage::MatchUpdate {
+                    revision: n,
+                    view: vec![255; 220_000],
+                    events: vec![],
+                },
+            )
+            .unwrap()
+        };
+        assert!(encode_server(Codec::Json, &large(1)).unwrap().len() < MAX_RESPONSE_BYTES / 2);
+        submit(&output, &b, large(1)).unwrap();
+        submit(&output, &b, large(2)).unwrap();
+        assert_eq!(submit(&output, &b, large(3)), Err(RuntimePortError::Busy));
+        for n in 2..=32 {
+            output.insert(binding(n)).unwrap();
+        }
+        assert_eq!(output.insert(binding(33)), Err(RuntimePortError::Busy));
+    }
+    #[test]
+    fn seat_command_rate_and_removed_attachment_fail_closed() {
+        let output = QueueOutput::default();
+        let b = binding(1);
+        output.insert(b.clone()).unwrap();
+        for _ in 0..5 {
+            output.command_rate(&b, SeatId(0)).unwrap();
+        }
+        assert!(matches!(
+            output.command_rate(&b, SeatId(0)),
+            Err(QueueError::Busy)
+        ));
+        output.remove(&b);
+        assert!(!output.active(&b));
+        assert!(output.drain(&b).is_err());
+        assert_eq!(
+            submit(&output, &b, ack(1)),
+            Err(RuntimePortError::Unavailable)
+        );
+    }
+    #[test]
+    fn candidate_staging_is_unreleasable_until_successful_publication() {
+        let output = QueueOutput::default();
+        let b = binding(1);
+        output.insert(b.clone()).unwrap();
+        let stage = output.begin_stage(&b).unwrap();
+        output.submit(&b, ack(1)).unwrap();
+        assert!(output.drain(&b).unwrap().is_empty());
+        drop(stage);
+        assert!(output.drain(&b).unwrap().is_empty());
+        let stage = output.begin_stage(&b).unwrap();
+        output.submit(&b, ack(2)).unwrap();
+        stage.commit().unwrap();
+        assert_eq!(output.drain(&b).unwrap(), vec![ack(2)]);
+    }
+    struct ExpiringPublication {
+        snapshot: SessionSnapshot,
+    }
+    impl SessionPublication for ExpiringPublication {
+        fn snapshot(&self) -> &SessionSnapshot {
+            &self.snapshot
+        }
+        fn publish<R>(
+            &mut self,
+            action: impl FnOnce(&SessionSnapshot) -> R,
+        ) -> Result<R, SessionError> {
+            let _ = action(&self.snapshot);
+            Err(SessionError::Unauthenticated)
+        }
+    }
+    #[test]
+    fn authority_failure_after_callback_discards_candidate_without_submission() {
+        let output = QueueOutput::default();
+        let b = binding(1);
+        output.insert(b.clone()).unwrap();
+        let snapshot = SessionRecord::issue(
+            AuthSessionId::new(1).unwrap(),
+            UserId(1),
+            AccountEpoch::new(0).unwrap(),
+            SessionChannel::BrowserCookie,
+            CredentialDigest::from_bytes([7; 32]),
+            SessionContextId::new(2).unwrap(),
+            UnixMillis::new(1000).unwrap(),
+        )
+        .unwrap()
+        .snapshot();
+        let mut publication = ExpiringPublication { snapshot };
+        assert_eq!(
+            submit_prepared(&mut publication, &output, &b, || output.submit(&b, ack(1))),
+            Err(AuthorityLost)
+        );
+        assert!(output.drain(&b).unwrap().is_empty());
+    }
+    #[test]
+    fn same_seat_rebind_does_not_reset_command_attempt_window() {
+        let output = QueueOutput::default();
+        let old = binding(1);
+        output.insert(old.clone()).unwrap();
+        for _ in 0..5 {
+            output.command_rate(&old, SeatId(0)).unwrap();
+        }
+        output.remove(&old);
+        let new = binding(2);
+        output.insert(new.clone()).unwrap();
+        assert!(matches!(
+            output.command_rate(&new, SeatId(0)),
+            Err(QueueError::Busy)
+        ));
+    }
+    #[test]
+    fn owner_close_discards_all_buffered_attachments_and_rates() {
+        let output = QueueOutput::default();
+        let one = binding(1);
+        let two = binding(2);
+        output.insert(one.clone()).unwrap();
+        output.insert(two.clone()).unwrap();
+        submit(&output, &one, ack(1)).unwrap();
+        submit(&output, &two, ack(1)).unwrap();
+        output.command_rate(&one, SeatId(0)).unwrap();
+        output.close();
+        assert!(!output.active(&one));
+        assert!(!output.active(&two));
+        assert!(output.drain(&one).is_err());
+        assert!(output.entries.lock().unwrap().is_empty());
+        assert!(output.seat_rates.lock().unwrap().is_empty());
+    }
+}

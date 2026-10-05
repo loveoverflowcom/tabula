@@ -1397,3 +1397,160 @@ mod login_expiry_tests {
         }
     }
 }
+#[cfg(test)]
+mod extension_transport_tests {
+    use super::*;
+    use crate::test_authority::TestAuthority;
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Payload {
+        value: u8,
+    }
+    const ORIGIN: &str = "https://extension-fixture.tabula.invalid";
+    fn request(headers: &[(&str, &str)], body: &str) -> Request {
+        let mut r = Request::builder().method("POST").uri("/api/v1/matches");
+        for (name, value) in headers {
+            r = r.header(*name, *value);
+        }
+        r.body(Body::from(body.to_owned())).unwrap()
+    }
+    #[tokio::test]
+    #[allow(clippy::too_many_lines)]
+    async fn authenticated_json_extension_reuses_exact_browser_transport_guards() {
+        let authority = TestAuthority::new();
+        let (credential, snapshot) = authority.fixture(SessionChannel::BrowserCookie);
+        let adapter = IsolatedSessionHttp::new(authority.clone(), ORIGIN).unwrap();
+        let cookie = format!("{SESSION_COOKIE}={credential}");
+        let token = csrf(&adapter.state, &snapshot);
+        let headers = [
+            ("Cookie", cookie.as_str()),
+            ("Origin", ORIGIN),
+            ("X-Tabula-CSRF", token.as_str()),
+            ("Content-Type", "application/json"),
+        ];
+        let (op, current, body) = adapter
+            .authenticate_json::<Payload>(request(&headers, "{\"value\":7}"), 64)
+            .await
+            .unwrap();
+        assert_eq!(current, snapshot);
+        assert_eq!(body.value, 7);
+        assert_eq!(op.context.unwrap().context_id, snapshot.context_id());
+        assert_eq!(authority.mutations(), 0);
+        for (index, replacements, status) in [
+            (
+                1,
+                vec![Some("https://foreign.invalid"), Some("null"), None],
+                StatusCode::FORBIDDEN,
+            ),
+            (
+                2,
+                vec![Some("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), None],
+                StatusCode::FORBIDDEN,
+            ),
+            (
+                3,
+                vec![Some("text/plain")],
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            ),
+        ] {
+            for replacement in replacements {
+                let altered: Vec<_> = headers
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(n, &(k, v))| {
+                        if n == index {
+                            replacement.map(|value| (k, value))
+                        } else {
+                            Some((k, v))
+                        }
+                    })
+                    .collect();
+                assert_eq!(
+                    adapter
+                        .authenticate_json::<Payload>(request(&altered, "{\"value\":7}"), 64)
+                        .await
+                        .err()
+                        .unwrap()
+                        .status(),
+                    status
+                );
+            }
+        }
+        for (extra, status) in [
+            (("Cookie", cookie.as_str()), StatusCode::BAD_REQUEST),
+            (
+                (
+                    "Authorization",
+                    "Bearer AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                ),
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                ("Content-Encoding", "gzip"),
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            ),
+        ] {
+            let mut altered = headers.to_vec();
+            altered.push(extra);
+            assert_eq!(
+                adapter
+                    .authenticate_json::<Payload>(request(&altered, "{\"value\":7}"), 64)
+                    .await
+                    .err()
+                    .unwrap()
+                    .status(),
+                status
+            );
+        }
+        assert_eq!(
+            adapter
+                .authenticate_json::<Payload>(request(&headers, "{\"value\":7,\"seat\":0}"), 64)
+                .await
+                .err()
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            adapter
+                .authenticate_json::<Payload>(request(&headers, "{\"value\":7}"), 8)
+                .await
+                .err()
+                .unwrap()
+                .status(),
+            StatusCode::PAYLOAD_TOO_LARGE
+        );
+        assert_eq!(authority.mutations(), 0);
+    }
+    #[tokio::test]
+    async fn native_json_extension_is_bound_to_native_channel_and_has_no_browser_context() {
+        let authority = TestAuthority::new();
+        let (credential, snapshot) = authority.fixture(SessionChannel::NativeBearer);
+        let adapter = IsolatedSessionHttp::new(authority.clone(), ORIGIN).unwrap();
+        let bearer = format!("Bearer {credential}");
+        let headers = [
+            ("Authorization", bearer.as_str()),
+            ("Content-Type", "application/json"),
+        ];
+        let (op, current, body) = adapter
+            .authenticate_json::<Payload>(request(&headers, "{\"value\":8}"), 64)
+            .await
+            .unwrap();
+        assert_eq!(body.value, 8);
+        assert_eq!(current, snapshot);
+        assert_eq!(op.channel, SessionChannel::NativeBearer);
+        assert!(op.context.is_none());
+        let mut foreign = headers.to_vec();
+        foreign.push(("Origin", "https://foreign.invalid"));
+        assert_eq!(
+            adapter
+                .authenticate_json::<Payload>(request(&foreign, "{\"value\":8}"), 64)
+                .await
+                .err()
+                .unwrap()
+                .status(),
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(authority.mutations(), 0);
+    }
+}
