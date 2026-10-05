@@ -54,6 +54,8 @@ openssl x509 -req -sha256 -days 1 -in "$private/leaf.csr" \
     -CA "$private/ca.pem" -CAkey "$private/ca.key" -CAcreateserial \
     -extfile "$private/leaf.ext" -out "$private/data/leaf.pem" >/dev/null 2>&1
 cat "$private/data/leaf.pem" "$private/ca.pem" > "$private/data/tls.pem"
+openssl verify -CAfile "$private/ca.pem" -verify_hostname localhost \
+    "$private/data/leaf.pem" >/dev/null
 cat > "$private/data/server.toml" <<'EOF'
 version = "2"
 bindaddress = "0.0.0.0:8443"
@@ -62,13 +64,22 @@ tls_chain = "/data/tls.pem"
 tls_key = "/data/tls.key"
 domain = "localhost"
 origin = "https://localhost:8443"
-log_level = "warn"
 EOF
+# Validate with this exact pinned binary before starting a listener. Raw output
+# stays inside the private directory and is reduced to closed error categories.
+if ! docker run --rm --platform linux/amd64 --volume "$private/data:/data" \
+    "$image" /sbin/kanidmd -c /data/server.toml configtest \
+    > "$private/configtest-output" 2>&1; then
+    python3 "$root/tests/kanidm/provider.py" diagnose-config \
+        --input "$private/configtest-output" --artifacts "$artifacts"
+    exit 1
+fi
 docker run --detach --platform linux/amd64 --name "$container" \
     --label org.tabula.purpose=disposable-kanidm-acceptance \
     --publish 127.0.0.1:8443:8443 --volume "$private/data:/data" \
-    "$image" /sbin/kanidmd server >/dev/null
-python3 "$root/tests/kanidm/provider.py" ready --ca "$private/ca.pem"
+    "$image" /sbin/kanidmd -c /data/server.toml server >/dev/null
+python3 "$root/tests/kanidm/provider.py" ready --ca "$private/ca.pem" \
+    --container "$container" --artifacts "$artifacts"
 export TABULA_KANIDM_DISPOSABLE=1
 python3 "$root/tests/kanidm/provider.py" bootstrap --container "$container" \
     --ca "$private/ca.pem" --config "$private/config.json" --artifacts "$artifacts"

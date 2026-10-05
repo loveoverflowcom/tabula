@@ -42,6 +42,14 @@ Fresh Kanidm 1.11.2 requires MFA for all persons. Bootstrap enrolls a real
 provider-generated TOTP and password for this disposable person; it never
 weakens that policy. The server configuration omits `role` and uses its default
 `WriteReplica`, avoiding a non-supported snake_case enum value.
+It also omits `log_level`, whose pinned upstream enum supports only `info`,
+`debug` and `trace`. The exact binary validates `/data/server.toml` before a
+listener starts; server and recovery commands use that explicit config path.
+
+Readiness checks verified-HTTPS `/status` returning JSON `true`, then independently
+checks the pinned version header on `/robots.txt`. Upstream adds `/status` after
+the version-middleware layer, so a version header on that health route is not
+assumed. The generated TLS chain is also verified for `localhost` before startup.
 
 ## Rust acceptance interface
 
@@ -116,6 +124,9 @@ Upstream contracts/source inspected:
 - [OAuth client/scopemap/strict-redirect APIs](https://github.com/kanidm/kanidm/blob/v1.11.2/libs/client/src/oauth.rs)
 - [Fresh-domain MFA policy](https://github.com/kanidm/kanidm/blob/v1.11.2/server/lib/src/migration_data/dl15/groups.rs#L375-L397)
 - [Version 2 configuration and role defaults](https://github.com/kanidm/kanidm/blob/v1.11.2/server/core/src/config.rs)
+- [Supported logging enum](https://github.com/kanidm/kanidm/blob/v1.11.2/libs/sketching/src/lib.rs#L123-L143)
+- [Health route/version-middleware ordering](https://github.com/kanidm/kanidm/blob/v1.11.2/server/core/src/https/mod.rs#L359-L386)
+- [Official container build-profile paths](https://github.com/kanidm/kanidm/blob/v1.11.2/libs/profiles/container_generic.toml)
 - [Upstream TOTP algorithms and validation](https://github.com/kanidm/kanidm/blob/v1.11.2/server/lib/src/credential/totp.rs)
 - [RFC 6238 published independent test vectors](https://www.rfc-editor.org/rfc/rfc6238.html#appendix-B)
 
@@ -137,11 +148,18 @@ epoch after invalidation. Token minting `iat` is not a reauthentication time.
 ## Evidence artifacts and honest limits
 
 Only public provider image/version/digest, Tabula SHA, discovery, JWKS, selected
-test names and a terminal success label are preserved under
+test names, sanitized startup categories/state and a terminal success label are preserved under
 `verification/kanidm-oidc-artifacts`. No provider log, request/response body,
 HTML form, private database, credential file, CA private key or screenshot is
 uploaded. A missing success label is not a pass. The CI run and exact Tabula SHA
 establish execution; this README and workflow establish configuration only.
+On failed config validation or readiness, `provider-startup.json` contains only
+a fixed stage/probe category, allowlisted container state, numeric exit code and
+known upstream error categories. Raw config-validation output and a bounded
+startup-log capture are examined privately for fixed error markers, then erased;
+their original text, filesystem paths and arbitrary error details are never
+published. An exited/dead container fails readiness promptly rather than waiting
+out the health timeout.
 
 The initial authoring environment had no Docker/Podman daemon or Kanidm binary.
 Helper unit/syntax checks are locally executable; real-provider execution is

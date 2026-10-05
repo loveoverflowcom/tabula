@@ -23,7 +23,7 @@ self-referential commit hash.
 | DTO/web WASM all-features | `cargo check -p tabula-web -p tabula-session-http --target wasm32-unknown-unknown --all-features` PASS; no provider/SQL runtime in this client DTO graph |
 | Native and game WASM builds | `cargo build -p tabula-game-client` and release WASM web build PASS |
 | Production closures | Default auth, opt-in-feature auth binary and gameplay server all retain expected failure exit1; no listener activated |
-| Provider helper | 19 synthetic parser/form/MFA guards and published RFC6238 TOTP vectors PASS; shell/Python/workflow syntax and diff whitespace PASS |
+| Provider helper | 26 synthetic parser/form/MFA/readiness guards and published RFC6238 TOTP vectors PASS; shell/Python/workflow syntax and diff whitespace PASS |
 | Real-provider Rust target | Compiled. Local execution BLOCKED: no Docker/Podman/daemon or Kanidm binary. Disposable CI must run the non-empty ignored selection and fail setup failures |
 
 No game/rules/kernel/protocol executable or storage SQL/migration/metadata source
@@ -74,3 +74,13 @@ signals/enumeration are observed hints, not atomic output fencing. Adapter
 restart/replacement mismatches and late same-target writes remain conservatively
 masked without a verified matching receipt; safe operator recovery remains an
 explicit limitation. Existing session publication/trusted-clock limits remain.
+
+## First provider CI and readiness repair
+
+At head17641b65, the main12 and PostgreSQL1 jobs passed, while provider readiness
+failed before bootstrap/MFA or real-test selection. That is a failed/unproved
+provider gate. The source-confirmed repair removes unsupported log_level=warn,
+validates pinned config first, and probes verified HTTPS health separately from
+the version-header route. Diagnostics expose only fixed categories, container
+state and numeric exit code; raw output stays private. The repaired exact tree
+still requires an actual successful provider run before merge.

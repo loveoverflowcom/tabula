@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import tomllib
 import unittest
 from unittest import mock
 import urllib.parse
@@ -177,6 +178,71 @@ class ProviderHelperTests(unittest.TestCase):
         with mock.patch.object(provider, "Client", return_value=client):
             with self.assertRaises(provider.HarnessError):
                 provider.authorize(config, self.url())
+
+    def test_startup_config_uses_supported_v2_defaults_and_explicit_path(self):
+        script = Path(__file__).with_name("run.sh").read_text()
+        source = script.split('cat > "$private/data/server.toml" <<\'EOF\'\n', 1)[1].split("\nEOF", 1)[0]
+        config = tomllib.loads(source)
+        self.assertEqual(config["version"], "2")
+        self.assertEqual(config["domain"], "localhost")
+        self.assertEqual(config["origin"], provider.ORIGIN)
+        self.assertNotIn("log_level", config)
+        self.assertNotIn("role", config)
+        self.assertIn('/sbin/kanidmd -c /data/server.toml configtest', script)
+        self.assertIn('/sbin/kanidmd -c /data/server.toml server', script)
+        helper = Path(__file__).with_name("provider.py").read_text()
+        self.assertIn('"/sbin/kanidmd", "-c", "/data/server.toml", "scripting", "recover-account"', helper)
+
+    def test_ready_health_route_need_not_have_version_header(self):
+        client = mock.Mock()
+        client.request.side_effect = [(200, {}, b"true"), (200, {"X-KANIDM-VERSION": provider.VERSION}, b"robots")]
+        provider.probe_ready(client)
+        self.assertEqual([call.args for call in client.request.call_args_list], [("GET", "/status"), ("GET", "/robots.txt")])
+
+    def test_ready_wrong_version_or_unhealthy_status_fails(self):
+        for responses, category in (([(200, {}, b"false")], "status_unhealthy"),
+                                    ([(200, {}, b"not-json")], "status_invalid"),
+                                    ([(200, {}, b"true"), (200, {}, b"robots")], "version_mismatch")):
+            with self.subTest(category=category):
+                client = mock.Mock()
+                client.request.side_effect = responses
+                with self.assertRaises(provider.HarnessError) as error:
+                    provider.probe_ready(client)
+                self.assertEqual(error.exception.category, category)
+
+    def test_startup_log_diagnostics_never_include_raw_output(self):
+        raw = "Configuration Parse Failure: invalid enum; password=synthetic-secret\n"
+        result = provider.startup_categories(raw)
+        self.assertEqual(result, ["configuration_parse"])
+        self.assertNotIn("synthetic-secret", json.dumps(result))
+        self.assertEqual(provider.startup_categories("token=synthetic-private-token"), ["unclassified_startup_failure"])
+
+    def test_container_diagnostics_exclude_raw_error_and_private_paths(self):
+        response = mock.Mock(stdout=json.dumps({"Status": "exited", "ExitCode": 1,
+                                                "Error": "synthetic-secret", "PrivatePath": "/private/seed"}))
+        with mock.patch.object(provider.subprocess, "run", return_value=response):
+            self.assertEqual(provider.container_state("tabula-kanidm-synthetic"), {"state": "exited", "exit_code": 1})
+
+    def test_transport_diagnostics_classify_without_exception_text(self):
+        error = provider.urllib.error.URLError(ConnectionRefusedError("synthetic-private-url"))
+        self.assertEqual(provider.transport_category(error), "connection_refused")
+        self.assertEqual(provider.transport_category(TimeoutError("synthetic-secret")), "transport_timeout")
+        self.assertEqual(provider.transport_category(provider.ssl.SSLCertVerificationError("synthetic-cert")), "tls_certificate_verification")
+
+    def test_exited_provider_publishes_only_sanitized_failure(self):
+        client = mock.Mock()
+        client.request.side_effect = provider.HarnessError("provider HTTPS transport failed", "connection_refused")
+        with tempfile.TemporaryDirectory() as temporary:
+            artifacts = Path(temporary)
+            with mock.patch.object(provider, "Client", return_value=client), \
+                 mock.patch.object(provider, "container_state", return_value={"state": "exited", "exit_code": 1}), \
+                 mock.patch.object(provider, "container_startup_categories", return_value=["configuration_parse"]):
+                with self.assertRaises(provider.HarnessError):
+                    provider.wait_for_provider("synthetic-ca", "tabula-kanidm-synthetic", artifacts)
+            report = json.loads((artifacts / "provider-startup.json").read_text())
+            self.assertEqual(report, {"status": "failed", "last_probe": "connection_refused",
+                                      "container": {"state": "exited", "exit_code": 1},
+                                      "known_startup_categories": ["configuration_parse"]})
 
 
 if __name__ == "__main__":

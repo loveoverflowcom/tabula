@@ -7,6 +7,7 @@ Secrets and callback URLs are returned only to the caller's captured pipe.
 """
 
 import argparse
+import errno
 import hashlib
 import hmac
 import http.cookiejar
@@ -14,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import socket
 import ssl
 import stat
 import subprocess
@@ -38,10 +40,104 @@ GROUP = "tabula_oidc_people"
 class HarnessError(Exception):
     """A deliberately secret-free failure description."""
 
+    def __init__(self, message, category="contract"):
+        super().__init__(message)
+        self.category = category
 
-def require(condition, message):
+
+def require(condition, message, category="contract"):
     if not condition:
-        raise HarnessError(message)
+        raise HarnessError(message, category)
+
+
+def transport_category(error):
+    """Classify types/codes only, never publish exception text or request URLs."""
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return "tls_certificate_verification"
+    if isinstance(reason, ssl.SSLError):
+        return "tls_handshake"
+    if isinstance(reason, (TimeoutError, socket.timeout)):
+        return "transport_timeout"
+    if isinstance(reason, ConnectionRefusedError) or getattr(reason, "errno", None) == errno.ECONNREFUSED:
+        return "connection_refused"
+    return "network_transport"
+
+
+def startup_categories(raw_output):
+    """Allowlist fixed upstream error markers; raw output never leaves memory."""
+    markers = {
+        "configuration_parse": ("Configuration Parse Failure", "Unable to parse config version", "Unable to parse config from"),
+        "configuration_missing_database": ("No db_path set in configuration",),
+        "database_directory_unreadable": ("Unable to read metadata for database folder",),
+        "tls_file_unreadable": ("Unable to read metadata for TLS chain file", "Unable to read metadata for TLS key file"),
+        "ui_package_missing": ("Couldn't find htmx UI package path",),
+        "listener_bind_failure": ("Failed to bind tcp listener",),
+    }
+    matched = sorted(category for category, patterns in markers.items() if any(marker in raw_output for marker in patterns))
+    return matched or ["unclassified_startup_failure"]
+
+
+def container_state(container):
+    require(container.startswith("tabula-kanidm-"), "unexpected diagnostic container")
+    process = subprocess.run(["docker", "inspect", "--format", "{{json .State}}", container],
+                             capture_output=True, text=True, timeout=10, check=True)
+    raw = json.loads(process.stdout)
+    state = raw.get("Status")
+    state = state if state in {"created", "running", "paused", "restarting", "removing", "exited", "dead"} else "unknown"
+    code = raw.get("ExitCode")
+    code = code if isinstance(code, int) and 0 <= code <= 255 else None
+    return {"state": state, "exit_code": code}
+
+
+def container_startup_categories(container):
+    process = subprocess.run(["docker", "logs", "--tail", "50", container],
+                             capture_output=True, text=True, timeout=10, check=False)
+    return startup_categories((process.stdout + process.stderr)[:128 * 1024])
+
+
+def public_diagnostic(path, value):
+    # Only the closed fields/categories constructed by this module belong here.
+    path.write_text(json.dumps(value, indent=2) + "\n")
+
+
+def probe_ready(client):
+    _, _, body = client.request("GET", "/status", authenticated=False)
+    try:
+        healthy = json.loads(body)
+    except ValueError:
+        raise HarnessError("provider status was invalid", "status_invalid") from None
+    require(healthy is True, "provider status was not healthy", "status_unhealthy")
+    # /status is added AFTER version_middleware in upstream. Check the version
+    # on /robots.txt, which is registered BEFORE that layer, instead.
+    _, headers, _ = client.request("GET", "/robots.txt", authenticated=False)
+    require(headers.get("X-KANIDM-VERSION") == VERSION,
+            "provider version did not match the pin", "version_mismatch")
+
+
+def wait_for_provider(ca_path, container, artifacts):
+    deadline = time.monotonic() + 90
+    client = Client(ca_path)
+    last_probe = "not_probed"
+    while True:
+        try:
+            probe_ready(client)
+            public_diagnostic(artifacts / "provider-startup.json", {
+                "status": "ready", "https_status": "healthy", "version": "matched",
+                "container": container_state(container),
+            })
+            print("Verified HTTPS Kanidm " + VERSION + " is ready")
+            return
+        except HarnessError as error:
+            last_probe = error.category
+        state = container_state(container)
+        if state["state"] in {"exited", "dead"} or time.monotonic() >= deadline:
+            public_diagnostic(artifacts / "provider-startup.json", {
+                "status": "failed", "last_probe": last_probe, "container": state,
+                "known_startup_categories": container_startup_categories(container),
+            })
+            raise HarnessError("verified HTTPS provider readiness failed; see sanitized startup evidence", "readiness_failed")
+        time.sleep(1)
 
 
 def totp_code(parameters, timestamp=None):
@@ -119,10 +215,10 @@ class Client:
             response = self.opener.open(request, timeout=15)
         except urllib.error.HTTPError as error:
             response = error
-        except (urllib.error.URLError, TimeoutError, ssl.SSLError):
-            raise HarnessError("provider HTTPS transport failed") from None
+        except (urllib.error.URLError, TimeoutError, ssl.SSLError) as error:
+            raise HarnessError("provider HTTPS transport failed", transport_category(error)) from None
         with response:
-            require(response.status in expected, "provider request returned unexpected HTTP status " + str(response.status))
+            require(response.status in expected, "provider request returned unexpected HTTP status " + str(response.status), "http_status")
             content = response.read(BODY_LIMIT + 1)
             require(len(content) <= BODY_LIMIT, "provider body exceeded acceptance bound")
             self.auth_session = response.headers.get("X-KANIDM-AUTH-SESSION-ID")
@@ -264,7 +360,7 @@ def bootstrap(args):
     process = subprocess.run(["docker", "inspect", "--format", '{{ index .Config.Labels "org.tabula.purpose" }}', args.container],
                              capture_output=True, text=True, timeout=20, check=True)
     require(process.stdout.strip() == "disposable-kanidm-acceptance", "provider container was not labeled disposable")
-    process = subprocess.run(["docker", "exec", args.container, "/sbin/kanidmd", "scripting", "recover-account", "idm_admin"],
+    process = subprocess.run(["docker", "exec", args.container, "/sbin/kanidmd", "-c", "/data/server.toml", "scripting", "recover-account", "idm_admin"],
                              capture_output=True, text=True, timeout=30, check=True)
     recovered = json.loads(process.stdout)
     require(recovered.get("status") == "ok" and isinstance(recovered.get("output"), str), "disposable bootstrap recovery failed")
@@ -330,6 +426,11 @@ def main():
     auth.add_argument("--config", type=Path, required=True)
     wait = commands.add_parser("ready")
     wait.add_argument("--ca", type=Path, required=True)
+    wait.add_argument("--container", required=True)
+    wait.add_argument("--artifacts", type=Path, required=True)
+    diagnose = commands.add_parser("diagnose-config")
+    diagnose.add_argument("--input", type=Path, required=True)
+    diagnose.add_argument("--artifacts", type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.command == "bootstrap":
@@ -340,19 +441,16 @@ def main():
             result = authorize(read_config(args.config), request["authorization_url"],
                                args.config.with_name("consent-observed.json"))
             print(json.dumps(result))
+        elif args.command == "ready":
+            wait_for_provider(args.ca, args.container, args.artifacts)
         else:
-            deadline = time.monotonic() + 90
-            client = Client(args.ca)
-            while True:
-                try:
-                    _, headers, _ = client.request("GET", "/status")
-                    require(headers.get("X-KANIDM-VERSION") == VERSION, "unexpected provider version")
-                    print("Verified HTTPS Kanidm " + VERSION + " is ready")
-                    break
-                except HarnessError:
-                    if time.monotonic() >= deadline:
-                        raise HarnessError("verified HTTPS provider readiness failed") from None
-                    time.sleep(1)
+            with args.input.open("r", errors="replace") as stream:
+                raw = stream.read(128 * 1024)
+            public_diagnostic(args.artifacts / "provider-startup.json", {
+                "status": "failed", "stage": "config_validation",
+                "known_startup_categories": startup_categories(raw),
+            })
+            print("Provider config validation failed; see sanitized startup evidence", file=sys.stderr)
     except HarnessError as error:
         print("Disposable Kanidm acceptance support failed: " + str(error), file=sys.stderr)
         return 1
