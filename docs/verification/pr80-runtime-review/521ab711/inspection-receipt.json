@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "inspected_at_utc": "2026-10-05T20:21:00Z",
+  "inspection_by": "Implementation assistant and independent UI review assistant; not a user or parent personal inspection",
+  "capture_kind": "Actual CI Chromium PNGs, unchanged",
+  "source_commit": "521ab711a89a7a0572a02b06010e2663b2a92adf",
+  "ci_checkout": "9d2d38f8274ece6eccf9b7b4b65149e5eb225502",
+  "source_tree": "0bdd7b7569979feaf616d4493d9dcdda9d346a99",
+  "workflow_run_id": 37366102093,
+  "artifact_id": 11369021926,
+  "pixel_inspection": [
+    "07-white-terminal-result.png",
+    "08-black-terminal-result.png",
+    "09-terminal-result-page.png"
+  ],
+  "observed": "Both actual player pages show Black wins / checkmate at public revision 4 after four observed server-acknowledged moves; terminal result page also rendered",
+  "redaction_scope": "Visual inspection found no visible session cookie, private grant, CSRF value or invitation code. Existing masks are fixture-capture redaction. Metadata contains only closed diagnostic classes, build hashes and public fixture moves",
+  "authentication": "Disposable synthetic fixture identities through real PostgreSQL session authority; these images do not picture Kanidm sign-in",
+  "overall_browser_result": "FAIL: later auxiliary live-board authority-loss check",
+  "durable_cli_audit": "NOT_RUN on this failed browser run; no complete acceptance or merge claim",
+  "original_provenance_preserved": true
+}

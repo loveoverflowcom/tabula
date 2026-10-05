@@ -1,0 +1,124 @@
+{
+  "status": "fail",
+  "stage": "conceal an actual live board after current authority loss",
+  "authority_mode": "isolated fixture identities through real durable session authority",
+  "browser_processes": 3,
+  "independent_homes_profiles_cookie_jars": true,
+  "tls_errors_ignored": false,
+  "chromium_sandbox": true,
+  "moves": [
+    {
+      "move": "f2f3",
+      "response_observed": true,
+      "http_status": 200,
+      "ack_present": true
+    },
+    {
+      "move": "e7e5",
+      "response_observed": true,
+      "http_status": 200,
+      "ack_present": true
+    },
+    {
+      "move": "g2g4",
+      "response_observed": true,
+      "http_status": 200,
+      "ack_present": true
+    },
+    {
+      "move": "d8h4",
+      "response_observed": true,
+      "http_status": 200,
+      "ack_present": true
+    }
+  ],
+  "startup": {
+    "https_get": {
+      "attempts": 1,
+      "status": 200,
+      "fixture_page_ready": true,
+      "last_navigation_failure": "none"
+    },
+    "enrollment": [
+      {
+        "role": "white",
+        "status": 303,
+        "origin_class": "exact",
+        "form_media_type_expected": true,
+        "redirect_completed": true
+      },
+      {
+        "role": "black",
+        "status": 303,
+        "origin_class": "exact",
+        "form_media_type_expected": true,
+        "redirect_completed": true
+      },
+      {
+        "role": "third",
+        "status": 303,
+        "origin_class": "exact",
+        "form_media_type_expected": true,
+        "redirect_completed": true
+      }
+    ],
+    "processes": {
+      "native_process_phase": "alive",
+      "native_failure": "none_observed",
+      "tls_process_phase": "alive",
+      "tls_failure": "none_observed"
+    }
+  },
+  "distinct_actual_browser_processes_verified": true,
+  "chromium_version": "151.0.7922.34",
+  "independent_local_and_session_storage_verified": true,
+  "distinct_actual_accounts_sessions_and_httponly_cookies": true,
+  "third_client_full_live_roster_join_denied": true,
+  "terminal_views": [
+    {
+      "role": "white",
+      "revision": 4,
+      "seat": 0,
+      "status_class": "black_checkmate",
+      "connection_class": "ready",
+      "availability": "available"
+    },
+    {
+      "role": "black",
+      "revision": 4,
+      "seat": 1,
+      "status_class": "black_checkmate",
+      "connection_class": "ready",
+      "availability": "available"
+    }
+  ],
+  "both_rendered_terminal_verdicts": "Game over / Black wins / checkmate",
+  "full_game_pointer_moves": [
+    "f2f3",
+    "e7e5",
+    "g2g4",
+    "d8h4"
+  ],
+  "exact_duplicate_command_ack_without_new_projection": true,
+  "third_client_command_and_output_denied": true,
+  "hostile_header_partitions_denied": 8,
+  "hostile_grant_seat_and_envelope_partitions_denied": 6,
+  "cross_match_command_and_output_denied": true,
+  "same_session_reattach_retained_next_seq_and_denied_old_attachment": true,
+  "held_body_publication": {
+    "actual_native_nonempty_capture_held": true,
+    "separate_real_logout_before_release": true,
+    "actual_inner_publication_guard_error": true,
+    "native_poll_status": 200,
+    "native_poll_body_bytes": 0,
+    "native_poll_body_error": true,
+    "observer_before_tls_edge_buffering": true
+  },
+  "revoked_command_and_output_denied": true,
+  "failure_views": [
+    {
+      "role": "white",
+      "diagnostic": "unavailable"
+    }
+  ]
+}

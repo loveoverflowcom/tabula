@@ -1,0 +1,11 @@
+[
+  "Independent White and Black pages issued separate durable HttpOnly sessions",
+  "White created a real code; Black joined it as the opposite seat; duplicate join preserved binding",
+  "White tapped f2-f3",
+  "Black tapped e7-e5",
+  "White tapped g2-g4",
+  "Black tapped d8-h4; both independently rendered Game over / Black wins",
+  "Exact original f2-f3 command returned its stored Ack without advancing the opponent projection",
+  "A real nonempty native poll body stayed held through committed logout; release delivered zero protected bytes",
+  "Third-client, cross-match, and revoked-verifier commands and output were denied"
+]
