@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "inspected_at_utc": "2026-10-05T23:34:58.101466+00:00",
+  "source_commit": "62d2c7429fa56d19fb6b7ca6824d3a4a6721e388",
+  "workflow_run_id": "37388295062",
+  "inspection_kind": "original PNG pixel inspection after ZIP and per-image byte/hash validation",
+  "original_pngs_unchanged": true,
+  "scope": "four actual desktop browser states; partial failed capture run",
+  "capture_status": "PARTIAL: four real states captured; driver then failed to read next public phase header",
+  "visual_quality_status": "FAIL: vertically inverted clipped card fronts and information text observed",
+  "findings": [
+    {
+      "severity": "visible UI defect",
+      "observation": "Own Wolf and Witch front portraits, role labels and rule text are vertically inverted inside the card bounds; table public/private information text is also inverted. Non-clipped controls and concealed common back are upright.",
+      "candidate_source": "crates/tabula-render-macroquad/src/draw.rs lines189-214 configure_clip_viewport uses Camera2D::from_display_rect for clip rectangle",
+      "root_cause_status": "source-read candidate consistent with actual browser pixels; no fix executed; native/other platforms not observed"
+    }
+  ],
+  "captures": [
+    {
+      "file": "00-own-role-concealed.png",
+      "sha256": "10fb7ee77a89bc3233cc592d21223859f686cbe7d8e5805426b733cc78c7a3ba",
+      "observed": "Upright common concealed back; anonymous seat 1; actual night header; no revealed role",
+      "blank_or_loader": "PASS: rendered game pixels visible",
+      "clipped_orientation": "FAIL where front/info is clipped; original retained"
+    },
+    {
+      "file": "01-wolf-night-target.png",
+      "sha256": "b6294095d44c0d5603891f1093ca48ad4822035657366106483a28a9897831bd",
+      "observed": "Own Wolf front upside down; target 2 visibly selected; actual Night controls and teammate information",
+      "blank_or_loader": "PASS: rendered game pixels visible",
+      "clipped_orientation": "FAIL where front/info is clipped; original retained"
+    },
+    {
+      "file": "02-witch-potion-target.png",
+      "sha256": "c170b7d266405a2184c39f5d26648cf85f911793c94ca699ca97b04f65ab3804",
+      "observed": "Own Witch front upside down; poison potion and target 3 visibly selected; both potion controls rendered",
+      "blank_or_loader": "PASS: rendered game pixels visible",
+      "clipped_orientation": "FAIL where front/info is clipped; original retained"
+    },
+    {
+      "file": "03-dawn-public-deaths.png",
+      "sha256": "de5d97deb4e7822c07e6cdfa982d62d2bbbfe31576d97ffc2ec18ee5489dc7db",
+      "observed": "Actual public Dawn header with 1 s remaining; seats 2 and 3 visibly dead; public disclosure inverted",
+      "blank_or_loader": "PASS: rendered game pixels visible",
+      "clipped_orientation": "FAIL where front/info is clipped; original retained"
+    }
+  ],
+  "privacy_review": "Only anonymous disposable local simulator seats or public outsider views. No real accounts, passwords, cookies, CSRF, active room/join code, access tokens, financial/identity/health data visible in reviewed pixels. Own-role/team/potion details are expected authorized fixture information. This is not a full browser memory or transport privacy audit."
+}

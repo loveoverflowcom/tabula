@@ -1,0 +1,8 @@
+{
+  "status": "FAIL",
+  "scope": "Existing isolated-seat local Werewolf simulator, not online multiplayer",
+  "started_at_utc": "2026-10-05T23:27:16.577423+00:00",
+  "failure_type": "RuntimeError",
+  "failure_reason": "Phase header was not readable from actual pixels",
+  "finished_at_utc": "2026-10-05T23:28:41.605390+00:00"
+}
