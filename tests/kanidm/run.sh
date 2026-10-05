@@ -85,6 +85,7 @@ python3 "$root/tests/kanidm/provider.py" bootstrap --container "$container" \
     --ca "$private/ca.pem" --config "$private/config.json" --artifacts "$artifacts"
 export TABULA_KANIDM_TEST_CONFIG="$private/config.json"
 export TABULA_KANIDM_TEST_HELPER="$root/tests/kanidm/provider.py"
+export TABULA_KANIDM_TEST_ARTIFACTS="$artifacts"
 # Both Rust and Python must opt into this exact test CA; production TLS stays strict.
 export RUST_LOG=off
 "$@"

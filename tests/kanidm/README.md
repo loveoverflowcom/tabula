@@ -56,6 +56,7 @@ assumed. The generated TLS chain is also verified for `localhost` before startup
 - `TABULA_KANIDM_DISPOSABLE=1`: explicitly identifies this test-only environment
 - `TABULA_KANIDM_TEST_CONFIG`: private JSON, mode 0600, removed with the job
 - `TABULA_KANIDM_TEST_HELPER`: absolute path to `provider.py`
+- `TABULA_KANIDM_TEST_ARTIFACTS`: existing public-evidence directory for fixed failure IDs
 - `DATABASE_URL`: disposable runner-local PostgreSQL
 
 The private config has `provider_origin`, `issuer`, `client_id`, `client_secret`,
@@ -96,6 +97,33 @@ job-lifetime receipt allows subsequent flows to use the provider's previously
 granted consent. Every flow still requires TOTP/password authentication and signed
 resume; the helper never disables provider consent or edits the requested scopes.
 
+Kanidm emits signed cookies with `Domain=localhost`. CPython's default CookieJar
+stores these but does not return them to the dotless hostname, which prevents the
+real SSR authentication/resume flow. This test helper adapts only that localhost
+domain comparison and restricts cookie setting/returning to exact verified-HTTPS
+`localhost:8443`. All other standard Secure, path, expiry, version and domain
+checks remain active. It does not rewrite cookie contents, create provider
+tokens, weaken TLS, change network settings or prove browser cookie enforcement.
+Synthetic extract-cookies/return-cookie regressions demonstrate both the original
+failure and the adaptation's host/port/scheme/path/expiry boundaries.
+
+On authorization failure, stdout contains only
+`{"error":{"stage":"<allowed ID>","category":"<allowed ID>"}}` and exits 1.
+The same curated object is written to `provider-authorize-failure.json`. Success
+stdout remains the private callback object. Failure parsing/redaction is tested
+before the explicit ignored real-provider selection, and is synthetic evidence.
+Arbitrary stderr, HTML, cookie names/values, form fields, URLs, passwords, TOTP
+seeds/codes, authorization codes and tokens never enter a diagnostic.
+
+The fixed stage IDs are `input`, `config`, `authorization_request`, `login_begin`,
+`login_mechanism`, `totp`, `password`, `resume`, `consent`, `callback`, `flow`.
+The fixed category IDs are `input_invalid`, `config_invalid`,
+`authorization_contract`, `form_contract`, `redirect_contract`,
+`callback_contract`, `missing_flow_evidence`, `totp_parameters`, `flow_bound`,
+`tls_certificate_verification`, `tls_handshake`, `transport_timeout`,
+`connection_refused`, `network_transport`, `http_status`, `body_bound`,
+`internal_error`. Both helper and Rust caller reject unrecognized IDs or shape.
+
 ## Pinned upstream and provenance
 
 The workflow uses official `docker.io/kanidm/server`, linux/amd64, pinned to:
@@ -129,6 +157,8 @@ Upstream contracts/source inspected:
 - [Official container build-profile paths](https://github.com/kanidm/kanidm/blob/v1.11.2/libs/profiles/container_generic.toml)
 - [Upstream TOTP algorithms and validation](https://github.com/kanidm/kanidm/blob/v1.11.2/server/lib/src/credential/totp.rs)
 - [RFC 6238 published independent test vectors](https://www.rfc-editor.org/rfc/rfc6238.html#appendix-B)
+- [Provider signed-cookie domain attributes](https://github.com/kanidm/kanidm/blob/v1.11.2/server/core/src/https/views/cookies.rs)
+- [CPython dotless-host/domain comparison](https://github.com/python/cpython/blob/3.12/Lib/http/cookiejar.py)
 
 Kanidm's issuer is client-specific and has no trailing slash:
 `https://localhost:8443/oauth2/openid/tabula_oidc_acceptance`. Discovery appends

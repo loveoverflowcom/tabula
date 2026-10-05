@@ -178,20 +178,130 @@ async fn start(router: &Router, origin: &str, cookies: &str, csrf: &str) -> Stri
     value.validate().unwrap();
     value.authorization_url
 }
+// Failure output is an untrusted subprocess boundary. Only these fixed IDs
+// may appear in a public failure; callback stdout and arbitrary stderr stay private.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum HelperStage {
+    Input,
+    Config,
+    AuthorizationRequest,
+    LoginBegin,
+    LoginMechanism,
+    Totp,
+    Password,
+    Resume,
+    Consent,
+    Callback,
+    Flow,
+}
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum HelperCategory {
+    InputInvalid,
+    ConfigInvalid,
+    AuthorizationContract,
+    FormContract,
+    RedirectContract,
+    CallbackContract,
+    MissingFlowEvidence,
+    TotpParameters,
+    FlowBound,
+    TlsCertificateVerification,
+    TlsHandshake,
+    TransportTimeout,
+    ConnectionRefused,
+    NetworkTransport,
+    HttpStatus,
+    BodyBound,
+    InternalError,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HelperFailure {
+    error: HelperError,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HelperError {
+    stage: HelperStage,
+    category: HelperCategory,
+}
+fn helper_failure(bytes: &[u8]) -> String {
+    if bytes.len() > 1024 {
+        return "helper_failure_unclassified".into();
+    }
+    let Ok(failure) = serde_json::from_slice::<HelperFailure>(bytes) else {
+        return "helper_failure_unclassified".into();
+    };
+    format!(
+        "stage={:?}; category={:?}",
+        failure.error.stage, failure.error.category
+    )
+}
+#[test]
+fn helper_failure_accepts_only_closed_stage_category_ids() {
+    assert_eq!(
+        helper_failure(br#"{"error":{"stage":"totp","category":"form_contract"}}"#),
+        "stage=Totp; category=FormContract"
+    );
+    assert_eq!(helper_failure(br#"{"error":{"stage":"authorization_request","category":"tls_certificate_verification"}}"#), "stage=AuthorizationRequest; category=TlsCertificateVerification");
+}
+#[test]
+fn helper_failure_redacts_callback_extra_fields_unknown_ids_and_oversized_bytes() {
+    for input in [
+        br#"{"callback_url":"https://app.example/callback?code=secret"}"#.as_slice(),
+        br#"{"error":{"stage":"callback","category":"callback_contract","detail":"secret"}}"#,
+        br#"{"error":{"stage":"secret","category":"form_contract"}}"#,
+        br#"{"error":{"stage":"totp","category":"secret"}}"#,
+        br#"{"error":{"stage":"totp","category":"form_contract"},"token":"secret"}"#,
+        b"secret raw stderr",
+        &[0xff, 0xfe],
+    ] {
+        assert_eq!(helper_failure(input), "helper_failure_unclassified");
+    }
+    assert_eq!(
+        helper_failure(&vec![b's'; 1025]),
+        "helper_failure_unclassified"
+    );
+}
 async fn authorize(url: String) -> String {
-    tokio::task::spawn_blocking(move||{
-        let helper=std::env::var("TABULA_KANIDM_TEST_HELPER").expect("real-provider helper is required");
-        let config=std::env::var("TABULA_KANIDM_TEST_CONFIG").unwrap();
+    tokio::task::spawn_blocking(move || {
+        let helper =
+            std::env::var("TABULA_KANIDM_TEST_HELPER").expect("real-provider helper is required");
+        let config = std::env::var("TABULA_KANIDM_TEST_CONFIG").unwrap();
         assert!(Path::new(&helper).is_file());
-        let mut child=Command::new("python3").arg(helper).arg("authorize").arg("--config").arg(config).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().expect("provider helper must start");
-        let input=serde_json::to_vec(&serde_json::json!({"authorization_url":url})).unwrap();
+        let mut child = Command::new("python3")
+            .arg(helper)
+            .arg("authorize")
+            .arg("--config")
+            .arg(config)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("provider helper must start");
+        let input = serde_json::to_vec(&serde_json::json!({"authorization_url":url})).unwrap();
         child.stdin.take().unwrap().write_all(&input).unwrap();
-        let output=child.wait_with_output().expect("provider helper must finish");
-        assert!(output.status.success(),"actual provider password/resume/consent flow failed; secret-free helper diagnostics are captured");
-        assert!(output.stdout.len()<=8192);
-        let value:serde_json::Value=serde_json::from_slice(&output.stdout).expect("provider helper result schema must be valid");
-        value.get("callback_url").and_then(serde_json::Value::as_str).expect("actual provider must supply code callback").to_owned()
-    }).await.unwrap()
+        let output = child
+            .wait_with_output()
+            .expect("provider helper must finish");
+        assert!(
+            output.status.success(),
+            "actual provider login helper failed: {}",
+            helper_failure(&output.stdout)
+        );
+        assert!(output.stdout.len() <= 8192);
+        let value: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .expect("provider helper result schema must be valid");
+        value
+            .get("callback_url")
+            .and_then(serde_json::Value::as_str)
+            .expect("actual provider must supply code callback")
+            .to_owned()
+    })
+    .await
+    .unwrap()
 }
 fn callback_path(url: &str) -> String {
     let u = url::Url::parse(url).unwrap();

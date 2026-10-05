@@ -35,19 +35,50 @@ CALLBACK = "https://app.localhost:8444/api/v1/auth/oidc/callback"
 CLIENT_ID = "tabula_oidc_acceptance"
 USERNAME = "tabula_oidc_person"
 GROUP = "tabula_oidc_people"
+FAILURE_STAGES = frozenset({
+    "input", "config", "authorization_request", "login_begin", "login_mechanism",
+    "totp", "password", "resume", "consent", "callback", "flow",
+})
+FAILURE_CATEGORIES = frozenset({
+    "input_invalid", "config_invalid", "authorization_contract", "form_contract",
+    "redirect_contract", "callback_contract", "missing_flow_evidence", "totp_parameters",
+    "flow_bound", "tls_certificate_verification", "tls_handshake", "transport_timeout",
+    "connection_refused", "network_transport", "http_status", "body_bound", "internal_error",
+})
 
 
 class HarnessError(Exception):
     """A deliberately secret-free failure description."""
 
-    def __init__(self, message, category="contract"):
+    def __init__(self, message, category="contract", stage=None):
         super().__init__(message)
         self.category = category
+        self.stage = stage
 
 
 def require(condition, message, category="contract"):
     if not condition:
         raise HarnessError(message, category)
+
+
+def failure_envelope(stage, category):
+    require(stage in FAILURE_STAGES and category in FAILURE_CATEGORIES,
+            "diagnostic identifiers are not allowlisted")
+    return {"error": {"stage": stage, "category": category}}
+
+
+def report_authorize_failure(stage, category):
+    envelope = failure_envelope(stage, category)
+    artifacts = os.environ.get("TABULA_KANIDM_TEST_ARTIFACTS")
+    if artifacts:
+        directory = Path(artifacts)
+        if directory.is_dir() and not directory.is_symlink():
+            try:
+                public_diagnostic(directory / "provider-authorize-failure.json", envelope)
+            except OSError:
+                # The captured, fixed-schema failure still reaches the Rust caller.
+                pass
+    print(json.dumps(envelope))
 
 
 def transport_category(error):
@@ -148,12 +179,12 @@ def totp_code(parameters, timestamp=None):
     secret = parameters.get("secret")
     require(algorithm in ("sha1", "sha256", "sha512") and digits in (6, 8)
             and isinstance(step, int) and 0 < step <= 120,
-            "unsupported disposable TOTP parameters")
+            "unsupported disposable TOTP parameters", "totp_parameters")
     require(isinstance(secret, list) and 16 <= len(secret) <= 128
             and all(isinstance(value, int) and 0 <= value <= 255 for value in secret),
-            "invalid disposable TOTP seed")
+            "invalid disposable TOTP seed", "totp_parameters")
     timestamp = time.time() if timestamp is None else timestamp
-    require(timestamp >= 0, "invalid TOTP timestamp")
+    require(timestamp >= 0, "invalid TOTP timestamp", "totp_parameters")
     counter = int(timestamp) // step
     digest = hmac.new(bytes(secret), counter.to_bytes(8, "big"), getattr(hashlib, algorithm)).digest()
     offset = digest[-1] & 0x0f
@@ -181,13 +212,42 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+class ProviderCookiePolicy(http.cookiejar.DefaultCookiePolicy):
+    """Test-only dotless-host adaptation, bounded to the verified provider origin.
+
+    CPython maps localhost to localhost.local when checking Domain cookies.
+    Kanidm signs cookies with Domain=localhost. Adapt only that comparison;
+    retain standard Secure, path, expiry and all other domain checks.
+    """
+
+    @staticmethod
+    def exact_provider_origin(request):
+        parsed = urllib.parse.urlsplit(request.full_url)
+        return parsed.scheme == "https" and parsed.netloc == "localhost:8443"
+
+    def set_ok(self, cookie, request):
+        if not self.exact_provider_origin(request):
+            return False
+        return super().set_ok(cookie, request)
+
+    def return_ok(self, cookie, request):
+        if not self.exact_provider_origin(request):
+            return False
+        return super().return_ok(cookie, request)
+
+    def return_ok_domain(self, cookie, request):
+        if cookie.version == 0 and cookie.domain_specified and cookie.domain in {"localhost", ".localhost"}:
+            return self.exact_provider_origin(request)
+        return super().return_ok_domain(cookie, request)
+
+
 class Client:
     def __init__(self, ca_path):
         context = ssl.create_default_context(cafile=str(ca_path))
         self.opener = urllib.request.build_opener(
             urllib.request.ProxyHandler({}),
             urllib.request.HTTPSHandler(context=context),
-            urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),
+            urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar(ProviderCookiePolicy())),
             NoRedirect(),
         )
         self.token = None
@@ -220,7 +280,7 @@ class Client:
         with response:
             require(response.status in expected, "provider request returned unexpected HTTP status " + str(response.status), "http_status")
             content = response.read(BODY_LIMIT + 1)
-            require(len(content) <= BODY_LIMIT, "provider body exceeded acceptance bound")
+            require(len(content) <= BODY_LIMIT, "provider body exceeded acceptance bound", "body_bound")
             self.auth_session = response.headers.get("X-KANIDM-AUTH-SESSION-ID")
             return response.status, response.headers, content
 
@@ -252,11 +312,11 @@ class Forms(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         if tag == "form":
-            require(self.current is None, "nested provider form")
+            require(self.current is None, "nested provider form", "form_contract")
             self.current = {"action": attrs.get("action", ""), "method": attrs.get("method", "get").lower(), "fields": {}}
         elif tag == "input" and self.current is not None and attrs.get("name"):
             name = attrs["name"]
-            require(name not in self.current["fields"], "duplicate provider form input")
+            require(name not in self.current["fields"], "duplicate provider form input", "form_contract")
             if attrs.get("type", "text").lower() not in ("checkbox", "radio", "submit", "button"):
                 self.current["fields"][name] = attrs.get("value", "")
 
@@ -296,6 +356,21 @@ def callback_result(config, url, query):
 
 
 def authorize(config, authorization_url, consent_receipt=None):
+    progress = {"stage": "authorization_request"}
+    try:
+        return authorize_flow(config, authorization_url, consent_receipt, progress)
+    except HarnessError as error:
+        category = error.category
+        if category == "contract":
+            category = {"authorization_request": "authorization_contract", "callback": "callback_contract"}.get(progress["stage"], "form_contract")
+        if category not in FAILURE_CATEGORIES:
+            category = "internal_error"
+        raise HarnessError("provider authorization failed", category, progress["stage"]) from None
+    except (ValueError, KeyError, OSError, TypeError):
+        raise HarnessError("provider authorization failed", "internal_error", progress["stage"]) from None
+
+
+def authorize_flow(config, authorization_url, consent_receipt, progress):
     query = authorization_parameters(config, authorization_url)
     previous_consent = False
     if consent_receipt is not None and consent_receipt.exists():
@@ -307,19 +382,26 @@ def authorize(config, authorization_url, consent_receipt=None):
     method, fields = "GET", None
     saw_login, saw_totp, saw_resume, saw_consent = False, False, False, False
     for _ in range(12):
+        progress["stage"] = {
+            "/ui/oauth2": "authorization_request", "/ui/login/begin": "login_begin",
+            "/ui/login/mech_choose": "login_mechanism", "/ui/login/totp": "totp",
+            "/ui/login/pw": "password", "/ui/oauth2/resume": "resume",
+            "/ui/oauth2/consent": "consent",
+        }[urllib.parse.urlsplit(current).path]
         status, headers, body = client.request(method, current, form=fields, expected=(200, 302, 303), authenticated=False)
         if status in (302, 303):
             location = headers.get("Location")
-            require(bool(location), "provider redirect had no location")
+            require(bool(location), "provider redirect had no location", "redirect_contract")
             next_url = urllib.parse.urljoin(current, location)
             if urllib.parse.urlsplit(next_url).netloc != "localhost:8443":
                 require(saw_login and saw_totp and saw_resume and (saw_consent or previous_consent),
-                        "provider did not execute fresh MFA login/resume and establish consent")
+                        "provider did not execute fresh MFA login/resume and establish consent", "missing_flow_evidence")
+                progress["stage"] = "callback"
                 result = callback_result(config, next_url, query)
                 if saw_consent and consent_receipt is not None and not consent_receipt.exists():
                     private_json(consent_receipt, {"actual_provider_consent_observed": True})
                 return result
-            require(urllib.parse.urlsplit(next_url).path == "/ui/oauth2/resume", "unexpected provider redirect")
+            require(urllib.parse.urlsplit(next_url).path == "/ui/oauth2/resume", "unexpected provider redirect", "redirect_contract")
             saw_resume = True
             current, method, fields = next_url, "GET", None
             continue
@@ -328,7 +410,7 @@ def authorize(config, authorization_url, consent_receipt=None):
         forms = [form for form in parser.forms if form["action"] in {
             "/ui/login/begin", "/ui/login/mech_choose", "/ui/login/totp", "/ui/login/pw", "/ui/oauth2/consent",
         }]
-        require(len(forms) == 1 and forms[0]["method"] == "post", "provider did not offer one supported form")
+        require(len(forms) == 1 and forms[0]["method"] == "post", "provider did not offer one supported form", "form_contract")
         form = forms[0]
         fields = form["fields"].copy()
         action = form["action"]
@@ -351,7 +433,7 @@ def authorize(config, authorization_url, consent_receipt=None):
             require(set(fields) == {"consent_token"}, "unexpected provider consent fields")
             saw_consent = True
         current, method = urllib.parse.urljoin(ORIGIN, action), "POST"
-    raise HarnessError("provider flow exceeded the bounded number of steps")
+    raise HarnessError("provider flow exceeded the bounded number of steps", "flow_bound")
 
 
 def bootstrap(args):
@@ -432,13 +514,16 @@ def main():
     diagnose.add_argument("--input", type=Path, required=True)
     diagnose.add_argument("--artifacts", type=Path, required=True)
     args = parser.parse_args()
+    authorize_stage = "input"
     try:
         if args.command == "bootstrap":
             bootstrap(args)
         elif args.command == "authorize":
             request = json.loads(sys.stdin.buffer.read(16 * 1024 + 1))
             require(set(request) == {"authorization_url"}, "unexpected helper request")
-            result = authorize(read_config(args.config), request["authorization_url"],
+            authorize_stage = "config"
+            config = read_config(args.config)
+            result = authorize(config, request["authorization_url"],
                                args.config.with_name("consent-observed.json"))
             print(json.dumps(result))
         elif args.command == "ready":
@@ -452,9 +537,21 @@ def main():
             })
             print("Provider config validation failed; see sanitized startup evidence", file=sys.stderr)
     except HarnessError as error:
+        if args.command == "authorize":
+            stage = error.stage if error.stage in FAILURE_STAGES else authorize_stage
+            category = error.category if error.category in FAILURE_CATEGORIES else {
+                "input": "input_invalid", "config": "config_invalid",
+            }.get(stage, "internal_error")
+            report_authorize_failure(stage, category)
+            return 1
         print("Disposable Kanidm acceptance support failed: " + str(error), file=sys.stderr)
         return 1
     except (ValueError, KeyError, OSError, subprocess.SubprocessError, TypeError):
+        if args.command == "authorize":
+            report_authorize_failure(authorize_stage, {
+                "input": "input_invalid", "config": "config_invalid",
+            }.get(authorize_stage, "internal_error"))
+            return 1
         # Upstream bodies, cookies, subprocess output, passwords, URLs and tokens
         # are deliberately excluded even when setup or authentication fails.
         print("Disposable Kanidm acceptance support failed (details redacted)", file=sys.stderr)

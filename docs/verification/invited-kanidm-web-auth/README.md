@@ -23,7 +23,7 @@ self-referential commit hash.
 | DTO/web WASM all-features | `cargo check -p tabula-web -p tabula-session-http --target wasm32-unknown-unknown --all-features` PASS; no provider/SQL runtime in this client DTO graph |
 | Native and game WASM builds | `cargo build -p tabula-game-client` and release WASM web build PASS |
 | Production closures | Default auth, opt-in-feature auth binary and gameplay server all retain expected failure exit1; no listener activated |
-| Provider helper | 26 synthetic parser/form/MFA/readiness guards and published RFC6238 TOTP vectors PASS; shell/Python/workflow syntax and diff whitespace PASS |
+| Provider helper | 34 synthetic parser/form/MFA/readiness/cookie guards and published RFC6238 TOTP vectors PASS; shell/Python/workflow syntax and diff whitespace PASS |
 | Real-provider Rust target | Compiled. Local execution BLOCKED: no Docker/Podman/daemon or Kanidm binary. Disposable CI must run the non-empty ignored selection and fail setup failures |
 
 No game/rules/kernel/protocol executable or storage SQL/migration/metadata source
@@ -84,3 +84,17 @@ validates pinned config first, and probes verified HTTPS health separately from
 the version-header route. Diagnostics expose only fixed categories, container
 state and numeric exit code; raw output stays private. The repaired exact tree
 still requires an actual successful provider run before merge.
+
+## SSR cookie and safe failure repair
+
+Headc76bc7bc passed real private-CA HTTPS readiness, MFA test-account bootstrap,
+discovery/JWKS and selected one actual lifecycle case, but its first SSR authorize
+helper failed before code exchange/session issuance. The source-confirmed defect
+is CPython's dotless localhost domain comparison: Kanidm's Domain=localhost
+signed cookies were stored but not returned. The isolated HTTP helper now adapts
+that one comparison only for exact verified HTTPS localhost:8443, preserving
+standard Secure/path/expiry checks. Synthetic extract→return rejection tests
+passed; this is not browser-cookie enforcement evidence. Two explicit Rust
+parser tests accept only fixed failure-stage/category IDs and reject callback,
+extra-field, unknown and oversized data. The actual provider lifecycle remains
+unproved until the repaired exact tree passes CI.

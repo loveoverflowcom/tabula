@@ -1,6 +1,7 @@
 """Synthetic parser/guard regressions; these tests do not prove real OIDC."""
 
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -9,6 +10,9 @@ import tomllib
 import unittest
 from unittest import mock
 import urllib.parse
+import urllib.request
+from contextlib import redirect_stdout
+from email.message import Message
 
 
 SPEC = importlib.util.spec_from_file_location("kanidm_acceptance_provider", Path(__file__).with_name("provider.py"))
@@ -243,6 +247,85 @@ class ProviderHelperTests(unittest.TestCase):
             self.assertEqual(report, {"status": "failed", "last_probe": "connection_refused",
                                       "container": {"state": "exited", "exit_code": 1},
                                       "known_startup_categories": ["configuration_parse"]})
+
+    def cookie_jar(self, policy=None, attributes="Secure; HttpOnly; Path=/; Domain=localhost", source=None):
+        """Only synthetic headers; never a credential or real provider response."""
+        response = mock.Mock()
+        headers = Message()
+        headers.add_header("Set-Cookie", "synthetic=non-secret; " + attributes)
+        response.info.return_value = headers
+        jar = provider.http.cookiejar.CookieJar(policy)
+        jar.extract_cookies(response, urllib.request.Request(source or provider.ORIGIN + "/ui/oauth2"))
+        return jar
+
+    def returned_cookie(self, jar, url):
+        request = urllib.request.Request(url)
+        jar.add_cookie_header(request)
+        return request.get_header("Cookie")
+
+    def test_original_stdlib_dotless_domain_cookie_failure_is_reproduced(self):
+        jar = self.cookie_jar()
+        self.assertEqual(len(list(jar)), 1)
+        self.assertIsNone(self.returned_cookie(jar, provider.ORIGIN + "/ui/login/begin"))
+
+    def test_provider_dotless_cookie_adaptation_keeps_exact_origin(self):
+        jar = self.cookie_jar(provider.ProviderCookiePolicy())
+        self.assertEqual(self.returned_cookie(jar, provider.ORIGIN + "/ui/login/totp"), "synthetic=non-secret")
+        for url in ("http://localhost:8443/ui/login/totp", "https://localhost:9443/ui/login/totp",
+                    "https://other.localhost:8443/ui/login/totp", "https://other.invalid:8443/ui/login/totp"):
+            with self.subTest(url=url):
+                self.assertIsNone(self.returned_cookie(jar, url))
+
+    def test_provider_cookie_adaptation_keeps_path_expiry_and_other_domains(self):
+        for attributes in ("Secure; Path=/restricted; Domain=localhost", "Secure; Path=/; Domain=localhost; Max-Age=0",
+                           "Secure; Path=/; Domain=other.invalid"):
+            with self.subTest(attributes=attributes):
+                jar = self.cookie_jar(provider.ProviderCookiePolicy(), attributes)
+                self.assertIsNone(self.returned_cookie(jar, provider.ORIGIN + "/ui/login/totp"))
+
+    def test_nonzero_cookie_version_keeps_standard_policy(self):
+        policy = provider.ProviderCookiePolicy()
+        jar = self.cookie_jar(policy)
+        cookie = next(iter(jar))
+        cookie.version = 1
+        request = urllib.request.Request(provider.ORIGIN + "/ui/login/totp")
+        self.assertFalse(provider.http.cookiejar.DefaultCookiePolicy().return_ok(cookie, request))
+        self.assertFalse(policy.return_ok(cookie, request))
+
+    def test_adapted_cookies_cannot_be_set_from_another_origin(self):
+        for source in ("http://localhost:8443/ui/oauth2", "https://localhost:9443/ui/oauth2",
+                       "https://other.localhost:8443/ui/oauth2", "https://other.invalid/ui/oauth2"):
+            with self.subTest(source=source):
+                jar = self.cookie_jar(provider.ProviderCookiePolicy(), source=source)
+                self.assertEqual(len(list(jar)), 0)
+                self.assertIsNone(self.returned_cookie(jar, provider.ORIGIN + "/ui/login/totp"))
+
+    def test_fixed_authorize_failure_schema_rejects_arbitrary_text(self):
+        self.assertEqual(provider.failure_envelope("totp", "form_contract"), {"error": {"stage": "totp", "category": "form_contract"}})
+        for stage, category in (("secret-stage", "form_contract"), ("totp", "password=synthetic-private")):
+            with self.subTest(stage=stage, category=category):
+                with self.assertRaises(provider.HarnessError):
+                    provider.failure_envelope(stage, category)
+
+    def test_failure_artifact_and_stdout_are_exact_allowlisted_ids(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            capture = io.StringIO()
+            with mock.patch.dict(os.environ, {"TABULA_KANIDM_TEST_ARTIFACTS": temporary}), redirect_stdout(capture):
+                provider.report_authorize_failure("totp", "form_contract")
+            expected = {"error": {"stage": "totp", "category": "form_contract"}}
+            self.assertEqual(json.loads(capture.getvalue()), expected)
+            self.assertEqual(json.loads((Path(temporary) / "provider-authorize-failure.json").read_text()), expected)
+
+    def test_authorize_preserves_fixed_stage_and_discards_arbitrary_error_text(self):
+        config = dict(self.config, ca_path="synthetic-ca", username="synthetic-person", password="synthetic-password")
+        client = mock.Mock()
+        client.request.side_effect = provider.HarnessError("arbitrary token=synthetic-private", "http_status")
+        with mock.patch.object(provider, "Client", return_value=client):
+            with self.assertRaises(provider.HarnessError) as error:
+                provider.authorize(config, self.url())
+        self.assertEqual(provider.failure_envelope(error.exception.stage, error.exception.category),
+                         {"error": {"stage": "authorization_request", "category": "http_status"}})
+        self.assertNotIn("synthetic-private", str(error.exception))
 
 
 if __name__ == "__main__":
