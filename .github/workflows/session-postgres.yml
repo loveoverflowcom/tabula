@@ -7,6 +7,7 @@ on:
       - 'crates/tabula-session/**'
       - 'crates/tabula-session-http/**'
       - 'crates/tabula-storage/**'
+      - 'apps/web/**'
       - '.sqlx/**'
       - '.github/workflows/session-postgres.yml'
       - 'Cargo.toml'

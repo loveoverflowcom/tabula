@@ -77,3 +77,11 @@ The historical B/C production backlog remains valid outside this exception.
 Whole-issue login/register/friends acceptance, actual provider and browser/native
 proof, output fences and Phase 2/3/4/5 exits remain separate gates. Native voice
 is outside this series.
+
+The third slice's [design delta](../ui/screens/account-state-isolated.md) and
+[evidence ledger](../verification/issue-54-account-state-ui/README.md) record the
+implemented isolated consumer and its remaining target evidence. The next
+production work is still the existing prerequisite/backlog work, including
+actual provider/TLS/cookie/AT/BFCache evidence, bounded non-secret cross-reload
+logout suppression and live deadline/revocation delivery. Do not extend the
+exception into voice, invitations or provider provisioning by inference.

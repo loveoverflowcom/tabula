@@ -442,7 +442,7 @@ Rows are consumers, columns are what they are permitted to depend on.
 | `services/tabula-server` | Y | — | Y | Y | — | — | — | Y | Y | Y | Y | Y | — | — |
 | `services/tabula-auth` | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `apps/game-client` | Y | Y | Y | Y | Y | Y | Y | — | — | f | — | — | Y | — |
-| `apps/web` (Leptos) | Y | — | Y | Y | Y | — | Y | — | — | — | — | — | — | Y |
+| `apps/web` (Leptos) | Y | — | Y | Y | Y | — | Y | — | — | f | f | — | — | Y |
 | `apps/desktop` (Tauri) | Y | — | Y | Y | Y | — | Y | — | — | Y | — | — | — | — |
 
 Notes on the interesting cells:
@@ -461,6 +461,7 @@ Notes on the interesting cells:
   "swap Postgres deployment model" and "add a read replica" non-invasive.
 - **`tabula-session` owns internal session policy and ports under ADR-0036.** Its runtime credential dependencies are forbidden in deterministic games. Storage may reference it only for the explicit isolated native session adapter; no service or client is activated.
 - **`tabula-session-http` is an isolated HTTP library under ADR-0036.** Default/WASM exposes versioned DTOs only; opt-in native `isolated` uses Axum/Tokio and session ports, while `postgres` composes the storage adapter for disposable acceptance. It contains no SQL, provider verification, production bootstrap or game authority
+- **`apps/web` may consume only the default/WASM `tabula-session-http` DTO surface for ADR-0036 PR3.** Browser Fetch and document-memory CSRF remain in this leaf binary; no client-tier crate imports the runtime HTTP owner. Its non-default native `account-http-acceptance` feature composes the existing isolated authority/HTTP test fixture only; Axum/Tokio do not enable a production listener or either service.
 - **Nothing depends on `services/*`.** Services are leaves (binaries).
 - **ADR-0034 reserves `tabula-auth` as a std-only skeleton.** Account authentication
   uses Kanidm; Tabula sessions retain ADR-0031's guarantees. Provider/runtime

@@ -60,16 +60,17 @@ pub struct TestAuthority {
 
 impl TestAuthority {
     pub fn new() -> Self {
+        Self::with_user_id(UserId(0x000a_11ce))
+    }
+
+    /// Synthetic identity provisioning for cross-account client partitions only.
+    /// This is not a provider authentication or public account-creation path.
+    pub fn with_user_id(user_id: UserId) -> Self {
         let now = UnixMillis::new(1_000).unwrap();
         Self {
             state: Arc::new(Mutex::new(State {
-                account: AccountRecord::new(
-                    UserId(0x000a_11ce),
-                    AccountEpoch::new(0).unwrap(),
-                    true,
-                    now,
-                )
-                .unwrap(),
+                account: AccountRecord::new(user_id, AccountEpoch::new(0).unwrap(), true, now)
+                    .unwrap(),
                 sessions: BTreeMap::new(),
                 now,
                 failure: None,
@@ -124,6 +125,15 @@ impl TestAuthority {
         let mut state = self.state.lock().unwrap();
         state.mutation_failure = Some(error);
         state.fail_after_commit = after_commit;
+    }
+
+    // Shared with PR3's lifecycle acceptance; PR2 keeps its injected fault for
+    // each whole case and therefore does not call the explicit recovery hook.
+    #[allow(dead_code)]
+    pub fn clear_mutation_fault(&self) {
+        let mut state = self.state.lock().unwrap();
+        state.mutation_failure = None;
+        state.fail_after_commit = false;
     }
 
     pub fn set_time(&self, now: u64) {
