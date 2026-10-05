@@ -22,6 +22,23 @@ Doc 07 calls for lobby-less direct join before rooms/friends/matchmaking. This
 opt-in vertical slice reuses the separate Leptos shell and Macroquad game
 document. It does not establish broad Phase 3, 4 or 5 exits.
 
+## Recovery integration history and current source
+
+Develop `9642e4a60a8041bde3652d96dae0d1544bfaec3a` integrated partial recovery
+checkpoints after independently merged PR69/70/75. That historical integration
+kept native gateway/fixture wiring and real direct launch closed. Its unit and
+compile receipts do not establish this PR's online acceptance.
+
+PR80 restores the complete opt-in gateway, SQL-owned admission, shell handoff,
+loader transport and native acceptance fixture against that baseline, preserving
+the external asset ownership, voice/local simulator changes and authority tests.
+Ordinary registry bindings still advertise no deployed direct document. Only an
+explicit `RuntimeBinding::direct_online` can expose a game-owned eligible package;
+the native gateway independently rejects an ineligible package. The game module
+owns configuration validation and actual construction. Implemented source is
+not executed browser/database proof; the required gates below remain open until
+exact-source CI and artifact inspection complete.
+
 ## Decision and ownership
 
 Both default services remain closed. A non-default native HTTP gateway
@@ -51,7 +68,11 @@ code. Code is a discovery/admission hint, never account authentication or a
 command credential. Code/public match ID alone cannot read a projection or
 choose a seat. Current authenticated membership is assigned one stable
 server-owned seat; duplicate admission cannot allocate another. Invalid,
-expired and full codes have public-safe errors.
+expired and full codes have public-safe errors. Admission is limited to four
+active rooms per member and 128 rooms over the lifetime of a disposable dataset,
+including terminal and expired rooms. The latter matches the non-evicting live
+actor budget; it is not a reusable 128-concurrent-room service capacity. Busy
+capacity is explicit, and PR3 owns safe retirement/recovery before wider reuse.
 
 Only current session authority plus durable membership can obtain a short-lived
 session/match/viewer-scoped attachment grant. Grants stay in document memory,
@@ -97,7 +118,9 @@ online state.
 The shell uses shared semantic-token UI and real separate-document navigation.
 Only public match routing identity enters the address; the game document
 reacquires context/grant. Existing selected-package assets, loader and cache
-remain the gameplay loading path. Disconnection visibly blocks commands.
+remain the gameplay loading path. Disconnection visibly blocks commands and conceals the last authorized canvas
+and accessibility projection. Document lifecycle retirement cannot silently
+restore an old grant/view; renewed navigation needs fresh authority.
 Reliable pending replay/resync, refresh continuity and automatic server/actor
 restart acceptance belong to PR3. Stable membership/operation identity must
 permit that next slice without trusting client seats.
@@ -135,10 +158,11 @@ This fixture is not public signup or live deployment. Disposable plaintext
 seed storage does not close production encryption/access/backup obligations.
 PR3's midcommand network drop, refresh, revoke/reconnect and actual server-crash
 partitions remain open. Timers/outage-clock policy, external-effect outbox,
-distributed ownership, spectators, native secure stores, online mobile,
+distributed ownership (including cross-process owner-generation fencing of
+already queued output), spectators, native secure stores, online mobile,
 rooms/friends/queues, ranking/history, voice, traffic shaping, load/SLO,
-backup/PITR and broad phase exits remain separate. Unmerged PR69/70/75 is not
-imported or counted as accepted evidence.
+backup/PITR and broad phase exits remain separate. PR69/70/75 are already merged into develop; their local presentation, assets and
+voice evidence does not establish this online slice.
 
 Revisit before production/live migration, WSS/native, clock/hidden/private-effect
 games, widened origins/audiences, relaxed bounds, changed scope/wire or robust

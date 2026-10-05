@@ -3191,13 +3191,19 @@ version = "0.0.0"
 dependencies = [
  "glam 0.29.3",
  "macroquad",
+ "serde",
+ "serde_json",
  "tabula-assets",
  "tabula-core",
  "tabula-design",
  "tabula-game-api",
  "tabula-game-chess",
  "tabula-game-tiles",
+ "tabula-game-werewolf",
+ "tabula-match-http",
+ "tabula-net-client",
  "tabula-presentation",
+ "tabula-protocol",
  "tabula-render-macroquad",
 ]
 
@@ -3263,6 +3269,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "tabula-match-http"
+version = "0.0.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "bytes",
+ "hmac 0.12.1",
+ "http-body",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tabula-core",
+ "tabula-game-api",
+ "tabula-match",
+ "tabula-protocol",
+ "tabula-registry",
+ "tabula-session",
+ "tabula-session-http",
+ "tabula-storage",
+ "tokio",
+]
+
+[[package]]
 name = "tabula-match-journal"
 version = "0.0.0"
 dependencies = [
@@ -3278,7 +3307,6 @@ version = "0.0.0"
 dependencies = [
  "tabula-core",
  "tabula-protocol",
- "tabula-registry",
  "thiserror 1.0.69",
 ]
 
@@ -3348,6 +3376,7 @@ name = "tabula-server"
 version = "0.0.0"
 dependencies = [
  "tabula-core",
+ "tabula-match-http",
 ]
 
 [[package]]
@@ -3440,6 +3469,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tabula-core",
+ "tabula-match-http",
  "tabula-registry",
  "tabula-session",
  "tabula-session-http",
@@ -4237,6 +4267,7 @@ dependencies = [
  "tabula-game-chess",
  "tabula-game-client",
  "tabula-game-tiles",
+ "tabula-game-werewolf",
  "tabula-presentation",
  "tabula-registry",
  "tabula-testkit",

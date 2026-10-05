@@ -6,6 +6,12 @@ use crate::{
 use leptos::prelude::*;
 use tabula_registry::{GameId, RuntimeBinding};
 
+/// Only the explicitly built online panel can assert this deployment binding.
+/// The ordinary local setup keeps `RuntimeBinding::bound` and its default gates.
+pub(crate) fn runtime_binding() -> RuntimeBinding {
+    option_env!("TABULA_PLAY_BASE").map_or(RuntimeBinding::unbound(), RuntimeBinding::direct_online)
+}
+
 #[component]
 pub fn OnlinePanel(id: String) -> impl IntoView {
     let locale = use_locale();
@@ -74,12 +80,11 @@ fn open_admission(
         return;
     }
     let (_, catalog) = shell(locale);
+    let binding = runtime_binding();
     let target = GameId::new(game_id.to_owned())
         .ok()
         .and_then(|id| catalog.get(&id))
-        .filter(|entry| entry.game().direct_document());
-    let binding =
-        option_env!("TABULA_PLAY_BASE").map_or(RuntimeBinding::unbound(), RuntimeBinding::bound);
+        .filter(|entry| binding.supports_direct(entry.game()));
     if let Some(entry) = target {
         if let Ok(handoff) =
             tabula_registry::launch::resolve_direct(binding, entry.game(), match_id, locale)

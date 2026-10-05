@@ -11,6 +11,12 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // LiveKit 2.29.0 pins davidliu/audioswitch at 039a35aefab7747c557242fa216c9ea11743b604.
+        // Resolve only that provider module from JitPack, never arbitrary project dependencies.
+        exclusiveContent {
+            forRepository { maven { url = uri("https://jitpack.io") } }
+            filter { includeModule("com.github.davidliu", "audioswitch") }
+        }
     }
 }
 

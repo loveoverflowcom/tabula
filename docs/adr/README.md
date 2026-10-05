@@ -2,7 +2,7 @@
 
 Most decisions live as **short-form rows** in
 [`docs/architecture/00-architecture-principles.md` §10](../architecture/00-architecture-principles.md#10-adr-register)
-— ADR-001 through ADR-041 (0035/0037 are reserved by independent unmerged PRs). Each row states the decision, its status, why, and the
+— ADR-001 through ADR-041. Each row states the decision, its status, why, and the
 trigger that would make us revisit it.
 
 This directory is for the cases where a row is not enough: a long argument, a
@@ -63,16 +63,20 @@ Worth knowing, because they are what most future ADRs will be about:
 4. Macroquad's ceiling, or the mobile WebView's latency (ADR-0032), arriving during Phase 6 mobile work.
 5. Scope drift into building a UI framework or a game engine.
 
-ADR-0035 is occupied by the separately reviewable, unmerged
-[Werewolf PR #69](https://github.com/loveoverflowcom/tabula/pull/69).
-This branch uses [ADR-0036](0036-isolated-durable-session-validation.md) for
-its isolated session exception. This number reservation is not a dependency
-on PR #69 or evidence that its phase/ADR has merged.
+[ADR-0035](0035-werewolf-local-simulator.md) records the opt-in local Werewolf
+referee and isolated-seat simulator, merged in
+[PR #69](https://github.com/loveoverflowcom/tabula/pull/69). Online/social play,
+authenticated seats, voice and rollout remain gated.
+[ADR-0036](0036-isolated-durable-session-validation.md) records the separate
+isolated session exception.
 
-ADR-0037 remains occupied by independent native-voice [PR #75](https://github.com/loveoverflowcom/tabula/pull/75).
+[ADR-0037](0037-native-mobile-voice-client.md), merged in
+[PR #75](https://github.com/loveoverflowcom/tabula/pull/75), opens only the bounded
+native client/isolated development voice slice. Production/backend voice and
+phase exits remain closed; actual device/SFU audio acceptance is still deferred.
+
 [ADR-0038](0038-isolated-invited-kanidm-web-auth.md) is the explicit invited web
 authentication exception, with real-provider merge proof and production closure.
-Neither number reservation is an unmerged-code dependency.
 
 [ADR-0039](0039-isolated-match-actor-runtime.md) records only the separately
 approved offline actor/wire slice. [ADR-0040](0040-isolated-durable-match-postgres.md)

@@ -16,7 +16,7 @@
   const BUDGET_LOCK = `${CACHE_NAME}:budget`;
   const HASH = /^[0-9a-f]{64}$/;
   const RESOURCE = /^resources\/([0-9a-f]{64})\.([a-z0-9]{1,12})$/;
-  const VIRTUAL = new Set(["tabula-launch.txt", "tabula-ready.txt"]);
+  const VIRTUAL = new Set(["tabula-launch.txt", "tabula-ready.txt", "tabula-concealed.txt"]);
 
   function record(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return false;

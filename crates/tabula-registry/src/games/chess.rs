@@ -164,7 +164,10 @@ impl GameSetup for ChessSetup {
         MODES
     }
 
-    fn direct_document() -> bool { true }
+    fn direct_host_supported() -> bool {
+        true
+    }
+
     fn direct_config_supported(config: &Config) -> bool {
         // PR2 has no real timer adapter: untimed only, fail closed otherwise.
         config.clock.is_none()

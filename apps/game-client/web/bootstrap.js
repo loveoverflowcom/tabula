@@ -31,6 +31,10 @@
   let returnToTabula = integratedEntry;
   const vi = {loading:"Đang mở bàn cờ…",checking:"Đang mở tài nguyên chương trình",download:"Đang tải chương trình WebAssembly",verifying:"Đang kiểm tra chương trình WebAssembly",cacheCheck:"Đang kiểm tra chương trình WebAssembly đã lưu",cached:"Đang dùng chương trình WebAssembly đã kiểm tra",resources:"Đang mở tài nguyên bàn cờ",cacheSource:"bộ nhớ đệm đã kiểm tra",cacheCheckSource:"kiểm tra bộ nhớ đệm",networkSource:"tải từ mạng",starting:"Đang khởi tạo bàn cờ",back:"Về thiết lập",retry:"Thử lại",error:"Không thể mở bàn cờ",restart:"Tải lại sẽ bắt đầu một ván mới. Ván cục bộ không được lưu",leaveTitle:"Rời ván cờ?",leaveDetail:"Ván cục bộ này không được lưu. Bạn có thể ở lại hoặc quay về thiết lập để bắt đầu ván mới",stay:"Ở lại",leave:"Rời ván cờ",help:"Trợ giúp bàn phím",helpTitle:"Điều khiển bàn cờ",helpDetail:"Chạm hoặc nhấp quân rồi ô đích. Dùng phím mũi tên để đổi ô, Enter để chọn, Escape để hủy chọn hoặc phong cấp. Tab chuyển từ ô cuối tới các nút trong ván; Shift+Tab đến nút rời ván. Trình đọc màn hình đầy đủ cho bàn cờ chưa có. Đồng hồ tiếp tục chạy khi mở hộp thoại hoặc chuyển tab; tải lại bắt đầu ván mới",closeHelp:"Về bàn cờ",tabulaBack:"Về Tabula",tabulaLeaveDetail:"Ván cục bộ này không được lưu. Về Tabula để thiết lập ván mới. Đồng hồ tiếp tục chạy khi mở hộp thoại hoặc chuyển tab"};
   const en = {loading:"Opening your board…",checking:"Resolving game resources",download:"Downloading WebAssembly game",verifying:"Checking WebAssembly game",cacheCheck:"Checking cached WebAssembly game",cached:"Using verified cached WebAssembly game",resources:"Opening board resource",cacheSource:"verified cache",cacheCheckSource:"checking cached bytes",networkSource:"network download",starting:"Starting the Chess board",back:"Back to setup",retry:"Try again",error:"Could not open the board",restart:"Reloading starts a new game. Local games are not saved",leaveTitle:"Leave this game?",leaveDetail:"This local game is not saved. Stay here or return to setup to start a new game",stay:"Stay",leave:"Leave game",help:"Keyboard help",helpTitle:"Board controls",helpDetail:"Tap or click a piece, then its destination. Use arrow keys to move focus, Enter to select, and Escape to cancel selection or promotion. Tab moves from the last square to in-game controls; Shift+Tab reaches the leave button. A complete screen-reader board is not available. Clocks keep running while dialogs are open or the tab is hidden; reloading starts a new game",closeHelp:"Back to board",tabulaBack:"Return to Tabula",tabulaLeaveDetail:"This local game is not saved. Return to Tabula to set up a new game. Clocks keep running while dialogs are open or the tab is hidden"}; // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
+  const simulatorText = {
+    vi:{loading:"Đang mở Ma Sói…",resources:"Đang mở bộ bài",starting:"Đang khởi tạo trọng tài",error:"Không thể mở mô phỏng",leaveTitle:"Rời mô phỏng?",leave:"Rời mô phỏng",helpTitle:"Điều khiển Ma Sói",helpDetail:"Đây là mô phỏng cục bộ điều khiển từng ghế, không phải bàn nhiều người bảo mật. Tab và phím mũi tên đổi mục, Enter chọn. Escape che bài và hủy lựa chọn. Chuyển ghế luôn che vai trước. Tiếp pha đưa thời gian logic tới hạn cố định. Chuyển tab hoặc mở hộp thoại che bài; đồng hồ vẫn chạy. Tải lại bắt đầu trận mới. Trình đọc màn hình đầy đủ chưa có",closeHelp:"Về mô phỏng"},
+    en:{loading:"Opening Werewolf…",resources:"Opening card resources",starting:"Starting deterministic referee",error:"Could not open simulator",leaveTitle:"Leave simulator?",leave:"Leave simulator",helpTitle:"Werewolf controls",helpDetail:"This local simulator controls isolated seats; it is not a secure multiplayer table. Tab and arrows move focus; Enter activates. Escape conceals cards and cancels selection. Switching seats always conceals the previous role. Next phase advances logical time to its fixed deadline. Changing tabs or opening dialogs conceals cards; the timer keeps running. Reload starts a new match. A complete screen reader is not implemented",closeHelp:"Back to simulator"} // xtask-allow-game-id: ADR-0035 opt-in standalone leaf, not platform dispatch.
+  };
   let text = vi;
   byId("glcanvas").tabIndex = -1;
   byId("glcanvas").setAttribute("aria-hidden", "true");
@@ -97,10 +101,25 @@
     byId("error-back").focus();
     console.error("Standalone Chess:", error); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
   }
+  let privacyEpoch = 0, concealedEpoch = -1;
+  function protectPrivateSurface() {
+    if (config?.game !== "werewolf" || !byId("privacy-shield") || !current()) return; // xtask-allow-game-id: ADR-0035 bounded privacy surface.
+    privacyEpoch++;
+    byId("privacy-shield").hidden = false;
+  }
+  function revealConcealedSurface() {
+    if (!byId("privacy-shield") || concealedEpoch !== privacyEpoch || !current() || !ready || byId("leave-dialog").open || byId("help-dialog").open || document.activeElement !== byId("glcanvas") || !document.hasFocus() || document.visibilityState !== "visible") return;
+    byId("privacy-shield").hidden = true;
+  }
+  byId("resume-private")?.addEventListener("click", () => { byId("glcanvas").focus(); forwardCanvasFocus(true); });
+  window.addEventListener("blur", () => { protectPrivateSurface(); forwardCanvasFocus(false); });
+  document.addEventListener?.("visibilitychange", () => { if (document.visibilityState !== "visible") { protectPrivateSurface(); forwardCanvasFocus(false); } });
   function forwardCanvasFocus(focused) {
     if (!current() || !ready || failed || leaving || typeof wasm_exports === "undefined" || typeof wasm_exports?.focus !== "function") return;
     try {
+      if (!focused) protectPrivateSurface();
       wasm_exports.focus(Boolean(focused && document.hasFocus() && document.visibilityState === "visible"));
+      if (focused) revealConcealedSurface();
     } catch (error) { fail(error); }
   }
   byId("glcanvas").addEventListener("blur", () => forwardCanvasFocus(false));
@@ -111,6 +130,7 @@
     byId("keyboard-help").textContent = text.helpDetail;
     byId("glcanvas").setAttribute("aria-label", text.helpTitle);
     document.documentElement.lang = locale;
+    if (config?.game === "werewolf") document.title = "Tabula · Ma Sói · Local simulator"; // xtask-allow-game-id: ADR-0035 opt-in standalone leaf.
     setReturnLinks();
   }
   byId("retry").addEventListener("click", () => leaveDocument(null, true));
@@ -214,7 +234,9 @@
     // comes from the registry-validated launch query.
     const parsed = TabulaLaunch.parse(location.search);
     config = TabulaLaunch.resolve(hostPreferences ? Object.freeze({...parsed, theme:hostPreferences.theme, motion:hostPreferences.motion, locale:hostPreferences.locale}) : parsed, matchMedia);
-    text = config.locale === "en" ? en : vi;
+    const expectedRuntime = document.body?.dataset?.runtime ?? "chess"; // xtask-allow-game-id: bounded standalone document identity.
+    if ((config.game ?? "chess") !== expectedRuntime) throw new Error("This document does not contain the requested runtime"); // xtask-allow-game-id: bounded standalone document identity.
+    text = config.game === "werewolf" ? {...(config.locale === "en" ? en : vi), ...simulatorText[config.locale]} : config.locale === "en" ? en : vi; // xtask-allow-game-id: ADR-0035 opt-in standalone leaf.
     applyLanguage(config.locale);
     if (config.online) {
       document.title = config.locale === "en" ? "Tabula · Online game" : "Tabula · Ván trực tuyến";
@@ -265,6 +287,7 @@
         if (!current()) return 0;
         const name = UTF8ToString(pointer, length);
         const id = FS.unique_id++;
+        const requestPrivacyEpoch = privacyEpoch;
         loadedFileIds.add(id);
         function deliver(bytes) {
           if (!current()) return;
@@ -272,9 +295,10 @@
           try {
             wasm_exports.file_loaded(id);
             if (name === "tabula-ready.txt") boardAcknowledged = true;
+            if (name === "tabula-concealed.txt") { concealedEpoch = requestPrivacyEpoch; revealConcealedSurface(); }
           } catch (error) { fail(error); }
         }
-        if (name === "tabula-launch.txt" || name === "tabula-ready.txt") {
+        if (name === "tabula-launch.txt" || name === "tabula-ready.txt" || (name === "tabula-concealed.txt" && config.game === "werewolf")) { // xtask-allow-game-id: ADR-0035 opt-in standalone leaf, not platform dispatch.
           const timer = setTimeout(() => {
             pendingTimers.delete(timer);
             deliver(name === "tabula-launch.txt" ? launchBytes.slice() : new TextEncoder().encode("ready"));
@@ -315,6 +339,7 @@
     for (const name of Object.keys(instanceExports)) {
       wasm_exports[name] = typeof instanceExports[name] !== "function" ? instanceExports[name] : (...args) => {
         if (!current() || !instanceExports) return;
+        if (name === "focus" && !args[0]) protectPrivateSurface();
         if (name === "focus" && args[0]) args[0] = ready && !byId("leave-dialog").open && !byId("help-dialog").open && document.activeElement === byId("glcanvas") && document.hasFocus() && document.visibilityState === "visible";
         return instanceExports[name](...args);
       };

@@ -14,8 +14,8 @@ Cargo.lock.bak
 # /apps/web/style/tokens.css
 # /crates/tabula-design/src/generated.rs
 
-# built asset packs (sources live in assets/packs/<game>/src)
-/assets/packs/**/build
+# built asset packs (sources live in games/<game>/assets/)
+/games/*/assets/build
 
 # local env / secrets
 .env
@@ -46,6 +46,9 @@ flamegraph.svg
 /mobile/.kotlin/
 /mobile/local.properties
 /mobile/**/build/
+
+# Ephemeral native voice dev grant fixture: debug-only; never commit credentials.
+/mobile/voice-dev-grant.json
 
 # Disposable provider public receipts are CI artifacts, not source
 /verification/kanidm-oidc-artifacts/

@@ -30,3 +30,21 @@ remain closed. No capabilities mirror or `tabula-game-api` dependency is introdu
 The existing `xtask gen-protocol-vectors` / `check-protocol` design is not an implemented
 version-bump workflow. Executed crate golden-vector tests are the current evidence;
 changes must explicitly update this version, fixtures and changelog together.
+
+## HTTP 1 — recovered direct-match carriers (ADR-0041)
+
+This is a separate HTTP DTO version, not a change to match envelope 0.1.
+`tabula-match-http/tests/dto_contract.rs` pins exact JSON for create/join/grant/
+attach/command/poll requests and admission/grant/attachment/frame responses.
+Unknown top-level fields and versions fail closed, and bounded field visitors
+reject oversized config maps, strings and frame batches, including duplicate
+configuration keys. Grant diagnostics are redacted. Only public routing hints,
+server-assigned display seats and projected 0.1 frames cross this carrier.
+
+The proposed gateway is not implemented. Its constants reserve complete request
+and response byte limits; a future transport must enforce those limits on the
+actual encoded body, including whitespace, before generic serde. DTO field bounds
+alone are not a whole-body allocation bound or authorization proof.
+
+The recovered Chess presentation decoder reads existing serialized `View` and
+`ViewEvent` shapes; it changes neither canonical rules identity nor emitted bytes.

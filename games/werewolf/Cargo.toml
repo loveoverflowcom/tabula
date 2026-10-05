@@ -42,3 +42,7 @@ blake3 = { workspace = true }
 
 [lints]
 workspace = true
+
+[[example]]
+name = "verify_simulation"
+required-features = ["testkit"]

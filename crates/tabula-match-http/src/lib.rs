@@ -7,5 +7,5 @@
 mod bounds;
 mod dto;
 pub use dto::*;
-#[cfg(all(feature="isolated",not(target_arch="wasm32")))]
+#[cfg(all(feature = "isolated", not(target_arch = "wasm32")))]
 pub mod isolated;

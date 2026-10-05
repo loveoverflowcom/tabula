@@ -63,7 +63,7 @@ def check(distribution):
             references = References()
             references.feed(document.decode())
             assert not references.images, "first-board loader must not fetch cover artwork"
-            assert len(references.files) == 7, "expected two styles and five pinned scripts"
+            assert len(references.files) == 8, "expected two styles and six pinned scripts, including host bridge"
             manifest = None
             for relative, integrity in references.files:
                 assert relative.startswith("resources/"), f"mutable host dependency: {relative}"
@@ -74,7 +74,7 @@ def check(distribution):
                 if payload.startswith(b"window.TabulaResourceManifest="):
                     manifest = json.loads(payload.decode().removeprefix("window.TabulaResourceManifest=").removesuffix(";\n"))
             assert manifest and manifest["schema"] == 1 and len(manifest["files"]) == 8
-            pack = tomllib.loads((ROOT / "assets/packs/chess/fixture.pack.toml").read_text())
+            pack = tomllib.loads((ROOT / "games/chess/assets/fixture.pack.toml").read_text())
             critical = [file for file in pack["files"] if file["priority"] == "critical" and file["density"] == 1]
             assert len(critical) == 1
             aliases = ["tabula-game-client.wasm", "assets/OpenSans-Regular.ttf", "assets/OpenSans-Semibold.ttf", "assets/NotoSerif-Bold.ttf", critical[0]["path"]]
@@ -83,7 +83,7 @@ def check(distribution):
                 payload = get(urljoin(entry, resource["url"]))
                 assert len(payload) == resource["bytes"] and hashlib.sha256(payload).hexdigest() == resource["sha256"]
                 assert requests[-1]["cache_control"] == "public, max-age=31536000, immutable"
-            assert len(requests) == 13
+            assert len(requests) == 14
             return {
                 "evidence": "real staged HTTP/SRI/manifest smoke, not a browser waterfall or cache timing",
                 "first_board_runtime_aliases": aliases,

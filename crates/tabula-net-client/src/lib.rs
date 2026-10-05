@@ -116,6 +116,9 @@
 //! src/kv.rs         KvStore trait + per-platform backends
 //! ```
 
+//! ADR-0041 recovers only the pure [`direct`] sequencer. No browser/native
+//! transport or online gameplay consumer is implemented by this module.
+
 #![forbid(unsafe_code)]
 
 /// Bounded direct-play core; robust resume remains gated.

@@ -8,6 +8,7 @@
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
 <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+<key>NSMicrophoneUsageDescription</key><string>Tabula uses your microphone when you enable voice chat.</string>
 <key>UILaunchScreen</key><dict/>
 <key>CADisableMinimumFrameDurationOnPhone</key><true/>
 <key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>

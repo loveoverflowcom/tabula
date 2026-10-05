@@ -22,12 +22,16 @@ import platform.Foundation.dataWithContentsOfFile
 import platform.UIKit.UIApplication
 import platform.WebKit.WKContentWorld
 import platform.WebKit.WKFrameInfo
+import platform.WebKit.WKMediaCaptureType
 import platform.WebKit.WKNavigation
 import platform.WebKit.WKNavigationAction
 import platform.WebKit.WKNavigationActionPolicy
 import platform.WebKit.WKNavigationDelegateProtocol
+import platform.WebKit.WKPermissionDecision
 import platform.WebKit.WKScriptMessage
 import platform.WebKit.WKScriptMessageHandlerProtocol
+import platform.WebKit.WKSecurityOrigin
+import platform.WebKit.WKUIDelegateProtocol
 import platform.WebKit.WKURLSchemeHandlerProtocol
 import platform.WebKit.WKURLSchemeTaskProtocol
 import platform.WebKit.WKUserContentController
@@ -65,6 +69,7 @@ internal class IosGameRuntime(
     // The host objects are retained here: WebKit holds its delegates and handlers weakly or in cycles.
     private val port = Port(::onPortMessage)
     private val navigation = Navigation(::onNavigationFailure)
+    private val mediaPermissions = DenyWebMediaCapture()
     val view: WKWebView
 
     init {
@@ -79,6 +84,7 @@ internal class IosGameRuntime(
         )
         view = WKWebView(frame = CGRectMake(0.0, 0.0, 0.0, 0.0), configuration = configuration)
         view.navigationDelegate = navigation
+        view.UIDelegate = mediaPermissions
         NSLog("TabulaGameHost: runtime created for %s", game.id)
         NSURL.URLWithString(game.documentUrl("$SCHEME://$AUTHORITY"))?.let { view.loadRequest(NSURLRequest.requestWithURL(it)) }
             ?: run(session.onHostFailure("bad-document-url"))
@@ -104,6 +110,7 @@ internal class IosGameRuntime(
         closed = true
         view.stopLoading()
         view.navigationDelegate = null
+        view.UIDelegate = null
         view.configuration.userContentController.removeScriptMessageHandlerForName(PORT, contentWorld = WKContentWorld.pageWorld)
         view.configuration.userContentController.removeAllUserScripts()
         UIApplication.sharedApplication.idleTimerDisabled = false
@@ -151,6 +158,19 @@ internal class IosGameRuntime(
     private class Port(private val onMessage: (WKFrameInfo, Any?) -> Unit) : NSObject(), WKScriptMessageHandlerProtocol {
         override fun userContentController(userContentController: WKUserContentController, didReceiveScriptMessage: WKScriptMessage) {
             onMessage(didReceiveScriptMessage.frameInfo, didReceiveScriptMessage.body)
+        }
+    }
+
+    /** Native mic permission never grants media capture to a game document or subframe (ADR-0037). */
+    private class DenyWebMediaCapture : NSObject(), WKUIDelegateProtocol {
+        override fun webView(
+            webView: WKWebView,
+            requestMediaCapturePermissionForOrigin: WKSecurityOrigin,
+            initiatedByFrame: WKFrameInfo,
+            type: WKMediaCaptureType,
+            decisionHandler: (WKPermissionDecision) -> Unit,
+        ) {
+            decisionHandler(WKPermissionDecision.WKPermissionDecisionDeny)
         }
     }
 

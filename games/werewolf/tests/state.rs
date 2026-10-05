@@ -444,6 +444,8 @@ fn state_reconstruction_accepts_role_specific_living_targets() {
         .insert(witch, NightChoice::WitchHeal(Some(witch)));
     raw.night_choices
         .insert(hunter, NightChoice::HunterMark(Some(villager)));
+    raw.hunter_mark = Some(villager);
+    raw.witch_potions.as_mut().unwrap().heal = false;
 
     assert!(State::try_from(raw).is_ok());
 }

@@ -824,7 +824,7 @@ async fn real_postgres_online_durable_apply_exclusion_survives_loss_of_both_back
 
 #[tokio::test]
 #[ignore = "requires explicit disposable PostgreSQL 16"]
-async fn real_postgres_online_global_room_bound_is_atomic() {
+async fn real_postgres_online_dataset_lifetime_room_bound_is_atomic() {
     let f = Fixture::new().await;
     for user in 1..=32 {
         let owner = enroll(&f.first, 10_000 + user, 20_000 + user).await;
@@ -1037,5 +1037,85 @@ async fn real_postgres_online_join_resamples_code_expiry_after_actual_room_wait(
             .await
             .unwrap();
     assert_eq!(seats, 1);
+    f.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires explicit disposable PostgreSQL 16"]
+async fn real_postgres_online_dataset_lifetime_capacity_retains_completed_and_expired_ids() {
+    let f = Fixture::new().await;
+    let owner = enroll(&f.first, 77_777, 88_888).await;
+    for index in 0_u128..128 {
+        let id = MatchId(10_000 + index);
+        let code = *blake3::hash(&id.0.to_le_bytes()).as_bytes();
+        room(&f.first, &owner, id, code, 2).await;
+        // Synthetic lifecycle rows exercise the real admission transaction,
+        // not gameplay/completion acceptance or a reusable-owner claim.
+        if index < 64 {
+            sqlx::query(
+                "UPDATE online_match_rooms SET started=true,completed=true WHERE match_id=$1",
+            )
+            .bind(Uuid::from_u128(id.0))
+            .execute(&f.observer)
+            .await
+            .unwrap();
+        } else {
+            sqlx::query("UPDATE online_match_rooms SET created_at_ms=created_at_ms-600001,code_deadline_ms=code_deadline_ms-600001 WHERE match_id=$1")
+                .bind(Uuid::from_u128(id.0)).execute(&f.observer).await.unwrap();
+        }
+    }
+    let lifecycle: (i64, i64, i64) = sqlx::query_as("SELECT count(*) FILTER (WHERE completed), count(*) FILTER (WHERE NOT started AND code_deadline_ms<=floor(EXTRACT(EPOCH FROM clock_timestamp())*1000)::bigint), count(*) FILTER (WHERE NOT completed AND (started OR code_deadline_ms>floor(EXTRACT(EPOCH FROM clock_timestamp())*1000)::bigint)) FROM online_match_rooms")
+        .fetch_one(&f.observer).await.unwrap();
+    assert_eq!(lifecycle, (64, 64, 0), "per-user active capacity is free");
+    let counts_sql = "SELECT (SELECT count(*) FROM online_match_rooms), (SELECT count(*) FROM online_match_memberships), (SELECT count(*) FROM online_match_admissions), (SELECT count(*) FROM online_session_commit_guards), (SELECT count(*) FROM online_match_commit_guards)";
+    let before_counts: (i64, i64, i64, i64, i64) = sqlx::query_as(counts_sql)
+        .fetch_one(&f.observer)
+        .await
+        .unwrap();
+    let times_sql = "SELECT s.last_activity_at_ms,s.last_observed_at_ms,a.last_observed_at_ms FROM session_auth_sessions s JOIN session_accounts a USING(user_id) WHERE s.id=$1";
+    let before_times: (i64, i64, i64) = sqlx::query_as(times_sql)
+        .bind(Uuid::from_u128(owner.snapshot.id().get()))
+        .fetch_one(&f.observer)
+        .await
+        .unwrap();
+    assert!(matches!(
+        PgOnlineMatchStore::new(f.second.clone())
+            .create(
+                owner.operation,
+                MatchId(999_999),
+                [255; 32],
+                game(),
+                version(),
+                canonical_encode(&5_u64).unwrap(),
+                2,
+            )
+            .await,
+        Err(OnlineMatchError::Busy)
+    ));
+    let after_counts: (i64, i64, i64, i64, i64) = sqlx::query_as(counts_sql)
+        .fetch_one(&f.observer)
+        .await
+        .unwrap();
+    let after_times: (i64, i64, i64) = sqlx::query_as(times_sql)
+        .bind(Uuid::from_u128(owner.snapshot.id().get()))
+        .fetch_one(&f.observer)
+        .await
+        .unwrap();
+    assert_eq!(before_counts.0, 128);
+    assert_eq!(
+        after_counts, before_counts,
+        "129th admission creates no durable rows or witnesses"
+    );
+    assert_eq!(
+        after_times, before_times,
+        "capacity rejection commits no authority mutation or activity"
+    );
+    let absent: bool =
+        sqlx::query_scalar("SELECT NOT EXISTS(SELECT 1 FROM online_match_rooms WHERE match_id=$1)")
+            .bind(Uuid::from_u128(999_999))
+            .fetch_one(&f.observer)
+            .await
+            .unwrap();
+    assert!(absent);
     f.close().await;
 }

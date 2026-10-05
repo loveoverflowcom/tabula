@@ -81,6 +81,26 @@ initial absence of an opponent cookie. Enrollment is not a product login route.
 10. Same-session reattachment retains next_seq=3; the old attachment can neither
     command nor receive output. This bounded replacement probe is not PR3
     reconnect/resync or interrupted-command acceptance
+11. In the second real actor, Black is a passive recipient with its initial
+    snapshot consumed and no pending Ack/Reject. White's real legal f2-f3 command
+    supplies a queued projection. A native-only PollCaptureWitness is matched to
+    the exact match, attachment and trusted session record, and must count an
+    actual MatchUpdate before the fixture holds the real guarded poll body
+12. After the existing authority lease expires independently, a separate normal
+    current-credential logout must commit while that body stays held. Releasing
+    the gate forwards the real inner publication error. A CI-only upstream TCP
+    observer requires actual 200/JSON/no-store headers and zero body bytes,
+    including partial bytes on a transport error, before TLS-edge buffering
+
+The last scenario requires the standalone body-publication-test feature, which
+enables only the gateway's acceptance-test-support native response extension.
+Neither default service gains controls. The witness has checked private fields
+and no serde/wire representation. Fixture controls are one-shot, bounded and
+phase-only; their ephemeral capability stays in memory and cannot authorize a
+game command or session action. The body gate never polls early, manufactures
+suppression or discards unexpected private data: any real data is forwarded and
+the byte-count assertion fails. Actual inner-error phase is also required, so
+cancellation cannot masquerade as publication fencing.
 
 Original captured command bodies stay as opaque strings only in runtime memory,
 so JavaScript never rounds the u128 match identity during a duplicate probe.
@@ -102,9 +122,9 @@ the private account input and canonical data never become browser frames.
 ```sh
 python3 -m unittest discover -s tests/online-match -p 'test_*.py' -v
 cargo fmt --manifest-path tests/online-match/Cargo.toml --all -- --check
-cargo clippy --manifest-path tests/online-match/Cargo.toml --locked --all-targets -- -D warnings
-cargo test --manifest-path tests/online-match/Cargo.toml --locked --bin online-match-fixture
-cargo build --manifest-path tests/online-match/Cargo.toml --locked --bin online-match-fixture
+cargo clippy --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --all-targets -- -D warnings
+cargo test --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
+cargo build --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
 cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --ignored --test-threads=2
 (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --features online)
 cargo build -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --profile wasm-release
@@ -119,9 +139,11 @@ executed new CI job's terminal PASS and durable audit, and a screenshot-inspecte
 claim requires a human/assistant to review the captured pixel images. This
 fixture does not establish PR3 reconnect/resync/network-drop/server-crash
 acceptance, load/cross-target/game-portfolio quality or a broad phase exit.
-Post-logout rejection also does not by itself establish a held HTTP first-frame
-or a nonempty private queue racing with revocation, or recall of already released
-TCP bytes. Any such claim requires its separately exercised ordering scenario.
+Post-logout rejection alone does not establish buffered-publication fencing.
+That claim needs successful execution of the nonempty held-body scenario above.
+Its TCP observer establishes the native server first-frame/network boundary
+before the buffering TLS edge; actual browser TLS/gameplay is proved separately.
+It does not establish recall of already released TCP bytes or PR3 reconnect.
 
 Primary infrastructure references:
 

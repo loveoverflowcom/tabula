@@ -10,6 +10,7 @@ publish.workspace = true
 [features]
 default = []
 isolated = ["dep:tabula-session", "dep:tabula-session-http", "dep:tabula-match", "dep:tabula-storage", "dep:tabula-registry", "dep:tabula-game-api", "dep:axum", "dep:tokio", "dep:bytes", "dep:http-body", "dep:hmac", "dep:sha2", "dep:base64"]
+acceptance-test-support = ["isolated"]
 [package.metadata.tabula-msrv]
 isolated = "1.94"
 [dependencies]

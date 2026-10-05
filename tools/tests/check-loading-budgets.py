@@ -37,7 +37,7 @@ def game_budget(path, graph):
     assert result["bytes"] <= GAME_RAW_LIMIT, f"game raw size exceeds {GAME_RAW_LIMIT}: {result['bytes']}"
     assert result["gzip9_bytes"] <= GAME_GZIP_LIMIT, f"game gzip size exceeds {GAME_GZIP_LIMIT}: {result['gzip9_bytes']}"
     checked = []
-    for directory in ("assets/fonts", "assets/packs/chess", "assets/packs/tiles"):
+    for directory in ("assets/fonts", "games/chess/assets", "games/tiles/assets"):
         for file in sorted((ROOT / directory).iterdir()):
             if file.suffix not in (".png", ".ttf"):
                 continue

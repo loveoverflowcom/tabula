@@ -110,7 +110,8 @@ do not prove real browser BFCache behavior or total heap/GPU reclamation.
 - `mq_js_bundle.js`: unchanged pinned upstream Macroquad 0.4.16 / Miniquad 0.4.11,
   dual licensed MIT / Apache-2.0; original header retained
 - Cover: supplied approved `chess-design` editorial artwork; original and responsive
-  export hashes and exact generation provenance in `assets/chess-cover-provenance.md`
+  export hashes and exact generation provenance in
+  [the game-owned source record](../../../games/chess/assets/source/standalone-cover-provenance.md)
 - Fonts: supplied Open Sans (Apache-2.0) and Noto Serif (SIL OFL 1.1), with complete licenses retained
 - Shared header: canonical system CSS variables; game-art variables scoped to the
   Chess surface, generated from the authored token authority
@@ -154,3 +155,21 @@ document never has it and behaves exactly as described above. When it is present
 The wire grammar is `tests/bridge-vectors.json`, run by `tests/host-bridge.test.cjs` here and by the Kotlin
 `BridgeVectorsTest` in `mobile/`. The loader (`resources.js`) is unchanged: same-origin, SHA-256 and size
 limits all still apply.
+
+## Opt-in Werewolf standalone
+
+This separate simulator is not included in the ADR-0033 mobile bundle or registry launch.
+ADR-0035 adds a separate isolated-seat simulator artifact; it does not enable normal
+catalog rollout or change shared M3 dashboard screens. Build `tabula-werewolf-client`
+with `--no-default-features --features web-werewolf`, then stage using
+`cargo xtask stage-wasm-game --game werewolf`. Output is `target/tabula-web-werewolf`.
+The setup page has no eager game artwork or game WASM reference. Its public configuration
+is limited to bounded seats, simulator mode and display preferences; source/return targets,
+seeds, roles, online mode and credentials are rejected. A runtime-document identity check
+prevents sending a Werewolf request to the Chess binary or vice versa.
+
+The game uses the same Macroquad renderer, font boundary, integrity loader/cache and
+teardown. It additionally shields the canvas opaquely on focus loss and waits for a flushed
+concealed-frame acknowledgment before removing the shield. Actual browser/native pixels
+remain blocked in this cloud executor, as recorded in the
+[host ledger](../../../docs/verification/werewolf-standalone/host-and-build.md).

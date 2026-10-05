@@ -159,13 +159,17 @@ tabula/
 │   ├── systemd/                   # Stage 0–1 unit files
 │   └── terraform/                 # optional, Stage 2+
 ├── assets/
-│   ├── brand/                     # logo, shared fonts, shared icons
-│   └── packs/                     # per-game source assets + pack build scripts
+│   ├── brand/                     # shared logo and icons
+│   └── fonts/                     # shared fonts and licenses
 └── tests/
     ├── integration/               # server + Postgres + real WS, multi-client scenarios
     ├── load/                      # Rust load generator
     └── replays/                   # committed golden replays per game (determinism regression)
 ```
+
+Game-owned source art, generators, provenance and pack manifests live under
+`games/<game>/assets/` beside their game crate. Shared resources remain under `assets/`;
+built content-addressed packs remain under `target/asset-packs/` (ADR-017).
 
 ### 2.3 Challenges to the structure proposed in the brief
 
@@ -754,3 +758,13 @@ a live migration. Both service entrypoints remain closed. Production seed
 encryption, session/commit/private-output fencing, online transport and broad
 phase gates remain separate obligations; exact executed evidence belongs in the
 [durability ledger](../verification/durable-match-postgres/README.md).
+
+### Recovered direct-match HTTP DTO boundary (ADR-0041)
+
+`tabula-match-http` currently owns versioned pure request/response DTOs and their
+JSON compatibility vectors only. It depends on core/protocol/serde; `deps.toml`
+forbids network, persistence, game and rendering dependencies. Its proposed native
+`isolated` gateway and the server's `online-match` wiring are not enabled because
+the runtime implementation and online storage adapter are absent. Existing match
+and session ports have recovered opt-in authority hooks; those ports alone prove
+neither durable online commit nor queued HTTP publication authority.

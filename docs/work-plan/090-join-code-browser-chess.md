@@ -1,6 +1,7 @@
 # Connect two browsers by join code
 
-**Status:** PR2 active in its own fresh chat/worktree after verified PR79 merge.
+**Status:** PR2 implementation restored against the current integrated develop;
+actual PostgreSQL/independent browser acceptance and final review/CI remain pending.
 [ADR0041](../adr/0041-isolated-direct-match-browser-play.md) records the bounded
 contract; the [ledger](../verification/join-code-browser-chess/README.md) records
 actual implementation/check status. Browser acceptance is not yet claimed.

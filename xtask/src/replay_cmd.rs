@@ -73,8 +73,14 @@ pub(crate) fn run() -> Result<(), String> {
             diagnose,
             write_reproducer.as_deref(),
         ),
+        "com.tabula.werewolf" => verify::<tabula_game_werewolf::WerewolfModule>(
+            path_ref,
+            at,
+            diagnose,
+            write_reproducer.as_deref(),
+        ),
         _ => Err(format!(
-            "{path}: unsupported game {game_id}; tooling supports chess and tiles"
+            "{path}: unsupported game {game_id}; tooling supports chess, tiles and werewolf"
         )),
     }
 }

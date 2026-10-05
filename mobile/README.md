@@ -2,8 +2,10 @@
 
 > **First-party embedding, not a plugin system.** [ADR-0032](../docs/adr/0032-compose-multiplatform-mobile-host.md)
 > opened the Compose Multiplatform foundation; [ADR-0033](../docs/adr/0033-webview-gamehost-first-party-embedding.md)
-> adds a WebView `GameHost` for the one game packaged with the app. It does not open Phase 6: no networking,
-> voice, accounts, store build, third-party games or remote updates. **The Android WebView and the iOS
+> adds a WebView `GameHost` for the first-party games packaged with the app.
+> [ADR-0037](../docs/adr/0037-native-mobile-voice-client.md) adds a bounded native voice client and
+> isolated loopback development harness; production voice remains unavailable. It does not open
+> Phase 6/8, production networking/accounts, store builds, third-party games or remote updates. **The Android WebView and the iOS
 > WKWebView have not been run** — see the [evidence ledger](../docs/verification/mobile-game-host/README.md).
 
 One Gradle root for the one mobile app. There is no second mobile tree.
@@ -22,7 +24,7 @@ mobile/
 |---|---|
 | Compose Multiplatform (`shared/`) | App screens, navigation, theming from generated tokens, the shared `GameSession` lifecycle, the bridge codec |
 | `GameHost` (`WebViewGameHost`, `WKWebViewGameHost`) | A platform WebView presenting the packaged Rust/WASM game document and executing `GameSession` effects |
-| Mobile host (Kotlin/Swift) | Device services — only `keep-awake` exists; voice, permissions, push do not |
+| Mobile host (Kotlin/Swift) | Keep-awake plus the distinct native `VoiceClient` adapters/permission/audio lifecycle; no push or production voice grant source |
 | The game document (Rust/WASM + `host-bridge.js`) | Rules, `project`, presentation, `RenderList`, renderer, its own loading/error/leave UI |
 
 Kotlin and Swift carry **no game logic**: no legality, turn order, projection, hashing or replay. They
@@ -94,3 +96,23 @@ packages the game bundle.
 | iOS WKWebView: custom-scheme secure context, streamed bodies, lifecycle | **no — NOT_RUN** | needed |
 
 Compilation is not execution, a simulated page is not a WebView, and desktop Chrome is not either target.
+
+## Native voice (isolated development)
+
+CMP owns the voice controls; LiveKit Android 2.29.0 / Swift 2.17.0 own native media.
+Audio, room endpoints and credentials never enter the WebView bridge/game WS.
+The default production source says unavailable before constructing a native room
+or asking for a microphone. A local mute is not SFU/game-policy enforcement.
+
+The optional ignored `mobile/voice-dev-grant.json` is packaged only in Debug and
+accepted only for the fixed synthetic scope, an exact loopback/emulator endpoint
+and at most ten minutes. See [the harness](../tools/native-voice-harness/README.md)
+and [evidence ledger](../docs/verification/native-mobile-voice/README.md).
+
+The client is foreground-only: actual background entry, audio interruption,
+route leave/logout hook, grant deadline or disposal disconnects and releases
+native media. Returning never autojoins or unmutes. A game WebView reload/retry
+alone keeps voice; no room credentials are attached to its launch/navigation.
+Native audio focus, simultaneous game audio and headset routing need real
+Android/iOS acceptance. Swift needs Xcode 16.3+ / Swift 6.1; CI compiles/links
+its SDK adapter on macOS without claiming simulator/audio execution.

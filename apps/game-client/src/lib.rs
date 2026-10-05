@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 pub mod fixture_assets;
+pub mod host_resources;
 #[cfg(feature = "online")]
 pub mod online;
 mod replay_capture;

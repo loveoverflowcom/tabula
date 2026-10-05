@@ -36,6 +36,7 @@ jobs:
       - run: python3 .agents/skills/tabula-engineering/scripts/check_skills.py
       - run: python3 .agents/skills/tabula-engineering/scripts/test_check_skills.py
       - run: python3 .agents/skills/tabula-engineering/scripts/test_ai_doc_contracts.py
+      - run: python3 tools/native-voice-harness/test_run.py
 
   # ---------------------------------------------------------------- fast gates
   fmt-clippy:
@@ -72,16 +73,25 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask check-no-game-ids
 
-  # game.toml schema and Cargo feature shape. A future compiled-metadata
+  # Game-owned asset sources, game.toml schema and Cargo feature shape. A future compiled-metadata
   # cross-check is not implemented by check-manifests yet. (doc 02 §4.3)
   manifests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 tools/tests/check-game-asset-locality.py
       - uses: dtolnay/rust-toolchain@master
         with: { toolchain: "1.96" }
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask check-manifests
+      # Source relocation must preserve the pinned content-addressed manifests.
+      - run: |
+          for game in chess tiles werewolf; do
+            cargo xtask pack-assets "$game"
+            cmp "target/asset-packs/$game/0.1.0/pack.toml" "games/$game/assets/fixture.pack.toml"
+          done
 
   # Generated files are committed. If they are stale the diff is a silent lie.
   generated-current:
@@ -127,6 +137,46 @@ jobs:
         run: ./gradlew --console=plain -Ptabula.requireGameBundle=true :shared:testAndroidHostTest :previewApp:test :android:assembleDebug
       - working-directory: mobile
         run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-shell-doubles-evidence
+          path: |
+            mobile/previewApp/build/reports/shell-screenshots
+            mobile/previewApp/build/test-results/test
+            mobile/shared/build/test-results
+          if-no-files-found: warn
+
+  # ADR-0037: actual Swift SDK adapter + Kotlin framework compile/link. No simulator
+  # launch, microphone, real SFU or two-client voice acceptance is implied by this build.
+  mobile-ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96"
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release
+      - run: cargo xtask stage-mobile-game
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: xcodebuild -version && swift --version
+      - working-directory: mobile
+        run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
+      - working-directory: mobile/ios
+        run: xcodebuild -project TabulaApp.xcodeproj -scheme Tabula -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/tabula-ios" CODE_SIGNING_ALLOWED=NO build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-ios-generated-headers
+          path: |
+            mobile/shared/build/bin/**/*Framework/TabulaShared.framework/Headers
+            mobile/shared/build/xcode-frameworks/**/TabulaShared.framework/Headers
+          if-no-files-found: warn
 
   # -------------------------------------------------------------------- tests
   test:
@@ -201,6 +251,27 @@ jobs:
       - run: cargo check -p tabula-protocol -p tabula-registry -p tabula-match --target wasm32-unknown-unknown --all-features
       # Bundle size cap: < 6 MB gzipped (doc 01 §7). Fail on a >10% regression.
       # - run: cargo xtask check-bundle-size
+
+  # ADR-0035 opt-in local Werewolf proof. Target compilation and mocked/headless
+  # checks remain distinct from real native/browser/mobile visual acceptance.
+  werewolf-local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96"
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: cargo test -p tabula-game-werewolf --features presentation
+      - run: cargo test -p tabula-game-client --no-default-features --features werewolf --test werewolf_simulator
+      - run: cargo check -p tabula-game-client --no-default-features --features werewolf --bin tabula-werewolf-client
+      - run: cargo build -p tabula-game-client --no-default-features --features web-werewolf --bin tabula-werewolf-client --target wasm32-unknown-unknown --profile wasm-release
+      - run: cargo xtask stage-wasm-game --game werewolf
+      - run: cargo tree -p tabula-game-client --no-default-features --features web-werewolf --target wasm32-unknown-unknown --edges normal > target/werewolf-game-graph.txt
+      - run: python3 tools/tests/check-werewolf-loading-budgets.py --wasm target/wasm32-unknown-unknown/wasm-release/tabula-werewolf-client.wasm --tree target/werewolf-game-graph.txt --bundle target/tabula-web-werewolf --receipt target/werewolf-loading-receipt.json
 
   deny:
     runs-on: ubuntu-latest

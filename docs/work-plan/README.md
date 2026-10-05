@@ -62,6 +62,10 @@ policy choice only; PR A is independently reviewable and no auth/social service
 or online match is activated. Existing discovery/local-play ADRs do not authorize
 account services. Passing aggregate checks does not close #54 or open Phase 4/5.
 
+The requested [Werewolf standalone](020-werewolf-standalone.md) is a bounded opt-in local
+referee and isolated-seat simulator under [ADR-0035](../adr/0035-werewolf-local-simulator.md).
+Its gate/evidence ledger does not activate online social gameplay, voice or rollout.
+
 ## Authorized isolated #54 implementation series
 
 [ADR-0036](../adr/0036-isolated-durable-session-validation.md) records the owner's
@@ -85,6 +89,18 @@ production work is still the existing prerequisite/backlog work, including
 actual provider/TLS/cookie/AT/BFCache evidence, bounded non-secret cross-reload
 logout suppression and live deadline/revocation delivery. Do not extend the
 exception into voice, invitations or provider provisioning by inference.
+
+## Bounded native mobile voice
+
+The owner explicitly requested [ADR-0037](../adr/0037-native-mobile-voice-client.md)
+after the merged isolated account series. This separate client/loopback-dev slice
+adds CMP controls and native LiveKit adapters without broad backend authority or
+production activation. [Actual native audio acceptance](backlog/native-mobile-voice-acceptance.md)
+remains the next target check when authorized hardware/SFU prerequisites exist;
+[its ledger](../verification/native-mobile-voice/README.md) separates compilation,
+controller/UI doubles and real audio. The unrelated trusted-Origin defect in
+[issue #74](https://github.com/loveoverflowcom/tabula/issues/74) is not folded into
+this voice change.
 
 ## Review #74 follow-up
 

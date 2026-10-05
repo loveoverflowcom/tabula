@@ -30,7 +30,7 @@ sessions recorded here have no captured WebGL errors. Small fallback glyphs
 also use a minimum 16-pixel raster and a shared logical scale for measurement,
 wrapping, tabular spacing and drawing. Token sizes remain unchanged.
 
-Tiles uses the original, editable [CC0 atlas](../../../assets/packs/tiles/README.md),
+Tiles uses the original, editable [CC0 atlas](../../../games/tiles/assets/README.md),
 with semantic tint and terrain shapes. Preview rotation remains local;
 accepted placement gets one bounded token-driven settle animation. Reduced
 motion retains informative fade without geometric motion. Replacement views,

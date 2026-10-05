@@ -89,7 +89,7 @@ test("four loads and 64 MiB aggregate declared size admit bounded concurrent wor
 test("unknown, missing, corrupt, empty, truncated and oversized resources fail without trusted delivery", async () => {
   const files = {"image.png":new Uint8Array([1,2,3])};
   const unknown = resourceHarness({files});
-  for (const name of ["other.png", "https://tabula.test/image.png", "resources/image.png", "../image.png", "tabula-launch.txt", "tabula-ready.txt"]) {
+  for (const name of ["other.png", "https://tabula.test/image.png", "resources/image.png", "../image.png", "tabula-launch.txt", "tabula-ready.txt", "tabula-concealed.txt"]) {
     await assert.rejects(unknown.loader.load(name), /not listed/);
   }
   assert.equal(unknown.fetches.length, 0);
@@ -167,7 +167,7 @@ test("manifest schema, fields, sizes, count, total and canonical hash URLs rejec
   for (const url of ["https://evil.test/resource.png", "https://tabula.test/resource.png", "/resources/"+base.files["image.png"].sha256+".png", "resources/../resource.png", "resources/%2e%2e/resource.png", base.files["image.png"].url+"?x=1", base.files["image.png"].url+"#x", "resources/"+"f".repeat(64)+".png", "resources/"+base.files["image.png"].sha256.toUpperCase()+".png", "resources/"+base.files["image.png"].sha256+".ttf", "https://user:password@tabula.test/resource.png"]) {
     invalid.push({schema:1, files:{"image.png":{...base.files["image.png"], url}}});
   }
-  for (const alias of ["../image.png", "image/../image.png", "/image.png", "image//image.png", "image\\image.png", "image.png?x=1", "image.png#x", "image%2epng", "tabula-launch.txt", "tabula-ready.txt"]) invalid.push({schema:1, files:{[alias]:base.files["image.png"]}});
+  for (const alias of ["../image.png", "image/../image.png", "/image.png", "image//image.png", "image\\image.png", "image.png?x=1", "image.png#x", "image%2epng", "tabula-launch.txt", "tabula-ready.txt", "tabula-concealed.txt"]) invalid.push({schema:1, files:{[alias]:base.files["image.png"]}});
   invalid.push({schema:1, files:{"image.png":{...base.files["image.png"], unknown:true}}});
   invalid.push({schema:1, files:{"image.png":{...base.files["image.png"], sha256:"0".repeat(64)}}});
   const tooMany = manifestFor(bytesFor(33));

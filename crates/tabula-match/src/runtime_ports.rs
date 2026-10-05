@@ -38,6 +38,8 @@ pub trait Authority: Send + Sync + 'static {
 
     /// Loss may be detected after a bounded callback. A mutation caller must
     /// retire potentially touched state on failure, never continue unjournaled.
+    /// For output, a post-callback failure is valid only if the adapter stages
+    /// unreleasable output and discards it on failure (ADR-0041).
     fn with_current<T>(
         &self,
         binding: &Binding,

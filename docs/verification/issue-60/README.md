@@ -30,7 +30,7 @@ The authority shim is a native `dev`-profile tool; timing includes that prototyp
 boundary. Interactive motion uses a bounded 20 Hz/500 ms Rust presentation pump. Script
 checks step the real Rust timeline and are not realtime timing benchmarks.
 
-Both paths use the [current editable, CC0 atlas pack](../../../assets/packs/tiles/README.md),
+Both paths use the [current editable, CC0 atlas pack](../../../games/tiles/assets/README.md),
 its 1×/2× density variants and the existing ProggyClean font bytes. Staging
 snapshots and verifies actual PNG bytes using Rust's compiled BLAKE3 manifest;
 JS validates SHA256, size, relative path, decode dimensions and atlas regions.

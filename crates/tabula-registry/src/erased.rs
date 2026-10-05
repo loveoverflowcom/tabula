@@ -51,10 +51,23 @@ pub trait GameSetup: Send + Sync + 'static {
         false
     }
 
-    /// Direct browser host declaration, consumed by the opt-in shell/gateway.
-    fn direct_document() -> bool { false }
+    /// Deployable direct browser host declaration for the handoff resolver.
+    /// Remains false until an actual online document and gateway are available.
+    fn direct_document() -> bool {
+        false
+    }
+    /// This package has a first-party direct-play presenter/transport contract.
+    /// Consumed by explicit `RuntimeBinding` handoff and isolated gateway admission;
+    /// eligibility alone never advertises a deployed document or grants a seat.
+    fn direct_host_supported() -> bool {
+        false
+    }
     /// Configs the direct slice can execute, including its effect adapters.
-    fn direct_config_supported(_config: &<<Self::Module as GameModule>::Rules as GameRules>::Config) -> bool { false }
+    fn direct_config_supported(
+        _config: &<<Self::Module as GameModule>::Rules as GameRules>::Config,
+    ) -> bool {
+        false
+    }
 
     /// This game's own visible copy, including its metadata message keys.
     fn messages(locale: Locale) -> Messages;
@@ -91,8 +104,15 @@ pub trait ErasedGame: Send + Sync {
     fn modes(&self) -> &'static [ModeSupport];
     /// Explicit direct browser host declaration, never capability inference.
     fn direct_document(&self) -> bool;
-    /// Parse/validate a direct draft; the server later checks its actual roster.
-    fn normalize_direct(&self, seats: u8, draft: &crate::ConfigDraft) -> Result<NormalizedConfig, ConfigRejection>;
+    /// Package eligibility for the explicitly opted-in direct host consumer.
+    fn direct_host_supported(&self) -> bool;
+    /// Parse a candidate direct draft without asserting runtime availability.
+    /// The server must re-normalize the request and validate its actual roster.
+    fn normalize_direct(
+        &self,
+        seats: u8,
+        draft: &crate::ConfigDraft,
+    ) -> Result<NormalizedConfig, ConfigRejection>;
     /// This game's own visible copy for one locale.
     fn messages(&self, locale: Locale) -> Messages;
     /// The package's declared bot policy levels, independent of linked factories.
@@ -129,6 +149,70 @@ pub trait ErasedGame: Send + Sync {
 pub struct Adapter<S: GameSetup>(core::marker::PhantomData<S>);
 
 impl<S: GameSetup> Adapter<S> {
+    /// Shared typed validation and serialization for both setup paths.
+    /// The roster here is a hypothetical plan, never authenticated membership.
+    fn normalize_parsed(
+        request: &SetupRequest,
+        parsed: ParseResult<S>,
+    ) -> Result<NormalizedConfig, ConfigRejection> {
+        let allowed = S::Module::capabilities().seats().allowed();
+        if !allowed.contains(request.seats) {
+            return Err(ConfigRejection::whole(RejectionReason::SeatCount));
+        }
+
+        let bot_level = match (request.mode.fills_with_bots(), request.bot_level) {
+            (true, Some(level)) if S::Module::declared_bot_levels().contains(&level) => Some(level),
+            (true, _) => return Err(ConfigRejection::whole(RejectionReason::Unsupported)),
+            (false, _) => None,
+        };
+
+        let (config, mut summary, mut launch_args) = parsed?;
+        let roster = roster_for(request.seats, bot_level);
+
+        S::Module::validate_config(&config, &roster).map_err(map_config_error::<S>)?;
+
+        summary.insert(
+            0,
+            SummaryLine {
+                label_key: "setup.summary.seats",
+                value: crate::config::SummaryValue::Seats {
+                    count: u64::from(request.seats),
+                },
+            },
+        );
+        summary.insert(
+            0,
+            SummaryLine {
+                label_key: "setup.summary.mode",
+                value: crate::config::SummaryValue::Key(request.mode.label_key()),
+            },
+        );
+
+        let metadata = S::Module::metadata();
+        let mut args = vec![
+            ("game".to_owned(), metadata.id().as_str().to_owned()),
+            ("mode".to_owned(), request.mode.as_str().to_owned()),
+            ("seats".to_owned(), request.seats.to_string()),
+        ];
+        if let Some(level) = bot_level {
+            args.push(("bot".to_owned(), bot_level_arg(level).to_owned()));
+        }
+        args.append(&mut launch_args);
+
+        let canonical_config = tabula_core::canonical_encode(&config)
+            .map_err(|_| ConfigRejection::whole(RejectionReason::Unsupported))?;
+        if canonical_config.len() > crate::runtime::MAX_RUNTIME_PAYLOAD_BYTES {
+            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
+        }
+        Ok(NormalizedConfig {
+            summary,
+            canonical_config,
+            launch_args: args,
+            local_return_to: (S::local_document() && request.mode == LaunchMode::LocalHotSeat)
+                .then(|| format!("/games/{}?setup=1", metadata.id().as_str())),
+        })
+    }
+
     #[must_use]
     pub const fn new() -> Self {
         Self(core::marker::PhantomData)
@@ -171,16 +255,33 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
         S::modes()
     }
 
-    fn direct_document(&self) -> bool { S::direct_document() }
-    fn normalize_direct(&self, seats: u8, draft: &crate::ConfigDraft) -> Result<NormalizedConfig, ConfigRejection> {
-        if !S::direct_document() || draft.keys().any(|key| S::form().field(key).is_none()) {
+    fn direct_document(&self) -> bool {
+        S::direct_document()
+    }
+    fn direct_host_supported(&self) -> bool {
+        S::direct_host_supported()
+    }
+    fn normalize_direct(
+        &self,
+        seats: u8,
+        draft: &crate::ConfigDraft,
+    ) -> Result<NormalizedConfig, ConfigRejection> {
+        if draft.keys().any(|key| S::form().field(key).is_none()) {
             return Err(ConfigRejection::whole(RejectionReason::Unsupported));
         }
-        let (typed, _, _) = S::parse(draft)?;
-        if !S::direct_config_supported(&typed) { return Err(ConfigRejection::whole(RejectionReason::Unsupported)); }
-        let mut normalized = self.normalize(&SetupRequest { mode: LaunchMode::LocalHotSeat, seats, bot_level: None, draft: draft.clone() })?;
-        normalized.local_return_to = None;
-        Ok(normalized)
+        let parsed = S::parse(draft)?;
+        if !S::direct_config_supported(&parsed.0) {
+            return Err(ConfigRejection::whole(RejectionReason::Unsupported));
+        }
+        Self::normalize_parsed(
+            &SetupRequest {
+                mode: LaunchMode::Network,
+                seats,
+                bot_level: None,
+                draft: draft.clone(),
+            },
+            Ok(parsed),
+        )
     }
     fn messages(&self, locale: Locale) -> Messages {
         S::messages(locale)
@@ -199,67 +300,15 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
             return Err(ConfigRejection::whole(RejectionReason::Unsupported));
         }
 
-        let allowed = S::Module::capabilities().seats().allowed();
-        if !allowed.contains(request.seats) {
-            return Err(ConfigRejection::whole(RejectionReason::SeatCount));
-        }
-
-        let bot_level = match (request.mode.fills_with_bots(), request.bot_level) {
-            (true, Some(level)) if S::Module::declared_bot_levels().contains(&level) => Some(level),
-            (true, _) => return Err(ConfigRejection::whole(RejectionReason::Unsupported)),
-            (false, _) => None,
-        };
-
-        let (config, mut summary, mut launch_args) = S::parse(&request.draft)?;
-        let roster = roster_for(request.seats, bot_level);
-
-        S::Module::validate_config(&config, &roster).map_err(map_config_error::<S>)?;
-
-        summary.insert(
-            0,
-            SummaryLine {
-                label_key: "setup.summary.seats",
-                value: crate::config::SummaryValue::Seats {
-                    count: u64::from(request.seats),
-                },
-            },
-        );
-        summary.insert(
-            0,
-            SummaryLine {
-                label_key: "setup.summary.mode",
-                value: crate::config::SummaryValue::Key(request.mode.label_key()),
-            },
-        );
-
-        let metadata = S::Module::metadata();
-        let mut args = vec![
-            ("game".to_owned(), metadata.id().as_str().to_owned()),
-            ("mode".to_owned(), request.mode.as_str().to_owned()),
-            ("seats".to_owned(), request.seats.to_string()),
-        ];
-        if let Some(level) = bot_level {
-            args.push(("bot".to_owned(), bot_level_arg(level).to_owned()));
-        }
-        args.append(&mut launch_args);
-
-        let canonical_config = tabula_core::canonical_encode(&config).map_err(|_| ConfigRejection::whole(RejectionReason::Unsupported))?;
-        if canonical_config.len() > crate::runtime::MAX_RUNTIME_PAYLOAD_BYTES { return Err(ConfigRejection::whole(RejectionReason::Unsupported)); }
-        Ok(NormalizedConfig {
-            summary,
-            canonical_config,
-            launch_args: args,
-            local_return_to: (S::local_document() && request.mode == LaunchMode::LocalHotSeat)
-                .then(|| format!("/games/{}?setup=1", metadata.id().as_str())),
-        })
+        Self::normalize_parsed(request, S::parse(&request.draft))
     }
 }
 
-/// Build the roster a local seat plan resolves to.
+/// Build a hypothetical roster to validate a setup seat plan.
 ///
 /// Seat 0 is the player at this device; bot modes fill every other seat with
-/// the game's own bot. Network seat plans are not occupied rosters and are not
-/// built here (docs/ui/screens/03-new-match.md).
+/// the game's own bot. Direct setup uses placeholder humans only; the server
+/// must validate its real authenticated roster again (doc 02 §4).
 fn roster_for(seats: u8, bot_level: Option<BotLevel>) -> SeatRoster {
     SeatRoster::new(
         (0..seats)

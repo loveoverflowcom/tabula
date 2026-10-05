@@ -1,9 +1,10 @@
 #![allow(clippy::doc_markdown)] // `@ai.*` values are machine-readable paths.
 
-//! Werewolf ruleset primitives and initial state creation. (doc 02 §12.3, doc 08 §5)
+//! Complete pure `ClassicV1` rules and knowledge projections. (doc 02 §12.3, doc 08 §5)
 //!
-//! This module owns the pure, validated domain types for Werewolf match
-//! creation, role configuration, canonical state, and event models.
+//! Owns validated state, fixed-window commands, simultaneous resolution,
+//! canonical events and per-viewer disclosure. Runtime I/O and timers remain
+//! the host's mechanism; the decisions returned here are deterministic data.
 //!
 //! @ai.role functional-core
 //! @ai.domain werewolf.rules
@@ -14,8 +15,15 @@
 //! @ai.evidence tests::assignment::roster_order_invariance_produces_identical_assignment
 
 pub mod config;
+pub mod projection;
+pub mod reducer;
+pub mod scopes;
+pub use projection::{Perspective, PrivateKnowledge, RoleKnowledge, SeatView, View, ViewEvent};
+pub use reducer::{Command, WerewolfRules};
 pub mod event;
 pub mod role;
+#[cfg(feature = "testkit")]
+mod secrets;
 pub mod state;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -41,7 +49,7 @@ pub use state::{
 };
 
 /// Rules source version. Matches `game.toml` `rules_version`.
-pub const RULES_VERSION: RulesVersion = RulesVersion(1);
+pub const RULES_VERSION: RulesVersion = RulesVersion(2);
 
 /// BLAKE3 hash of canonical rules source, produced by `build.rs`.
 pub const RULES_HASH: [u8; 32] = *include_bytes!(concat!(env!("OUT_DIR"), "/rules_hash.bin"));
@@ -72,6 +80,7 @@ pub fn create_initial_state(
     let mut seats: Vec<SeatId> = roster.iter().map(|e| e.seat).collect();
     seats.sort_unstable();
 
+    let phase_ends_at = checked_deadline(now, config.phase_durations.night)?;
     let mut roles = config.preset.role_counts(seat_count).multiset();
     rng.stream(DOMAIN_ROLES).shuffle(&mut roles);
 
@@ -80,7 +89,6 @@ pub fn create_initial_state(
     let player_status: BTreeMap<SeatId, PlayerStatus> =
         seats.iter().map(|&s| (s, PlayerStatus::Active)).collect();
 
-    let phase_ends_at = checked_deadline(now, config.phase_durations.night)?;
     let timer_id = TimerId(1);
     let round = 1;
     let phase = Phase::Night;
@@ -108,9 +116,12 @@ pub fn create_initial_state(
         night_choices: BTreeMap::new(),
         votes: BTreeMap::new(),
         outcome: None,
+        hunter_mark: None,
+        hunter_fired: false,
+        history: Vec::new(),
     };
 
-    let state = State::try_from(raw_state)?;
+    let mut state = State::try_from(raw_state)?;
 
     let events = smallvec::smallvec![
         Event::RolesAssigned { roles: role_map },
@@ -122,6 +133,7 @@ pub fn create_initial_state(
         },
     ];
 
+    state.history = events.to_vec();
     Ok((state, events))
 }
 

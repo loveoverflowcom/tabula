@@ -29,6 +29,14 @@
       if (!allowed.has(key)) throw new Error(`Unsupported launch option: ${key}`);
       if (query.getAll(key).length !== 1) throw new Error(`Repeated launch option: ${key}`);
     }
+    if (query.get("game") === "werewolf") { // xtask-allow-game-id: ADR-0035 opt-in standalone leaf.
+      const keys = new Set(["game","mode","seats","theme","motion","locale"]);
+      for (const [key] of query) if (!keys.has(key)) throw new Error(`Unsupported simulator option: ${key}`);
+      if (query.has("mode") && query.get("mode") !== "simulator") throw new Error("Only isolated-seat local simulation is available");
+      const theme = query.get("theme") ?? "dark", motion = query.get("motion") ?? "system", locale = query.get("locale") ?? "vi";
+      if (!themes.includes(theme) || !["system","reduced"].includes(motion) || !["vi","en"].includes(locale)) throw new Error("Invalid simulator preference");
+      return Object.freeze({game:"werewolf", mode:"simulator", seats:integer(query.get("seats"),12,6,20,"Seats"), theme,motion,locale}); // xtask-allow-game-id: ADR-0035 opt-in standalone leaf.
+    }
     const handoff = navigation(search);
     const online = handoff && query.get("mode") === "network";
     const matchId = query.get("match_id");
@@ -71,6 +79,8 @@
     return {...config, resolvedTheme: config.theme === "system" ? (contrast ? (dark ? "hc-dark" : "hc-light") : (dark ? "dark" : "light")) : config.theme, reducedMotion: config.motion === "reduced" || media("(prefers-reduced-motion: reduce)").matches};
   }
   function query(config) {
+    if (config.game === "werewolf") return new URLSearchParams({game:config.game,mode:"simulator",seats:String(config.seats),theme:config.theme,motion:config.motion,locale:config.locale}).toString(); // xtask-allow-game-id: ADR-0035 opt-in standalone leaf.
+
     const result = new URLSearchParams({game:"chess", mode:"hot-seat", clock:config.clock, theme:config.theme, motion:config.motion, locale:config.locale}); // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
     if (config.source === "tabula") {
       result.set("game", registryGame);
@@ -87,6 +97,8 @@
     return result.toString();
   }
   function argumentsFor(config) {
+    if (config.game === "werewolf") return ["--seats",String(config.seats),"--theme",config.resolvedTheme].join("\n"); // xtask-allow-game-id: ADR-0035 opt-in standalone leaf.
+
     const result = ["--game", "chess", "--skip-setup", "--clock", config.clock, "--theme", config.resolvedTheme]; // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
     if (config.clock !== "untimed") result.push("--initial-ms", String(config.initialMs), config.clock === "fischer" ? "--increment-ms" : "--delay-ms", String(config.clock === "fischer" ? config.incrementMs : config.delayMs));
     if (config.online) result.push("--online-match", config.matchId);

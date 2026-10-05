@@ -90,8 +90,8 @@ fn detail_body(messages: &Messages, entry: &CatalogEntry) -> AnyView {
     let back_label = messages.text("detail.back");
     let setup_label = messages.text("detail.setup");
     #[cfg(feature = "online")]
-    let online = game
-        .direct_document()
+    let online = crate::online::runtime_binding()
+        .supports_direct(game)
         .then(|| view! { <crate::online::OnlinePanel id=id.clone()/> });
     #[cfg(not(feature = "online"))]
     let online = ();

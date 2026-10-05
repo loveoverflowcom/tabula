@@ -5,6 +5,14 @@
 - **Extends:** ADR-0032 §5 item 3 (the WebView `GameHost` that loads the ADR-0030 local document, with typed lifecycle events). Supersedes nothing.
 - **Invariants touched:** none relaxed. I-1, I-5/I-6, I-9, I-10, I-13 and I-15 are preserved; ADR-010, ADR-011, ADR-0029, ADR-0030, ADR-0031 and ADR-0032 stay in force.
 
+## Subsequent bounded native voice slice
+
+[ADR-0037](0037-native-mobile-voice-client.md) later adds native host-only network/
+microphone permission and a separate VoiceClient, while preserving this game
+WebView’s network/capture denial and unchanged bridge grammar. The no-permission/
+no-voice descriptions below record this ADR’s original local embedding scope;
+they do not authorize voice through the page or open production/backend gates.
+
 ## Context
 
 ADR-0032 chose Compose Multiplatform (CMP) for the app shell and a WebView for the existing Rust/WASM

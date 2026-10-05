@@ -183,26 +183,48 @@ impl GameRules for HiddenRules {
 }
 
 #[derive(Default)]
-struct Auth(Mutex<BTreeMap<SessionId, (Binding, ClientViewer)>>);
+struct Auth {
+    grants: Mutex<BTreeMap<SessionId, (Binding, ClientViewer)>>,
+    fail_prepare: Mutex<Option<Purpose>>,
+    preparations: Mutex<Vec<Purpose>>,
+    lose_after_apply: AtomicU64,
+    apply_calls: AtomicU64,
+    pause_prepare: AtomicBool,
+    prepare_entered: Notify,
+    prepare_release: Notify,
+}
 impl Auth {
     fn grant(&self, binding: &Binding, viewer: ClientViewer) {
-        self.0
+        self.grants
             .lock()
             .unwrap()
             .insert(binding.session(), (binding.clone(), viewer));
     }
     fn revoke(&self, binding: &Binding) {
-        self.0.lock().unwrap().remove(&binding.session());
+        self.grants.lock().unwrap().remove(&binding.session());
     }
 }
 impl Authority for Auth {
+    async fn prepare(&self, _: &Binding, purpose: Purpose) -> Result<(), AuthorityLost> {
+        self.preparations.lock().unwrap().push(purpose);
+        if self.pause_prepare.swap(false, Ordering::SeqCst) {
+            self.prepare_entered.notify_one();
+            self.prepare_release.notified().await;
+        }
+        if *self.fail_prepare.lock().unwrap() == Some(purpose) {
+            Err(AuthorityLost)
+        } else {
+            Ok(())
+        }
+    }
+
     fn with_current<T>(
         &self,
         binding: &Binding,
         purpose: Purpose,
         action: impl FnOnce() -> T,
     ) -> Result<T, AuthorityLost> {
-        let guard = self.0.lock().unwrap();
+        let guard = self.grants.lock().unwrap();
         let (current, viewer) = guard.get(&binding.session()).ok_or(AuthorityLost)?;
         if current != binding {
             return Err(AuthorityLost);
@@ -214,7 +236,14 @@ impl Authority for Auth {
         if *viewer != required {
             return Err(AuthorityLost);
         }
-        Ok(action())
+        let result = action();
+        if matches!(purpose, Purpose::Apply(_))
+            && self.apply_calls.fetch_add(1, Ordering::SeqCst) + 1
+                == self.lose_after_apply.load(Ordering::SeqCst)
+        {
+            return Err(AuthorityLost);
+        }
+        Ok(result)
     }
 }
 
@@ -1040,4 +1069,118 @@ async fn cancellation_after_apply_cannot_undo_commit_and_drain_closes_following_
         2,
         "started input persisted despite its dropped ticket"
     );
+}
+
+#[tokio::test]
+async fn failed_fresh_authority_suppresses_initial_projection_and_allows_explicit_retry() {
+    let h = Harness::new(1, Limits::default());
+    let viewer = ClientViewer::Seat(SeatId(0));
+    let binding = Binding::new(SessionId(1), UserId(1), 1, 1, 1);
+    h.auth.grant(&binding, viewer);
+    *h.auth.fail_prepare.lock().unwrap() = Some(Purpose::Observe(viewer));
+    assert_eq!(
+        h.handle
+            .attach(binding.clone(), viewer)
+            .unwrap()
+            .wait()
+            .await
+            .unwrap(),
+        Completion::Suppressed
+    );
+    assert!(h.frames_for(binding.session()).is_empty());
+    *h.auth.fail_prepare.lock().unwrap() = None;
+    assert_eq!(
+        h.handle
+            .attach(binding.clone(), viewer)
+            .unwrap()
+            .wait()
+            .await
+            .unwrap(),
+        Completion::Submitted
+    );
+    assert_eq!(h.frames_for(binding.session()).len(), 1);
+    assert_eq!(
+        h.auth.preparations.lock().unwrap().as_slice(),
+        &[Purpose::Observe(viewer); 2]
+    );
+    h.end().await;
+}
+
+#[tokio::test]
+async fn failed_receipt_preparation_suppresses_receipt_without_losing_other_viewers_update() {
+    for command in [1, 250] {
+        let h = Harness::new(1, Limits::default());
+        let owner = h.attach(1, ClientViewer::Seat(SeatId(0))).await;
+        let other = h.attach(2, ClientViewer::Spectator).await;
+        *h.auth.fail_prepare.lock().unwrap() =
+            Some(Purpose::Receipt(ClientViewer::Seat(SeatId(0))));
+        assert_eq!(h.send(&owner, 1, command).await, Completion::Suppressed);
+        assert_eq!(h.frames_for(owner.session()).len(), 1);
+        let expected = if command == 1 { 2 } else { 1 };
+        assert_eq!(h.frames_for(other.session()).len(), expected);
+        assert_eq!(h.log.records.lock().unwrap().len(), expected);
+        h.end().await;
+    }
+}
+
+#[tokio::test]
+async fn failed_observer_preparation_withholds_post_commit_private_output() {
+    let h = Harness::new(1, Limits::default());
+    let owner = h.attach(1, ClientViewer::Seat(SeatId(0))).await;
+    let other = h.attach(2, ClientViewer::Spectator).await;
+    *h.auth.fail_prepare.lock().unwrap() = Some(Purpose::Observe(ClientViewer::Spectator));
+    assert_eq!(h.send(&owner, 1, 1).await, Completion::Submitted);
+    assert_eq!(h.frames_for(owner.session()).len(), 3);
+    assert_eq!(h.frames_for(other.session()).len(), 1);
+    assert_eq!(h.log.records.lock().unwrap().len(), 2);
+    h.end().await;
+}
+
+#[tokio::test]
+async fn authority_loss_after_apply_retires_uncommitted_candidate() {
+    let h = Harness::new(1, Limits::default());
+    let owner = h.attach(1, ClientViewer::Seat(SeatId(0))).await;
+    assert!(!h.handle.is_closed());
+    // The first Apply callback is an authorization probe; the second mutates.
+    h.auth.lose_after_apply.store(2, Ordering::SeqCst);
+    let ticket = h
+        .handle
+        .command(owner.clone(), Harness::command(1, 1))
+        .unwrap();
+    assert_eq!(ticket.wait().await.unwrap_err(), AdmissionError::Closed);
+    assert_eq!(h.auth.apply_calls.load(Ordering::SeqCst), 2);
+    assert_eq!(h.frames_for(owner.session()).len(), 1);
+    assert_eq!(h.log.records.lock().unwrap().len(), 1);
+    assert_eq!(h.fx.keys.lock().unwrap().as_slice(), &[InputIndex(0)]);
+    let summary = h.join.await.unwrap();
+    assert_eq!(summary.exit, Exit::AuthorityLost);
+    assert_eq!(summary.index, InputIndex(0));
+    assert_eq!(summary.version.0, 0);
+    assert!(h.handle.is_closed());
+    assert!(matches!(
+        h.handle.command(owner, Harness::command(2, 0)),
+        Err(AdmissionError::Closed)
+    ));
+}
+
+#[tokio::test]
+async fn async_output_preparation_follows_commit_and_cannot_revive_lost_authority() {
+    let h = Harness::new(1, Limits::default());
+    let owner = h.attach(1, ClientViewer::Seat(SeatId(0))).await;
+    h.auth.pause_prepare.store(true, Ordering::SeqCst);
+    let ticket = h
+        .handle
+        .command(owner.clone(), Harness::command(1, 0))
+        .unwrap();
+    h.auth.prepare_entered.notified().await;
+    assert_eq!(
+        h.log.records.lock().unwrap().len(),
+        2,
+        "commit precedes output preparation"
+    );
+    h.auth.revoke(&owner);
+    h.auth.prepare_release.notify_one();
+    assert_eq!(ticket.wait().await.unwrap(), Completion::Suppressed);
+    assert_eq!(h.frames_for(owner.session()).len(), 1);
+    assert_eq!(h.end().await.version.0, 1);
 }
