@@ -20,6 +20,7 @@
   let boardAcknowledged = false;
   let config;
   let direct = null;
+  let onlineConcealed = false;
   // Mobile GameHost (ADR-0033). The native host injects an origin-restricted port at
   // document start; its absence means an ordinary browser document with no bridge.
   const hostMode = typeof window.TabulaHostNative === "object" && window.TabulaHostNative !== null && Boolean(window.TabulaHostBridge);
@@ -39,7 +40,39 @@
   byId("glcanvas").tabIndex = -1;
   byId("glcanvas").setAttribute("aria-hidden", "true");
   byId("cancel-load").focus();
+  function concealOnline() {
+    if (!config?.online) return;
+    onlineConcealed = true;
+    ready = false;
+    const canvas = byId("glcanvas");
+    // Hide and reset the drawing buffer before any retirement or async work.
+    canvas.hidden = true;
+    canvas.style.visibility = "hidden";
+    canvas.width = 0; canvas.height = 0;
+    canvas.tabIndex = -1;
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.removeAttribute("aria-label");
+    canvas.removeAttribute("aria-describedby");
+    const status = byId("online-status-container");
+    status.hidden = true;
+    for (const item of status.querySelectorAll("span")) item.textContent = "";
+    for (const key of ["onlineSeat", "onlineRevision", "onlineStatus", "onlineConnection"]) delete document.documentElement.dataset[key];
+    document.documentElement.dataset.onlineAvailability = "unavailable";
+    byId("loading-status").textContent = "";
+    byId("loader").hidden = true;
+    byId("runtime-error").hidden = false;
+    byId("error-title").textContent = config.locale === "en" ? "Online game unavailable" : "Ván trực tuyến không khả dụng";
+    byId("error-detail").textContent = config.locale === "en" ? "The online connection is unavailable. Moves are blocked. Return to Tabula to reopen this match." : "Kết nối trực tuyến không khả dụng. Không thể đi nước. Về Tabula để mở lại ván.";
+    for (const id of ["leave-dialog", "help-dialog"]) if (byId(id).open) byId(id).close();
+  }
+  function onlineUnavailable() {
+    concealOnline();
+    stopRuntime();
+    failed = true;
+    if (!leaving) byId("error-back").focus();
+  }
   function stopRuntime() {
+    concealOnline();
     if (!live) return;
     // Cancellation clears held input before retiring exports. Rust still owns
     // local clock policy; this is document disposal, never a game pause.
@@ -89,6 +122,8 @@
     if (failed || leaving) return;
     failed = true;
     ready = false;
+    // Online failures never expose private response/error bodies or infer sign-out.
+    if (config?.online) { onlineUnavailable(); return; }
     // A failed runtime is only restarted through an explicit document reload.
     stopRuntime();
     bridge?.failed(code, error instanceof Error ? error.message : String(error));
@@ -246,8 +281,11 @@
       if (!window.TabulaDirectTransport) throw new Error("The online transport is unavailable");
       direct = window.TabulaDirectTransport.create({
         matchId:config.matchId, gameId:config.gameId, signal:controller.signal, current,
-        onWaiting() { clearTimeout(startupTimer); byId("loading-status").textContent = config.locale === "en" ? "Waiting for the other player to join…" : "Đang đợi người chơi còn lại…"; },
+        onUnavailable:onlineUnavailable,
+        onWaiting() { if (!current() || onlineConcealed) return; clearTimeout(startupTimer); byId("loading-status").textContent = config.locale === "en" ? "Waiting for the other player to join…" : "Đang đợi người chơi còn lại…"; },
         onStatus(value) {
+          if (!current() || onlineConcealed) return;
+          document.documentElement.dataset.onlineAvailability = "available";
           document.documentElement.dataset.onlineSeat = String(value.seat);
           document.documentElement.dataset.onlineRevision = String(value.revision);
           document.documentElement.dataset.onlineStatus = value.status;
@@ -306,9 +344,10 @@
           pendingTimers.add(timer);
         } else if (name.startsWith("tabula-online-")) {
           if (!direct) { fail(new Error("Online play is unavailable")); return id; }
-          direct.file(name).then(deliver).catch((error) => {
-            if (name === "tabula-online-attach.txt") fail(error);
-            else deliver(new TextEncoder().encode("{}"));
+          direct.file(name).then(deliver).catch(() => {
+            // Even a malformed Rust status/projection is terminal for this document.
+            // No stale response is delivered back into a retired WASM instance.
+            if (current()) onlineUnavailable();
           });
         } else {
           // Only explicitly requested manifest aliases cross this boundary.

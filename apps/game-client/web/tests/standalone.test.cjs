@@ -12,10 +12,15 @@ const source = (name) => fs.readFileSync(path.join(__dirname, "..", name), "utf8
 const media = (preferences = []) => (query) => ({matches:preferences.includes(query),addEventListener(){}});
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 function element(id) {
-  return {id,hidden:false,value:"",textContent:"",dataset:{},listeners:{},attributes:{},focus(){this.focused=true;},setAttribute(key,value){this.attributes[key]=value;},removeAttribute(key){delete this.attributes[key];},addEventListener(type,fn){(this.listeners[type] ??= []).push(fn);},dispatch(type,event={}){for(const fn of this.listeners[type]??[])fn(event);},click(){this.dispatch("click");},showModal(){this.open=true;},close(){this.open=false;this.dispatch("close");}};
+  return {id,hidden:false,style:{},width:800,height:600,value:"",textContent:"",dataset:{},listeners:{},attributes:{},focus(){this.focused=true;},setAttribute(key,value){this.attributes[key]=value;},removeAttribute(key){delete this.attributes[key];},addEventListener(type,fn){(this.listeners[type] ??= []).push(fn);},dispatch(type,event={}){for(const fn of this.listeners[type]??[])fn(event);},click(){this.dispatch("click");},showModal(){this.open=true;},close(){this.open=false;this.dispatch("close");}};
 }
 function dom(html) {
   const elements = new Map([...html.matchAll(/id="([^"]+)"/g)].map((match) => [match[1],element(match[1])]));
+  if (elements.has("online-status-container")) {
+    const spans = new Map(["seat", "revision", "status", "connection"].map(key => [key, element("online-"+key)]));
+    elements.get("online-status-container").querySelector = selector => spans.get(/online-([^"]+)/.exec(selector)?.[1]);
+    elements.get("online-status-container").querySelectorAll = () => [...spans.values()];
+  }
   const translations = [...html.matchAll(/data-i18n="([^"]+)"/g)].map((match) => ({dataset:{i18n:match[1]},textContent:""}));
   const start = element("start");
   const runtime = /<body\b[^>]*\bdata-runtime="([^"]+)"/.exec(html)?.[1];
@@ -98,7 +103,7 @@ test("untimed removes and disables timed fields; invalid values cannot navigate"
 // VM mocks exercise host admission/navigation, not a real browser or WASM
 // rules execution. Deferred work deliberately ignores abort to test stale gates.
 const hostInit=(over={})=>({v:1,type:"init",gen:7,capabilities:["keep-awake"],preferences:{theme:"dark",motion:"reduced",locale:"en"},...over});
-async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=false,throwFrame=false,pinned=false,deferStage,pathname="/standalone/play.html",responseHeaders={},streamChunks,versionMismatch=false,missingFrame=false,navigationThrows=0,storage,corruptNetwork=false,missingMiniquad=false,resourceManifest,resourceFiles=runtimeFiles(),host,runtime="chess"}={}) {
+async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=false,throwFrame=false,pinned=false,deferStage,pathname="/standalone/play.html",responseHeaders={},streamChunks,versionMismatch=false,missingFrame=false,navigationThrows=0,storage,corruptNetwork=false,missingMiniquad=false,resourceManifest,resourceFiles=runtimeFiles(),host,runtime="chess",onlineTransport}={}) {
   const mock=dom(source(runtime==="werewolf"?"werewolf-play.html":"play.html"));
   if(mock.elements.has("privacy-shield"))mock.elements.get("privacy-shield").hidden=true;
   mock.elements.get("runtime-error").hidden=true;
@@ -148,7 +153,7 @@ async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=f
   const imports={env:{fs_load_file:()=>999}};
   const context=vm.createContext({
     document:mock.document,
-    location:{search,pathname,href:`https://tabula.test${pathname}`,origin:"https://tabula.test",assign:navigate,reload:()=>navigate("reload")},
+    location:{search,pathname,href:`https://tabula.test${pathname}`,origin:"https://tabula.test",protocol:"https:",assign:navigate,reload:()=>navigate("reload")},
     matchMedia:media(),TabulaLaunch:launch,URL,URLSearchParams,AbortController,TextEncoder,TextDecoder,Uint8Array,Error,Number,Map,Response,
     caches:storage?.caches,navigator:{locks:storage?.locks},
     crypto:{subtle:{async digest(algorithm,bytes){calls.digest++;if(deferStage==="digest"){blocked=true;await gate;}return webcrypto.subtle.digest(algorithm,bytes);}}},
@@ -197,6 +202,7 @@ async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=f
     for(const name of ["wasm_memory","wasm_exports","FS","plugins","version","animation_frame_timeout","miniquad_add_plugin","register_plugins","init_plugins","importObject","animation","UTF8ToString"])delete context[name];
   }
   mock.document.hasFocus=()=>true;mock.document.visibilityState="visible";
+  if (onlineTransport) events.TabulaDirectTransport = onlineTransport;
   const sent=[];
   let hostPort;
   if(host){
@@ -899,4 +905,72 @@ test("simulator frame is forced opaque before startup or interrupted-frame ackno
  const submit=rust.indexOf("renderer.submit(&game.present(&visible))");
  const ack=rust.indexOf("acknowledge_concealed_frame().await;",submit);
  assert.ok(conceal>=0&&conceal<submit&&submit<ack,"queued reactivation cannot make acknowledged frame private");
+});
+
+// These host tests contain no fake board/rules: the direct port supplies only
+// bounded transport callbacks, and we verify the synchronous privacy boundary.
+const onlineQuery = "game=com.tabula.chess&mode=network&seats=2&source=tabula&return_to=%2Fgames%2Fcom.tabula.chess%3Fsetup%3D1&locale=en&match_id=00000000000000000000000000000007"; // xtask-allow-game-id: existing standalone leaf fixture, not platform dispatch.
+async function onlineHarness(file = async () => new TextEncoder().encode("ok")) {
+  let callbacks, retired = 0;
+  const mock = await runtimeHarness({search:onlineQuery,pathname:"/play/00000000000000000000000000000007/",onlineTransport:{create(value) { callbacks = value; return {file,retire() { retired++; }}; }}});
+  await admitBoard(mock);
+  const status = {seat:1,revision:4,status:"Game over / Black wins",connection:"Connected"};
+  callbacks.onStatus(status);
+  return {...mock,onlineCallbacks:callbacks,retired:()=>retired,status};
+}
+function assertOnlineConcealed(mock) {
+  const canvas = mock.elements.get("glcanvas"), container = mock.elements.get("online-status-container");
+  assert.equal(canvas.hidden,true);
+  assert.equal(canvas.style.visibility,"hidden");
+  assert.equal(canvas.width,0); assert.equal(canvas.height,0);
+  assert.equal(canvas.attributes["aria-hidden"],"true");
+  assert.equal(canvas.attributes["aria-label"],undefined);
+  assert.equal(canvas.attributes["aria-describedby"],undefined);
+  assert.equal(container.hidden,true);
+  for(const span of container.querySelectorAll("span")) assert.equal(span.textContent,"");
+  for(const key of ["onlineSeat","onlineRevision","onlineStatus","onlineConnection"]) assert.equal(mock.document.documentElement.dataset[key],undefined);
+  assert.equal(mock.document.documentElement.dataset.onlineAvailability,"unavailable");
+  assert.equal(mock.elements.get("runtime-error").hidden,false);
+  assert.equal(mock.elements.get("error-detail").textContent,"The online connection is unavailable. Moves are blocked. Return to Tabula to reopen this match.");
+  assert.ok(mock.retired()>0);
+}
+test("online authority loss synchronously clears pixels/a11y and rejects queued status/readiness",async()=>{
+  const mock = await onlineHarness();
+  assert.equal(mock.document.documentElement.dataset.onlineAvailability,"available");
+  mock.onlineCallbacks.onUnavailable();
+  assertOnlineConcealed(mock);
+  const frames = mock.frames();
+  mock.onlineCallbacks.onStatus(mock.status);
+  mock.onlineCallbacks.onWaiting();
+  mock.context.animation();
+  mock.rawExports.file_loaded(123);
+  assertOnlineConcealed(mock);
+  assert.equal(mock.frames(),frames);
+});
+test("online pagehide conceals before BFCache capture and pageshow cannot expose old board",async()=>{
+  const mock = await onlineHarness();
+  mock.events.dispatch("pagehide");
+  assertOnlineConcealed(mock);
+  mock.events.dispatch("pageshow",{persisted:true});
+  assert.equal(mock.navigation.at(-1),"reload");
+  mock.onlineCallbacks.onStatus(mock.status);
+  assertOnlineConcealed(mock);
+});
+test("online failed body/command and delayed success never republish private bytes",async()=>{
+  let reject, resolve;
+  const mock = await onlineHarness(name => new Promise((ok,no) => { resolve=ok; reject=no; }));
+  const id = mock.imports.env.fs_load_file("tabula-online-poll.txt",22);
+  reject(new Error("private-body-or-grant-must-not-display"));
+  await tick();
+  assertOnlineConcealed(mock);
+  assert.equal(mock.context.FS.loaded_files[id],undefined);
+  assert.ok(!mock.loaded.includes(id));
+  const late = await onlineHarness(() => new Promise(ok => { resolve=ok; }));
+  const pending = late.imports.env.fs_load_file("tabula-online-command/00",24);
+  late.events.dispatch("pagehide");
+  resolve(new TextEncoder().encode("private-view"));
+  await tick();
+  assertOnlineConcealed(late);
+  assert.equal(late.context.FS.loaded_files[pending],undefined);
+  assert.ok(!late.loaded.includes(pending));
 });

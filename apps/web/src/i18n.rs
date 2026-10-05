@@ -16,7 +16,7 @@ use tabula_registry::{I18nKey, Locale, Localizer};
 /// Keys here describe the *shell's* vocabulary only.
 const SHELL_EN: &[(&str, &str)] = &[
     ("online.heading", "Play together"),
-    ("online.scope", "Direct play is unranked and untimed. Each player needs a signed-in account in their own browser."),
+    ("online.scope", "This opt-in panel enables direct play for two signed-in players in separate browsers. Other setup modes remain local. Games are unranked and untimed."),
     ("online.ready", "Create a match, or enter the code shared with you."),
     ("online.pending", "Checking your session and match…"),
     ("online.create", "Create match"),
@@ -197,7 +197,7 @@ const SHELL_EN: &[(&str, &str)] = &[
 
 const SHELL_VI: &[(&str, &str)] = &[
     ("online.heading", "Chơi cùng nhau"),
-    ("online.scope", "Chơi trực tiếp không xếp hạng và không tính giờ. Mỗi người cần đăng nhập trong trình duyệt riêng."),
+    ("online.scope", "Bảng này hỗ trợ chơi trực tiếp cho hai người đã đăng nhập bằng hai trình duyệt riêng. Các chế độ thiết lập khác vẫn chơi cục bộ. Ván không xếp hạng và không tính giờ."),
     ("online.ready", "Tạo ván mới hoặc nhập mã được chia sẻ."),
     ("online.pending", "Đang kiểm tra phiên và ván…"),
     ("online.create", "Tạo ván"),

@@ -22,7 +22,7 @@ Its plain HTTP upstream binds only 127.0.0.1:3000. The fixture's HTTPS frontend
 binds only 127.0.0.1:9443, serves the real Trunk shell and separately staged
 Macroquad/WASM game document, and forwards authentic Cookie/Origin/CSRF headers.
 The frontend keeps server output opaque and preserves duplicate Set-Cookie.
-The workflow asserts at least 13 selected real_postgres_online_ tests and
+The workflow asserts at least 14 selected real_postgres_online_ tests and
 explicitly runs them with --ignored against the disposable real PostgreSQL service.
 
 ## Actual browser and TLS boundaries
@@ -116,6 +116,56 @@ session operation scopes, one terminal transition, atomic terminal snapshot,
 and the decisive Checkmate verdict with Black as winner. No client output can
 be emitted by the audit. Only closed boolean/count/verdict results are published;
 the private account input and canonical data never become browser frames.
+
+## Actual UI image review
+
+The same mandatory browser run captures these actual served UI states, after
+their corresponding visible conditions succeed:
+
+- `00-dashboard-discovery.png`: dashboard and featured-game discovery
+- `01-game-library.png`: rendered discovery library
+- `02-create-join-controls.png`: the actual create/join controls
+- `03-created-code-waiting.png`: successful creation waiting for the opponent
+- `04-opponent-joined.png`: successful join with the other seat
+- `05-white-initial-board.png` and `06-black-initial-board.png`: both independent
+  actual Chromium processes' rendered initial Chess canvases
+- `07-white-terminal-result.png` and `08-black-terminal-result.png`: both
+  independently rendered terminal canvases after the complete legal game
+- `09-terminal-result-page.png`: the full authorized terminal result page
+- `10-authority-unavailable.png`: a real live board's neutral unavailable UI
+  after normal current-session logout and a denied live poll
+
+Input and textarea values, the active invitation-code display, secret-marked
+nodes and exact in-memory credential/code text matches are masked by Playwright
+at screenshot capture. The fixture does not edit the page to create a state,
+retain raw DOM, serialize secret mask values, generate images or infer rendered
+pixels from HTTP results. Full-game screenshots are taken while authorization
+is current, before those documents are closed. The last image has its own third
+auxiliary actor, created/joined through real UI controls, so it cannot consume the
+passive recipient's queued projection in the held-body proof. White first renders
+that live initial board. A separate page in White's own context then performs
+normal current-credential logout; the live game must receive an actual poll401.
+Before capture the real UI must positively show its neutral error, hide and
+zero-size the canvas, remove private status datasets and clear status spans.
+Stale game pixels or private status must never be captured after authority loss.
+This bounded active-document concealment check does not claim PR3 reconnect,
+interrupted-command or BFCache lifecycle acceptance.
+
+`screenshots-provenance.json` labels the disposable synthetic authentication,
+separate genuine Kanidm CI, actual screenshot conditions, exact checkout commit
+and tree from a required clean checkout, deployed shell/game WASM and HTML/JS/CSS
+hashes, native fixture hash, tool versions,
+actual Chromium and Playwright versions, viewport, device-pixel ratio, capture
+time, dimensions and PNG SHA-256. It records only allowlisted route paths, never
+queries, fragments, grants or credentials. The artifact directory is
+`verification/online-match-artifacts/`.
+
+Helper tests and this source do not produce actual UI evidence. A review report
+or GitHub issue must wait for the executed CI job's successful game, durable
+audit and nonempty held-body proof, then inspect the actual PNG pixels and verify
+their manifest hashes. Until that happens, image capture and visual review are
+`NOT_RUN`. Only inspected secret-free images and their public provenance may be
+published in the single user-requested review issue.
 
 ## Commands and honest evidence
 

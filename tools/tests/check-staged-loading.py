@@ -63,7 +63,7 @@ def check(distribution):
             references = References()
             references.feed(document.decode())
             assert not references.images, "first-board loader must not fetch cover artwork"
-            assert len(references.files) == 8, "expected two styles and six pinned scripts, including host bridge"
+            assert len(references.files) == 9, "expected two styles and seven pinned scripts, including host bridge and direct transport"
             manifest = None
             for relative, integrity in references.files:
                 assert relative.startswith("resources/"), f"mutable host dependency: {relative}"
@@ -83,7 +83,7 @@ def check(distribution):
                 payload = get(urljoin(entry, resource["url"]))
                 assert len(payload) == resource["bytes"] and hashlib.sha256(payload).hexdigest() == resource["sha256"]
                 assert requests[-1]["cache_control"] == "public, max-age=31536000, immutable"
-            assert len(requests) == 14
+            assert len(requests) == 15
             return {
                 "evidence": "real staged HTTP/SRI/manifest smoke, not a browser waterfall or cache timing",
                 "first_board_runtime_aliases": aliases,

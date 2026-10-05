@@ -3,9 +3,9 @@ const direct = require("../direct-transport.js"), launch = require("../launch-op
 const id = "00000000000000000000000000000007", game = "com.tabula.chess"; // xtask-allow-game-id: existing game-client leaf binding, not platform dispatch.
 const hex = text => Buffer.from(text).toString("hex");
 const response = (body, extra={}) => new Response(typeof body === "string" ? body : JSON.stringify(body), {status:200,headers:{"Cache-Control":"no-store","Content-Type":"application/json"},...extra});
-function fixture(fetcher) {
+function fixture(fetcher, extra={}) {
   const controller = new AbortController();
-  return {controller,transport:direct.create({matchId:id,gameId:game,signal:controller.signal,current:()=>true,protocol:"https:",fetcher})};
+  return {controller,transport:direct.create({matchId:id,gameId:game,signal:controller.signal,current:()=>true,protocol:"https:",fetcher,...extra})};
 }
 test("public online launch admits no grant, credential or client config", () => {
   const query = "?game=" + game + "&mode=network&seats=2&source=tabula&return_to=" + encodeURIComponent("/games/" + game + "?setup=1") + "&locale=en&match_id=" + id;
@@ -69,7 +69,7 @@ test("retirement rejects late private completion and concurrent requests stay bo
   await assert.rejects(f.transport.file("tabula-online-poll.txt"),/already active/);
   f.transport.retire();
   release(response({version:1,disposition:"authenticated",csrf_token:"A".repeat(43)}));
-  await assert.rejects(pending,/retired/);assert.equal(calls,1);
+  await assert.rejects(pending,/retired|interrupted/);assert.equal(calls,1);
 });
 test("unannounced oversized streamed private response is cancelled and reader released",async()=>{
   let released=false,aborted=false;
@@ -86,4 +86,41 @@ test("status bridge publishes only bounded presenter facts and never performs Fe
   await t.file("tabula-online-status/"+hex(JSON.stringify({seat:1,revision:4,status:"Game over / Black wins",connection:"Connected"})));
   assert.equal(seen.status,"Game over / Black wins");assert.equal(seen.seat,1);
   await assert.rejects(t.file("tabula-online-status/"+hex(JSON.stringify({seat:0,revision:-1,status:"x",connection:"x"}))));
+});
+
+test("401/403, malformed JSON and body failure terminally conceal without exposing bodies",async()=>{
+  for(const scenario of [401,403,"json","body"]){
+    let concealed=0,status=0;
+    const f=fixture(async()=>{
+      if(typeof scenario==="number") return response("private-body",{status:scenario});
+      if(scenario==="json") return response("{private-grant");
+      return {status:200,redirected:false,headers:new Headers({"Cache-Control":"no-store","Content-Type":"application/json"}),body:{getReader(){return {async read(){throw new Error("private-body");},releaseLock(){}};}}};
+    },{onUnavailable(){concealed++;},onStatus(){status++;}});
+    await assert.rejects(f.transport.file("tabula-online-attach.txt"),error=>!error.message.includes("private-"));
+    assert.equal(concealed,1);
+    await assert.rejects(f.transport.file("tabula-online-status/"+hex(JSON.stringify({seat:0,revision:0,status:"old",connection:"old"}))),/retired/);
+    assert.equal(status,0); assert.equal(concealed,1);
+  }
+});
+test("deadline aborts even an uncooperative fetch and conceals before it resolves",async()=>{
+  let timeout,resolve,concealed=0,aborted=false;
+  const f=fixture((_path,init)=>{init.signal.addEventListener("abort",()=>aborted=true);return new Promise(ok=>resolve=ok);},{onUnavailable(){concealed++;},timers:{setTimeout(fn){timeout=fn;return 1;},clearTimeout(){}}});
+  const pending=f.transport.file("tabula-online-attach.txt");
+  await Promise.resolve();
+  timeout();
+  await assert.rejects(pending,/interrupted/);
+  assert.equal(aborted,true); assert.equal(concealed,1);
+  resolve(response({version:1,disposition:"authenticated",csrf_token:"A".repeat(43)}));
+  await Promise.resolve();
+  await assert.rejects(f.transport.file("tabula-online-poll.txt"),/retired/);
+});
+test("Rust unavailable notification and malformed status retire transport irreversibly",async()=>{
+  for(const operation of ["tabula-online-unavailable.txt","tabula-online-status/"+hex("{malformed"),"tabula-online-status/"+hex(JSON.stringify({seat:0,revision:0,status:"x",connection:"x",secret:"no"}))]){
+    let concealed=0,status=0;
+    const f=fixture(()=>{throw new Error("no Fetch");},{onUnavailable(){concealed++;},onStatus(){status++;}});
+    await assert.rejects(f.transport.file(operation));
+    assert.equal(concealed,1);
+    await assert.rejects(f.transport.file("tabula-online-status/"+hex(JSON.stringify({seat:0,revision:0,status:"old",connection:"old"}))));
+    assert.equal(status,0);
+  }
 });

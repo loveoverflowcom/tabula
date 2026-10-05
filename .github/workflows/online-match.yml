@@ -1,4 +1,4 @@
-# Bounded PR2 actual-browser proof. Existing baseline jobs/provider acceptance stay intact.
+# Bounded PR2 actual-browser proof. Existing 15 jobs/provider acceptance stay intact.
 name: online-match
 on:
   pull_request:
@@ -83,7 +83,7 @@ jobs:
           mkdir -p verification/online-match-artifacts
           cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --list --ignored > verification/online-match-artifacts/storage-test-selection.txt
           grep -Eq '^.*real_postgres_online_.*: test$' verification/online-match-artifacts/storage-test-selection.txt
-          test "$(grep -Ec '^.*real_postgres_online_.*: test$' verification/online-match-artifacts/storage-test-selection.txt)" -ge 13
+          test "$(grep -Ec '^.*real_postgres_online_.*: test$' verification/online-match-artifacts/storage-test-selection.txt)" -ge 14
           cat verification/online-match-artifacts/storage-test-selection.txt
           cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --ignored --test-threads=2
       - name: Build the actual shell and separate gameplay document
@@ -92,6 +92,10 @@ jobs:
           (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --features online)
           cargo build -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --profile wasm-release
           cargo xtask stage-local-play
+          mkdir -p verification/online-match-artifacts
+          cargo tree -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --edges normal > verification/online-match-artifacts/online-game-graph.txt
+          python3 tools/tests/check-loading-budgets.py --game-wasm target/wasm32-unknown-unknown/wasm-release/tabula-game-client.wasm --game-tree verification/online-match-artifacts/online-game-graph.txt --shell-dist apps/web/dist --write-receipt verification/online-match-artifacts/loading-budget-receipt.json
+          python3 tools/tests/check-staged-loading.py --shell-dist apps/web/dist --write-receipt verification/online-match-artifacts/staged-loading-receipt.json
       - name: Complete actual rendered Chess in two independent browser processes
         run: bash tests/online-match/run.sh
       - name: Preserve only secret-free screenshots, actions and durable verdict

@@ -52,13 +52,13 @@ pub fn OnlinePanel(id: String) -> impl IntoView {
             <p class="status" role="status" aria-live="polite" data-testid="online-status">{move || Messages::new(locale.get()).text(&status.get())}</p>
             {move || admission.get().map(|a| {
                 let messages = Messages::new(locale.get());
-                let join_code = a.join_code().unwrap_or_default().to_owned();
+                let join_code = a.join_code().filter(|code| !code.is_empty()).map(str::to_owned);
                 let match_id = a.match_id().to_owned();
                 let game_id = a.game_id().to_owned();
                 let expected = enter_id.clone();
                 view! {
                     <div class="online-panel__admission">
-                        <p>{messages.text("online.code.share")}<strong data-testid="online-code">{join_code}</strong></p>
+                        {join_code.map(|code| view! { <p>{messages.text("online.code.share")}<strong data-testid="online-code">{code}</strong></p> })}
                         <p data-testid="online-seat">{format!("{} {}", messages.text("online.seat"), a.seat() + 1)}</p>
                         <button type="button" class="btn btn--filled" data-testid="online-enter" on:click=move |_| open_admission(&game_id, &expected, &match_id, locale.get_untracked(), status)>{messages.text("online.enter")}</button>
                     </div>
@@ -170,6 +170,19 @@ fn dispatch(
         }
     });
 }
+// Join denials deliberately do not reveal whether a room/code exists. Only a
+// real authentication failure should send the user back to sign in.
+#[cfg(any(target_arch = "wasm32", test))]
+fn response_error_key(status: u16, joining: bool) -> Option<&'static str> {
+    match status {
+        200 | 201 => None,
+        403 if joining => Some("online.invalid_code"),
+        401 | 403 => Some("online.signin"),
+        404 | 409 => Some("online.invalid_code"),
+        _ => Some("online.unavailable"),
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 mod browser {
     use super::{shell, GameId, Operation};
@@ -297,15 +310,10 @@ mod browser {
             .map_err(|_| "online.disconnected")?
             .dyn_into::<Response>()
             .map_err(|_| "online.unavailable")?;
-        if matches!(response.status(), 401 | 403) {
-            return Err("online.signin");
-        }
-        if !matches!(response.status(), 200 | 201) {
-            return Err(if matches!(response.status(), 404 | 409) {
-                "online.invalid_code"
-            } else {
-                "online.unavailable"
-            });
+        if let Some(key) =
+            super::response_error_key(response.status(), path == "/api/v1/matches/join")
+        {
+            return Err(key);
         }
         if response.redirected()
             || !response
@@ -379,5 +387,27 @@ mod browser {
         .await;
         reader.release_lock();
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::response_error_key;
+
+    #[test]
+    fn join_denial_is_code_unavailable_without_misclassifying_authentication() {
+        assert_eq!(response_error_key(403, true), Some("online.invalid_code"));
+        assert_eq!(response_error_key(401, true), Some("online.signin"));
+        assert_eq!(response_error_key(401, false), Some("online.signin"));
+        assert_eq!(response_error_key(403, false), Some("online.signin"));
+        for status in [404, 409] {
+            assert_eq!(
+                response_error_key(status, true),
+                Some("online.invalid_code")
+            );
+        }
+        assert_eq!(response_error_key(500, true), Some("online.unavailable"));
+        assert_eq!(response_error_key(200, true), None);
+        assert_eq!(response_error_key(201, false), None);
     }
 }

@@ -148,6 +148,24 @@ refuses takeover of an already started room; distributed owner output/effect
 fencing belongs to PR3. Privacy concealment and the global lifetime room-budget
 review fixes require their own focused checks and final exact-source re-review.
 
+## First executed composed-database CI receipt
+
+PR80 checkpoint `ceaf059b4790222effc3b5852154bfae554d2738`, tree
+`59132909b4ad2744fff4741148499fcbf380a94b`, triggered all five current workflows.
+The [online acceptance job](https://github.com/loveoverflowcom/tabula/actions/runs/37351418509/job/111902910697)
+compiled/linted the standalone fixture and actually selected/executed all 14
+composed PostgreSQL cases. Result: **FAIL**, 10 passed and 4 failed. Failures
+were strict-migration/advisory-lock availability, current-session ordering setup,
+and the exact room-lock wait oracle. The new completed/expired lifetime-budget
+case passed. These are real execution failures under investigation, not missing
+PostgreSQL setup and not final-source acceptance.
+
+The workflow correctly skipped shell/game build and actual browser play after
+that failure. Its uploaded selection-list-only artifact contains no runtime
+screenshots or complete-game evidence. No Chromium game/pixel PASS is inferred.
+The next exact published source must rerun the entire job after the corrected
+fixture/resource/lifecycle composition. All final merge gates remain open.
+
 ## Pending online delivery gates
 
 - Final capacity/lifecycle review fixes and their focused regressions
