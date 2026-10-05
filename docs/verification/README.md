@@ -10,6 +10,9 @@ shared evidence/status vocabulary.
 |---|---|
 | [Core domain boundaries](core-domain-boundaries.md) | Constructor/decoding boundaries and historical Phase-0 refactor claims |
 | [Standalone Chess](standalone-chess/README.md) | Local vertical slice, rules/presentation/build checks and platform residuals |
+| [Standalone Werewolf](werewolf-standalone/README.md) | ADR-0035 local referee, projection/privacy, replay and presentation evidence; real target limitations |
+| [Native mobile voice](native-mobile-voice/README.md) | ADR-0037 native builds and controller/CMP doubles; actual device/SFU audio remains deferred |
+| [October 5 PR integration](pr-integration-20261005.md) | Sequential review/merge of #69, #70 and #75, tested source identities and #80's incomplete scope |
 | [Chess integration](chess-integration/README.md) | ADR-0030 opt-in discovery/launch/return and local configuration/HTTP checks |
 | [Game loading](game-loading/README.md) | Bundle loading, cache/resource budgets and wiring evidence |
 | [Issue 59](issue-59/README.md) | Tiles renderer asset/workload baseline and outstanding target evidence |
