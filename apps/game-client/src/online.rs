@@ -15,7 +15,7 @@ where
     R::View: serde::de::DeserializeOwned,
     R::ViewEvent: serde::de::DeserializeOwned,
 {
-    view: R::View,
+    view: Option<R::View>,
     local: P::Local,
     network: DirectClient,
     rejection: Option<ErrorCode>,
@@ -67,7 +67,7 @@ where
             .ok_or("The attachment has no projection")?;
         let view = canonical_decode(view).map_err(|_| "The server projection is incompatible")?;
         Ok(Self {
-            view,
+            view: Some(view),
             local: P::Local::default(),
             network,
             rejection: None,
@@ -87,19 +87,26 @@ where
         self.network.revision()
     }
     /// Status/result wording belongs to the actual game presenter.
-    pub fn description(&self) -> String {
-        P::a11y(&self.view, &self.local).status
+    pub fn description(&self) -> Option<String> {
+        self.view
+            .as_ref()
+            .map(|view| P::a11y(view, &self.local).status)
     }
     /// Most recent public-safe receipt rejection.
     pub const fn rejection(&self) -> Option<ErrorCode> {
         self.rejection
     }
     /// Draw the existing game presenter exclusively from server projections.
-    pub fn present(&self, frame: &FrameCtx) -> RenderList {
-        P::present(&self.view, &self.local, frame)
+    pub fn present(&self, frame: &FrameCtx) -> Option<RenderList> {
+        self.view
+            .as_ref()
+            .map(|view| P::present(view, &self.local, frame))
     }
     /// Build/encode typed intent without any local rules evaluation.
     pub fn on_input(&mut self, input: &InputEvent) -> Result<Option<ClientEnvelope>, &'static str> {
+        let Some(view) = self.view.as_ref() else {
+            return Ok(None);
+        };
         if self.network.state() != DirectState::Ready {
             // Release/focus cleanup must not leave keys or drag held after a receipt.
             if matches!(
@@ -111,11 +118,11 @@ where
                         ..
                     }
             ) {
-                let _ = P::on_input(input, &self.view, &mut self.local);
+                let _ = P::on_input(input, view, &mut self.local);
             }
             return Ok(None);
         }
-        let Some(intent) = P::on_input(input, &self.view, &mut self.local) else {
+        let Some(intent) = P::on_input(input, view, &mut self.local) else {
             return Ok(None);
         };
         let payload = canonical_encode(intent.command())
@@ -162,7 +169,7 @@ where
             .map_err(|_| "The online stream was interrupted")?;
         let mut cues = AudioCues::new();
         for (view, events) in updates {
-            self.view = view;
+            self.view = Some(view);
             for event in events {
                 cues.extend(P::on_view_event(&event, &mut self.local, frame));
             }
@@ -174,10 +181,12 @@ where
         }
         Ok(cues)
     }
-    /// Lose input authority immediately and clear held/drag interaction.
+    /// Lose authority and discard the projection and all local presentation data.
     pub fn disconnect(&mut self) {
         self.network.disconnect();
-        let _ = P::on_input(&InputEvent::Focus(false), &self.view, &mut self.local);
+        self.view = None;
+        self.local = P::Local::default();
+        self.rejection = None;
     }
 }
 #[cfg(test)]
@@ -216,6 +225,7 @@ mod tests {
     struct Local {
         held: bool,
         events: u8,
+        forbid_presentation: bool,
     }
     struct Presenter;
     impl GamePresentation for Presenter {
@@ -224,7 +234,11 @@ mod tests {
         fn asset_pack() -> AssetPackRef {
             panic!("this fixture needs no resources")
         }
-        fn present(_: &u8, _: &Local, _: &FrameCtx) -> RenderList {
+        fn present(_: &u8, local: &Local, _: &FrameCtx) -> RenderList {
+            assert!(
+                !local.forbid_presentation,
+                "lost projection must never be presented"
+            );
             RenderListBuilder::new(Camera2D::default())
                 .finish()
                 .unwrap()
@@ -249,7 +263,11 @@ mod tests {
                 _ => None,
             }
         }
-        fn a11y(view: &u8, _: &Local) -> A11yDescription {
+        fn a11y(view: &u8, local: &Local) -> A11yDescription {
+            assert!(
+                !local.forbid_presentation,
+                "lost projection must never be described"
+            );
             let mut value = A11yDescription::unsupported();
             value.status = view.to_string();
             value
@@ -299,7 +317,7 @@ mod tests {
             canonical_decode::<u8>(command.command().payload()).unwrap(),
             9
         );
-        assert_eq!(online.description(), "1");
+        assert_eq!(online.description().as_deref(), Some("1"));
         assert!(online
             .on_input(&InputEvent::Key {
                 key: Key::Enter,
@@ -316,7 +334,7 @@ mod tests {
                 &frame(),
             )
             .unwrap();
-        assert_eq!(online.description(), "2");
+        assert_eq!(online.description().as_deref(), Some("2"));
         assert_eq!(online.local.events, 3);
     }
     #[test]
@@ -331,7 +349,7 @@ mod tests {
                 &frame()
             )
             .is_err());
-        assert_eq!(online.description(), "1");
+        assert_eq!(online.description(), None);
         assert_eq!(online.local.events, 0);
         assert_eq!(online.state(), DirectState::Disconnected);
         assert!(online
@@ -361,7 +379,27 @@ mod tests {
             .is_none());
         assert!(!online.local.held);
         online.disconnect();
-        assert_eq!(online.description(), "1");
+        assert_eq!(online.description(), None);
+    }
+    #[test]
+    fn authority_loss_drops_projection_and_never_calls_game_presentation_again() {
+        let mut online = session();
+        assert!(online.present(&frame()).is_some());
+        assert_eq!(online.description().as_deref(), Some("1"));
+        online.local_mut().held = true;
+        online.disconnect();
+        assert!(online.view.is_none());
+        assert!(!online.local.held);
+        online.local_mut().forbid_presentation = true;
+        assert!(online.present(&frame()).is_none());
+        assert_eq!(online.description(), None);
+        // A delayed success cannot restore a retired attachment.
+        assert!(online
+            .receive(&[update(2, 1, 2, Vec::new())], &frame())
+            .is_err());
+        online.local_mut().forbid_presentation = true;
+        assert!(online.present(&frame()).is_none());
+        assert_eq!(online.description(), None);
     }
     #[test]
     fn initial_attachment_requires_one_snapshot_instead_of_choosing_stale_view() {
