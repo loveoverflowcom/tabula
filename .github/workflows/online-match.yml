@@ -89,7 +89,7 @@ jobs:
       - name: Build the actual shell and separate gameplay document
         run: |
           cargo install trunk --version 0.21.14 --locked
-          (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --features online)
+          (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
           cargo build -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --profile wasm-release
           cargo xtask stage-local-play
           mkdir -p verification/online-match-artifacts

@@ -10,7 +10,8 @@
     <link data-trunk rel="css" href="style/tokens.css" />
     <link data-trunk rel="scss" href="style/app.scss" />
 
-    <link data-trunk rel="rust" data-wasm-opt="z" />
+    <!-- Rust size builds use standard bulk-memory copy/fill instructions. -->
+    <link data-trunk rel="rust" data-wasm-opt="z" data-wasm-opt-params="--enable-bulk-memory-opt" />
 
     <!--
       Fonts use font-display: swap with a system fallback (doc 04 §7.4).

@@ -188,6 +188,8 @@ panic    = "unwind"
 inherits  = "release"
 opt-level = "z"
 lto       = "fat"
+# Browser artifacts need exports, not private debug/function-name sections.
+strip     = "symbols"
 
 # Fast iteration: dependencies are optimized, our code is not.
 [profile.dev.package."*"]

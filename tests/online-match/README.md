@@ -176,7 +176,7 @@ cargo clippy --manifest-path tests/online-match/Cargo.toml --features body-publi
 cargo test --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
 cargo build --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
 cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --ignored --test-threads=2
-(cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --features online)
+(cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
 cargo build -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --profile wasm-release
 cargo xtask stage-local-play
 bash tests/online-match/run.sh

@@ -108,7 +108,7 @@ class CaptureEvidence:
             "native_fixture_sha256": digest(binary),
             "rustc": tool_version("rustc"), "cargo": tool_version("cargo"),
             "trunk": tool_version("trunk"), "playwright": version("playwright"),
-            "shell_build": "TABULA_PLAY_BASE=/play trunk build --release --features online",
+            "shell_build": "TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online",
             "game_build": "web,online; wasm32-unknown-unknown; wasm-release",
             "fixture_build": "body-publication-test; native debug; debug info disabled",
         }

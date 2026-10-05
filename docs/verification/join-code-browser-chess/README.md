@@ -166,6 +166,34 @@ screenshots or complete-game evidence. No Chromium game/pixel PASS is inferred.
 The next exact published source must rerun the entire job after the corrected
 fixture/resource/lifecycle composition. All final merge gates remain open.
 
+## Corrected composition/build receipts
+
+PR80 checkpoint `c3677bbf38c6c837465a397d175c2422921d2404`, tree
+`3d5f746934f39c38107941782aae09e27a03d00a`, corrects strict migration
+connection cleanup and the real PostgreSQL backend/lease wait oracles. Its
+[real composed-authority gate](https://github.com/loveoverflowcom/tabula/actions/runs/37355097909/job/111915394819)
+completed successfully (step 9); final raw case-count and full-job/browser
+receipts remain to be collected. The current actual provider, durable session
+and durable match workflows also completed successfully on that head. None of
+these receipts establishes the later browser step or final exact-tree CI.
+
+Fresh local `cargo xtask check` passed all portable gates with 1,223 executed
+cases and 18 ignored; ignored/empty selections are not passes. The complete
+loader/transport Node suite passed 105 cases and Python fixture helpers passed
+58. Actual release shell/game builds, unchanged selected-package size/dependency
+caps and the staged HTTP/SRI/cache smoke passed: shell 896,361 raw bytes under
+900,000; game 1,024,823 under 1,250,000. Shell static inventory has five resources
+and zero eager gameplay references. Staged smoke has 15 explicit resource
+requests; this is not a browser waterfall or cache-performance claim.
+
+The small build fix uses the existing size/fat-LTO WASM profile, strips private
+function-name/debug sections (not required exports), and passes both Trunk
+`--release` and `--cargo-profile wasm-release`. Trunk's pinned wasm optimizer
+retains validation with the standard Rust copy/fill bulk-memory feature enabled.
+No cap, wire schema, rules identity, asset ownership or default deployment gate
+is relaxed. Recorded capture build commands match that exact pipeline. The
+final source must rerun all gates and actual Chrome acceptance after publication.
+
 ## Pending online delivery gates
 
 - Final capacity/lifecycle review fixes and their focused regressions
