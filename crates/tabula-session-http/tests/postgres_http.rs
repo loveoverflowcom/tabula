@@ -1,7 +1,7 @@
 #![cfg(all(feature = "postgres", not(target_arch = "wasm32")))]
 
-//! Real PostgreSQL + loopback HTTP acceptance. These ignored cases must be
-//! explicitly selected in CI with a disposable PostgreSQL 16 DATABASE_URL.
+//! Real `PostgreSQL` + loopback HTTP acceptance. These ignored cases must be
+//! explicitly selected in CI with a disposable `PostgreSQL` 16 `DATABASE_URL`.
 //! Missing setup fails; no SQL, direct row edits, or in-memory fallback exists here.
 //! TLS, browser/OS credential storage, provider login, and client receipt are outside this evidence.
 
@@ -123,26 +123,12 @@ fn random_fixture_id() -> u128 {
     u128::from_be_bytes(bytes) | 1
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore = "requires explicit disposable real PostgreSQL 16 DATABASE_URL"]
-async fn pg_http_browser_duplicate_refresh_logout_and_adapter_restart_are_durable() {
-    let db = DatabaseFixture::new().await;
-    let (credential, before) = db.issue(SessionChannel::BrowserCookie).await;
-    let first = DatabaseFixture::listener(db.first.clone()).await;
-    let second = DatabaseFixture::listener(db.second.clone()).await;
-    let cookie = format!("{SESSION_COOKIE}={credential}");
-    let context = first
-        .request("GET", "/api/v1/auth/context", &[("Cookie", &cookie)], "")
-        .await;
-    assert_eq!(context.status, 200);
-    context.assert_no_store();
-    context.assert_no_cookie();
-    let csrf = context.json()["csrf_token"].as_str().unwrap().to_owned();
+async fn duplicate_browser_refresh(server: &Arc<WireServer>, cookie: &str, csrf: &str) -> String {
     let mut requests = Vec::new();
     for _ in 0..12 {
-        let server = first.clone();
-        let cookie = cookie.clone();
-        let csrf = csrf.clone();
+        let server = server.clone();
+        let cookie = cookie.to_owned();
+        let csrf = csrf.to_owned();
         requests.push(tokio::spawn(async move {
             server
                 .request(
@@ -170,12 +156,43 @@ async fn pg_http_browser_duplicate_refresh_logout_and_adapter_restart_are_durabl
         } else {
             assert!(matches!(response.status, 401 | 409), "{response:?}");
             response.assert_no_cookie();
-            response.assert_excludes(&[&credential]);
+            response.assert_excludes(&[cookie.split_once('=').unwrap().1]);
         }
     }
     assert_eq!(replacements.len(), 1);
-    let replacement = &replacements[0];
-    assert_ne!(replacement, &cookie);
+    let replacement = replacements.pop().unwrap();
+    assert_ne!(replacement, cookie);
+    replacement
+}
+
+fn assert_same_session_after_rotation(before: &SessionSnapshot, after: &SessionSnapshot) {
+    assert_eq!(after.id(), before.id());
+    assert_eq!(after.user_id(), before.user_id());
+    assert_eq!(after.context_id(), before.context_id());
+    assert_eq!(after.authorization_epoch(), before.authorization_epoch());
+    assert_eq!(after.credential_generation().get(), 1);
+    assert_eq!(after.idle_deadline(), before.idle_deadline());
+    assert_eq!(after.absolute_deadline(), before.absolute_deadline());
+    assert_eq!(after.last_activity_at(), before.last_activity_at());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires explicit disposable real PostgreSQL 16 DATABASE_URL"]
+async fn pg_http_browser_duplicate_refresh_logout_and_adapter_restart_are_durable() {
+    let db = DatabaseFixture::new().await;
+    let (credential, before) = db.issue(SessionChannel::BrowserCookie).await;
+    let first = DatabaseFixture::listener(db.first.clone()).await;
+    let second = DatabaseFixture::listener(db.second.clone()).await;
+    let cookie = format!("{SESSION_COOKIE}={credential}");
+    let context = first
+        .request("GET", "/api/v1/auth/context", &[("Cookie", &cookie)], "")
+        .await;
+    assert_eq!(context.status, 200);
+    context.assert_no_store();
+    context.assert_no_cookie();
+    let csrf = context.json()["csrf_token"].as_str().unwrap().to_owned();
+    let replacement_cookie = duplicate_browser_refresh(&first, &cookie, &csrf).await;
+    let replacement = &replacement_cookie;
     let current = SessionCredential::parse(replacement.split_once('=').unwrap().1).unwrap();
     let after = db
         .second
@@ -186,14 +203,7 @@ async fn pg_http_browser_duplicate_refresh_logout_and_adapter_restart_are_durabl
         })
         .await
         .unwrap();
-    assert_eq!(after.id(), before.id());
-    assert_eq!(after.user_id(), before.user_id());
-    assert_eq!(after.context_id(), before.context_id());
-    assert_eq!(after.authorization_epoch(), before.authorization_epoch());
-    assert_eq!(after.credential_generation().get(), 1);
-    assert_eq!(after.idle_deadline(), before.idle_deadline());
-    assert_eq!(after.absolute_deadline(), before.absolute_deadline());
-    assert_eq!(after.last_activity_at(), before.last_activity_at());
+    assert_same_session_after_rotation(&before, &after);
     let stale = second
         .request("GET", "/api/v1/me", &[("Cookie", &cookie)], "")
         .await;
@@ -221,38 +231,24 @@ async fn pg_http_browser_duplicate_refresh_logout_and_adapter_restart_are_durabl
         )
         .await;
     assert_eq!(live_context.json()["csrf_token"], csrf);
-    let logout = first
-        .request(
-            "POST",
-            "/api/v1/auth/logout",
-            &[
-                ("Cookie", replacement),
-                ("Origin", TRUSTED_ORIGIN),
-                ("Content-Type", "application/json"),
-                ("X-Tabula-CSRF", &csrf),
-            ],
-            "{}",
-        )
-        .await;
-    assert_eq!(logout.status, 204);
-    logout.assert_no_store();
-    assert!(logout.header("set-cookie").unwrap().contains("Max-Age=0"));
-    let retry = first
-        .request(
-            "POST",
-            "/api/v1/auth/logout",
-            &[
-                ("Cookie", replacement),
-                ("Origin", TRUSTED_ORIGIN),
-                ("Content-Type", "application/json"),
-                ("X-Tabula-CSRF", &csrf),
-            ],
-            "{}",
-        )
-        .await;
-    assert_eq!(retry.status, 204);
-    retry.assert_no_store();
-    assert!(retry.header("set-cookie").unwrap().contains("Max-Age=0"));
+    for _ in 0..2 {
+        let logout = first
+            .request(
+                "POST",
+                "/api/v1/auth/logout",
+                &[
+                    ("Cookie", replacement),
+                    ("Origin", TRUSTED_ORIGIN),
+                    ("Content-Type", "application/json"),
+                    ("X-Tabula-CSRF", &csrf),
+                ],
+                "{}",
+            )
+            .await;
+        assert_eq!(logout.status, 204);
+        logout.assert_no_store();
+        assert!(logout.header("set-cookie").unwrap().contains("Max-Age=0"));
+    }
     let profile = second
         .request("GET", "/api/v1/me", &[("Cookie", replacement)], "")
         .await;

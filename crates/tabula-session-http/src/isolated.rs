@@ -1,6 +1,7 @@
 //! Non-default native harness adapter for ADR-0036. Not a production bootstrap.
-//! It validates transport before durable authority; every private body obtains a
-//! fresh storage-owned publication lease and releases one bounded frame only.
+//! It validates transport before durable authority; context/self-profile bodies
+//! obtain fresh storage-owned leases and release one bounded frame only. Native
+//! credential responses follow durable winning-rotation semantics separately.
 
 use std::{
     collections::BTreeMap,

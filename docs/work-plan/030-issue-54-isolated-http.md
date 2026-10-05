@@ -1,7 +1,8 @@
 # Issue #54 PR2 — isolated session and self-profile HTTP
 
 **Status:** implemented on PR71's exact verified head in a fresh work session;
-final real-database/aggregate/publication receipts are pending. See the
+current exact-head real-database/aggregate/publication receipts are recorded in
+[PR72](https://github.com/loveoverflowcom/tabula/pull/72). See the
 [bounded ledger](../verification/issue-54-isolated-http/README.md).
 
 **Outcome:** exercise current durable session authority through a same-origin

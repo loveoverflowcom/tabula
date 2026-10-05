@@ -70,8 +70,8 @@ impl std::fmt::Debug for SelfProfileSnapshot {
 /// A distinct cross-process authority lock remains held until guard release or
 /// its short lease expires. A durable exclusion survives publication-backend loss
 /// under the trusted deployment-clock assumption. `publish` checks lease/deadline
-/// and runs a synchronous first-frame handoff while expiry cleanup cannot release
-/// that lock. Keep the
+/// before and after synchronous first-frame construction. Cleanup is independent
+/// of construction; an expired callback result is suppressed. Keep the
 /// guard in the response body through its first frame. The callback must build one
 /// bounded frame synchronously without blocking or awaiting. It must be pure
 /// frame construction with no external I/O, transmission or other side effects.

@@ -56,7 +56,9 @@ deadline. All subsequent authority acquisitions honor that durable exclusion
 before sampling operation time, including after the publishing backend dies.
 
 The Body retains the one-shot guard through its first frame. The synchronous
-publication callback is the server handoff ordering point; expired/dropped/
+pure frame constructor and pre/post lease checks define the logical server
+handoff ordering point. Atomic expiry/cancellation cleanup cannot starve the
+Tokio driver while construction is suspended; expired/dropped/
 repeated handoffs do not invoke it. Queued unpolled reads cannot repopulate a
 client after their lease. Commit failure never returns a guard. Connection loss
 cannot silently return a pooled backend with a lingering session advisory lock.
@@ -74,18 +76,22 @@ interpret every network error as logout.
 
 | Claim / failure | Owner and oracle | Status / evidence | Residual |
 |---|---|---|---|
-| Exact channels, Origin, JSON, CSRF and no-store | real loopback HTTP requests and literal header/body assertions | Pending final isolated wire receipt | Named synthetic HTTPS Origin over loopback HTTP is not TLS/browser evidence |
+| Exact channels, Origin, JSON, CSRF and no-store | real loopback HTTP requests and literal header/body assertions | PASS: 26 actual loopback HTTP cases + 5 DTO/vector/validation cases | Named synthetic HTTPS Origin over loopback HTTP is not TLS/browser evidence |
 | Current credential/context/terminal logout policy | checked session policy; raw/stale/rotated/channel/context partitions | PASS: 25 core cases | Fixture issuer+subject structure never proves Kanidm authentication |
-| Concurrent HTTP rotation/logout/restart/unavailable | disposable PostgreSQL authority plus actual TCP HTTP | NOT_RUN locally; dedicated CI selection pending | No production/provider/secure-store observations |
-| Private first-frame ordering and backend loss | independent PostgreSQL backends, observed lock graphs, pg_terminate_backend, actual unpolled Body | NOT_RUN locally; dedicated CI selection pending | Partial S09; trusted-clock assumption, buffered TCP and WS residuals above |
-| Metadata and dependency isolation | authentic PostgreSQL SQLx 0.9 prepare, exact committed descriptions; resolved I-1 graph | Bootstrap CI pending; initial check-deps PASS across 28 crates | No fabricated metadata or executed Rust 1.85 build claim |
-| Workspace/targets/closed startup | aggregate, features, native build, WASM compilation and actual service failure exits | Final-content verification pending | Compilation does not prove phase exits or browser interaction |
+| Concurrent HTTP rotation/logout/restart/unavailable | disposable PostgreSQL authority plus actual TCP HTTP | NOT_RUN locally; exact-head CI receipt in PR72 | No production/provider/secure-store observations |
+| Private first-frame ordering and backend loss | independent PostgreSQL backends, observed lock graphs, pg_terminate_backend, actual unpolled Body | NOT_RUN locally; exact-head CI receipt in PR72 | Partial S09; trusted-clock assumption, buffered TCP and WS residuals above |
+| Metadata and dependency isolation | authentic PostgreSQL SQLx 0.9 prepare, exact committed descriptions; resolved I-1 graph | PASS: 16 authentic descriptions verified; initial check-deps PASS across 28 crates | No fabricated metadata or executed Rust 1.85 build claim |
+| Workspace/targets/closed startup | aggregate, features, native build, WASM compilation and actual service failure exits | Current exact-head receipts in PR72; local checks below | Compilation does not prove phase exits or browser interaction |
 
 Local PostgreSQL/client/container tools are unavailable. Ignored or zero-test
 selections are never database evidence. The workflow checks non-empty inventory,
 real migrations, metadata regeneration/comparison, all real DB tests and offline
-compilation. Publication and exact final-head CI receipts are recorded in the PR
-body; bootstrap failures remain historical and are not reported as final success.
+compilation. Publication and exact final-head CI receipts are maintained in
+[PR72](https://github.com/loveoverflowcom/tabula/pull/72); the historical bootstrap
+was 30/31 storage PASS with HTTP DB cases skipped. Its mutex-cleanup starvation
+defect was repaired with atomic nonblocking cleanup and the strong failing case
+retained. The genuine 16-description cache was independently verified against
+the generated ZIP and current SQL. Bootstrap failures are not final success.
 
 ## Review repairs and remaining gates
 
@@ -102,3 +108,19 @@ proxy/TLS, login/registration policies, native keychains, WS/grants/gameplay,
 profile edits/other users/history/statistics, social/ratings/voice, real browser
 cookie/BFCache/AT/IME/password-manager and all phase exits remain gated.
 PR3 begins only after this PR's verified completion, in a fresh work session.
+
+## Portable local checks
+
+The authentic cache compiles offline with SQLX_OFFLINE=true and no database or
+historical directory override. Focused strict native/storage/HTTP Clippy passes;
+25 core and 2 literal/raw-lease unit cases pass, while ignored real-DB cases are
+reported separately. Both production binaries build and execute their unchanged
+failure exits (1). Both workspace feature modes, native game-client build, game-client /
+web-shell / all-feature DTO WASM checks, all-feature cargo-deny, dependency /
+no-game-ID / manifest gates, formatting / whitespace, 39 relative links and
+skill drift / 32 + 6 validator tests pass. The authoritative `cargo xtask check` also passes: 1,034 passed, 0 failed,
+21 ignored across 80 Rust summaries (53 nonempty). Its ordinary feature
+selection does not execute the optional 26 HTTP or 31 storage/4 HTTP real-DB
+cases. The focused wire run and explicit CI selections supply those distinct
+oracles. Final head-associated CI results are recorded at their tested head
+in PR72.

@@ -1955,7 +1955,7 @@ async fn postgres_publication_commits_floors_and_blocks_independent_logout_until
     wait_blocked(&db.admin, second_pid, first_pid).await;
     assert_eq!(publication.snapshot().user_id(), UserId(1));
     assert_eq!(
-        publication.publish(|current| current.user_id()).unwrap(),
+        publication.publish(SessionSnapshot::user_id).unwrap(),
         UserId(1)
     );
     let mut repeated_callback = false;
@@ -2070,7 +2070,7 @@ async fn postgres_publication_lease_starts_after_waiting_for_current_authority()
         START_MS + 100
     );
     assert_eq!(
-        publication.publish(|current| current.user_id()).unwrap(),
+        publication.publish(SessionSnapshot::user_id).unwrap(),
         UserId(1)
     );
     drop(publication);
@@ -2413,13 +2413,13 @@ async fn postgres_backend_loss_and_delayed_frame_construction_cannot_publish_aft
         .unwrap();
     assert!(terminated);
     let (entered_callback, callback_entered) = std::sync::mpsc::channel();
-    let (release_callback, released_callback) = std::sync::mpsc::channel();
+    let (resume_sender, resume_receiver) = std::sync::mpsc::channel();
     let construction = tokio::task::spawn_blocking(move || {
         publication.publish(|current| {
             // Test-only suspension models preemption of pure frame creation.
             // No private result is externally sent inside this callback.
             entered_callback.send(()).unwrap();
-            released_callback.recv_timeout(WAIT_LIMIT).unwrap();
+            resume_receiver.recv_timeout(WAIT_LIMIT).unwrap();
             current.user_id()
         })
     });
@@ -2429,7 +2429,7 @@ async fn postgres_backend_loss_and_delayed_frame_construction_cannot_publish_aft
     let (second, _) = store(&db.second, START_MS + 100);
     let logout = tokio::spawn(async move { second.revoke_credential(request).await });
     assert_eq!(finish(logout).await, Ok(()));
-    release_callback.send(()).unwrap();
+    resume_sender.send(()).unwrap();
     assert_eq!(
         finish(construction).await,
         Err(SessionError::Unauthenticated)

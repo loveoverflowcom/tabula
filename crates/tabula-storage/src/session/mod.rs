@@ -11,7 +11,8 @@
 //! body/frame handoff, not client receipt, buffered bytes or WebSocket delivery.
 
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use sqlx::{Connection, PgPool, Postgres, Transaction};
@@ -27,7 +28,10 @@ use tokio::time::Instant;
 use uuid::Uuid;
 
 #[cfg(test)]
-use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
+use std::sync::{
+    atomic::{AtomicU64, AtomicU8},
+    Mutex,
+};
 
 /// `PostgreSQL` implementation of the internal durable authority port (ADR-0036).
 ///
@@ -74,7 +78,7 @@ impl PublicationLease {
                 until
                     .get()
                     .checked_sub(started_at.get())
-                    .filter(|duration| *duration > 0 && *duration <= PUBLICATION_LEASE_MS)
+                    .filter(|duration| (1..=PUBLICATION_LEASE_MS).contains(duration))
                     .ok_or(SessionError::Unavailable)?;
                 Ok(Some(Self { started_at, until }))
             }
@@ -729,11 +733,6 @@ fn local_publication_budget(lease_ms: u64) -> Result<Duration, SessionError> {
         .ok_or(SessionError::Unauthenticated)
 }
 
-struct PublicationState {
-    active: bool,
-    published: bool,
-}
-
 /// Owned isolated server-frame guard, never a transferable credential (ADR-0036).
 ///
 /// Its worker owns a dedicated close-on-drop database connection with the account
@@ -746,7 +745,8 @@ struct PublicationState {
 /// clock correction is not solved by a monotonic local timer.
 pub struct PgSessionPublication {
     snapshot: SessionSnapshot,
-    state: Arc<Mutex<PublicationState>>,
+    active: Arc<AtomicBool>,
+    published: bool,
     expires_at: Instant,
     release: Option<oneshot::Sender<()>>,
 }
@@ -766,20 +766,23 @@ impl SessionPublication for PgSessionPublication {
         &mut self,
         publication: impl FnOnce(&SessionSnapshot) -> R,
     ) -> Result<R, SessionError> {
-        let mut state = self.state.lock().map_err(unavailable)?;
-        if !state.active || state.published || Instant::now() >= self.expires_at {
+        if !self.active.load(Ordering::Acquire)
+            || self.published
+            || Instant::now() >= self.expires_at
+        {
             return Err(SessionError::Unauthenticated);
         }
-        state.published = true;
-        // The expiry worker cannot release the authority lock while this
-        // synchronous body/frame handoff is being constructed. The body owns
-        // this guard until that frame has been handed to its transport.
+        self.published = true;
+        // The body owns this guard through its first frame. Cleanup never
+        // blocks on construction: the committed exclusion still fences other
+        // operations, and the post-construction check drops any late result.
         let frame = publication(&self.snapshot);
         // Frame construction is pure and must not perform I/O or send data.
-        // A paused/scheduled callback can cross the lease even while this local
-        // mutex remains held, especially after publication-backend loss. Drop
-        // its value rather than hand a late frame to the transport.
-        if Instant::now() >= self.expires_at {
+        // A paused/scheduled callback can cross the lease, especially after
+        // publication-backend loss. Drop its value rather than hand a late
+        // frame to the transport. The atomic liveness check also observes
+        // independent cleanup without locking or starving Tokio workers.
+        if !self.active.load(Ordering::Acquire) || Instant::now() >= self.expires_at {
             return Err(SessionError::Unauthenticated);
         }
         Ok(frame)
@@ -937,28 +940,25 @@ impl HttpSessionAuthority for PgSessionStore {
         if Instant::now() >= expires_at {
             return Err(SessionError::Unauthenticated);
         }
-        let state = Arc::new(Mutex::new(PublicationState {
-            active: true,
-            published: false,
-        }));
-        let cleanup_state = state.clone();
+        let active = Arc::new(AtomicBool::new(true));
+        let cleanup_active = active.clone();
         let (release, cancelled) = oneshot::channel();
         tokio::spawn(async move {
             tokio::select! {
                 _ = cancelled => {},
                 () = tokio::time::sleep_until(expires_at) => {},
             }
-            // Poisoning also fails closed. Always close the connection even if
-            // a caller panicked while constructing its synchronous frame.
-            match cleanup_state.lock() {
-                Ok(mut state) => state.active = false,
-                Err(poisoned) => poisoned.into_inner().active = false,
-            }
+            // Never block a runtime worker on frame construction. Cancellation
+            // and expiry independently mark the guard dead and close its backend,
+            // even while a callback is paused. Its post-construction check will
+            // suppress that result; the committed lease survives backend loss.
+            cleanup_active.store(false, Ordering::Release);
             let _ = connection.close().await;
         });
         Ok(PgSessionPublication {
             snapshot,
-            state,
+            active,
+            published: false,
             expires_at,
             release: Some(release),
         })

@@ -38,8 +38,9 @@ pub struct RotateSession {
 /// storage/corruption/clock failure is unavailable, without private diagnostics.
 ///
 /// Successful observations are snapshots only. They cannot authorize effects
-/// after an unrelated await. Cross-process private-output and gameplay fencing,
-/// provider verification, HTTP/WS and production bootstraps remain gated.
+/// after an unrelated await. Isolated HTTP operations use dedicated ports with
+/// a bounded server-frame publication guard. Gameplay/socket delivery, provider
+/// verification and production bootstraps remain gated.
 pub trait SessionAuthority: Send + Sync {
     /// Read-only exact provider-key resolution; never silently provisions accounts.
     fn account_snapshot(
