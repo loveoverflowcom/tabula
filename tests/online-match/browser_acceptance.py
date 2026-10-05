@@ -2,8 +2,8 @@
 """Actual, independently launched Chromium UI acceptance, never mocked HTTP.
 
 Secrets remain in runtime memory or the enclosing private temporary directory.
-Only closed result booleans, public build versions, action names, and screenshots
-of gameplay (after invitation/grant UI disappears) become artifacts. This script
+Only closed result booleans, public build provenance, action names, and masked
+screenshots of positively verified rendered UI states become artifacts. This script
 is intended for the explicitly authorized disposable CI route, not as a fallback
 around a denied local-browser, networking, or certificate-security boundary.
 """
@@ -265,16 +265,82 @@ def context_facts(page) -> dict:
     return response["body"]
 
 
-def snapshot_canvas(page, path: Path) -> bytes:
+def rendered_canvas_pixels(page) -> bytes:
+    """Check actual authorized pixels in memory without retaining a page dump."""
     canvas = page.locator("#glcanvas")
     require(canvas.is_visible(), "actual game canvas is not visible")
-    shot = canvas.screenshot(path=str(path), timeout=30_000)
+    shot = canvas.screenshot(timeout=30_000)
     image = Image.open(io.BytesIO(shot)).convert("RGB")
     require(image.width >= 600 and image.height >= 400, "rendered canvas is unexpectedly small")
     # A compiled WASM or empty/clear-colored WebGL canvas is never rendering proof.
     require(len(image.resize((160, 120)).getcolors(19_201) or []) > 32,
             "actual canvas pixels are blank or lack rendered game content")
     return shot
+
+
+NEUTRAL_UNAVAILABLE = """() => {
+    const root = document.documentElement, canvas = document.querySelector('#glcanvas');
+    const error = document.querySelector('#runtime-error'), detail = document.querySelector('#error-detail');
+    const privateKeys = ['onlineSeat', 'onlineRevision', 'onlineStatus', 'onlineConnection'];
+    const statusNodes = document.querySelectorAll('[data-testid="online-seat"],[data-testid="online-revision"],[data-testid="online-status"],[data-testid="online-connection"]');
+    return root.dataset.onlineAvailability === 'unavailable'
+        && privateKeys.every(key => !Object.hasOwn(root.dataset, key))
+        && canvas && canvas.width === 0 && canvas.height === 0
+        && canvas.getAttribute('aria-hidden') === 'true'
+        && getComputedStyle(canvas).visibility === 'hidden'
+        && error && error.getBoundingClientRect().width > 0 && error.getBoundingClientRect().height > 0
+        && detail && detail.textContent.trim() === 'The online connection is unavailable. Moves are blocked. Return to Tabula to reopen this match.'
+        && Array.from(statusNodes).every(node => node.textContent.trim() === '');
+}"""
+
+
+def capture_live_authority_loss(white, third, csrf: str, evidence: CaptureEvidence,
+                                secrets: list[str]) -> dict:
+    """Actual live-board poll401 concealment after normal current-session logout.
+
+    A separate auxiliary actor keeps the passive held-body recipient untouched.
+    This proves one active-document authority-loss boundary, not reconnect,
+    interrupted-command handling or browser page-cache lifecycle guarantees.
+    """
+    white.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+    white.get_by_test_id("online-create").wait_for(state="visible", timeout=30_000)
+    with white.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches", timeout=30_000) as created_response:
+        white.get_by_test_id("online-create").click()
+    created = created_response.value.json()
+    require(created_response.value.status == 200 and created["seat"] == 0,
+            "live concealment actual create setup failed")
+    match_id, code = created["match_id"], created["join_code"]
+    secrets.append(code)
+    third.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+    third.get_by_test_id("online-join-code").fill(code)
+    with third.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches/join", timeout=30_000) as joined_response:
+        third.get_by_test_id("online-join").click()
+    joined = joined_response.value.json()
+    require(joined_response.value.status == 200 and joined["match_id"] == match_id
+            and joined["seat"] == 1 and joined["ready"],
+            "live concealment actual opponent join setup failed")
+    enter_game(white, match_id, 0)
+    white.wait_for_function("() => document.documentElement.dataset.onlineRevision === '0'", timeout=30_000)
+    rendered_canvas_pixels(white)
+    control = white.context.new_page()
+    try:
+        control.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+        with white.expect_response(lambda response: urlsplit(response.url).path == f"/api/v1/matches/{match_id}/poll"
+                                   and response.status == 401, timeout=60_000) as rejected_poll:
+            logout = api(control, "/api/v1/auth/logout", {}, csrf)
+            require(logout["status"] == 204, "live board authority logout did not commit")
+        rejected = rejected_poll.value
+        denied({"status": rejected.status, "body": rejected.json()}, {401},
+               "live authority-loss poll was not denied")
+        white.wait_for_function(NEUTRAL_UNAVAILABLE, timeout=30_000)
+        white.locator("#runtime-error").wait_for(state="visible", timeout=30_000)
+        evidence.capture(white, "10-authority-unavailable.png", "Actual live-board authority loss: neutral unavailable UI", "White browser",
+                         "A previously rendered live initial board received real poll401 after committed normal logout; canvas hidden and zero-sized, projected status cleared, moves unavailable", secrets=secrets)
+        return {"actual_live_board_before_logout": True, "current_session_logout_committed": True,
+                "actual_live_poll_status": 401, "neutral_error_visible": True,
+                "canvas_hidden_zero_sized_and_status_cleared": True}
+    finally:
+        control.close()
 
 
 def board_square(width: float, height: float, name: str, flipped: bool) -> tuple[float, float]:
@@ -447,14 +513,18 @@ def run(args) -> None:
             redacted_values += [entry[0]["value"] for entry in cookies]
             white.goto(ORIGIN + "/", wait_until="domcontentloaded")
             white.locator("#featured").wait_for(state="visible", timeout=30_000)
+            white.locator('ul[aria-labelledby="featured"] .card__action[href="/games/com.tabula.chess"]').wait_for(state="visible", timeout=30_000)
             evidence.capture(white, "00-dashboard-discovery.png", "Dashboard and featured-game discovery", "White browser",
                              "Served shell home and featured games visibly rendered after actual session issuance", secrets=redacted_values)
             white.goto(ORIGIN + "/games", wait_until="domcontentloaded")
             white.locator(".section__title").first.wait_for(state="visible", timeout=30_000)
+            white.locator('ul[aria-labelledby="results"] .card__action[href="/games/com.tabula.chess"]').wait_for(state="visible", timeout=30_000)
             evidence.capture(white, "01-game-library.png", "Actual game discovery library", "White browser",
                              "Served library route visibly rendered", secrets=redacted_values)
             white.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
             white.get_by_test_id("online-create").wait_for(state="visible", timeout=30_000)
+            white.get_by_test_id("online-join-code").wait_for(state="visible", timeout=30_000)
+            white.get_by_test_id("online-join").wait_for(state="visible", timeout=30_000)
             evidence.capture(white, "02-create-join-controls.png", "Create and join controls", "White browser",
                              "Actual online create and join controls visibly available", secrets=redacted_values)
 
@@ -651,6 +721,11 @@ def run(args) -> None:
                    {401}, "revoked session issued a cached opponent command")
             results["revoked_command_and_output_denied"] = True
             actions.append("Third-client, cross-match, and revoked-verifier commands and output were denied")
+
+            results["stage"] = "conceal an actual live board after current authority loss"
+            results["live_board_authority_loss"] = capture_live_authority_loss(
+                white, third, facts[0]["csrf_token"], evidence, redacted_values)
+            actions.append("A separate actual live Chess board received poll401 after normal logout and rendered neutral unavailable UI with projected pixels and status concealed")
 
             # Private account identities do not enter uploaded artifacts.
             (private / "audit-input.json").write_text(json.dumps(

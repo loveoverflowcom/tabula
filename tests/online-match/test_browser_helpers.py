@@ -3,10 +3,16 @@ import unittest
 import http.client
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, api, board_square, denied, private_frame_keys, require, run, start_native_poll
+from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, api, board_square, denied, private_frame_keys, require, run, start_native_poll
 
 
 class BrowserHelperTests(unittest.TestCase):
+    def test_neutral_concealment_requires_positive_error_and_no_projected_pixels_or_status(self):
+        for required in ("onlineAvailability === 'unavailable'", "onlineSeat", "onlineRevision", "onlineStatus", "onlineConnection",
+                         "!Object.hasOwn", "canvas.width === 0", "canvas.height === 0", "aria-hidden", "visibility === 'hidden'",
+                         "#runtime-error", "#error-detail", "Moves are blocked", "node.textContent.trim() === ''"):
+            self.assertIn(required, NEUTRAL_UNAVAILABLE)
+
     def test_native_byte_oracle_requires_disposable_ci_before_connecting(self):
         with mock.patch.dict("os.environ", {}, clear=True), mock.patch("browser_acceptance.http.client.HTTPConnection") as connect:
             with self.assertRaises(AcceptanceFailure):

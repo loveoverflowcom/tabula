@@ -42,6 +42,22 @@ def source_sha(path: Path) -> str:
     return value
 
 
+def checkout_provenance(root: Path, artifacts: Path) -> dict:
+    # A checkout label must not silently describe locally edited/untracked source.
+    # Capture all subprocess diagnostics privately; never print file names or diffs.
+    status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"],
+                            cwd=root, check=True, capture_output=True, text=True)
+    if status.stdout:
+        raise CaptureFailure("actual build checkout is not clean")
+    commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, check=True,
+                            capture_output=True, text=True).stdout.strip()
+    tree = subprocess.run(["git", "rev-parse", "HEAD^{tree}"], cwd=root, check=True,
+                          capture_output=True, text=True).stdout.strip()
+    if commit != source_sha(artifacts / "source-sha.txt") or tree != source_sha(artifacts / "source-tree.txt"):
+        raise CaptureFailure("actual checkout differs from the recorded build source")
+    return {"source_commit": commit, "source_tree": tree, "source_checkout": "clean"}
+
+
 def public_route(url: str) -> str:
     parsed = urlsplit(url)
     if parsed.scheme != "https" or parsed.hostname != "localhost" or parsed.port != 9443 or parsed.path not in SAFE_ROUTES:
@@ -63,6 +79,15 @@ def wasm_builds(dist: Path) -> list[dict]:
     return builds
 
 
+def deployed_documents(dist: Path) -> list[dict]:
+    files = sorted(path for path in dist.rglob("*") if path.is_file()
+                   and path.suffix in (".html", ".js", ".css"))
+    if not any(path.relative_to(dist).as_posix() == "play/local/play.html" for path in files):
+        raise CaptureFailure("the actual separately staged game document is absent")
+    return [{"path": path.relative_to(dist).as_posix(), "size_bytes": path.stat().st_size,
+             "sha256": digest(path)} for path in files]
+
+
 def tool_version(command: str) -> str:
     output = subprocess.run([command, "--version"], check=True, capture_output=True, text=True).stdout.strip()
     if not output or len(output) > 256 or "\n" in output:
@@ -77,9 +102,9 @@ class CaptureEvidence:
         self.optional: list[dict] = []
         binary = root / "tests/online-match/target/debug/online-match-fixture"
         self.build = {
-            "source_commit": source_sha(artifacts / "source-sha.txt"),
-            "source_tree": source_sha(artifacts / "source-tree.txt"),
+            **checkout_provenance(root, artifacts),
             "deployed_wasm": wasm_builds(root / "apps/web/dist"),
+            "deployed_html_js_css": deployed_documents(root / "apps/web/dist"),
             "native_fixture_sha256": digest(binary),
             "rustc": tool_version("rustc"), "cargo": tool_version("cargo"),
             "trunk": tool_version("trunk"), "playwright": version("playwright"),

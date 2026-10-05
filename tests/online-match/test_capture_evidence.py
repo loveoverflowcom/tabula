@@ -3,11 +3,46 @@ import hashlib
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
+from types import SimpleNamespace
 
-from capture_evidence import CaptureFailure, MASK_SELECTOR, digest, public_route, source_sha, wasm_builds
+from capture_evidence import CaptureFailure, MASK_SELECTOR, checkout_provenance, deployed_documents, digest, public_route, source_sha, wasm_builds
 
 
 class CaptureEvidenceTests(unittest.TestCase):
+    def test_host_document_hashes_require_the_separate_actual_game_document(self):
+        with tempfile.TemporaryDirectory() as folder:
+            dist = Path(folder)
+            (dist / "index.html").write_text("synthetic-shell")
+            with self.assertRaises(CaptureFailure):
+                deployed_documents(dist)
+            game = dist / "play/local/play.html"
+            game.parent.mkdir(parents=True)
+            game.write_text("synthetic-host")
+            script = game.parent / "direct-transport.js"
+            script.write_text("synthetic-script")
+            builds = deployed_documents(dist)
+            self.assertEqual(len(builds), 3)
+            self.assertEqual(next(row for row in builds if row["path"].endswith("direct-transport.js"))["sha256"], digest(script))
+
+    def test_dirty_checkout_cannot_be_labelled_as_an_exact_commit(self):
+        with mock.patch("capture_evidence.subprocess.run", return_value=SimpleNamespace(stdout="?? untracked-source\n")):
+            with self.assertRaisesRegex(CaptureFailure, "not clean"):
+                checkout_provenance(Path("synthetic-root"), Path("synthetic-artifacts"))
+
+    def test_clean_checkout_must_match_recorded_commit_and_tree(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)
+            (path / "source-sha.txt").write_text("a" * 40)
+            (path / "source-tree.txt").write_text("b" * 40)
+            responses = [SimpleNamespace(stdout=value) for value in ("", "a" * 40 + "\n", "b" * 40 + "\n")]
+            with mock.patch("capture_evidence.subprocess.run", side_effect=responses):
+                self.assertEqual(checkout_provenance(path, path)["source_checkout"], "clean")
+            responses = [SimpleNamespace(stdout=value) for value in ("", "c" * 40 + "\n", "b" * 40 + "\n")]
+            with mock.patch("capture_evidence.subprocess.run", side_effect=responses):
+                with self.assertRaisesRegex(CaptureFailure, "differs"):
+                    checkout_provenance(path, path)
+
     def test_routes_drop_all_query_and_fragment_data(self):
         self.assertEqual(public_route("https://localhost:9443/play/local/?match_id=public&untrusted=secret#secret"), "/play/local/")
 
