@@ -11,7 +11,7 @@
 //! this crate's `games` module, which is why no shell crate can branch on a
 //! game id (I-9).
 
-use tabula_core::{BotLevel, Occupant, SeatEntry, SeatId, SeatRoster, UserId};
+use tabula_core::{BotLevel, MatchSeed, Occupant, SeatEntry, SeatId, SeatRoster, UserId};
 use tabula_game_api::{ConfigError, GameCapabilities, GameMetadata, GameModule, GameRules};
 
 use crate::{
@@ -94,6 +94,15 @@ pub trait ErasedGame: Send + Sync {
     /// # Errors
     /// [`ConfigRejection`] from parsing, the seat plan, or the module.
     fn normalize(&self, request: &SetupRequest) -> Result<NormalizedConfig, ConfigRejection>;
+    /// Construct an isolated canonical match authority through the typed module.
+    /// This factory adds no network, restore, migration, or service activation
+    /// (ADR-0039; doc 02 §8).
+    fn create_match(
+        &self,
+        config: &[u8],
+        roster: &SeatRoster,
+        seed: MatchSeed,
+    ) -> Result<crate::runtime::CreatedMatch, crate::runtime::RuntimeError>;
 }
 
 /// The single blanket bridge. One implementation, generic over the adapter.
@@ -108,6 +117,15 @@ impl<S: GameSetup> Adapter<S> {
 }
 
 impl<S: GameSetup> ErasedGame for Adapter<S> {
+    fn create_match(
+        &self,
+        config: &[u8],
+        roster: &SeatRoster,
+        seed: MatchSeed,
+    ) -> Result<crate::runtime::CreatedMatch, crate::runtime::RuntimeError> {
+        crate::runtime::TypedMatch::<S::Module>::create(config, roster, seed)
+    }
+
     fn metadata(&self) -> &'static GameMetadata {
         S::Module::metadata()
     }

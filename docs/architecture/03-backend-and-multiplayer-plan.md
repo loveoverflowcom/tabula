@@ -502,6 +502,15 @@ fn logical_now(&self) -> LogicalTime {
 
 ## 8. Ordering, idempotency, and versioning
 
+**Executable isolated exception:** [ADR-0039](../adr/0039-isolated-match-actor-runtime.md)
+implements the bounded offline actor and generic registry bridge under native
+`tabula-match/isolated`. The following production sketches remain plans outside
+that exception. Its receipts are scoped to resolved record/subject/epoch/seat
+generation; retained high-watermarks outlive bounded receipt expiry/eviction.
+Canonical counters stay internal; per-attachment visible revisions avoid hidden
+action-existence leaks through global gaps. No SQL match store, network listener,
+recovery/resume or durable authority/private-delivery fence is opened.
+
 ### 8.1 The three counters
 
 | Counter | Scope | Purpose |

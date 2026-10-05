@@ -26,6 +26,17 @@ serialization, streaming/chunked payloads, and RPC-style request/response semant
 
 ## 2. Message envelopes
 
+The first executable contract is the explicitly isolated `0.1` slice of
+[ADR-0039](../adr/0039-isolated-match-actor-runtime.md), with bounded validated
+Postcard/JSON codecs and committed executable vectors in `tabula-protocol`.
+It does not implement the full v1 sketches below, negotiation or network setup.
+Canonical versions/indices/times/hashes are deliberately absent from all client
+frames, including Ack/Reject: global gaps would reveal private action existence.
+Updates carry per-attachment visible revision and are suppressed when projection
+is unchanged and every event is invisible. Future changes to these executable
+types need a version bump and compatibility fixtures; future xtask protocol
+commands remain unimplemented and are not reported as passing gates.
+
 The following shapes remain unimplemented protocol sketches.
 [ADR-0031](../adr/0031-browser-native-session-contract.md) supersedes the former
 `Hello.auth` sketch: HTTP upgrade authenticates browser cookie/native bearer;

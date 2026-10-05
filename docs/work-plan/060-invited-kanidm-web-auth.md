@@ -1,6 +1,13 @@
 # Invited Kanidm web authentication
 
-**Status:** isolated implementation and local/source-review gates passed; real-provider CI and draft publication pending.
+**Status:** completed and normally merged as [PR77](https://github.com/loveoverflowcom/tabula/pull/77)
+at develop `0245dc72c6a356e8e7cbbb1f7601c1d09c634915`, tree
+`55a47eec8b1872c1f20e6c48085eaa30d2cf3402`. Independent review and all 14
+pre-/post-merge jobs passed. Actual Kanidm 1.11.2 MFA/code+PKCE/ES256 and
+PostgreSQL session/profile/logout/epoch lifecycle executed with 1 passing,
+0 failed, 0 ignored provider case. Receipts: [main 12 jobs](https://github.com/loveoverflowcom/tabula/actions/runs/37292012677),
+[PostgreSQL](https://github.com/loveoverflowcom/tabula/actions/runs/37292012767),
+[real provider](https://github.com/loveoverflowcom/tabula/actions/runs/37292012776).
 
 **Outcome:** a previously admitted person completes real Kanidm code+PKCE login,
 receives a durable opaque HttpOnly Tabula cookie, reads current `/me`, logs out,
@@ -18,9 +25,9 @@ CI is required, along with independent security review and exact-tree checks.
 and concurrent cancel/issuance; web generation/privacy/reload suppression; honest
 capabilities and disposable real-provider evidence. [Ledger](../verification/invited-kanidm-web-auth/README.md).
 
-**Next:** after this PR is normally merged and post-merge checks succeed, start
-a fresh develop match actor/wire permissions/idempotence PR with its own gate
-exception/review. No match SQL/store, lobby, friends, queue or reconnect is included.
+**Next:** the separately approved [offline match actor/wire slice](070-isolated-match-actor.md)
+starts from this verified fresh remote develop with its own gate exception and
+review. No match SQL/store, lobby, friends, queue or reconnect is included.
 
 **Remaining gates:** production/TLS/app browser/native/AT/BFCache acceptance,
 provider password-change synchronization, live private output/WS fences,

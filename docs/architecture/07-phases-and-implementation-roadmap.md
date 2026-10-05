@@ -600,6 +600,12 @@ Phase 11  "Someone else's game runs safely, and can be revoked in minutes."
 
 ## Isolated #54 implementation exception
 
+[ADR-0039](../adr/0039-isolated-match-actor-runtime.md) additionally permits the
+owner-requested second offline actor/wire PR after invited OIDC PR77. Its
+single-owner ordering, scoped receipts and projected-output acceptance do not
+prove Phase 3 stability, full Phase 4, SQL durability, network auth, reconnect,
+private-delivery fences or either service activation.
+
 [ADR-0036](../adr/0036-isolated-durable-session-validation.md) permits three
 sequential isolated implementation slices: durable session policy/PostgreSQL
 validation, then HTTP session/self-profile, then account-state/profile UI.

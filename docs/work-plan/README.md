@@ -104,3 +104,9 @@ proof. Production, persistent-provider setup, public signup, native credential
 stores, lobby/queue/friends/match SQL and existing phase exits stay separate.
 Normal self-merge needs independent review and exact-tree terminal CI success;
 a synthetic fixture or compiled provider module cannot substitute for real login.
+
+PR77 is normally merged with all 14 pre-/post-merge jobs and actual Kanidm
+acceptance passed; [060](060-invited-kanidm-web-auth.md) has the verified receipts.
+The second requested PR is the [offline match actor/wire slice](070-isolated-match-actor.md)
+under ADR0039, from develop0245dc72. This queue authorizes no third PR, SQL match
+store, lobby/queue/reconnect, production activation or broad phase completion.
