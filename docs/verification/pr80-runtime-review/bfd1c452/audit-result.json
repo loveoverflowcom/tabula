@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "browser_exit_status": 0,
+  "durable_audit": "pass",
+  "main_terminal_confirmed": true,
+  "all_mandatory_checks_passed": true
+}

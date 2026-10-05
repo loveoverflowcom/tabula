@@ -1,0 +1,431 @@
+{
+  "version": 1,
+  "capture_kind": "actual_browser_rendered_png",
+  "authentication": "Disposable synthetic identities through real durable PostgreSQL session authority",
+  "provider_login": "Separate genuine Kanidm CI job; these images do not picture provider login",
+  "build": {
+    "source_commit": "bf6dfda300f318e3034101cad881f20a2ad08f0f",
+    "source_tree": "938414921c993ead419d326dec47d1b6d00a1dcb",
+    "source_checkout": "clean",
+    "deployed_wasm": [
+      {
+        "path": "play/local/resources/32f8a2acd466dfe80bbd3d3a99e309a40896c2ed6e850e772cf59ed79ca8a70b.wasm",
+        "size_bytes": 1021879,
+        "sha256": "32f8a2acd466dfe80bbd3d3a99e309a40896c2ed6e850e772cf59ed79ca8a70b"
+      },
+      {
+        "path": "play/local/tabula-game-client.wasm",
+        "size_bytes": 1021879,
+        "sha256": "32f8a2acd466dfe80bbd3d3a99e309a40896c2ed6e850e772cf59ed79ca8a70b"
+      },
+      {
+        "path": "tabula-web-68f1f525d00ba683_bg.wasm",
+        "size_bytes": 893533,
+        "sha256": "9a218ea69e1cfeabb978b60b21508dd966cab42217f1f8d85a3ab0e92249c47b"
+      }
+    ],
+    "deployed_html_js_css": [
+      {
+        "path": "app-3e88e62286228f76.css",
+        "size_bytes": 13828,
+        "sha256": "db71e96392d37558be45286f3d5f58ec4c4cc863333aacd32bf92d1e6bebb6d9"
+      },
+      {
+        "path": "index.html",
+        "size_bytes": 1647,
+        "sha256": "55e48e008989a1dc5983b2e56631e41691d7234817c07fc9175dc74719190e30"
+      },
+      {
+        "path": "play/local/bootstrap.js",
+        "size_bytes": 29623,
+        "sha256": "7aff4f07491ea0367fed824be8f0d4f2883fc3fc1b92943c6e250c90dcf3678a"
+      },
+      {
+        "path": "play/local/direct-transport.js",
+        "size_bytes": 10124,
+        "sha256": "046132918b449a9532cec1554356f6b53c0149eaed38e7c79dd5ac575ee171b2"
+      },
+      {
+        "path": "play/local/host-bridge.js",
+        "size_bytes": 9256,
+        "sha256": "f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d"
+      },
+      {
+        "path": "play/local/index.html",
+        "size_bytes": 5452,
+        "sha256": "4ead03db0eb7bd162640c407e70a5c8de6b73fac462147344b34d35fb4ccbcab"
+      },
+      {
+        "path": "play/local/launch-options.js",
+        "size_bytes": 9709,
+        "sha256": "ddd0f076cc8920c4e0a6551e0e32143a9398b5258b1fced740d6fecbea6abacc"
+      },
+      {
+        "path": "play/local/mq_js_bundle.js",
+        "size_bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "play/local/play.html",
+        "size_bytes": 5460,
+        "sha256": "754e046dd1dba53e11976cef482723afff39cae3a5c1f4c098d2c16fdeb994fa"
+      },
+      {
+        "path": "play/local/resource-manifest.js",
+        "size_bytes": 1988,
+        "sha256": "0a67b25cc638ed7c2f9bab81dc02f3529b72880f81fb246113b7e2b8b21a539f"
+      },
+      {
+        "path": "play/local/resources/046132918b449a9532cec1554356f6b53c0149eaed38e7c79dd5ac575ee171b2.js",
+        "size_bytes": 10124,
+        "sha256": "046132918b449a9532cec1554356f6b53c0149eaed38e7c79dd5ac575ee171b2"
+      },
+      {
+        "path": "play/local/resources/0a67b25cc638ed7c2f9bab81dc02f3529b72880f81fb246113b7e2b8b21a539f.js",
+        "size_bytes": 1988,
+        "sha256": "0a67b25cc638ed7c2f9bab81dc02f3529b72880f81fb246113b7e2b8b21a539f"
+      },
+      {
+        "path": "play/local/resources/1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849.js",
+        "size_bytes": 6751,
+        "sha256": "1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849"
+      },
+      {
+        "path": "play/local/resources/2e10f08d3e9dbaf83186de52d3c4f5dd0cd8a225e03d4cf4cc881e6f9adaf99c.css",
+        "size_bytes": 51315,
+        "sha256": "2e10f08d3e9dbaf83186de52d3c4f5dd0cd8a225e03d4cf4cc881e6f9adaf99c"
+      },
+      {
+        "path": "play/local/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js",
+        "size_bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "play/local/resources/7aff4f07491ea0367fed824be8f0d4f2883fc3fc1b92943c6e250c90dcf3678a.js",
+        "size_bytes": 29623,
+        "sha256": "7aff4f07491ea0367fed824be8f0d4f2883fc3fc1b92943c6e250c90dcf3678a"
+      },
+      {
+        "path": "play/local/resources/b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27.js",
+        "size_bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "play/local/resources/d4c984ecea10f7729890f127dff422de8cd62bb0acaf60b029197c5bc8659b9d.css",
+        "size_bytes": 13683,
+        "sha256": "d4c984ecea10f7729890f127dff422de8cd62bb0acaf60b029197c5bc8659b9d"
+      },
+      {
+        "path": "play/local/resources/ddd0f076cc8920c4e0a6551e0e32143a9398b5258b1fced740d6fecbea6abacc.js",
+        "size_bytes": 9709,
+        "sha256": "ddd0f076cc8920c4e0a6551e0e32143a9398b5258b1fced740d6fecbea6abacc"
+      },
+      {
+        "path": "play/local/resources/f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d.js",
+        "size_bytes": 9256,
+        "sha256": "f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d"
+      },
+      {
+        "path": "play/local/resources.js",
+        "size_bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "play/local/setup.js",
+        "size_bytes": 6751,
+        "sha256": "1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849"
+      },
+      {
+        "path": "play/local/standalone.css",
+        "size_bytes": 13559,
+        "sha256": "01a27646f4438ca3c1004905f72bb8e1e9b435c45f11eff04bc1959a45977124"
+      },
+      {
+        "path": "play/local/standalone.html",
+        "size_bytes": 6930,
+        "sha256": "d5b7b20d3022d53de7f4c5ed185bb0e8589af7f00fc532404fe6bf270f197ded"
+      },
+      {
+        "path": "play/local/tokens.css",
+        "size_bytes": 51315,
+        "sha256": "2e10f08d3e9dbaf83186de52d3c4f5dd0cd8a225e03d4cf4cc881e6f9adaf99c"
+      },
+      {
+        "path": "tabula-web-68f1f525d00ba683.js",
+        "size_bytes": 55975,
+        "sha256": "0d5396abf23d8e2ce95ee3eb1c6169d05925e60f02be9a9865fbc9f893f21ff5"
+      },
+      {
+        "path": "tokens-7f4baf6feec97457.css",
+        "size_bytes": 51315,
+        "sha256": "2e10f08d3e9dbaf83186de52d3c4f5dd0cd8a225e03d4cf4cc881e6f9adaf99c"
+      }
+    ],
+    "native_fixture_sha256": "fc19ec5d45ecd7fa2d473ee31a102d2091d3408c55469c6a0658a334569b722a",
+    "rustc": "rustc 1.96.1 (31fca3adb 2026-06-26)",
+    "cargo": "cargo 1.96.1 (356927216 2026-06-26)",
+    "trunk": "trunk 0.21.14",
+    "playwright": "1.62.0",
+    "shell_build": "TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online",
+    "game_build": "web,online; wasm32-unknown-unknown; wasm-release",
+    "fixture_build": "body-publication-test; native debug; debug info disabled"
+  },
+  "captures": [
+    {
+      "file": "00-dashboard-discovery.png",
+      "label": "Dashboard and featured-game discovery",
+      "role": "White browser",
+      "rendered_condition": "Served shell home and featured games visibly rendered after actual session issuance",
+      "route_path": "/",
+      "captured_at_utc": "2026-10-05T21:31:07.991193+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "size_bytes": 59896,
+      "sha256": "5f6535f365b58948514e697a44c8e2a1e079aa7113a6563d6951f1426080aec2",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "01-game-library.png",
+      "label": "Actual game discovery library",
+      "role": "White browser",
+      "rendered_condition": "Served library route visibly rendered",
+      "route_path": "/games",
+      "captured_at_utc": "2026-10-05T21:31:08.157503+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "size_bytes": 59094,
+      "sha256": "e282b30c15c10fe9185e91a61179ed6b39c095d269ec3c0a36d9c8c22e181d5b",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "02-create-join-controls.png",
+      "label": "Create and join controls",
+      "role": "White browser",
+      "rendered_condition": "Actual online create and join controls visibly available",
+      "route_path": "/games/com.tabula.chess",
+      "captured_at_utc": "2026-10-05T21:31:08.393024+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 1528
+      },
+      "size_bytes": 133349,
+      "sha256": "853fdcb9e1722bd1293ee939ef7812af4a3ca84af462ded1d4621c451ca4cf30",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "03-created-code-waiting.png",
+      "label": "Created match waiting for opponent; active code redacted",
+      "role": "White browser",
+      "rendered_condition": "Actual successful create response has rendered its waiting admission",
+      "route_path": "/games/com.tabula.chess",
+      "captured_at_utc": "2026-10-05T21:31:11.768880+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 1686
+      },
+      "size_bytes": 143278,
+      "sha256": "dd9e52ba41ea43d47e79917925eeb36728aacc6d5206011335d495d86c9e08a4",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "04-opponent-joined.png",
+      "label": "Opponent joined the real match; code/input redacted",
+      "role": "Black browser",
+      "rendered_condition": "Actual successful join rendered the opposite seat and enter control",
+      "route_path": "/games/com.tabula.chess",
+      "captured_at_utc": "2026-10-05T21:31:14.060953+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 1652
+      },
+      "size_bytes": 137442,
+      "sha256": "f619f88e055c849b8712f991e0103e860b15744b6dd0edefd3094feb02cd9965",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "05-white-initial-board.png",
+      "label": "White independent rendered Chess board",
+      "role": "White browser",
+      "rendered_condition": "Actual Rust-decoded seat0 initial projection rendered",
+      "route_path": "/play/local/",
+      "captured_at_utc": "2026-10-05T21:31:40.565953+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "size_bytes": 99342,
+      "sha256": "cfdba3698e0f17034aefca13c4dfadb963949dfeaa8e74fc9bfba65cb2d41255",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "06-black-initial-board.png",
+      "label": "Black independent rendered Chess board",
+      "role": "Black browser",
+      "rendered_condition": "Actual Rust-decoded seat1 initial projection rendered",
+      "route_path": "/play/local/",
+      "captured_at_utc": "2026-10-05T21:31:43.143622+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "size_bytes": 99252,
+      "sha256": "71273358f40a4aff490b8ef87d2292d2f45e423dbefab3bfac33d9d33083abf7",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "07-white-terminal-result.png",
+      "label": "White actual terminal result",
+      "role": "White browser",
+      "rendered_condition": "Rendered Black wins and checkmate after four actual legal pointer moves; exact game-owned accessibility status includes checkmate",
+      "route_path": "/play/local/",
+      "captured_at_utc": "2026-10-05T21:32:33.603999+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "size_bytes": 109228,
+      "sha256": "4c06a0686a9dece7b0aa2363c3f42fe3bde3cf5cb709bca1e5516219c86cb6e4",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "08-black-terminal-result.png",
+      "label": "Black actual terminal result",
+      "role": "Black browser",
+      "rendered_condition": "Independently rendered Black wins and checkmate after four actual legal pointer moves; exact game-owned accessibility status includes checkmate",
+      "route_path": "/play/local/",
+      "captured_at_utc": "2026-10-05T21:32:35.670442+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "size_bytes": 109228,
+      "sha256": "4c06a0686a9dece7b0aa2363c3f42fe3bde3cf5cb709bca1e5516219c86cb6e4",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "09-terminal-result-page.png",
+      "label": "Authorized terminal result page and connection UI",
+      "role": "White browser",
+      "rendered_condition": "Actual completed game remains authorized before its document is closed",
+      "route_path": "/play/local/",
+      "captured_at_utc": "2026-10-05T21:32:36.980579+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 851
+      },
+      "size_bytes": 108929,
+      "sha256": "cae8f2cf53200e92aec6e1cd84e30fea2ff50fa419aa8eec94c40b6122521407",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    },
+    {
+      "file": "10-authority-unavailable.png",
+      "label": "Actual live-board authority loss: neutral unavailable UI",
+      "role": "White browser",
+      "rendered_condition": "A previously rendered live initial board received real poll401 after committed normal logout; canvas hidden and zero-sized, projected status cleared, moves unavailable",
+      "route_path": "/play/local/",
+      "captured_at_utc": "2026-10-05T21:33:39.904499+00:00",
+      "browser": "actual Chromium, headless, independent temporary profile",
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "size_bytes": 35650,
+      "sha256": "ea0808e3a1964bf05bb9568e42a076f78289b057ff89d00c760570e88b8948ef",
+      "redactions": "Input/textarea values, active join-code display, secret-marked nodes and in-memory secret text matches masked by browser screenshot capture",
+      "pixel_inspection": "captured; parent inspection required before issue publication"
+    }
+  ],
+  "optional_states": [],
+  "workflow_run_id": "37374120913",
+  "workflow_run_attempt": "1"
+}

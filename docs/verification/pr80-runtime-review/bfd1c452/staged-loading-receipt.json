@@ -1,0 +1,89 @@
+{
+  "evidence": "real staged HTTP/SRI/manifest smoke, not a browser waterfall or cache timing",
+  "first_board_runtime_aliases": [
+    "tabula-game-client.wasm",
+    "assets/OpenSans-Regular.ttf",
+    "assets/OpenSans-Semibold.ttf",
+    "assets/NotoSerif-Bold.ttf",
+    "chess/0.1.0/pieces@1x.b3-143639222e2604f324068497ed1538f23528af661ce87404449f2078ef0eb3bb.png"
+  ],
+  "explicit_request_count_including_static_host": 15,
+  "body_bytes": 1452887,
+  "requests": [
+    {
+      "path": "/play/local/",
+      "bytes": 5452,
+      "cache_control": "no-store"
+    },
+    {
+      "path": "/play/local/resources/2e10f08d3e9dbaf83186de52d3c4f5dd0cd8a225e03d4cf4cc881e6f9adaf99c.css",
+      "bytes": 51315,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/d4c984ecea10f7729890f127dff422de8cd62bb0acaf60b029197c5bc8659b9d.css",
+      "bytes": 13683,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js",
+      "bytes": 37828,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/0a67b25cc638ed7c2f9bab81dc02f3529b72880f81fb246113b7e2b8b21a539f.js",
+      "bytes": 1988,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27.js",
+      "bytes": 16910,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/ddd0f076cc8920c4e0a6551e0e32143a9398b5258b1fced740d6fecbea6abacc.js",
+      "bytes": 9709,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d.js",
+      "bytes": 9256,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/046132918b449a9532cec1554356f6b53c0149eaed38e7c79dd5ac575ee171b2.js",
+      "bytes": 10124,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/7aff4f07491ea0367fed824be8f0d4f2883fc3fc1b92943c6e250c90dcf3678a.js",
+      "bytes": 29623,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/32f8a2acd466dfe80bbd3d3a99e309a40896c2ed6e850e772cf59ed79ca8a70b.wasm",
+      "bytes": 1021879,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84.ttf",
+      "bytes": 40460,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366.ttf",
+      "bytes": 41628,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a.ttf",
+      "bytes": 141544,
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/play/local/resources/e7b5e385f0a040fed4bba33309b706fed5a90969b1c4086678743c5d6379baab.png",
+      "bytes": 21488,
+      "cache_control": "public, max-age=31536000, immutable"
+    }
+  ]
+}

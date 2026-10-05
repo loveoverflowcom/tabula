@@ -1,0 +1,59 @@
+{
+  "game": {
+    "path": "tabula-game-client.wasm",
+    "bytes": 1021879,
+    "gzip9_bytes": 401069,
+    "sha256": "32f8a2acd466dfe80bbd3d3a99e309a40896c2ed6e850e772cf59ed79ca8a70b",
+    "external_payloads_absent": [
+      "assets/fonts/NotoSerif-Bold.ttf",
+      "assets/fonts/OpenSans-Regular.ttf",
+      "assets/fonts/OpenSans-Semibold.ttf",
+      "games/chess/assets/cover@1x.png",
+      "games/chess/assets/cover@2x.png",
+      "games/chess/assets/pieces@1x.png",
+      "games/chess/assets/pieces@2x.png",
+      "games/tiles/assets/tiles@1x.png",
+      "games/tiles/assets/tiles@2x.png"
+    ],
+    "normal_graph_check": "PASS: selected game only, no DOM runtime"
+  },
+  "shell": {
+    "evidence": "static emitted dependency inventory, not browser request waterfall",
+    "unique_resource_count_including_document": 5,
+    "raw_bytes": 1016298,
+    "individual_gzip9_sum": 374103,
+    "resources": [
+      {
+        "path": "index.html",
+        "bytes": 1647,
+        "gzip9_bytes": 1001,
+        "sha256": "55e48e008989a1dc5983b2e56631e41691d7234817c07fc9175dc74719190e30"
+      },
+      {
+        "path": "app-3e88e62286228f76.css",
+        "bytes": 13828,
+        "gzip9_bytes": 2391,
+        "sha256": "db71e96392d37558be45286f3d5f58ec4c4cc863333aacd32bf92d1e6bebb6d9"
+      },
+      {
+        "path": "tabula-web-68f1f525d00ba683.js",
+        "bytes": 55975,
+        "gzip9_bytes": 9254,
+        "sha256": "0d5396abf23d8e2ce95ee3eb1c6169d05925e60f02be9a9865fbc9f893f21ff5"
+      },
+      {
+        "path": "tabula-web-68f1f525d00ba683_bg.wasm",
+        "bytes": 893533,
+        "gzip9_bytes": 358226,
+        "sha256": "9a218ea69e1cfeabb978b60b21508dd966cab42217f1f8d85a3ab0e92249c47b"
+      },
+      {
+        "path": "tokens-7f4baf6feec97457.css",
+        "bytes": 51315,
+        "gzip9_bytes": 3231,
+        "sha256": "2e10f08d3e9dbaf83186de52d3c4f5dd0cd8a225e03d4cf4cc881e6f9adaf99c"
+      }
+    ],
+    "gameplay_asset_references": 0
+  }
+}

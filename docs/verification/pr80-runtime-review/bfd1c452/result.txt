@@ -1,0 +1,1 @@
+PASS: two independent actual Chromium processes completed rendered Chess through real durable authority

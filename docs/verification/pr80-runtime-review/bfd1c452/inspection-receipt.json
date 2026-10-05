@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "inspected_at_utc": "2026-10-05T21:44:00Z",
+  "inspection_by": "dot visual verification and independent UI review; no user-review claim",
+  "source_candidate": "bfd1c452b8b3b08943ce025b02e35a5233ed8a1e",
+  "ci_checkout": "bf6dfda300f318e3034101cad881f20a2ad08f0f",
+  "source_tree": "938414921c993ead419d326dec47d1b6d00a1dcb",
+  "workflow_run_id": 37374120913,
+  "artifact_id": 11372171644,
+  "all11_hashes_bytes_dimensions_verified": true,
+  "pixel_scope": "Changed created-code capture03, both actual terminal roles07/08 and result09, actual neutral authority-loss10 inspected; remaining captures are byte-identical to previously inspected images",
+  "visible_privacy": "No visible cookie, CSRF, grant, attachment/account identity or active invitation code; configured capture masks preserved. This verifies visible pixels and closed public JSON, not all browser memory/network surfaces",
+  "actual_browser_result": "PASS",
+  "independent_durable_audit": "PASS:4 accepted inputs,5 records,1 atomic terminal transition/snapshot,Black checkmate,0 audit output",
+  "live_authority_loss": "PASS: previously real rendered board,normal logout204,poll401,hidden zero-sized canvas and cleared projected status",
+  "provider_label": "Disposable synthetic identities through real durable PostgreSQL session authority; genuine Kanidm acceptance is separate, not pictured",
+  "residuals": [
+    "Default discovery no-online wording beside opt-in panel",
+    "Local player board labels",
+    "PR3 interrupted-send/refresh/revoke-reconnect/server-crash/BFCache acceptance not claimed",
+    "Production remains closed"
+  ],
+  "original_capture_provenance_unchanged": true
+}
