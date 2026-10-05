@@ -17,7 +17,7 @@ members = ["crates/*", "games/*", "apps/*", "services/*", "xtask"]
 
 # `tests/` holds standalone harnesses (integration, load generator) that are NOT
 # workspace members yet — they are added in Phase 4 when a server exists to test.
-exclude = ["tests/load", "tests/match-postgres"]
+exclude = ["tests/load", "tests/match-postgres", "tests/online-match"]
 
 [workspace.package]
 edition = "2021"
