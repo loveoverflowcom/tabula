@@ -11,6 +11,8 @@
 //! > `ErasedMatch`, typed canonical decode, projected reads and ordered apply.
 //! > ADR-0040 adds the bounded server-only durable bridge: canonical snapshots,
 //! > exact-identity decoding and recorded-input replay (I-5/I-16).
+//! > ADR-0041 recovers candidate direct configuration helpers; the online
+//! > document/gateway is absent, so direct handoff stays unavailable.
 //! > Network codecs, migration, rollout tables, multi-version resolution
 //! > and `register!` still wait for their gates.
 //! > ADR-0030 additionally permits the opt-in separate-document handoff to the

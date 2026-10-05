@@ -3279,7 +3279,6 @@ version = "0.0.0"
 dependencies = [
  "tabula-core",
  "tabula-protocol",
- "tabula-registry",
  "thiserror 1.0.69",
 ]
 

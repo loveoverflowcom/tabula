@@ -17,7 +17,47 @@ PR2 of the [three-PR series](../../work-plan/README.md#authorized-durable-to-onl
 | Bounded failures | Probing/queues/payloads unbounded, failed transport creates local authority | Exact expiry/attempt/size limits, full queues, disconnected input gate | In progress; NOT_RUN | Load/SLO and robust recovery |
 | Architecture, I-1/I-9/I-15 | Optional HTTP/auth/storage features pull forbidden game/renderer deps | Dependency/entropy gates, feature/native/WASM builds, service default startup closed | In progress; NOT_RUN | Deployment/configuration |
 
-## Workspace recovery and evidence discipline
+## Recovery branch integration (2026-10-05)
+
+The owner requested review and sequential merge of gateway (`83f05bf`), browser
+(`62a3c8b`) and client (`f330c11`, including `1c23d9c`) into develop `d5b37d3`.
+This integrates the recovered sources only; PR2 gameplay is still incomplete.
+The gateway branch is documentation, not a recovered gateway implementation.
+The browser workflow and manifest are preserved as inactive drafts under
+[`tests/online-match`](../../../tests/online-match/README.md). Missing sources
+are **NOT_IMPLEMENTED**, not an environmental failure or passing acceptance.
+
+Review fixes:
+
+- Reconciled ADR-0035/0037 with already-merged develop and removed the nonexistent
+  gateway crate from the implemented dependency matrix.
+- Kept the incomplete workflow out of `.github/workflows`; its runner rejects
+  missing sources before creating credentials, processes or DB connections.
+- Updated the lockfile for the removed net-client → registry dependency.
+- Closed the command gate after the last representable sequence is acknowledged.
+- Normalized direct setup as network mode through the same typed validation as
+  local setup, parsing once; candidate configuration does not enable deployment.
+- Kept every actual adapter's direct document unavailable until the missing
+  online host exists. A test-only deployed adapter exercises URL validation.
+
+| Claim / invariant | Owner / failure | Oracle / domain | Check / status | Residual scope |
+|---|---|---|---|---|
+| Ordered opaque commands; I-10/I-12 | Sequencer falsely ready at exhaustion, receipt releases wrong command | Maximum sequence, oversized payload, projection while pending, contiguous frames/revisions and matched receipts | 7 unit tests PASS; exhaustion regression failed before fix | No transport, reconnect or authorization |
+| Typed direct configuration; I-9 | Setup reports local mode or skips module/seat checks | Untimed typed bytes, unsupported clocks/game/keys/seat counts and network summary | Registry tests PASS; mode regression failed before fix | Server must validate actual authenticated roster |
+| Honest handoff availability | Recovered helper advertises absent online document | Real adapter refuses direct URL; test-only deployed adapter validates public routing hints | Registry tests PASS | No browser navigation or pixels exercised |
+| Incomplete acceptance fails before setup | Restored workflow invokes absent files/features | Source inventory, `bash -n`, explicit opt-in with missing manifest | PASS for shell syntax and preflight rejection only | Actual browser/PG acceptance NOT_IMPLEMENTED |
+
+Executed focused command: `cargo test -p tabula-net-client -p tabula-registry --locked`:
+66 passed (7 client, 37 registry unit, 17 registry integration, 5 compile-fail
+rustdoc); 5 pre-existing illustrative rustdocs ignored, not counted as passes.
+Toolchain: Rust/Cargo 1.96.1, Linux x86_64. Shared build cache only:
+`CARGO_TARGET_DIR=/home/manhpd/Projects/tabula/target`.
+
+Aggregate/target verification is recorded after the final checks below. These
+source and unit checks do not satisfy the online delivery gates above.
+
+## Historical cloud recovery context
+
 
 The cloud filesystem was replaced between 12:39:22 and 12:39:57 UTC on
 2026-10-05, before publication. Uncommitted code is reconstructed from current
@@ -33,7 +73,7 @@ Setup failure/zero selected/ignored tests cannot be PASS. Genuine Kanidm CI is
 separate from labelled disposable identity issuance. No credential, private
 grant, CA key or canonical state is included in artifacts.
 
-## Pending gates
+## Pending online delivery gates
 
 - Focused admission/session/codec/client/UI tests and strict lint
 - Authoritative cargo xtask check
