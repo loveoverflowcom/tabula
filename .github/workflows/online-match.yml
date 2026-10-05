@@ -83,7 +83,7 @@ jobs:
           mkdir -p verification/online-match-artifacts
           cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --list --ignored > verification/online-match-artifacts/storage-test-selection.txt
           grep -Eq '^.*real_postgres_online_.*: test$' verification/online-match-artifacts/storage-test-selection.txt
-          test "$(grep -Ec '^.*real_postgres_online_.*: test$' verification/online-match-artifacts/storage-test-selection.txt)" -ge 13
+          test "$(grep -Ec '^.*real_postgres_online_.*: test$' verification/online-match-artifacts/storage-test-selection.txt)" -ge 14
           cat verification/online-match-artifacts/storage-test-selection.txt
           cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --ignored --test-threads=2
       - name: Build the actual shell and separate gameplay document

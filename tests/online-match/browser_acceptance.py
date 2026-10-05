@@ -22,6 +22,7 @@ import time
 from urllib.parse import urlsplit
 from PIL import Image
 from playwright.sync_api import sync_playwright
+from capture_evidence import CaptureEvidence
 
 ORIGIN = "https://localhost:9443"
 SESSION_COOKIE = "__Host-tabula_session"
@@ -441,6 +442,21 @@ def run(args) -> None:
             results["distinct_actual_accounts_sessions_and_httponly_cookies"] = True
             results["chromium_version"] = browsers[0].browser.version
             actions.append("Independent White and Black pages issued separate durable HttpOnly sessions")
+            evidence = CaptureEvidence(artifacts, Path(__file__).resolve().parents[2])
+            redacted_values = [fact["csrf_token"] for fact in facts] + [fact["account_id"] for fact in facts]
+            redacted_values += [entry[0]["value"] for entry in cookies]
+            white.goto(ORIGIN + "/", wait_until="domcontentloaded")
+            white.locator("#featured").wait_for(state="visible", timeout=30_000)
+            evidence.capture(white, "00-dashboard-discovery.png", "Dashboard and featured-game discovery", "White browser",
+                             "Served shell home and featured games visibly rendered after actual session issuance", secrets=redacted_values)
+            white.goto(ORIGIN + "/games", wait_until="domcontentloaded")
+            white.locator(".section__title").first.wait_for(state="visible", timeout=30_000)
+            evidence.capture(white, "01-game-library.png", "Actual game discovery library", "White browser",
+                             "Served library route visibly rendered", secrets=redacted_values)
+            white.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+            white.get_by_test_id("online-create").wait_for(state="visible", timeout=30_000)
+            evidence.capture(white, "02-create-join-controls.png", "Create and join controls", "White browser",
+                             "Actual online create and join controls visibly available", secrets=redacted_values)
 
             results["stage"] = "create and join a real code through the shell"
             with white.expect_response(lambda r: urlsplit(r.url).path == "/api/v1/matches", timeout=30_000) as created_response:
@@ -451,6 +467,9 @@ def run(args) -> None:
             match_id, code = created["match_id"], created["join_code"]
             require(white.get_by_test_id("online-code").inner_text().strip() == code,
                     "shell did not display the real returned join code")
+            redacted_values.append(code)
+            evidence.capture(white, "03-created-code-waiting.png", "Created match waiting for opponent; active code redacted", "White browser",
+                             "Actual successful create response has rendered its waiting admission", secrets=redacted_values)
             denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, "A" * 43),
                    {401}, "third unauthenticated browser obtained opponent output")
             black.get_by_test_id("online-join-code").fill(code)
@@ -459,6 +478,9 @@ def run(args) -> None:
             joined = joined_response.value.json()
             require(joined_response.value.status == 200 and joined["match_id"] == match_id
                     and joined["seat"] == 1 and joined["ready"], "actual code join failed")
+            black.get_by_test_id("online-enter").wait_for(state="visible", timeout=30_000)
+            evidence.capture(black, "04-opponent-joined.png", "Opponent joined the real match; code/input redacted", "Black browser",
+                             "Actual successful join rendered the opposite seat and enter control", secrets=redacted_values)
             duplicate = api(black, "/api/v1/matches/join", {"version": 1, "code": code}, facts[1]["csrf_token"])
             require(duplicate["status"] == 200 and duplicate["body"]["seat"] == 1
                     and duplicate["body"]["match_id"] == match_id,
@@ -478,8 +500,10 @@ def run(args) -> None:
             results["stage"] = "attach and render opposing actual browser seats"
             white_attachment, white_grant_body = enter_game(white, match_id, 0)
             black_attachment, _black_grant_body = enter_game(black, match_id, 1)
-            initial_white = snapshot_canvas(white, artifacts / "01-white-initial-board.png")
-            snapshot_canvas(black, artifacts / "02-black-initial-board.png")
+            initial_white = evidence.capture(white, "05-white-initial-board.png", "White independent rendered Chess board", "White browser",
+                                             "Actual Rust-decoded seat0 initial projection rendered", canvas=True, secrets=redacted_values)
+            evidence.capture(black, "06-black-initial-board.png", "Black independent rendered Chess board", "Black browser",
+                             "Actual Rust-decoded seat1 initial projection rendered", canvas=True, secrets=redacted_values)
 
             results["stage"] = "tap f2-f3"
             first = move(white, "f2", "f3", False, match_id)
@@ -499,8 +523,12 @@ def run(args) -> None:
             for page in (white, black):
                 wait_revision(page, 4)
                 page.wait_for_function("() => document.documentElement.dataset.onlineStatus === 'Game over / Black wins'", timeout=30_000)
-            white_terminal = snapshot_canvas(white, artifacts / "03-white-checkmate.png")
-            snapshot_canvas(black, artifacts / "04-black-checkmate.png")
+            white_terminal = evidence.capture(white, "07-white-terminal-result.png", "White actual terminal result", "White browser",
+                                              "Rendered Game over / Black wins after four actual legal pointer moves", canvas=True, secrets=redacted_values)
+            evidence.capture(black, "08-black-terminal-result.png", "Black actual terminal result", "Black browser",
+                             "Independently rendered Game over / Black wins after four actual legal pointer moves", canvas=True, secrets=redacted_values)
+            evidence.capture(white, "09-terminal-result-page.png", "Authorized terminal result page and connection UI", "White browser",
+                             "Actual completed game remains authorized before its document is closed", secrets=redacted_values)
             require(initial_white != white_terminal, "actual canvas pixels did not change after full game")
             results["both_rendered_terminal_verdicts"] = "Game over / Black wins"
             results["full_game_pointer_moves"] = ["f2f3", "e7e5", "g2g4", "d8h4"]

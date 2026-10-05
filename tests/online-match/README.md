@@ -117,6 +117,46 @@ and the decisive Checkmate verdict with Black as winner. No client output can
 be emitted by the audit. Only closed boolean/count/verdict results are published;
 the private account input and canonical data never become browser frames.
 
+## Actual UI image review
+
+The same mandatory browser run captures these actual served UI states, after
+their corresponding visible conditions succeed:
+
+- `00-dashboard-discovery.png`: dashboard and featured-game discovery
+- `01-game-library.png`: rendered discovery library
+- `02-create-join-controls.png`: the actual create/join controls
+- `03-created-code-waiting.png`: successful creation waiting for the opponent
+- `04-opponent-joined.png`: successful join with the other seat
+- `05-white-initial-board.png` and `06-black-initial-board.png`: both independent
+  actual Chromium processes' rendered initial Chess canvases
+- `07-white-terminal-result.png` and `08-black-terminal-result.png`: both
+  independently rendered terminal canvases after the complete legal game
+- `09-terminal-result-page.png`: the full authorized terminal result page
+
+Input and textarea values, the active invitation-code display, secret-marked
+nodes and exact in-memory credential/code text matches are masked by Playwright
+at screenshot capture. The fixture does not edit the page to create a state,
+retain raw DOM, serialize secret mask values, generate images or infer rendered
+pixels from HTTP results. Full-game screenshots are taken while authorization
+is current, before those documents are closed. Optional unavailable/error-state
+images require the real UI's positively verified neutral concealment state;
+stale game pixels or private status must never be captured after authority loss.
+
+`screenshots-provenance.json` labels the disposable synthetic authentication,
+separate genuine Kanidm CI, actual screenshot conditions, exact checkout commit
+and tree, deployed shell/game WASM hashes, native fixture hash, tool versions,
+actual Chromium and Playwright versions, viewport, device-pixel ratio, capture
+time, dimensions and PNG SHA-256. It records only allowlisted route paths, never
+queries, fragments, grants or credentials. The artifact directory is
+`verification/online-match-artifacts/`.
+
+Helper tests and this source do not produce actual UI evidence. A review report
+or GitHub issue must wait for the executed CI job's successful game, durable
+audit and nonempty held-body proof, then inspect the actual PNG pixels and verify
+their manifest hashes. Until that happens, image capture and visual review are
+`NOT_RUN`. Only inspected secret-free images and their public provenance may be
+published in the single user-requested review issue.
+
 ## Commands and honest evidence
 
 ```sh
