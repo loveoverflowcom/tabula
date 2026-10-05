@@ -53,6 +53,109 @@ impl fmt::Debug for PgSessionStore {
     }
 }
 
+#[cfg(feature = "online-match-postgres")]
+use tabula_session::ActivityKind;
+
+/// Locked authority shared only with composed storage adapters.
+#[cfg(feature = "online-match-postgres")]
+pub(crate) struct LockedCredential {
+    account: AccountRecord,
+    session: SessionRecord,
+    request: CredentialOperation,
+}
+
+#[cfg(feature = "online-match-postgres")]
+impl LockedCredential {
+    pub(crate) async fn lock(
+        tx: &mut Transaction<'_, Postgres>,
+        request: CredentialOperation,
+    ) -> Result<Self, SessionError> {
+        if request.channel == SessionChannel::BrowserCookie && request.context.is_none() {
+            return Err(SessionError::InvalidInput);
+        }
+        let (account, session) = PgSessionStore::lock_digest(tx, request.digest).await?;
+        Ok(Self {
+            account,
+            session,
+            request,
+        })
+    }
+    pub(crate) async fn lock_published(
+        tx: &mut Transaction<'_, Postgres>,
+        request: CredentialOperation,
+        publication: &PgSessionPublication,
+    ) -> Result<Self, SessionError> {
+        publication.with_current(|_| ())?;
+        if request.channel == SessionChannel::BrowserCookie && request.context.is_none() {
+            return Err(SessionError::InvalidInput);
+        }
+        let snapshot = &publication.snapshot;
+        // The nonforgeable publication, created by this composed adapter's own
+        // pool, already owns the relation-OID account advisory exclusion. Reusing
+        // lock_account would deadlock on our own dedicated publication backend.
+        let row = sqlx::query_file_as!(
+            AccountRow,
+            "src/session/sql/account_for_update.sql",
+            Uuid::from_u128(snapshot.user_id().0)
+        )
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(unavailable)?
+        .ok_or(SessionError::Unauthenticated)?;
+        let lease = PublicationLease::checked(
+            row.publication_lease_started_at_ms,
+            row.publication_lease_until_ms,
+        )?
+        .ok_or(SessionError::Unavailable)?;
+        if lease.until <= snapshot.last_observed_at() {
+            return Err(SessionError::Unavailable);
+        }
+        let account = AccountRecord::try_from(row)?;
+        let session = PgSessionStore::lock_session(
+            tx,
+            Uuid::from_u128(snapshot.id().get()),
+            Uuid::from_u128(snapshot.user_id().0),
+        )
+        .await?;
+        publication.with_current(|_| ())?;
+        Ok(Self {
+            account,
+            session,
+            request,
+        })
+    }
+    pub(crate) fn snapshot(&self) -> SessionSnapshot {
+        self.session.snapshot()
+    }
+    pub(crate) fn request(&self) -> CredentialOperation {
+        self.request
+    }
+    pub(crate) async fn save_observation(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+    ) -> Result<(), SessionError> {
+        // The account/session locks predate a resource savepoint. Re-save the
+        // verified observed floor/terminal fence after rejected admission rollback.
+        PgSessionStore::save_account(tx, &self.account).await?;
+        PgSessionStore::save_session(tx, &self.session).await
+    }
+    pub(crate) async fn observe(
+        &mut self,
+        tx: &mut Transaction<'_, Postgres>,
+        activity: ActivityKind,
+    ) -> Result<SessionSnapshot, SessionError> {
+        let now = PgSessionStore::database_clock(tx).await?;
+        self.account.observe(now)?;
+        let result = self
+            .session
+            .observe_operation(&self.account, self.request, now)
+            .and_then(|_| self.session.record_activity(&self.account, activity, now));
+        PgSessionStore::save_account(tx, &self.account).await?;
+        PgSessionStore::save_session(tx, &self.session).await?;
+        result
+    }
+}
+
 struct AccountRow {
     user_id: Uuid,
     authorization_epoch: i64,
@@ -749,11 +852,35 @@ pub struct PgSessionPublication {
     published: bool,
     expires_at: Instant,
     release: Option<oneshot::Sender<()>>,
+    #[cfg(all(test, feature = "online-match-postgres"))]
+    pub(crate) backend_pid: i32,
 }
 
 impl fmt::Debug for PgSessionPublication {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("PgSessionPublication([REDACTED])")
+    }
+}
+
+#[cfg(feature = "online-match-postgres")]
+impl PgSessionPublication {
+    pub(crate) fn expires_at(&self) -> Instant {
+        self.expires_at
+    }
+    /// Pure synchronous storage callback protected by the existing committed
+    /// exclusion. This is not a network-frame handoff; publish stays one-shot.
+    pub(crate) fn with_current<R>(
+        &self,
+        action: impl FnOnce(&SessionSnapshot) -> R,
+    ) -> Result<R, SessionError> {
+        if !self.active.load(Ordering::Acquire) || Instant::now() >= self.expires_at {
+            return Err(SessionError::Unauthenticated);
+        }
+        let value = action(&self.snapshot);
+        if !self.active.load(Ordering::Acquire) || Instant::now() >= self.expires_at {
+            return Err(SessionError::Unauthenticated);
+        }
+        Ok(value)
     }
 }
 
@@ -883,6 +1010,11 @@ impl HttpSessionAuthority for PgSessionStore {
         // SQLx closes rather than returning this physical connection on every
         // error/cancellation path, including a failed/indeterminate COMMIT.
         connection.close_on_drop();
+        #[cfg(all(test, feature = "online-match-postgres"))]
+        let backend_pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+            .fetch_one(&mut *connection)
+            .await
+            .map_err(unavailable)?;
         let mut tx = connection.begin().await.map_err(unavailable)?;
         Self::configure_transaction(&mut tx).await?;
         let (mut account, mut session) = Self::lock_digest(&mut tx, request.digest).await?;
@@ -961,6 +1093,8 @@ impl HttpSessionAuthority for PgSessionStore {
             published: false,
             expires_at,
             release: Some(release),
+            #[cfg(all(test, feature = "online-match-postgres"))]
+            backend_pid,
         })
     }
 }
