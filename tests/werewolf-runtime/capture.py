@@ -161,7 +161,7 @@ class Driver:
         self.action("Advance actual logical deadline through the runtime's Next phase control",
                     g["m"]+width/2,g["h"]-78,delay)
 
-    def ocr(self, region=None, flipped=False):
+    def ocr(self, region=None, flipped=False, psm=6):
         png = self.page.locator("#glcanvas").screenshot(timeout=30000)
         im = Image.open(io.BytesIO(png)).convert("RGB")
         if region:
@@ -172,7 +172,7 @@ class Driver:
         with tempfile.TemporaryDirectory(prefix="werewolf-ocr-") as folder:
             p = Path(folder)/"frame.png"
             im.resize((im.width*2,im.height*2)).save(p)
-            text = subprocess.check_output(["tesseract",str(p),"stdout","-l","vie+eng","--psm","6"],
+            text = subprocess.check_output(["tesseract",str(p),"stdout","-l","vie+eng","--psm",str(psm)],
                                             stderr=subprocess.DEVNULL,text=True)
         return normalized(text)
 
@@ -219,13 +219,29 @@ class Driver:
 
     def phase(self):
         g = self.geometry()
-        text = self.ocr((int(g["w"]*.50),0,g["w"],48))
+        # OCR the complete visible public phase header; long labels may extend
+        # past a half-width crop. No DOM state or internal WASM exports are read.
+        text=self.ocr((0,0,g["w"],52),psm=11)
         for phase, words in [("ended",["ket thuc"]),("dawn",["binh minh"]),
                              ("day",["thao luan"]),("vote",["bo phieu"]),
                              ("dusk",["hoang hon"]),("night",["ban dem"])]:
             if any(word in text for word in words):
                 return phase
+        png=self.page.screenshot(path=str(OUT/"99-diagnostic-phase-unreadable.png"))
+        self.provenance["public_header_diagnostic"]={"ocr_normalized":text,
+              "file":"99-diagnostic-phase-unreadable.png","sha256":hashlib.sha256(png).hexdigest(),
+              "size_bytes":len(png),"condition":"Unreadable public phase header; not passing evidence"}
+        self.write()
         raise RuntimeError("Phase header was not readable from actual pixels")
+
+    def wait_phase(self, wanted, timeout=10):
+        deadline=time.monotonic()+timeout
+        while time.monotonic()<deadline:
+            current=self.phase()
+            if current==wanted:
+                return
+            self.page.wait_for_timeout(100)
+        raise RuntimeError("Expected actual elapsed-time phase did not appear")
 
     def capture(self, filename, label, expected_phase=None):
         if expected_phase and self.phase() != expected_phase:
@@ -327,7 +343,9 @@ def main():
             d.public()
             d.advance(.05)
             d.capture("03-dawn-public-deaths.png","Actual referee's dawn: public death disclosure","dawn")
-            d.advance()
+            # Dawn advances naturally after two seconds. A screenshot/OCR can
+            # cross that deadline; another click could incorrectly skip Day.
+            d.wait_phase("day")
             d.capture("04-day-discussion-public-log.png","Actual Day phase with public death log; discussion is local only","day")
             d.advance()
             d.seat(selected["witch"])
