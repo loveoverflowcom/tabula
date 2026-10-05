@@ -166,6 +166,12 @@ and online reconnect/resync/fault acceptance follow in separate later chats.
 No production listener, live migration, durable online session/commit/output
 fence or broad phase exit is authorized by this storage slice.
 
+[ADR-0041](docs/adr/0041-isolated-direct-match-browser-play.md) opens only PR2's
+non-default authenticated HTTPS direct-match/code slice and shared projection-only
+browser gameplay. Real independent browser/PG acceptance is a merge gate.
+Production remains closed; robust reconnect/resync/refresh/network-drop/server-crash
+acceptance is PR3 in a separate chat. No social/lobby/ranked/phase exit is implied.
+
 ---
 
 ## 5. Before you open a pull request

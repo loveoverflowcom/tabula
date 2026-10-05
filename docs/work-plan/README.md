@@ -117,11 +117,12 @@ The new owner-requested sequence below is a separate bounded authorization.
 Fresh baseline: develop `fd0f1e496251a05722de1a0891be9548a6ee7f75`, tree
 `f8b10c34dcc02bb93e9568fd817bf1476fa4aab1`, after PR78. The owner requests three
 sequential implementation PRs, with normal self-merges after their checks and
-review; implement only PR1 in this chat, then begin PR2 and PR3 in separate later
-chats from fresh develop. They are not one expanding PR or broad phase exit.
+review; each PR is implemented in its own fresh chat/worktree from verified develop.
+PR79 is merged at `60d0f1ad802c47848e4847def1705a449b51a7b7`; PR2 is active
+in its own separate chat. They are not one expanding PR or broad phase exit.
 
-1. Current: [consistent PostgreSQL match commit and exact restart/write-failure recovery](080-durable-match-postgres.md), under [ADR0040](../adr/0040-isolated-durable-match-postgres.md)
-2. After PR1's verified merge: [join-by-code and two independent browsers completing Chess](090-join-code-browser-chess.md)
+1. Merged PR79: [consistent PostgreSQL match commit and exact restart/write-failure recovery](080-durable-match-postgres.md), under [ADR0040](../adr/0040-isolated-durable-match-postgres.md)
+2. Current PR2: [join-by-code and two independent browsers completing Chess](090-join-code-browser-chess.md), under [ADR0041](../adr/0041-isolated-direct-match-browser-play.md)
 3. After PR2's verified merge: [reconnect/resync and network/revocation/server-crash recovery](100-reconnect-resync-fault-recovery.md)
 
 The [PR1 ledger](../verification/durable-match-postgres/README.md) owns actual
