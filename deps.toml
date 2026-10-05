@@ -195,7 +195,8 @@ allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "t
 
 [crate."services/tabula-auth"]
 tier  = "binary"
-allow = [] # ADR-0034: std-only frame; add dependencies with actual implementation.
+allow = ["tower", "tabula-core", "ring"] # Native test-only router/ephemeral crypto evidence.
+feature = { web-oidc = ["tabula-session", "tabula-session-http", "tokio", "reqwest", "serde", "serde_json", "url", "sha2", "base64", "jsonwebtoken", "axum"], postgres-acceptance = ["tabula-storage", "sqlx"] }
 forbidden_categories = ["game_specific", "rendering", "ui_framework"]
 
 [crate."apps/game-client"]

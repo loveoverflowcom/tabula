@@ -19,7 +19,7 @@ pub enum SessionDisposition {
     Unavailable,
 }
 
-/// Actual bounded capabilities. Provider login, registration and friends stay closed.
+/// Actual bounded capabilities. Only opt-in signed-out provider login can open.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 // Independent returned capabilities, not four coupled lifecycle-state bits.
@@ -123,7 +123,6 @@ impl ContextResponse {
     /// Client operation-generation/lifecycle checks remain separate obligations.
     pub fn validate_for_browser(&self) -> Result<(), InvalidHttpResponse> {
         if self.version != HTTP_CONTRACT_VERSION
-            || self.capabilities.login
             || self.capabilities.register
             || self.capabilities.friends
             || self
@@ -138,13 +137,17 @@ impl ContextResponse {
                 self.account_id.as_deref().is_some_and(canonical_account_id)
                     && self.csrf_token.is_some()
                     && self.capabilities.read_self_profile
+                    && !self.capabilities.login
             }
             SessionDisposition::SignedOut => {
-                self.account_id.is_none() && !self.capabilities.read_self_profile
+                self.account_id.is_none()
+                    && !self.capabilities.read_self_profile
+                    && (!self.capabilities.login || self.csrf_token.is_some())
             }
             SessionDisposition::Unavailable => {
                 self.account_id.is_none()
                     && self.csrf_token.is_none()
+                    && !self.capabilities.login
                     && !self.capabilities.read_self_profile
             }
         };
@@ -166,3 +169,98 @@ impl SelfProfileResponse {
         }
     }
 }
+
+/// Versioned opt-in login navigation result, never a session credential.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LoginStartResponse {
+    pub version: u8,
+    pub authorization_url: String,
+}
+impl std::fmt::Debug for LoginStartResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("LoginStartResponse([REDACTED])")
+    }
+}
+impl LoginStartResponse {
+    pub const MAX_URL_BYTES: usize = 4096;
+    /// Conservative URL shape check; concrete HTTP also parses the provider URL.
+    /// Client lifecycle generation and trusted-provider configuration remain separate.
+    pub fn validate(&self) -> Result<(), InvalidHttpResponse> {
+        let Some(rest) = self.authorization_url.strip_prefix("https://") else {
+            return Err(InvalidHttpResponse);
+        };
+        let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+        if self.version != HTTP_CONTRACT_VERSION
+            || self.authorization_url.len() > Self::MAX_URL_BYTES
+            || !safe_https_authority(authority)
+            || self.authorization_url.contains('\\')
+            || self.authorization_url.contains('#')
+            || !self
+                .authorization_url
+                .bytes()
+                .all(|byte| byte.is_ascii_graphic())
+        {
+            return Err(InvalidHttpResponse);
+        }
+        Ok(())
+    }
+}
+
+fn safe_https_authority(authority: &str) -> bool {
+    let (host, port) = if let Some(bracketed) = authority.strip_prefix('[') {
+        let Some((literal, suffix)) = bracketed.split_once(']') else {
+            return false;
+        };
+        if literal.parse::<std::net::Ipv6Addr>().is_err() {
+            return false;
+        }
+        if suffix.is_empty() {
+            return true;
+        }
+        let Some(port) = suffix.strip_prefix(':') else {
+            return false;
+        };
+        ("", Some(port))
+    } else {
+        let (host, port) = authority
+            .rsplit_once(':')
+            .map_or((authority, None), |(host, port)| (host, Some(port)));
+        if host.is_empty()
+            || host.len() > 253
+            || !host.split('.').all(|label| {
+                !label.is_empty()
+                    && label.len() <= 63
+                    && label
+                        .as_bytes()
+                        .first()
+                        .is_some_and(u8::is_ascii_alphanumeric)
+                    && label
+                        .as_bytes()
+                        .last()
+                        .is_some_and(u8::is_ascii_alphanumeric)
+                    && label
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+            })
+        {
+            return false;
+        }
+        (host, port)
+    };
+    let _ = host;
+    port.is_none_or(|port| {
+        !port.is_empty()
+            && port.bytes().all(|byte| byte.is_ascii_digit())
+            && port.parse::<u16>().is_ok()
+    })
+}
+
+#[cfg(all(test, feature = "isolated", not(target_arch = "wasm32")))]
+#[allow(dead_code)]
+#[path = "../tests/support/authority.rs"]
+mod test_authority;
+#[cfg(all(test, feature = "isolated", not(target_arch = "wasm32")))]
+#[allow(dead_code)]
+#[path = "../tests/support/mod.rs"]
+mod test_wire;

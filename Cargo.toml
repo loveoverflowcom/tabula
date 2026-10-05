@@ -117,7 +117,7 @@ serde_json         = "1"
 uuid               = { version = "1", features = ["v7", "serde"] }
 figment            = { version = "0.10", features = ["toml", "env"] }
 argon2             = "0.5"
-jsonwebtoken       = "9"
+jsonwebtoken       = { version = "9", default-features = false }
 openidconnect      = "3"
 bytes              = { version = "1", features = ["serde"] }
 toml               = "0.8"

@@ -139,6 +139,12 @@ jobs:
       - uses: taiki-e/install-action@nextest
       # Unit + property + replay. Every game crate's conformance! suite runs here.
       - run: cargo nextest run --workspace
+      # ADR-0038: optional provider code must have executed adversarial crypto
+      # tests, not only a default std-only service frame or a feature build.
+      - name: Isolated Kanidm verifier and login boundary
+        run: |
+          cargo test -p tabula-auth --features web-oidc --lib
+          cargo test -p tabula-session-http --features isolated --test browser_login_http
       # ADR-0036 PR3: actual TCP adapter responses consumed by the isolated
       # account lifecycle. Synthetic test identities do not prove provider login.
       - name: Isolated account HTTP consumer
@@ -191,3 +197,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          arguments: --all-features
