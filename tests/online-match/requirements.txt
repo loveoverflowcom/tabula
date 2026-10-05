@@ -1,0 +1,3 @@
+# Official Playwright release pins its own genuine Chromium revision.
+playwright==1.62.0
+Pillow==12.3.0
