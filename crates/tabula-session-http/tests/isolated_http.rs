@@ -1483,3 +1483,128 @@ async fn logout_only_revokes_current_device_and_native_logout_never_sets_a_cooki
         .revoked_at()
         .is_some());
 }
+
+async fn extension_fixture() -> (
+    TestAuthority,
+    IsolatedSessionHttp<TestAuthority>,
+    String,
+    String,
+) {
+    let authority = TestAuthority::new();
+    let (credential, _) = authority.fixture(SessionChannel::BrowserCookie);
+    let http = IsolatedSessionHttp::new(authority.clone(), TRUSTED_ORIGIN).unwrap();
+    let server = WireServer::start(http.clone().router()).await;
+    let cookie = format!("{SESSION_COOKIE}={credential}");
+    let response = server
+        .request("GET", "/api/v1/auth/context", &[("Cookie", &cookie)], "")
+        .await;
+    assert_eq!(response.status, 200);
+    let csrf = response.json()["csrf_token"].as_str().unwrap().to_owned();
+    (authority, http, cookie, csrf)
+}
+
+fn extension_request(cookie: &str, csrf: &str) -> Request<Body> {
+    Request::builder()
+        .method("POST")
+        .uri("/api/v1/matches")
+        .header("cookie", cookie)
+        .header("origin", TRUSTED_ORIGIN)
+        .header("content-type", "application/json")
+        .header("x-tabula-csrf", csrf)
+        .body(Body::from("{}"))
+        .unwrap()
+}
+
+#[tokio::test]
+async fn json_extension_observation_is_context_bound_but_not_a_later_publication_permit() {
+    let (authority, http, cookie, csrf) = extension_fixture().await;
+    let (operation, snapshot, value) = http
+        .authenticate_json::<Value>(extension_request(&cookie, &csrf), 2)
+        .await
+        .unwrap();
+    assert_eq!(value, serde_json::json!({}));
+    let context = operation.context.unwrap();
+    assert_eq!(context.context_id, snapshot.context_id());
+    assert_eq!(context.authorization_epoch, snapshot.authorization_epoch());
+    drop(http.begin_publication(operation).await.unwrap());
+    authority.revoke_credential(operation).await.unwrap();
+    assert!(http.begin_publication(operation).await.is_err());
+    assert_eq!(
+        http.authenticate_json::<Value>(extension_request(&cookie, &csrf), 2)
+            .await
+            .unwrap_err()
+            .status(),
+        401
+    );
+}
+
+#[tokio::test]
+async fn json_extension_rejects_ambiguous_or_untrusted_transport_and_body_bounds() {
+    let (_, http, cookie, csrf) = extension_fixture().await;
+    for case in 0..12 {
+        let mut request = extension_request(&cookie, &csrf);
+        let (limit, expected) = match case {
+            0 => {
+                request.headers_mut().remove("origin");
+                (2, 403)
+            }
+            1 => {
+                request
+                    .headers_mut()
+                    .insert("origin", "https://other.invalid".parse().unwrap());
+                (2, 403)
+            }
+            2 => {
+                request
+                    .headers_mut()
+                    .append("origin", TRUSTED_ORIGIN.parse().unwrap());
+                (2, 400)
+            }
+            3 => {
+                request.headers_mut().remove("x-tabula-csrf");
+                (2, 403)
+            }
+            4 => {
+                request
+                    .headers_mut()
+                    .insert("x-tabula-csrf", "A".repeat(43).parse().unwrap());
+                (2, 403)
+            }
+            5 => {
+                request
+                    .headers_mut()
+                    .append("x-tabula-csrf", csrf.parse().unwrap());
+                (2, 400)
+            }
+            6 => {
+                request
+                    .headers_mut()
+                    .insert("authorization", "Bearer invalid".parse().unwrap());
+                (2, 400)
+            }
+            7 => {
+                request
+                    .headers_mut()
+                    .insert("content-encoding", "gzip".parse().unwrap());
+                (2, 415)
+            }
+            8 => {
+                request
+                    .headers_mut()
+                    .insert("content-type", "text/plain".parse().unwrap());
+                (2, 415)
+            }
+            9 => {
+                *request.uri_mut() = "/api/v1/matches?grant=x".parse().unwrap();
+                (2, 400)
+            }
+            10 => (1, 413),
+            _ => (65_537, 400),
+        };
+        let error = http
+            .authenticate_json::<Value>(request, limit)
+            .await
+            .unwrap_err();
+        assert_eq!(error.status().as_u16(), expected, "partition {case}");
+    }
+}

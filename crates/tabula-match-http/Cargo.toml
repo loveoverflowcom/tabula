@@ -1,0 +1,17 @@
+[package]
+name = "tabula-match-http"
+version = "0.0.0"
+description = "Bounded opt-in authenticated join-code and match HTTP boundary."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+# PHASE 4 / ADR-0041: recovered DTOs only. Native gateway is not implemented.
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tabula-core = { workspace = true }
+tabula-protocol = { workspace = true }
+[lints]
+workspace = true

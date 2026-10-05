@@ -3264,6 +3264,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tabula-match-http"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tabula-core",
+ "tabula-protocol",
+]
+
+[[package]]
 name = "tabula-match-journal"
 version = "0.0.0"
 dependencies = [

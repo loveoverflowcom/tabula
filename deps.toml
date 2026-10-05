@@ -177,6 +177,11 @@ allow = ["serde", "serde_json", "tabula-core", "tower", "proptest"]
 feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body", "url"], postgres = ["tabula-storage", "sqlx"] }
 forbidden_categories = ["rendering", "ui_framework", "application", "game_specific"]
 
+[crate."tabula-match-http"]
+tier = "contract"
+allow = ["serde", "serde_json", "tabula-core", "tabula-protocol"]
+forbidden_categories = ["rendering", "ui_framework", "web_framework", "networking", "persistence", "application", "game_specific"]
+
 [crate."tabula-storage"]
 tier  = "runtime"
 allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session", "tabula-match-journal", "serde", "blake3"]

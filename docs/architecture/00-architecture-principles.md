@@ -438,6 +438,7 @@ Rows are consumers, columns are what they are permitted to depend on.
 | `tabula-match` | Y | Y | Y | f | — | — | — | – | — | f | — | — | — | — |
 | `tabula-lobby` | Y | — | Y | Y | — | — | — | Y | — | Y | — | — | — | — |
 | `tabula-session` | Y | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `tabula-match-http` (DTOs only) | Y | — | Y | — | — | — | — | — | — | — | — | — | — | — |
 | `tabula-session-http` (isolated) | Y | — | — | — | — | — | — | — | f | f | f | f | — | — |
 | `tabula-storage` | Y | Y | Y | — | — | — | — | — | – | Y | — | Y | — | — |
 | `services/tabula-server` | Y | — | Y | Y | — | — | — | Y | Y | Y | Y | Y | — | — |
@@ -467,7 +468,7 @@ Notes on the interesting cells:
 - **`tabula-session` owns internal session policy and ports under ADR-0036.** Its runtime credential dependencies are forbidden in deterministic games. Storage may reference it only for the explicit isolated native session adapter; no service or client is activated.
 - **`tabula-session-http` is an isolated HTTP library under ADR-0036.** Default/WASM exposes versioned DTOs only; opt-in native `isolated` uses Axum/Tokio, session ports and WHATWG canonical HTTPS Origin validation, while `postgres` composes the storage adapter for disposable acceptance. It contains no SQL, provider verification, production bootstrap or game authority
 - **`apps/web` may consume only the default/WASM `tabula-session-http` DTO surface for ADR-0036 PR3.** Browser Fetch and document-memory CSRF remain in this leaf binary; no client-tier crate imports the runtime HTTP owner. Its non-default native `account-http-acceptance` feature composes the existing isolated authority/HTTP test fixture only; Axum/Tokio do not enable a production listener or either service.
-- **ADR-0041 plans `tabula-match-http` (not yet implemented or added to `deps.toml`): bounded versioned DTOs by default/WASM; registry/actor/session/storage/Axum only in the native non-default gateway.** It contains no SQL/game-ID dispatch. Client leaves consume DTOs; storage/auth do not import the gateway. Durable session/commit/body-publication ordering needs its own online evidence.
+- **ADR-0041 recovers `tabula-match-http` HTTP v1 DTOs only**, with core/protocol/serde dependencies on native and WASM. Its native gateway, durable admission and commit/body-publication adapter are not implemented. No runtime feature or service consumer is enabled.
 - **Nothing depends on `services/*`.** Services are leaves (binaries).
 - **ADR-0034 reserves `tabula-auth` as a service leaf.** Its default is std-only
   and closed; ADR-0038 adds native-only opt-in invited Kanidm OIDC/session HTTP
