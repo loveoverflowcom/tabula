@@ -202,7 +202,14 @@ impl PgOnlineMatchStore {
         {
             return Err(OnlineMatchError::Unavailable);
         }
-        migrator.run(pool).await.map_err(unavailable)
+        let mut connection = pool.acquire().await.map_err(unavailable)?;
+        // SQLx's session-level migration lock survives early validation errors.
+        // Closing this backend also releases it if the migration is canceled;
+        // it must never return to the pool with a retained advisory lock.
+        connection.close_on_drop();
+        let result = migrator.run(&mut *connection).await.map_err(unavailable);
+        let closed = connection.close().await.map_err(unavailable);
+        result.and(closed)
     }
     /// Creates a waiting room, reserving server-assigned creator seat zero.
     /// Host registry validation must establish game/config/capability meaning.

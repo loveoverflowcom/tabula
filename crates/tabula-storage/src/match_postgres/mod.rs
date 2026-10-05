@@ -450,7 +450,14 @@ impl PgMatchStore {
 
     /// Apply only the isolated additive migrations to the selected database.
     pub async fn migrate(pool: &PgPool) -> Result<(), RuntimePortError> {
-        MIGRATIONS.run(pool).await.map_err(unavailable)
+        let mut connection = pool.acquire().await.map_err(unavailable)?;
+        // SQLx's session-level migration lock survives early validation errors.
+        // Closing this backend also releases it if the migration is canceled;
+        // it must never return to the pool with a retained advisory lock.
+        connection.close_on_drop();
+        let result = MIGRATIONS.run(&mut *connection).await.map_err(unavailable);
+        let closed = connection.close().await.map_err(unavailable);
+        result.and(closed)
     }
 
     /// Acquire a new durable owner generation; never initializes game state.
