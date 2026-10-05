@@ -1,5 +1,6 @@
 //! One module per route (doc 04 §2.1).
 
+pub mod account;
 pub mod detail;
 pub mod home;
 pub mod library;
@@ -28,6 +29,7 @@ pub fn use_locale() -> LocaleSignal {
 pub fn App() -> impl IntoView {
     let locale: LocaleSignal = RwSignal::new(Locale::En);
     provide_context(locale);
+    crate::account::provide_account_session();
 
     view! {
         <Router>
@@ -40,6 +42,12 @@ pub fn App() -> impl IntoView {
                     <Route path=path!("/") view=home::Home/>
                     <Route path=path!("/games") view=library::Library/>
                     <Route path=path!("/games/:id") view=detail::GameDetail/>
+                    <Route path=path!("/account") view=account::AccountPage/>
+                    <Route path=path!("/me") view=account::SelfProfile/>
+                    <Route path=path!("/login") view=account::LoginPage/>
+                    <Route path=path!("/register") view=account::RegisterUnavailable/>
+                    <Route path=path!("/friends") view=account::FriendsUnavailable/>
+                    <Route path=path!("/u/:handle") view=account::OtherProfileUnavailable/>
                 </Routes>
             </main>
         </Router>

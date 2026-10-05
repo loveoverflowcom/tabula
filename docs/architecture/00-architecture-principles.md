@@ -239,7 +239,7 @@ The canonical invariant:
 same initial state (from the same MatchSeed and MatchConfig)
 + same ordered input sequence
 + same rules version
-=================================================================
+==========================================================
 byte-identical final state, identical event sequence, identical state hashes
 ```
 
@@ -434,13 +434,16 @@ Rows are consumers, columns are what they are permitted to depend on.
 | `tabula-assets` | Y | — | Y | — | — | — | – | — | — | f | — | — | — | — |
 | `tabula-render-macroquad` | Y | — | — | — | Y | Y | Y | — | — | — | — | — | Y | — |
 | `tabula-net-client` | Y | — | Y | Y | — | — | — | — | — | Y | — | — | — | — |
-| `tabula-match` | Y | Y | Y | Y | — | — | — | – | — | Y | — | — | — | — |
+| `tabula-match-journal` | Y | Y | Y | — | — | — | — | — | — | — | — | — | — | — |
+| `tabula-match` | Y | Y | Y | f | — | — | — | – | — | f | — | — | — | — |
 | `tabula-lobby` | Y | — | Y | Y | — | — | — | Y | — | Y | — | — | — | — |
+| `tabula-session` | Y | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `tabula-session-http` (isolated) | Y | — | — | — | — | — | — | — | f | f | f | f | — | — |
 | `tabula-storage` | Y | Y | Y | — | — | — | — | — | – | Y | — | Y | — | — |
 | `services/tabula-server` | Y | — | Y | Y | — | — | — | Y | Y | Y | Y | Y | — | — |
-| `services/tabula-auth` | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `services/tabula-auth` (opt-in) | Y | — | — | — | — | — | — | — | f | f | f | f | — | — |
 | `apps/game-client` | Y | Y | Y | Y | Y | Y | Y | — | — | f | — | — | Y | — |
-| `apps/web` (Leptos) | Y | — | Y | Y | Y | — | Y | — | — | — | — | — | — | Y |
+| `apps/web` (Leptos) | Y | — | Y | Y | Y | — | Y | — | — | f | f | — | — | Y |
 | `apps/desktop` (Tauri) | Y | — | Y | Y | Y | — | Y | — | — | Y | — | — | — | — |
 
 Notes on the interesting cells:
@@ -455,12 +458,20 @@ Notes on the interesting cells:
 - **`apps/game-client` may use tokio only behind a feature**, for the native build's networking;
   the WASM build uses browser WebSocket via `tabula-net-client`'s wasm backend.
 - **`tabula-storage` is the only crate allowed to know SQL exists.** Ports (traits) live in
-  `tabula-match`/`tabula-lobby`; the implementations live here. This is the seam that makes
+  `tabula-match`/`tabula-lobby`, and `tabula-session` for ADR-0036; the implementations live here. This is the seam that makes
   "swap Postgres deployment model" and "add a read replica" non-invasive.
+- **ADR-0040 permits storage to consume only the SQL-free `tabula-match-journal` contract (reexported by `tabula-match::durable`)**,
+  behind native non-default `match-postgres`. Registry and Tokio are optional
+  actor dependencies behind `tabula-match/isolated`; the storage port dependency
+  must not activate them or transitively import game crates. SQL remains in storage.
+- **`tabula-session` owns internal session policy and ports under ADR-0036.** Its runtime credential dependencies are forbidden in deterministic games. Storage may reference it only for the explicit isolated native session adapter; no service or client is activated.
+- **`tabula-session-http` is an isolated HTTP library under ADR-0036.** Default/WASM exposes versioned DTOs only; opt-in native `isolated` uses Axum/Tokio, session ports and WHATWG canonical HTTPS Origin validation, while `postgres` composes the storage adapter for disposable acceptance. It contains no SQL, provider verification, production bootstrap or game authority
+- **`apps/web` may consume only the default/WASM `tabula-session-http` DTO surface for ADR-0036 PR3.** Browser Fetch and document-memory CSRF remain in this leaf binary; no client-tier crate imports the runtime HTTP owner. Its non-default native `account-http-acceptance` feature composes the existing isolated authority/HTTP test fixture only; Axum/Tokio do not enable a production listener or either service.
 - **Nothing depends on `services/*`.** Services are leaves (binaries).
-- **ADR-0034 reserves `tabula-auth` as a std-only skeleton.** Account authentication
-  uses Kanidm; Tabula sessions retain ADR-0031's guarantees. Provider/runtime
-  dependencies require a later implementation and `deps.toml` update.
+- **ADR-0034 reserves `tabula-auth` as a service leaf.** Its default is std-only
+  and closed; ADR-0038 adds native-only opt-in invited Kanidm OIDC/session HTTP
+  dependencies in `deps.toml`. No deterministic/game/client DTO graph imports
+  provider/runtime authority; ADR-0031's guarantees remain in force.
 
 ### 8.2 CI enforcement
 
@@ -715,6 +726,10 @@ Longer discussion lives in the linked document.
 | **033** | The mobile `GameHost` is a WebView that serves the first-party packaged game from the app bundle on a virtual origin (the loader's origin, SHA-256 and size checks unchanged), with a typed, bounded, capability-gated bridge for lifecycle, launch preferences and one host service. Not a dynamic plugin system. Long form: [`docs/adr/0033-webview-gamehost-first-party-embedding.md`](../adr/0033-webview-gamehost-first-party-embedding.md). | ACCEPTED FOR THE FIRST-PARTY LOCAL SCOPE; ANDROID/IOS WEBVIEW EXECUTION NOT_RUN | Delivers ADR-0032's reserved embedding without moving rules, credentials or state across the bridge, and without weakening the loader. Networked play, voice, further services and third-party games stay closed. | A target's executed evidence misses ADR-0032's bars; the iOS custom-scheme secure-context check fails; a second host service, networked mode or third-party game is proposed. |
 | **034** | Kanidm owns credentials/OIDC; `tabula-auth` reserves account/session lifecycle, `tabula-server` enforces sessions and resource/match authority. Both are gated Rust frames. Long form: [ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md). | ACCEPTED SKELETON; RUNTIME GATED | Owner-requested preparation for #54; records the exception without copying provider code or weakening ADR-0031. | Before any auth runtime: prove shared durable authority, cross-service revocation/expiry, proxy trust and real Kanidm integration. |
 | **035** | Opt-in Werewolf deterministic local referee and isolated-seat simulator with authorized projections, approved six-role pack and separate Macroquad document. Long form: [`docs/adr/0035-werewolf-local-simulator.md`](../adr/0035-werewolf-local-simulator.md). | ACCEPTED LOCAL SCOPE; ROLLOUT GATED | Explicit bounded presentation exception for the owner-requested playable standalone; preserves hidden-information boundaries and existing renderer/resource ownership. | Online/social play, voice, authenticated seats, persisted resume/replay, registry rollout or phase exits. |
+| **036** | Isolated durable session policy/ports and opt-in PostgreSQL acceptance, followed by isolated HTTP and shell UI in three sequential PRs. [ADR-0036](../adr/0036-isolated-durable-session-validation.md). | ACCEPTED BOUNDED IMPLEMENTATION; PRODUCTION CLOSED | Owner-authorized #54 progress without claiming provider, output-fence or phase exits. | Before provider-backed issuance, service activation, production migration or private-output delivery. |
+| **038** | Native opt-in invited Kanidm web OIDC, captured identity epochs, cookie-bound single-use callback and durable browser sessions, with actual disposable provider/PostgreSQL acceptance. [ADR-0038](../adr/0038-isolated-invited-kanidm-web-auth.md). | ACCEPTED NARROW IMPLEMENTATION; REAL PROVIDER MERGE GATE; PRODUCTION CLOSED | Owner-requested next implementation slice preserves existing phase, browser/native and deployment proof obligations. | Production, live provider provisioning, public signup, native login, additional provider/algorithm, security-event synchronization or private online transport. |
+| **039** | Native opt-in bounded single-owner match actor, generic rules bridge, scoped duplicate receipts and first executable isolated wire 0.1. [ADR-0039](../adr/0039-isolated-match-actor-runtime.md); SQL/recovery boundary narrowly extended by ADR-0040. | ACCEPTED NARROW OFFLINE IMPLEMENTATION; PRODUCTION CLOSED | Owner-requested second PR exercises authority/ordering/privacy without importing unmerged work or claiming Phase 4; canonical counters stay internal to avoid private-action existence leaks. | Any network consumer, durability beyond ADR-0040, durable session/commit/output fence, delayed spectator, listener or phase-exit claim. |
+| **040** | SQL-free match journal contract and native opt-in PostgreSQL atomic input/events/version/hash/snapshot/whole-ledger commit, durable monotonic scopes and owner fencing, exact bounded integrity-checked reopen. [ADR-0040](../adr/0040-isolated-durable-match-postgres.md). | ACCEPTED BOUNDED IMPLEMENTATION; VERIFICATION PENDING; PRODUCTION CLOSED | Owner-requested PR1 closes process-lifetime durability/duplicate gaps before separate join-code-browser and online-recovery PRs; snapshots cannot replace log consistency proof. | Any network consumer, production/live migration, ledger retention or recovery-proof weakening, remote leases/placement, online session/commit/output fence or phase-exit claim. |
 
 ---
 

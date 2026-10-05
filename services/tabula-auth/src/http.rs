@@ -1,10 +1,16 @@
-//! PHASE 4 — proposed account API; doc 03 §2, ADR-0031/0034.
-//!
-//! TODO(phase 4, #54): compose /api/v1/auth/{context,login,register,logout,refresh}
-//! and the Kanidm OIDC start/callback routes under the app's trusted HTTPS origin.
-//! No rendered UI, CSS, generic provider registry or `localStorage` authentication.
-//! Enforce exact browser Origin + JSON + context-bound CSRF before credential
-//! effects; native bearer requests must not acquire ambient cookie authority.
-//! TODO(phase 4, #54): apply no-store, generic anti-enumeration results, rate/body
-//! limits and bounded safe return routes; never leak secrets or raw provider errors.
-//! Register fields/agreement and duplicate-submit behavior need their own contract.
+//! Explicit isolated composition. Default service bootstrap remains closed.
+use crate::{config::KanidmConfig, oidc::KanidmOidc};
+use axum::Router;
+use tabula_session::{HttpSessionAuthority, SessionError};
+use tabula_session_http::isolated::IsolatedSessionHttp;
+
+/// Real configured provider plus existing current-authority HTTP routes. This
+/// creates no listener, provider account/client, migration or production grant.
+pub async fn isolated_router<A: HttpSessionAuthority + Clone + 'static>(
+    config: KanidmConfig,
+    authority: A,
+) -> Result<Router, SessionError> {
+    let origin = config.browser_origin().to_owned();
+    let provider = KanidmOidc::discover(config, authority.clone()).await?;
+    Ok(IsolatedSessionHttp::new(authority, &origin)?.router_with_login(provider))
+}

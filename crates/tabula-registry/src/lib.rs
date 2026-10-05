@@ -6,9 +6,13 @@
 //! > forms, availability) was implemented for issue #50 before Phase 3 exited.
 //! > That gate crossing was an explicit, recorded owner decision, not an
 //! > oversight: see `docs/ui/screens/discovery-verification.md`. Everything the
-//! > phase gate protects that is **not** listed here — `ErasedMatch`, codecs,
-//! > match creation, rollout tables, multi-version resolution, `register!` —
-//! > remains unimplemented and still waits for its gate.
+//! > phase gate protects that is **not** listed here remains gated. ADR-0039
+//! > additionally opens an isolated canonical match-creation/runtime bridge:
+//! > `ErasedMatch`, typed canonical decode, projected reads and ordered apply.
+//! > ADR-0040 adds the bounded server-only durable bridge: canonical snapshots,
+//! > exact-identity decoding and recorded-input replay (I-5/I-16).
+//! > Network codecs, migration, rollout tables, multi-version resolution
+//! > and `register!` still wait for their gates.
 //! > ADR-0030 additionally permits the opt-in separate-document handoff to the
 //! > existing local hot-seat runtime. It adds no match authority, network,
 //! > persisted session or replay service.
@@ -141,6 +145,7 @@
 //!
 //! ```text
 //! src/erased.rs        ErasedGame + the one blanket Adapter<S> impl
+//! src/runtime.rs       ADR-0039 typed match factory and projected authority
 //! src/catalog.rs       Catalog, CatalogQuery, the localized search policy
 //! src/config.rs        ConfigForm/ConfigDraft/NormalizedConfig descriptors
 //! src/parse.rs         strict draft parsing shared by adapters
@@ -159,6 +164,7 @@ pub mod games;
 pub mod i18n;
 pub mod launch;
 mod parse;
+pub mod runtime;
 
 #[cfg(all(test, feature = "game-chess", feature = "game-tiles"))]
 mod tests;
@@ -179,6 +185,10 @@ pub use i18n::{platform_messages, Locale, Messages};
 pub use launch::{
     resolve as resolve_launch, resolve_with_locale as resolve_launch_with_locale, LaunchHandoff,
     RuntimeBinding,
+};
+pub use runtime::{
+    ClientViewer, CreatedMatch, CreatedMatchParts, ErasedInput, ErasedMatch, ErasedTransition,
+    RuntimeError, RuntimeIdentity, TypedMatch,
 };
 pub use tabula_core::{BotLevel, GameId};
 pub use tabula_game_api::{

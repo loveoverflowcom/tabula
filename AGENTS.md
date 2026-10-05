@@ -77,6 +77,7 @@ crates/           platform libraries — the real product
   tabula-registry      the catalog: the ONLY crate that names games; type erasure
   tabula-match         authoritative match runtime: actor, pipeline, ports
   tabula-lobby         rooms, matchmaking, presence
+  tabula-session-http  isolated native context/self-profile HTTP (ADR-0036)
   tabula-storage       the ONLY crate that knows SQL exists
   tabula-presentation  View -> RenderList, input model, animation (renderer-independent)
   tabula-design        semantic design tokens, generated into CSS + a Theme struct
@@ -156,6 +157,19 @@ The owner-requested Werewolf standalone has a similarly bounded opt-in local exc
 [ADR-0035](docs/adr/0035-werewolf-local-simulator.md). It permits its complete pure referee
 and isolated-seat local presenter using the existing renderer/resource pipeline. It does not
 open online/social, voice, authenticated seats, CMP WebView embedding or rollout gates.
+
+[ADR-0036](docs/adr/0036-isolated-durable-session-validation.md) authorizes the
+bounded #54 isolated session/PostgreSQL → HTTP → account-state UI sequence.
+It keeps both production service entrypoints closed and does not prove phase
+exits, provider login or actual private-output fencing. Other phase gates stand.
+
+[ADR-0040](docs/adr/0040-isolated-durable-match-postgres.md) extends ADR-0039's
+offline actor only with SQL-free journal contracts, native opt-in PostgreSQL
+consistent commits, durable receipt watermarks/owner fencing and exact bounded
+recovery. It is PR1 of the owner's new three-PR sequence; join-code browser play
+and online reconnect/resync/fault acceptance follow in separate later chats.
+No production listener, live migration, durable online session/commit/output
+fence or broad phase exit is authorized by this storage slice.
 
 ---
 

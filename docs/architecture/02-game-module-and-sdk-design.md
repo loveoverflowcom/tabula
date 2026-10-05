@@ -367,6 +367,11 @@ clone-per-command is wasteful, and `&mut` lets games use incremental structures 
 zobrist hashes). Purity is preserved by contract + tests rather than by types. The runtime keeps
 the *previous snapshot* for recovery, not a per-command copy.
 
+For the isolated erased registry bridge only, [ADR-0039](../adr/0039-isolated-match-actor-runtime.md)
+uses defensive state/RNG candidates in every build and commits after accepted
+outcome serialization. Its bounded implementation does not adopt the planned
+release-no-clone optimization below. R2/R8 conformance remains game-owned.
+
 In debug/test builds `tabula-testkit` wraps `apply` with a clone-and-compare so a violation of R2
 fails loudly. In release, the match actor relies on the invariant and, if `apply` returns `Err`,
 marks the match state "suspect" only if a cheap sentinel (state_version + a fast hash in debug)

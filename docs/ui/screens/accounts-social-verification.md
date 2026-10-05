@@ -79,6 +79,12 @@ The actual documented Python commands above were then run successfully.
 
 ## Required PR B/C acceptance oracles (not existing test targets)
 
+The later [isolated PR3 ledger](../../verification/issue-54-account-state-ui/README.md)
+refines A01/A05/A06/A07/A13/A15 only within ADR-0036's bounded session/immutable
+self-ID consumer. The cases below remain the full production/form/social
+requirements; that narrower implementation does not pass A02/A03/A04/A08–A12
+or actual A14 platform interaction by inference.
+
 The case IDs below identify future acceptance requirements, not runnable test
 names or a claim that a harness exists. Use real typed authority/adapter fixtures,
 distinguish doubles from integration, confirm non-empty selections and record

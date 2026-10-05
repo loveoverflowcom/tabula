@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE session_auth_sessions SET\n    authorization_epoch = $3, channel = $4, credential_generation = $5,\n    credential_digest = $6, context_id = $7, created_at_ms = $8,\n    last_activity_at_ms = $9, last_observed_at_ms = $10,\n    idle_deadline_ms = $11, absolute_deadline_ms = $12,\n    revoked_at_ms = $13, expired_at_ms = $14\nWHERE id = $1 AND user_id = $2\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Text",
+        "Int8",
+        "Bytea",
+        "Uuid",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c65fa2c5a400328b7592ec7e00f93075a58ff686098137d1f59e2c68be8f49d4"
+}

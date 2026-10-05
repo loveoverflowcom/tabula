@@ -151,6 +151,10 @@ db-migrate:
 sqlx-prepare:
     cargo sqlx prepare --workspace -- --all-targets
 
+# ADR-0036 isolated adapter; requires migrated disposable PostgreSQL via DATABASE_URL.
+sqlx-prepare-session:
+    cargo sqlx prepare --workspace -- --package tabula-storage --package tabula-session-http --features tabula-storage/session-postgres,tabula-session-http/postgres --all-targets
+
 # ------------------------------------------------------------------- builds
 
 wasm-game:

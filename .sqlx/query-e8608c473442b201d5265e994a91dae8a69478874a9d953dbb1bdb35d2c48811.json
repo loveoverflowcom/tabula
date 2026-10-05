@@ -1,0 +1,185 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, user_id, authorization_epoch, channel, credential_generation,\n       credential_digest, context_id, created_at_ms, last_activity_at_ms,\n       last_observed_at_ms, idle_deadline_ms, absolute_deadline_ms,\n       revoked_at_ms, expired_at_ms FROM session_auth_sessions WHERE id = $1 AND user_id = $2 FOR UPDATE\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "authorization_epoch",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "authorization_epoch"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "channel",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "channel"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "credential_generation",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "credential_generation"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "credential_digest",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "credential_digest"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "context_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "context_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "created_at_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "last_activity_at_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "last_activity_at_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "last_observed_at_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "last_observed_at_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "idle_deadline_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "idle_deadline_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "absolute_deadline_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "absolute_deadline_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "revoked_at_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "revoked_at_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "expired_at_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "session_auth_sessions",
+            "name": "expired_at_ms"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "e8608c473442b201d5265e994a91dae8a69478874a9d953dbb1bdb35d2c48811"
+}

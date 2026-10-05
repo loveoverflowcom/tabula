@@ -30,7 +30,7 @@ class ServerTests(unittest.TestCase):
                 thread.start()
                 origin = f"http://127.0.0.1:{server.server_port}"
                 try:
-                    for route in ("/", "/games", "/games/example?setup=1"):
+                    for route in ("/", "/games", "/games/example?setup=1", "/account", "/me", "/login", "/register", "/friends", "/u/example"):
                         with urlopen(origin + route) as response:
                             self.assertEqual(response.read(), b"shell")
                             self.assertEqual(response.headers["Cache-Control"], "no-store")
@@ -38,7 +38,7 @@ class ServerTests(unittest.TestCase):
                         self.assertEqual(response.read(), b"game document")
                     with urlopen(origin + "/play/local/game.wasm") as response:
                         self.assertEqual(response.read(), b"\0asm")
-                    for route in ("/play/local/missing.wasm", "/play/local/missing.js", "/login", "/games/example/extra"):
+                    for route in ("/play/local/missing.wasm", "/play/local/missing.js", "/api/v1/auth/context", "/api/v1/me", "/games/example/extra", "/u/example/extra", "/account/extra"):
                         with self.assertRaises(HTTPError) as raised:
                             urlopen(origin + route)
                         self.assertEqual(raised.exception.code, 404)
@@ -47,9 +47,9 @@ class ServerTests(unittest.TestCase):
                     thread.join()
 
     def test_route_domain_is_bounded(self):
-        for path in ("/games", "/games/id?setup=1", "/"):
+        for path in ("/games", "/games/id?setup=1", "/", "/account", "/me", "/login", "/register", "/friends", "/u/example"):
             self.assertTrue(module.shell_route(path))
-        for path in ("/play/local", "/games/id/extra", "/games/id%2Fextra", "/app.wasm"):
+        for path in ("/play/local", "/games/id/extra", "/games/id%2Fextra", "/app.wasm", "/api/v1/me", "/account/extra", "/u/", "/u/example%2Fextra", "/u/example/extra"):
             self.assertFalse(module.shell_route(path))
 
     def test_only_exact_verified_content_names_are_immutable(self):

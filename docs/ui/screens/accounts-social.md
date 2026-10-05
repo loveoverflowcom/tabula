@@ -23,6 +23,14 @@ their typed owner is implemented and the relevant gate is evidenced.
 
 ## Current source and gates
 
+The table below is the historical compatibility base. The later
+[ADR-0036](../../adr/0036-isolated-durable-session-validation.md) exception adds
+only isolated durable context/self-profile authority and the
+[/account and /me shell slice](account-state-isolated.md), with its
+[scoped evidence](../../verification/issue-54-account-state-ui/README.md).
+The original login/register/social/other-profile contracts and production gates
+remain deferred; historical NOT_IMPLEMENTED claims are not current-slice receipts.
+
 | Surface rechecked at the compatibility base | Actual status | Prerequisite for runtime |
 |---|---|---|
 | `apps/web/src/views/mod.rs` | Mounted `/`, `/games`, `/games/:id`; setup is a detail substate | Auth/profile/friends are absent, not hidden implemented routes |

@@ -11,7 +11,7 @@
 //! this crate's `games` module, which is why no shell crate can branch on a
 //! game id (I-9).
 
-use tabula_core::{BotLevel, Occupant, SeatEntry, SeatId, SeatRoster, UserId};
+use tabula_core::{BotLevel, MatchSeed, Occupant, SeatEntry, SeatId, SeatRoster, UserId};
 use tabula_game_api::{ConfigError, GameCapabilities, GameMetadata, GameModule, GameRules};
 
 use crate::{
@@ -94,6 +94,25 @@ pub trait ErasedGame: Send + Sync {
     /// # Errors
     /// [`ConfigRejection`] from parsing, the seat plan, or the module.
     fn normalize(&self, request: &SetupRequest) -> Result<NormalizedConfig, ConfigRejection>;
+    /// Construct an isolated canonical match authority through the typed module.
+    /// This factory adds no network, migration, or service activation
+    /// (ADR-0039; doc 02 §8).
+    fn create_match(
+        &self,
+        config: &[u8],
+        roster: &SeatRoster,
+        seed: MatchSeed,
+    ) -> Result<crate::runtime::CreatedMatch, crate::runtime::RuntimeError>;
+    /// Decode a bounded server-only snapshot under its exact recorded package
+    /// and rules identity (I-5/I-16; doc 05 §§7–8; ADR-0040). The actor verifies the
+    /// snapshot's hash and replay history before publishing projected output.
+    fn restore_match(
+        &self,
+        identity: &crate::runtime::RuntimeIdentity,
+        config: &[u8],
+        roster: &SeatRoster,
+        snapshot: &[u8],
+    ) -> Result<Box<dyn crate::runtime::ErasedMatch>, crate::runtime::RuntimeError>;
 }
 
 /// The single blanket bridge. One implementation, generic over the adapter.
@@ -108,6 +127,25 @@ impl<S: GameSetup> Adapter<S> {
 }
 
 impl<S: GameSetup> ErasedGame for Adapter<S> {
+    fn create_match(
+        &self,
+        config: &[u8],
+        roster: &SeatRoster,
+        seed: MatchSeed,
+    ) -> Result<crate::runtime::CreatedMatch, crate::runtime::RuntimeError> {
+        crate::runtime::TypedMatch::<S::Module>::create(config, roster, seed)
+    }
+
+    fn restore_match(
+        &self,
+        identity: &crate::runtime::RuntimeIdentity,
+        config: &[u8],
+        roster: &SeatRoster,
+        snapshot: &[u8],
+    ) -> Result<Box<dyn crate::runtime::ErasedMatch>, crate::runtime::RuntimeError> {
+        crate::runtime::TypedMatch::<S::Module>::restore(identity, config, roster, snapshot)
+    }
+
     fn metadata(&self) -> &'static GameMetadata {
         S::Module::metadata()
     }

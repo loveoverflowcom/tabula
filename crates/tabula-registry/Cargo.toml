@@ -31,6 +31,7 @@ tabula-game-tiles = { workspace = true, optional = true, features = ["rules"] }
 default    = ["game-chess", "game-tiles"]
 game-chess = ["dep:tabula-game-chess"]
 game-tiles = ["dep:tabula-game-tiles"]
+test-support = []
 
 [lints]
 workspace = true
