@@ -189,6 +189,9 @@ struct Auth {
     preparations: Mutex<Vec<Purpose>>,
     lose_after_apply: AtomicU64,
     apply_calls: AtomicU64,
+    pause_prepare: AtomicBool,
+    prepare_entered: Notify,
+    prepare_release: Notify,
 }
 impl Auth {
     fn grant(&self, binding: &Binding, viewer: ClientViewer) {
@@ -204,6 +207,10 @@ impl Auth {
 impl Authority for Auth {
     async fn prepare(&self, _: &Binding, purpose: Purpose) -> Result<(), AuthorityLost> {
         self.preparations.lock().unwrap().push(purpose);
+        if self.pause_prepare.swap(false, Ordering::SeqCst) {
+            self.prepare_entered.notify_one();
+            self.prepare_release.notified().await;
+        }
         if *self.fail_prepare.lock().unwrap() == Some(purpose) {
             Err(AuthorityLost)
         } else {
@@ -1148,5 +1155,32 @@ async fn authority_loss_after_apply_retires_uncommitted_candidate() {
     let summary = h.join.await.unwrap();
     assert_eq!(summary.exit, Exit::AuthorityLost);
     assert_eq!(summary.index, InputIndex(0));
+    assert_eq!(summary.version.0, 0);
     assert!(h.handle.is_closed());
+    assert!(matches!(
+        h.handle.command(owner, Harness::command(2, 0)),
+        Err(AdmissionError::Closed)
+    ));
+}
+
+#[tokio::test]
+async fn async_output_preparation_follows_commit_and_cannot_revive_lost_authority() {
+    let h = Harness::new(1, Limits::default());
+    let owner = h.attach(1, ClientViewer::Seat(SeatId(0))).await;
+    h.auth.pause_prepare.store(true, Ordering::SeqCst);
+    let ticket = h
+        .handle
+        .command(owner.clone(), Harness::command(1, 0))
+        .unwrap();
+    h.auth.prepare_entered.notified().await;
+    assert_eq!(
+        h.log.records.lock().unwrap().len(),
+        2,
+        "commit precedes output preparation"
+    );
+    h.auth.revoke(&owner);
+    h.auth.prepare_release.notify_one();
+    assert_eq!(ticket.wait().await.unwrap(), Completion::Suppressed);
+    assert_eq!(h.frames_for(owner.session()).len(), 1);
+    assert_eq!(h.end().await.version.0, 1);
 }

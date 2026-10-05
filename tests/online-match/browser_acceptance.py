@@ -2,27 +2,35 @@
 """Actual, independently launched Chromium UI acceptance, never mocked HTTP.
 
 Secrets remain in runtime memory or the enclosing private temporary directory.
-Only closed result booleans, public build versions, action names, and screenshots
-of gameplay (after invitation/grant UI disappears) become artifacts. This script
+Only closed result booleans, public build provenance, action names, and masked
+screenshots of positively verified rendered UI states become artifacts. This script
 is intended for the explicitly authorized disposable CI route, not as a fallback
 around a denied local-browser, networking, or certificate-security boundary.
 """
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import http.client
 import io
 import json
 import os
+import re
 from pathlib import Path
 import ssl
 import subprocess
+import threading
 import time
 from urllib.parse import urlsplit
+from PIL import Image
+from playwright.sync_api import Error as BrowserError, TimeoutError as BrowserTimeout, sync_playwright
+from capture_evidence import CaptureEvidence, CaptureFailure
+from startup_diagnostics import http_status, navigation_failure, origin_class, process_diagnostics
 
 ORIGIN = "https://localhost:9443"
 SESSION_COOKIE = "__Host-tabula_session"
 GAME_PATH = "/games/com.tabula.chess"
+TERMINAL_STATUS = "Game over / Black wins / checkmate"
 FORBIDDEN_FRAME_FIELDS = frozenset(
     {"canonical_state", "canonical_version", "input_index", "logical_ms",
      "state_hash", "rules_hash", "seed", "ledger", "canonical_events"}
@@ -95,7 +103,7 @@ def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -
     therefore use a separate real, explicitly CA-validated HTTPS client; actual
     create/join/rendered gameplay remains driven by genuine browser UI events.
     """
-    require(path.startswith("/api/v1/matches/"), "invalid hostile probe path")
+    require(path.startswith(("/api/v1/matches/", "/__fixture/publication/")), "invalid hostile probe path")
     connection = http.client.HTTPSConnection("localhost", 9443, timeout=30,
                                             context=ssl.create_default_context(cafile=str(ca)))
     encoded = body.encode("utf-8")
@@ -135,24 +143,239 @@ def hostile_header_probes(ca: Path, match_id: str, cookie: str, csrf: str) -> in
     return len(cases)
 
 
+def publication_control(ca: Path, operation: str, token: str) -> dict:
+    require(operation in ("status", "release"), "invalid publication control operation")
+    return wire_probe(ca, f"/__fixture/publication/{operation}",
+                      [("Origin", ORIGIN), ("Content-Type", "application/json"),
+                       ("X-Tabula-Fixture-Control", token)], '{"version":1}')
+
+
+def start_native_poll(match_id: str, attachment_id: str, cookie: str, csrf: str):
+    """CI-only real upstream TCP observer, before TLS-edge body buffering.
+
+    The browser game still uses verified HTTPS. This separate native-server
+    boundary oracle counts actual bytes from the approved private Rust listener;
+    it retains no response body, headers, credential, or grant in artifacts.
+    """
+    require(os.environ.get("CI") in ("true", "1")
+            and os.environ.get("TABULA_ONLINE_MATCH_DISPOSABLE") == "1",
+            "native publication oracle requires disposable CI opt-in")
+    done = threading.Event()
+    result = {"status": None, "json_content_type": False, "no_store": False,
+              "body_bytes": 0, "body_error": False}
+    body = json.dumps({"version": 1, "attachment_id": attachment_id})
+
+    def observe():
+        connection = http.client.HTTPConnection("127.0.0.1", 3000, timeout=90)
+        try:
+            connection.request("POST", f"/api/v1/matches/{match_id}/poll", body,
+                               {"Origin": ORIGIN, "Content-Type": "application/json",
+                                "Cookie": f"{SESSION_COOKIE}={cookie}", "X-Tabula-CSRF": csrf})
+            response = connection.getresponse()
+            result["status"] = response.status
+            result["json_content_type"] = response.getheader("Content-Type", "").split(";")[0] == "application/json"
+            result["no_store"] = "no-store" in response.getheader("Cache-Control", "").split(",")
+            while True:
+                chunk = response.read(65_536)
+                if not chunk:
+                    break
+                result["body_bytes"] += len(chunk)
+                require(result["body_bytes"] <= 2_097_152, "native publication body exceeded budget")
+        except http.client.IncompleteRead as error:
+            result["body_bytes"] += len(error.partial)
+            result["body_error"] = True
+        except Exception:
+            result["body_error"] = True
+        finally:
+            connection.close()
+            done.set()
+
+    thread = threading.Thread(target=observe, name="native-publication-byte-oracle", daemon=True)
+    thread.start()
+    return thread, done, result
+
+
+def prove_held_publication(white, black, match_id: str, white_attachment: dict,
+                          original_command: str, facts: list[dict], cookie: str, ca: Path) -> dict:
+    grant = api(black, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[1]["csrf_token"])
+    require(grant["status"] == 200 and grant["body"]["ready"], "passive opponent grant setup failed")
+    attachment = api(black, f"/api/v1/matches/{match_id}/attach",
+                     {"version": 1, "binding_id": grant["body"]["binding_id"]}, facts[1]["csrf_token"])
+    require(attachment["status"] == 200, "passive opponent attachment setup failed")
+    # This second actor has no browser runtime polling it. Initial snapshots
+    # were consumed above, and Black has issued no command or receipt request.
+    command = json.loads(original_command)
+    command["attachment_id"] = white_attachment["attachment_id"]
+    command["command"]["command"]["match_id"] = int(match_id, 16)
+    accepted = api(white, f"/api/v1/matches/{match_id}/command", json.dumps(command), facts[0]["csrf_token"])
+    require(accepted["status"] == 200 and any("Ack" in frame.get("body", {})
+            for frame in accepted["body"]["frames"]), "actual visible queued move was not accepted")
+    armed = api(black, "/__fixture/publication/arm",
+                {"version": 1, "match_id": match_id,
+                 "attachment_id": attachment["body"]["attachment_id"]}, facts[1]["csrf_token"])
+    require(armed["status"] == 200, "native held-body control setup failed")
+    token = armed["body"]["control_token"]
+    thread, done, observed = start_native_poll(match_id, attachment["body"]["attachment_id"],
+                                              cookie, facts[1]["csrf_token"])
+    released = False
+    try:
+        deadline = time.monotonic() + 30
+        while True:
+            status = publication_control(ca, "status", token)
+            require(status["status"] == 200, "native capture witness status unavailable")
+            phase = status["body"]["phase"]
+            require(phase not in ("failed", "expired"), "real poll lacked a nonempty projected capture witness")
+            if phase == "held":
+                break
+            require(not done.is_set() and time.monotonic() < deadline,
+                    "native poll did not reach a held nonempty first-frame boundary")
+            time.sleep(.1)
+        require(not done.is_set(), "native poll body completed before its fixture release")
+        # Existing storage publication exclusions expire independently within2s;
+        # the actual inner body remains unpolled while the separate logout commits.
+        time.sleep(2.5)
+        logout = api(black, "/api/v1/auth/logout", {}, facts[1]["csrf_token"])
+        require(logout["status"] == 204, "separate real authority logout did not commit while body held")
+        require(not done.is_set(), "held native body was released before actual revocation committed")
+        release = publication_control(ca, "release", token)
+        require(release["status"] == 200, "native publication release failed")
+        released = True
+        thread.join(timeout=45)
+        require(done.is_set(), "released actual native poll did not terminate")
+        require(observed["status"] == 200 and observed["json_content_type"] and observed["no_store"],
+                "native held request did not carry the real successful guarded poll headers")
+        require(observed["body_bytes"] == 0, "revoked held native poll delivered protected body bytes")
+        suppressed = publication_control(ca, "status", token)
+        require(suppressed["status"] == 200 and suppressed["body"]["phase"] == "suppressed",
+                "held fixture did not forward an actual inner publication-guard error")
+        return {"actual_native_nonempty_capture_held": True,
+                "separate_real_logout_before_release": True,
+                "actual_inner_publication_guard_error": True,
+                "native_poll_status": observed["status"],
+                "native_poll_body_bytes": observed["body_bytes"],
+                "native_poll_body_error": observed["body_error"],
+                "observer_before_tls_edge_buffering": True}
+    finally:
+        if not released:
+            try:
+                publication_control(ca, "release", token)
+            except Exception:
+                pass
+
+
 def context_facts(page) -> dict:
     response = api(page, "/api/v1/auth/context")
     require(response["status"] == 200, "real session context unavailable")
     return response["body"]
 
 
-def snapshot_canvas(page, path: Path) -> bytes:
-    from PIL import Image
-
+def rendered_canvas_pixels(page) -> bytes:
+    """Check actual authorized pixels in memory without retaining a page dump."""
     canvas = page.locator("#glcanvas")
     require(canvas.is_visible(), "actual game canvas is not visible")
-    shot = canvas.screenshot(path=str(path), timeout=30_000)
+    shot = canvas.screenshot(timeout=30_000)
     image = Image.open(io.BytesIO(shot)).convert("RGB")
     require(image.width >= 600 and image.height >= 400, "rendered canvas is unexpectedly small")
     # A compiled WASM or empty/clear-colored WebGL canvas is never rendering proof.
     require(len(image.resize((160, 120)).getcolors(19_201) or []) > 32,
             "actual canvas pixels are blank or lack rendered game content")
     return shot
+
+
+NEUTRAL_UNAVAILABLE = """() => {
+    const root = document.documentElement, canvas = document.querySelector('#glcanvas');
+    const error = document.querySelector('#runtime-error'), detail = document.querySelector('#error-detail');
+    const privateKeys = ['onlineSeat', 'onlineRevision', 'onlineStatus', 'onlineConnection'];
+    const statusNodes = document.querySelectorAll('[data-testid="online-seat"],[data-testid="online-revision"],[data-testid="online-status"],[data-testid="online-connection"]');
+    return root.dataset.onlineAvailability === 'unavailable'
+        && privateKeys.every(key => !Object.hasOwn(root.dataset, key))
+        && canvas && canvas.width === 0 && canvas.height === 0
+        && canvas.getAttribute('aria-hidden') === 'true'
+        && getComputedStyle(canvas).visibility === 'hidden'
+        && error && error.getBoundingClientRect().width > 0 && error.getBoundingClientRect().height > 0
+        && detail && detail.textContent.trim() === 'The online connection is unavailable. Moves are blocked. Return to Tabula to reopen this match.'
+        && Array.from(statusNodes).every(node => node.textContent.trim() === '');
+}"""
+
+
+def record_live_poll_denial(response, progress: dict) -> None:
+    progress["actual_live_poll_status"] = http_status(response.status)
+    require(response.status == 401, "live authority-loss poll was not denied")
+    # The real transport aborts non-200 bodies immediately. Body retrieval may
+    # therefore fail in Playwright and is not a UI-concealment precondition.
+    # Separate revoked-output and held-body probes retain frame/byte denial.
+
+
+def capture_live_authority_loss(white, third, csrf: str, evidence: CaptureEvidence,
+                                secrets: list[str], progress: dict) -> dict:
+    """Actual live-board poll401 concealment after normal current-session logout.
+
+    A separate auxiliary actor keeps the passive held-body recipient untouched.
+    This proves one active-document authority-loss boundary, not reconnect,
+    interrupted-command handling or browser page-cache lifecycle guarantees.
+    """
+    progress.update({"phase": "navigate_create_controls", "create_status": None,
+                     "join_status": None, "actual_live_board_before_logout": False,
+                     "game_document_visible_before_logout": False, "logout_status": None,
+                     "current_session_logout_committed": False, "actual_live_poll_status": None,
+                     "neutral_error_visible": False, "canvas_hidden_zero_sized_and_status_cleared": False})
+    white.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+    white.get_by_test_id("online-create").wait_for(state="visible", timeout=30_000)
+    with white.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches", timeout=30_000) as created_response:
+        white.get_by_test_id("online-create").click()
+    created = created_response.value.json()
+    progress["create_status"] = http_status(created_response.value.status)
+    require(created_response.value.status == 200 and created["seat"] == 0,
+            "live concealment actual create setup failed")
+    match_id, code = created["match_id"], created["join_code"]
+    secrets.append(code)
+    progress["phase"] = "join_actual_opponent"
+    third.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+    third.get_by_test_id("online-join-code").fill(code)
+    with third.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches/join", timeout=30_000) as joined_response:
+        third.get_by_test_id("online-join").click()
+    joined = joined_response.value.json()
+    progress["join_status"] = http_status(joined_response.value.status)
+    require(joined_response.value.status == 200 and joined["match_id"] == match_id
+            and joined["seat"] == 1 and joined["ready"],
+            "live concealment actual opponent join setup failed")
+    progress["phase"] = "attach_and_render_live_board"
+    progress["attachment"] = []
+    enter_game(white, match_id, 0, progress["attachment"])
+    white.wait_for_function("() => document.documentElement.dataset.onlineRevision === '0'", timeout=30_000)
+    rendered_canvas_pixels(white)
+    progress["actual_live_board_before_logout"] = True
+    progress["phase"] = "open_same_context_control"
+    control = white.context.new_page()
+    try:
+        control.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+        # Macroquad's real transport is driven by animation frames. The separate
+        # control document must not leave the live game in a background tab.
+        progress["phase"] = "foreground_live_game"
+        white.bring_to_front()
+        progress["game_document_visible_before_logout"] = white.evaluate("document.visibilityState === 'visible'") is True
+        require(progress["game_document_visible_before_logout"], "live authority-loss game was not foreground-visible")
+        progress["phase"] = "commit_current_logout_and_observe_live_poll"
+        with white.expect_response(lambda response: urlsplit(response.url).path == f"/api/v1/matches/{match_id}/poll"
+                                   and response.status == 401, timeout=60_000) as rejected_poll:
+            logout = api(control, "/api/v1/auth/logout", {}, csrf)
+            progress["logout_status"] = http_status(logout["status"])
+            require(logout["status"] == 204, "live board authority logout did not commit")
+            progress["current_session_logout_committed"] = True
+        rejected = rejected_poll.value
+        record_live_poll_denial(rejected, progress)
+        progress["phase"] = "verify_neutral_concealment"
+        white.wait_for_function(NEUTRAL_UNAVAILABLE, polling=100, timeout=30_000)
+        white.locator("#runtime-error").wait_for(state="visible", timeout=30_000)
+        progress["neutral_error_visible"] = True
+        progress["canvas_hidden_zero_sized_and_status_cleared"] = True
+        progress["phase"] = "capture_actual_neutral_ui"
+        evidence.capture(white, "10-authority-unavailable.png", "Actual live-board authority loss: neutral unavailable UI", "White browser",
+                         "A previously rendered live initial board received real poll401 after committed normal logout; canvas hidden and zero-sized, projected status cleared, moves unavailable", secrets=secrets)
+        progress["phase"] = "complete"
+        return progress
+    finally:
+        control.close()
 
 
 def board_square(width: float, height: float, name: str, flipped: bool) -> tuple[float, float]:
@@ -185,7 +408,97 @@ def board_square(width: float, height: float, name: str, flipped: bool) -> tuple
     return left + (column + .5) * side / 8, top + (row + .5) * side / 8
 
 
-def move(page, source: str, target: str, flipped: bool, match_id: str) -> str:
+def game_status_class(status: str | None) -> str:
+    return {"White to move": "white_turn", "Black to move": "black_turn",
+            "White to move / CHECK": "white_in_check", "Black to move / CHECK": "black_in_check",
+            TERMINAL_STATUS: "black_checkmate", None: "not_available"}.get(status, "other_status")
+
+
+def visible_game_facts(page, role: str) -> dict:
+    require(role in ("white", "black"), "unknown game diagnostic role")
+    values = page.evaluate("""() => {
+        const data = document.documentElement.dataset;
+        return {revision:data.onlineRevision ?? null, seat:data.onlineSeat ?? null,
+                status:data.onlineStatus ?? null, connection:data.onlineConnection ?? null,
+                availability:data.onlineAvailability ?? null};
+    }""")
+    return {"role": role,
+            "revision": int(values["revision"]) if values["revision"] in ("0", "1", "2", "3", "4") else "not_observed_in_expected_range",
+            "seat": int(values["seat"]) if values["seat"] in ("0", "1") else "not_available",
+            "status_class": game_status_class(values["status"]),
+            "connection_class": {"Connected · server-authoritative": "ready", "Sending move…": "sending",
+                                 "The server rejected that action. Choose another move": "rejected",
+                                 "Moves are blocked": "blocked", None: "not_available"}.get(values["connection"], "other_connection"),
+            "availability": values["availability"] if values["availability"] in ("available", "unavailable") else "not_reported"}
+
+
+def exception_class(error: Exception) -> str:
+    if isinstance(error, AcceptanceFailure):
+        return "required_condition_failed"
+    if isinstance(error, BrowserTimeout):
+        return "browser_timeout"
+    if isinstance(error, BrowserError):
+        return "browser_target_closed" if type(error).__name__ == "TargetClosedError" else "browser_error"
+    if isinstance(error, CaptureFailure):
+        return "capture_condition_failed"
+    for kind, label in ((json.JSONDecodeError, "json_decode_error"), (AttributeError, "python_attribute_error"),
+                        (TypeError, "python_type_error"), (KeyError, "python_key_error"),
+                        (NameError, "python_name_error"), (OSError, "local_io_error")):
+        if isinstance(error, kind):
+            return label
+    return "other_error"
+
+
+def protected_endpoint_class(url: str) -> str | None:
+    parsed = urlsplit(url)
+    if parsed.scheme != "https" or parsed.netloc != "localhost:9443" or parsed.query:
+        return None
+    if parsed.path == "/api/v1/auth/context":
+        return "context"
+    match = re.fullmatch(r"/api/v1/matches/[0-9a-f]{32}/(grant|attach|poll|command)", parsed.path)
+    return match.group(1) if match else None
+
+
+@contextmanager
+def active_browser_diagnostics(browsers: list, results: dict, lifecycle: dict):
+    # This context exits BEFORE sync_playwright, while page/channel RPCs remain
+    # available. The outer finally must never query a stopped Playwright driver.
+    try:
+        yield
+    except Exception as error:
+        results["failure_class"] = exception_class(error)
+        results["failure_views"] = []
+        for browser, role in zip(browsers[:2], ("white", "black")):
+            try:
+                pages = list(browser.pages)
+            except Exception:
+                results["failure_views"].append({"role": role, "diagnostic": "context_unavailable"})
+                continue
+            for page in pages[-4:]:
+                try:
+                    if urlsplit(page.url).path != "/play/local/":
+                        continue
+                    facts = {"role": role, "page_closed": page.is_closed(),
+                             "page_crashed": lifecycle.get(page, {}).get("crashed", False),
+                             "browser_connected": browser.browser is not None and browser.browser.is_connected()}
+                    if not facts["page_closed"] and not facts["page_crashed"]:
+                        try:
+                            facts.update(visible_game_facts(page, role))
+                        except Exception as diagnostic_error:
+                            facts["diagnostic"] = exception_class(diagnostic_error)
+                    results["failure_views"].append(facts)
+                except Exception:
+                    results["failure_views"].append({"role": role, "diagnostic": "page_unavailable"})
+        raise
+
+
+def move(page, source: str, target: str, flipped: bool, match_id: str,
+         trace: list[dict] | None = None) -> str:
+    require(source + target in ("f2f3", "e7e5", "g2g4", "d8h4"), "unexpected scripted acceptance move")
+    observed = {"move": source + target, "response_observed": False,
+                "http_status": None, "ack_present": False}
+    if trace is not None:
+        trace.append(observed)
     canvas = page.locator("#glcanvas")
     bounds = canvas.bounding_box()
     require(bounds is not None, "actual canvas has no pointer bounds")
@@ -195,10 +508,12 @@ def move(page, source: str, target: str, flipped: bool, match_id: str) -> str:
             x, y = board_square(bounds["width"], bounds["height"] - 56, square, flipped)
             canvas.click(position={"x": x, "y": y}, delay=70)
     response = result.value
+    observed.update({"response_observed": True, "http_status": http_status(response.status)})
     require(response.status == 200, "rendered legal move was not accepted by real server")
     body = response.json()
     require(not private_frame_keys(body), "canonical facts leaked in command result")
-    require(any("Ack" in frame.get("body", {}) for frame in body["frames"]),
+    observed["ack_present"] = any("Ack" in frame.get("body", {}) for frame in body["frames"])
+    require(observed["ack_present"],
             "rendered legal move lacks durable acknowledgement")
     # Keep exact bytes in memory: parsing into JS numbers would round a u128
     # identity and turn the intended exact retry into a different command.
@@ -207,21 +522,47 @@ def move(page, source: str, target: str, flipped: bool, match_id: str) -> str:
     return command
 
 
-def enter_game(page, match_id: str, expected_seat: int) -> tuple[dict, str]:
+def enter_game(page, match_id: str, expected_seat: int,
+               trace: list[dict] | None = None) -> tuple[dict, str]:
+    observed = {"expected_seat": expected_seat, "phase": "navigate_and_request_attach",
+                "response_observed": False, "http_status": None,
+                "typed_seat_matches": False, "native_status_observed": False,
+                "loader_hidden": False, "actual_canvas_visible": False}
+    if trace is not None:
+        trace.append(observed)
     path = f"/api/v1/matches/{match_id}/attach"
-    with page.expect_response(lambda r: urlsplit(r.url).path == path, timeout=60_000) as result:
-        page.get_by_test_id("online-enter").click()
+    def is_attachment(response):
+        return urlsplit(response.url).path == path and response.request.method == "POST"
+    def attachment_response_observed(response):
+        if is_attachment(response):
+            observed.update({"response_observed": True, "http_status": http_status(response.status)})
+    page.on("response", attachment_response_observed)
+    try:
+        with page.expect_response(is_attachment, timeout=60_000) as result:
+            page.get_by_test_id("online-enter").click()
+    finally:
+        page.remove_listener("response", attachment_response_observed)
     response = result.value
+    observed.update({"response_observed": True, "http_status": http_status(response.status),
+                     "phase": "validate_existing_attach_contract"})
     require(response.status == 200, "actual gameplay attachment failed")
     attachment = response.json()
     require(attachment["seat"] == expected_seat, "browser entered the wrong opponent seat")
+    observed["typed_seat_matches"] = True
     require(not private_frame_keys(attachment), "canonical facts leaked on attach")
+    observed["phase"] = "wait_native_projection_status"
     page.wait_for_function("expected => document.documentElement.dataset.onlineSeat === String(expected)",
                            arg=expected_seat, timeout=60_000)
+    observed["native_status_observed"] = True
+    observed["phase"] = "wait_loader_hidden"
     page.locator("#loader").wait_for(state="hidden", timeout=60_000)
+    observed["loader_hidden"] = True
+    observed["phase"] = "require_actual_canvas_visible"
     require(page.locator("#glcanvas").is_visible(), "WASM game failed to render")
+    observed["actual_canvas_visible"] = True
     grant_body = response.request.post_data
     require(grant_body is not None, "actual grant-bound attachment request was absent")
+    observed["phase"] = "complete"
     return attachment, grant_body
 
 
@@ -230,12 +571,41 @@ def wait_revision(page, revision: int) -> None:
                            arg=revision, timeout=30_000)
 
 
+def enroll_actual_page(page, role: str, results: dict) -> None:
+    require(role in ("white", "black", "third"), "unknown disposable browser role")
+    results["stage"] = f"submit {role} actual enrollment form"
+    observed = {"role": role, "status": None, "origin_class": "not_observed",
+                "form_media_type_expected": False, "redirect_completed": False}
+    results["startup"]["enrollment"].append(observed)
+    def is_enrollment(response):
+        return urlsplit(response.url).path == "/__fixture/enroll" and response.request.method == "POST"
+    def response_observed(response):
+        if is_enrollment(response):
+            observed.update({"status": http_status(response.status),
+                             "origin_class": origin_class(response.request.header_value("origin"), ORIGIN),
+                             "form_media_type_expected": (response.request.header_value("content-type") or "").split(";")[0].strip().lower() == "application/x-www-form-urlencoded"})
+    page.on("response", response_observed)
+    try:
+        with page.expect_response(is_enrollment, timeout=20_000) as submitted:
+            page.get_by_test_id("fixture-enroll").click(timeout=20_000)
+        response = submitted.value
+        response_observed(response)
+    finally:
+        page.remove_listener("response", response_observed)
+    # A denied real form must fail here, rather than disappear into a generic
+    # 60s redirect timeout. Header values and response bodies remain private.
+    require(observed["origin_class"] == "exact", "actual enrollment form did not carry exact HTTPS Origin")
+    require(observed["form_media_type_expected"], "actual enrollment form media type was unexpected")
+    require(response.status == 303, "actual enrollment form was rejected before session issuance redirect")
+    results["stage"] = f"complete {role} enrollment redirect"
+    page.wait_for_url(ORIGIN + GAME_PATH, timeout=30_000)
+    observed["redirect_completed"] = True
+
+
 def run(args) -> None:
     require(os.environ.get("CI") in ("true", "1")
             and os.environ.get("TABULA_ONLINE_MATCH_DISPOSABLE") == "1",
             "explicit CI-only disposable browser acceptance opt-in is required")
-    from playwright.sync_api import sync_playwright
-
     private, artifacts, ca = Path(args.private), Path(args.artifacts), Path(args.ca)
     require(private.is_dir() and ca.is_file(), "private runtime and approved test CA are required")
     artifacts.mkdir(parents=True, exist_ok=True)
@@ -243,10 +613,14 @@ def run(args) -> None:
     results: dict = {"status": "fail", "stage": "start",
                      "authority_mode": "isolated fixture identities through real durable session authority",
                      "browser_processes": 3, "independent_homes_profiles_cookie_jars": True,
-                     "tls_errors_ignored": False, "chromium_sandbox": True}
+                     "tls_errors_ignored": False, "chromium_sandbox": True,
+                     "moves": [], "attachments": [], "protected_http": {}, "startup": {"https_get": {"attempts": 0, "status": None,
+                                 "fixture_page_ready": False, "last_navigation_failure": "none"},
+                                 "enrollment": []}}
     browsers = []
+    lifecycle = {}
     try:
-        with sync_playwright() as playwright:
+        with sync_playwright() as playwright, active_browser_diagnostics(browsers, results, lifecycle):
             results["stage"] = "launch separate Chromium processes with scoped CA trust"
             for role in ("white", "black", "third"):
                 home, profile = setup_browser_trust(private, role, ca)
@@ -259,6 +633,27 @@ def run(args) -> None:
                     reduced_motion="reduce", locale="en-US",
                 )
                 browsers.append(browser)
+                counters = {}
+                results["protected_http"][role] = counters
+                def observe_response(response, counts=counters):
+                    endpoint = protected_endpoint_class(response.url)
+                    status = http_status(response.status)
+                    if endpoint is not None and status is not None:
+                        key = str(status)
+                        bucket = counts.setdefault(endpoint, {})
+                        if len(bucket) < 16 or key in bucket:
+                            bucket[key] = min(bucket.get(key, 0) + 1, 255)
+                browser.on("response", observe_response)
+                def observe_page(page):
+                    if len(lifecycle) >= 16:
+                        return
+                    state = {"crashed": False, "closed": False}
+                    lifecycle[page] = state
+                    page.on("crash", lambda *_: state.update({"crashed": True}))
+                    page.on("close", lambda *_: state.update({"closed": True}))
+                browser.on("page", observe_page)
+                for existing_page in browser.pages:
+                    observe_page(existing_page)
             white, black, third = [browser.new_page() for browser in browsers]
             browser_pids = []
             for browser in browsers:
@@ -272,19 +667,35 @@ def run(args) -> None:
                     inspector.detach()
             require(len(set(browser_pids)) == 3, "acceptance contexts share an actual browser process")
             results["distinct_actual_browser_processes_verified"] = True
+            results["chromium_version"] = browsers[0].browser.version
             # Navigation validates TLS in actual Chromium. Before issuance there
             # is no interception, route mock, cookie injection or shared storageState.
-            results["stage"] = "validate HTTPS and issue independent sessions through actual pages"
+            results["stage"] = "validate HTTPS enrollment document in actual Chromium"
+            probe = results["startup"]["https_get"]
+            def failed_navigation(request):
+                if request.method == "GET" and request.url == ORIGIN + "/__fixture/enroll":
+                    probe["last_navigation_failure"] = navigation_failure(request.failure)
+            white.on("requestfailed", failed_navigation)
             deadline = time.monotonic() + 45
             while True:
+                probe["attempts"] += 1
+                probe["status"] = None
+                probe["last_navigation_failure"] = "none"
                 try:
-                    startup = white.goto(ORIGIN + "/__fixture/enroll", wait_until="domcontentloaded")
+                    startup = white.goto(ORIGIN + "/__fixture/enroll", wait_until="domcontentloaded", timeout=5_000)
+                    probe["status"] = http_status(startup.status if startup is not None else None)
                     if startup is not None and startup.status == 200 and white.get_by_test_id("fixture-enroll").is_visible():
+                        probe["fixture_page_ready"] = True
                         break
+                except BrowserTimeout:
+                    probe["last_navigation_failure"] = "navigation_timeout"
                 except Exception:
-                    pass
+                    if probe["last_navigation_failure"] == "none":
+                        probe["last_navigation_failure"] = "other_navigation_failure"
                 require(time.monotonic() < deadline, "validated fixture HTTPS and real authority startup failed")
+                require(probe["attempts"] < 60, "fixture readiness exceeded bounded navigation attempts")
                 time.sleep(.25)
+            white.remove_listener("requestfailed", failed_navigation)
             for page, role in ((white, "white"), (black, "black")):
                 if page is black:
                     page.goto(ORIGIN + "/__fixture/enroll", wait_until="domcontentloaded")
@@ -294,8 +705,7 @@ def run(args) -> None:
                         and page.evaluate("sessionStorage.getItem('tabula-acceptance-isolation')") is None,
                         "fresh browser shares another process's document storage")
                 page.evaluate("role => { localStorage.setItem('tabula-acceptance-isolation', role); sessionStorage.setItem('tabula-acceptance-isolation', role); }", role)
-                page.get_by_test_id("fixture-enroll").click()
-                page.wait_for_url(ORIGIN + GAME_PATH, timeout=60_000)
+                enroll_actual_page(page, role, results)
             third.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
             require(third.evaluate("localStorage.getItem('tabula-acceptance-isolation')") is None
                     and third.evaluate("sessionStorage.getItem('tabula-acceptance-isolation')") is None,
@@ -322,6 +732,25 @@ def run(args) -> None:
             results["distinct_actual_accounts_sessions_and_httponly_cookies"] = True
             results["chromium_version"] = browsers[0].browser.version
             actions.append("Independent White and Black pages issued separate durable HttpOnly sessions")
+            evidence = CaptureEvidence(artifacts, Path(__file__).resolve().parents[2])
+            redacted_values = [fact["csrf_token"] for fact in facts] + [fact["account_id"] for fact in facts]
+            redacted_values += [entry[0]["value"] for entry in cookies]
+            white.goto(ORIGIN + "/", wait_until="domcontentloaded")
+            white.locator("#featured").wait_for(state="visible", timeout=30_000)
+            white.locator('ul[aria-labelledby="featured"] .card__action[href="/games/com.tabula.chess"]').wait_for(state="visible", timeout=30_000)
+            evidence.capture(white, "00-dashboard-discovery.png", "Dashboard and featured-game discovery", "White browser",
+                             "Served shell home and featured games visibly rendered after actual session issuance", secrets=redacted_values)
+            white.goto(ORIGIN + "/games", wait_until="domcontentloaded")
+            white.locator(".section__title").first.wait_for(state="visible", timeout=30_000)
+            white.locator('ul[aria-labelledby="results"] .card__action[href="/games/com.tabula.chess"]').wait_for(state="visible", timeout=30_000)
+            evidence.capture(white, "01-game-library.png", "Actual game discovery library", "White browser",
+                             "Served library route visibly rendered", secrets=redacted_values)
+            white.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
+            white.get_by_test_id("online-create").wait_for(state="visible", timeout=30_000)
+            white.get_by_test_id("online-join-code").wait_for(state="visible", timeout=30_000)
+            white.get_by_test_id("online-join").wait_for(state="visible", timeout=30_000)
+            evidence.capture(white, "02-create-join-controls.png", "Create and join controls", "White browser",
+                             "Actual online create and join controls visibly available", secrets=redacted_values)
 
             results["stage"] = "create and join a real code through the shell"
             with white.expect_response(lambda r: urlsplit(r.url).path == "/api/v1/matches", timeout=30_000) as created_response:
@@ -332,6 +761,9 @@ def run(args) -> None:
             match_id, code = created["match_id"], created["join_code"]
             require(white.get_by_test_id("online-code").inner_text().strip() == code,
                     "shell did not display the real returned join code")
+            redacted_values.append(code)
+            evidence.capture(white, "03-created-code-waiting.png", "Created match waiting for opponent; active code redacted", "White browser",
+                             "Actual successful create response has rendered its waiting admission", secrets=redacted_values)
             denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, "A" * 43),
                    {401}, "third unauthenticated browser obtained opponent output")
             black.get_by_test_id("online-join-code").fill(code)
@@ -340,6 +772,9 @@ def run(args) -> None:
             joined = joined_response.value.json()
             require(joined_response.value.status == 200 and joined["match_id"] == match_id
                     and joined["seat"] == 1 and joined["ready"], "actual code join failed")
+            black.get_by_test_id("online-enter").wait_for(state="visible", timeout=30_000)
+            evidence.capture(black, "04-opponent-joined.png", "Opponent joined the real match; code/input redacted", "Black browser",
+                             "Actual successful join rendered the opposite seat and enter control", secrets=redacted_values)
             duplicate = api(black, "/api/v1/matches/join", {"version": 1, "code": code}, facts[1]["csrf_token"])
             require(duplicate["status"] == 200 and duplicate["body"]["seat"] == 1
                     and duplicate["body"]["match_id"] == match_id,
@@ -347,8 +782,7 @@ def run(args) -> None:
             actions.append("White created a real code; Black joined it as the opposite seat; duplicate join preserved binding")
             # Test full-roster admission before completion can mask that boundary.
             third.goto(ORIGIN + "/__fixture/enroll")
-            third.get_by_test_id("fixture-enroll").click()
-            third.wait_for_url(ORIGIN + GAME_PATH, timeout=60_000)
+            enroll_actual_page(third, "third", results)
             third_facts = context_facts(third)
             third_csrf = third_facts["csrf_token"]
             require(third_facts["account_id"] not in [f["account_id"] for f in facts],
@@ -357,35 +791,53 @@ def run(args) -> None:
                    {403, 409}, "third player changed a full live opponent roster")
             results["third_client_full_live_roster_join_denied"] = True
             results["stage"] = "attach and render opposing actual browser seats"
-            white_attachment, white_grant_body = enter_game(white, match_id, 0)
-            black_attachment, _black_grant_body = enter_game(black, match_id, 1)
-            initial_white = snapshot_canvas(white, artifacts / "01-white-initial-board.png")
-            snapshot_canvas(black, artifacts / "02-black-initial-board.png")
+            white_attachment, white_grant_body = enter_game(white, match_id, 0, results["attachments"])
+            black_attachment, _black_grant_body = enter_game(black, match_id, 1, results["attachments"])
+            initial_white = evidence.capture(white, "05-white-initial-board.png", "White independent rendered Chess board", "White browser",
+                                             "Actual Rust-decoded seat0 initial projection rendered", canvas=True, secrets=redacted_values)
+            evidence.capture(black, "06-black-initial-board.png", "Black independent rendered Chess board", "Black browser",
+                             "Actual Rust-decoded seat1 initial projection rendered", canvas=True, secrets=redacted_values)
 
             results["stage"] = "tap f2-f3"
-            first = move(white, "f2", "f3", False, match_id)
+            first = move(white, "f2", "f3", False, match_id, results["moves"])
             wait_revision(black, 1)
             actions.append("White tapped f2-f3")
             results["stage"] = "tap e7-e5"
             # Both actual presenters start White-bottom; no flip control is used.
-            move(black, "e7", "e5", False, match_id)
+            move(black, "e7", "e5", False, match_id, results["moves"])
             wait_revision(white, 2)
             actions.append("Black tapped e7-e5")
             results["stage"] = "tap g2-g4"
-            move(white, "g2", "g4", False, match_id)
+            move(white, "g2", "g4", False, match_id, results["moves"])
             wait_revision(black, 3)
             actions.append("White tapped g2-g4")
             results["stage"] = "tap d8-h4 and render identical terminal verdicts"
-            last = move(black, "d8", "h4", False, match_id)
+            last = move(black, "d8", "h4", False, match_id, results["moves"])
             for page in (white, black):
                 wait_revision(page, 4)
-                page.wait_for_function("() => document.documentElement.dataset.onlineStatus === 'Game over / Black wins'", timeout=30_000)
-            white_terminal = snapshot_canvas(white, artifacts / "03-white-checkmate.png")
-            snapshot_canvas(black, artifacts / "04-black-checkmate.png")
+                page.wait_for_function("expected => document.documentElement.dataset.onlineStatus === expected", arg=TERMINAL_STATUS, timeout=30_000)
+            results["terminal_views"] = [visible_game_facts(white, "white"), visible_game_facts(black, "black")]
+            # Only after both real terminal projections are confirmed. Keep
+            # original account identities private; later auxiliary failures
+            # must not prevent the independent main-stream recovery audit.
+            (private / "audit-input.json").write_text(json.dumps(
+                {"match_id": match_id, "accounts": [fact["account_id"] for fact in facts]}))
+            white_terminal = evidence.capture(white, "07-white-terminal-result.png", "White actual terminal result", "White browser",
+                                              "Rendered Black wins and checkmate after four actual legal pointer moves; exact game-owned accessibility status includes checkmate", canvas=True, secrets=redacted_values)
+            evidence.capture(black, "08-black-terminal-result.png", "Black actual terminal result", "Black browser",
+                             "Independently rendered Black wins and checkmate after four actual legal pointer moves; exact game-owned accessibility status includes checkmate", canvas=True, secrets=redacted_values)
+            evidence.capture(white, "09-terminal-result-page.png", "Authorized terminal result page and connection UI", "White browser",
+                             "Actual completed game remains authorized before its document is closed", secrets=redacted_values)
             require(initial_white != white_terminal, "actual canvas pixels did not change after full game")
-            results["both_rendered_terminal_verdicts"] = "Game over / Black wins"
+            results["both_rendered_terminal_verdicts"] = TERMINAL_STATUS
             results["full_game_pointer_moves"] = ["f2f3", "e7e5", "g2g4", "d8h4"]
             actions.append("Black tapped d8-h4; both independently rendered Game over / Black wins")
+
+            # Stop White's live polling before a positive duplicate receipt can
+            # be consumed outside its Rust client. Reuse only its own cookie jar.
+            white.close()
+            white = browsers[0].new_page()
+            white.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
 
             results["stage"] = "replay exact committed command after actual rendered gameplay completes"
             # Consuming a fresh Ack outside Rust during play would create an
@@ -399,6 +851,9 @@ def run(args) -> None:
                     "duplicate command advanced the opponent projection")
             results["exact_duplicate_command_ack_without_new_projection"] = True
             actions.append("Exact original f2-f3 command returned its stored Ack without advancing the opponent projection")
+            black.close()
+            black = browsers[1].new_page()
+            black.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
 
             results["stage"] = "deny third-client commands and private output"
             denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, third_csrf),
@@ -482,8 +937,10 @@ def run(args) -> None:
             results["stage"] = "revoke through real authority and deny stale credential replay"
             revoked_cookie = {"name": SESSION_COOKIE, "value": cookies[1][0]["value"],
                               "url": ORIGIN + "/", "secure": True, "httpOnly": True, "sameSite": "Lax"}
-            logout = api(black, "/api/v1/auth/logout", {}, facts[1]["csrf_token"])
-            require(logout["status"] == 204, "real authority revocation failed")
+            results["held_body_publication"] = prove_held_publication(
+                white, black, other_id, second_attach["body"], first, facts,
+                cookies[1][0]["value"], ca)
+            actions.append("A real nonempty native poll body stayed held through committed logout; release delivered zero protected bytes")
             # Replay the exact previous runtime credential in the same browser.
             browsers[1].add_cookies([revoked_cookie])
             denied(api(black, f"/api/v1/matches/{match_id}/poll",
@@ -494,12 +951,18 @@ def run(args) -> None:
             results["revoked_command_and_output_denied"] = True
             actions.append("Third-client, cross-match, and revoked-verifier commands and output were denied")
 
-            # Private account identities do not enter uploaded artifacts.
-            (private / "audit-input.json").write_text(json.dumps(
-                {"match_id": match_id, "accounts": [fact["account_id"] for fact in facts]}))
+            results["stage"] = "conceal an actual live board after current authority loss"
+            results["live_board_authority_loss"] = {}
+            results["live_board_authority_loss"] = capture_live_authority_loss(
+                white, third, facts[0]["csrf_token"], evidence, redacted_values,
+                results["live_board_authority_loss"])
+            actions.append("A separate actual live Chess board received poll401 after normal logout and rendered neutral unavailable UI with projected pixels and status concealed")
+
             results["status"] = "pass"
             results["stage"] = "complete"
     finally:
+        results["startup"]["processes"] = process_diagnostics(
+            private, getattr(args, "native_pid", None), getattr(args, "tls_pid", None))
         (artifacts / "browser-result.json").write_text(json.dumps(results, indent=2) + "\n")
         (artifacts / "actions.json").write_text(json.dumps(actions, indent=2) + "\n")
         for browser in reversed(browsers):
@@ -514,6 +977,8 @@ def main() -> int:
     parser.add_argument("--private", required=True)
     parser.add_argument("--artifacts", required=True)
     parser.add_argument("--ca", required=True)
+    parser.add_argument("--native-pid", type=int)
+    parser.add_argument("--tls-pid", type=int)
     args = parser.parse_args()
     try:
         run(args)

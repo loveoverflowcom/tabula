@@ -7,11 +7,30 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish.workspace = true
-# PHASE 4 / ADR-0041: recovered DTOs only. Native gateway is not implemented.
+[features]
+default = []
+isolated = ["dep:tabula-session", "dep:tabula-session-http", "dep:tabula-match", "dep:tabula-storage", "dep:tabula-registry", "dep:tabula-game-api", "dep:axum", "dep:tokio", "dep:bytes", "dep:http-body", "dep:hmac", "dep:sha2", "dep:base64"]
+acceptance-test-support = ["isolated"]
+[package.metadata.tabula-msrv]
+isolated = "1.94"
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
 tabula-core = { workspace = true }
 tabula-protocol = { workspace = true }
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tabula-session = { workspace = true, optional = true }
+tabula-session-http = { workspace = true, optional = true, features = ["isolated"] }
+tabula-match = { workspace = true, optional = true, features = ["isolated"] }
+tabula-storage = { workspace = true, optional = true, features = ["online-match-postgres"] }
+tabula-registry = { workspace = true, optional = true }
+tabula-game-api = { workspace = true, optional = true }
+axum = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+bytes = { workspace = true, optional = true }
+http-body = { workspace = true, optional = true }
+hmac = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+base64 = { workspace = true, optional = true }
 [lints]
 workspace = true

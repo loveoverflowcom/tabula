@@ -1,11 +1,108 @@
 """Offline fixture correctness tests, never actual-browser acceptance evidence."""
 import unittest
+import http.client
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, api, board_square, denied, private_frame_keys, require, run
+from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, require, run, start_native_poll
 
 
 class BrowserHelperTests(unittest.TestCase):
+    def test_protected_http_diagnostics_discard_ids_queries_and_foreign_routes(self):
+        self.assertEqual(protected_endpoint_class("https://localhost:9443/api/v1/matches/" + "a" * 32 + "/attach"), "attach")
+        self.assertEqual(protected_endpoint_class("https://localhost:9443/api/v1/auth/context"), "context")
+        for invalid in ("https://localhost:9443/api/v1/auth/context?token=synthetic-secret", "https://foreign.invalid/api/v1/auth/context", "https://localhost:9443/__fixture/enroll"):
+            self.assertIsNone(protected_endpoint_class(invalid))
+
+    def test_failure_snapshot_occurs_before_outer_browser_driver_teardown(self):
+        events = []
+        class OuterDriver:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                events.append("driver_stopped")
+        class Page:
+            url = "https://localhost:9443/play/local/?match_id=public"
+            def is_closed(self):
+                return False
+        page = Page()
+        connection = mock.Mock()
+        connection.is_connected.return_value = True
+        context = SimpleNamespace(pages=[page], browser=connection)
+        results = {}
+        def visible_snapshot(*args):
+            self.assertNotIn("driver_stopped", events)
+            events.append("snapshot")
+            return {"status_class": "white_turn"}
+        with mock.patch("browser_acceptance.visible_game_facts", side_effect=visible_snapshot):
+            with self.assertRaises(TypeError):
+                with OuterDriver(), active_browser_diagnostics([context], results, {}):
+                    raise TypeError("synthetic-secret must never enter diagnostics")
+        self.assertEqual(events, ["snapshot", "driver_stopped"])
+        self.assertEqual(results["failure_class"], "python_type_error")
+        self.assertNotIn("synthetic-secret", str(results))
+        self.assertTrue(results["failure_views"][0]["browser_connected"])
+
+    def test_exception_class_never_echoes_arbitrary_text(self):
+        self.assertEqual(exception_class(KeyError("synthetic-secret")), "python_key_error")
+        self.assertEqual(exception_class(RuntimeError("synthetic-secret")), "other_error")
+
+    def test_live_poll401_observation_does_not_read_an_intentionally_aborted_body(self):
+        response = mock.Mock(status=401)
+        response.json.side_effect = RuntimeError("synthetic body unavailable after transport abort")
+        response.body.side_effect = RuntimeError("synthetic body unavailable after transport abort")
+        progress = {}
+        record_live_poll_denial(response, progress)
+        self.assertEqual(progress["actual_live_poll_status"], 401)
+        response.json.assert_not_called()
+        response.body.assert_not_called()
+        with self.assertRaises(AcceptanceFailure):
+            record_live_poll_denial(mock.Mock(status=403), {})
+
+    def test_terminal_accessibility_status_requires_the_exact_checkmate_reason(self):
+        self.assertEqual(TERMINAL_STATUS, "Game over / Black wins / checkmate")
+        self.assertEqual(game_status_class(TERMINAL_STATUS), "black_checkmate")
+        for wrong in ("Game over / Black wins", "Game over / Black wins / resignation", "token=synthetic-secret"):
+            self.assertEqual(game_status_class(wrong), "other_status")
+
+    def test_neutral_concealment_requires_positive_error_and_no_projected_pixels_or_status(self):
+        for required in ("onlineAvailability === 'unavailable'", "onlineSeat", "onlineRevision", "onlineStatus", "onlineConnection",
+                         "!Object.hasOwn", "canvas.width === 0", "canvas.height === 0", "aria-hidden", "visibility === 'hidden'",
+                         "#runtime-error", "#error-detail", "Moves are blocked", "node.textContent.trim() === ''"):
+            self.assertIn(required, NEUTRAL_UNAVAILABLE)
+
+    def test_native_byte_oracle_requires_disposable_ci_before_connecting(self):
+        with mock.patch.dict("os.environ", {}, clear=True), mock.patch("browser_acceptance.http.client.HTTPConnection") as connect:
+            with self.assertRaises(AcceptanceFailure):
+                start_native_poll("1" * 32, "2" * 32, "synthetic-cookie", "synthetic-csrf")
+            connect.assert_not_called()
+
+    def native_observation(self, response):
+        connection = mock.Mock()
+        connection.getresponse.return_value = response
+        with mock.patch.dict("os.environ", {"CI": "true", "TABULA_ONLINE_MATCH_DISPOSABLE": "1"}, clear=True), mock.patch("browser_acceptance.http.client.HTTPConnection", return_value=connection):
+            thread, done, observed = start_native_poll("1" * 32, "2" * 32, "synthetic-cookie", "synthetic-csrf")
+            thread.join(timeout=5)
+        self.assertTrue(done.is_set())
+        connection.close.assert_called_once()
+        return observed
+
+    def test_native_byte_oracle_counts_private_partial_data_on_transport_error(self):
+        response = mock.Mock(status=200)
+        response.getheader.side_effect = lambda name, default: {"Content-Type": "application/json", "Cache-Control": "no-store"}.get(name, default)
+        response.read.side_effect = http.client.IncompleteRead(b"synthetic-private", 1)
+        observed = self.native_observation(response)
+        self.assertEqual(observed["body_bytes"], len(b"synthetic-private"))
+        self.assertTrue(observed["body_error"])
+        self.assertTrue(observed["json_content_type"] and observed["no_store"])
+
+    def test_native_byte_oracle_records_zero_bytes_on_empty_partial_transport_error(self):
+        response = mock.Mock(status=200)
+        response.getheader.side_effect = lambda name, default: {"Content-Type": "application/json", "Cache-Control": "no-store"}.get(name, default)
+        response.read.side_effect = http.client.IncompleteRead(b"", 1)
+        observed = self.native_observation(response)
+        self.assertEqual(observed["body_bytes"], 0)
+        self.assertTrue(observed["body_error"])
+
     def test_browser_launch_requires_exact_disposable_ci_opt_in_before_any_setup(self):
         for environment in ({}, {"CI": "true"}, {"TABULA_ONLINE_MATCH_DISPOSABLE": "1"}):
             with self.subTest(environment=environment), mock.patch.dict("os.environ", environment, clear=True):

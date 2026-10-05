@@ -89,6 +89,12 @@ fn detail_body(messages: &Messages, entry: &CatalogEntry) -> AnyView {
     let setup_href = format!("/games/{id}?setup=1");
     let back_label = messages.text("detail.back");
     let setup_label = messages.text("detail.setup");
+    #[cfg(feature = "online")]
+    let online = crate::online::runtime_binding()
+        .supports_direct(game)
+        .then(|| view! { <crate::online::OnlinePanel id=id.clone()/> });
+    #[cfg(not(feature = "online"))]
+    let online = ();
 
     view! {
         <>
@@ -107,6 +113,7 @@ fn detail_body(messages: &Messages, entry: &CatalogEntry) -> AnyView {
                     )}
             </p>
 
+            {online}
             <h2 class="section__subtitle">{messages.text("detail.capabilities")}</h2>
             <dl class="facts">
                 <dt>{messages.text("detail.seats")}</dt>

@@ -17,7 +17,7 @@ PR2 of the [three-PR series](../../work-plan/README.md#authorized-durable-to-onl
 | Bounded failures | Probing/queues/payloads unbounded, failed transport creates local authority | Exact expiry/attempt/size limits, full queues, disconnected input gate | In progress; NOT_RUN | Load/SLO and robust recovery |
 | Architecture, I-1/I-9/I-15 | Optional HTTP/auth/storage features pull forbidden game/renderer deps | Dependency/entropy gates, feature/native/WASM builds, service default startup closed | In progress; NOT_RUN | Deployment/configuration |
 
-## Recovery branch integration (2026-10-05)
+## Historical partial recovery integration (2026-10-05)
 
 The owner requested review and sequential merge of gateway, browser and client
 recovery into develop `d5b37d3`. Initial checkpoints `83f05bf`, `62a3c8b` and
@@ -120,17 +120,134 @@ Setup failure/zero selected/ignored tests cannot be PASS. Genuine Kanidm CI is
 separate from labelled disposable identity issuance. No credential, private
 grant, CA key or canonical state is included in artifacts.
 
+## Current PR80 composition and fresh verification
+
+The conflict-resolution baseline is develop
+`9642e4a60a8041bde3652d96dae0d1544bfaec3a`. Current PR80 restores the native
+match gateway, SQL admission/current authority, opt-in shell/loader and active
+standalone fixture/workflow. Historical inactive drafts remain archival. The
+root lockfile gains internal composition edges only; external package versions
+are unchanged. Current-source test counts overlap and are not additive.
+
+| Fresh check | Status / scope |
+|---|---|
+| `cargo xtask check-deps` | PASS: 30 workspace crates, complete native composition |
+| Actor isolated suite | PASS: 26 tests, including external authority tests and post-commit/lost-after-apply regressions |
+| Match HTTP focused suite | PASS: 15 tests, native routes/ports and strict DTOs |
+| Session HTTP focused suite | PASS: 54 tests, including preserved external extension partitions |
+| Registry setup/eligibility suite | PASS: 38 unit cases; ordinary deployment stays closed, explicit online package binding only |
+| Strict native gateway/session/storage and registry lint; online shell WASM lint | PASS for the stated selected targets |
+| Actual composed PostgreSQL tests | NOT_RUN locally: PostgreSQL binaries/container runtime absent; active CI requires nonempty selection |
+| Held first native body-frame oracle | Implemented; NOT_RUN locally. Actual queued MatchUpdate witness, expired lease plus committed logout before release, protected-body bytes must be zero |
+| Actual independent Chromium full game and PNG inspection | NOT_RUN locally. Dedicated CI is the permitted target; cloud CUA loopback denial is not bypassed |
+
+The first-body oracle does not separately prove revocation without lease expiry,
+recall of previously handed-off bytes, browser/TLS disconnect behavior, or
+cross-process journal-owner fencing of queued output. The actor startup path
+refuses takeover of an already started room; distributed owner output/effect
+fencing belongs to PR3. Privacy concealment and the global lifetime room-budget
+review fixes require their own focused checks and final exact-source re-review.
+
+## First executed composed-database CI receipt
+
+PR80 checkpoint `ceaf059b4790222effc3b5852154bfae554d2738`, tree
+`59132909b4ad2744fff4741148499fcbf380a94b`, triggered all five current workflows.
+The [online acceptance job](https://github.com/loveoverflowcom/tabula/actions/runs/37351418509/job/111902910697)
+compiled/linted the standalone fixture and actually selected/executed all 14
+composed PostgreSQL cases. Result: **FAIL**, 10 passed and 4 failed. Failures
+were strict-migration/advisory-lock availability, current-session ordering setup,
+and the exact room-lock wait oracle. The new completed/expired lifetime-budget
+case passed. These are real execution failures under investigation, not missing
+PostgreSQL setup and not final-source acceptance.
+
+The workflow correctly skipped shell/game build and actual browser play after
+that failure. Its uploaded selection-list-only artifact contains no runtime
+screenshots or complete-game evidence. No Chromium game/pixel PASS is inferred.
+The next exact published source must rerun the entire job after the corrected
+fixture/resource/lifecycle composition. All final merge gates remain open.
+
+## Corrected composition/build receipts
+
+PR80 checkpoint `c3677bbf38c6c837465a397d175c2422921d2404`, tree
+`3d5f746934f39c38107941782aae09e27a03d00a`, corrects strict migration
+connection cleanup and the real PostgreSQL backend/lease wait oracles. Its
+[real composed-authority gate](https://github.com/loveoverflowcom/tabula/actions/runs/37355097909/job/111915394819)
+completed successfully (step 9); final raw case-count and full-job/browser
+receipts remain to be collected. The current actual provider, durable session
+and durable match workflows also completed successfully on that head. None of
+these receipts establishes the later browser step or final exact-tree CI.
+
+Fresh local `cargo xtask check` passed all portable gates with 1,223 executed
+cases and 18 ignored; ignored/empty selections are not passes. The complete
+loader/transport Node suite passed 105 cases and Python fixture helpers passed
+58. Actual release shell/game builds, unchanged selected-package size/dependency
+caps and the staged HTTP/SRI/cache smoke passed: shell 896,361 raw bytes under
+900,000; game 1,024,823 under 1,250,000. Shell static inventory has five resources
+and zero eager gameplay references. Staged smoke has 15 explicit resource
+requests; this is not a browser waterfall or cache-performance claim.
+
+The small build fix uses the existing size/fat-LTO WASM profile, strips private
+function-name/debug sections (not required exports), and passes both Trunk
+`--release` and `--cargo-profile wasm-release`. Trunk's pinned wasm optimizer
+retains validation with the standard Rust copy/fill bulk-memory feature enabled.
+No cap, wire schema, rules identity, asset ownership or default deployment gate
+is relaxed. Recorded capture build commands match that exact pipeline. The
+final source must rerun all gates and actual Chrome acceptance after publication.
+
+## Executed actual-browser partial receipt (2026-10-05)
+
+Checkpoint `521ab711a89a7a0572a02b06010e2663b2a92adf`, tree
+`0bdd7b7569979feaf616d4493d9dcdda9d346a99`, ran the
+[actual browser job](https://github.com/loveoverflowcom/tabula/actions/runs/37366102093/job/111951541124).
+Its clean CI checkout `9d2d38f8274ece6eccf9b7b4b65149e5eb225502` has the
+same tree. The job selected and passed all 14 real composed PostgreSQL cases.
+Three separate Chromium 151 processes had distinct HOME/profile/cookies,
+accounts and storage, verified HTTPS, and two opposite server-owned seats.
+Actual pointer moves `f2f3`, `e7e5`, `g2g4`, `d8h4` each received HTTP200 and
+Ack. Both players rendered the exact rules-owned
+`Game over / Black wins / checkmate` status at public revision4.
+
+Exact duplicate commands did not publish another projection. Third-client,
+full-roster, cross-match, hostile-envelope/header and revoked-command/output
+probes passed. Same-session reattach retained its next sequence and denied the
+old attachment. The nonempty actual native poll body was held until committed
+logout; release produced zero body bytes and a guarded stream error.
+
+**Overall browser result remains FAIL.** Its later, separate live-board
+authority-loss auxiliary step failed; independent durable CLI audit did not run
+on this attempt. No complete acceptance or merge is inferred from the terminal
+screenshots. The narrow fixture correction observes the actual401 without
+forcing a JSON read of the response body deliberately aborted by the transport,
+foregrounds the animation-frame-driven game, and adds closed subphase facts.
+The complete neutral hidden/zero-sized canvas and cleared-status predicate,
+independent revoked-output JSON probes, and native zero-byte oracle are unchanged.
+
+The owner-requested single [review issue82](https://github.com/loveoverflowcom/tabula/issues/82)
+contains seven real create/join/initial-board images and three terminal/result
+images. Original PNGs and capture manifests are immutable. Separate dated
+assistant pixel-inspection receipts record later visual/hash inspection,
+including independent verification of ten SHA-256 values and dimensions. These
+images use disposable fixture identities through real session authority; they
+do not picture Kanidm sign-in. Visual inspection covers the captured pixels,
+not every browser memory/network surface. The issue tracks two nonblocking
+copy notes: default discovery's no-online wording beside the opt-in panel and
+the board's `Local player` cards.
+
+Portable aggregate at `d954b1e4fabbcf2814d2dd31f9e300064dcb5814`, tree
+`13523657fde8170af76e6f1c98d047014817bb32`, passed 1,223 cases with18 ignored;
+its66 fixture helper cases passed. Independent exact-source security review
+approved the unchanged authority/privacy oracles, conditional on final runtime
+acceptance. These receipts do not substitute for final-head reruns.
+
 ## Pending online delivery gates
 
-- Missing admission/gateway/loader implementation and its focused security/UI tests
-- Portable and feature gates rerun once that complete composition exists
-- Online WASM-release/staging/resource-budget gates
-- Actual independent Chromium/PG acceptance and screenshot inspection
-- Independent exact-source security/UI review
-- Exact published head/tree, terminal CI, normal merge ancestry and post-merge CI
+- Final exact-source portable, feature/native/WASM/resource and independent review receipts
+- Actual independent Chromium full acceptance including the auxiliary live-board concealment and independent durable terminal audit
+- Final secret-free error screenshot capture and pixel inspection in the same review issue
+- All18 applicable exact-head CI jobs terminal success, normal merge ancestry and post-merge CI
 
-The remaining delivery stages are NOT_RUN (or NOT_IMPLEMENTED where noted);
-the local recovery-source receipts above do not close them.
+These pending gates require their own explicit successful receipts.
 Production/listener/live migration/provider setup, robust network-drop/refresh/
 server-crash/resync, timers/outage policy, private effects, lobby/social/voice/
-ranking, load/backup and broad phase exits remain outside PR2.
+ranking, load/backup and broad phase exits remain outside PR2. Mobile native
+GameHost direction (issue #81) is separate from this web-WASM delivery.

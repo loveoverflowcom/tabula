@@ -177,10 +177,13 @@ allow = ["serde", "serde_json", "tabula-core", "tower", "proptest"]
 feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body", "url"], postgres = ["tabula-storage", "sqlx"] }
 forbidden_categories = ["rendering", "ui_framework", "application", "game_specific"]
 
+# ADR-0041: default/WASM DTOs only; native authority composition is opt-in.
 [crate."tabula-match-http"]
-tier = "contract"
+tier = "runtime"
 allow = ["serde", "serde_json", "tabula-core", "tabula-protocol"]
-forbidden_categories = ["rendering", "ui_framework", "web_framework", "networking", "persistence", "application", "game_specific"]
+feature = { isolated = ["tabula-session", "tabula-session-http", "tabula-match", "tabula-storage", "tabula-game-api", "tabula-registry", "axum", "tokio", "bytes", "http-body", "hmac", "sha2", "base64"] }
+forbidden_categories = ["ui_framework", "application"]
+forbid = ["macroquad", "miniquad", "wgpu", "tabula-render-macroquad", "tabula-render-headless"]
 
 [crate."tabula-storage"]
 tier  = "runtime"
@@ -203,7 +206,7 @@ allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry",
 # -----------------------------------------------------------------------------
 [crate."services/tabula-server"]
 tier  = "binary"
-allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-lobby", "tabula-storage", "tabula-voice", "tokio", "axum", "tower", "tower-http", "tower-governor", "sqlx", "tracing", "tracing-subscriber", "opentelemetry", "metrics", "figment", "argon2", "jsonwebtoken", "openidconnect", "uuid", "serde", "serde_json", "anyhow"]
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-lobby", "tabula-storage", "tabula-voice", "tokio", "axum", "tower", "tower-http", "tower-governor", "sqlx", "tracing", "tracing-subscriber", "opentelemetry", "metrics", "figment", "argon2", "jsonwebtoken", "openidconnect", "uuid", "serde", "serde_json", "anyhow", "tabula-match-http"]
 
 [crate."services/tabula-auth"]
 tier  = "binary"
@@ -222,7 +225,7 @@ forbid  = ["leptos", "tauri"]
 [crate."apps/web"]
 tier  = "binary"
 allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-assets", "tabula-net-client", "leptos", "leptos_router", "web-sys", "wasm-bindgen", "serde", "serde_json", "tabula-session-http", "js-sys", "wasm-bindgen-futures", "sha2"]
-feature = { account-http-acceptance = ["tabula-session", "axum", "tokio", "http-body", "bytes"] }
+feature = { online = ["tabula-match-http"], account-http-acceptance = ["tabula-session", "axum", "tokio", "http-body", "bytes"] }
 
 [crate."apps/admin"]
 tier  = "binary"

@@ -64,29 +64,21 @@ pub(super) async fn run_online<M, P>(
             serde_json::from_slice::<InitialResponse>(&bytes)
                 .map_err(|_| "The server attachment is incompatible")
         }
-        _ => Err("The online board could not attach. Return to Tabula and sign in again"),
+        _ => Err("The online attachment is unavailable"),
     };
-    let initial = match initial {
-        Ok(value) => value,
-        Err(message) => {
-            super::show_asset_failure(renderer, theme, message).await;
-            return;
-        }
+    let Ok(initial) = initial else {
+        unavailable().await;
+        return;
     };
     let Ok(id) = tabula_match_http::parse_match_id(match_id) else {
-        super::show_asset_failure(renderer, theme, "Invalid online match address").await;
+        unavailable().await;
         return;
     };
     let metadata = M::metadata();
     if initial.game_id != metadata.id().as_str()
         || initial.game_version != metadata.version().as_str()
     {
-        super::show_asset_failure(
-            renderer,
-            theme,
-            "The linked game package does not match this online game",
-        )
-        .await;
+        unavailable().await;
         return;
     }
     let initial = initial.attachment;
@@ -97,7 +89,7 @@ pub(super) async fn run_online<M, P>(
         initial.next_seq(),
         initial.frames(),
     ) else {
-        super::show_asset_failure(renderer, theme, "The online projection is incompatible").await;
+        unavailable().await;
         return;
     };
     online.local_mut().set_reduced_motion(reduced_motion);
@@ -107,7 +99,6 @@ pub(super) async fn run_online<M, P>(
     let mut ready = false;
     let mut last_status = String::new();
     let mut prepared_density = None;
-    let mut transport_message = None::<&str>;
     loop {
         let Some((viewport, dpi)) = resolve_display_geometry(
             mq::screen_width(),
@@ -119,11 +110,13 @@ pub(super) async fn run_online<M, P>(
         };
         let density = tabula_render_macroquad::density_for_dpi(dpi);
         if prepared_density != Some(density) {
-            if let Err(error) = resources
+            if resources
                 .prepare(renderer, LocalAssetScene::Gameplay, dpi)
                 .await
+                .is_err()
             {
-                super::show_asset_failure(renderer, theme, &error).await;
+                online.disconnect();
+                unavailable().await;
                 return;
             }
             prepared_density = Some(density);
@@ -145,19 +138,14 @@ pub(super) async fn run_online<M, P>(
                         if let Ok(response) = serde_json::from_slice::<MatchFrames>(&bytes) {
                             match online.receive(response.frames(), &board_frame) {
                                 Ok(cues) => play_cues(audio, &cues),
-                                Err(message) => {
-                                    online.disconnect();
-                                    transport_message = Some(message);
-                                }
+                                Err(_) => online.disconnect(),
                             }
                         } else {
                             online.disconnect();
-                            transport_message = Some("Connection lost or incompatible response. Moves are blocked. Return to Tabula to reopen");
                         }
                     }
                     _ => {
                         online.disconnect();
-                        transport_message = Some("Connection lost. Moves are blocked. Return to Tabula to reopen this match");
                     }
                 }
                 next_poll = now.saturating_add(500);
@@ -167,10 +155,7 @@ pub(super) async fn run_online<M, P>(
             match online.on_input(&event) {
                 Ok(Some(value)) => command = Some(value),
                 Ok(None) => {}
-                Err(message) => {
-                    online.disconnect();
-                    transport_message = Some(message);
-                }
+                Err(_) => online.disconnect(),
             }
         }
         if inflight.is_none() && online.state() != DirectState::Disconnected {
@@ -181,18 +166,24 @@ pub(super) async fn run_online<M, P>(
                     }
                     _ => {
                         online.disconnect();
-                        transport_message = Some("The online command is too large");
                     }
                 }
             } else if now >= next_poll {
                 inflight = Some(request("tabula-online-poll.txt".into()));
             }
         }
-        if renderer.submit(&online.present(&board_frame)).is_err() {
+        // Authority loss discards the projection before either board or a11y output.
+        // This host operation synchronously conceals pixels and retires the document.
+        let Some(scene) = online.present(&board_frame) else {
+            unavailable().await;
+            return;
+        };
+        if renderer.submit(&scene).is_err() {
             online.disconnect();
-            transport_message = Some("The board could not render");
+            unavailable().await;
+            return;
         }
-        let message = transport_message.unwrap_or_else(|| match online.state() {
+        let message = match online.state() {
             DirectState::Sending => "Sending move…",
             DirectState::Ready => {
                 if online.rejection().is_some() {
@@ -202,12 +193,16 @@ pub(super) async fn run_online<M, P>(
                 }
             }
             _ => "Moves are blocked",
-        });
+        };
         draw_status(renderer, &frame, message);
-        let status = serde_json::json!({ "seat": initial.seat(), "revision": online.revision(), "status": online.description(), "connection": message }).to_string();
-        let frame_ok = renderer.end_frame().is_ok();
+        let status = serde_json::json!({ "seat": initial.seat(), "revision": online.revision(), "status": online.description().expect("present projection has a description"), "connection": message }).to_string();
+        if renderer.end_frame().is_err() {
+            online.disconnect();
+            unavailable().await;
+            return;
+        }
         mq::next_frame().await;
-        if frame_ok && !ready {
+        if !ready {
             ready = true;
             notify_runtime_ready().await;
         }
@@ -218,6 +213,10 @@ pub(super) async fn run_online<M, P>(
                 mq::load_file(&format!("tabula-online-status/{}", hex(status.as_bytes()))).await;
         }
     }
+}
+// No private status or error body crosses this operation.
+async fn unavailable() {
+    let _ = mq::load_file("tabula-online-unavailable.txt").await;
 }
 #[allow(clippy::float_arithmetic)] // Screen-space presentation only.
 fn draw_status(renderer: &mut MacroquadRenderer, frame: &FrameCtx, message: &str) {

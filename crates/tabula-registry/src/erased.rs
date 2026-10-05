@@ -56,6 +56,12 @@ pub trait GameSetup: Send + Sync + 'static {
     fn direct_document() -> bool {
         false
     }
+    /// This package has a first-party direct-play presenter/transport contract.
+    /// Consumed by explicit `RuntimeBinding` handoff and isolated gateway admission;
+    /// eligibility alone never advertises a deployed document or grants a seat.
+    fn direct_host_supported() -> bool {
+        false
+    }
     /// Configs the direct slice can execute, including its effect adapters.
     fn direct_config_supported(
         _config: &<<Self::Module as GameModule>::Rules as GameRules>::Config,
@@ -98,6 +104,8 @@ pub trait ErasedGame: Send + Sync {
     fn modes(&self) -> &'static [ModeSupport];
     /// Explicit direct browser host declaration, never capability inference.
     fn direct_document(&self) -> bool;
+    /// Package eligibility for the explicitly opted-in direct host consumer.
+    fn direct_host_supported(&self) -> bool;
     /// Parse a candidate direct draft without asserting runtime availability.
     /// The server must re-normalize the request and validate its actual roster.
     fn normalize_direct(
@@ -249,6 +257,9 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
 
     fn direct_document(&self) -> bool {
         S::direct_document()
+    }
+    fn direct_host_supported(&self) -> bool {
+        S::direct_host_supported()
     }
     fn normalize_direct(
         &self,

@@ -19,13 +19,17 @@ use crate::{availability::UnavailableReason, config::NormalizedConfig, i18n::Loc
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct RuntimeBinding {
     play_base: Option<&'static str>,
+    direct_online: bool,
 }
 
 impl RuntimeBinding {
     /// No gameplay document is deployed with this shell.
     #[must_use]
     pub const fn unbound() -> Self {
-        Self { play_base: None }
+        Self {
+            play_base: None,
+            direct_online: false,
+        }
     }
 
     /// Bind only the same-origin `/play` document base.
@@ -35,7 +39,26 @@ impl RuntimeBinding {
     pub const fn bound(play_base: &'static str) -> Self {
         Self {
             play_base: Some(play_base),
+            direct_online: false,
         }
+    }
+
+    /// Explicit deployment opt-in for the direct HTTP document (ADR-0041).
+    /// Invalid or external bases remain unavailable. Ordinary `bound()` never opts a package into direct play.
+    #[must_use]
+    pub const fn direct_online(play_base: &'static str) -> Self {
+        Self {
+            play_base: Some(play_base),
+            direct_online: true,
+        }
+    }
+
+    /// The one generic consumer of deployment opt-in and package eligibility.
+    /// This is a navigation fact, never authentication, permission or live-service proof.
+    #[must_use]
+    pub fn supports_direct(&self, game: &dyn crate::ErasedGame) -> bool {
+        self.is_bound()
+            && (game.direct_document() || (self.direct_online && game.direct_host_supported()))
     }
 
     #[must_use]
@@ -125,7 +148,7 @@ pub fn resolve_direct(
     if !binding.is_bound() {
         return Err(UnavailableReason::NoGameplayRuntime);
     }
-    if !game.direct_document()
+    if !binding.supports_direct(game)
         || match_id.len() != 32
         || !match_id
             .bytes()
@@ -220,6 +243,50 @@ mod direct_tests {
         )
         .is_err());
     }
+    #[test]
+    fn explicit_direct_binding_keeps_default_gates_and_checks_package_and_config() {
+        let game = Adapter::<games::chess::ChessSetup>::new();
+        let valid = "00000000000000000000000000000007";
+        assert!(!game.direct_document());
+        assert!(game.direct_host_supported());
+        assert!(!RuntimeBinding::bound("/play").supports_direct(&game));
+        for base in ["/play", "/play/"] {
+            let binding = RuntimeBinding::direct_online(base);
+            assert!(binding.supports_direct(&game));
+            assert!(resolve_direct(binding, &game, valid, Locale::En)
+                .unwrap()
+                .url
+                .contains("mode=network"));
+        }
+        for base in [
+            "https://foreign.example/play",
+            "/play/../",
+            "/other",
+            "/play?x=1",
+        ] {
+            let binding = RuntimeBinding::direct_online(base);
+            assert!(!binding.supports_direct(&game));
+            assert_eq!(
+                resolve_direct(binding, &game, valid, Locale::En),
+                Err(UnavailableReason::NoGameplayRuntime)
+            );
+        }
+        let other = Adapter::<games::tiles::TilesSetup>::new();
+        assert!(!RuntimeBinding::direct_online("/play").supports_direct(&other));
+        assert_eq!(
+            resolve_direct(
+                RuntimeBinding::direct_online("/play"),
+                &other,
+                valid,
+                Locale::En
+            ),
+            Err(UnavailableReason::NoModeRuntime)
+        );
+        let mut timed = ConfigDraft::with_defaults(game.form());
+        timed.set("clock", "fischer");
+        assert!(game.normalize_direct(2, &timed).is_err());
+    }
+
     #[test]
     fn direct_draft_rejects_unknown_form_keys() {
         let game = Adapter::<games::chess::ChessSetup>::new();

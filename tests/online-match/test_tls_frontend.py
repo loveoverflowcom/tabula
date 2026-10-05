@@ -51,6 +51,14 @@ class MemoryHandler(frontend.FixtureHandler):
 
 
 class TlsFrontendTests(unittest.TestCase):
+    def test_only_static_html_documents_get_same_origin_referrer_policy(self):
+        (self.root / "client.js").write_text("synthetic-script")
+        for path, expected in (("/", ["same-origin"]), ("/client.js", [])):
+            handler = self.handler(path)
+            handler._dispatch()
+            self.assertEqual(handler.status, 200)
+            self.assertEqual(handler.values("Referrer-Policy"), expected)
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

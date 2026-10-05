@@ -10,15 +10,6 @@ test "${TABULA_ONLINE_MATCH_DISPOSABLE:-}" = 1 || {
 test -n "${TABULA_ONLINE_MATCH_DATABASE_URL:-}" || {
     echo 'A disposable real PostgreSQL database is required; setup cannot be skipped' >&2; exit 1;
 }
-# Recovered scaffolding is intentionally not executable acceptance yet.
-# Check sources before creating credentials, processes or database connections.
-for source in tests/online-match/Cargo.toml tests/online-match/Cargo.lock \
-    tests/online-match/src/main.rs tests/online-match/tls_frontend.py \
-    tests/online-match/browser_acceptance.py crates/tabula-match-http/Cargo.toml; do
-    test -s "$source" || {
-        echo "Online-match acceptance is incomplete; missing source: $source" >&2; exit 1;
-    }
-done
 for tool in openssl certutil python3 cargo; do
     command -v "$tool" >/dev/null || { echo "Required acceptance tool is absent: $tool" >&2; exit 1; }
 done
@@ -72,10 +63,22 @@ python3 tests/online-match/tls_frontend.py --dist apps/web/dist \
     --cert "$private/tls.pem" --key "$private/tls.key" \
     --listen-port 9443 --upstream-port 3000 > "$private/tls.log" 2>&1 &
 tls_pid=$!
+browser_status=0
 python3 tests/online-match/browser_acceptance.py --private "$private" \
-    --artifacts "$artifacts" --ca "$private/ca.pem"
+    --artifacts "$artifacts" --ca "$private/ca.pem" \
+    --native-pid "$fixture_pid" --tls-pid "$tls_pid" || browser_status=$?
 # Synthetic account identifiers stay in the private file, outside artifacts.
 # Claim a new fence only after browser teardown; recover verifies full history.
-"$fixture" audit "$private/audit-input.json" > "$artifacts/durable-verdict.json"
-printf '%s\n' 'PASS: two independent actual Chromium processes completed rendered Chess through real durable authority' \
-    > "$artifacts/result.txt"
+audit_status=1
+audit_input_present=0
+if test -s "$private/audit-input.json"; then
+    audit_input_present=1
+    audit_status=0
+    "$fixture" audit "$private/audit-input.json" > "$artifacts/durable-verdict.json" || audit_status=$?
+fi
+# An auxiliary failure stays a failure even when the separate main audit passes.
+# No private input is copied into artifacts, and no PASS receipt is written
+# unless every mandatory browser check and the real audit both succeeded.
+python3 tests/online-match/finalize_evidence.py --artifacts "$artifacts" \
+    --browser-status "$browser_status" --audit-status "$audit_status" \
+    --audit-input-present "$audit_input_present"

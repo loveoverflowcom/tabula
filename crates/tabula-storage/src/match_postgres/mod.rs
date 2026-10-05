@@ -450,7 +450,14 @@ impl PgMatchStore {
 
     /// Apply only the isolated additive migrations to the selected database.
     pub async fn migrate(pool: &PgPool) -> Result<(), RuntimePortError> {
-        MIGRATIONS.run(pool).await.map_err(unavailable)
+        let mut connection = pool.acquire().await.map_err(unavailable)?;
+        // SQLx's session-level migration lock survives early validation errors.
+        // Closing this backend also releases it if the migration is canceled;
+        // it must never return to the pool with a retained advisory lock.
+        connection.close_on_drop();
+        let result = MIGRATIONS.run(&mut *connection).await.map_err(unavailable);
+        let closed = connection.close().await.map_err(unavailable);
+        result.and(closed)
     }
 
     /// Acquire a new durable owner generation; never initializes game state.
@@ -561,14 +568,16 @@ impl PgMatchJournal {
     }
 }
 
-impl Journal for PgMatchJournal {
-    async fn append(&self, mut record: JournalRecord) -> Result<(), RuntimePortError> {
+impl PgMatchJournal {
+    async fn append_transaction(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        mut record: JournalRecord,
+    ) -> Result<(), RuntimePortError> {
         if record.match_id != self.match_id {
             return Err(RuntimePortError::Unavailable);
         }
-        let mut tx = self.pool.begin().await.map_err(unavailable)?;
-        write_settings(&mut tx).await?;
-        let head = self.lock_head(&mut tx).await?;
+        let head = self.lock_head(tx).await?;
         let (creation, old_ledger, previous_bytes, previous_count) = if record
             .expected_version
             .is_none()
@@ -577,7 +586,7 @@ impl Journal for PgMatchJournal {
                 return Err(RuntimePortError::Busy);
             }
             let total: TotalsRow = sqlx::query_as("SELECT COUNT(*)::bigint AS count, COALESCE(SUM(octet_length(payload)), 0)::bigint AS bytes FROM match_journal_records WHERE match_id = $1")
-                .bind(Uuid::from_u128(self.match_id.0)).fetch_one(&mut *tx).await.map_err(unavailable)?;
+                .bind(Uuid::from_u128(self.match_id.0)).fetch_one(&mut **tx).await.map_err(unavailable)?;
             if total.count != 0 || total.bytes != 0 {
                 return Err(RuntimePortError::Unavailable);
             }
@@ -603,7 +612,7 @@ impl Journal for PgMatchJournal {
             {
                 return Err(RuntimePortError::Busy);
             }
-            self.check_latest(&mut tx, &head, &checked).await?;
+            self.check_latest(tx, &head, &checked).await?;
             (
                 checked.creation,
                 checked.ledger,
@@ -656,14 +665,15 @@ impl Journal for PgMatchJournal {
             return Err(RuntimePortError::Unavailable);
         }
         sqlx::query("INSERT INTO match_journal_records (match_id, input_index, state_version, logical_ms, state_hash, payload, payload_bytes, payload_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)")
-            .bind(Uuid::from_u128(self.match_id.0)).bind(signed(record.index.0)?).bind(signed(record.version.0)?).bind(signed(record.now.0)?).bind(record.hash.0.as_slice()).bind(&payload).bind(i64::try_from(payload.len()).map_err(unavailable)?).bind(checksum(&payload)).execute(&mut *tx).await.map_err(unavailable)?;
+            .bind(Uuid::from_u128(self.match_id.0)).bind(signed(record.index.0)?).bind(signed(record.version.0)?).bind(signed(record.now.0)?).bind(record.hash.0.as_slice()).bind(&payload).bind(i64::try_from(payload.len()).map_err(unavailable)?).bind(checksum(&payload)).execute(&mut **tx).await.map_err(unavailable)?;
         sqlx::query("UPDATE match_journal_heads SET version = $2, input_index = $3, observed_ms = $4, record_count = $5, record_bytes = $6, creation = $7, creation_hash = $8, ledger = $9, ledger_hash = $10, latest_hash = $11 WHERE match_id = $1")
-            .bind(Uuid::from_u128(self.match_id.0)).bind(signed(record.version.0)?).bind(signed(record.index.0)?).bind(signed(record.now.0)?).bind(i64::try_from(count).map_err(unavailable)?).bind(i64::try_from(bytes).map_err(unavailable)?).bind(&creation_bytes).bind(checksum(&creation_bytes)).bind(&ledger).bind(checksum(&ledger)).bind(record.hash.0.as_slice()).execute(&mut *tx).await.map_err(unavailable)?;
-        self.finish(tx).await
+            .bind(Uuid::from_u128(self.match_id.0)).bind(signed(record.version.0)?).bind(signed(record.index.0)?).bind(signed(record.now.0)?).bind(i64::try_from(count).map_err(unavailable)?).bind(i64::try_from(bytes).map_err(unavailable)?).bind(&creation_bytes).bind(checksum(&creation_bytes)).bind(&ledger).bind(checksum(&ledger)).bind(record.hash.0.as_slice()).execute(&mut **tx).await.map_err(unavailable)?;
+        Ok(())
     }
 
-    async fn update_ledger(
+    async fn ledger_transaction(
         &self,
+        tx: &mut Transaction<'_, Postgres>,
         match_id: MatchId,
         expected_version: StateVersion,
         observed_ms: u64,
@@ -673,9 +683,7 @@ impl Journal for PgMatchJournal {
             return Err(RuntimePortError::Unavailable);
         }
         signed(observed_ms)?;
-        let mut tx = self.pool.begin().await.map_err(unavailable)?;
-        write_settings(&mut tx).await?;
-        let head = self.lock_head(&mut tx).await?;
+        let head = self.lock_head(tx).await?;
         let checked = head.checked(match_id)?;
         if checked.version != expected_version.0 {
             return Err(RuntimePortError::Busy);
@@ -695,7 +703,169 @@ impl Journal for PgMatchJournal {
             return Err(RuntimePortError::Unavailable);
         }
         sqlx::query("UPDATE match_journal_heads SET ledger = $2, ledger_hash = $3, observed_ms = $4 WHERE match_id = $1")
-            .bind(Uuid::from_u128(match_id.0)).bind(&bytes).bind(checksum(&bytes)).bind(signed(observed_ms)?).execute(&mut *tx).await.map_err(unavailable)?;
+            .bind(Uuid::from_u128(match_id.0)).bind(&bytes).bind(checksum(&bytes)).bind(signed(observed_ms)?).execute(&mut **tx).await.map_err(unavailable)?;
+        Ok(())
+    }
+}
+
+#[cfg(feature = "online-match-postgres")]
+impl PgMatchJournal {
+    /// One actual current-session transaction encloses actor apply and this append.
+    /// The live permit is consumed; all later output reacquires fresh authority.
+    pub async fn append_authenticated(
+        &self,
+        record: JournalRecord,
+        operation: &crate::online_match::PgOnlineOperation,
+    ) -> Result<(), RuntimePortError> {
+        let mut pending = operation.take().map_err(unavailable)?;
+        let staged = async {
+            pending
+                .authorize_record(&record)
+                .await
+                .map_err(unavailable)?;
+            let genesis = record.creation.is_some();
+            let accepted = record.operation.is_some();
+            let terminal = record.terminal;
+            if genesis {
+                if !record.ledger.is_empty() {
+                    return Err(RuntimePortError::Unavailable);
+                }
+            } else {
+                let head = self.lock_head(&mut pending.tx).await?;
+                let checked = head.checked(self.match_id)?;
+                validate_authenticated_scopes(
+                    &checked.ledger,
+                    &record.ledger,
+                    pending.membership.scope(),
+                )?;
+            }
+            self.append_transaction(&mut pending.tx, record).await?;
+            pending
+                .finalize(accepted, genesis, terminal)
+                .await
+                .map_err(unavailable)?;
+            Ok(())
+        }
+        .await;
+        self.finish_authenticated(pending, operation.credential(), staged)
+            .await
+    }
+    /// Reserve/reject within the same live credential/session/seat transaction.
+    /// Only the requesting admission may create or advance an operation scope;
+    /// receipt expiration for other retained scopes does not grant new authority.
+    pub async fn update_ledger_authenticated(
+        &self,
+        match_id: MatchId,
+        expected_version: StateVersion,
+        observed_ms: u64,
+        ledger: Vec<ScopeState>,
+        operation: &crate::online_match::PgOnlineOperation,
+    ) -> Result<(), RuntimePortError> {
+        let mut pending = operation.take().map_err(unavailable)?;
+        let staged = async {
+            pending
+                .authorize_ledger(match_id)
+                .await
+                .map_err(unavailable)?;
+            let head = self.lock_head(&mut pending.tx).await?;
+            let checked = head.checked(match_id)?;
+            let authorized = pending.membership.scope();
+            if !ledger.iter().any(|state| state.scope == authorized) {
+                return Err(RuntimePortError::Unavailable);
+            }
+            validate_authenticated_scopes(&checked.ledger, &ledger, authorized)?;
+            self.ledger_transaction(
+                &mut pending.tx,
+                match_id,
+                expected_version,
+                observed_ms,
+                ledger,
+            )
+            .await?;
+            pending
+                .finalize(false, false, false)
+                .await
+                .map_err(unavailable)?;
+            Ok(())
+        }
+        .await;
+        self.finish_authenticated(pending, operation.credential(), staged)
+            .await
+    }
+    async fn finish_authenticated(
+        &self,
+        pending: crate::online_match::OnlineTransaction,
+        credential: tabula_session::CredentialOperation,
+        staged: Result<(), RuntimePortError>,
+    ) -> Result<(), RuntimePortError> {
+        use tabula_session::HttpSessionAuthority;
+        let (tx, exclusion) = pending.into_commit_parts();
+        let result = match staged {
+            Ok(()) => self.finish(tx).await,
+            Err(error) => match tx.rollback().await {
+                Ok(()) => Err(error),
+                Err(_) => Err(RuntimePortError::Indeterminate),
+            },
+        };
+        drop(exclusion);
+        if result.is_err() {
+            // A failed transaction cannot preserve its observed terminal expiry.
+            // Re-observe the actual committed credential without activity before
+            // returning failure. This cannot reconstruct a rolled-back clock
+            // sample if the deployment clock regresses before this observation,
+            // or if this independent observation itself cannot commit (ADR-0036).
+            let _ = crate::session::PgSessionStore::new(self.pool.clone())
+                .read_session(credential)
+                .await;
+        }
+        result
+    }
+}
+#[cfg(feature = "online-match-postgres")]
+fn validate_authenticated_scopes(
+    old: &[ScopeState],
+    new: &[ScopeState],
+    authorized: tabula_match_journal::OperationScope,
+) -> Result<(), RuntimePortError> {
+    for state in new {
+        if state.scope == authorized {
+            continue;
+        }
+        let prior = old
+            .iter()
+            .find(|prior| prior.scope == state.scope)
+            .ok_or(RuntimePortError::Unavailable)?;
+        if state.highest != prior.highest
+            || state
+                .recent
+                .iter()
+                .any(|receipt| !prior.recent.contains(receipt))
+        {
+            return Err(RuntimePortError::Unavailable);
+        }
+    }
+    Ok(())
+}
+
+impl Journal for PgMatchJournal {
+    async fn append(&self, record: JournalRecord) -> Result<(), RuntimePortError> {
+        let mut tx = self.pool.begin().await.map_err(unavailable)?;
+        write_settings(&mut tx).await?;
+        self.append_transaction(&mut tx, record).await?;
+        self.finish(tx).await
+    }
+
+    async fn update_ledger(
+        &self,
+        match_id: MatchId,
+        expected_version: StateVersion,
+        observed_ms: u64,
+        ledger: Vec<ScopeState>,
+    ) -> Result<(), RuntimePortError> {
+        let mut tx = self.pool.begin().await.map_err(unavailable)?;
+        write_settings(&mut tx).await?;
+        self.ledger_transaction(&mut tx, match_id, expected_version, observed_ms, ledger)
+            .await?;
         self.finish(tx).await
     }
 

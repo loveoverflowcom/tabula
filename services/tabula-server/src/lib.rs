@@ -1,5 +1,5 @@
-//! PHASE 4: isolated gameplay composition remains gated (ADR-0041).
-//! The recovered match HTTP crate contains DTOs only. No gateway constructor,
-//! listener or production activation exists here until its implementation and
-//! current-authority/browser/PostgreSQL acceptance are delivered.
+//! Explicit isolated gameplay library composition (ADR-0041).
+//! The production main entrypoint remains closed; importing opens no listener.
 #![forbid(unsafe_code)]
+#[cfg(all(feature = "online-match", not(target_arch = "wasm32")))]
+pub use tabula_match_http::isolated::IsolatedMatchHttp;

@@ -1509,3 +1509,65 @@ fn genesis_validation_allows_reserved_zero_scopes_and_rejects_consumed_sequences
         "genesis reserves scopes but cannot contain earlier operation receipts"
     );
 }
+
+#[cfg(feature = "online-match-postgres")]
+#[test]
+fn online_authenticated_ledger_changes_cannot_create_or_advance_another_admission() {
+    let authorized = scope();
+    let foreign = OperationScope {
+        record: 777,
+        subject: UserId(43),
+        epoch: 1,
+        seat: SeatId(1),
+        generation: 1,
+    };
+    let receipt = OperationReceipt {
+        seq: 1,
+        command: command(MATCH, 1),
+        result: Err(ErrorCode::Malformed),
+        at: 0,
+        committed_index: None,
+    };
+    let old = vec![
+        ScopeState {
+            scope: authorized,
+            highest: 0,
+            recent: vec![],
+        },
+        ScopeState {
+            scope: foreign,
+            highest: 1,
+            recent: vec![receipt.clone()],
+        },
+    ];
+    let mut expired = old.clone();
+    expired[1].recent.clear();
+    assert_eq!(
+        super::validate_authenticated_scopes(&old, &expired, authorized),
+        Ok(()),
+        "foreign receipt TTL eviction changes no watermark or admission"
+    );
+    let mut forged = expired.clone();
+    forged[1].highest = 2;
+    assert_eq!(
+        super::validate_authenticated_scopes(&old, &forged, authorized),
+        Err(RuntimePortError::Unavailable)
+    );
+    let mut forged = expired;
+    forged[1]
+        .recent
+        .push(OperationReceipt { seq: 2, ..receipt });
+    assert_eq!(
+        super::validate_authenticated_scopes(&old, &forged, authorized),
+        Err(RuntimePortError::Unavailable)
+    );
+    let new_scope = vec![ScopeState {
+        scope: foreign,
+        highest: 0,
+        recent: vec![],
+    }];
+    assert_eq!(
+        super::validate_authenticated_scopes(&[], &new_scope, authorized),
+        Err(RuntimePortError::Unavailable)
+    );
+}
