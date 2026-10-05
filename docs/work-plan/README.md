@@ -62,6 +62,10 @@ policy choice only; PR A is independently reviewable and no auth/social service
 or online match is activated. Existing discovery/local-play ADRs do not authorize
 account services. Passing aggregate checks does not close #54 or open Phase 4/5.
 
+The requested [Werewolf standalone](020-werewolf-standalone.md) is a bounded opt-in local
+referee and isolated-seat simulator under [ADR-0035](../adr/0035-werewolf-local-simulator.md).
+Its gate/evidence ledger does not activate online social gameplay, voice or rollout.
+
 ## Authorized isolated #54 implementation series
 
 [ADR-0036](../adr/0036-isolated-durable-session-validation.md) records the owner's

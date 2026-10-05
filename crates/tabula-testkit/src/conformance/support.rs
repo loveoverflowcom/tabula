@@ -15,9 +15,20 @@ pub(crate) fn apply_at<R: GameRules>(
     seed: &MatchSeed,
     index: InputIndex,
 ) -> Result<Outcome<R>, RuleError> {
+    apply_at_time::<R>(state, input, seed, index, LogicalTime(index.0 * 1_000))
+}
+
+/// Probe an observed state without tying independent RNG indices to a clock jump.
+pub(crate) fn apply_at_time<R: GameRules>(
+    state: &mut R::State,
+    input: Input<R::Command>,
+    seed: &MatchSeed,
+    index: InputIndex,
+    now: LogicalTime,
+) -> Result<Outcome<R>, RuleError> {
     let mut rng = DetRng::for_input(seed, index);
     let mut ctx = Ctx {
-        now: LogicalTime(index.0 * 1_000),
+        now,
         index,
         rng: &mut rng,
         budget: Budget {

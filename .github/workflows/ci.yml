@@ -202,6 +202,27 @@ jobs:
       # Bundle size cap: < 6 MB gzipped (doc 01 §7). Fail on a >10% regression.
       # - run: cargo xtask check-bundle-size
 
+  # ADR-0035 opt-in local Werewolf proof. Target compilation and mocked/headless
+  # checks remain distinct from real native/browser/mobile visual acceptance.
+  werewolf-local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96"
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: cargo test -p tabula-game-werewolf --features presentation
+      - run: cargo test -p tabula-game-client --no-default-features --features werewolf --test werewolf_simulator
+      - run: cargo check -p tabula-game-client --no-default-features --features werewolf --bin tabula-werewolf-client
+      - run: cargo build -p tabula-game-client --no-default-features --features web-werewolf --bin tabula-werewolf-client --target wasm32-unknown-unknown --profile wasm-release
+      - run: cargo xtask stage-wasm-game --game werewolf
+      - run: cargo tree -p tabula-game-client --no-default-features --features web-werewolf --target wasm32-unknown-unknown --edges normal > target/werewolf-game-graph.txt
+      - run: python3 tools/tests/check-werewolf-loading-budgets.py --wasm target/wasm32-unknown-unknown/wasm-release/tabula-werewolf-client.wasm --tree target/werewolf-game-graph.txt --bundle target/tabula-web-werewolf --receipt target/werewolf-loading-receipt.json
+
   deny:
     runs-on: ubuntu-latest
     steps:

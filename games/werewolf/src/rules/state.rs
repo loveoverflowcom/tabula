@@ -17,6 +17,7 @@ use tabula_core::{LogicalTime, MatchOutcome, OutcomeKind, SeatId, TimerId};
 use tabula_game_api::ConfigError;
 
 use super::config::{Config, PhaseDuration, SeatCount, MAX_SEATS, MIN_SEATS};
+use super::event::Event;
 use super::role::{Alignment, Preset, Role, RoleCounts};
 
 /// Match phase progression in Werewolf. (doc 08 §5.1, W-D16)
@@ -136,6 +137,9 @@ pub struct State {
     pub(crate) night_choices: BTreeMap<SeatId, NightChoice>,
     pub(crate) votes: BTreeMap<SeatId, Ballot>,
     pub(crate) outcome: Option<MatchOutcome>,
+    pub(crate) hunter_mark: Option<SeatId>,
+    pub(crate) hunter_fired: bool,
+    pub(crate) history: Vec<Event>,
 }
 
 /// Unvalidated deserialization DTO for [`State`] reconstruction.
@@ -157,6 +161,9 @@ pub struct RawState {
     pub night_choices: BTreeMap<SeatId, NightChoice>,
     pub votes: BTreeMap<SeatId, Ballot>,
     pub outcome: Option<MatchOutcome>,
+    pub hunter_mark: Option<SeatId>,
+    pub hunter_fired: bool,
+    pub history: Vec<Event>,
 }
 
 impl From<State> for RawState {
@@ -178,6 +185,9 @@ impl From<State> for RawState {
             night_choices: s.night_choices,
             votes: s.votes,
             outcome: s.outcome,
+            hunter_mark: s.hunter_mark,
+            hunter_fired: s.hunter_fired,
+            history: s.history,
         }
     }
 }
@@ -272,6 +282,10 @@ pub enum StateError {
     OutcomeStandingsMismatch,
     #[error("outcome standings are missing seat {seat:?}")]
     MissingSeatInOutcome { seat: SeatId },
+    #[error("pending choices disagree with consumed or retained role resources")]
+    PendingResourceMismatch,
+    #[error("invalid Hunter resource or retained history")]
+    InvalidRetainedState,
     #[error("deadline overflow when adding duration {duration:?} to now {now:?}")]
     DeadlineOverflow {
         now: LogicalTime,
@@ -318,7 +332,9 @@ impl TryFrom<RawState> for State {
             raw.witch_potions,
             &raw.seer_history,
         )?;
+        validate_pending_resources(&raw)?;
         validate_outcome(&raw.roster, raw.phase, raw.outcome.as_ref())?;
+        validate_retained(&raw)?;
 
         Ok(Self {
             config: raw.config,
@@ -337,6 +353,9 @@ impl TryFrom<RawState> for State {
             night_choices: raw.night_choices,
             votes: raw.votes,
             outcome: raw.outcome,
+            hunter_mark: raw.hunter_mark,
+            hunter_fired: raw.hunter_fired,
+            history: raw.history,
         })
     }
 }
@@ -780,6 +799,24 @@ impl State {
         &self.votes
     }
 
+    /// Retaliation mark committed before death, valid through this round's vote.
+    #[must_use]
+    pub const fn hunter_mark(&self) -> Option<SeatId> {
+        self.hunter_mark
+    }
+
+    /// Whether the one-shot Hunter retaliation has fired.
+    #[must_use]
+    pub const fn hunter_fired(&self) -> bool {
+        self.hunter_fired
+    }
+
+    /// Canonical retained history; never sent directly to clients (I-5).
+    #[must_use]
+    pub fn history(&self) -> &[Event] {
+        &self.history
+    }
+
     #[must_use]
     pub const fn outcome(&self) -> Option<&MatchOutcome> {
         self.outcome.as_ref()
@@ -798,4 +835,192 @@ pub fn checked_deadline(
         .checked_add(duration.millis())
         .map(LogicalTime)
         .ok_or(StateError::DeadlineOverflow { now, duration })
+}
+
+// At most 20 submissions + 1 report + 5 phases + 2 resolutions per round,
+// 20 deaths + one retaliation + creation/result, across at most 100 rounds.
+// Replaceable ballots and lifecycle signals never enter retained history.
+fn validate_retained(raw: &RawState) -> Result<(), StateError> {
+    let hunter = raw
+        .roles
+        .iter()
+        .find_map(|(&seat, &role)| (role == Role::Hunter).then_some(seat));
+    if raw.history.len() > 3_000
+        || (hunter.is_none() && (raw.hunter_mark.is_some() || raw.hunter_fired))
+        || raw
+            .hunter_mark
+            .is_some_and(|target| !raw.roster.contains(&target) || Some(target) == hunter)
+        || (raw.hunter_fired && hunter.is_some_and(|seat| raw.alive.contains(&seat)))
+    {
+        return Err(StateError::InvalidRetainedState);
+    }
+    if raw
+        .history
+        .iter()
+        .any(|event| !retained_event_valid(raw, event))
+    {
+        return Err(StateError::InvalidRetainedState);
+    }
+    Ok(())
+}
+
+fn retained_event_valid(raw: &RawState, event: &Event) -> bool {
+    match event {
+        Event::RolesAssigned { roles } => roles == &raw.roles,
+        Event::PhaseChanged {
+            round, timer_id, ..
+        } => *round > 0 && *round <= raw.round && timer_id.0 > 0,
+        Event::NightActionSubmitted {
+            seat,
+            choice,
+            round,
+        } => {
+            *round > 0
+                && *round <= raw.round
+                && raw.roles.get(seat).is_some_and(|role| match choice {
+                    NightChoice::WolfTarget(_) => *role == Role::Werewolf,
+                    NightChoice::Investigate(_) => *role == Role::Seer,
+                    NightChoice::Protect(_) => *role == Role::Doctor,
+                    NightChoice::WitchHeal(_) | NightChoice::WitchPoison(_) => *role == Role::Witch,
+                    NightChoice::HunterMark(_) => *role == Role::Hunter,
+                    NightChoice::Pass => *role != Role::Villager,
+                })
+                && choice.target().is_none_or(|target| {
+                    raw.roster.contains(&target)
+                        && match choice {
+                            NightChoice::WolfTarget(_) => {
+                                raw.roles.get(&target).is_some_and(|role| !role.is_wolf())
+                            }
+                            NightChoice::Investigate(_) | NightChoice::HunterMark(_) => {
+                                target != *seat
+                            }
+                            _ => true,
+                        }
+                })
+        }
+        Event::SeerReport {
+            seer,
+            target,
+            alignment,
+            round,
+        } => {
+            raw.roles.get(seer) == Some(&Role::Seer)
+                && raw
+                    .roles
+                    .get(target)
+                    .is_some_and(|role| role.alignment() == *alignment)
+                && *round > 0
+                && *round <= raw.round
+        }
+        Event::NightResolved {
+            round,
+            attacked,
+            protected,
+            healed,
+            poisoned,
+        } => {
+            *round > 0
+                && *round <= raw.round
+                && [attacked, protected, healed, poisoned]
+                    .into_iter()
+                    .all(|seat| seat.is_none_or(|seat| raw.roster.contains(&seat)))
+        }
+        Event::VoteResolved {
+            round,
+            tally,
+            eliminated,
+        } => {
+            *round > 0
+                && *round <= raw.round
+                && tally.iter().all(|(seat, count)| {
+                    raw.roster.contains(seat)
+                        && *count > 0
+                        && usize::from(*count) <= raw.roster.len()
+                })
+                && eliminated.is_none_or(|seat| raw.roster.contains(&seat))
+        }
+        Event::DeathRevealed { seat, role } => raw.revealed.get(seat) == Some(role),
+        Event::HunterTriggered { hunter, target } => {
+            raw.roles.get(hunter) == Some(&Role::Hunter)
+                && target.is_none_or(|seat| raw.roster.contains(&seat))
+        }
+        Event::MatchEnded { outcome } => raw.outcome.as_ref() == Some(outcome),
+        Event::BallotChanged { .. } | Event::SeatStatusChanged { .. } => false,
+    }
+}
+
+impl NightChoice {
+    /// The selected seat, if this action has one.
+    #[must_use]
+    pub const fn target(self) -> Option<SeatId> {
+        match self {
+            Self::Investigate(target) => Some(target),
+            Self::WolfTarget(target)
+            | Self::Protect(target)
+            | Self::WitchHeal(target)
+            | Self::WitchPoison(target)
+            | Self::HunterMark(target) => target,
+            Self::Pass => None,
+        }
+    }
+}
+
+// A snapshot must preserve effects that happened at submission, not re-grant
+// a consumed potion or silently replace a precommitted Hunter choice.
+fn validate_pending_resources(raw: &RawState) -> Result<(), StateError> {
+    for (&actor, &choice) in &raw.night_choices {
+        let invalid = match choice {
+            NightChoice::WitchHeal(Some(_)) => raw.witch_potions.is_none_or(|potions| potions.heal),
+            NightChoice::WitchPoison(Some(_)) => {
+                raw.witch_potions.is_none_or(|potions| potions.poison)
+            }
+            NightChoice::Protect(Some(target)) => raw.last_doctor_target == Some(target),
+            NightChoice::HunterMark(target) => raw.hunter_mark != target,
+            NightChoice::Pass if raw.roles.get(&actor) == Some(&Role::Hunter) => {
+                raw.hunter_mark.is_some()
+            }
+            _ => false,
+        };
+        if invalid {
+            return Err(StateError::PendingResourceMismatch);
+        }
+    }
+    if raw.phase == Phase::Night
+        && raw.hunter_mark.is_some()
+        && !raw
+            .night_choices
+            .values()
+            .any(|choice| matches!(choice, NightChoice::HunterMark(Some(_))))
+    {
+        return Err(StateError::PendingResourceMismatch);
+    }
+    let mut heal_uses = 0;
+    let mut poison_uses = 0;
+    let mut submitted = BTreeSet::new();
+    for event in &raw.history {
+        if let Event::NightActionSubmitted {
+            seat,
+            choice,
+            round,
+        } = event
+        {
+            if !submitted.insert((*round, *seat)) {
+                return Err(StateError::InvalidRetainedState);
+            }
+            match choice {
+                NightChoice::WitchHeal(Some(_)) => heal_uses += 1,
+                NightChoice::WitchPoison(Some(_)) => poison_uses += 1,
+                _ => {}
+            }
+        }
+    }
+    if heal_uses > 1
+        || poison_uses > 1
+        || raw.witch_potions.is_some_and(|potions| {
+            (heal_uses > 0 && potions.heal) || (poison_uses > 0 && potions.poison)
+        })
+    {
+        return Err(StateError::PendingResourceMismatch);
+    }
+    Ok(())
 }

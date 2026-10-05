@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-04",
+  "generator": "built-in imagegen only",
+  "prompt": "Create an original high-quality editorial illustration atlas for SIX Werewolf tabletop role cards, not finished cards. Exactly 3 equal columns by 2 equal rows filling a landscape 1536x1024 image, six separate square 512x512 panels, perfectly straight boundaries, no gutters, no text anywhere. EACH PANEL features one large centered half-body folk-fantasy character with a bold recognizable occupational prop, occupying 75 percent of the panel, quiet background and clean outer edges so a reusable graphic card frame can crop it. Left-to-right TOP ROW: (1) VILLAGER: kindly village baker/farmer woman with warm russet apron, wheat sheaf and lantern, amber terracotta village dawn; (2) WEREWOLF: imposing dark wolf head and shoulders, pointed ears, glowing amber eyes, one raised paw silhouette, red-indigo moonlit pine forest, expressive but no gore; (3) SEER: calm silver-haired oracle woman in indigo cloak looking into a large glowing crystal sphere, cyan light with tiny star constellation, ink blue background. Left-to-right BOTTOM ROW: (4) DOCTOR: compassionate older village herbalist man in sage coat with leather medical satchel and prominent herb sprig, round spectacles, protective pale green circular glow, no modern red cross trademark; (5) HUNTER: confident forest ranger woman in moss and ochre cloak holding a prominent wooden bow diagonally in front, one feather and leather quiver, copper forest dusk; (6) WITCH: wise witch woman with broad pointed hat and two luminous potion bottles, one green one plum, lavender moon, dark plum palette. Cohesive refined folk-storybook gouache and carved-paper/linocut texture style, richly painted faces, elegant thick silhouettes, tasteful print grain, jewel-tone accents against ink, cinematic warm light, physically crafted collectible tabletop deck feel. Borrow only generic portrait-and-role-prop conventions of social deduction tabletop decks; create original character designs and compositions, do not reproduce any existing publisher art, logos, borders, trademarks or exact card designs. No labels, no words, no letters, no numerals, no watermarks, no interface, no frame. Keep every character recognizable at 128px thumbnail size. All panels visually distinct but one coherent beautiful deck.",
+  "original": "assets/originals/werewolf-role-art-atlas.png",
+  "derivative": "assets/werewolf-role-art-atlas.webp",
+  "original_pixels": [
+    1536,
+    1024
+  ],
+  "panel_order": [
+    "Villager",
+    "Werewolf",
+    "Seer",
+    "Doctor",
+    "Hunter",
+    "Witch"
+  ],
+  "frame": "Original editable HTML/CSS; Vietnamese live text from Tabula ClassicV1, not generated image text",
+  "back": "Original opaque vector/HTML moon-diamond composition shared by all roles",
+  "references": [
+    {
+      "publisher": "Bézier Games",
+      "url": "https://beziergames.com/products/ultimate-werewolf-extreme",
+      "visual_reference": "Original publisher front-card photo UWEX_2_2048x.jpg inspected. Portrait + prominent role prop, concise label/instruction panel, consistent card geometry; common moon-back concept. No publisher pixels/fonts/logo/QR imported."
+    },
+    {
+      "publisher": "Zygomatic / Asmodee",
+      "url": "https://www.zygomatic-games.com/game/the-werewolves-of-millers-hollow/",
+      "rulebook": "https://cdn.svc.asmodee.net/production-zygomatic/uploads/2025/03/LMELG01EN_RULES-2023_WEB.pdf",
+      "visual_reference": "Character-card vocabulary and occupational motifs. Referenced for visual conventions only. Its mechanics differ from Tabula ClassicV1; no rules copied."
+    }
+  ],
+  "license_claim": "No licensed use of commercial publisher art is claimed. Reference photographs stay in /tmp outside deliverables. New portraits generated for this review; frame/back code authored here.",
+  "distribution": "Full deck/atlas is review-only. Future gameplay projection must contain only permitted viewer facts; exclude this review gallery and full deck atlas from public gameplay projection."
+}

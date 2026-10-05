@@ -153,6 +153,11 @@ their own change and evidence. Kotlin and Swift own mobile UI, navigation and
 device services only; rules, projection and protocol decisions stay in Rust (ADR-001, as
 amended).
 
+The owner-requested Werewolf standalone has a similarly bounded opt-in local exception:
+[ADR-0035](docs/adr/0035-werewolf-local-simulator.md). It permits its complete pure referee
+and isolated-seat local presenter using the existing renderer/resource pipeline. It does not
+open online/social, voice, authenticated seats, CMP WebView embedding or rollout gates.
+
 [ADR-0036](docs/adr/0036-isolated-durable-session-validation.md) authorizes the
 bounded #54 isolated session/PostgreSQL → HTTP → account-state UI sequence.
 It keeps both production service entrypoints closed and does not prove phase

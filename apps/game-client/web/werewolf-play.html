@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="vi" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Tabula · Ma Sói · Local simulator</title> <!-- xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. -->
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="standalone.css">
+</head>
+<body class="play-page" data-runtime="werewolf"> <!-- xtask-allow-game-id: ADR-0035 opt-in standalone leaf, not platform dispatch. -->
+  <main id="runtime" aria-label="Local isolated-seat Werewolf simulator"> <!-- xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. -->
+    <canvas id="glcanvas" tabindex="0" aria-label="Local simulator. Tab and arrows move focus, Enter activates, Escape conceals private cards." aria-describedby="keyboard-help"></canvas> <!-- xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch. -->
+    <div id="privacy-shield" class="privacy-shield" hidden role="status"><h2>Đã che góc nhìn riêng tư</h2><p>Trở lại mô phỏng rồi chủ động xem lá bài nếu cần</p><button class="button" id="resume-private" type="button">Về mô phỏng</button></div>
+    <div id="loader" class="runtime-overlay" role="status" aria-live="polite"><h1 id="loading-title">Đang mở Ma Sói…</h1><p id="loading-status">Đang tải chương trình WebAssembly</p><progress id="load-progress" aria-label="Download progress"></progress><a class="button secondary" href="index.html" id="cancel-load">Về thiết lập</a></div>
+    <section id="runtime-error" class="runtime-overlay" role="alert" aria-labelledby="error-title" hidden><h1 id="error-title">Không thể mở mô phỏng</h1><p id="error-detail"></p><p id="restart-notice">Tải lại sẽ bắt đầu một ván mới. Ván cục bộ không được lưu</p><div class="recovery-actions"><a class="button secondary" href="index.html" id="error-back">Về thiết lập</a><button class="button" id="retry" type="button">Thử lại</button></div></section>
+    <div class="runtime-access"><button id="leave" type="button">Về thiết lập</button><button id="help" type="button">Trợ giúp bàn phím</button><span id="keyboard-help" class="sr-only">Use arrow keys and Enter on the focused board. Escape cancels selection or promotion. Tab reaches the in-game controls from the last square; Shift+Tab reaches leave and help. Local games are not saved.</span></div>
+  </main>
+  <dialog id="leave-dialog" aria-labelledby="leave-title"><h2 id="leave-title">Rời mô phỏng?</h2><p id="leave-detail">Ván cục bộ này không được lưu. Bạn có thể ở lại hoặc quay về thiết lập để bắt đầu ván mới</p><div class="dialog-actions"><button class="button secondary" id="stay" type="button">Ở lại</button><button class="button" id="confirm-leave" type="button">Rời mô phỏng</button></div></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title"><h2 id="help-title">Điều khiển Ma Sói</h2><p id="help-detail">Chạm hoặc nhấp quân rồi ô đích. Dùng phím mũi tên để đổi ô, Enter để chọn, Escape để hủy chọn hoặc phong cấp. Tab chuyển tới các nút trong ván từ ô cuối; Shift+Tab đến nút rời ván. Trình đọc màn hình đầy đủ cho bàn cờ chưa có</p><button class="button" id="close-help" type="button">Về bàn cờ</button></dialog>
+  <noscript><p class="error">JavaScript is required to load the WebAssembly game.</p></noscript>
+  <script src="mq_js_bundle.js"></script>
+  <!-- Generated and pinned with this exact build by xtask staging. -->
+  <script src="resource-manifest.js"></script>
+  <script src="resources.js"></script>
+  <script src="launch-options.js"></script>
+  <!-- Only explicit launch loads manifest-listed game resources. -->
+  <script src="bootstrap.js"></script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+{
+  "purpose": "content receipts for locally retained execution logs; complete logs preserved outside generated Cargo output",
+  "logs": [
+    {
+      "log": "werewolf-final-rules-tests.log",
+      "bytes": 9851,
+      "sha256": "ed2b26154563c62a53eaf86b963781feb24c822e79c7a590430e46e863e23007"
+    },
+    {
+      "log": "werewolf-final-presentation-all.log",
+      "bytes": 11374,
+      "sha256": "a4fc72cfbd06166774ecee2c0731cc5e8d157a7433488f41cbcc88470bf988e7"
+    },
+    {
+      "log": "werewolf-final-host-node.log",
+      "bytes": 6834,
+      "sha256": "bea59cfb944967c627de137d40e186bf7409603a336ee0221274013b7efec389"
+    },
+    {
+      "log": "werewolf-publication-aggregate.log",
+      "bytes": 202187,
+      "sha256": "efa5f16e9b020e82cef114be9f895e3b30008eceefc95f886f4e6de52317f7ad"
+    },
+    {
+      "log": "werewolf-final-all-features.log",
+      "bytes": 2029,
+      "sha256": "bfa3b3be27c39b537632828f58379c828f59e49d00e8ac44c2c4b6748aa00ad1"
+    },
+    {
+      "log": "werewolf-final-no-default.log",
+      "bytes": 3002,
+      "sha256": "bd78ae69c19e1cf6efee63fecaf501a1fbe0ea2e6cdd610138b7dae61e1c8643"
+    },
+    {
+      "log": "werewolf-final-host-clippy.log",
+      "bytes": 189,
+      "sha256": "3fdc21fe8f2b0919c1d27bd753a044c32139e7d69c4333806b3a2cdba096cb3a"
+    },
+    {
+      "log": "werewolf-final-wasm-build.log",
+      "bytes": 184,
+      "sha256": "ee3b41de793f69e2ee83a611d9638ef733763a2e75816ac33d213016fd7dd478"
+    },
+    {
+      "log": "werewolf-final-native-build.log",
+      "bytes": 189,
+      "sha256": "047fc0d73e0fa84d3b6aa6fafa5c61d9e26d9871bf4b6aa868fd06556beea39e"
+    },
+    {
+      "log": "werewolf-replay-final-cli.log",
+      "bytes": 6037,
+      "sha256": "703546f9705ee5d0d7678170fa387de105c3888851d79dae1cd7a063e5390d1f"
+    },
+    {
+      "log": "werewolf-simulation-final-100000.log",
+      "bytes": 489,
+      "sha256": "bdf12658b5c99aeae3001a48d9bccccce790d10a25c65665e2da680751a42203"
+    },
+    {
+      "log": "werewolf-cutoff-aggregate.log",
+      "bytes": 209402,
+      "sha256": "2164bec6ed135bb0ba0e232f3db55ea76d3f6bbf26a2da543aacd6f6c6efc850"
+    },
+    {
+      "log": "werewolf-cutoff-all-features.log",
+      "bytes": 2049,
+      "sha256": "b653254b6b5b304f4fd89618cc41c5da40ca0f18412b3c487c06bd1265dadae3"
+    },
+    {
+      "log": "werewolf-cutoff-no-default.log",
+      "bytes": 3081,
+      "sha256": "9204a14563c23cdc689add6dcbc1db869522c8b20707fe0e593ef5d84cb4d5e4"
+    },
+    {
+      "log": "werewolf-cutoff-native.log",
+      "bytes": 1034,
+      "sha256": "6153250bfb8c356f795af48f282b2b54ea960db993fb287727acf9ca6e82e263"
+    },
+    {
+      "log": "werewolf-cutoff-wasm.log",
+      "bytes": 682,
+      "sha256": "88c59d34152756c4315045f0b1125712e5afdac1449748cf38e337e5c65ec7fe"
+    },
+    {
+      "log": "werewolf-cutoff-budget.log",
+      "bytes": 1259,
+      "sha256": "f5f1e1063680be5749633a7e3d8b70ce6b88f8c7be565dda3e23c0851931d305"
+    },
+    {
+      "log": "werewolf-cutoff-stage.log",
+      "bytes": 772,
+      "sha256": "6a86653f279cf69d77c9b5615797a247e655807a3819901b3511dd49b4a11aa7"
+    },
+    {
+      "log": "werewolf-cutoff-host-node.log",
+      "bytes": 8942,
+      "sha256": "1b6ed922e694763360e72e462f99fd74b62361f4561d721a5b2ea51a5e6cbb74"
+    },
+    {
+      "log": "werewolf-cutoff-staging-tests.log",
+      "bytes": 2905,
+      "sha256": "616193e2bbc3d6b73eeee4dad7f84b511fcfe8a706a45405ef3a14674e96e8d1"
+    },
+    {
+      "log": "werewolf-cutoff-replay.log",
+      "bytes": 1368,
+      "sha256": "981a5853b6757b0255396917532b6d83f2c422b492aeb5383f9db57f7a5661d0"
+    },
+    {
+      "log": "werewolf-cutoff-chess-wasm.log",
+      "bytes": 295,
+      "sha256": "aa4eb5181218652499a1bb7a8ae17ed7957bc3b5deae1ef2f2274ad4b0c72d85"
+    },
+    {
+      "log": "werewolf-cutoff-chess-stage.log",
+      "bytes": 486,
+      "sha256": "59838103bd0b8a3fd34b389a1c7971a9dc3678543b4c5176752d8e550e368274"
+    },
+    {
+      "log": "werewolf-cutoff-chess-budget.log",
+      "bytes": 731,
+      "sha256": "b9ecb9776190642ef394ef54d42c0b33f6dbaf6d83e9156d00951b10ce7d88f2"
+    },
+    {
+      "log": "werewolf-simulation-final-6.log",
+      "bytes": 225,
+      "sha256": "90218f422b7eb4371d724fbc0ad3f1f36bf60513b2149a0fb6ceeaeff81186b5"
+    },
+    {
+      "log": "werewolf-simulation-final-20.log",
+      "bytes": 228,
+      "sha256": "27cf8d6bc53e94ab5c863cff9f4b3751f0bc851022fa9454cb5d60487a9766ae"
+    },
+    {
+      "log": "werewolf-native-launch.log",
+      "bytes": 274,
+      "sha256": "958ae31236962fb710a04023249faa80f81879e8f4f67c7db55a3d0c5dbe5101"
+    },
+    {
+      "log": "werewolf-http-tests.log",
+      "bytes": 2085,
+      "sha256": "7db97919efb537f134b69b9fd3f303f9e5f1db70231a888e2f34803e1d76101b"
+    }
+  ]
+}

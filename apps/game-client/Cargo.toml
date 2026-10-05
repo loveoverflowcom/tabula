@@ -1,5 +1,6 @@
 [package]
 name        = "tabula-game-client"
+default-run = "tabula-game-client"
 version     = "0.0.0"
 description = "The Macroquad gameplay client: desktop and web-at-/play/:match_id (the wasm build is also what the mobile WebView loads, ADR-0032)."
 edition.workspace      = true
@@ -31,25 +32,42 @@ macroquad           = { workspace = true }
 glam                = { workspace = true }
 # Phase 2 uses the game package directly; the Phase 4 registry will replace
 # this leaf dependency when the online runtime is introduced.
-tabula-game-chess   = { workspace = true, features = ["rules", "presentation"] }
+tabula-game-chess   = { workspace = true, features = ["rules", "presentation"], optional = true }
 tabula-game-tiles     = { workspace = true, features = ["rules", "presentation", "bots"], optional = true }
 # Phase 4+
 # tabula-protocol   = { workspace = true }
 # tabula-registry   = { workspace = true }
 # tabula-net-client = { workspace = true }
 
+tabula-game-werewolf = { workspace = true, features = ["rules", "presentation"], optional = true }
+
+[[bin]]
+name = "tabula-game-client"
+path = "src/main.rs"
+required-features = ["chess"]
+
+[[bin]]
+name = "tabula-werewolf-client"
+path = "src/bin/werewolf.rs"
+required-features = ["werewolf"]
+
 [features]
-default = ["tiles"]
+default = ["chess", "tiles"]
+chess = ["dep:tabula-game-chess"]
 # The deployed local Chess host opts out of the native multi-game leaf wiring.
 tiles  = ["dep:tabula-game-tiles"]
+# ADR-0035 opt-in isolated-seat local simulator, not online social launch.
+werewolf = ["dep:tabula-game-werewolf"]
 # tokio only behind the native feature, for the native transport (doc 00 §8.1).
 native = []
-web    = []
+web    = ["chess"]
+web-werewolf = ["werewolf"]
 
 # Preserve the existing cross-game unit/integration/renderer-example evidence
 # under native test builds, including --no-default-features. This development
 # dependency is not part of the deployed WASM binary's normal dependency graph.
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tabula-game-chess = { workspace = true, features = ["rules", "presentation"] }
 tabula-game-tiles = { workspace = true, features = ["rules", "presentation", "bots"] }
 
 [lints]

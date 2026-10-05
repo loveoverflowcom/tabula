@@ -1,0 +1,23 @@
+{
+  "evidence": "approved design reference pixels, not screenshots of the Rust runtime",
+  "files": [
+    {
+      "file": "design-deck-reference.png",
+      "library_file_id": "libfile_4a216c03345881918f5d4bfbf598dd9c",
+      "bytes": 2554464,
+      "sha256": "c3e003c4221399920c68ed5a376682af9b0eb146a7933e4535bac294a27d08ee"
+    },
+    {
+      "file": "design-mobile-states-reference.png",
+      "library_file_id": "libfile_65ec89f5fa5481919f0ea234fe6a4078",
+      "bytes": 621961,
+      "sha256": "da7a3c85969a3cf0548338e0a272b36240345feb640f120d4d396568454c3390"
+    },
+    {
+      "file": "design-style-boundary-reference.png",
+      "library_file_id": "libfile_c6d4ef7682a081918b786f56eb2d6264",
+      "bytes": 291939,
+      "sha256": "67f72049f0b15d39af150492d9aa478dca07bf5b8c3cc039cd4e292f971e090c"
+    }
+  ]
+}

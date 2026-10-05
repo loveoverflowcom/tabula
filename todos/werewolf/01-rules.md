@@ -1,3 +1,13 @@
+# Historical implementation sketch
+
+> Superseded for the implemented rules2 local slice by `docs/games/werewolf.md`,
+> ADR-0035 and `docs/verification/werewolf-standalone/README.md`. This file preserves
+> original planning context; unchecked items and proposed input behavior below are
+> not current runtime claims. Current stale/early timers reject transactionally;
+> duplicate public ballots/unvote are accepted replaceable commands with bounded
+> retained history; authorized roster-valid ForceEnd is supported. Scope values are
+> data only and voice effects remain deferred by the recorded asymmetry gap.
+
 # Goal
 
 Implement a total deterministic Werewolf reducer whose authorization and simultaneous resolution

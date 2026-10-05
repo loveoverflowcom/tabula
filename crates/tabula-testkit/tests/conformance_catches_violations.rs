@@ -511,3 +511,103 @@ mod placeholder_hash {
         });
     }
 }
+
+// A command's legality is checked at the instant the state was observed.
+// Independent probe RNG indices must not silently advance a timed game's clock.
+mod timed_legal_commands {
+    use super::*;
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    struct TimedState {
+        deadline: tabula_core::LogicalTime,
+        accepted: u32,
+    }
+    struct Rules<const BAD: bool>;
+    impl<const BAD: bool> GameRules for Rules<BAD> {
+        type State = TimedState;
+        type Command = u8;
+        type Event = Nothing;
+        type View = TimedState;
+        type ViewEvent = Nothing;
+        type Config = Nothing;
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+        fn create(_: &Nothing, _: &SeatRoster, ctx: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: TimedState {
+                    deadline: tabula_core::LogicalTime(ctx.now.0 + 2_000),
+                    accepted: 0,
+                },
+                events: smallvec![],
+                effects: smallvec![],
+            })
+        }
+        fn apply(
+            state: &mut TimedState,
+            input: Input<u8>,
+            ctx: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, RuleError> {
+            let Input::Player { command: 0, .. } = input else {
+                return Err(RuleError::code(RuleErrorCode::IllegalMove));
+            };
+            if ctx.now >= state.deadline {
+                return Err(RuleError::code(RuleErrorCode::WrongPhase));
+            }
+            state.accepted += 1;
+            state.deadline = tabula_core::LogicalTime(ctx.now.0 + 2_000);
+            Ok(Outcome::empty())
+        }
+        fn project(state: &TimedState, _: Viewer) -> TimedState {
+            state.clone()
+        }
+        fn view_event(_: &TimedState, _: &Nothing, _: Viewer) -> Option<Nothing> {
+            None
+        }
+        fn legal_commands(_: &TimedState, _: SeatId) -> LegalCommands<u8> {
+            LegalCommands::Enumerated(vec![u8::from(BAD)])
+        }
+    }
+    struct Module<const BAD: bool>;
+    static META: LazyLock<GameMetadata> =
+        LazyLock::new(|| minimal_metadata("test.timedenumeration"));
+    static CAPS: LazyLock<GameCapabilities> = LazyLock::new(minimal_capabilities);
+    impl<const BAD: bool> GameModule for Module<BAD> {
+        type Rules = Rules<BAD>;
+        fn metadata() -> &'static GameMetadata {
+            &META
+        }
+        fn capabilities() -> &'static GameCapabilities {
+            &CAPS
+        }
+        fn validate_config(_: &Nothing, _: &SeatRoster) -> Result<(), ConfigError> {
+            Ok(())
+        }
+    }
+    struct Fixture<const BAD: bool>;
+    impl<const BAD: bool> GameTestFixture for Fixture<BAD> {
+        type Module = Module<BAD>;
+        fn config() -> Nothing {
+            Nothing
+        }
+        fn roster() -> SeatRoster {
+            one_seat_roster()
+        }
+        fn seed() -> MatchSeed {
+            MatchSeed::from_bytes([18; 32])
+        }
+        fn deterministic_script() -> Vec<Input<u8>> {
+            vec![Input::Player {
+                seat: SeatId(0),
+                command: 0,
+            }]
+        }
+    }
+    #[test]
+    fn conformance_probes_timed_enumerations_at_observed_time() {
+        tabula_testkit::conformance::commands::check_legal::<Fixture<false>>();
+    }
+    #[test]
+    fn conformance_still_rejects_illegal_timed_enumerations() {
+        assert_check_rejects("legal_commands sanity", || {
+            tabula_testkit::conformance::commands::check_legal::<Fixture<true>>();
+        });
+    }
+}

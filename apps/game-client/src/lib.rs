@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 pub mod fixture_assets;
+pub mod host_resources;
 mod replay_capture;
 pub mod runtime_ui;
 

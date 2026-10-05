@@ -31,6 +31,29 @@ const HOST_FILES: &[&str] = &[
     "assets/LICENSE-OpenSans-Apache-2.0.txt",
 ];
 
+/// Opt-in local document shape, not registry rollout or online availability.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum BundleKind {
+    Standard,
+    PrivateSimulator,
+}
+
+const SIMULATOR_HOST_FILES: &[&str] = &[
+    "index.html",
+    "play.html",
+    "standalone.css",
+    "launch-options.js",
+    "werewolf-setup.js", // xtask-allow-game-id: ADR-0035 standalone leaf packaging.
+    "bootstrap.js",
+    "resources.js",
+    "assets/OpenSans-Regular.ttf",
+    "assets/OpenSans-Semibold.ttf",
+    "assets/NotoSerif-Bold.ttf",
+    "assets/OFL-OpenSans.txt",
+    "assets/OFL-Noto.txt",
+    "assets/LICENSE-OpenSans-Apache-2.0.txt",
+];
+
 #[derive(Debug, thiserror::Error)]
 pub enum WasmStageError {
     #[error("failed to resolve workspace root: {0}")]
@@ -87,17 +110,33 @@ pub struct WasmStageReport {
 }
 
 pub fn run(args: &[String]) -> Result<WasmStageReport, WasmStageError> {
-    if let Some(argument) = args.first() {
-        return Err(WasmStageError::UnexpectedArgument(argument.clone()));
-    }
+    let kind = match args {
+        [] => BundleKind::Standard,
+        [flag, game] if flag == "--game" && game == "werewolf" => BundleKind::PrivateSimulator,
+        _ => return Err(WasmStageError::UnexpectedArgument(args.join(" "))),
+    }; // xtask-allow-game-id: ADR-0035 opt-in local leaf selector.
 
     let root = crate::workspace::root()?;
     let web_src_dir = root.join("apps").join("game-client").join("web");
-    let wasm_src = resolve_wasm_source(&crate::workspace::target_dir()?)?;
-    let out_dir = root.join("target").join("tabula-web-game");
+    let wasm_src = match kind {
+        BundleKind::Standard => resolve_wasm_source(&crate::workspace::target_dir()?)?,
+        BundleKind::PrivateSimulator => {
+            let path = crate::workspace::target_dir()?
+                .join("wasm32-unknown-unknown/wasm-release/tabula-werewolf-client.wasm"); // xtask-allow-game-id: ADR-0035 separate binary artifact.
+            if !path.is_file() {
+                return Err(WasmStageError::MissingWasmArtifact(path));
+            }
+            path
+        }
+    };
+    let out_dir = root.join("target").join(if kind == BundleKind::Standard {
+        "tabula-web-game"
+    } else {
+        "tabula-web-werewolf"
+    }); // xtask-allow-game-id: ADR-0035 opt-in standalone output.
 
     let tokens_src = root.join("apps/web/style/tokens.css");
-    let report = stage_bundle(&web_src_dir, &tokens_src, &wasm_src, &out_dir)?;
+    let report = stage_bundle_kind(&web_src_dir, &tokens_src, &wasm_src, &out_dir, kind)?;
 
     println!(
         "stage-wasm-game: staged browser host into {}\n  - index.html ({} bytes)\n  - mq_js_bundle.js ({} bytes)\n  - tabula-game-client.wasm ({} bytes)\n  - {} required host resources + canonical tokens.css\n  - {} manifest-listed, immutable runtime resources (loaded on demand)",
@@ -227,7 +266,50 @@ pub fn stage_bundle(
     wasm_src: &Path,
     out_dir: &Path,
 ) -> Result<WasmStageReport, WasmStageError> {
-    let html_src = web_src_dir.join("index.html");
+    stage_bundle_kind(
+        web_src_dir,
+        tokens_src,
+        wasm_src,
+        out_dir,
+        BundleKind::Standard,
+    )
+}
+
+/// Stage only the explicitly requested isolated-seat simulator document.
+#[cfg(test)]
+pub fn stage_simulator_bundle(
+    web_src_dir: &Path,
+    tokens_src: &Path,
+    wasm_src: &Path,
+    out_dir: &Path,
+) -> Result<WasmStageReport, WasmStageError> {
+    stage_bundle_kind(
+        web_src_dir,
+        tokens_src,
+        wasm_src,
+        out_dir,
+        BundleKind::PrivateSimulator,
+    )
+}
+
+fn stage_bundle_kind(
+    web_src_dir: &Path,
+    tokens_src: &Path,
+    wasm_src: &Path,
+    out_dir: &Path,
+    kind: BundleKind,
+) -> Result<WasmStageReport, WasmStageError> {
+    let host_files = if kind == BundleKind::Standard {
+        HOST_FILES
+    } else {
+        SIMULATOR_HOST_FILES
+    };
+    let source_name = |name: &str| match (kind, name) {
+        (BundleKind::PrivateSimulator, "index.html") => "werewolf.html".to_owned(), // xtask-allow-game-id: ADR-0035 standalone document source.
+        (BundleKind::PrivateSimulator, "play.html") => "werewolf-play.html".to_owned(), // xtask-allow-game-id: ADR-0035 standalone document source.
+        _ => name.to_owned(),
+    };
+    let html_src = web_src_dir.join(source_name("index.html"));
     let js_src = web_src_dir.join("mq_js_bundle.js");
 
     // The destination is workspace-owned output. Invalidate it before every
@@ -246,8 +328,8 @@ pub fn stage_bundle(
     }
 
     validate_host_html(&html_src, false)?;
-    for relative in HOST_FILES {
-        let source = web_src_dir.join(relative);
+    for relative in host_files {
+        let source = web_src_dir.join(source_name(relative));
         if !source.is_file() {
             return Err(WasmStageError::MissingHostFile(source));
         }
@@ -255,7 +337,7 @@ pub fn stage_bundle(
     if !tokens_src.is_file() {
         return Err(WasmStageError::MissingHostFile(tokens_src.to_path_buf()));
     }
-    validate_host_html(&web_src_dir.join("play.html"), true)?;
+    validate_host_html(&web_src_dir.join(source_name("play.html")), true)?;
 
     let parent = out_dir
         .parent()
@@ -277,8 +359,8 @@ pub fn stage_bundle(
     let js_dst = staging_dir.path().join("mq_js_bundle.js");
     let wasm_dst = staging_dir.path().join("tabula-game-client.wasm");
 
-    for relative in HOST_FILES {
-        let source = web_src_dir.join(relative);
+    for relative in host_files {
+        let source = web_src_dir.join(source_name(relative));
         let destination = staging_dir.path().join(relative);
         if let Some(parent) = destination.parent() {
             std::fs::create_dir_all(parent).map_err(|source| WasmStageError::CreateDir {
@@ -296,7 +378,7 @@ pub fn stage_bundle(
     copy_file(wasm_src, &wasm_dst)?;
 
     let wasm_size = file_size(&wasm_dst)?;
-    let runtime_resource_count = stage_versioned_resources(staging_dir.path())?;
+    let runtime_resource_count = stage_versioned_resources(staging_dir.path(), kind)?;
     let html_size = file_size(&html_dst)?;
     let js_size = file_size(&js_dst)?;
 
@@ -311,7 +393,7 @@ pub fn stage_bundle(
         html_size,
         js_size,
         wasm_size,
-        host_file_count: HOST_FILES.len(),
+        host_file_count: host_files.len(),
         runtime_resource_count,
     })
 }
@@ -496,14 +578,17 @@ fn sri_sha256(resource: &WebResource) -> String {
 fn stage_game_pack(
     directory: &Path,
     files: &mut BTreeMap<String, WebResource>,
+    kind: BundleKind,
 ) -> Result<(), WasmStageError> {
     // The local slice packages the existing game-owned manifest, not a second
     // resource-selection policy or a new delivery service (ADR-0030).
-    let manifest = tabula_assets::AssetPackManifest::from_toml(
-        tabula_game_chess::presentation::assets::MANIFEST, // xtask-allow-game-id: local standalone packaging of the game-owned pack.
-    ).map_err(|error| resource_error(format!("local pack manifest: {error}")))?;
+    let (manifest_text, images) = match kind {
+        BundleKind::Standard => (tabula_game_chess::presentation::assets::MANIFEST, tabula_game_chess::presentation::assets::ALL_IMAGES), // xtask-allow-game-id: local standalone packaging of the game-owned pack.
+        BundleKind::PrivateSimulator => (tabula_game_werewolf::presentation::assets::MANIFEST, tabula_game_werewolf::presentation::assets::ALL_IMAGES), // xtask-allow-game-id: ADR-0035 local standalone pack declaration.
+    };
+    let manifest = tabula_assets::AssetPackManifest::from_toml(manifest_text).map_err(|error| resource_error(format!("local pack manifest: {error}")))?;
     for file in manifest.files() {
-        let bytes = tabula_game_chess::presentation::assets::ALL_IMAGES.iter() // xtask-allow-game-id: local standalone packaging of the game-owned pack.
+        let bytes = images.iter() // xtask-allow-game-id: local standalone packaging of the game-owned pack.
             .find(|(name, _)| *name == file.name().as_str())
             .map(|(_, bytes)| *bytes)
             .ok_or_else(|| resource_error(format!("local pack file missing: {}", file.name())))?;
@@ -517,7 +602,7 @@ fn stage_game_pack(
 /// Version every runtime payload and every static host dependency. HTML stays
 /// mutable/no-store, with immutable script/style references (including SRI).
 /// Fixed-name diagnostic copies are retained but never referenced by the host.
-fn stage_versioned_resources(directory: &Path) -> Result<usize, WasmStageError> {
+fn stage_versioned_resources(directory: &Path, kind: BundleKind) -> Result<usize, WasmStageError> {
     let resources = directory.join("resources");
     std::fs::create_dir(&resources).map_err(|source| WasmStageError::CreateDir {
         path: resources,
@@ -539,7 +624,7 @@ fn stage_versioned_resources(directory: &Path) -> Result<usize, WasmStageError> 
             )?,
         );
     }
-    stage_game_pack(directory, &mut files)?;
+    stage_game_pack(directory, &mut files, kind)?;
     if files.len() > 32 || files.values().map(|file| file.bytes).sum::<usize>() > 150 * 1024 * 1024
     {
         return Err(resource_error(
@@ -560,18 +645,27 @@ fn stage_versioned_resources(directory: &Path) -> Result<usize, WasmStageError> 
     )?;
 
     let mut references = files;
-    for relative in [
+    let mut static_files = vec![
         "mq_js_bundle.js",
         "resource-manifest.js",
         "resources.js",
         "launch-options.js",
-        "host-bridge.js",
-        "setup.js",
         "bootstrap.js",
         "tokens.css",
-        "assets/chess-cover.png", // xtask-allow-game-id: existing standalone cover packaging only.
-        "assets/chess-cover-small.png", // xtask-allow-game-id: existing standalone cover packaging only.
-    ] {
+    ];
+    if kind == BundleKind::Standard {
+        static_files.extend([
+            "host-bridge.js",
+            "setup.js",
+            "assets/chess-cover.png",
+            "assets/chess-cover-small.png",
+        ]);
+    }
+    // xtask-allow-game-id: existing standalone cover packaging only.
+    else {
+        static_files.push("werewolf-setup.js");
+    } // xtask-allow-game-id: ADR-0035 standalone setup.
+    for relative in static_files {
         let extension = Path::new(relative)
             .extension()
             .and_then(|value| value.to_str())
@@ -1119,6 +1213,59 @@ mod tests {
     }
 
     #[test]
+    fn simulator_stage_uses_only_its_pack_and_keeps_runtime_identity() {
+        let root = crate::workspace::root().unwrap();
+        let dir = tempdir().unwrap();
+        let wasm = dir.path().join("input.wasm");
+        std::fs::write(&wasm, VALID_WASM).unwrap();
+        let out = dir.path().join("simulator");
+        let report = stage_simulator_bundle(
+            &root.join("apps/game-client/web"),
+            &root.join("apps/web/style/tokens.css"),
+            &wasm,
+            &out,
+        )
+        .unwrap();
+        assert_eq!(report.host_file_count, SIMULATOR_HOST_FILES.len());
+        assert_eq!(report.runtime_resource_count, 18);
+        assert!(!out.join("assets/chess-cover.png").exists()); // xtask-allow-game-id: packaging isolation assertion.
+        assert!(!out.join("setup.js").exists());
+        assert!(!out.join("host-bridge.js").exists());
+        let entry = std::fs::read_to_string(out.join("index.html")).unwrap();
+        let setup = std::fs::read(out.join("werewolf-setup.js")).unwrap(); // xtask-allow-game-id: ADR-0035 standalone setup isolation.
+        let setup_url = format!("resources/{:x}.js", Sha256::digest(&setup));
+        assert!(entry.contains(&format!("src=\"{setup_url}\" integrity=\"sha256-")));
+        assert!(!entry.contains("src=\"setup.js\""));
+        let play = std::fs::read_to_string(out.join("play.html")).unwrap();
+        assert!(play.contains("data-runtime=\"werewolf\"")); // xtask-allow-game-id: standalone identity assertion.
+        assert!(!play.contains("src=\"bootstrap.js\""));
+        let text = std::fs::read_to_string(out.join("resource-manifest.js")).unwrap();
+        let value: serde_json::Value = serde_json::from_str(
+            text.trim_start_matches("window.TabulaResourceManifest=")
+                .trim_end_matches(";\n"),
+        )
+        .unwrap();
+        let files = value["files"].as_object().unwrap();
+        assert_eq!(files.len(), 18);
+        assert_eq!(
+            files
+                .keys()
+                .filter(|key| key.starts_with("werewolf/0.1.0/"))
+                .count(),
+            14
+        ); // xtask-allow-game-id: pack isolation assertion.
+        assert!(!files.keys().any(|key| key.starts_with("chess/"))); // xtask-allow-game-id: pack isolation assertion.
+        for entry in files.values() {
+            let bytes = std::fs::read(out.join(entry["url"].as_str().unwrap())).unwrap();
+            assert_eq!(bytes.len() as u64, entry["bytes"].as_u64().unwrap());
+            assert_eq!(
+                format!("{:x}", Sha256::digest(&bytes)),
+                entry["sha256"].as_str().unwrap()
+            );
+        }
+    }
+
+    #[test]
     fn staging_pins_every_runtime_payload_and_static_host_reference() {
         let directory = tempdir().unwrap();
         write_valid_html(&directory.path().join("index.html"));
@@ -1136,7 +1283,10 @@ mod tests {
             "@font-face{src:url('assets/OpenSans-Regular.ttf')}",
         )
         .unwrap();
-        assert_eq!(stage_versioned_resources(directory.path()).unwrap(), 8);
+        assert_eq!(
+            stage_versioned_resources(directory.path(), BundleKind::Standard).unwrap(),
+            8
+        );
         let text = std::fs::read_to_string(directory.path().join("resource-manifest.js")).unwrap();
         let value: serde_json::Value = serde_json::from_str(
             text.trim_start_matches("window.TabulaResourceManifest=")
