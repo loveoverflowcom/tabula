@@ -79,8 +79,11 @@ initial absence of an opponent cookie. Enrollment is not a product login route.
    same real authority, and render nonblank Chess canvas pixels
 4. Real canvas taps play f2-f3, e7-e5, g2-g4, d8-h4. Visible revisions start at
    zero and advance to one, two, three and four as those projections change
-5. Both independently decode/render the same terminal “Game over / Black wins”
-   verdict; the separate durable oracle checks the exact Checkmate reason. Four
+5. Both independently decode/render the same terminal Black-wins Checkmate
+   verdict. The exact Rust game-owned accessibility status is
+   `Game over / Black wins / checkmate`: it includes the reason after the
+   shorter canvas HUD title. The separate durable oracle independently checks
+   the exact Checkmate reason. Four
    secret-free actual canvas screenshots and action names are retained. Only
    then is White's first exact captured command retried: its original Ack is
    returned, and the opponent's visible revision remains four. The extra Ack is
@@ -210,6 +213,11 @@ fixture does not establish PR3 reconnect/resync/network-drop/server-crash
 acceptance, load/cross-target/game-portfolio quality or a broad phase exit.
 Post-logout rejection alone does not establish buffered-publication fencing.
 That claim needs successful execution of the nonempty held-body scenario above.
+Bounded move diagnostics retain only the four public action names, observed
+HTTP status and Ack-presence flag. Failed terminal waits retain only role, seat,
+expected-range visible revision and fixed status/connection/availability enums,
+never raw projected status, DOM, command body or protocol payload. A reasonless
+Black-win title or another terminal reason cannot satisfy the exact predicate.
 Its TCP observer establishes the native server first-frame/network boundary
 before the buffering TLS edge; actual browser TLS/gameplay is proved separately.
 It does not establish recall of already released TCP bytes or PR3 reconnect.

@@ -3,10 +3,16 @@ import unittest
 import http.client
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, api, board_square, denied, private_frame_keys, require, run, start_native_poll
+from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, api, board_square, denied, game_status_class, private_frame_keys, require, run, start_native_poll
 
 
 class BrowserHelperTests(unittest.TestCase):
+    def test_terminal_accessibility_status_requires_the_exact_checkmate_reason(self):
+        self.assertEqual(TERMINAL_STATUS, "Game over / Black wins / checkmate")
+        self.assertEqual(game_status_class(TERMINAL_STATUS), "black_checkmate")
+        for wrong in ("Game over / Black wins", "Game over / Black wins / resignation", "token=synthetic-secret"):
+            self.assertEqual(game_status_class(wrong), "other_status")
+
     def test_neutral_concealment_requires_positive_error_and_no_projected_pixels_or_status(self):
         for required in ("onlineAvailability === 'unavailable'", "onlineSeat", "onlineRevision", "onlineStatus", "onlineConnection",
                          "!Object.hasOwn", "canvas.width === 0", "canvas.height === 0", "aria-hidden", "visibility === 'hidden'",
