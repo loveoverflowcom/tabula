@@ -17,7 +17,7 @@ members = ["crates/*", "games/*", "apps/*", "services/*", "xtask"]
 
 # `tests/` holds standalone harnesses (integration, load generator) that are NOT
 # workspace members yet — they are added in Phase 4 when a server exists to test.
-exclude = ["tests/load"]
+exclude = ["tests/load", "tests/match-postgres"]
 
 [workspace.package]
 edition = "2021"
@@ -54,7 +54,8 @@ tabula-core         = { path = "crates/tabula-core" }
 tabula-game-api     = { path = "crates/tabula-game-api" }
 tabula-protocol     = { path = "crates/tabula-protocol" }
 tabula-registry     = { path = "crates/tabula-registry" }
-tabula-match        = { path = "crates/tabula-match" }
+tabula-match        = { path = "crates/tabula-match", default-features = false }
+tabula-match-journal = { path = "crates/tabula-match-journal" }
 tabula-lobby        = { path = "crates/tabula-lobby" }
 tabula-storage      = { path = "crates/tabula-storage" }
 tabula-session      = { path = "crates/tabula-session" }
@@ -106,6 +107,8 @@ sha2               = { version = "0.10", default-features = false }
 base64             = "0.22"
 hmac               = "0.12"
 http-body          = "1"
+# WHATWG HTTPS Origin validation in the opt-in native session HTTP adapter.
+url                = "2"
 getrandom          = "0.3"
 tracing            = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
@@ -115,7 +118,7 @@ serde_json         = "1"
 uuid               = { version = "1", features = ["v7", "serde"] }
 figment            = { version = "0.10", features = ["toml", "env"] }
 argon2             = "0.5"
-jsonwebtoken       = "9"
+jsonwebtoken       = { version = "9", default-features = false }
 openidconnect      = "3"
 bytes              = { version = "1", features = ["serde"] }
 toml               = "0.8"

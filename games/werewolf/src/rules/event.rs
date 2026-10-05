@@ -1,34 +1,61 @@
-//! Canonical event definitions for Werewolf. (doc 02 §12.3, doc 08 §5.2)
-//!
-//! Canonical events record authoritative match transitions in the append-only log.
-//! Client redaction and visibility (`view_event`) are handled in W7; at this layer,
-//! events represent unredacted audit facts.
-//!
-//! @ai.role domain-types
-//! @ai.domain werewolf.rules.event
-//! @ai.pure true
-
-use std::collections::BTreeMap;
-
+//! Canonical facts; disclosure belongs exclusively to `view_event` (I-5/I-6).
+use super::{Alignment, Ballot, NightChoice, Phase, PlayerStatus, Role};
 use serde::{Deserialize, Serialize};
-use tabula_core::{LogicalTime, SeatId, TimerId};
+use std::collections::BTreeMap;
+use tabula_core::{LogicalTime, MatchOutcome, SeatId, TimerId};
 
-use super::role::Role;
-use super::state::Phase;
-
-/// Authoritative canonical events emitted by the Werewolf rules.
+/// Authoritative event log facts, including secret actions and resolution causes.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Event {
-    /// Initial secret role assignment across all roster seats.
-    ///
-    /// This event is server/audit-only in the canonical log (I-5, I-6);
-    /// client non-observability is enforced by `view_event -> None` in W7.
-    RolesAssigned { roles: BTreeMap<SeatId, Role> },
-    /// A match phase has begun.
+    RolesAssigned {
+        roles: BTreeMap<SeatId, Role>,
+    },
     PhaseChanged {
         phase: Phase,
         round: u32,
         timer_id: TimerId,
         ends_at: LogicalTime,
+    },
+    NightActionSubmitted {
+        seat: SeatId,
+        choice: NightChoice,
+        round: u32,
+    },
+    SeerReport {
+        seer: SeatId,
+        target: SeatId,
+        alignment: Alignment,
+        round: u32,
+    },
+    NightResolved {
+        round: u32,
+        attacked: Option<SeatId>,
+        protected: Option<SeatId>,
+        healed: Option<SeatId>,
+        poisoned: Option<SeatId>,
+    },
+    BallotChanged {
+        seat: SeatId,
+        ballot: Option<Ballot>,
+    },
+    VoteResolved {
+        round: u32,
+        tally: BTreeMap<SeatId, u8>,
+        eliminated: Option<SeatId>,
+    },
+    DeathRevealed {
+        seat: SeatId,
+        role: Role,
+    },
+    HunterTriggered {
+        hunter: SeatId,
+        target: Option<SeatId>,
+    },
+    SeatStatusChanged {
+        seat: SeatId,
+        status: PlayerStatus,
+    },
+    MatchEnded {
+        outcome: MatchOutcome,
     },
 }

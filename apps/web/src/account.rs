@@ -1,9 +1,13 @@
 //! Document-memory browser account controller (ADR-0031 §6 / ADR-0036 PR3).
 //!
 //! This binary consumes the default DTO contract, never server runtime authority.
-//! No login credentials, bearer, persistent account cache or storage API is used.
+//! No credential or private account data is persisted. Only a bounded,
+//! non-authorizing logout-suppression fingerprint crosses document reloads.
 
 pub mod core;
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+// Browser storage; pure protocol tested natively.
+mod suppression;
 pub use core::{AccountOperation, AccountSnapshot, AccountStatus};
 
 use leptos::prelude::*;
@@ -21,15 +25,19 @@ struct RouteLease(StoredValue<()>);
 
 impl AccountSession {
     fn new() -> Self {
+        #[allow(unused_mut)] // WASM restores the non-authorizing saved intent.
+        let mut core = core::AccountCore::default();
+        #[cfg(target_arch = "wasm32")]
+        browser::restore_suppression(&mut core);
         Self {
-            core: StoredValue::new(core::AccountCore::default()),
+            core: StoredValue::new(core),
             active_route: StoredValue::new(None),
         }
     }
 }
 
 /// Provide once at the application owner. Only non-secret logout suppression
-/// survives route owners; private identity and CSRF are cleared on every exit.
+/// survives route owners and document reloads; identity/CSRF clear on every exit.
 pub fn provide_account_session() {
     provide_context(AccountSession::new());
 }
@@ -142,6 +150,13 @@ impl AccountController {
             if runtime.alive {
                 runtime.session.core.update_value(|core| {
                     request = action(core);
+                    #[cfg(target_arch = "wasm32")]
+                    if !matches!(core.snapshot().status, AccountStatus::Authenticated { .. })
+                        || core.snapshot().busy.is_some()
+                    {
+                        // Also cover local failure before a request is created.
+                        browser::mask_private();
+                    }
                     runtime.state.try_set(core.snapshot());
                 });
             }
@@ -151,6 +166,7 @@ impl AccountController {
             {
                 browser::mask_private();
                 if request.kind() == core::RequestKind::Logout {
+                    self.save_suppression();
                     browser::hint(self);
                 }
             }
@@ -159,7 +175,52 @@ impl AccountController {
     }
     /// Refetch authority; unresolved logout intent never restores private output.
     pub fn recheck(self) {
+        #[cfg(target_arch = "wasm32")]
+        if !self.restore_suppression() {
+            return;
+        }
         self.begin(core::AccountCore::recheck);
+    }
+    /// Continue an explicitly configured invited-account provider login.
+    pub fn login(self) {
+        #[cfg(target_arch = "wasm32")]
+        if !self.restore_suppression() {
+            return;
+        }
+        self.begin(core::AccountCore::login);
+    }
+    #[cfg(target_arch = "wasm32")]
+    fn restore_suppression(self) -> bool {
+        if !self.current() {
+            return false;
+        }
+        let mut available = false;
+        self.inner.try_update_value(|runtime| {
+            runtime.session.core.update_value(|core| {
+                available = browser::restore_suppression(core);
+                if !matches!(core.snapshot().status, AccountStatus::Authenticated { .. })
+                    || core.snapshot().busy.is_some()
+                {
+                    browser::mask_private();
+                }
+                runtime.state.try_set(core.snapshot());
+            });
+        });
+        available
+    }
+    #[cfg(target_arch = "wasm32")]
+    fn save_suppression(self) {
+        self.inner.try_update_value(|runtime| {
+            runtime.session.core.update_value(|core| {
+                for intent in core.logout_intents() {
+                    if browser::save_suppression(&intent).is_err() {
+                        core.logout_storage_unavailable();
+                        break;
+                    }
+                }
+                runtime.state.try_set(core.snapshot());
+            });
+        });
     }
     /// Rotate a current verifier, then refetch context and self profile.
     pub fn refresh(self) {
@@ -233,6 +294,7 @@ impl AccountController {
                 status: AccountStatus::Resolving,
                 busy: None,
                 presentation_generation: 0,
+                login_available: false,
             });
             if current {
                 runtime
@@ -256,13 +318,16 @@ impl AccountController {
             return;
         }
         #[cfg(target_arch = "wasm32")]
-        let successful_mutation = result.as_ref().is_ok_and(|response| response.status == 204)
+        let successful_mutation = result
+            .as_ref()
+            .is_ok_and(|response| response.status == 204 && response.body.is_empty())
             && matches!(
                 request.kind(),
                 core::RequestKind::Refresh | core::RequestKind::Logout
             );
         let mut next = None;
         let mut accepted = false;
+        let mut navigation = None;
         self.inner.try_update_value(|runtime| {
             if runtime.alive && runtime.in_flight.as_ref() == Some(request) {
                 runtime.in_flight = None;
@@ -272,7 +337,35 @@ impl AccountController {
                     runtime.abort = None;
                 }
                 runtime.session.core.update_value(|core| {
+                    #[cfg(target_arch = "wasm32")]
+                    let logout_intent = request.logout_intent();
                     next = core.complete(request, result);
+                    #[cfg(target_arch = "wasm32")]
+                    if successful_mutation
+                        && request.kind() == core::RequestKind::Logout
+                        && logout_intent
+                            .as_ref()
+                            .is_some_and(|intent| !core.logout_intents().contains(intent))
+                    {
+                        if browser::clear_suppression(logout_intent.as_deref()).is_err() {
+                            core.logout_storage_unavailable();
+                        } else {
+                            core.logout_storage_ready();
+                        }
+                    }
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        // Synchronously observe other target markers before this
+                        // completion can publish private data or enable login.
+                        browser::restore_suppression(core);
+                        if next
+                            .as_ref()
+                            .is_some_and(|request| !core.request_pending(request))
+                        {
+                            next = None;
+                        }
+                    }
+                    navigation = core.take_login_navigation();
                     runtime.state.try_set(core.snapshot());
                 });
             }
@@ -281,8 +374,14 @@ impl AccountController {
         if accepted && successful_mutation {
             browser::hint(self);
         }
+        #[cfg(target_arch = "wasm32")]
+        if accepted {
+            if let Some(navigation) = navigation {
+                browser::navigate(self, navigation);
+            }
+        }
         #[cfg(not(target_arch = "wasm32"))]
-        let _ = accepted;
+        let _ = (accepted, navigation);
         if let Some(next) = next {
             self.dispatch(next);
         }
@@ -310,7 +409,7 @@ impl AccountController {
 
 #[cfg(target_arch = "wasm32")]
 mod browser {
-    use super::{core, AccountController};
+    use super::{core, suppression, AccountController};
     use js_sys::Uint8Array;
     use leptos::prelude::*;
     use wasm_bindgen::{closure::Closure, JsCast};
@@ -319,6 +418,134 @@ mod browser {
         AbortController, Event, EventTarget, ReadableStreamDefaultReader, Request, RequestCache,
         RequestCredentials, RequestInit, RequestMode, RequestRedirect, Response, VisibilityState,
     };
+
+    // One immutable target per key avoids read/check/write/remove CAS assumptions.
+    // Lifetime is until matching acknowledged revocation, never a client timeout.
+    use suppression::{PREFIX as SUPPRESSION_PREFIX, VALUE as SUPPRESSION_VALUE};
+
+    fn storage() -> Result<web_sys::Storage, ()> {
+        web_sys::window()
+            .ok_or(())?
+            .local_storage()
+            .map_err(|_| ())?
+            .ok_or(())
+    }
+    struct BrowserStorage(web_sys::Storage);
+    impl suppression::MarkerStorage for BrowserStorage {
+        fn get(&self, key: &str) -> Result<Option<String>, core::InvalidLogoutIntent> {
+            self.0.get_item(key).map_err(|_| core::InvalidLogoutIntent)
+        }
+        fn set(&self, key: &str, value: &str) -> Result<(), core::InvalidLogoutIntent> {
+            self.0
+                .set_item(key, value)
+                .map_err(|_| core::InvalidLogoutIntent)
+        }
+        fn remove(&self, key: &str) -> Result<(), core::InvalidLogoutIntent> {
+            self.0
+                .remove_item(key)
+                .map_err(|_| core::InvalidLogoutIntent)
+        }
+    }
+    fn read_suppression(core: &mut core::AccountCore) -> Result<(), ()> {
+        let storage = storage()?;
+        // Also reject the previous single-slot prototype; it is not an absent hint.
+        if storage
+            .get_item("tabula-logout-suppression-v1")
+            .map_err(|_| ())?
+            .is_some()
+        {
+            return Err(());
+        }
+        let length = storage.length().map_err(|_| ())?;
+        if length > 256 {
+            return Err(());
+        }
+        // Directly read the current target as well: concurrent unrelated removals
+        // can shift numeric storage indexes during enumeration.
+        if let Some(current) = core.current_context_intent() {
+            let key = suppression::key(&current).map_err(|_| ())?;
+            match storage.get_item(&key).map_err(|_| ())? {
+                Some(value) if value == SUPPRESSION_VALUE => {
+                    core.restore_logout_intent(Some(&current)).map_err(|_| ())?;
+                }
+                Some(_) => return Err(()),
+                None => {}
+            }
+        }
+        let mut found = 0;
+        for index in 0..length {
+            let Some(key) = storage.key(index).map_err(|_| ())? else {
+                continue;
+            };
+            let Some(fingerprint) = key.strip_prefix(SUPPRESSION_PREFIX) else {
+                continue;
+            };
+            if fingerprint.len() != 64 {
+                return Err(());
+            }
+            found += 1;
+            if found > core::MAX_LOGOUT_INTENTS {
+                return Err(());
+            }
+            let value = storage.get_item(&key).map_err(|_| ())?;
+            if value.is_none() {
+                continue;
+            } // Concurrent receipt removal is harmless.
+            if value.as_deref() != Some(SUPPRESSION_VALUE) {
+                return Err(());
+            }
+            core.restore_logout_intent(Some(&format!("v1:{fingerprint}")))
+                .map_err(|_| ())?;
+        }
+        Ok(())
+    }
+    pub(super) fn restore_suppression(core: &mut core::AccountCore) -> bool {
+        if read_suppression(core).is_ok() {
+            core.logout_storage_ready();
+            true
+        } else {
+            core.logout_storage_unavailable();
+            false
+        }
+    }
+    pub(super) fn save_suppression(intent: &str) -> Result<(), ()> {
+        suppression::save(&BrowserStorage(storage()?), intent).map_err(|_| ())
+    }
+    pub(super) fn clear_suppression(expected: Option<&str>) -> Result<(), ()> {
+        suppression::clear(&BrowserStorage(storage()?), expected.ok_or(())?).map_err(|_| ())
+    }
+    pub(super) fn navigate(controller: AccountController, navigation: core::LoginNavigation) {
+        if !controller.visible()
+            || !controller.state.try_get_untracked().is_some_and(|state| {
+                state.presentation_generation == navigation.generation()
+                    && state.status == super::AccountStatus::LoginRedirecting
+            })
+        {
+            return;
+        }
+        // DTO validation and backend issuer pinning precede this full document
+        // navigation; no return/redirect query or client-supplied provider is used.
+        let result = web_sys::window().ok_or(()).and_then(|window| {
+            let top = window.top().map_err(|_| ())?.ok_or(())?;
+            if !js_sys::Object::is(window.as_ref(), top.as_ref()) {
+                // Authenticated shell embedding is closed under ADR-0031 §2.
+                return Err(());
+            }
+            top.location()
+                .assign(navigation.authorization_url())
+                .map_err(|_| ())
+        });
+        // Consume the one-use effect even when navigation was rejected.
+        drop(navigation);
+        if result.is_err() {
+            controller.inner.try_update_value(|runtime| {
+                runtime.session.core.update_value(|core| {
+                    core.login_navigation_failed();
+                    runtime.state.try_set(core.snapshot());
+                });
+            });
+        }
+    }
 
     pub(super) struct Listener {
         target: EventTarget,
@@ -385,10 +612,22 @@ mod browser {
                 }
             },
         );
+        let storage = add_listener(controller, window.clone().into(), "storage", move |event| {
+            if event
+                .dyn_ref::<web_sys::StorageEvent>()
+                .is_some_and(|event| {
+                    event.key().is_none_or(|key| {
+                        key.starts_with(SUPPRESSION_PREFIX) || key == "tabula-logout-suppression-v1"
+                    })
+                })
+            {
+                controller.recover_document(visible());
+            }
+        });
         let focus = add_listener(controller, window.into(), "focus", move |_| {
             controller.recover_document(visible());
         });
-        if !(hide && show && visibility && focus) {
+        if !(hide && show && visibility && focus && storage) {
             // Missing cleanup/recovery registration must not retain private output.
             controller.cancel();
             return false;

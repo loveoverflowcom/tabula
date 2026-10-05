@@ -154,3 +154,21 @@ document never has it and behaves exactly as described above. When it is present
 The wire grammar is `tests/bridge-vectors.json`, run by `tests/host-bridge.test.cjs` here and by the Kotlin
 `BridgeVectorsTest` in `mobile/`. The loader (`resources.js`) is unchanged: same-origin, SHA-256 and size
 limits all still apply.
+
+## Opt-in Werewolf standalone
+
+This separate simulator is not included in the ADR-0033 mobile bundle or registry launch.
+ADR-0035 adds a separate isolated-seat simulator artifact; it does not enable normal
+catalog rollout or change shared M3 dashboard screens. Build `tabula-werewolf-client`
+with `--no-default-features --features web-werewolf`, then stage using
+`cargo xtask stage-wasm-game --game werewolf`. Output is `target/tabula-web-werewolf`.
+The setup page has no eager game artwork or game WASM reference. Its public configuration
+is limited to bounded seats, simulator mode and display preferences; source/return targets,
+seeds, roles, online mode and credentials are rejected. A runtime-document identity check
+prevents sending a Werewolf request to the Chess binary or vice versa.
+
+The game uses the same Macroquad renderer, font boundary, integrity loader/cache and
+teardown. It additionally shields the canvas opaquely on focus loss and waits for a flushed
+concealed-frame acknowledgment before removing the shield. Actual browser/native pixels
+remain blocked in this cloud executor, as recorded in the
+[host ledger](../../../docs/verification/werewolf-standalone/host-and-build.md).

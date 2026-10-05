@@ -9,6 +9,7 @@ mod support;
 use std::{sync::Arc, time::Duration};
 
 use axum::{body::Body, http::Request};
+use proptest::prelude::*;
 use serde_json::Value;
 use tabula_session::{
     HttpSessionAuthority, SessionAuthority, SessionChannel, SessionCredential, SessionError,
@@ -75,6 +76,43 @@ fn assert_problem(response: &WireResponse, code: &str) {
     assert_eq!(value.as_object().unwrap().len(), 4);
 }
 
+// Literal WHATWG Origin partitions, independent of the constructor's parser.
+const CANONICAL_HTTPS_ORIGINS: &[&str] = &[
+    TRUSTED_ORIGIN,
+    "https://accounts-fixture.tabula.invalid:8443",
+    "https://accounts-fixture.tabula.invalid:0",
+    "https://accounts-fixture.tabula.invalid:65535",
+    "https://accounts-fixture.tabula.invalid.",
+    "https://xn--bcher-kva.tabula.invalid",
+    "https://127.0.0.1",
+    "https://127.0.0.1:8443",
+    "https://[::1]",
+    "https://[2001:db8::1]:8443",
+];
+
+#[test]
+fn configured_origin_rejects_review_port_and_case_regressions() {
+    let unexpected: Vec<_> = [
+        "https://accounts-fixture.tabula.invalid:abc",
+        "https://accounts-fixture.tabula.invalid:999999",
+        "https://accounts-fixture.tabula.invalid:",
+        "https://accounts-fixture.tabula.invalid:443",
+        "https://ACCOUNTS-FIXTURE.tabula.invalid",
+    ]
+    .into_iter()
+    .filter(|origin| {
+        !matches!(
+            IsolatedSessionHttp::new(TestAuthority::new(), origin),
+            Err(SessionError::InvalidInput)
+        )
+    })
+    .collect();
+    assert!(
+        unexpected.is_empty(),
+        "accepted review regressions: {unexpected:?}"
+    );
+}
+
 #[test]
 fn configured_origin_requires_one_canonical_https_origin() {
     for origin in [
@@ -82,18 +120,242 @@ fn configured_origin_requires_one_canonical_https_origin() {
         "https://accounts-fixture.tabula.invalid/",
         "https://accounts-fixture.tabula.invalid/path",
         "https://user@accounts-fixture.tabula.invalid",
+        "https://user:password@accounts-fixture.tabula.invalid",
+        "https://@accounts-fixture.tabula.invalid",
         "https://accounts-fixture.tabula.invalid?query=1",
+        "https://accounts-fixture.tabula.invalid?",
         "https://accounts-fixture.tabula.invalid#fragment",
+        "https://accounts-fixture.tabula.invalid#",
+        "https://",
+        "https:///accounts-fixture.tabula.invalid",
+        "https:accounts-fixture.tabula.invalid",
+        "https://:8443",
+        "https://accounts-fixture.tabula.invalid:abc",
+        "https://accounts-fixture.tabula.invalid:-1",
+        "https://accounts-fixture.tabula.invalid:+443",
+        "https://accounts-fixture.tabula.invalid:65536",
+        "https://accounts-fixture.tabula.invalid:999999",
+        "https://accounts-fixture.tabula.invalid:",
+        "https://accounts-fixture.tabula.invalid:8443:9",
+        "https://accounts-fixture.tabula.invalid:443",
+        "https://accounts-fixture.tabula.invalid:0443",
+        "https://accounts-fixture.tabula.invalid:08443",
+        "https://ACCOUNTS-FIXTURE.tabula.invalid",
+        "HTTPS://accounts-fixture.tabula.invalid",
+        "https://%61ccounts-fixture.tabula.invalid",
+        "https://bücher.tabula.invalid",
+        "https://xn--.tabula.invalid",
+        "https://127.1",
+        "https://0177.0.0.1",
+        "https://0x7f000001",
+        "https://2130706433",
+        "https://127.0.0.1.",
+        "https://256.0.0.1",
+        "https://::1",
+        "https://[::1",
+        "https://[::1]junk",
+        "https://[2001:DB8::1]",
+        "https://[0:0:0:0:0:0:0:1]",
+        "https://[::ffff:192.0.2.1]",
+        "https://[fe80::1%25eth0]",
+        "https://accounts-fixture.tabula.invalid\\evil.invalid",
+        "https://accounts-fixture.tabula.invalid%2fevil.invalid",
+        "https://accounts-fixture.tabula.invalid%00",
+        "https://accounts-fixture.tabula.invalid,https://evil.invalid",
+        "https://accounts-fixture.tabula.invalid https://evil.invalid",
+        " https://accounts-fixture.tabula.invalid",
+        "https://accounts-fixture.tabula.invalid ",
+        "https://accounts-fixture.tabula.invalid\t",
+        "https://accounts-fixture.tabula.invalid\n",
+        "https://accounts-fixture.tabula.invalid\0",
+        "blob:https://accounts-fixture.tabula.invalid/id",
+        "data:text/plain,https://accounts-fixture.tabula.invalid",
+        "file://accounts-fixture.tabula.invalid",
         "null",
         "*",
         "",
     ] {
         assert!(
-            IsolatedSessionHttp::new(TestAuthority::new(), origin).is_err(),
-            "{origin}"
+            matches!(
+                IsolatedSessionHttp::new(TestAuthority::new(), origin),
+                Err(SessionError::InvalidInput)
+            ),
+            "configuration must fail before serving: {origin:?}"
         );
     }
-    assert!(IsolatedSessionHttp::new(TestAuthority::new(), TRUSTED_ORIGIN).is_ok());
+}
+
+#[test]
+fn configured_origin_accepts_canonical_https_browser_origins() {
+    for origin in CANONICAL_HTTPS_ORIGINS {
+        IsolatedSessionHttp::new(TestAuthority::new(), origin)
+            .unwrap_or_else(|error| panic!("canonical configuration {origin}: {error:?}"));
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 128,
+        rng_seed: proptest::test_runner::RngSeed::Fixed(74),
+        ..ProptestConfig::default()
+    })]
+
+    // Independent semantic generator: lowercase DNS labels, shortest decimal
+    // u16 ports; default HTTPS port is omitted. No parser-derived acceptance.
+    #[test]
+    fn generated_canonical_origins_round_trip_without_rewriting(
+        label in "[a-z][a-z0-9]{0,15}",
+        port in any::<u16>(),
+        trailing_dot in any::<bool>(),
+    ) {
+        let dot = if trailing_dot { "." } else { "" };
+        let suffix = if port == 443 { String::new() } else { format!(":{port}") };
+        let origin = format!("https://{label}.tabula.invalid{dot}{suffix}");
+        let adapter = IsolatedSessionHttp::new(TestAuthority::new(), &origin);
+        prop_assert!(adapter.is_ok(), "canonical origin rejected: {origin}");
+        let reparsed = url::Url::parse(&origin).unwrap();
+        prop_assert_eq!(reparsed.origin().ascii_serialization(), origin);
+    }
+
+    #[test]
+    fn generated_authority_aliases_and_malformed_ports_fail_fast(
+        label in "[a-z][a-z0-9]{0,15}",
+        port in 65_536_u32..=u32::MAX,
+        port_text in "[a-z]{1,12}",
+    ) {
+        let host = format!("{label}.tabula.invalid");
+        for raw in [
+            format!("https://{host}:{port}"),
+            format!("https://{host}:{port_text}"),
+            format!("https://{host}:"),
+            format!("https://{host}:443"),
+            format!("https://{host}:08443"),
+            format!("https://{}", host.to_ascii_uppercase()),
+            format!("https://@{host}"),
+            format!("https://{host}\\evil.invalid"),
+            format!("https://{host}\t"),
+        ] {
+            prop_assert!(
+                matches!(IsolatedSessionHttp::new(TestAuthority::new(), &raw), Err(SessionError::InvalidInput)),
+                "noncanonical/malformed configuration accepted: {raw:?}"
+            );
+        }
+    }
+}
+
+async fn assert_origin_rejections(server: &WireServer, origin: &str, cookie: &str, csrf: &str) {
+    let url_with_path = format!("{origin}/");
+    let case_alias = origin.to_ascii_uppercase();
+    let mut peer = url::Url::parse(origin).unwrap();
+    peer.set_port(Some(8444)).unwrap();
+    let other_port = peer.origin().ascii_serialization();
+    let dot_peer = if origin.contains(".invalid.") {
+        origin.replacen(".invalid.", ".invalid", 1)
+    } else {
+        origin.replacen(".invalid", ".invalid.", 1)
+    };
+    let mut aliases = vec![
+        None,
+        Some("null"),
+        Some("https://foreign.tabula.invalid"),
+        Some(url_with_path.as_str()),
+        Some(case_alias.as_str()),
+        Some(other_port.as_str()),
+    ];
+    if dot_peer != origin {
+        aliases.push(Some(dot_peer.as_str()));
+    }
+    for path in ["/api/v1/auth/refresh", "/api/v1/auth/logout"] {
+        for supplied_origin in &aliases {
+            let mut headers = vec![
+                ("Cookie", cookie),
+                ("Content-Type", "application/json"),
+                ("X-Tabula-CSRF", csrf),
+            ];
+            if let Some(value) = supplied_origin {
+                headers.push(("Origin", value));
+            }
+            let rejected = server.request("POST", path, &headers, "{}").await;
+            assert_eq!(rejected.status, 403, "{origin} {supplied_origin:?}");
+            assert_problem(&rejected, "request_rejected");
+        }
+        let rejected = server
+            .request(
+                "POST",
+                path,
+                &[
+                    ("Cookie", cookie),
+                    ("Origin", origin),
+                    ("Content-Type", "application/json"),
+                    ("X-Tabula-CSRF", &"a".repeat(43)),
+                ],
+                "{}",
+            )
+            .await;
+        assert_eq!(rejected.status, 403, "{origin}");
+        assert_problem(&rejected, "request_rejected");
+    }
+}
+
+#[tokio::test]
+async fn canonical_configurations_allow_only_exact_browser_origin_with_current_csrf() {
+    for origin in CANONICAL_HTTPS_ORIGINS {
+        let authority = TestAuthority::new();
+        let (credential, snapshot) = authority.fixture(SessionChannel::BrowserCookie);
+        let server = WireServer::start(
+            IsolatedSessionHttp::new(authority.clone(), origin)
+                .unwrap()
+                .router(),
+        )
+        .await;
+        let cookie = format!("{SESSION_COOKIE}={credential}");
+        let context = server
+            .request("GET", "/api/v1/auth/context", &[("Cookie", &cookie)], "")
+            .await;
+        assert_eq!(context.status, 200, "{origin}");
+        context.assert_no_store();
+        let csrf = context.json()["csrf_token"].as_str().unwrap().to_owned();
+        assert_origin_rejections(&server, origin, &cookie, &csrf).await;
+        assert_eq!(authority.mutations(), 0);
+        assert_eq!(
+            authority.snapshot(snapshot.id()).credential_generation(),
+            snapshot.credential_generation()
+        );
+        let refreshed = server
+            .request(
+                "POST",
+                "/api/v1/auth/refresh",
+                &[
+                    ("Cookie", &cookie),
+                    ("Origin", origin),
+                    ("Content-Type", "application/json"),
+                    ("X-Tabula-CSRF", &csrf),
+                ],
+                "{}",
+            )
+            .await;
+        assert_eq!(refreshed.status, 204, "{origin}");
+        refreshed.assert_no_store();
+        assert_session_cookie(refreshed.header("set-cookie").unwrap(), SESSION_COOKIE);
+        assert_eq!(authority.mutations(), 1);
+        let replacement_cookie = refreshed.cookie(SESSION_COOKIE).unwrap();
+        let logged_out = server
+            .request(
+                "POST",
+                "/api/v1/auth/logout",
+                &[
+                    ("Cookie", &replacement_cookie),
+                    ("Origin", origin),
+                    ("Content-Type", "application/json"),
+                    ("X-Tabula-CSRF", &csrf),
+                ],
+                "{}",
+            )
+            .await;
+        assert_eq!(logged_out.status, 204, "{origin}");
+        logged_out.assert_no_store();
+        assert_eq!(authority.mutations(), 2);
+    }
 }
 
 #[tokio::test]

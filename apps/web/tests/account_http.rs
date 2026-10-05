@@ -552,3 +552,82 @@ async fn pagehide_cancel_and_route_exit_retire_successful_tcp_completions() {
     assert_eq!(core.snapshot().status, AccountStatus::Expired);
     assert!(core.refresh().is_none());
 }
+
+#[tokio::test]
+async fn reloaded_non_authorizing_logout_intent_hides_profile_until_exact_tcp_revocation_receipt() {
+    let (authority, server, cookie, _) = fixture().await;
+    let mut old_document = AccountCore::default();
+    authenticate(&mut old_document, &server, &cookie, &authority.account_id()).await;
+    // Simulate the user pressing logout while offline: no HTTP mutation ran.
+    old_document.logout().unwrap();
+    let non_authorizing_intent = old_document.logout_intent().unwrap();
+    assert_eq!(non_authorizing_intent.len(), 67);
+    drop(old_document);
+
+    let mut reloaded = AccountCore::default();
+    reloaded
+        .restore_logout_intent(Some(&non_authorizing_intent))
+        .unwrap();
+    let context = reloaded.recheck().unwrap();
+    let response = exchange(&server, &context, &cookie).await;
+    assert_eq!(json_body(&response)["disposition"], "authenticated");
+    assert!(reloaded.complete(&context, completion(&response)).is_none());
+    assert_eq!(reloaded.snapshot().status, AccountStatus::LogoutPending);
+    assert!(!reloaded.snapshot().login_available);
+    assert_eq!(authority.mutations(), 0);
+
+    let retry = reloaded.logout().unwrap();
+    assert_eq!(retry.kind(), RequestKind::Logout);
+    let receipt = exchange(&server, &retry, &cookie).await;
+    assert_eq!(receipt.status, 204);
+    assert!(reloaded.complete(&retry, completion(&receipt)).is_none());
+    assert_eq!(reloaded.snapshot().status, AccountStatus::SignedOut);
+    assert!(reloaded.logout_intent().is_none());
+    assert_eq!(authority.mutations(), 1);
+    let private = server
+        .request("GET", "/api/v1/me", &[("Cookie", &cookie)], "")
+        .await;
+    assert_eq!(private.status, 401);
+    private.assert_no_store();
+}
+
+#[tokio::test]
+async fn reloaded_logout_intent_never_retargets_adapter_restart_or_replacement_record() {
+    let (authority, initial_server, old_cookie, _) = fixture().await;
+    let mut original = AccountCore::default();
+    authenticate(
+        &mut original,
+        &initial_server,
+        &old_cookie,
+        &authority.account_id(),
+    )
+    .await;
+    original.logout().unwrap();
+    let non_authorizing_intent = original.logout_intent().unwrap();
+    let (replacement, _) = authority.fixture(SessionChannel::BrowserCookie);
+    let replacement_cookie = format!("{SESSION_COOKIE}={replacement}");
+    let restarted = server(authority.clone()).await;
+    for (server, cookie) in [
+        (&initial_server, &replacement_cookie),
+        (&restarted, &old_cookie),
+    ] {
+        let mut reloaded = AccountCore::default();
+        reloaded
+            .restore_logout_intent(Some(&non_authorizing_intent))
+            .unwrap();
+        let retry_context = reloaded.logout().unwrap();
+        assert_eq!(retry_context.kind(), RequestKind::Context);
+        let response = exchange(server, &retry_context, cookie).await;
+        assert_eq!(json_body(&response)["disposition"], "authenticated");
+        assert!(reloaded
+            .complete(&retry_context, completion(&response))
+            .is_none());
+        assert_eq!(
+            reloaded.snapshot().status,
+            AccountStatus::LogoutContextChanged
+        );
+        assert!(!reloaded.snapshot().login_available);
+        assert!(reloaded.login().is_none());
+        assert_eq!(authority.mutations(), 0);
+    }
+}

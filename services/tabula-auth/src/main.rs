@@ -1,4 +1,4 @@
-//! # `tabula-auth` — Kanidm-backed account authentication skeleton
+//! # `tabula-auth` — Kanidm-backed account authentication production gate
 //!
 //! > ## PHASE 4
 //!
@@ -10,17 +10,14 @@
 //! Inspired by VOT Workspace's services/vot-auth and services/kanidm at
 //! 59190cc5185a54ef40ec4f9625283511a4ed3755; provider code is not copied.
 //! ADR-0031 still owns cookie/bearer channels, expiry and revocation.
-//! No listener, login, registration, session, discovery or provider call is active.
+//! The default production entrypoint opens no listener or provider flow.
+//! ADR-0038 implements invited web OIDC only in the native opt-in library and
+//! disposable acceptance; no production activation is inferred.
 //! Remove each TODO when its implementation and required evidence land.
 
 #![forbid(unsafe_code)]
 
 mod bootstrap;
-mod config;
-mod http;
-mod kanidm;
-mod oidc;
-mod session;
 
 fn main() -> std::process::ExitCode {
     bootstrap::run()

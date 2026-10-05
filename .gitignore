@@ -49,3 +49,6 @@ flamegraph.svg
 
 # Ephemeral native voice dev grant fixture: debug-only; never commit credentials.
 /mobile/voice-dev-grant.json
+
+# Disposable provider public receipts are CI artifacts, not source
+/verification/kanidm-oidc-artifacts/

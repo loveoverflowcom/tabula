@@ -113,6 +113,13 @@ allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "serde", "toml", "
 # game. That containment is what makes I-9 checkable.
 allow_games = true
 
+# ADR-0040: immutable pure journal contract avoids all-feature actor/game
+# unification into the storage/authentication graph. No runtime or SQL edges.
+[crate."tabula-match-journal"]
+tier = "contract"
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "serde"]
+forbidden_categories = ["rendering", "ui_framework", "web_framework", "networking", "persistence", "application", "game_specific"]
+
 [crate."tabula-design"]
 tier    = "contract"
 allow   = ["serde"]
@@ -149,7 +156,7 @@ feature = { native = ["tokio", "tokio-tungstenite"], web = ["web-sys", "wasm-bin
 # -----------------------------------------------------------------------------
 [crate."tabula-match"]
 tier  = "runtime"
-allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tokio", "tracing", "futures", "bytes", "thiserror", "smallvec"]
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tokio", "tracing", "futures", "bytes", "thiserror", "smallvec", "serde", "tabula-match-journal"]
 # Forbidden: sqlx (ports only), axum, any game crate, any renderer.
 
 [crate."tabula-lobby"]
@@ -165,14 +172,14 @@ forbidden_categories = ["rendering", "ui_framework", "web_framework", "networkin
 
 [crate."tabula-session-http"]
 tier = "runtime"
-# core/tower are native test-only dependencies for authority/wire boundaries.
-allow = ["serde", "serde_json", "tabula-core", "tower"]
-feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body"], postgres = ["tabula-storage", "sqlx"] }
+# core/tower/proptest are native test-only authority/wire/Origin evidence.
+allow = ["serde", "serde_json", "tabula-core", "tower", "proptest"]
+feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body", "url"], postgres = ["tabula-storage", "sqlx"] }
 forbidden_categories = ["rendering", "ui_framework", "application", "game_specific"]
 
 [crate."tabula-storage"]
 tier  = "runtime"
-allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session"]
+allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session", "tabula-match-journal", "serde", "blake3"]
 # The ONLY crate allowed to know SQL exists. Forbidden: axum, game crates,
 # renderers, tabula-registry.
 
@@ -195,7 +202,8 @@ allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "t
 
 [crate."services/tabula-auth"]
 tier  = "binary"
-allow = [] # ADR-0034: std-only frame; add dependencies with actual implementation.
+allow = ["tower", "tabula-core", "ring"] # Native test-only router/ephemeral crypto evidence.
+feature = { web-oidc = ["tabula-session", "tabula-session-http", "tokio", "reqwest", "serde", "serde_json", "url", "sha2", "base64", "jsonwebtoken", "axum"], postgres-acceptance = ["tabula-storage", "sqlx"] }
 forbidden_categories = ["game_specific", "rendering", "ui_framework"]
 
 [crate."apps/game-client"]

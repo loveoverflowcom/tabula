@@ -49,6 +49,7 @@ struct State {
     fail_after_commit: bool,
     mutations: usize,
     issuance_attempts: usize,
+    browser_login_enabled: bool,
     gate: Option<Arc<OperationGate>>,
 }
 
@@ -78,6 +79,7 @@ impl TestAuthority {
                 fail_after_commit: false,
                 mutations: 0,
                 issuance_attempts: 0,
+                browser_login_enabled: false,
                 gate: None,
             })),
             ordering: Arc::new(Semaphore::new(1)),
@@ -150,6 +152,12 @@ impl TestAuthority {
         self.state.lock().unwrap().mutations
     }
 
+    /// Enables synthetic issuance for browser route tests, never provider proof.
+    #[allow(dead_code)]
+    pub fn enable_browser_login(&self) {
+        self.state.lock().unwrap().browser_login_enabled = true;
+    }
+
     pub fn issuance_attempts(&self) -> usize {
         self.state.lock().unwrap().issuance_attempts
     }
@@ -203,9 +211,49 @@ impl SessionAuthority for TestAuthority {
         Err(SessionError::Unavailable)
     }
 
-    async fn issue_session(&self, _: IssueSession) -> Result<SessionSnapshot, SessionError> {
-        self.state.lock().unwrap().issuance_attempts += 1;
-        Err(SessionError::Unavailable)
+    async fn issue_session(&self, request: IssueSession) -> Result<SessionSnapshot, SessionError> {
+        self.wait_gate().await;
+        let _ordering = self.lock_ordering().await;
+        let mut state = self.state.lock().unwrap();
+        state.issuance_attempts += 1;
+        if !state.browser_login_enabled {
+            return Err(SessionError::Unavailable);
+        }
+        if let Some(error) = state.failure {
+            return Err(error);
+        }
+        if let Some(error) = state.mutation_failure {
+            if !state.fail_after_commit {
+                return Err(error);
+            }
+        }
+        let now = state.now;
+        state.account.observe(now)?;
+        if request.expected_epoch != state.account.authorization_epoch()
+            || request.identity.issuer() != "https://kanidm.invalid"
+            || request.identity.subject() != "synthetic-subject"
+        {
+            return Err(SessionError::Unauthenticated);
+        }
+        if state.sessions.contains_key(&request.id) {
+            return Err(SessionError::Conflict);
+        }
+        let record = SessionRecord::issue(
+            request.id,
+            state.account.user_id(),
+            request.expected_epoch,
+            request.channel,
+            request.credential_digest,
+            request.context_id,
+            now,
+        )?;
+        let snapshot = record.snapshot();
+        state.sessions.insert(request.id, record);
+        state.mutations += 1;
+        if state.fail_after_commit {
+            return Err(state.mutation_failure.unwrap());
+        }
+        Ok(snapshot)
     }
 
     async fn observe_credential(

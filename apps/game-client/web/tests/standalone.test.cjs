@@ -18,7 +18,8 @@ function dom(html) {
   const elements = new Map([...html.matchAll(/id="([^"]+)"/g)].map((match) => [match[1],element(match[1])]));
   const translations = [...html.matchAll(/data-i18n="([^"]+)"/g)].map((match) => ({dataset:{i18n:match[1]},textContent:""}));
   const start = element("start");
-  const document={documentElement:{dataset:{}},getElementById:id=>elements.get(id),querySelector:()=>start,querySelectorAll:()=>translations};
+  const runtime = /<body\b[^>]*\bdata-runtime="([^"]+)"/.exec(html)?.[1];
+  const document={documentElement:{dataset:{}},body:{dataset:runtime?{runtime}:{}},listeners:{},getElementById:id=>elements.get(id),querySelector:()=>start,querySelectorAll:()=>translations,addEventListener(type,fn){(this.listeners[type] ??= []).push(fn);},dispatch(type,event={}){for(const fn of this.listeners[type]??[])fn(event);}};
   for (const item of [...elements.values(), start]) item.focus=()=>{item.focused=true;document.activeElement=item;};
   return {elements,start,document};
 }
@@ -97,8 +98,9 @@ test("untimed removes and disables timed fields; invalid values cannot navigate"
 // VM mocks exercise host admission/navigation, not a real browser or WASM
 // rules execution. Deferred work deliberately ignores abort to test stale gates.
 const hostInit=(over={})=>({v:1,type:"init",gen:7,capabilities:["keep-awake"],preferences:{theme:"dark",motion:"reduced",locale:"en"},...over});
-async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=false,throwFrame=false,pinned=false,deferStage,pathname="/standalone/play.html",responseHeaders={},streamChunks,versionMismatch=false,missingFrame=false,navigationThrows=0,storage,corruptNetwork=false,missingMiniquad=false,resourceManifest,resourceFiles=runtimeFiles(),host}={}) {
-  const mock=dom(source("play.html"));
+async function runtimeHarness({search="locale=en",httpStatus=200,missingImport=false,throwFrame=false,pinned=false,deferStage,pathname="/standalone/play.html",responseHeaders={},streamChunks,versionMismatch=false,missingFrame=false,navigationThrows=0,storage,corruptNetwork=false,missingMiniquad=false,resourceManifest,resourceFiles=runtimeFiles(),host,runtime="chess"}={}) {
+  const mock=dom(source(runtime==="werewolf"?"werewolf-play.html":"play.html"));
+  if(mock.elements.has("privacy-shield"))mock.elements.get("privacy-shield").hidden=true;
   mock.elements.get("runtime-error").hidden=true;
   const statuses=[];
   let status="";
@@ -545,7 +547,7 @@ test("integrated index and directory entries require complete handoff metadata w
 });
 
 test("synthetic Rust startup aliases match real font declarations and selected pack manifest files",async()=>{
-  const rust=fs.readFileSync(path.join(__dirname,"../../src/main.rs"),"utf8");
+  const rust=fs.readFileSync(path.join(__dirname,"../../src/host_resources.rs"),"utf8");
   const fontAliases=[...new Set([...rust.matchAll(/"(assets\/[A-Za-z0-9-]+\.ttf)"/g)].map(match=>match[1]))].sort();
   const mock=await runtimeHarness();
   assert.deepEqual(mock.startupAliases.filter(alias=>alias.endsWith(".ttf")).sort(),fontAliases);
@@ -815,4 +817,86 @@ test("a document without a native port ignores the bridge entirely",async()=>{
   mock.elements.get("leave").dispatch("click");
   mock.elements.get("confirm-leave").dispatch("click");
   assert.deepEqual(mock.navigation,["/games/com.tabula.chess?setup=1"]);
+});
+
+test("simulator opaque shield survives focus return until flushed conceal acknowledgement",async()=>{
+  const mock=await runtimeHarness({runtime:"werewolf",search:"game=werewolf&mode=simulator&seats=12&locale=en"});
+  await admitBoard(mock);
+  const shield=mock.elements.get("privacy-shield"),canvas=mock.elements.get("glcanvas");
+  assert.equal(shield.hidden,true);
+  canvas.dispatch("blur");assert.equal(shield.hidden,false);
+  canvas.focus();canvas.dispatch("focus");assert.equal(shield.hidden,false);
+  mock.imports.env.fs_load_file("tabula-concealed.txt",20);await tick();assert.equal(shield.hidden,true);
+  mock.elements.get("help").dispatch("click");assert.equal(shield.hidden,false);
+  mock.imports.env.fs_load_file("tabula-concealed.txt",20);await tick();assert.equal(shield.hidden,false);
+  mock.elements.get("help-dialog").close();assert.equal(shield.hidden,true);
+  assert.equal(mock.fetches.length,5,"private acknowledgement never crosses resource cache/network");
+});
+
+test("stale simulator conceal acknowledgement cannot remove a newer privacy shield",async()=>{
+  const mock=await runtimeHarness({runtime:"werewolf",search:"game=werewolf&seats=12"});await admitBoard(mock);
+  const canvas=mock.elements.get("glcanvas"),shield=mock.elements.get("privacy-shield");
+  canvas.dispatch("blur");
+  mock.imports.env.fs_load_file("tabula-concealed.txt",20);
+  canvas.dispatch("blur");canvas.focus();canvas.dispatch("focus");await tick();assert.equal(shield.hidden,false);
+  mock.imports.env.fs_load_file("tabula-concealed.txt",20);await tick();assert.equal(shield.hidden,true);
+});
+
+test("simulator visibility loss conceals immediately and only a visible focused surface can reopen",async()=>{
+  const mock=await runtimeHarness({runtime:"werewolf",search:"game=werewolf&seats=12"});await admitBoard(mock);
+  const canvas=mock.elements.get("glcanvas"),shield=mock.elements.get("privacy-shield");
+  mock.document.visibilityState="hidden";mock.document.dispatch("visibilitychange");
+  assert.equal(shield.hidden,false);assert.equal(mock.focusChanges.at(-1),false);
+  mock.imports.env.fs_load_file("tabula-concealed.txt",20);await tick();assert.equal(shield.hidden,false,"hidden documents retain their shield after acknowledgement");
+  mock.document.visibilityState="visible";mock.document.dispatch("visibilitychange");
+  mock.document.hasFocus=()=>false;canvas.dispatch("focus");assert.equal(shield.hidden,false,"visibility alone cannot authorize canvas focus");
+  mock.document.hasFocus=()=>true;canvas.focus();canvas.dispatch("focus");assert.equal(shield.hidden,false,"a rejected focus retires the earlier acknowledgement");
+  mock.imports.env.fs_load_file("tabula-concealed.txt",20);await tick();assert.equal(shield.hidden,true);
+});
+
+test("queued simulator conceal acknowledgements cannot re-enter retired or superseded documents",async()=>{
+  for(const retire of ["pagehide","graphics-context","superseded"]){
+    const mock=await runtimeHarness({runtime:"werewolf",search:"game=werewolf&seats=12"});await admitBoard(mock);
+    const canvas=mock.elements.get("glcanvas"),shield=mock.elements.get("privacy-shield");
+    canvas.dispatch("blur");const pending=mock.imports.env.fs_load_file("tabula-concealed.txt",20);
+    if(retire==="pagehide")mock.events.dispatch("pagehide");
+    else if(retire==="graphics-context")canvas.dispatch("webglcontextlost",{preventDefault(){}});
+    else mock.events.__tabulaLocalGameHost={};
+    canvas.focus();canvas.dispatch("focus");await tick();
+    assert.equal(shield.hidden,false,retire);assert.equal(mock.loaded.includes(pending),false,retire);
+    assert.equal(mock.context.FS.loaded_files[pending],undefined,retire);
+  }
+});
+
+test("standalone runtime documents reject an incompatible game before resource fetch",async()=>{
+  for(const options of [{search:"game=werewolf&seats=12"},{runtime:"werewolf",search:"game=chess"}]){const mock=await runtimeHarness(options);assert.equal(mock.calls.main,0);assert.equal(mock.fetches.length,0);assert.equal(mock.elements.get("runtime-error").hidden,false);}
+});
+
+
+test("simulator startup interruption is recovered by first-safe-frame conceal ack before ready",async()=>{
+  const mock=await runtimeHarness({runtime:"werewolf",search:"game=werewolf&seats=12",deferStage:"font"});
+  mock.events.dispatch("blur");assert.equal(mock.elements.get("privacy-shield").hidden,false);
+  mock.release();await until(()=>mock.startupComplete(),"interrupted startup finishes");
+  mock.imports.env.fs_load_file("tabula-concealed.txt",20);await tick();
+  assert.equal(mock.elements.get("privacy-shield").hidden,false,"not ready yet");
+  await admitBoard(mock);assert.equal(mock.elements.get("privacy-shield").hidden,true);
+});
+
+test("successful public recovery-frame acknowledgement can reopen shielded asset retry",async()=>{
+  const mock=await runtimeHarness({runtime:"werewolf",search:"game=werewolf&seats=12"});await admitBoard(mock);
+  const canvas=mock.elements.get("glcanvas"),shield=mock.elements.get("privacy-shield");
+  canvas.dispatch("blur");canvas.focus();canvas.dispatch("focus");assert.equal(shield.hidden,false);
+  mock.imports.env.fs_load_file("tabula-concealed.txt",20);await tick();assert.equal(shield.hidden,true);
+  const rust=source("../src/host_resources.rs");
+  assert.match(rust,/if acknowledgement_needed && render_ok && frame_ok/);
+  assert.ok(rust.indexOf("mq::next_frame().await;",rust.indexOf("let render_ok"))<rust.indexOf("acknowledge_concealed_frame().await;",rust.indexOf("let render_ok")),"recovery ACK follows successful frame flush");
+});
+
+
+test("simulator frame is forced opaque before startup or interrupted-frame acknowledgement",()=>{
+ const rust=source("../src/bin/werewolf.rs");
+ const conceal=rust.indexOf("if !clock.ready || clock.conceal_pending");
+ const submit=rust.indexOf("renderer.submit(&game.present(&visible))");
+ const ack=rust.indexOf("acknowledge_concealed_frame().await;",submit);
+ assert.ok(conceal>=0&&conceal<submit&&submit<ack,"queued reactivation cannot make acknowledged frame private");
 });

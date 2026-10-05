@@ -29,7 +29,10 @@ outside storage, and neither production entrypoint consumes this crate.
 Browser credentials use exactly `__Host-tabula_session`; native uses an explicit
 canonical Bearer credential and rejects any Cookie header. Mixed/duplicate/
 malformed credentials reject. Origin is an explicit named HTTPS configuration,
-never Host/proxy-derived. Any supplied Origin must match exactly; browser unsafe
+never Host/proxy-derived. The [#74 F1 follow-up](../issue-74-trusted-origin/README.md)
+requires the configuration itself to be canonical WHATWG ASCII HTTPS Origin
+serialization; aliases fail fast rather than broadening the allow-list.
+Any supplied Origin must match exactly; browser unsafe
 requests require it. Foreign Fetch Metadata and preflight reject; no CORS is
 installed. Unsafe input is only empty JSON object, at most 1,024 bytes with a
 5-second body deadline and exact supported JSON MIME; arrays, unknown fields,

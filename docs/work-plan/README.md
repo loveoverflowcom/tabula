@@ -62,6 +62,10 @@ policy choice only; PR A is independently reviewable and no auth/social service
 or online match is activated. Existing discovery/local-play ADRs do not authorize
 account services. Passing aggregate checks does not close #54 or open Phase 4/5.
 
+The requested [Werewolf standalone](020-werewolf-standalone.md) is a bounded opt-in local
+referee and isolated-seat simulator under [ADR-0035](../adr/0035-werewolf-local-simulator.md).
+Its gate/evidence ledger does not activate online social gameplay, voice or rollout.
+
 ## Authorized isolated #54 implementation series
 
 [ADR-0036](../adr/0036-isolated-durable-session-validation.md) records the owner's
@@ -97,3 +101,50 @@ remains the next target check when authorized hardware/SFU prerequisites exist;
 controller/UI doubles and real audio. The unrelated trusted-Origin defect in
 [issue #74](https://github.com/loveoverflowcom/tabula/issues/74) is not folded into
 this voice change.
+
+## Review #74 follow-up
+
+The merged-tree review's confirmed P3 configuration finding is handled by
+[canonical trusted HTTPS Origin validation](050-issue-74-trusted-origin.md),
+with [its own evidence](../verification/issue-74-trusted-origin/README.md).
+The [remaining review follow-ups](backlog/issue-74-session-followups.md) retain
+G2→G1→G3→G4/G5 ordering and their prerequisites. This fix neither depends on
+unmerged native voice work nor opens account-dependent production consumers.
+
+## Newly authorized invited OIDC slice
+
+After PR76 normal merge, the owner requested [real invited Kanidm web login](060-invited-kanidm-web-auth.md)
+followed by a separate fresh-develop match actor/wire PR. [ADR-0038](../adr/0038-isolated-invited-kanidm-web-auth.md)
+permits only the first opt-in implementation and actual disposable provider/DB
+proof. Production, persistent-provider setup, public signup, native credential
+stores, lobby/queue/friends/match SQL and existing phase exits stay separate.
+Normal self-merge needs independent review and exact-tree terminal CI success;
+a synthetic fixture or compiled provider module cannot substitute for real login.
+
+PR77 is normally merged with all 14 pre-/post-merge jobs and actual Kanidm
+acceptance passed; [060](060-invited-kanidm-web-auth.md) has the verified receipts.
+The second requested PR is the [offline match actor/wire slice](070-isolated-match-actor.md)
+under ADR0039, from develop0245dc72, now merged as PR78 at develop fd0f1e4.
+That completed two-PR authorization did not include SQL/network/production work.
+The new owner-requested sequence below is a separate bounded authorization.
+
+## Authorized durable-to-online match series
+
+Fresh baseline: develop `fd0f1e496251a05722de1a0891be9548a6ee7f75`, tree
+`f8b10c34dcc02bb93e9568fd817bf1476fa4aab1`, after PR78. The owner requests three
+sequential implementation PRs, with normal self-merges after their checks and
+review; implement only PR1 in this chat, then begin PR2 and PR3 in separate later
+chats from fresh develop. They are not one expanding PR or broad phase exit.
+
+1. Current: [consistent PostgreSQL match commit and exact restart/write-failure recovery](080-durable-match-postgres.md), under [ADR0040](../adr/0040-isolated-durable-match-postgres.md)
+2. After PR1's verified merge: [join-by-code and two independent browsers completing Chess](090-join-code-browser-chess.md)
+3. After PR2's verified merge: [reconnect/resync and network/revocation/server-crash recovery](100-reconnect-resync-fault-recovery.md)
+
+The [PR1 ledger](../verification/durable-match-postgres/README.md) owns actual
+DB/process/local/CI evidence and the next-chat handoff contract. Carry exact
+merged refs, reproducible commands, verified receipts, durable operation/privacy
+laws and residual gates forward. PR2/PR3 need their own bounded online contracts
+and real target evidence; PR1's database generation fence is not session/commit/
+private socket delivery authority. Production activation, live migrations,
+provider provisioning, lobby/queue/voice and existing broad phase exits remain
+outside this series unless separately requested and proved.

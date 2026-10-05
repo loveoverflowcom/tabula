@@ -203,3 +203,85 @@ fn signed_out_unavailable_and_profile_validation_keep_authority_and_shape_distin
     .validate()
     .is_err());
 }
+
+#[test]
+fn opt_in_login_context_requires_signed_out_preauth_csrf_and_closed_other_caps() {
+    let mut context = ContextResponse {
+        version: 1,
+        disposition: SessionDisposition::SignedOut,
+        account_id: None,
+        csrf_token: Some("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_owned()),
+        capabilities: AccountCapabilities {
+            login: true,
+            register: false,
+            friends: false,
+            read_self_profile: false,
+        },
+    };
+    assert!(context.validate_for_browser().is_ok());
+    context.csrf_token = None;
+    assert!(context.validate_for_browser().is_err());
+    context.csrf_token = Some("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_owned());
+    context.disposition = SessionDisposition::Unavailable;
+    assert!(context.validate_for_browser().is_err());
+}
+
+#[test]
+fn login_start_url_is_bounded_https_without_authority_or_navigation_confusion() {
+    use tabula_session_http::LoginStartResponse;
+    for url in [
+        "https://kanidm.invalid/oauth2/authorise?state=abc",
+        "https://localhost:8443/",
+        "https://[::1]:8443/",
+        "https://192.0.2.1/",
+    ] {
+        assert!(
+            LoginStartResponse {
+                version: 1,
+                authorization_url: url.to_owned()
+            }
+            .validate()
+            .is_ok(),
+            "{url}"
+        );
+    }
+    for url in [
+        "https://",
+        "https://:443/",
+        "https://[broken/",
+        "https://idm.invalid:65536/",
+        "https://idm.invalid:abc/",
+        "http://idm.invalid/",
+        "https://idm.invalid/#fragment",
+        "https://user@idm.invalid/",
+        "https://%40idm.invalid/",
+        "https://idm.invalid\\evil.invalid/",
+        "https://idm.invalid/\\evil",
+        "https://idm.invalid/ space",
+        "javascript:alert(1)",
+    ] {
+        assert!(
+            LoginStartResponse {
+                version: 1,
+                authorization_url: url.to_owned()
+            }
+            .validate()
+            .is_err(),
+            "{url}"
+        );
+    }
+    assert!(LoginStartResponse {
+        version: 1,
+        authorization_url: format!("https://idm.invalid/{}", "x".repeat(4096))
+    }
+    .validate()
+    .is_err());
+    assert!(serde_json::from_str::<LoginStartResponse>(
+        "{\"version\":1,\"authorization_url\":\"https://idm.invalid/\",\"credential\":\"x\"}"
+    )
+    .is_err());
+    assert!(serde_json::from_str::<LoginStartResponse>(
+        "{\"version\":1,\"version\":1,\"authorization_url\":\"https://idm.invalid/\"}"
+    )
+    .is_err());
+}

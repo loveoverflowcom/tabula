@@ -1,0 +1,118 @@
+{
+  "encoded_bytes": 1639008,
+  "all_variants_rgba8_bytes": 8970240,
+  "assets": [
+    {
+      "file": "villager@1x.png",
+      "bytes": 58600,
+      "sha256": "b16c4f1e81c6ae383fdfa2f2f22445800faa9d90176933b28c7405922d296a46",
+      "width": 256,
+      "height": 256,
+      "decoded_rgba8_bytes": 262144
+    },
+    {
+      "file": "villager@2x.png",
+      "bytes": 210708,
+      "sha256": "8fff576efa0c2c4779cc29d4b94c3df56d597cc912ec66b923e3580fe4767bd5",
+      "width": 512,
+      "height": 512,
+      "decoded_rgba8_bytes": 1048576
+    },
+    {
+      "file": "werewolf@1x.png",
+      "bytes": 59276,
+      "sha256": "9e1ade159ee69258c8490dbc6789fe19f8f5d5501740cd18eb643bda443c3039",
+      "width": 256,
+      "height": 256,
+      "decoded_rgba8_bytes": 262144
+    },
+    {
+      "file": "werewolf@2x.png",
+      "bytes": 212880,
+      "sha256": "4ba002f53e1a5560fc86c13dd2be19d3c2bfed16ccc5a95cd12e35cc5a1f5b04",
+      "width": 512,
+      "height": 512,
+      "decoded_rgba8_bytes": 1048576
+    },
+    {
+      "file": "seer@1x.png",
+      "bytes": 58167,
+      "sha256": "e33b3ccf8d615d24b5078d6f0bfa664d6414354f815108659e452344d3514a12",
+      "width": 256,
+      "height": 256,
+      "decoded_rgba8_bytes": 262144
+    },
+    {
+      "file": "seer@2x.png",
+      "bytes": 204259,
+      "sha256": "f17f280b5ff31dfdd4c01b64139acfc3a161dd432e68b2d5d4e6448bf3c5d8cd",
+      "width": 512,
+      "height": 512,
+      "decoded_rgba8_bytes": 1048576
+    },
+    {
+      "file": "doctor@1x.png",
+      "bytes": 59180,
+      "sha256": "fcfa10b404f5b57223394fd90c8ed9f87c62107a9c4e33f9f012d4399f3b31af",
+      "width": 256,
+      "height": 256,
+      "decoded_rgba8_bytes": 262144
+    },
+    {
+      "file": "doctor@2x.png",
+      "bytes": 212668,
+      "sha256": "cc4d6bc45d3dc442da8a375c13baa4bb3e66dbf8b175721603911736b81acb56",
+      "width": 512,
+      "height": 512,
+      "decoded_rgba8_bytes": 1048576
+    },
+    {
+      "file": "hunter@1x.png",
+      "bytes": 58078,
+      "sha256": "db96960b2cf01ee6bcde58fbc1712ac7cd135521cfb0a08a68159f82ab3e797c",
+      "width": 256,
+      "height": 256,
+      "decoded_rgba8_bytes": 262144
+    },
+    {
+      "file": "hunter@2x.png",
+      "bytes": 211120,
+      "sha256": "3f1bc60c9c90c8c005e9292df038c5810f11e9eee2de7d914ecab3937df8f6e6",
+      "width": 512,
+      "height": 512,
+      "decoded_rgba8_bytes": 1048576
+    },
+    {
+      "file": "witch@1x.png",
+      "bytes": 56059,
+      "sha256": "5d5e3b7df3046d7f36928424af2337253bf69ac6fcdf74c8ce435fd371fe5256",
+      "width": 256,
+      "height": 256,
+      "decoded_rgba8_bytes": 262144
+    },
+    {
+      "file": "witch@2x.png",
+      "bytes": 194318,
+      "sha256": "a0abb639e7fc47fbc0bbae43339ba4aa5b4fcaa1926debfbf4f84cb6378f2088",
+      "width": 512,
+      "height": 512,
+      "decoded_rgba8_bytes": 1048576
+    },
+    {
+      "file": "back@1x.png",
+      "bytes": 12757,
+      "sha256": "ed19bdc4399ac2fc36b029f57f5289dcecdca316cf970cf6d6b435d918f32021",
+      "width": 192,
+      "height": 288,
+      "decoded_rgba8_bytes": 221184
+    },
+    {
+      "file": "back@2x.png",
+      "bytes": 30938,
+      "sha256": "0bb2d03d1c0b805b896ed8e557b36f0907e056f78d3e44562e80831a5d2cbf01",
+      "width": 384,
+      "height": 576,
+      "decoded_rgba8_bytes": 884736
+    }
+  ]
+}

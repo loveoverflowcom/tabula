@@ -2,7 +2,7 @@
 
 Most decisions live as **short-form rows** in
 [`docs/architecture/00-architecture-principles.md` §10](../architecture/00-architecture-principles.md#10-adr-register)
-— ADR-001 through ADR-036. Each row states the decision, its status, why, and the
+— ADR-001 through ADR-040. Each row states the decision, its status, why, and the
 trigger that would make us revisit it.
 
 This directory is for the cases where a row is not enough: a long argument, a
@@ -72,3 +72,13 @@ on PR #69 or evidence that its phase/ADR has merged.
 [ADR-0037](0037-native-mobile-voice-client.md) opens only the bounded native
 client/isolated development voice slice; production/backend voice and phase exits
 remain closed.
+
+[ADR-0038](0038-isolated-invited-kanidm-web-auth.md) is the explicit invited web
+authentication exception, with real-provider merge proof and production closure.
+Neither number reservation is an unmerged-code dependency.
+
+[ADR-0039](0039-isolated-match-actor-runtime.md) records only the separately
+approved offline actor/wire slice. [ADR-0040](0040-isolated-durable-match-postgres.md)
+narrowly extends persistence/recovery with a consistent PostgreSQL journal,
+durable receipts/owner fence and exact bounded reopen. Networking, production
+activation, live migration and broad phase exits remain closed in PR1.

@@ -36,7 +36,7 @@ Status markers per [doc 00 §11](./00-architecture-principles.md#11-decision-cla
 | Connection pooling | `sqlx::PgPool`, size tuned per doc 06 §6 | pgbouncer | Sufficient until multiple processes multiply pools; then add pgbouncer in transaction mode | When total app connections approach Postgres `max_connections` (doc 06 §4.3) | LOCK NOW |
 | Wire codec (prod) | `postcard` | `bincode`, `rmp-serde`, Protobuf | Compact, `serde`-native, no schema compiler, `no_std`-friendly | See ADR-009 trigger | LOCK NOW (dual codec) / EXPERIMENT (choice) |
 | Wire codec (debug) | `serde_json` | CBOR diagnostic | Human-inspectable in browser devtools and `websocat` | Never remove; it is a developer-experience requirement | LOCK NOW |
-| Auth | Kanidm owns credentials/OIDC; `tabula-auth` owns the provider adapter and opaque Tabula session lifecycle; `tabula-server` enforces current sessions and scoped match grants ([ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md)) | Managed IdP behind the provider boundary | Avoid a local password authority; retain ADR-0031's revocable channel-bound sessions and resource permissions | Before enabling runtime, prove cross-service revocation/expiry and real provider integration | ACCEPTED SKELETON; RUNTIME GATED |
+| Auth | Kanidm owns credentials/OIDC; `tabula-auth` owns the provider adapter and opaque Tabula session lifecycle; `tabula-server` enforces current sessions and scoped match grants ([ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md)) | Managed IdP behind the provider boundary | Avoid a local password authority; retain ADR-0031's revocable channel-bound sessions and resource permissions | Before enabling runtime, prove cross-service revocation/expiry and real provider integration | ACCEPTED SKELETON + ADR-0038 OPT-IN INVITED WEB SLICE; PRODUCTION GATED |
 | Rate limiting | `tower-governor` for HTTP; per-session token bucket in the gateway for WS | Redis-backed limiter | In-process is correct at Stage 0–1; the interface allows a shared backend later | When multiple gateway processes need shared limits (doc 06 §4.3) | LOCK NOW |
 | Background jobs | Postgres-backed queue (`SELECT ... FOR UPDATE SKIP LOCKED`) inside the server binary | `apalis`, sidekiq-style, Kafka | We have Postgres and few jobs (rating recompute, replay compaction, asset GC) | When job volume or isolation demands a separate worker binary — a small step, seam preserved | LOCK NOW |
 | Observability | `tracing` + `tracing-subscriber` + `opentelemetry` (OTLP) + `metrics` exposed as Prometheus | Datadog agent, raw logs | Span-per-command tracing is the debugging tool for a match runtime | Doc 06 §9 | LOCK NOW |
@@ -255,7 +255,7 @@ For each crate: responsibility, allowed deps, forbidden deps, why separate, when
   persist → project → broadcast), `state_version`, idempotency cache, timer wheel driver, snapshot
   policy, reconnect/resume, spectator attach, effect execution, ports:
   `EventLog`, `SnapshotStore`, `MatchRepo`, `Clock`, `BotRunner`, `Broadcast`.
-- **Allowed:** `tabula-core`, `tabula-game-api`, `tabula-protocol`, `tabula-registry`, `tokio`,
+- **Allowed:** `tabula-core`, `tabula-game-api`, `tabula-protocol`, `serde`; `tabula-registry` and `tokio` only behind the non-default native `isolated` actor feature (ADR-0040),
   `tracing`, `async-trait` (or AFIT), `futures`.
 - **Forbidden:** `sqlx`, `axum`, any game crate directly, any renderer.
 - **Why separate:** this is the hardest, most correctness-critical async code in the product; it
@@ -282,6 +282,8 @@ For each crate: responsibility, allowed deps, forbidden deps, why separate, when
 - **Responsibility:** `sqlx` implementations of all ports; `migrations/`; batching for event
   appends; snapshot (de)serialization to Postgres or object storage; query modules per aggregate.
 - **Allowed:** `sqlx`, `tokio`, `tabula-core`, `tabula-game-api` (for snapshot/event byte types),
+  the SQL-free `tabula-match-journal` contract (reexported by `tabula-match::durable`) only behind native non-default
+  `match-postgres` (ADR-0040),
   `tabula-protocol`, `tracing`, `uuid`, `time`.
 - **Forbidden:** `axum`, game crates, renderers, `tabula-registry`.
 - **Why separate:** the only crate allowed to know SQL. Everything above it is testable with
@@ -731,3 +733,24 @@ Storage owns cross-process account advisory ordering and bounded first-frame
 publication guards. The HTTP adapter holds that guard through one private Body
 frame; committed clock facts precede release. Hyper buffering/TCP arrival and
 all gameplay/WS output remain separate, so S09 is still partial.
+
+### Bounded durable match implementation exception
+
+[ADR-0040](../adr/0040-isolated-durable-match-postgres.md) permits native non-default
+`tabula-storage/match-postgres` after ADR-0039. The dedicated contract crate
+`tabula-match-journal` owns serializable server-only DTOs and journal ports with
+no registry, Tokio or SQL dependency; `tabula-match::durable` reexports them.
+Registry and Tokio remain optional behind the isolated actor feature. A separate
+contract crate is required because Cargo all-feature unification would otherwise
+pull actor registry/game dependencies into storage and account-authentication
+graphs. Storage consumes only this pure contract, not actor orchestration. The
+SQL ownership boundary and dependency bans remain unchanged.
+
+The adapter owns one consistent transaction for canonical head/input/events/hash,
+due snapshot and complete bounded operation ledger, durable expected-version/
+owner-generation checks, and one consistent committed load. Explicit isolated
+migrations and real PostgreSQL 16 fault/reopen/process fixtures do not authorize
+a live migration. Both service entrypoints remain closed. Production seed
+encryption, session/commit/private-output fencing, online transport and broad
+phase gates remain separate obligations; exact executed evidence belongs in the
+[durability ledger](../verification/durable-match-postgres/README.md).

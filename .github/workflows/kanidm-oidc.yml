@@ -1,0 +1,73 @@
+# Bounded real-provider acceptance. No production startup or hosted provisioning.
+name: kanidm-oidc
+
+on:
+  pull_request:
+    paths:
+      - 'services/tabula-auth/**'
+      - 'crates/tabula-session/**'
+      - 'crates/tabula-session-http/**'
+      - 'crates/tabula-storage/**'
+      - 'tests/kanidm/**'
+      - '.github/workflows/kanidm-oidc.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'deps.toml'
+      - '.sqlx/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kanidm-oidc-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-provider:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tabula_oidc_acceptance
+          POSTGRES_USER: tabula_test
+          # Disposable, loopback-only runner DB; never a hosted account.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          PGUSER: tabula_test
+          PGDATABASE: tabula_oidc_acceptance
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_oidc_acceptance
+      SQLX_OFFLINE: 'true'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: '1.96' }
+      - uses: Swatinem/rust-cache@v2
+      - name: Validate the harness helpers
+        run: |
+          bash -n tests/kanidm/run.sh tests/kanidm/acceptance.sh
+          python3 -m unittest discover -s tests/kanidm -p 'test_*.py' -v
+      - name: Compile real-provider acceptance before bootstrapping
+        run: cargo test -p tabula-auth --features postgres-acceptance --test kanidm_provider --no-run
+      - name: Exercise pinned Kanidm and disposable durable authority
+        run: bash tests/kanidm/run.sh bash tests/kanidm/acceptance.sh
+      - name: Preserve only public provenance and bounded results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kanidm-oidc-public-evidence
+          path: verification/kanidm-oidc-artifacts/*
+          if-no-files-found: error
+          retention-days: 7
