@@ -46,3 +46,6 @@ flamegraph.svg
 /mobile/.kotlin/
 /mobile/local.properties
 /mobile/**/build/
+
+# Ephemeral native voice dev grant fixture: debug-only; never commit credentials.
+/mobile/voice-dev-grant.json

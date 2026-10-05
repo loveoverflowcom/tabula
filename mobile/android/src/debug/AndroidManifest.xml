@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The explicit local harness is debug-only. No release cleartext opt-out. -->
+    <application android:networkSecurityConfig="@xml/voice_dev_network_security" />
+</manifest>

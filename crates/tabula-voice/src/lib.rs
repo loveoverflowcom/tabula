@@ -5,6 +5,10 @@
 //! ADR-016: the **separation is locked**; the **provider is an experiment**
 //! decided by measurement in Phase 8.
 //!
+//! Mobile `VoiceClient` is a distinct native client port under ADR-0037, not
+//! this backend room/permission authority. Its isolated localhost harness does
+//! not enable this crate or prove SFU game-scope enforcement.
+//!
 //! Media traffic must never share the game WebSocket's ordering or backpressure
 //! characteristics. A 20-person werewolf voice room saturating the socket that
 //! carries votes would be a self-inflicted outage.

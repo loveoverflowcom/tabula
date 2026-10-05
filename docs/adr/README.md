@@ -68,3 +68,7 @@ ADR-0035 is occupied by the separately reviewable, unmerged
 This branch uses [ADR-0036](0036-isolated-durable-session-validation.md) for
 its isolated session exception. This number reservation is not a dependency
 on PR #69 or evidence that its phase/ADR has merged.
+
+[ADR-0037](0037-native-mobile-voice-client.md) opens only the bounded native
+client/isolated development voice slice; production/backend voice and phase exits
+remain closed.

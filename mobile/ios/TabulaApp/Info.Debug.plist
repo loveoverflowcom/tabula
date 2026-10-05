@@ -9,6 +9,14 @@
 <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
 <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
 <key>NSMicrophoneUsageDescription</key><string>Tabula uses your microphone when you enable voice chat.</string>
+<!-- The isolated simulator harness uses cleartext loopback only. Release has no ATS exception. -->
+<key>NSAppTransportSecurity</key><dict>
+  <key>NSAllowsLocalNetworking</key><true/>
+  <key>NSExceptionDomains</key><dict>
+    <key>127.0.0.1</key><dict><key>NSExceptionAllowsInsecureHTTPLoads</key><true/></dict>
+    <key>localhost</key><dict><key>NSExceptionAllowsInsecureHTTPLoads</key><true/></dict>
+  </dict>
+</dict>
 <key>UILaunchScreen</key><dict/>
 <key>CADisableMinimumFrameDurationOnPhone</key><true/>
 <key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>

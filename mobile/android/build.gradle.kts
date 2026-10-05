@@ -50,3 +50,25 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.con
 dependencies {
     implementation(project(":shared"))
 }
+
+// Optional, ignored localhost voice credential. It is native-only and packaged ONLY in debug;
+// release assets and the WebView game bundle never contain it (ADR-0037).
+val voiceDevFixture = layout.projectDirectory.file("../voice-dev-grant.json")
+val voiceDevAssets = layout.buildDirectory.dir("generated/voice-dev-assets")
+val prepareVoiceDevFixture = tasks.register("prepareVoiceDevFixture") {
+    inputs.file(voiceDevFixture).optional()
+    outputs.dir(voiceDevAssets)
+    val source = voiceDevFixture.asFile
+    val destination = voiceDevAssets.get().asFile
+    doLast {
+        // A Sync would skip NO-SOURCE and retain a previous token after the fixture is removed.
+        // This task always clears stale generated assets when its optional input changes.
+        check(!destination.exists() || destination.deleteRecursively()) { "Cannot clear voice dev assets" }
+        if (source.isFile) {
+            check(destination.mkdirs()) { "Cannot create voice dev assets" }
+            source.copyTo(destination.resolve("voice-dev-grant.json"))
+        }
+    }
+}
+android.sourceSets.getByName("debug").assets.srcDir(voiceDevAssets.get().asFile)
+tasks.matching { it.name == "mergeDebugAssets" }.configureEach { dependsOn(prepareVoiceDevFixture) }

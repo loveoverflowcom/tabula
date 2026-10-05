@@ -2,6 +2,11 @@ package com.loveoverflow.tabula.mobile
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import com.loveoverflow.tabula.mobile.voice.DevVoiceGrantSource
+import com.loveoverflow.tabula.mobile.voice.VoiceController
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,7 +26,7 @@ import com.loveoverflow.tabula.mobile.shell.rememberDeviceFacts
 
 /**
  * The host services a first-party packaged game may use. Anything else a page asks for is denied.
- * Online play, voice and credentials are deliberately absent (ADR-0032 "Not opened").
+ * Voice credentials/audio stay native and are deliberately absent from this bridge (ADR-0037).
  */
 internal val FirstPartyCapabilities: Set<HostCapability> = setOf(HostCapability.KeepAwake)
 
@@ -32,7 +37,20 @@ internal val FirstPartyCapabilities: Set<HostCapability> = setOf(HostCapability.
  * [games] is the list of games packaged with this build; with neither, the shell says so.
  */
 @Composable
-fun TabulaApp(gameHost: GameHost = PlaceholderGameHost, games: List<BundledGame> = emptyList()) {
+fun TabulaApp(
+    gameHost: GameHost = PlaceholderGameHost,
+    games: List<BundledGame> = emptyList(),
+    voice: VoiceController? = null,
+    voiceScope: String = DevVoiceGrantSource.SCOPE,
+) {
+    // Voice lifetime belongs to the app/session owner, not the replaceable WebView runtime.
+    DisposableEffect(voice) { onDispose { voice?.close() } }
+    LaunchedEffect(voice) {
+        if (voice != null) while (true) {
+            delay(1_000)
+            voice.checkAuthorityDeadline()
+        }
+    }
     var history by remember { mutableStateOf(BackStack.Root) }
     val dark = isSystemInDarkTheme()
     val device = rememberDeviceFacts()
@@ -44,6 +62,7 @@ fun TabulaApp(gameHost: GameHost = PlaceholderGameHost, games: List<BundledGame>
                 onOpen = { game ->
                     // Preferences are read at the moment the player opens the game.
                     val launch = GameLaunch(game.id, gamePreferences(dark, device), FirstPartyCapabilities)
+                    voice?.enterSession(voiceScope)
                     history = history.push(Destination.Game(launch))
                 },
             )
@@ -52,7 +71,9 @@ fun TabulaApp(gameHost: GameHost = PlaceholderGameHost, games: List<BundledGame>
                     ?: destination.launch.gameId,
                 launch = destination.launch,
                 host = gameHost,
-                onLeave = { history = history.pop() },
+                onLeave = { voice?.leaveSession(); history = history.pop() },
+                voice = voice,
+                vietnamese = device.languageTag.lowercase().startsWith("vi"),
             )
         }
     }
