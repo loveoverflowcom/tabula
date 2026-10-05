@@ -19,6 +19,7 @@
   let startupTimer;
   let boardAcknowledged = false;
   let config;
+  let direct = null;
   // Mobile GameHost (ADR-0033). The native host injects an origin-restricted port at
   // document start; its absence means an ordinary browser document with no bridge.
   const hostMode = typeof window.TabulaHostNative === "object" && window.TabulaHostNative !== null && Boolean(window.TabulaHostBridge);
@@ -41,6 +42,7 @@
     try { if (typeof wasm_exports !== "undefined" && typeof wasm_exports?.focus === "function") wasm_exports.focus(false); } catch (_) {}
     live = false;
     controller.abort();
+    direct?.retire();
     clearTimeout(startupTimer);
     for (const timer of pendingTimers) clearTimeout(timer);
     pendingTimers.clear();
@@ -214,6 +216,31 @@
     config = TabulaLaunch.resolve(hostPreferences ? Object.freeze({...parsed, theme:hostPreferences.theme, motion:hostPreferences.motion, locale:hostPreferences.locale}) : parsed, matchMedia);
     text = config.locale === "en" ? en : vi;
     applyLanguage(config.locale);
+    if (config.online) {
+      document.title = config.locale === "en" ? "Tabula · Online game" : "Tabula · Ván trực tuyến";
+      byId("runtime").setAttribute("aria-label", config.locale === "en" ? "Online game" : "Ván trực tuyến");
+      document.documentElement.dataset.mode = "online";
+      if (hostMode) throw new Error("Online mobile hosting is unavailable");
+      if (!window.TabulaDirectTransport) throw new Error("The online transport is unavailable");
+      direct = window.TabulaDirectTransport.create({
+        matchId:config.matchId, gameId:config.gameId, signal:controller.signal, current,
+        onWaiting() { clearTimeout(startupTimer); byId("loading-status").textContent = config.locale === "en" ? "Waiting for the other player to join…" : "Đang đợi người chơi còn lại…"; },
+        onStatus(value) {
+          document.documentElement.dataset.onlineSeat = String(value.seat);
+          document.documentElement.dataset.onlineRevision = String(value.revision);
+          document.documentElement.dataset.onlineStatus = value.status;
+          document.documentElement.dataset.onlineConnection = value.connection;
+          byId("online-status-container").hidden = false;
+          for (const [key,label] of [["seat",String(value.seat+1)],["revision",String(value.revision)],["status",value.status],["connection",value.connection]]) byId("online-status-container").querySelector('[data-testid="online-' + key + '"]').textContent = label;
+        }
+      });
+      text = {...text,
+        restart:config.locale === "en" ? "Reopening rechecks your session and seat. The server match stays saved." : "Mở lại sẽ kiểm tra phiên và chỗ chơi. Ván được lưu trên máy chủ.",
+        tabulaLeaveDetail:config.locale === "en" ? "Return to Tabula. Leaving this page does not resign the server match." : "Về Tabula. Rời trang không đầu hàng ván trên máy chủ.",
+        helpDetail:config.locale === "en" ? "Tap a piece then its destination. Arrow keys and Enter select; Escape cancels. The server decides every move. A complete screen reader is unavailable." : "Chạm quân rồi ô đích. Dùng mũi tên và Enter; Escape hủy. Máy chủ quyết định mỗi nước. Chưa có trình đọc màn hình đầy đủ."
+      };
+      applyLanguage(config.locale);
+    }
     document.documentElement.dataset.theme = config.resolvedTheme;
     if (!returnToTabula) setupUrl = `${setupUrl}?${TabulaLaunch.query(config)}`;
     setReturnLinks();
@@ -253,6 +280,12 @@
             deliver(name === "tabula-launch.txt" ? launchBytes.slice() : new TextEncoder().encode("ready"));
           }, 0);
           pendingTimers.add(timer);
+        } else if (name.startsWith("tabula-online-")) {
+          if (!direct) { fail(new Error("Online play is unavailable")); return id; }
+          direct.file(name).then(deliver).catch((error) => {
+            if (name === "tabula-online-attach.txt") fail(error);
+            else deliver(new TextEncoder().encode("{}"));
+          });
         } else {
           // Only explicitly requested manifest aliases cross this boundary.
           // The loader verifies public bytes before Rust's font/file decoding;
