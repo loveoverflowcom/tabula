@@ -706,6 +706,11 @@ def run(args) -> None:
                 wait_revision(page, 4)
                 page.wait_for_function("expected => document.documentElement.dataset.onlineStatus === expected", arg=TERMINAL_STATUS, timeout=30_000)
             results["terminal_views"] = [visible_game_facts(white, "white"), visible_game_facts(black, "black")]
+            # Only after both real terminal projections are confirmed. Keep
+            # original account identities private; later auxiliary failures
+            # must not prevent the independent main-stream recovery audit.
+            (private / "audit-input.json").write_text(json.dumps(
+                {"match_id": match_id, "accounts": [fact["account_id"] for fact in facts]}))
             white_terminal = evidence.capture(white, "07-white-terminal-result.png", "White actual terminal result", "White browser",
                                               "Rendered Black wins and checkmate after four actual legal pointer moves; exact game-owned accessibility status includes checkmate", canvas=True, secrets=redacted_values)
             evidence.capture(black, "08-black-terminal-result.png", "Black actual terminal result", "Black browser",
@@ -842,9 +847,6 @@ def run(args) -> None:
                 results["live_board_authority_loss"])
             actions.append("A separate actual live Chess board received poll401 after normal logout and rendered neutral unavailable UI with projected pixels and status concealed")
 
-            # Private account identities do not enter uploaded artifacts.
-            (private / "audit-input.json").write_text(json.dumps(
-                {"match_id": match_id, "accounts": [fact["account_id"] for fact in facts]}))
             results["status"] = "pass"
             results["stage"] = "complete"
     finally:

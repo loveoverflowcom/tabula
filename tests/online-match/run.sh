@@ -63,11 +63,22 @@ python3 tests/online-match/tls_frontend.py --dist apps/web/dist \
     --cert "$private/tls.pem" --key "$private/tls.key" \
     --listen-port 9443 --upstream-port 3000 > "$private/tls.log" 2>&1 &
 tls_pid=$!
+browser_status=0
 python3 tests/online-match/browser_acceptance.py --private "$private" \
     --artifacts "$artifacts" --ca "$private/ca.pem" \
-    --native-pid "$fixture_pid" --tls-pid "$tls_pid"
+    --native-pid "$fixture_pid" --tls-pid "$tls_pid" || browser_status=$?
 # Synthetic account identifiers stay in the private file, outside artifacts.
 # Claim a new fence only after browser teardown; recover verifies full history.
-"$fixture" audit "$private/audit-input.json" > "$artifacts/durable-verdict.json"
-printf '%s\n' 'PASS: two independent actual Chromium processes completed rendered Chess through real durable authority' \
-    > "$artifacts/result.txt"
+audit_status=1
+audit_input_present=0
+if test -s "$private/audit-input.json"; then
+    audit_input_present=1
+    audit_status=0
+    "$fixture" audit "$private/audit-input.json" > "$artifacts/durable-verdict.json" || audit_status=$?
+fi
+# An auxiliary failure stays a failure even when the separate main audit passes.
+# No private input is copied into artifacts, and no PASS receipt is written
+# unless every mandatory browser check and the real audit both succeeded.
+python3 tests/online-match/finalize_evidence.py --artifacts "$artifacts" \
+    --browser-status "$browser_status" --audit-status "$audit_status" \
+    --audit-input-present "$audit_input_present"
