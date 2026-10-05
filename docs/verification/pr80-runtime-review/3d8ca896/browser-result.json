@@ -1,0 +1,51 @@
+{
+  "status": "fail",
+  "stage": "tap d8-h4 and render identical terminal verdicts",
+  "authority_mode": "isolated fixture identities through real durable session authority",
+  "browser_processes": 3,
+  "independent_homes_profiles_cookie_jars": true,
+  "tls_errors_ignored": false,
+  "chromium_sandbox": true,
+  "startup": {
+    "https_get": {
+      "attempts": 1,
+      "status": 200,
+      "fixture_page_ready": true,
+      "last_navigation_failure": "none"
+    },
+    "enrollment": [
+      {
+        "role": "white",
+        "status": 303,
+        "origin_class": "exact",
+        "form_media_type_expected": true,
+        "redirect_completed": true
+      },
+      {
+        "role": "black",
+        "status": 303,
+        "origin_class": "exact",
+        "form_media_type_expected": true,
+        "redirect_completed": true
+      },
+      {
+        "role": "third",
+        "status": 303,
+        "origin_class": "exact",
+        "form_media_type_expected": true,
+        "redirect_completed": true
+      }
+    ],
+    "processes": {
+      "native_process_phase": "alive",
+      "native_failure": "none_observed",
+      "tls_process_phase": "alive",
+      "tls_failure": "none_observed"
+    }
+  },
+  "distinct_actual_browser_processes_verified": true,
+  "chromium_version": "151.0.7922.34",
+  "independent_local_and_session_storage_verified": true,
+  "distinct_actual_accounts_sessions_and_httponly_cookies": true,
+  "third_client_full_live_roster_join_denied": true
+}
