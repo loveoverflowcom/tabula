@@ -5,6 +5,8 @@ from pathlib import Path
 
 PASS_MESSAGE = "PASS: independent actual Chromium opponents completed rendered Chess and all mandatory continuity fault partitions through real durable authority\n"
 CONTINUITY_CASES = frozenset({
+    'restart_between_grant_and_attach_recovers_unchanged_old_csrf',
+    'old_signed_grant_with_fresh_current_csrf_requires_fresh_grant',
     'same_auth_record_rotation_preserves_uncertain_original_operation', 'trusted_focus_only_restore_revalidates_revoked_authority', 'drop_before_send_refresh_pending', 'drop_during_staged_apply_commit',
     'drop_after_pure_apply_before_append','refresh_committed_before_original_ack',
     'new_auth_record_never_replays_old_operation','cross_account_never_restores_old_projection_or_replays',
@@ -15,7 +17,7 @@ CONTINUITY_CASES = frozenset({
     *(change+'_at_held_actual_delivery' for change in ('revoke','expire','epoch','membership','owner_loss','attachment')),
 })
 AUDIT_PREFIXES = {
-    'same-record-rotation':4, 'focus-only-revoke':0, 'pure-apply-loss':4,'committed-refresh':4,'new-record-scope':1,'cross-account-scope':1,'repeat-navigation':4,
+    'restart-grant-attach':4, 'same-record-rotation':4, 'focus-only-revoke':0, 'pure-apply-loss':4,'committed-refresh':4,'new-record-scope':1,'cross-account-scope':1,'repeat-navigation':4,
     'expiry-during-commit':0, 'network-refresh':4, 'uncommitted-crash':4, 'committed-crash':4,
     'evicted-receipt':4, 'expired-receipt':4,
     **{'authority-'+change:0 for change in ('revoke','expire','epoch','membership')},
@@ -36,6 +38,10 @@ def actual_continuity_receipts(artifacts: Path) -> bool:
                 or any(case.get('pass') is not True for case in cases)):
             return False
         for case in cases:
+            if case['case']=='restart_between_grant_and_attach_recovers_unchanged_old_csrf':
+                if any(case.get(key) is not True for key in ('actual_sigkill_reaped','unchanged_request_403_without_frames','fresh_context_grant_scope_before_restore','exact_original_ack')):return False
+            if case['case']=='old_signed_grant_with_fresh_current_csrf_requires_fresh_grant':
+                if any(case.get(key) is not True for key in ('separate_current_csrf_probe','exact_409_fresh_grant_required','no_attachment_projection_or_apply_from_old_grant')):return False
             if case['case']=='same_auth_record_rotation_preserves_uncertain_original_operation':
                 if any(case.get(key) is not True for key in ('credential_rotated','reattach_required_observed','same_operation_scope','exact_original_ack')):return False
             if case['case'].endswith('_at_held_actual_delivery'):

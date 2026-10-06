@@ -7,6 +7,8 @@ credentials, ignored TLS error, local tunnel, HAR, or private payload artifact.
 """
 from __future__ import annotations
 import argparse
+import http.client
+import ssl
 import json
 import os
 from pathlib import Path
@@ -328,6 +330,94 @@ def same_record_rotation_game(contexts,private,ca,results):
     network.close();pair.close()
 
 
+def current_context_after_restart(ca:Path,cookie:str,account:str)->dict:
+    """Real CA-validated context read; credentials and CSRF stay in memory."""
+    require(os.environ.get('CI') in ('true','1') and os.environ.get('TABULA_ONLINE_MATCH_DISPOSABLE')=='1',
+            'restart context oracle requires disposable CI')
+    deadline=time.monotonic()+15
+    while time.monotonic()<deadline:
+        connection=http.client.HTTPSConnection('localhost',9443,timeout=2,
+                        context=ssl.create_default_context(cafile=str(ca)))
+        try:
+            connection.request('GET','/api/v1/auth/context',headers={'Cookie':SESSION_COOKIE+'='+cookie,'Accept':'application/json','Cache-Control':'no-store'})
+            response=connection.getresponse();raw=response.read(65537)
+            require(len(raw)<=65536,'restart context exceeded its response bound')
+            if response.status in (502,503):
+                time.sleep(.05);continue
+            require(response.status==200 and response.getheader('Content-Type','').split(';')[0]=='application/json'
+                    and 'no-store' in response.getheader('Cache-Control','').split(','),'restarted authority context was not validated')
+            value=json.loads(raw)
+            require(value.get('version')==1 and value.get('disposition')=='authenticated' and value.get('account_id')==account
+                    and isinstance(value.get('csrf_token'),str) and len(value['csrf_token'])==43,'restart changed current account authority')
+            require(not private_frame_keys(value),'restart context exposed canonical facts')
+            return value
+        except ssl.SSLCertVerificationError:
+            raise AcceptanceFailure('restart context TLS verification failed') from None
+        except (OSError,http.client.HTTPException):time.sleep(.05)
+        finally:connection.close()
+    raise AcceptanceFailure('restarted native authority did not become ready')
+
+
+def restart_between_grant_and_attach_game(contexts,private,ca,supervisor,results):
+    pair=Pair(contexts,private,'restart-grant-attach');white,black=pair.pages
+    old=pair.attachments[0][-1];gate=pair.arm(0,'after_commit')
+    original=pair.tap(0,0);held(ca,gate);pair.oracle(1)
+    network=PageNetwork(white);network.offline(True)
+    require(fault_control(ca,'release',gate)['status']==200,'grant-restart committed barrier could not release')
+    white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
+    require(pending_record(white,pair.match_id) is not None,'grant restart lost its uncertain original operation')
+    pair.board(1,'Black to move');pair.oracle(1)
+    cookie=next(entry['value'] for entry in contexts[0].cookies() if entry['name']==SESSION_COOKIE)
+    observed={'held_real_attach':False,'actual_sigkill':False,'old_csrf_403':False,'old_grant_409':False,'fresh_attach':False,'original_ack':False}
+    def hold_real_attach(route):
+        # Keep the real browser's exact body and headers unchanged. The grant
+        # and CSRF belong to the process that is genuinely killed here.
+        request=route.request;body=request.post_data
+        require(body is not None,'held real grant-bound attach body absent')
+        observed['held_real_attach']=True
+        killed=supervisor.kill();require(killed['sigkill_reaped'] is True,'grant boundary native SIGKILL was not reaped')
+        observed['actual_sigkill']=True
+        require(supervisor.restart('normal')['alive'] is True,'grant boundary server restart failed')
+        current=current_context_after_restart(ca,cookie,pair.facts[0]['account_id'])
+        # This separate current-CSRF probe establishes only the old signed-grant
+        # boundary. It cannot replace the unchanged browser request below.
+        denied_grant=wire_probe(ca,f'/api/v1/matches/{pair.match_id}/attach',
+                    [('Origin',ORIGIN),('Content-Type','application/json'),('Cookie',SESSION_COOKIE+'='+cookie),('X-Tabula-CSRF',current['csrf_token'])],body)
+        denied(denied_grant,{409},'old signed grant authorized an attachment after restart')
+        require(denied_grant['body'].get('code')=='fresh_grant_required','old signed grant lacked its exact recoverable boundary')
+        observed['old_grant_409']=True
+        route.continue_()
+    def observed_attach(response):
+        if urlsplit(response.url).path!=f'/api/v1/matches/{pair.match_id}/attach':return
+        if response.status==403:
+            value=response.json();denied({'status':403,'body':value},{403},'old CSRF attach released projection frames')
+            require(value.get('code')=='request_rejected','unchanged restarted attach did not hit the real CSRF boundary')
+            observed['old_csrf_403']=True
+        elif response.status==200:
+            require(observed['old_csrf_403'],'fresh attach bypassed the required unchanged old-CSRF request')
+            observed['fresh_attach']=True
+    def observed_ack(response):
+        if urlsplit(response.url).path!=f'/api/v1/matches/{pair.match_id}/command' or response.status!=200:return
+        body=response.request.post_data
+        if body is None or command_identity(body)!=command_identity(original) or json.loads(body)['attachment_id']==old['attachment_id']:return
+        frames=response.json()['frames'];require(not private_frame_keys(frames),'restarted original Ack exposed canonical facts')
+        observed['original_ack']=any(frame.get('body',{}).get('Ack',{}).get('seq')==command_identity(original)['seq'] for frame in frames)
+    white.route(f'**/api/v1/matches/{pair.match_id}/attach',hold_real_attach,times=1)
+    white.on('response',observed_attach);white.on('response',observed_ack)
+    try:
+        network.offline(False);pair.board(0,'Black to move');pair.board(1,'Black to move')
+        restored_same_scope(pair,0,old,original)
+        require(all(observed.values()),'grant/CSRF restart did not exercise every real recovery boundary')
+        pair.oracle(1);pair.full(1)
+    finally:
+        white.remove_listener('response',observed_attach);white.remove_listener('response',observed_ack)
+    results.append({'case':'restart_between_grant_and_attach_recovers_unchanged_old_csrf','pass':True,
+                    'actual_sigkill_reaped':True,'unchanged_request_403_without_frames':True,'fresh_context_grant_scope_before_restore':True,'exact_original_ack':True,'no_duplicate_move':True})
+    results.append({'case':'old_signed_grant_with_fresh_current_csrf_requires_fresh_grant','pass':True,
+                    'separate_current_csrf_probe':True,'exact_409_fresh_grant_required':True,'no_attachment_projection_or_apply_from_old_grant':True})
+    network.close();pair.close()
+
+
 def changed_identity_game(contexts,private,ca,new_record,results):
     label='new-record-scope' if new_record else 'cross-account-scope'
     pair=Pair(contexts,private,label);white,black=pair.pages
@@ -597,6 +687,7 @@ def run(args):
             crash_game(contexts,private,ca,supervisor,True,results['cases'])
             for point in ('before_commit','after_commit'):apply_and_committed_refresh_game(contexts,private,ca,point,results['cases'])
             same_record_rotation_game(contexts,private,ca,results['cases'])
+            restart_between_grant_and_attach_game(contexts,private,ca,supervisor,results['cases'])
             changed_identity_game(contexts,private,ca,True,results['cases'])
             changed_identity_game(contexts,private,ca,False,results['cases'])
             repeated_recovery_and_navigation(contexts,private,results['cases'],results['optional'])
@@ -622,7 +713,7 @@ def run(args):
                 focus_only_revoke_game(focus_contexts,private,results['cases'])
             finally:
                 for context in reversed(focus_contexts):context.close()
-            require(len(results['cases'])==26,'continuity acceptance selection was incomplete')
+            require(len(results['cases'])==28,'continuity acceptance selection was incomplete')
             results['status']='pass'
     except Exception as error:
         results['failure_class']=exception_class(error)

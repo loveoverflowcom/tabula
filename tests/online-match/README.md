@@ -268,7 +268,7 @@ inspection must be recorded separately in the ADR-0042 verification ledger.
 The normal fixture carrier is now match HTTP version 2; fixture control DTOs stay
 version 1. The game wire remains projection-only protocol 0.1.
 
-Twenty-six mandatory partitions currently form twenty-three independently audited matches:
+Twenty-eight mandatory partitions currently form twenty-four independently audited matches:
 
 - Actual pointer command network abort before send, pending document refresh,
   exact original sequence/payload replay, and retired attachment rejection
@@ -320,7 +320,7 @@ credentials, grants, CSRF, pending command bytes, ephemeral TLS keys and profile
 remain outside public artifacts and are destroyed by the enclosing trap.
 
 `finalize_evidence.py` requires the unchanged complete-game browser/audit success,
-all twenty-six distinct successful fault partitions, and all twenty-three successful
+all twenty-eight distinct successful fault partitions, and all twenty-four successful
 independent native prefix audits. Empty, duplicate, missing or failed selections,
 partial protected bytes, missing actual inner errors, absent SIGKILL receipts,
 and wrong audit prefixes remove the PASS receipt. The native owner selection
@@ -349,7 +349,7 @@ visible and receives zero visibilitychange events. Real current-session logout
 commits in that popup, then focus restoration must reject authority before any
 old projection or first input is shown/sent. No synthetic DOM event can satisfy
 this oracle. Missing headed-window/display support fails actual acceptance.
-The other twenty-five fault partitions retain their original headless processes.
+The other twenty-seven fault partitions retain their original headless processes.
 
 The same-auth-record rotation partition holds an actual committed White command
 before Ack, disconnects only its page and rotates the real browser cookie with
@@ -363,3 +363,16 @@ that credential rotation did not make the uncertain move new or duplicate it.
 The two opponents never share credentials, and nothing is persisted in artifacts.
 Genuine authorization loss remains `401`/`403`; a stale local transport alone
 cannot be mistaken for account, epoch or membership revocation.
+
+The grant/attach restart partition holds a genuine browser attach before its
+network send, then SIGKILLs and restarts the native process. Its exact original
+body and CSRF header continue unchanged: the earlier server CSRF fence must
+produce bounded no-store `403 request_rejected` with no frames. The real adapter
+reacquires context, grant and the same operation scope before restoring its
+projection or retrying the original pending sequence/payload. Full game/audit
+agreement proves no duplicate input. A separate, explicitly labelled CA-validated
+probe uses newly acquired memory-only CSRF with that old signed-grant body and
+must receive exact `409 fresh_grant_required`, with no attachment/projection/apply.
+That probe isolates the grant boundary and never substitutes for the unchanged
+browser request or its earlier CSRF rejection. Old grants, cookies and CSRF are
+runtime-only and never become artifacts.

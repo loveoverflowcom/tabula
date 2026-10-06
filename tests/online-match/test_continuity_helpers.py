@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import unittest
 from unittest import mock
 from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_CONCEALED,
-    PageNetwork, Pair, command_identity, pending_record, run)
+    PageNetwork, Pair, command_identity, pending_record, run, current_context_after_restart)
 
 
 class ContinuityHelperTests(unittest.TestCase):
@@ -12,6 +12,11 @@ class ContinuityHelperTests(unittest.TestCase):
         with mock.patch.dict('os.environ',{},clear=True),mock.patch('continuity_acceptance.SupervisorClient') as supervisor:
             with self.assertRaises(AcceptanceFailure):run(SimpleNamespace())
             supervisor.assert_not_called()
+
+    def test_restart_context_read_requires_disposable_ci_before_credentials(self):
+        with mock.patch.dict('os.environ',{},clear=True),mock.patch('continuity_acceptance.http.client.HTTPSConnection') as connection:
+            with self.assertRaises(AcceptanceFailure):current_context_after_restart(None,'synthetic-cookie','synthetic-account')
+            connection.assert_not_called()
 
     def test_exact_command_identity_preserves_u128_and_original_sequence(self):
         body='{"version":2,"attachment_id":"'+'a'*32+'","command":{"seq":1,"command":{"match_id":340282366920938463463374607431768211455}}}'

@@ -34,6 +34,10 @@ class FinalizeEvidenceTests(unittest.TestCase):
         cases=[]
         for label in CONTINUITY_CASES:
             case={'case':label,'pass':True}
+            if label=='restart_between_grant_and_attach_recovers_unchanged_old_csrf':
+                case.update(actual_sigkill_reaped=True,unchanged_request_403_without_frames=True,fresh_context_grant_scope_before_restore=True,exact_original_ack=True)
+            if label=='old_signed_grant_with_fresh_current_csrf_requires_fresh_grant':
+                case.update(separate_current_csrf_probe=True,exact_409_fresh_grant_required=True,no_attachment_projection_or_apply_from_old_grant=True)
             if label=='same_auth_record_rotation_preserves_uncertain_original_operation':
                 case.update(credential_rotated=True,reattach_required_observed=True,same_operation_scope=True,exact_original_ack=True)
             if label.endswith('_at_held_actual_delivery'):
