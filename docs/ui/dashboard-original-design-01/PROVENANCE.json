@@ -1,0 +1,105 @@
+{
+  "design": "Tabula Design 01",
+  "design_date": "2026-10-01",
+  "original_source_revision": "44f6b74e07648abc7191363d7582efc1fceab262",
+  "original_archive_name": "tabula-design-html-mjs-png.zip",
+  "original_archive_sha256": "53a975500c69bd7d9ad528ee93a50d3fca5da1210389b4f18265b19ba008c393",
+  "original_archive_bytes": 10822222,
+  "runtime_reference_source_revision": "e75624ae870a74f62f0f734fbcf2f12043047dd4",
+  "scope": "Unmodified original source + screen01 references, subset of 22-screen handoff; not a new design or runtime implementation",
+  "evidence": "Library archive current version0 read; source and3staticPNGs inspected; archived bytes preserved; no new browser/runtime execution",
+  "files": [
+    {
+      "path": "design-01/standalone.html",
+      "bytes": 230108,
+      "sha256": "6c6bfce11fd85b5e15bd6b00c8e3b0e1c1bfff6967493dad2cd78f88ee0edb9a"
+    },
+    {
+      "path": "design-01/index.dev.html",
+      "bytes": 945,
+      "sha256": "ac813e247e99e7009ea0cecf922c6a434571ebf9fea4fbf7c4e57b5c1d73c2d9"
+    },
+    {
+      "path": "design-01/README.md",
+      "bytes": 8767,
+      "sha256": "85d98a51b486b208f94b8521851cd3f9a68cf4df2edb7840f685465c8a7dd92f"
+    },
+    {
+      "path": "design-01/assets/favicon.svg",
+      "bytes": 214,
+      "sha256": "ad81fe6ebaf1660824207a63e42abab6db038d1ecb7962b7ca9f51be382c5e4d"
+    },
+    {
+      "path": "design-01/src/app.mjs",
+      "bytes": 30152,
+      "sha256": "b6c09e4ba4b84de0b6ebbd45553ba9a94145cf40621bebeefc0cebd5696126d9"
+    },
+    {
+      "path": "design-01/src/boards.mjs",
+      "bytes": 8694,
+      "sha256": "187b845e8b7c01847c9675158eb40366337261e553f658bc52ed52d123d4ec24"
+    },
+    {
+      "path": "design-01/src/data.mjs",
+      "bytes": 6833,
+      "sha256": "a79c782113778a318be2eb53430eb966607796b852a35fdb2f5ae4af810b923e"
+    },
+    {
+      "path": "design-01/src/icons.mjs",
+      "bytes": 5318,
+      "sha256": "0390b0bf5a950c451fc4b9f83bef73f98b09aaa3612e50e39fc31b4cac04f66d"
+    },
+    {
+      "path": "design-01/src/screens.mjs",
+      "bytes": 59792,
+      "sha256": "c808e241ef6cbaf3c369560272cf0065204be91bddfac26023277bd560b4e47c"
+    },
+    {
+      "path": "design-01/styles/app.css",
+      "bytes": 116572,
+      "sha256": "798c501228bd858f77de5386215c62724ca0452d5681af7a9987690e7bbc32c1"
+    },
+    {
+      "path": "design-01/styles/tokens.css",
+      "bytes": 2584,
+      "sha256": "f29697fa1e65dd8e60d76cda220567bc85d9aac099f7fc65c3a7c42e779d4dc8"
+    },
+    {
+      "path": "design-01/docs/design-notes.md",
+      "bytes": 8398,
+      "sha256": "b14477718e3ac2c4cc35b125ad87ca4496ffabd3ce91509c98bb54f20234dea9"
+    },
+    {
+      "path": "design-01/docs/screen-map.json",
+      "bytes": 3164,
+      "sha256": "978b50dd05535403fcef689ce33b64e23f9ce64eade437c9228deec3c63f87ea"
+    },
+    {
+      "path": "design-01/previews/desktop/01-library.png",
+      "bytes": 348845,
+      "sha256": "34ab46b88d59a4b165aa14d32430be887f702f8e4a3123354c272eb8067c4cf9",
+      "dimensions": [
+        1440,
+        1408
+      ]
+    },
+    {
+      "path": "design-01/previews/mobile/01-library.png",
+      "bytes": 79394,
+      "sha256": "702972188c6ac360ef1db74e5a81ebc0868db9803f5f0731d2e8b4ac5c700955",
+      "dimensions": [
+        390,
+        844
+      ]
+    },
+    {
+      "path": "design-01/previews/mobile-full/01-library.png",
+      "bytes": 169782,
+      "sha256": "130085267e765a0776692719e8c441d41a3be4cc2eda367e1f8e13865419bafc",
+      "dimensions": [
+        390,
+        1631
+      ]
+    }
+  ]
+}

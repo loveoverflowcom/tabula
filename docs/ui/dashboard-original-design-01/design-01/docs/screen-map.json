@@ -1,0 +1,143 @@
+{
+  "screens": [
+    [
+      "01-library",
+      "library",
+      "Thư viện game",
+      "Khám phá · tìm kiếm · tiếp tục ván"
+    ],
+    [
+      "02-game-detail",
+      "game/xiangqi",
+      "Chi tiết game",
+      "Chế độ · luật chơi · tài nguyên"
+    ],
+    [
+      "03-new-match",
+      "setup/xiangqi",
+      "Thiết lập ván",
+      "Đối thủ · thời gian · bên chơi"
+    ],
+    [
+      "04-chess",
+      "play/chess",
+      "Bàn chơi · Cờ vua",
+      "Bàn cờ · đồng hồ · nước đi"
+    ],
+    [
+      "05-caro",
+      "play/caro",
+      "Bàn chơi · Caro",
+      "Bàn ô · lượt đánh · kết quả"
+    ],
+    [
+      "06-tiles",
+      "play/tiles",
+      "Bàn chơi · Tiles",
+      "Bản đồ · mảnh ghép · điểm"
+    ],
+    [
+      "07-werewolf",
+      "play/werewolf",
+      "Bàn chơi · Ma sói",
+      "Ngày/đêm · vai trò · biểu quyết"
+    ],
+    [
+      "08-xiangqi",
+      "play/xiangqi",
+      "Bàn chơi · Cờ tướng",
+      "Bàn cờ · đối thủ · điều khiển"
+    ],
+    [
+      "09-result",
+      "result/xiangqi",
+      "Kết quả ván",
+      "Tổng kết · chơi lại · xem lại"
+    ],
+    [
+      "10-history",
+      "history",
+      "Ván của tôi",
+      "Đang chơi · đã xong · đã lưu"
+    ],
+    [
+      "11-analysis",
+      "analysis/xiangqi",
+      "Phân tích",
+      "Replay · nhánh thử · phương án"
+    ],
+    [
+      "12-learn",
+      "learn/xiangqi",
+      "Gia sư cờ tướng",
+      "Hội thoại · gợi ý · bàn phân tích"
+    ],
+    [
+      "13-settings",
+      "settings",
+      "Cài đặt",
+      "Giao diện · âm thanh · dữ liệu"
+    ],
+    [
+      "14-resources",
+      "resources/xiangqi",
+      "Tài nguyên game",
+      "Engine · giải thích · offline"
+    ],
+    [
+      "15-login",
+      "login",
+      "Đăng nhập",
+      "Luồng tài khoản minh họa"
+    ],
+    [
+      "16-register",
+      "register",
+      "Tạo tài khoản",
+      "Đăng ký · tiếp tục chơi local"
+    ],
+    [
+      "17-rooms",
+      "rooms",
+      "Phòng chơi",
+      "Tìm kiếm · lọc · tạo phòng"
+    ],
+    [
+      "18-room",
+      "room",
+      "Phòng chờ",
+      "Chỗ ngồi · sẵn sàng · mời bạn"
+    ],
+    [
+      "19-queue",
+      "queue",
+      "Ghép trận",
+      "Đang tìm · hủy · kết quả mẫu"
+    ],
+    [
+      "20-profile",
+      "profile",
+      "Hồ sơ",
+      "Thông tin · thống kê · lịch sử"
+    ],
+    [
+      "21-friends",
+      "friends",
+      "Bạn bè",
+      "Trạng thái · lời mời · kết nối"
+    ],
+    [
+      "22-design-system",
+      "design-system",
+      "Bộ thành phần",
+      "Token · màu · kiểu chữ · trạng thái"
+    ]
+  ],
+  "tokens": {
+    "source": "tokens.toml",
+    "ref": "44f6b74e07648abc7191363d7582efc1fceab262",
+    "identity": "M3 Expressive-inspired",
+    "date": "2026-10-01",
+    "note": "Các semantic token gốc được giữ; thêm surface, tint và layout token dành cho prototype. Không tự sửa tokens.toml của repository."
+  }
+}
