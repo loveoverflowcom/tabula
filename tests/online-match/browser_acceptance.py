@@ -28,6 +28,7 @@ from capture_evidence import CaptureEvidence, CaptureFailure
 from startup_diagnostics import http_status, navigation_failure, origin_class, process_diagnostics
 
 ORIGIN = "https://localhost:9443"
+MATCH_VERSION = 2
 SESSION_COOKIE = "__Host-tabula_session"
 GAME_PATH = "/games/com.tabula.chess"
 TERMINAL_STATUS = "Game over / Black wins / checkmate"
@@ -103,7 +104,7 @@ def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -
     therefore use a separate real, explicitly CA-validated HTTPS client; actual
     create/join/rendered gameplay remains driven by genuine browser UI events.
     """
-    require(path.startswith(("/api/v1/matches/", "/__fixture/publication/")), "invalid hostile probe path")
+    require(path.startswith(("/api/v1/matches/", "/__fixture/publication/", "/__fixture/continuity/")), "invalid hostile probe path")
     connection = http.client.HTTPSConnection("localhost", 9443, timeout=30,
                                             context=ssl.create_default_context(cafile=str(ca)))
     encoded = body.encode("utf-8")
@@ -124,7 +125,7 @@ def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -
 
 
 def hostile_header_probes(ca: Path, match_id: str, cookie: str, csrf: str) -> int:
-    path, body = f"/api/v1/matches/{match_id}/grant", '{"version":1}'
+    path, body = f"/api/v1/matches/{match_id}/grant", '{"version":2}'
     baseline = [("Origin", ORIGIN), ("Cookie", f"{SESSION_COOKIE}={cookie}"),
                 ("Content-Type", "application/json"), ("X-Tabula-CSRF", csrf)]
     cases = [
@@ -163,7 +164,7 @@ def start_native_poll(match_id: str, attachment_id: str, cookie: str, csrf: str)
     done = threading.Event()
     result = {"status": None, "json_content_type": False, "no_store": False,
               "body_bytes": 0, "body_error": False}
-    body = json.dumps({"version": 1, "attachment_id": attachment_id})
+    body = json.dumps({"version": MATCH_VERSION, "attachment_id": attachment_id})
 
     def observe():
         connection = http.client.HTTPConnection("127.0.0.1", 3000, timeout=90)
@@ -197,10 +198,10 @@ def start_native_poll(match_id: str, attachment_id: str, cookie: str, csrf: str)
 
 def prove_held_publication(white, black, match_id: str, white_attachment: dict,
                           original_command: str, facts: list[dict], cookie: str, ca: Path) -> dict:
-    grant = api(black, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[1]["csrf_token"])
+    grant = api(black, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, facts[1]["csrf_token"])
     require(grant["status"] == 200 and grant["body"]["ready"], "passive opponent grant setup failed")
     attachment = api(black, f"/api/v1/matches/{match_id}/attach",
-                     {"version": 1, "binding_id": grant["body"]["binding_id"]}, facts[1]["csrf_token"])
+                     {"version": MATCH_VERSION, "binding_id": grant["body"]["binding_id"]}, facts[1]["csrf_token"])
     require(attachment["status"] == 200, "passive opponent attachment setup failed")
     # This second actor has no browser runtime polling it. Initial snapshots
     # were consumed above, and Black has issued no command or receipt request.
@@ -764,7 +765,7 @@ def run(args) -> None:
             redacted_values.append(code)
             evidence.capture(white, "03-created-code-waiting.png", "Created match waiting for opponent; active code redacted", "White browser",
                              "Actual successful create response has rendered its waiting admission", secrets=redacted_values)
-            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, "A" * 43),
+            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, "A" * 43),
                    {401}, "third unauthenticated browser obtained opponent output")
             black.get_by_test_id("online-join-code").fill(code)
             with black.expect_response(lambda r: urlsplit(r.url).path == "/api/v1/matches/join", timeout=30_000) as joined_response:
@@ -775,7 +776,7 @@ def run(args) -> None:
             black.get_by_test_id("online-enter").wait_for(state="visible", timeout=30_000)
             evidence.capture(black, "04-opponent-joined.png", "Opponent joined the real match; code/input redacted", "Black browser",
                              "Actual successful join rendered the opposite seat and enter control", secrets=redacted_values)
-            duplicate = api(black, "/api/v1/matches/join", {"version": 1, "code": code}, facts[1]["csrf_token"])
+            duplicate = api(black, "/api/v1/matches/join", {"version": MATCH_VERSION, "code": code}, facts[1]["csrf_token"])
             require(duplicate["status"] == 200 and duplicate["body"]["seat"] == 1
                     and duplicate["body"]["match_id"] == match_id,
                     "same-player duplicate join is not idempotent")
@@ -787,7 +788,7 @@ def run(args) -> None:
             third_csrf = third_facts["csrf_token"]
             require(third_facts["account_id"] not in [f["account_id"] for f in facts],
                     "third fixture account is not independent")
-            denied(api(third, "/api/v1/matches/join", {"version": 1, "code": code}, third_csrf),
+            denied(api(third, "/api/v1/matches/join", {"version": MATCH_VERSION, "code": code}, third_csrf),
                    {403, 409}, "third player changed a full live opponent roster")
             results["third_client_full_live_roster_join_denied"] = True
             results["stage"] = "attach and render opposing actual browser seats"
@@ -856,10 +857,10 @@ def run(args) -> None:
             black.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
 
             results["stage"] = "deny third-client commands and private output"
-            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, third_csrf),
+            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, third_csrf),
                    {403}, "third actual account obtained another player's grant")
             denied(api(third, f"/api/v1/matches/{match_id}/poll",
-                       {"version": 1, "attachment_id": white_attachment["attachment_id"]}, third_csrf),
+                       {"version": MATCH_VERSION, "attachment_id": white_attachment["attachment_id"]}, third_csrf),
                    {403, 404}, "third account obtained opponent projection output")
             denied(api(third, f"/api/v1/matches/{match_id}/command", first, third_csrf),
                    {403, 404}, "third account issued an opponent command")
@@ -868,14 +869,14 @@ def run(args) -> None:
             results["stage"] = "reject real hostile Origin, CSRF, credential and envelope requests"
             results["hostile_header_partitions_denied"] = hostile_header_probes(
                 ca, match_id, cookies[0][0]["value"], facts[0]["csrf_token"])
-            fresh_grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[0]["csrf_token"])
+            fresh_grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, facts[0]["csrf_token"])
             require(fresh_grant["status"] == 200 and fresh_grant["body"]["ready"],
                     "fresh signed grant security partition setup failed")
-            fresh_grant_body = {"version": 1, "binding_id": fresh_grant["body"]["binding_id"]}
+            fresh_grant_body = {"version": MATCH_VERSION, "binding_id": fresh_grant["body"]["binding_id"]}
             denied(api(black, f"/api/v1/matches/{match_id}/attach", fresh_grant_body, facts[1]["csrf_token"]),
                    {401}, "foreign-subject signed grant was accepted")
             denied(api(white, f"/api/v1/matches/{match_id}/attach",
-                       {"version": 1, "binding_id": "invalid-grant"}, facts[0]["csrf_token"]),
+                       {"version": MATCH_VERSION, "binding_id": "invalid-grant"}, facts[0]["csrf_token"]),
                    {400}, "malformed signed grant was accepted")
             tampered = fresh_grant_body.copy()
             token = tampered["binding_id"]
@@ -897,22 +898,22 @@ def run(args) -> None:
             results["hostile_grant_seat_and_envelope_partitions_denied"] = 6
 
             results["stage"] = "deny cross-match commands and private output"
-            other = api(white, "/api/v1/matches", {"version": 1, "game_id": created["game_id"],
+            other = api(white, "/api/v1/matches", {"version": MATCH_VERSION, "game_id": created["game_id"],
                         "seats": 2, "config": {"clock": "untimed"}}, facts[0]["csrf_token"])
             require(other["status"] == 200, "independent cross-match admission fixture failed")
             other_id = other["body"]["match_id"]
             second_join = api(black, "/api/v1/matches/join",
-                              {"version": 1, "code": other["body"]["join_code"]}, facts[1]["csrf_token"])
+                              {"version": MATCH_VERSION, "code": other["body"]["join_code"]}, facts[1]["csrf_token"])
             require(second_join["status"] == 200 and second_join["body"]["ready"],
                     "actual second-match opponent roster setup failed")
-            second_grant = api(white, f"/api/v1/matches/{other_id}/grant", {"version": 1}, facts[0]["csrf_token"])
+            second_grant = api(white, f"/api/v1/matches/{other_id}/grant", {"version": MATCH_VERSION}, facts[0]["csrf_token"])
             require(second_grant["status"] == 200 and second_grant["body"]["ready"],
                     "actual second-match current grant setup failed")
             second_attach = api(white, f"/api/v1/matches/{other_id}/attach",
-                                {"version": 1, "binding_id": second_grant["body"]["binding_id"]}, facts[0]["csrf_token"])
+                                {"version": MATCH_VERSION, "binding_id": second_grant["body"]["binding_id"]}, facts[0]["csrf_token"])
             require(second_attach["status"] == 200, "actual second-match actor setup failed")
             denied(api(white, f"/api/v1/matches/{other_id}/poll",
-                       {"version": 1, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
+                       {"version": MATCH_VERSION, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
                    {403}, "same-account cross-match attachment released output")
             cross_command = json.loads(first)
             cross_command["command"]["command"]["match_id"] = int(other_id, 16)
@@ -921,14 +922,14 @@ def run(args) -> None:
             results["cross_match_command_and_output_denied"] = True
 
             results["stage"] = "rebind the same durable scope and fence its old attachment"
-            grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[0]["csrf_token"])
+            grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, facts[0]["csrf_token"])
             require(grant["status"] == 200 and grant["body"]["ready"], "fresh authorized reattach grant failed")
             reattached = api(white, f"/api/v1/matches/{match_id}/attach",
-                             {"version": 1, "binding_id": grant["body"]["binding_id"]}, facts[0]["csrf_token"])
+                             {"version": MATCH_VERSION, "binding_id": grant["body"]["binding_id"]}, facts[0]["csrf_token"])
             require(reattached["status"] == 200 and reattached["body"]["next_seq"] == 3,
                     "same actual session reattachment reset durable command sequence")
             denied(api(white, f"/api/v1/matches/{match_id}/poll",
-                       {"version": 1, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
+                       {"version": MATCH_VERSION, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
                    {403}, "old attachment released output after same-session rebind")
             denied(api(white, f"/api/v1/matches/{match_id}/command", first, facts[0]["csrf_token"]),
                    {403}, "old attachment issued a command after same-session rebind")
@@ -944,7 +945,7 @@ def run(args) -> None:
             # Replay the exact previous runtime credential in the same browser.
             browsers[1].add_cookies([revoked_cookie])
             denied(api(black, f"/api/v1/matches/{match_id}/poll",
-                       {"version": 1, "attachment_id": black_attachment["attachment_id"]}, facts[1]["csrf_token"]),
+                       {"version": MATCH_VERSION, "attachment_id": black_attachment["attachment_id"]}, facts[1]["csrf_token"]),
                    {401}, "revoked session obtained protected gameplay output")
             denied(api(black, f"/api/v1/matches/{match_id}/command", last, facts[1]["csrf_token"]),
                    {401}, "revoked session issued a cached opponent command")

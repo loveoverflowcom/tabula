@@ -110,7 +110,7 @@ class CaptureEvidence:
             "trunk": tool_version("trunk"), "playwright": version("playwright"),
             "shell_build": "TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online",
             "game_build": "web,online; wasm32-unknown-unknown; wasm-release",
-            "fixture_build": "body-publication-test; native debug; debug info disabled",
+            "fixture_build": "continuity-test; native debug; debug info disabled",
         }
         self.write()
 

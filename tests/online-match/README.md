@@ -1,7 +1,7 @@
 # Actual two-browser durable Chess acceptance
 
 This standalone, CI-only fixture supplies PR2's bounded rendered-target evidence
-for ADR-0041. It does not start either production service or verify a provider
+for ADR-0041 and PR3's interruption acceptance target for ADR-0042. It does not start either production service or verify a provider
 login. The existing genuine Kanidm job remains unchanged. Synthetic identities
 are explicitly provisioned only by this disposable executable; their actual
 sessions, admission/seat binding, command commits and protected output all use
@@ -12,7 +12,7 @@ the same real PostgreSQL session and match authority as the opt-in adapter.
 The workflow supplies a disposable PostgreSQL 16 service. The fixture calls only
 storage-owned APIs, including strict PgOnlineMatchStore::migrate(&pool). It
 asserts the independently reviewed additive migration versions are exactly
-202610040001, 202610050001, 202610050040 and 202610050041. It neither enables
+202610040001, 202610050001, 202610050040, 202610050041 and 202610060001. It neither enables
 ignore_missing nor manipulates session, admission or match rows directly.
 Missing database, compiled/staged assets, TLS inputs, trust tooling or browser
 setup is a failure, never an ignored test, HTTP mock or successful skip.
@@ -209,9 +209,9 @@ published in the single user-requested review issue.
 ```sh
 python3 -m unittest discover -s tests/online-match -p 'test_*.py' -v
 cargo fmt --manifest-path tests/online-match/Cargo.toml --all -- --check
-cargo clippy --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --all-targets -- -D warnings
-cargo test --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
-cargo build --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
+cargo clippy --manifest-path tests/online-match/Cargo.toml --features continuity-test --locked --all-targets -- -D warnings
+cargo test --manifest-path tests/online-match/Cargo.toml --features continuity-test --locked --bin online-match-fixture
+cargo build --manifest-path tests/online-match/Cargo.toml --features continuity-test --locked --bin online-match-fixture
 cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --ignored --test-threads=2
 (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
 cargo build -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --profile wasm-release
@@ -224,8 +224,9 @@ does not establish actual TLS, PostgreSQL, browser rendering or gameplay. Build
 and staging evidence is also separate. An actual browser claim requires the
 executed new CI job's terminal PASS and durable audit, and a screenshot-inspected
 claim requires a human/assistant to review the captured pixel images. This
-fixture does not establish PR3 reconnect/resync/network-drop/server-crash
-acceptance, load/cross-target/game-portfolio quality or a broad phase exit.
+fixture source includes PR3 reconnect/resync/network-drop/server-crash targets,
+but only their actual executed CI receipts can establish that acceptance. It does
+not establish load/cross-target/game-portfolio quality or a broad phase exit.
 Post-logout rejection alone does not establish buffered-publication fencing.
 That claim needs successful execution of the nonempty held-body scenario above.
 Bounded move diagnostics retain only the four public action names, observed
@@ -256,3 +257,96 @@ Primary infrastructure references:
 - [Fetch Standard: append a request Origin header](https://fetch.spec.whatwg.org/#append-a-request-origin-header)
 - [Referrer Policy: same-origin](https://w3c.github.io/webappsec-referrer-policy/#referrer-policy-same-origin)
 - [Playwright request failures versus HTTP error responses](https://playwright.dev/python/docs/api/class-request#request-failure)
+
+## PR3 actual continuity acceptance target
+
+`run.sh` retains the complete PR2 real-browser game and held-body proof, then
+runs `continuity_acceptance.py` through two newly launched independent Chromium
+processes with separate private HOME/profile/NSS/cookie state and normal HTTPS
+validation. This is implemented acceptance source; execution and actual screenshot
+inspection must be recorded separately in the ADR-0042 verification ledger.
+The normal fixture carrier is now match HTTP version 2; fixture control DTOs stay
+version 1. The game wire remains projection-only protocol 0.1.
+
+Twenty-five mandatory partitions currently form twenty-two independently audited matches:
+
+- Actual pointer command network abort before send, pending document refresh,
+  exact original sequence/payload replay, and retired attachment rejection
+- Real staged PostgreSQL apply/COMMIT with browser network loss and exact retry
+- Lost output poll, authorized full projection resync, and committed refresh
+- Actual native server SIGKILL before COMMIT and after COMMIT before Ack;
+  the independent opponent observes the durable partition before sender retry
+- A retained original receipt returns its exact Ack without another move;
+  evicted and expired original receipts produce explicit unknown-result,
+  authorized full projection and a read-only board
+- Current revoke, expiry, account epoch and membership changes ordered before
+  command submission prevent a commit and restored private projection
+- Actual database clock crosses the original session deadline while SQL is
+  staged; deferred current-authority fencing rolls back the entire input
+- Nonempty real projected output is held at native first-body handoff, then
+  revoke, expiry, epoch, membership or physical owner-backend loss commits;
+  the forwarded real inner publication error must produce exactly zero body
+  bytes, including any partial bytes observed before a transport exception
+- New fenced owner recovery precedes release of held old-owner output
+
+The one-shot gates exist only in the explicitly selected `continuity-test`
+standalone fixture and `acceptance-test-support` native gateway. Hooks match
+trusted match, auth record and attachment. They never manufacture command
+results or projections. The SQL-staged gate comes from the existing storage
+transaction barrier; committed-prefix observation uses non-locking MVCC and
+returns only agreement with the independently specified public Chess transcript.
+Storage-owned fixture controls enforce `CI=true` and the explicit disposable
+opt-in plus the exact acceptance database/schema. No SQL enters the HTTP fixture.
+Synthetic enrollment is bounded at 32 identities per process; production services
+and genuine Kanidm/session/mobile/core workflows remain unchanged.
+
+`process_supervisor.py` starts only the already-built exact fixture binary and
+owns its private Unix-domain control socket, PID file and private native log.
+Closed commands may confirm liveness, SIGKILL/reap, restart in one of three fixed
+receipt-policy modes, or stop. No browser endpoint can supply an arbitrary PID,
+command, executable or environment. Server restarts happen only after actual
+child death. Missing Unix socket/listener/browser/PostgreSQL support fails actual
+acceptance. The three socket helper tests report BLOCKED outside CI when the
+executor denies AF_UNIX; CI=true never skips these helpers. Direct safe-child
+SIGKILL helper checks do not establish native server recovery.
+
+After all browser contexts close, the supervisor stops and reaps the current
+native owner before any fresh-fence audit. Each private audit input names only
+its actual accounts/match and independently expected public move prefix. The
+native audit recovers the exact full committed history, verifies canonical
+Chess commands and immutable actual roster, durable watermarks and terminal
+snapshot/verdict where applicable, and forbids all client output. Audit inputs,
+credentials, grants, CSRF, pending command bytes, ephemeral TLS keys and profiles
+remain outside public artifacts and are destroyed by the enclosing trap.
+
+`finalize_evidence.py` requires the unchanged complete-game browser/audit success,
+all twenty-five distinct successful fault partitions, and all twenty-two successful
+independent native prefix audits. Empty, duplicate, missing or failed selections,
+partial protected bytes, missing actual inner errors, absent SIGKILL receipts,
+and wrong audit prefixes remove the PASS receipt. The native owner selection
+also executes at least two real PostgreSQL ownership/publication tests in CI.
+Helper tests, compilation and configured workflows cannot seal actual acceptance.
+`continuity-ui/` contains additional masked actual screenshots and exact-build
+provenance; inspect those pixels only after the executed job supplies them.
+
+Additional real-target lifecycle partitions cover pure apply before durable append,
+refresh after known COMMIT before the original Ack, a newly issued current auth
+record for the same actual account, an actual switch to a different synthetic
+account, late old-attachment delivery after a fresh authorized attachment,
+two complete bounded-recovery/exhaustion/explicit double-Retry cycles, canceled
+app leave and browser beforeunload, confirmed leave and real history Back.
+Original pending operations cannot cross current auth-record/account scope.
+The current Chromium's real `pageshow.persisted` is observed during history
+return. BFCache receives PASS only if that actual flag is true and the restored
+document obtains a new attachment; otherwise its optional receipt states BLOCKED
+because the current target did not restore this document from BFCache. A normal
+Back navigation and Node lifecycle doubles cannot substitute for BFCache execution.
+
+The focus-only partition uses a separate actual headed Chromium opponent pair
+under the CI job's disposable Xvfb display (no TCP listener). A genuine popup
+window must produce trusted native window blur/focus while the opener remains
+visible and receives zero visibilitychange events. Real current-session logout
+commits in that popup, then focus restoration must reject authority before any
+old projection or first input is shown/sent. No synthetic DOM event can satisfy
+this oracle. Missing headed-window/display support fails actual acceptance.
+The other twenty-four fault partitions retain their original headless processes.

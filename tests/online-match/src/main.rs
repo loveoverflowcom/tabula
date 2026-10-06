@@ -45,6 +45,8 @@ const ORIGIN: &str = "https://localhost:9443";
 const ENROLL_HTML: &str = "<!doctype html><html lang=en><meta charset=utf-8><title>Disposable Tabula acceptance</title><h1>Disposable acceptance identity</h1><p>This isolated fixture provisions a synthetic account and uses real durable session authority. It does not test provider login.</p><form action=/__fixture/enroll method=post><button data-testid=fixture-enroll>Start disposable acceptance session</button></form></html>";
 type Checked<T> = Result<T, &'static str>;
 
+#[cfg(feature = "continuity-test")]
+mod continuity;
 #[cfg(feature = "body-publication-test")]
 mod publication;
 
@@ -104,7 +106,7 @@ fn random_id() -> Checked<u128> {
 }
 
 async fn issue(fixture: &Fixture) -> Checked<String> {
-    if fixture.issued.fetch_add(1, Ordering::SeqCst) >= 6 {
+    if fixture.issued.fetch_add(1, Ordering::SeqCst) >= 32 {
         return Err("disposable identity capacity exhausted");
     }
     let credential = SessionCredential::generate().map_err(|_| "fixture entropy unavailable")?;
@@ -204,11 +206,17 @@ async fn connect() -> Checked<PgPool> {
         .map_err(|_| "actual disposable PostgreSQL connection failed")
 }
 
-async fn serve() -> Checked<()> {
+async fn serve(mode: &str) -> Checked<()> {
     let pool = connect().await?;
     let online = PgOnlineMatchStore::new(pool.clone());
     if PgOnlineMatchStore::migration_versions()
-        != [202610040001, 202610050001, 202610050040, 202610050041]
+        != [
+            202610040001,
+            202610050001,
+            202610050040,
+            202610050041,
+            202610060001,
+        ]
     {
         return Err("strict migration composition does not match the independently reviewed set");
     }
@@ -217,27 +225,56 @@ async fn serve() -> Checked<()> {
         .map_err(|_| "strict composed migrations failed")?;
     let sessions = PgSessionStore::new(pool.clone());
     let matches = PgMatchStore::new(pool);
+    #[cfg(feature = "continuity-test")]
+    let hook = Arc::new(continuity::ContinuityHook::default());
     let session_http = IsolatedSessionHttp::new(sessions.clone(), ORIGIN)
         .map_err(|_| "canonical HTTPS session composition failed")?;
     let match_http = IsolatedMatchHttp::new(
         session_http.clone(),
         sessions.clone(),
-        online,
-        matches,
+        online.clone(),
+        matches.clone(),
         tabula_registry::registered_games(),
     )
     .map_err(|_| "isolated current-authority match composition failed")?;
+    #[cfg(feature = "continuity-test")]
+    let match_http = {
+        let mut limits = Limits::default();
+        match mode {
+            "normal" => {}
+            "evicted" => limits.receipts_per_scope = 1,
+            "expired" => limits.receipt_ttl_ms = 1_000,
+            _ => return Err("fixture retention mode invalid"),
+        }
+        match_http
+            .with_acceptance_limits(limits)
+            .with_acceptance_hook(hook.clone())
+    };
+    #[cfg(not(feature = "continuity-test"))]
+    if mode != "normal" {
+        return Err("fixture continuity feature required");
+    }
     let fixture = Router::new()
         .route("/__fixture/enroll", get(enrollment_page).post(enroll))
         .with_state(Fixture {
-            sessions,
+            sessions: sessions.clone(),
             issued: Arc::new(AtomicUsize::new(0)),
         });
     let router = fixture
         .merge(session_http.clone().router())
-        .merge(match_http.router());
+        .merge(match_http.clone().router());
     #[cfg(feature = "body-publication-test")]
-    let router = publication::compose(router, session_http);
+    let router = publication::compose(router, session_http.clone());
+    #[cfg(feature = "continuity-test")]
+    let router = continuity::compose(
+        router,
+        hook,
+        session_http,
+        sessions,
+        online,
+        matches,
+        match_http,
+    );
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 3000))
         .await
         .map_err(|_| "isolated fixture loopback bind failed")?;
@@ -254,6 +291,16 @@ async fn serve() -> Checked<()> {
 struct AuditInput {
     match_id: String,
     accounts: Vec<String>,
+    #[serde(default = "full_game_inputs")]
+    expected_inputs: u8,
+    #[serde(default = "opponent_scopes")]
+    expected_scopes: u8,
+}
+fn opponent_scopes() -> u8 {
+    2
+}
+fn full_game_inputs() -> u8 {
+    4
 }
 
 fn checked_id(raw: &str) -> Checked<u128> {
@@ -332,6 +379,10 @@ async fn audit(path: &str) -> Checked<()> {
     if input.accounts.len() != 2 {
         return Err("actual opponent account pair absent");
     }
+    if input.expected_inputs > 4 || !(2..=4).contains(&input.expected_scopes) {
+        return Err("private audit expected prefix invalid");
+    }
+    let expected_inputs = u64::from(input.expected_inputs);
     let id = MatchId(checked_id(&input.match_id)?);
     let accounts = [
         UserId(checked_id(&input.accounts[0])?),
@@ -352,8 +403,14 @@ async fn audit(path: &str) -> Checked<()> {
         .load(id)
         .await
         .map_err(|_| "actual durable prefix load failed")?;
-    if loaded.records.len() != 5 || loaded.index.0 != 4 || loaded.version.0 != 4 {
-        return Err("actual game did not commit exactly four accepted inputs");
+    if u64::try_from(loaded.records.len()).map_err(|_| "audit record count over limit")?
+        != expected_inputs + 1
+        || loaded.index.0 != expected_inputs
+        || loaded.version.0 != expected_inputs
+    {
+        return Err(
+            "actual game did not commit exactly the independently specified public input prefix",
+        );
     }
     let game = tabula_registry::registered_games()
         .into_iter()
@@ -394,10 +451,10 @@ async fn audit(path: &str) -> Checked<()> {
         .map_err(|_| "audit recovered owner panicked")?;
     if completion != Completion::Submitted
         || summary.exit != Exit::Drained
-        || summary.index.0 != 4
-        || summary.version.0 != 4
+        || summary.index.0 != expected_inputs
+        || summary.version.0 != expected_inputs
         || output.0.load(Ordering::SeqCst) != 0
-        || effects.0.load(Ordering::SeqCst) != 1
+        || effects.0.load(Ordering::SeqCst) != usize::from(input.expected_inputs == 4)
     {
         return Err("audit recovery released output or failed terminal effects validation");
     }
@@ -418,7 +475,11 @@ async fn audit(path: &str) -> Checked<()> {
         }
     }
     let expected = [(0, 13, 21), (1, 52, 36), (0, 14, 30), (1, 59, 31)];
-    for (record, (seat, from, to)) in loaded.records.iter().skip(1).zip(expected) {
+    for (record, (seat, from, to)) in loaded.records.iter().skip(1).zip(
+        expected
+            .into_iter()
+            .take(usize::from(input.expected_inputs)),
+    ) {
         let command: Input<Command> =
             canonical_decode(&record.input).map_err(|_| "durable command decode failed")?;
         if !matches!(command, Input::Player { seat: got_seat, command: Command::Move {
@@ -430,43 +491,59 @@ async fn audit(path: &str) -> Checked<()> {
             );
         }
     }
-    let terminal = loaded
-        .records
-        .last()
-        .ok_or("terminal committed record missing")?;
-    if !terminal.terminal || loaded.records.iter().take(4).any(|r| r.terminal) {
-        return Err("durable stream does not have exactly one terminal transition");
+    if expected_inputs == 4 {
+        let terminal = loaded
+            .records
+            .last()
+            .ok_or("terminal committed record missing")?;
+        if !terminal.terminal || loaded.records.iter().take(4).any(|r| r.terminal) {
+            return Err("durable stream does not have exactly one terminal transition");
+        }
+        let state: ChessState = canonical_decode(
+            terminal
+                .snapshot
+                .as_deref()
+                .ok_or("terminal snapshot was not committed atomically")?,
+        )
+        .map_err(|_| "validated terminal snapshot decode failed")?;
+        let Status::Ended { outcome } = state.status else {
+            return Err("durable game is not terminal");
+        };
+        if outcome.kind() != OutcomeKind::Decisive
+            || outcome.summary() != "checkmate"
+            || outcome
+                .standings()
+                .iter()
+                .find(|s| s.rank == 0)
+                .is_none_or(|s| s.seat != SeatId(1))
+        {
+            return Err("actual durable verdict is not Black checkmate");
+        }
+        outcome
+            .validate_against(&loaded.creation.roster)
+            .map_err(|_| "durable outcome roster invalid")?;
+    } else if loaded.records.iter().any(|record| record.terminal) {
+        return Err("unexpected terminal transition in partial prefix");
     }
-    let state: ChessState = canonical_decode(
-        terminal
-            .snapshot
-            .as_deref()
-            .ok_or("terminal snapshot was not committed atomically")?,
-    )
-    .map_err(|_| "validated terminal snapshot decode failed")?;
-    let Status::Ended { outcome } = state.status else {
-        return Err("durable game is not terminal");
-    };
-    if outcome.kind() != OutcomeKind::Decisive
-        || outcome.summary() != "checkmate"
-        || outcome
-            .standings()
-            .iter()
-            .find(|s| s.rank == 0)
-            .is_none_or(|s| s.seat != SeatId(1))
-    {
-        return Err("actual durable verdict is not Black checkmate");
-    }
-    outcome
-        .validate_against(&loaded.creation.roster)
-        .map_err(|_| "durable outcome roster invalid")?;
-    if loaded.ledger.len() != 2
+    let mut per_seat = [0_u64; 2];
+    let mut records = std::collections::BTreeSet::new();
+    if loaded.ledger.len() != usize::from(input.expected_scopes)
         || loaded.ledger.iter().any(|scope| {
-            scope.highest != 2
+            let seat = usize::from(scope.scope.seat.0);
+            if seat >= 2
+                || !records.insert(scope.scope.record)
                 || scope.recent.len() > 2
                 || scope.recent.iter().any(|receipt| receipt.result.is_err())
+            {
+                return true;
+            }
+            let Some(sum) = per_seat[seat].checked_add(scope.highest) else {
+                return true;
+            };
+            per_seat[seat] = sum;
+            false
         })
-        || loaded.ledger[0].scope.record == loaded.ledger[1].scope.record
+        || per_seat != [expected_inputs.div_ceil(2), expected_inputs / 2]
     {
         return Err("duplicate or unauthorized probe changed durable operation scopes");
     }
@@ -474,9 +551,9 @@ async fn audit(path: &str) -> Checked<()> {
         "{}",
         serde_json::json!({
             "status": "pass", "actual_postgres": true, "exact_runtime_recovery": true,
-            "immutable_actual_opponent_roster": true, "accepted_inputs": 4,
-            "records_including_genesis": 5, "terminal_transitions": 1,
-            "terminal_snapshot_in_atomic_commit": true, "verdict": "checkmate", "winning_seat": 1,
+            "immutable_actual_opponent_roster": true, "accepted_inputs": expected_inputs,
+            "records_including_genesis": expected_inputs + 1, "terminal_transitions": u8::from(expected_inputs == 4),
+            "terminal_snapshot_in_atomic_commit": expected_inputs == 4, "verdict": if expected_inputs == 4 { "checkmate" } else { "ongoing" }, "winning_seat": if expected_inputs == 4 { Some(1) } else { None },
             "duplicate_join_and_commands_preserved_stream": true,
             "unauthorized_probes_preserved_stream": true, "audit_client_output": false,
         })
@@ -493,7 +570,9 @@ async fn run() -> Checked<()> {
     }
     let args: Vec<_> = std::env::args().skip(1).collect();
     match args.as_slice() {
-        [mode] if mode == "serve" => serve().await,
+        [mode] if mode == "serve" => serve("normal").await,
+        [mode] if mode == "serve-evicted" => serve("evicted").await,
+        [mode] if mode == "serve-expired" => serve("expired").await,
         [mode, path] if mode == "audit" => audit(path).await,
         _ => Err("serve or private audit input must be specified"),
     }

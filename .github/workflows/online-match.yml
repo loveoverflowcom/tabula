@@ -1,4 +1,4 @@
-# Bounded PR2 actual-browser proof. Existing 15 jobs/provider acceptance stay intact.
+# Bounded PR2/PR3 actual-browser continuity proof. Genuine provider/core/mobile jobs stay intact.
 name: online-match
 on:
   pull_request:
@@ -25,7 +25,7 @@ jobs:
   two-browser-chess:
     runs-on: ubuntu-22.04
     # Cold-cache official Chromium, Trunk, shell and WASM builds are included.
-    timeout-minutes: 40
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:16
@@ -67,7 +67,7 @@ jobs:
       - name: Install official pinned actual Chromium and scoped trust-store tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes libnss3-tools
+          sudo apt-get install --yes libnss3-tools xvfb xauth
           python3 -m pip install -r tests/online-match/requirements.txt
           python3 -m playwright install --with-deps chromium
       - name: Validate fixture helpers and standalone Rust harness
@@ -75,9 +75,9 @@ jobs:
           bash -n tests/online-match/run.sh
           python3 -m unittest discover -s tests/online-match -p 'test_*.py' -v
           cargo fmt --manifest-path tests/online-match/Cargo.toml --all -- --check
-          cargo clippy --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --all-targets -- -D warnings
-          cargo test --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
-          cargo build --manifest-path tests/online-match/Cargo.toml --features body-publication-test --locked --bin online-match-fixture
+          cargo clippy --manifest-path tests/online-match/Cargo.toml --features continuity-test --locked --all-targets -- -D warnings
+          cargo test --manifest-path tests/online-match/Cargo.toml --features continuity-test --locked --bin online-match-fixture
+          cargo build --manifest-path tests/online-match/Cargo.toml --features continuity-test --locked --bin online-match-fixture
       - name: Assert nonempty real composed-authority transaction scenarios
         run: |
           mkdir -p verification/online-match-artifacts
@@ -86,6 +86,11 @@ jobs:
           test "$(grep -Ec '^.*real_postgres_online_.*: test$' verification/online-match-artifacts/storage-test-selection.txt)" -ge 14
           cat verification/online-match-artifacts/storage-test-selection.txt
           cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --ignored --test-threads=2
+      - name: Assert nonempty real process-owner fencing scenarios
+        run: |
+          cargo test -p tabula-storage --features online-match-test-support --locked real_postgres_native_owner_ -- --list --ignored > verification/online-match-artifacts/owner-test-selection.txt
+          test "$(grep -Ec '^.*real_postgres_native_owner_.*: test$' verification/online-match-artifacts/owner-test-selection.txt)" -ge 2
+          cargo test -p tabula-storage --features online-match-test-support --locked real_postgres_native_owner_ -- --ignored --test-threads=2
       - name: Build the actual shell and separate gameplay document
         run: |
           cargo install trunk --version 0.21.14 --locked
@@ -96,8 +101,8 @@ jobs:
           cargo tree -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --edges normal > verification/online-match-artifacts/online-game-graph.txt
           python3 tools/tests/check-loading-budgets.py --game-wasm target/wasm32-unknown-unknown/wasm-release/tabula-game-client.wasm --game-tree verification/online-match-artifacts/online-game-graph.txt --shell-dist apps/web/dist --write-receipt verification/online-match-artifacts/loading-budget-receipt.json
           python3 tools/tests/check-staged-loading.py --shell-dist apps/web/dist --write-receipt verification/online-match-artifacts/staged-loading-receipt.json
-      - name: Complete actual rendered Chess in two independent browser processes
-        run: bash tests/online-match/run.sh
+      - name: Complete actual rendered Chess and network/refresh/authority/SIGKILL continuity partitions
+        run: xvfb-run -a -s '-screen 0 1280x960x24 -nolisten tcp' bash tests/online-match/run.sh
       - name: Preserve only secret-free screenshots, actions and durable verdict
         if: always()
         uses: actions/upload-artifact@v4
