@@ -2,7 +2,8 @@
 import unittest
 import http.client
 import json
-from playwright.sync_api import Error as BrowserError, TimeoutError as BrowserTimeout
+from playwright.sync_api import TimeoutError as BrowserTimeout
+from actual_response import ObservationFailure
 from types import SimpleNamespace
 from unittest import mock
 from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, fresh_grant_required, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, reattach_required, require, run, start_native_poll, enter_game, visible_game_facts
@@ -18,8 +19,10 @@ class BrowserHelperTests(unittest.TestCase):
             request = mock.Mock(method='POST', url=path, failure=None, post_data='original-grant-body')
             request.response.return_value = response
             response.request = request
-        failed.json.side_effect = BrowserError('No resource with given identifier found')
-        delivered.json.return_value = completed_body or {'version': 2, 'seat': 1, 'frames': []}
+        for response in (failed, delivered):
+            response.json.side_effect = AssertionError('observer must never fall back to CDP JSON')
+            response.body.side_effect = AssertionError('observer must never fall back to CDP body')
+        delivered.observed_body = completed_body or {'version': 2, 'seat': 1, 'frames': []}
         page = mock.Mock()
         page.locator.return_value.is_visible.return_value = True
         listeners, selections = {}, []
@@ -58,10 +61,14 @@ class BrowserHelperTests(unittest.TestCase):
     def test_attach_selection_requires_a_finished_body_after_canceled_200_headers(self):
         page, failed, delivered, selections = self.attachment_page()
         trace = []
-        attachment, body = enter_game(page, 'a' * 32, 1, trace)
-        self.assertEqual(attachment, delivered.json.return_value)
+        with mock.patch('browser_acceptance.actual_response_json', return_value=delivered.observed_body) as observed:
+            attachment, body = enter_game(page, 'a' * 32, 1, trace)
+        self.assertEqual(attachment, delivered.observed_body)
         self.assertEqual(body, 'original-grant-body')
-        failed.json.assert_not_called()
+        observed.assert_called_once_with(delivered)
+        for response in (failed, delivered):
+            response.json.assert_not_called()
+            response.body.assert_not_called()
         self.assertEqual([(item.event, item.timeout) for item in selections], [('requestfinished', 60_000)])
         self.assertEqual((trace[0]['header_responses'], trace[0]['failed_requests'], trace[0]['completed_responses']), (2, 1, 1))
         self.assertEqual(trace[0]['attempts'][1]['failure_class'], 'navigation_aborted')
@@ -69,19 +76,29 @@ class BrowserHelperTests(unittest.TestCase):
 
     def test_canceled_attachment_headers_alone_cannot_satisfy_acceptance(self):
         page, failed, _, _ = self.attachment_page(completed=False)
-        with self.assertRaises(BrowserTimeout):
-            enter_game(page, 'a' * 32, 1)
+        with mock.patch('browser_acceptance.actual_response_json') as observed:
+            with self.assertRaises(BrowserTimeout):
+                enter_game(page, 'a' * 32, 1)
+        observed.assert_not_called()
         failed.json.assert_not_called()
+        failed.body.assert_not_called()
 
     def test_completed_attachment_errors_cannot_be_skipped_for_another_attempt(self):
         for body in ({'version': 2, 'seat': 0}, {'version': 1, 'seat': 1}, {'version': 2, 'seat': 1, 'seed': []}):
-            page, _, _, _ = self.attachment_page(body)
-            with self.subTest(body=body), self.assertRaises(AcceptanceFailure):
-                enter_game(page, 'a' * 32, 1)
-        page, _, delivered, _ = self.attachment_page()
-        delivered.json.side_effect = json.JSONDecodeError('invalid body', '', 0)
-        with self.assertRaises(json.JSONDecodeError):
-            enter_game(page, 'a' * 32, 1)
+            page, _, delivered, _ = self.attachment_page(body)
+            with self.subTest(body=body), mock.patch('browser_acceptance.actual_response_json', return_value=body) as observed:
+                with self.assertRaises(AcceptanceFailure):
+                    enter_game(page, 'a' * 32, 1)
+                observed.assert_called_once_with(delivered)
+        for code in ('response_json_invalid', 'response_body_read_failed'):
+            page, _, delivered, _ = self.attachment_page()
+            with self.subTest(code=code), mock.patch('browser_acceptance.actual_response_json', side_effect=ObservationFailure(code)) as observed:
+                with self.assertRaises(ObservationFailure) as failure:
+                    enter_game(page, 'a' * 32, 1)
+                self.assertEqual(failure.exception.code, code)
+                observed.assert_called_once_with(delivered)
+                delivered.json.assert_not_called()
+                delivered.body.assert_not_called()
 
     def test_visible_focus_and_visibility_diagnostics_use_closed_classes(self):
         page = mock.Mock()

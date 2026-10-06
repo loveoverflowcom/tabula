@@ -3,6 +3,7 @@ import json
 from types import SimpleNamespace
 import unittest
 from playwright.sync_api import Error as BrowserError
+from actual_response import ObservationFailure
 from browser_acceptance import admission_response_facts, exception_class, protected_endpoint_class
 from unittest import mock
 from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_CONCEALED,
@@ -155,14 +156,25 @@ class ContinuityHelperTests(unittest.TestCase):
         response=mock.Mock(status=200,url='https://localhost:9443/api/v1/matches/'+pair.match_id+'/attach')
         request=mock.Mock(method='POST',url=response.url,failure='net::ERR_ABORTED')
         request.response.return_value=response
-        pair.observe_attach_finished(request,1)
-        response.json.assert_not_called();self.assertEqual(pair.attachments,[[],[]])
-        request.failure=None;response.json.return_value={'version':2,'seat':1,'frames':[]}
-        pair.observe_attach_finished(request,1)
-        self.assertEqual(pair.attachments[1],[response.json.return_value])
-        response.json.return_value={'version':2,'seat':0,'frames':[]}
-        with self.assertRaises(AcceptanceFailure):pair.observe_attach_finished(request,1)
-        self.assertEqual(len(pair.attachments[1]),1)
+        response.json.side_effect=AssertionError('observer must never fall back to CDP JSON')
+        response.body.side_effect=AssertionError('observer must never fall back to CDP body')
+        with mock.patch('continuity_acceptance.actual_response_json') as observed:
+            pair.observe_attach_finished(request,1)
+            observed.assert_not_called();self.assertEqual(pair.attachments,[[],[]])
+            request.failure=None;observed.return_value={'version':2,'seat':1,'frames':[]}
+            pair.observe_attach_finished(request,1)
+            observed.assert_called_once_with(response)
+            self.assertEqual(pair.attachments[1],[observed.return_value])
+            observed.return_value={'version':2,'seat':0,'frames':[]}
+            with self.assertRaises(AcceptanceFailure):pair.observe_attach_finished(request,1)
+            self.assertEqual(len(pair.attachments[1]),1)
+            for code in ('response_json_invalid','response_body_read_failed'):
+                observed.side_effect=ObservationFailure(code)
+                with self.subTest(code=code),self.assertRaises(ObservationFailure) as failure:
+                    pair.observe_attach_finished(request,1)
+                self.assertEqual(failure.exception.code,code)
+                self.assertEqual(len(pair.attachments[1]),1)
+        response.json.assert_not_called();response.body.assert_not_called()
 
     def test_attachment_observer_rejects_wrong_seat_and_canonical_payload(self):
         pair=Pair.__new__(Pair);pair.match_id='a'*32;pair.attachments=[[],[]]
