@@ -1,0 +1,231 @@
+/* Test-only observation of authentic fetch bytes; never a transport or authority. */
+(() => {
+  "use strict";
+  const original = window.fetch;
+  const MAX_RECORDS = 64, MAX_BODY = 2097152, MAX_TOTAL = 8388608;
+  const MAX_REQUEST = 131072, READ_MS = 5000;
+  const records = new Map(), readers = new Set(), timers = new Set();
+  const documentId = crypto.randomUUID();
+  let next = 0, retained = 0, disposed = false, fatal = null;
+  const resultError = error => ({ok:false,error});
+  const interested = url => {
+    try {
+      const value = new URL(url, location.href);
+      return value.origin === "https://localhost:9443" && !value.search && !value.hash
+        && (value.pathname === "/api/v1/matches" || value.pathname === "/api/v1/matches/join"
+          || /^\/api\/v1\/matches\/[0-9a-f]{32}\/(attach|command)$/.test(value.pathname));
+    } catch (_) { return false; }
+  };
+  function fail(record, error, requestFailure = false) {
+    if (!record.error) record.error = error;
+    if (record.bytes) { retained -= record.bytes; record.bytes = 0; }
+    record.text = null;
+    record.responseCancel?.();
+    record.notify?.();
+    if (requestFailure || error === "document_disposed") {
+      record.fingerprint_error = error;
+      record.requestCancel?.(); record.stop?.();
+    }
+  }
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    for (const record of records.values()) fail(record, "document_disposed");
+    for (const reader of readers) { try { Promise.resolve(reader.cancel()).catch(() => {}); } catch (_) {} }
+    for (const timer of timers) clearTimeout(timer);
+    readers.clear(); timers.clear(); records.clear(); retained = 0;
+  }
+  async function boundedBytes(stream, limit, record, responseBody) {
+    if (!stream) return new Uint8Array();
+    const reader = stream.getReader(), chunks = [];
+    readers.add(reader);
+    let size = 0, timer, rejectCancel;
+    const canceled = new Promise((_, reject) => { rejectCancel = reject; });
+    const cancel = () => { rejectCancel(new Error("observation_canceled")); try { Promise.resolve(reader.cancel()).catch(() => {}); } catch (_) {} };
+    const cancelKey = responseBody ? "responseCancel" : "requestCancel";
+    record[cancelKey] = cancel;
+    timer = setTimeout(() => { fail(record, "body_read_deadline", !responseBody); cancel(); }, READ_MS);
+    timers.add(timer);
+    try {
+      for (;;) {
+        if (disposed || (responseBody ? record.error : record.fingerprint_error)) throw new Error("observation_canceled");
+        const part = await Promise.race([reader.read(), canceled]);
+        if (part.done) break;
+        if (!(part.value instanceof Uint8Array) || part.value.length > limit - size) {
+          fail(record, responseBody ? "response_body_limit" : "request_body_limit", !responseBody);
+          throw new Error("observation_limit");
+        }
+        if (responseBody && part.value.length > MAX_TOTAL - retained) {
+          fatal = "total_body_limit"; fail(record, fatal); throw new Error("observation_limit");
+        }
+        size += part.value.length;
+        if (responseBody) { retained += part.value.length; record.bytes += part.value.length; }
+        chunks.push(part.value);
+      }
+      if (disposed || (responseBody ? record.error : record.fingerprint_error)) throw new Error("observation_canceled");
+      const bytes = new Uint8Array(size);
+      let offset = 0;
+      for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+      return bytes;
+    } finally {
+      clearTimeout(timer); timers.delete(timer); readers.delete(reader);
+      if (record[cancelKey] === cancel) record[cancelKey] = null;
+      chunks.length = 0;
+      try { reader.releaseLock(); } catch (_) {}
+    }
+  }
+  async function fingerprint(input, init, record) {
+    let bytes;
+    try {
+      // Fetch retains a Request's existing body when the init body is null or
+      // undefined; only a non-null body replaces its authentic bytes.
+      const override = init != null && Object.hasOwn(init, "body") && init.body != null;
+      const body = override ? init.body : input instanceof Request ? undefined : null;
+      if (override || !(input instanceof Request)) {
+        if (body === null || body === undefined) bytes = new Uint8Array();
+        else if (typeof body === "string") bytes = new TextEncoder().encode(body);
+        else { fail(record, "request_body_unsupported", true); return; }
+        if (bytes.length > MAX_REQUEST) { fail(record, "request_body_limit", true); return; }
+      } else {
+        // Clone synchronously before the native fetch can consume the Request.
+        const clone = input.clone();
+        bytes = await boundedBytes(clone.body, MAX_REQUEST, record, false);
+      }
+      let timer;
+      const deadline = new Promise(resolve => {
+        timer = setTimeout(() => { fail(record, "request_fingerprint_deadline", true); resolve(null); }, READ_MS);
+        timers.add(timer);
+      });
+      let hashed;
+      try { hashed = await Promise.race([crypto.subtle.digest("SHA-256", bytes), deadline, record.closed]); }
+      finally { clearTimeout(timer); timers.delete(timer); }
+      if (hashed === null) return;
+      const digest = new Uint8Array(hashed);
+      if (!disposed) record.body_sha256 = Array.from(digest, value => value.toString(16).padStart(2, "0")).join("");
+    } catch (_) { fail(record, "request_body_read_failed", true); }
+  }
+  async function observeResponse(response, record) {
+    try {
+      if (response.redirected || response.url !== record.url) { fail(record, "response_redirected"); return; }
+      const length = response.headers.get("Content-Length");
+      if (length !== null && (!/^[0-9]{1,10}$/.test(length) || Number(length) > MAX_BODY)) {
+        fail(record, "response_body_limit"); return;
+      }
+      const media = (response.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+      record.metadata = {
+        status:response.status, url:response.url,
+        content_type:["application/json","application/problem+json"].includes(media) ? media : "other",
+        no_store:(response.headers.get("Cache-Control") || "").split(",").some(value => value.trim().toLowerCase() === "no-store"),
+        content_length:length
+      };
+      const clone = response.clone();
+      const bytes = await boundedBytes(clone.body, MAX_BODY, record, true);
+      if (length !== null && bytes.length !== Number(length)) { fail(record, "response_body_truncated"); return; }
+      if (!disposed && !record.error) record.text = new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(bytes);
+    } catch (_) { fail(record, "response_body_read_failed"); }
+  }
+  function wrappedFetch(...args) {
+    let record = null;
+    try {
+      const input = args[0], init = args[1];
+      const url = input instanceof Request ? input.url : new URL(String(input), location.href).href;
+      if (!disposed && interested(url)) {
+        if (records.size >= MAX_RECORDS) fatal = "record_count_limit";
+        else {
+          record = {id:++next,url,method:String(init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase(),
+            call_started_at:performance.timeOrigin+performance.now(),
+            body_sha256:null,owner:null,bound_watermark:null,metadata:null,text:null,bytes:0,error:null,
+            fingerprint_error:null,requestCancel:null,responseCancel:null};
+          records.set(record.id, record);
+          record.headers = new Promise(resolve => { record.notify = resolve; });
+          record.closed = new Promise(resolve => { record.stop = () => resolve(null); });
+          record.fingerprint = fingerprint(input, init, record);
+        }
+      }
+    } catch (_) { fatal = "request_descriptor_failed"; }
+    // No fingerprint/read/binding await can delay or replace the original call.
+    let promise;
+    try { promise = Reflect.apply(original, this, args); }
+    catch (error) { if (record) fail(record, "original_fetch_failed"); throw error; }
+    if (record) promise.then(response => {
+      record.response = observeResponse(response, record);
+      record.notify();
+    }, () => { fail(record, "original_fetch_failed"); }).catch(() => { fail(record, "response_observation_failed"); });
+    return promise;
+  }
+  const controller = {
+    version:1,
+    identity() { return {document:documentId,disposed,fatal}; },
+    async bind(expected, owner) {
+      if (disposed) return resultError("document_disposed");
+      if (fatal) return resultError(fatal);
+      const matching = () => [...records.values()].filter(record => record.method === expected.method && record.url === expected.url);
+      let candidates = matching();
+      for (;;) {
+        await Promise.all(candidates.map(record => record.fingerprint));
+        const current = matching();
+        if (current.length === candidates.length) { candidates = current; break; }
+        candidates = current;
+      }
+      if (disposed) return resultError("document_disposed");
+      if (fatal) return resultError(fatal);
+      if (candidates.some(record => record.body_sha256 === null)) return resultError("request_fingerprint_unavailable");
+      const exact = candidates.filter(record => record.body_sha256 === expected.body_sha256);
+      const owned = exact.filter(record => record.owner === owner);
+      if (owned.length === 1) {
+        if (exact.some(record => record.owner === null && record.id <= owned[0].bound_watermark)) return resultError("ambiguous_request");
+        return {ok:true,id:owned[0].id,document:documentId};
+      }
+      if (owned.length > 1) return resultError("ambiguous_request");
+      // Pending and failed records remain candidates; success cannot hide a retry.
+      const unbound = exact.filter(record => record.owner === null);
+      if (unbound.length !== 1) return resultError(unbound.length ? "ambiguous_request" : "request_not_observed");
+      const record = unbound[0];
+      // An older identical capture is excluded only by a real request-event
+      // binding that happened before this fetch invocation existed.
+      if (exact.some(other => other !== record && other.bound_watermark >= record.id)) return resultError("ambiguous_request");
+      record.owner = owner; record.bound_watermark = next;
+      return {ok:true,id:record.id,document:documentId};
+    },
+    async read({id, owner, document:expectedDocument, metadata, request_started_at}) {
+      if (disposed) return resultError("document_disposed");
+      if (fatal) return resultError(fatal);
+      if (expectedDocument !== documentId) return resultError("document_mismatch");
+      const record = records.get(id);
+      if (!record || record.owner !== owner) return resultError("request_owner_mismatch");
+      if (!Number.isFinite(request_started_at) || request_started_at < record.call_started_at) return resultError("request_document_mismatch");
+      if (!record.response && !record.error) {
+        let timer;
+        await Promise.race([record.headers, new Promise(resolve => {
+          timer = setTimeout(() => { fail(record, "response_observation_deadline"); resolve(); }, READ_MS);
+          timers.add(timer);
+        })]);
+        clearTimeout(timer); timers.delete(timer);
+      }
+      if (!record.response) return resultError(record.error || "response_not_observed");
+      await record.response;
+      if (disposed) return resultError("document_disposed");
+      if (fatal) return resultError(fatal);
+      if (record.error) return resultError(record.error);
+      const keys = ["status","url","content_type","no_store","content_length"];
+      if (!record.metadata || Object.keys(metadata).length !== keys.length || keys.some(key => record.metadata[key] !== metadata[key])) return resultError("response_metadata_mismatch");
+      if (typeof record.text !== "string") return resultError("response_body_unavailable");
+      return {ok:true,text:record.text};
+    },
+    retireBody({id, owner, document:expectedDocument}) {
+      if (disposed) return resultError("document_disposed");
+      if (expectedDocument !== documentId) return resultError("document_mismatch");
+      const record = records.get(id);
+      if (!record || record.owner !== owner) return resultError("request_owner_mismatch");
+      // Python's specific-Response cache owns these same authentic bytes after
+      // transfer. Keep their charge until disposal so combined retention stays bounded.
+      record.text = null;
+      return {ok:true};
+    },
+    dispose
+  };
+  Object.defineProperty(window, "__tabulaActualFetchObserver", {value:controller,configurable:false,writable:false});
+  window.fetch = wrappedFetch;
+  window.addEventListener("pagehide", dispose, {capture:true});
+  window.addEventListener("pageshow", event => { if (event.persisted) dispose(); }, {capture:true});
+})();
