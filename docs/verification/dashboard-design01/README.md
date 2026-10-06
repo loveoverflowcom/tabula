@@ -123,3 +123,9 @@ records the additive discovery boundary, native fragment focus and responsive
 large-text changes plus exact local verification. Its evidence boundary is
 separate from these historical captures and from the separately requested genuine
 post-fix screenshots.
+
+Actual post-PR93 pixel inspection found a wrapped unfocused skip-link tail despite
+passing geometry. The bounded
+[height-independent concealment follow-up](skip-conceal-followup-20261006.md)
+preserves native focus and adds a whole-box pre-Tab oracle; it does not convert
+automated geometry into a blanket screenshot verdict.

@@ -12,6 +12,21 @@ spec.loader.exec_module(module)
 
 
 class OracleTests(unittest.TestCase):
+    def test_unfocused_skip_requires_whole_wrapped_box_hidden_and_native_tab_preserved(self):
+        original = {"count": 1, "focused": False, "display": "block", "visibility": "visible",
+                    "tab_index": 0, "inert_or_hidden": False,
+                    "rect": {"width": 300, "height": 44, "bottom": -8}}
+        for height in (44, 84, 160, 320):
+            module.require_skip_concealed({**original, "rect": {**original["rect"], "height": height}})
+        for change in ({"count": 0}, {"count": 2}, {"focused": True}, {"display": "none"},
+                       {"visibility": "hidden"}, {"tab_index": -1}, {"inert_or_hidden": True},
+                       {"rect": {"width": 0, "height": 84, "bottom": -8}},
+                       {"rect": {"width": 300, "height": 0, "bottom": -8}},
+                       {"rect": {"width": 300, "height": 84, "bottom": 20}},
+                       {"rect": {"width": 300, "height": 84, "bottom": -.5}}):
+            with self.subTest(change=change), self.assertRaises(module.AcceptanceFailure):
+                module.require_skip_concealed({**original, **change})
+
     def test_contrast_uses_independent_wcag_linear_luminance(self):
         self.assertAlmostEqual(module.contrast_ratio((0, 0, 0), (255, 255, 255)), 21)
         self.assertAlmostEqual(module.contrast_ratio((128, 128, 128), (128, 128, 128)), 1)

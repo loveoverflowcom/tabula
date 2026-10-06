@@ -66,6 +66,27 @@ def require_font_preference(measured: float, expected: int):
         raise PrerequisiteBlocker("actual Chromium did not apply requested default font preference")
 
 
+def require_skip_concealed(metrics: dict):
+    """The whole unfocused box is above the viewport, while native Tab remains usable."""
+    require(metrics["count"] == 1 and not metrics["focused"], "initial skip-link state is not unique and unfocused")
+    require(metrics["display"] != "none" and metrics["visibility"] == "visible"
+            and metrics["tab_index"] >= 0 and not metrics["inert_or_hidden"],
+            "concealing skip link removed its keyboard/accessibility path")
+    box = metrics["rect"]
+    require(box["width"] > 0 and box["height"] > 0 and box["bottom"] <= -1,
+            "unfocused wrapped skip link leaks into the viewport")
+
+
+SKIP_STATE = """() => {
+ const links=document.querySelectorAll('.skip-link'),el=links[0];
+ if(!el)return {count:links.length,focused:false};
+ const b=el.getBoundingClientRect(),c=getComputedStyle(el);
+ return {count:links.length,focused:el===document.activeElement,display:c.display,visibility:c.visibility,
+   tab_index:el.tabIndex,inert_or_hidden:!!el.closest('[inert],[aria-hidden="true"]'),
+   rect:{x:b.x,y:b.y,width:b.width,height:b.height,bottom:b.bottom,right:b.right}};
+}"""
+
+
 def luminance(rgb: tuple[float, float, float]) -> float:
     def channel(value):
         value /= 255
@@ -517,6 +538,8 @@ def desktop_skip_link(browser, origin, evidence):
     try:
         page = context.new_page()
         settle(page, origin + "/")
+        unfocused = page.evaluate(SKIP_STATE)
+        require_skip_concealed(unfocused)
         # No programmatic focus: the very first real Tab must reach the skip link.
         page.keyboard.press("Tab")
         link = page.locator(".skip-link")
@@ -526,7 +549,8 @@ def desktop_skip_link(browser, origin, evidence):
         require(visible["on_screen"] and visible["topmost"], "focused skip link is covered by desktop chrome")
         page.keyboard.press("Enter")
         require(page.locator("main#main").evaluate("el => el === document.activeElement"), "skip-link Enter did not focus main")
-        return {"first_tab": True, "visible_hit_test": visible, "enter_main_focus": True, "capture": capture}
+        return {"unfocused": unfocused, "first_tab": True, "visible_hit_test": visible,
+                "enter_main_focus": True, "capture": capture}
     finally:
         context.close()
 
@@ -680,9 +704,11 @@ def text_scale(playwright, origin, evidence, private):
                     locale(page, language)
                     home = page.evaluate(MEASURE)
                     home_words = page.evaluate(NARROW_USABILITY)
+                    home_skip = page.evaluate(SKIP_STATE)
                     home_capture = evidence.capture(page, f"after-{name}-{language}-default-font-{scale * 100}percent", True)
                     try:
                         assert_layout(home, width, small=True)
+                        require_skip_concealed(home_skip)
                         assert_narrow_usability(home_words, width, probe, language, home=True)
                     except AcceptanceFailure as error:
                         failures.append({**partition, "route": "/", "reason": str(error)})
@@ -690,9 +716,11 @@ def text_scale(playwright, origin, evidence, private):
                     locale(page, language)
                     library = page.evaluate(MEASURE)
                     library_words = page.evaluate(NARROW_USABILITY)
+                    library_skip = page.evaluate(SKIP_STATE)
                     library_capture = evidence.capture(page, f"after-catalog-{name}-{language}-default-font-{scale * 100}percent", True)
                     try:
                         assert_layout(library, width, small=True)
+                        require_skip_concealed(library_skip)
                         assert_narrow_usability(library_words, width, probe, language, home=False)
                     except AcceptanceFailure as error:
                         failures.append({**partition, "route": "/games", "reason": str(error)})
@@ -710,6 +738,7 @@ def text_scale(playwright, origin, evidence, private):
                             "scaled drawer did not restore toggle focus")
                     result.append({**partition, "initial_font_px": probe, "narrow_reflow_required": width / probe <= 16,
                                    "home": home, "library": library, "drawer": drawer,
+                                   "unfocused_skip": {"home": home_skip, "library": library_skip},
                                    "narrow_usability": {"home": home_words, "library": library_words},
                                    "captures": [home_capture, library_capture, drawer_capture]})
                     (evidence.output / "font-scaling.json").write_text(json.dumps({"observations": result, "failures": failures,
