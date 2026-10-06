@@ -140,9 +140,16 @@
           if (problem) {
             // A restart changes the memory-only CSRF key. The rejected POST
             // remains rejected; fresh context/grant/scope must precede any retry.
-            const bytes = await boundedBody(response,1024);
             let exact = false;
-            try { exact = /^[ \t\r\n]*\{[ \t\r\n]*"code"[ \t\r\n]*:[ \t\r\n]*"request_rejected"[ \t\r\n]*\}[ \t\r\n]*$/.test(new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes)); } catch (_) {}
+            try {
+              const bytes = await boundedBody(response,1024);
+              exact = /^[ \t\r\n]*\{[ \t\r\n]*"code"[ \t\r\n]*:[ \t\r\n]*"request_rejected"[ \t\r\n]*\}[ \t\r\n]*$/.test(new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes));
+            } catch (error) {
+              // Independent document/lifecycle retirement still requires fresh
+              // authority. An unreadable current403 is never a verified marker.
+              if (!valid()) throw error;
+              throw new Error("Online authority could not be confirmed");
+            }
             if (exact) throw new Retryable("Online request context needs revalidation");
           }
           throw new AuthorityDenied("Online authority is unavailable");

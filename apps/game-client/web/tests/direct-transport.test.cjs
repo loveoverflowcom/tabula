@@ -276,3 +276,20 @@ test("nonexact or untrusted403 and genuine401 cannot become automatic context re
     await assert.rejects(f.transport.file("tabula-online-recover.txt"),/retired/);
   }
 });
+
+test("missing or interrupted403 problem body cannot start automatic context recovery",async()=>{
+  for(const missing of [true,false]){
+    const storage=memoryStorage();let released=false,calls=0,unavailable=0;
+    const f=fixture(authFetcher(()=>{
+      calls++;
+      if(missing)return new Response(null,{status:403,headers:{"Cache-Control":"no-store","Content-Type":"application/problem+json"}});
+      return {status:403,redirected:false,headers:new Headers({"Cache-Control":"no-store","Content-Type":"application/problem+json"}),body:{getReader(){return {async read(){throw new Error("private-body");},releaseLock(){released=true;}};}}};
+    }),{storage,onUnavailable(){unavailable++;}});
+    await f.transport.file("tabula-online-attach.txt");
+    await assert.rejects(f.transport.file("tabula-online-command/"+hex('{"seq":1}')),error=>!error.message.includes("private-body"));
+    assert.equal(unavailable,1);assert.equal(calls,1);
+    assert.equal(JSON.parse(storage.getItem("tabula.pending.v2."+id)).command,'{"seq":1}',"unknown result hint must survive a protocol failure");
+    await assert.rejects(f.transport.file("tabula-online-recover.txt"),/retired/);
+    if(!missing)assert.equal(released,true);
+  }
+});
