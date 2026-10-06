@@ -352,11 +352,14 @@ impl Authority for NetworkAuthority {
                 .begin_publication(e.credential, self.id, e.scope)
                 .await
                 .map_err(|_| AuthorityLost)?;
-            let owner = self
+            let mut owner = self
                 .journal
                 .journal
                 .begin_publication()
                 .await
+                .map_err(|_| AuthorityLost)?;
+            owner
+                .restrict_deadline(publication.expires_at())
                 .map_err(|_| AuthorityLost)?;
             if !snapshot_matches(publication.snapshot(), b) {
                 return Err(AuthorityLost);
@@ -400,12 +403,17 @@ impl Authority for NetworkAuthority {
                     if permit.binding != *b || permit.purpose != p {
                         return Err(AuthorityLost);
                     }
-                    return permit
-                        .owner
-                        .publish(|| {
-                            submit_prepared(&mut permit.publication, &self.output, b, action)
-                        })
-                        .map_err(|_| AuthorityLost)?;
+                    return submit_prepared(&self.output, b, || {
+                        permit
+                            .owner
+                            .publish(|| {
+                                permit
+                                    .publication
+                                    .publish(|_| action())
+                                    .map_err(|_| AuthorityLost)
+                            })
+                            .map_err(|_| AuthorityLost)?
+                    });
                 }
             }
             let guard = self.journal.active().map_err(|_| AuthorityLost)?;
@@ -420,16 +428,14 @@ impl Authority for NetworkAuthority {
         result
     }
 }
-fn submit_prepared<P: SessionPublication, T>(
-    publication: &mut P,
+fn submit_prepared<T>(
     output: &QueueOutput,
     binding: &Binding,
-    action: impl FnOnce() -> T,
+    authorize: impl FnOnce() -> Result<T, AuthorityLost>,
 ) -> Result<T, AuthorityLost> {
     let stage = output.begin_stage(binding).map_err(|_| AuthorityLost)?;
-    let result = publication
-        .publish(|_| action())
-        .map_err(|_| AuthorityLost)?;
+    // Candidate frames stay private until every nested guard's post-check succeeds.
+    let result = authorize()?;
     stage.commit().map_err(|_| AuthorityLost)?;
     Ok(result)
 }
@@ -773,7 +779,9 @@ mod tests {
         .snapshot();
         let mut publication = ExpiringPublication { snapshot };
         assert_eq!(
-            submit_prepared(&mut publication, &output, &b, || output.submit(&b, ack(1))),
+            submit_prepared(&output, &b, || publication
+                .publish(|_| output.submit(&b, ack(1)))
+                .map_err(|_| AuthorityLost)),
             Err(AuthorityLost)
         );
         assert!(output.drain(&b).unwrap().is_empty());

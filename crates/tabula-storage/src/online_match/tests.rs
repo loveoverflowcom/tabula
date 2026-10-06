@@ -107,25 +107,41 @@ async fn remove_current_membership(pool: &PgPool, request: CredentialOperation) 
 #[ignore = "requires explicit disposable PostgreSQL 16"]
 async fn real_postgres_online_publication_rechecks_removed_membership_and_exact_operation_scope() {
     let f = Fixture::new().await;
-    let (_, opponent, _journal) = started(&f).await;
+    let (owner, opponent, _journal) = started(&f).await;
     let store = PgOnlineMatchStore::new(f.first.clone());
-    let prior = store.resolve(opponent.operation, MATCH).await.unwrap();
+    let prior = store.resolve(owner.operation, MATCH).await.unwrap();
     let mut changed = prior.scope();
     changed.generation += 1;
     assert!(
         store
-            .begin_publication(opponent.operation, MATCH, changed)
+            .begin_publication(owner.operation, MATCH, changed)
             .await
             .is_err(),
         "a valid session cannot publish using a different server-owned operation scope"
     );
-    remove_current_membership(&f.second, opponent.operation).await;
+    remove_current_membership(&f.second, owner.operation).await;
     assert!(
-        store
-            .begin_publication(opponent.operation, MATCH, prior.scope())
-            .await
-            .is_err(),
+        matches!(
+            store
+                .begin_publication(owner.operation, MATCH, prior.scope())
+                .await,
+            Err(OnlineMatchError::JoinUnavailable)
+        ),
         "earlier resolve cannot authorize a projection after committed membership removal"
+    );
+    assert!(
+        matches!(
+            store.resolve(owner.operation, MATCH).await,
+            Err(OnlineMatchError::JoinUnavailable)
+        ),
+        "removed creator receives an admission denial rather than an unrelated unavailable error"
+    );
+    assert!(
+        matches!(
+            store.resolve(opponent.operation, MATCH).await,
+            Err(OnlineMatchError::Unavailable)
+        ),
+        "still-present caller cannot bypass the incomplete remaining roster's integrity check"
     );
     f.close().await;
 }

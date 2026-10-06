@@ -69,6 +69,7 @@
   function onlineRecovery(value) {
     if (!config?.online || !current() || onlineConcealed) return;
     onlineRecovering = true;
+    ready = false;
     const canvas = byId("glcanvas");
     // Preserve layout so Miniquad resize continues supplying a usable viewport.
     // Visibility/aria concealment and cleared pixels hide all private output.
@@ -179,7 +180,7 @@
     if (!current() || !ready || failed || leaving || typeof wasm_exports === "undefined" || typeof wasm_exports?.focus !== "function") return;
     try {
       if (!focused) protectPrivateSurface();
-      wasm_exports.focus(Boolean(focused && document.hasFocus() && document.visibilityState === "visible"));
+      wasm_exports.focus(Boolean(focused && !onlineRecovering && document.hasFocus() && document.visibilityState === "visible"));
       if (focused) revealConcealedSurface();
     } catch (error) { fail(error); }
   }
@@ -413,7 +414,7 @@
       wasm_exports[name] = typeof instanceExports[name] !== "function" ? instanceExports[name] : (...args) => {
         if (!current() || !instanceExports) return;
         if (name === "focus" && !args[0]) protectPrivateSurface();
-        if (name === "focus" && args[0]) args[0] = ready && !byId("leave-dialog").open && !byId("help-dialog").open && document.activeElement === byId("glcanvas") && document.hasFocus() && document.visibilityState === "visible";
+        if (name === "focus" && args[0]) args[0] = ready && !onlineRecovering && !byId("leave-dialog").open && !byId("help-dialog").open && document.activeElement === byId("glcanvas") && document.hasFocus() && document.visibilityState === "visible";
         return instanceExports[name](...args);
       };
     }

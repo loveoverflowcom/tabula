@@ -607,6 +607,20 @@ async fn membership_locked(
     room: &RoomRow,
     snapshot: SessionSnapshot,
 ) -> Result<OnlineMembership, OnlineMatchError> {
+    // Missing current permission is a caller-safe admission denial, even if
+    // removal also makes the remaining room roster structurally incomplete.
+    // Every still-present caller must separately pass full roster integrity.
+    let current_member: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM online_match_memberships WHERE match_id=$1 AND user_id=$2)",
+    )
+    .bind(room.match_id)
+    .bind(Uuid::from_u128(snapshot.user_id().0))
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(unavailable)?;
+    if !current_member {
+        return Err(OnlineMatchError::JoinUnavailable);
+    }
     let members = members(tx, room).await?;
     let member = members
         .iter()

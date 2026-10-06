@@ -169,6 +169,17 @@ impl PgMatchPublication {
         Ok(())
     }
 
+    /// Narrow this outer guard to a fresh nested authority's deadline. It never
+    /// extends owner authority; the final outer check then also fences shorter
+    /// session/resource expiry through actual first-frame handoff (ADR-0031).
+    pub fn restrict_deadline(&mut self, deadline: Instant) -> Result<(), RuntimePortError> {
+        self.expires_at = self.expires_at.min(deadline);
+        if self.published {
+            return Err(RuntimePortError::Unavailable);
+        }
+        self.check()
+    }
+
     /// Guard bounded pure first-frame construction on both sides of its callback.
     pub fn publish<T>(&mut self, action: impl FnOnce() -> T) -> Result<T, RuntimePortError> {
         self.check()?;
@@ -233,6 +244,57 @@ impl PgMatchJournal {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn narrowing_outer_deadline_cannot_extend_and_discards_late_nested_result() {
+        let original = Instant::now() + Duration::from_secs(1);
+        let mut guard = PgMatchPublication {
+            owner: None,
+            expires_at: original,
+            published: false,
+        };
+        guard
+            .restrict_deadline(original + Duration::from_secs(1))
+            .unwrap();
+        assert_eq!(
+            guard.expires_at, original,
+            "nested deadline cannot extend owner authority"
+        );
+        let earlier = Instant::now() + Duration::from_millis(100);
+        guard.restrict_deadline(earlier).unwrap();
+        assert_eq!(guard.expires_at, earlier);
+        let mut constructed = false;
+        assert_eq!(
+            guard.publish(|| {
+                constructed = true;
+                std::thread::sleep(Duration::from_millis(120));
+                "nested private first frame"
+            }),
+            Err(RuntimePortError::Unavailable)
+        );
+        assert!(
+            constructed,
+            "late nested result test must reach actual construction"
+        );
+        let mut guard = PgMatchPublication {
+            owner: None,
+            expires_at: original,
+            published: false,
+        };
+        assert_eq!(
+            guard.restrict_deadline(Instant::now()),
+            Err(RuntimePortError::Unavailable)
+        );
+        let mut called = false;
+        assert_eq!(
+            guard.publish(|| called = true),
+            Err(RuntimePortError::Unavailable)
+        );
+        assert!(
+            !called,
+            "already expired nested authority cannot begin construction"
+        );
+    }
 
     #[test]
     fn first_frame_guard_is_once_and_checks_expiry_after_pure_construction() {
