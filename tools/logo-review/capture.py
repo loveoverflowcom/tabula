@@ -55,7 +55,7 @@ def main():
                     if a.snapshot=='candidate':check(f'standalone-{theme} header SVG present',metrics['canonical_lockup_count']==1,metrics)
                     capture(page,f'{a.snapshot}-standalone-{theme}-header','actual staged local Chess setup header',metrics)
                     session=context.new_cdp_session(page);session.send('Network.enable');session.send('Network.emulateNetworkConditions',{'offline':False,'latency':100,'downloadThroughput':163840,'uploadThroughput':163840})
-                    page.locator('#setup button[type=submit]').click();page.locator('#loader').wait_for(state='visible',timeout=30000);metrics=brand(page,'#loader .runtime-brand .brand-lockup')
+                    page.locator('#setup button[type=submit]').click();page.wait_for_function('theme=>document.documentElement.dataset.theme===theme',arg=theme,timeout=30000);page.locator('#loader').wait_for(state='visible',timeout=30000);check(f'standalone-{theme} loader actual scheme',page.locator('html').get_attribute('data-theme')==theme,{'requested':theme,'actual':page.locator('html').get_attribute('data-theme')});metrics=brand(page,'#loader .runtime-brand .brand-lockup')
                     capture(page,f'{a.snapshot}-standalone-{theme}-loader','actual bootloader during real throttled WASM transfer',metrics)
                     if a.snapshot=='candidate':check(f'standalone-{theme} genuine loader SVG present',metrics['canonical_lockup_count']==1,metrics)
                     session.send('Network.emulateNetworkConditions',{'offline':False,'latency':0,'downloadThroughput':-1,'uploadThroughput':-1});page.locator('#loader').wait_for(state='hidden',timeout=120000)
