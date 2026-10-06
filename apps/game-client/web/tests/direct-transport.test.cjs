@@ -207,3 +207,23 @@ test("Rust capacity resync conceals immediately and preserves original intent wi
   assert.equal(JSON.parse(storage.getItem("tabula.pending.v2."+id)).command,'{"seq":1}');
   f.transport.retire();
 });
+
+test("window focus-only resume conceals old authority before fresh attach and ignores dialog focus", async()=>{
+  const events=new Map(), document={visibilityState:"visible",addEventListener(){},removeEventListener(){}};
+  const lifecycle={document,addEventListener:(name,fn)=>events.set(name,fn),removeEventListener:(name)=>events.delete(name)};
+  let concealed=0, seen=0, calls=0;
+  const f=fixture(async(...args)=>{calls++;return authFetcher()(...args);},{lifecycle,onRecovering(){concealed++;},onStatus(){seen++;}});
+  await f.transport.file("tabula-online-attach.txt");
+  const status=generation=>"tabula-online-status/"+hex(JSON.stringify({seat:0,revision:0,status:"current",connection:"Connected",generation}));
+  events.get("focus")({target:{tagName:"DIALOG"}});
+  assert.equal(concealed,0);
+  await f.transport.file(status(0));assert.equal(seen,1);
+  events.get("blur")({target:lifecycle});assert.equal(concealed,1);
+  await f.transport.file(status(0));assert.equal(seen,1);
+  events.get("focus")({target:lifecycle});assert.equal(concealed,2);
+  await f.transport.file(status(0));assert.equal(seen,1);
+  const fresh=JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-poll.txt")));
+  assert.equal(fresh.transport,"resync");assert.equal(calls,6);
+  await f.transport.file(status(fresh.bootstrap.transport_generation));assert.equal(seen,2);
+  f.transport.retire();assert.equal(events.has("focus"),false);assert.equal(events.has("blur"),false);
+});

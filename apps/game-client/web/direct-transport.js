@@ -26,7 +26,7 @@
   function create({matchId, gameId, signal, current, onWaiting, onStatus, onRecovering, onUnavailable, fetcher=root.fetch, protocol=root.location?.protocol, timers=root, storage, now=()=>Date.now(), random=()=>Math.random(), lifecycle=root}) {
     if (protocol !== "https:" || !/^[0-9a-f]{32}$/.test(matchId) || /^0+$/.test(matchId) || typeof gameId !== "string" || gameId.length > 128) throw new Error("Online play needs a trusted HTTPS document");
     if (storage === undefined) { try { storage = root.sessionStorage; } catch (_) { storage = null; } }
-    let csrf = null, attachment = null, operationScope = null, gameVersion = null, retired = false, busy = false, generation = 0;
+    let csrf = null, attachment = null, operationScope = null, gameVersion = null, retired = false, busy = false, generation = 0, focusSuspended = false;
     const cancellations = new Set(), requestCancellations = new Set(), key = "tabula.pending.v2." + matchId;
     const active = () => !retired && !signal.aborted && current();
     const encode = value => new TextEncoder().encode(JSON.stringify(value));
@@ -63,6 +63,8 @@
       for (const cancel of [...cancellations]) cancel();
       cancellations.clear();
       lifecycle?.removeEventListener?.("offline", interrupt);
+      lifecycle?.removeEventListener?.("blur", blur);
+      lifecycle?.removeEventListener?.("focus", focus);
       lifecycle?.document?.removeEventListener?.("visibilitychange", visibility);
     }
     function unavailable() {
@@ -77,7 +79,19 @@
       for (const cancel of [...requestCancellations]) cancel();
     }
     function visibility() { interrupt(); }
+    // Window restoration is an authority boundary even if visibility/pagehide
+    // was missed. Ignore focus moving between controls or an internal dialog.
+    function blur(event) {
+      if (event?.target && event.target !== lifecycle) return;
+      focusSuspended = true; interrupt();
+    }
+    function focus(event) {
+      if (event?.target && event.target !== lifecycle) return;
+      focusSuspended = false; interrupt();
+    }
     lifecycle?.addEventListener?.("offline", interrupt);
+    lifecycle?.addEventListener?.("blur", blur);
+    lifecycle?.addEventListener?.("focus", focus);
     lifecycle?.document?.addEventListener?.("visibilitychange", visibility);
     const endpoint = operation => "/api/v1/matches/" + matchId + "/" + operation;
     async function request(path, body=null) {
@@ -186,7 +200,7 @@
           const value = privateJson(new TextEncoder().encode(decodeHex(name.slice("tabula-online-status/".length),4096)));
           if (!Number.isInteger(value.seat) || value.seat < 0 || value.seat > 7 || !Number.isSafeInteger(value.revision) || value.revision < 0 || typeof value.status !== "string" || value.status.length > 1024 || typeof value.connection !== "string" || value.connection.length > 256 || Object.keys(value).some(k => !["seat","revision","status","connection","generation"].includes(k))) throw new Error("Invalid runtime status");
           // A retired authority cannot be revealed by queued old presenter status.
-          if (attachment && value.generation === generation && (!lifecycle.document || lifecycle.document.visibilityState === "visible")) onStatus?.(value); return encode("ok");
+          if (attachment && !focusSuspended && value.generation === generation && (!lifecycle.document || lifecycle.document.visibilityState === "visible")) onStatus?.(value); return encode("ok");
         }
         if (busy) throw new Error("An online request is already active");
         busy = true; ownsRequest = true;
