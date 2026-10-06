@@ -193,11 +193,36 @@ def main():
             require(source.count(needle)==1,'Current maintained Werewolf driver launch changed; re-inspect before running')
             replacement="const browser = await chromium.launch({ executablePath: process.env.TABULA_CHROME, headless: true, args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });"
             with tempfile.TemporaryDirectory(prefix='ui-report-wolf-driver-') as temp:
-                driver=Path(temp)/'verify-redesign.mjs';driver.write_text(source.replace(needle,replacement))
+                adapted=source.replace(needle,replacement)
+                # The current maintained game moved its options controls into
+                # Layout::options. Adapt only public pointer locations; private
+                # drawer geometry and actual game/input/assertion paths stay real.
+                original_return="return { compact, landscape, table, reveal, dock, card, footer, dialog: rect(margin, Math.max(height * .16, 8), width - margin * 2, Math.max(height * .68, 244)) };"
+                options_return="""const optionsWidth = Math.min(width - 32, 520), condensed = height < 420;
+  const optionsHeight = condensed ? 276 : 408;
+  const optionsDialog = rect((width - optionsWidth) / 2, (height - optionsHeight) / 2, optionsWidth, optionsHeight);
+  return { compact, landscape, table, reveal, dock, card, footer, optionsDialog,
+    tools_y: optionsDialog.y + (condensed ? 128 : 240), row_step: condensed ? 48 : 52,
+    dialog: rect(margin, Math.max(height * .16, 8), width - margin * 2, Math.max(height * .68, 244)) };"""
+                require(adapted.count(original_return)==1,'Current public geometry return changed; re-inspect')
+                adapted=adapted.replace(original_return,options_return)
+                pointer_replacements={
+                    'Math.max((g.dialog.width - 32) / 2, 44)':'Math.max((g.optionsDialog.width - 32) / 2, 44)',
+                    'rect(g.dialog.x + 12 + w + 8, g.dialog.y + 70 + 52, w, 44)':'rect(g.optionsDialog.x + 12 + w + 8, g.tools_y + g.row_step, w, 44)',
+                    'rect(g.dialog.x + 12 + w + 8, g.dialog.y + 70, w, 44)':'rect(g.optionsDialog.x + 12 + w + 8, g.tools_y, w, 44)',
+                    'rect(g.dialog.x + 12, g.dialog.y + 70 + 52, w, 44)':'rect(g.optionsDialog.x + 12, g.tools_y + g.row_step, w, 44)',
+                    'rect(g.dialog.x + 12 + w + 8, g.dialog.y + 122, w, 44)':'rect(g.optionsDialog.x + 12 + w + 8, g.tools_y + g.row_step, w, 44)',
+                    'Math.max((deadGeometry.dialog.width - 32) / 2, 44)':'Math.max((deadGeometry.optionsDialog.width - 32) / 2, 44)',
+                    'rect(deadGeometry.dialog.x + 12, deadGeometry.dialog.y + 122, deadDialogWidth, 44)':'rect(deadGeometry.optionsDialog.x + 12, deadGeometry.tools_y + deadGeometry.row_step, deadDialogWidth, 44)',
+                }
+                for old,new in pointer_replacements.items():
+                    require(old in adapted,'Expected maintained public input location changed; re-inspect')
+                    adapted=adapted.replace(old,new)
+                driver=Path(temp)/'verify-redesign.mjs';driver.write_text(adapted)
                 metadata['werewolf_driver']={'original_source':original.relative_to(ROOT).as_posix(),'original_sha256':digest(original),
-                    'executed_copy_sha256':digest(driver),'only_change':'official CI executable and software WebGL launch flags',
+                    'executed_copy_sha256':digest(driver),'only_change':'official CI browser launch and public pointer locations matching current Layout::options; no game state or source edits',
                     'cases':'1200x880-dpr1,390x844-dpr1; theme-light and public-phase-captures extras'};evidence.write()
-                env=os.environ.copy();env.update(TABULA_CASES='1200x880-dpr1,390x844-dpr1',TABULA_EXTRA_CASES='public-phase-captures,theme-light')
+                env=os.environ.copy();env.update(TABULA_CASES='1200x880-dpr1,390x844-dpr1',TABULA_EXTRA_CASES='public-phase-captures,theme-light',TABULA_KEEP_ALL='1')
                 result=subprocess.run(['node',str(driver),wolf,str(OUT/'werewolf')],env=env,text=True,capture_output=True,timeout=300)
                 (OUT/'werewolf-driver-output.log').write_text(result.stdout+'\n'+result.stderr)
                 evidence.observation('maintained current Werewolf driver','PASS' if result.returncode==0 else 'FAIL',{'exit_code':result.returncode,
