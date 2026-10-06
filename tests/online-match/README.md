@@ -75,9 +75,16 @@ initial absence of an opponent cookie. Enrollment is not a product login route.
 Every tested context installs a test-only init script before application scripts.
 The wrapper calls the original browser `fetch` once, synchronously, with the same
 receiver and argument objects, and returns its original Promise and Response.
-It observes only a clone of the authentic response stream. It does not fulfil
-routes, rewrite requests or replies, issue a replacement API call, or fabricate
-an attachment, Ack or projection. Browser TLS verification is unchanged.
+It observes only a clone of the authentic response stream. A transparent native
+Request constructor proxy keeps bounded plain string/empty body inputs in an
+ephemeral WeakMap, including copies of already tracked Request bodies. It keeps
+the native constructor arguments, Request objects and prototypes unchanged.
+Body accessors are left to the original constructor/fetch and fail observation
+closed; untracked nonempty bodies and streamed uploads also fail closed. No
+upload is cloned, read or locked: cloning a Request makes Chromium omit its
+original post data from Playwright even while the server receives the same bytes.
+It does not fulfil routes, rewrite requests or replies, issue a replacement API
+call, or fabricate an attachment, Ack or projection. TLS verification is unchanged.
 
 The actual Playwright Request event binds a unique owner to the full URL, method
 and SHA-256 of the original request bytes. Pending and failed competing records
@@ -91,6 +98,9 @@ Playwright Response cache; they cannot select a retry or charge a body twice.
 
 Observations are bounded per document to 64 records, 128 KiB request bytes,
 2 MiB per response, 8 MiB combined retained response bytes and five-second reads.
+The constructor source cache separately allows at most 64 protected captures and
+8 MiB cumulative source bytes per epoch; unrelated native Requests are excluded.
+Crossing its limits closes observation while preserving native construction.
 Aborted, truncated, unreadable, oversized, timed-out or invalid JSON bodies stay
 failures, with no CDP-body lookup fallback. Response text is retired from page
 memory after its exact test-side transfer; its budget remains charged until
@@ -99,8 +109,8 @@ navigation, page/context close and document checks clear or reject test caches.
 Cookies, arbitrary headers, raw grants and observed bodies never enter diagnostics
 or artifacts. Only fixed source-owned observation error enums may be retained.
 
-Cloning tees a stream and can affect buffering and scheduling. This is instrumented
-observation of authentic bytes, not proof that the application consumed its
+Cloning a response tees its stream and can affect buffering and scheduling.
+This is instrumented observation of authentic bytes, not proof that the application consumed its
 original body. Existing Rust-decoded seat/private-field, real rendered board,
 Ack, native publication-byte, actual SIGKILL/barrier and independent PostgreSQL
 durable-prefix assertions remain mandatory. The Node and Python observer tests

@@ -250,11 +250,12 @@ test('reading the observation leaves the original response and its body untouche
     assert.equal(await value.text(), original);
 });
 
-test('Request body is hashed from original cloned bytes without consuming the caller body', async () => {
+test('tracked Request string bytes are hashed without cloning or consuming the upload', async () => {
     const body = '{ "large_id": 340282366920938463463374607431768211455, "text": "é" }';
-    const request = new Request(URL_ONE, { method: 'POST', body });
     const value = response();
     const h = harness(() => Promise.resolve(value));
+    const request = new h.window.Request(URL_ONE, { method: 'POST', body });
+    request.clone = () => { throw new Error('upload clone is forbidden'); };
     await h.window.fetch(request);
     assert.equal(h.calls[0].args[0], request);
     const binding = await bound(h, expected(body));
@@ -263,21 +264,22 @@ test('Request body is hashed from original cloned bytes without consuming the ca
     assert.equal(await request.text(), body);
 });
 
-test('streamed Request fingerprints concatenate exact chunks in original order', async () => {
+test('streamed Request bodies fail closed without cloning, locking or consuming their upload', async () => {
     const chunks = ['{ "id": 340282366920938463463374607431768211455,', ' "text": "', 'é" }'];
-    const request = new Request(URL_ONE, {
+    const value = response();
+    const h = harness(() => Promise.resolve(value));
+    const request = new h.window.Request(URL_ONE, {
         method: 'POST', duplex: 'half',
         body: new ReadableStream({ start(controller) {
             for (const chunk of chunks) controller.enqueue(new TextEncoder().encode(chunk));
             controller.close();
         } }),
     });
-    const value = response();
-    const h = harness(() => Promise.resolve(value));
-    await h.window.fetch(request);
-    const binding = await bound(h, expected(chunks.join('')));
-    assert.deepEqual(plain(await read(h, binding, value)), { ok: true, text: '{"frames":[]}' });
+    request.clone = () => { throw new Error('upload clone is forbidden'); };
+    assert.equal(await h.window.fetch(request), value);
+    failure(await h.observer.bind(expected(chunks.join('')), 'consumer-one'), 'request_fingerprint_unavailable');
     assert.equal(request.bodyUsed, false);
+    assert.equal(request.body.locked, false);
     assert.equal(await request.text(), chunks.join(''));
 });
 
@@ -293,13 +295,14 @@ test('Request init body and method overrides identify the bytes actually sent', 
 });
 
 for (const initBody of [null, undefined]) {
-    test(`Request init body ${String(initBody)} retains and fingerprints the original nonempty body`, async () => {
-        const request = new Request(URL_ONE, { method: 'POST', body: BODY });
+    test(`Request init body ${String(initBody)} retains tracked original bytes`, async () => {
         const init = { body: initBody };
-        // Native Request construction is the independent Fetch body-retention oracle.
-        assert.equal(await new Request(request.clone(), init).text(), BODY);
+        // Native Request construction is the independent Fetch retention oracle.
+        assert.equal(await new Request(new Request(URL_ONE, { method: 'POST', body: BODY }), init).text(), BODY);
         const value = response();
         const h = harness(() => Promise.resolve(value));
+        const request = new h.window.Request(URL_ONE, { method: 'POST', body: BODY });
+        request.clone = () => { throw new Error('upload clone is forbidden'); };
         assert.equal(await h.window.fetch(request, init), value);
         assert.equal(h.calls[0].args[0], request);
         assert.equal(h.calls[0].args[1], init);
@@ -310,6 +313,162 @@ for (const initBody of [null, undefined]) {
         assert.equal(await request.text(), BODY);
     });
 }
+
+test('Request constructor proxy preserves native prototypes, subclasses, fields and throws', async () => {
+    const value = response();
+    const h = harness(() => Promise.resolve(value));
+    assert.equal(h.window.Request.prototype, Request.prototype);
+    class DerivedRequest extends h.window.Request {}
+    const abort = new AbortController();
+    const init = { method: 'POST', body: BODY, signal: abort.signal, credentials: 'same-origin', cache: 'no-store' };
+    const request = new DerivedRequest(URL_ONE, init);
+    assert.equal(Object.getPrototypeOf(request), DerivedRequest.prototype);
+    assert.ok(request instanceof Request && request instanceof h.window.Request);
+    assert.equal(request.constructor, DerivedRequest);
+    assert.equal(request.credentials, init.credentials);
+    assert.equal(request.cache, init.cache);
+    assert.equal(request.method, init.method);
+    await h.window.fetch(request);
+    const binding = await bound(h);
+    assert.deepEqual(plain(await read(h, binding, value)), { ok: true, text: '{"frames":[]}' });
+    const originalError = new Error('original constructor error');
+    const throwing = { get body() { throw originalError; } };
+    assert.throws(() => new h.window.Request(URL_ONE, throwing), error => error === originalError);
+    assert.throws(() => h.window.Request(URL_ONE), TypeError);
+});
+
+for (const body of [null, undefined]) {
+    test(`tracked Request constructor inheritance retains bytes for body ${String(body)}`, async () => {
+        const value = response();
+        const h = harness(() => Promise.resolve(value));
+        const original = new h.window.Request(URL_ONE, { method: 'POST', body: BODY });
+        original.clone = () => { throw new Error('upload clone is forbidden'); };
+        const request = new h.window.Request(original, { body });
+        await h.window.fetch(request);
+        const binding = await bound(h);
+        assert.deepEqual(plain(await read(h, binding, value)), { ok: true, text: '{"frames":[]}' });
+        assert.equal(await request.text(), BODY);
+    });
+}
+
+test('tracked empty Request body matches the native empty upload without a clone', async () => {
+    const h = harness(() => Promise.resolve(response()));
+    const request = new h.window.Request(URL_ONE, { method: 'POST' });
+    request.clone = () => { throw new Error('upload clone is forbidden'); };
+    await h.window.fetch(request);
+    await bound(h, expected(''));
+    assert.equal(request.body, null);
+});
+
+test('untracked nonempty Request bodies cannot be mistaken for empty uploads', async () => {
+    const request = new Request(URL_ONE, { method: 'POST', body: BODY });
+    request.clone = () => { throw new Error('upload clone is forbidden'); };
+    const value = response();
+    const h = harness(() => Promise.resolve(value));
+    assert.equal(await h.window.fetch(request), value);
+    failure(await h.observer.bind(expected(''), 'empty-consumer'), 'request_fingerprint_unavailable');
+    failure(await h.observer.bind(expected(), 'consumer-one'), 'request_fingerprint_unavailable');
+    assert.equal(request.bodyUsed, false);
+    assert.equal(request.body.locked, false);
+});
+
+test('constructor body accessors run only in native construction and fail observation closed', async () => {
+    let reads = 0;
+    const value = response();
+    const h = harness(() => Promise.resolve(value));
+    const init = { method: 'POST', get body() { reads += 1; return BODY; } };
+    const request = new h.window.Request(URL_ONE, init);
+    assert.equal(reads, 1);
+    assert.equal(await h.window.fetch(request), value);
+    assert.equal(reads, 1);
+    failure(await h.observer.bind(expected(), 'consumer-one'), 'request_fingerprint_unavailable');
+    assert.equal(await request.text(), BODY);
+});
+
+test('fetch body accessors run only in original fetch and fail observation closed', async () => {
+    let reads = 0;
+    const value = response();
+    const init = { method: 'POST', get body() { reads += 1; return BODY; } };
+    const h = harness((input, options) => {
+        new Request(input, options);
+        return Promise.resolve(value);
+    });
+    assert.equal(await h.window.fetch(URL_ONE, init), value);
+    assert.equal(reads, 1);
+    assert.equal(h.calls[0].args[1], init);
+    failure(await h.observer.bind(expected(), 'consumer-one'), 'request_fingerprint_unavailable');
+});
+
+test('inherited init body accessors are not executed by observation', async () => {
+    let reads = 0;
+    const init = Object.assign(Object.create({ get body() { reads += 1; return BODY; } }), { method: 'POST' });
+    const h = harness(() => Promise.resolve(response()));
+    const request = new h.window.Request(URL_ONE, init);
+    assert.equal(reads, 1);
+    await h.window.fetch(request);
+    assert.equal(reads, 1);
+    failure(await h.observer.bind(expected(), 'consumer-one'), 'request_fingerprint_unavailable');
+});
+
+test('tracked Request limits count UTF-8 bytes and do not retain oversized strings', async () => {
+    const body = 'é'.repeat(REQUEST_LIMIT / 2 + 1);
+    const h = harness(() => Promise.resolve(response()));
+    const request = new h.window.Request(URL_ONE, { method: 'POST', body });
+    await h.window.fetch(request);
+    failure(await h.observer.bind(expected(body), 'consumer-one'), 'request_fingerprint_unavailable');
+    assert.equal(request.bodyUsed, false);
+});
+
+test('Request source capture is retired at a persisted observation epoch boundary', async () => {
+    const h = harness(() => Promise.resolve(response()));
+    const old = new h.window.Request(URL_ONE, { method: 'POST', body: BODY });
+    h.event('pagehide', { persisted: true });
+    h.event('pageshow', { persisted: true });
+    await h.window.fetch(old);
+    failure(await h.observer.bind(expected(), 'old-consumer'), 'request_fingerprint_unavailable');
+    h.event('pagehide', { persisted: true });
+    h.event('pageshow', { persisted: true });
+    const fresh = new h.window.Request(URL_ONE, { method: 'POST', body: BODY });
+    await h.window.fetch(fresh);
+    await bound(h);
+});
+
+test('constructor source cache is bounded before any request is fetched', async () => {
+    const value = response();
+    const h = harness(() => Promise.resolve(value));
+    for (let i = 0; i < RECORD_LIMIT; i += 1) {
+        const request = new h.window.Request(URL_ONE, { method: 'POST', body: BODY });
+        assert.ok(request instanceof Request);
+    }
+    assert.equal(h.observer.identity().fatal, null);
+    const overflow = new h.window.Request(URL_ONE, { method: 'POST', body: BODY });
+    assert.ok(overflow instanceof Request, 'observation limits never reject native construction');
+    assert.equal(h.calls.length, 0);
+    assert.equal(await h.window.fetch(overflow), value);
+    assert.equal(h.calls[0].args[0], overflow);
+    failure(await h.observer.bind(expected(), 'consumer-one'), 'record_count_limit');
+});
+
+test('constructor observation errors remain closed without replacing native construction', async () => {
+    const value = response();
+    const h = harness(() => Promise.resolve(value));
+    vm.runInContext('TextEncoder=class { encode() { throw new Error("synthetic-private") } }', h.context);
+    const request = new h.window.Request(URL_ONE, { method: 'POST', body: BODY });
+    assert.ok(request instanceof Request);
+    assert.equal(await request.text(), BODY);
+    assert.equal(h.observer.identity().fatal, 'request_descriptor_failed');
+    failure(await h.observer.bind(expected(), 'consumer-one'), 'request_descriptor_failed');
+});
+
+test('unrelated native Request construction cannot consume the protected capture budget', async () => {
+    const h = harness(() => Promise.resolve(response()));
+    for (let i = 0; i < RECORD_LIMIT + 1; i += 1) {
+        new h.window.Request(`${ORIGIN}/assets/${i}`, { method: 'POST', body: BODY });
+    }
+    const request = new h.window.Request(URL_ONE, { method: 'POST', body: BODY });
+    await h.window.fetch(request);
+    await bound(h);
+});
 
 test('same consumer repeatedly binds and reads one record until explicit body retirement', async () => {
     const { h, value, binding } = await observed();
@@ -753,10 +912,10 @@ test('the request body limit permits exactly 128 KiB and rejects the next byte',
     failure(await rejected.observer.bind(expected(excess), 'consumer-one'), 'request_fingerprint_unavailable');
 });
 
-test('the request byte limit also applies to cloned Request streams', async () => {
+test('the request byte limit also applies to tracked constructor bodies', async () => {
     const body = 'x'.repeat(REQUEST_LIMIT + 1);
-    const request = new Request(URL_ONE, { method: 'POST', body });
     const h = harness(() => Promise.resolve(response()));
+    const request = new h.window.Request(URL_ONE, { method: 'POST', body });
     await h.window.fetch(request);
     failure(await h.observer.bind(expected(body), 'consumer-one'), 'request_fingerprint_unavailable');
     assert.equal(request.bodyUsed, false);
@@ -772,17 +931,16 @@ test('unsupported init body types fail closed while preserving the caller fetch'
     failure(await h.observer.bind(expected(Buffer.from(body)), 'consumer-one'), 'request_fingerprint_unavailable');
 });
 
-test('a stalled cloned Request fingerprint stops at the fixed five-second deadline', async () => {
+test('a stalled Request upload is rejected without opening an observation reader', async () => {
     const request = new Request(URL_ONE, {
         method: 'POST', duplex: 'half', body: new ReadableStream({ start() {} }),
     });
     const h = harness(() => Promise.resolve(response()));
     await h.window.fetch(request);
-    const binding = h.observer.bind(expected(), 'consumer-one');
+    failure(await h.observer.bind(expected(), 'consumer-one'), 'request_fingerprint_unavailable');
     await settle();
-    h.timer.advance(DEADLINE_MS);
-    failure(await binding, 'request_fingerprint_unavailable');
     assert.equal(request.bodyUsed, false);
+    assert.equal(request.body.locked, false);
     assert.equal(h.timer.pending(), 0);
 });
 
@@ -918,17 +1076,18 @@ test('lifecycle disposal unblocks a pending read and clears its deadline', async
     assert.equal(h.timer.pending(), 0);
 });
 
-test('lifecycle disposal also unblocks a pending request-stream bind', async () => {
+test('lifecycle disposal clears response readers after a rejected request-stream observation', async () => {
     const request = new Request(URL_ONE, {
         method: 'POST', duplex: 'half', body: new ReadableStream({ start() {} }),
     });
     const h = harness(() => Promise.resolve(response(new ReadableStream({ start() {} }))));
     await h.window.fetch(request);
-    const binding = h.observer.bind(expected(), 'consumer-one');
+    failure(await h.observer.bind(expected(), 'consumer-one'), 'request_fingerprint_unavailable');
     await settle();
-    assert.ok(h.timer.pending() >= 2);
+    assert.equal(request.bodyUsed, false);
+    assert.equal(request.body.locked, false);
+    assert.equal(h.timer.pending(), 0, 'a rejected fingerprint opens no upload or response reader');
     h.event('pagehide', { persisted: true });
-    failure(await binding, 'document_disposed');
     assert.equal(h.timer.pending(), 0);
 });
 

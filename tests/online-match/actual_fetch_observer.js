@@ -1,12 +1,14 @@
 /* Test-only observation of authentic fetch bytes; never a transport or authority. */
 (() => {
   "use strict";
-  const original = window.fetch;
+  const original = window.fetch, NativeRequest = window.Request;
+  const nativeBody = Object.getOwnPropertyDescriptor(NativeRequest.prototype, "body").get;
+  const nativeUrl = Object.getOwnPropertyDescriptor(NativeRequest.prototype, "url").get;
   const MAX_RECORDS = 64, MAX_BODY = 2097152, MAX_TOTAL = 8388608;
   const MAX_REQUEST = 131072, READ_MS = 5000;
   function observationEpoch() {
-    return {documentId:crypto.randomUUID(),records:new Map(),readers:new Set(),timers:new Set(),
-      next:0,retained:0,disposed:false,fatal:null};
+    return {documentId:crypto.randomUUID(),records:new Map(),readers:new Set(),timers:new Set(),requestBodies:new WeakMap(),
+      next:0,retained:0,capturedRequests:0,capturedRequestBytes:0,disposed:false,fatal:null};
   }
   let currentEpoch = observationEpoch();
   const resultError = error => ({ok:false,error});
@@ -37,7 +39,59 @@
     for (const reader of epoch.readers) { try { Promise.resolve(reader.cancel()).catch(() => {}); } catch (_) {} }
     for (const timer of epoch.timers) clearTimeout(timer);
     epoch.readers.clear(); epoch.timers.clear(); epoch.records.clear(); epoch.retained = 0;
+    epoch.requestBodies = new WeakMap();
+    epoch.capturedRequests = 0; epoch.capturedRequestBytes = 0;
   }
+  function bodyOption(init) {
+    if (init == null) return {known:true,value:undefined};
+    if (typeof init !== "object" && typeof init !== "function") return {known:false};
+    const descriptor = Object.getOwnPropertyDescriptor(init, "body");
+    if (!descriptor) return "body" in init ? {known:false} : {known:true,value:undefined};
+    return Object.hasOwn(descriptor, "value") ? {known:true,value:descriptor.value} : {known:false};
+  }
+  function bodySource(input, init, epoch) {
+    const option = bodyOption(init);
+    if (!option.known) return {error:"request_body_unsupported"};
+    if (option.value != null) {
+      if (typeof option.value !== "string") return {error:"request_body_unsupported"};
+      if (option.value.length > MAX_REQUEST) return {error:"request_body_limit"};
+      return {text:option.value};
+    }
+    if (!(input instanceof NativeRequest)) return {text:""};
+    const inherited = epoch.requestBodies.get(input);
+    if (inherited) return inherited;
+    return nativeBody.call(input) === null ? {text:""} : {error:"request_body_unsupported"};
+  }
+  // A Request clone tees its upload and makes Chromium omit authentic post data
+  // from the real Request event. Retain only bounded plain constructor inputs;
+  // never read or clone an upload to reconstruct bytes missing from that event.
+  window.Request = new Proxy(NativeRequest, {
+    construct(target, args, newTarget) {
+      const epoch = currentEpoch;
+      let source;
+      try { source = bodySource(args[0], args[1], epoch); }
+      catch (_) { source = {error:"request_body_unsupported"}; }
+      const request = Reflect.construct(target, args, newTarget);
+      try {
+        if (!epoch.disposed && !epoch.fatal && interested(nativeUrl.call(request))) {
+          if (epoch.capturedRequests >= MAX_RECORDS) epoch.fatal = "record_count_limit";
+          else {
+            let size = 0;
+            if (!source.error) {
+              size = new TextEncoder().encode(source.text).length;
+              if (size > MAX_REQUEST) { source = {error:"request_body_limit"}; size = 0; }
+            }
+            if (size > MAX_TOTAL - epoch.capturedRequestBytes) epoch.fatal = "total_body_limit";
+            else {
+              epoch.capturedRequests += 1; epoch.capturedRequestBytes += size;
+              epoch.requestBodies.set(request, source);
+            }
+          }
+        }
+      } catch (_) { epoch.fatal = "request_descriptor_failed"; }
+      return request;
+    }
+  });
   async function boundedBytes(stream, limit, record, responseBody) {
     const epoch = record.epoch;
     if (!stream) return new Uint8Array();
@@ -83,20 +137,10 @@
     const epoch = record.epoch;
     let bytes;
     try {
-      // Fetch retains a Request's existing body when the init body is null or
-      // undefined; only a non-null body replaces its authentic bytes.
-      const override = init != null && Object.hasOwn(init, "body") && init.body != null;
-      const body = override ? init.body : input instanceof Request ? undefined : null;
-      if (override || !(input instanceof Request)) {
-        if (body === null || body === undefined) bytes = new Uint8Array();
-        else if (typeof body === "string") bytes = new TextEncoder().encode(body);
-        else { fail(record, "request_body_unsupported", true); return; }
-        if (bytes.length > MAX_REQUEST) { fail(record, "request_body_limit", true); return; }
-      } else {
-        // Clone synchronously before the native fetch can consume the Request.
-        const clone = input.clone();
-        bytes = await boundedBytes(clone.body, MAX_REQUEST, record, false);
-      }
+      const source = bodySource(input, init, epoch);
+      if (source.error) { fail(record, source.error, true); return; }
+      bytes = new TextEncoder().encode(source.text);
+      if (bytes.length > MAX_REQUEST) { fail(record, "request_body_limit", true); return; }
       let timer;
       const deadline = new Promise(resolve => {
         timer = setTimeout(() => { fail(record, "request_fingerprint_deadline", true); resolve(null); }, READ_MS);
@@ -137,11 +181,11 @@
     let record = null;
     try {
       const input = args[0], init = args[1];
-      const url = input instanceof Request ? input.url : new URL(String(input), location.href).href;
+      const url = input instanceof NativeRequest ? input.url : new URL(String(input), location.href).href;
       if (!epoch.disposed && interested(url)) {
         if (epoch.records.size >= MAX_RECORDS) epoch.fatal = "record_count_limit";
         else {
-          record = {epoch,id:++epoch.next,url,method:String(init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase(),
+          record = {epoch,id:++epoch.next,url,method:String(init?.method ?? (input instanceof NativeRequest ? input.method : "GET")).toUpperCase(),
             call_started_at:performance.timeOrigin+performance.now(),
             body_sha256:null,owner:null,bound_watermark:null,metadata:null,text:null,bytes:0,error:null,
             fingerprint_error:null,requestCancel:null,responseCancel:null};
