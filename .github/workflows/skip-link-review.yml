@@ -1,0 +1,45 @@
+name: narrow-skip-link-screenshots
+on:
+  push:
+    branches: ['evidence/skip-link-review-20261006']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: narrow-skip-link-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  actual-skip-link:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    env:
+      TABULA_SKIP_REVIEW: '1'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: {toolchain: '1.96', targets: wasm32-unknown-unknown}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: Swatinem/rust-cache@v2
+      - name: Official browser and actual shell build tooling
+        run: |
+          python3 -m pip install -r tests/online-match/requirements.txt
+          python3 -m playwright install --with-deps chromium
+          cargo install trunk --version 0.21.14 --locked
+      - name: Fresh generated output and real Leptos build
+        run: |
+          cargo clean --locked
+          (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
+      - name: Actual320px EN200 skip unfocused, focused and native-main focus
+        run: python3 tools/skip-link-review/capture.py
+      - name: Preserve original three images and exact measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actual-narrow-skip-link-evidence
+          path: verification/skip-link-review-artifacts
+          if-no-files-found: error
+          retention-days: 14
