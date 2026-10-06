@@ -1,0 +1,62 @@
+name: post-fix-ui-screenshots
+on:
+  push:
+    branches: ['evidence/post-fix-ui-capture-20261006']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: current-ui-report-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  actual-current-ui:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      TABULA_UI_REPORT: '1'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.96'
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Install official actual browser and existing driver dependencies
+        run: |
+          python3 -m pip install -r tests/online-match/requirements.txt
+          python3 -m playwright install --with-deps chromium
+          npm install --prefix "$RUNNER_TEMP/ui-browser" playwright@1.62.0 pngjs@7.0.0
+          cargo install trunk --version 0.21.14 --locked
+      - name: Clean this job's generated Cargo output before fresh source builds
+        run: cargo clean --locked
+      - name: Build real current Leptos and both actual Macroquad games
+        run: |
+          (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
+          cargo build --locked -p tabula-game-client --no-default-features --features web --bin tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+          cargo xtask stage-wasm-game
+          cargo build --locked -p tabula-game-client --no-default-features --features web-werewolf --bin tabula-werewolf-client --target wasm32-unknown-unknown --profile wasm-release
+          cargo xtask stage-wasm-game --game werewolf
+      - name: Capture authentic dashboard, library, Chess and redesigned Werewolf
+        run: |
+          export TABULA_PLAYWRIGHT="$RUNNER_TEMP/ui-browser/node_modules/playwright"
+          export TABULA_PNGJS="$RUNNER_TEMP/ui-browser/node_modules/pngjs"
+          export TABULA_CHROME="$(node -e 'console.log(require(process.env.TABULA_PLAYWRIGHT).chromium.executablePath())')"
+          python3 -u tools/ui-report/capture.py
+      - name: Enforce the unchanged shell WASM loading budget after preserving captures
+        run: python3 tools/ui-report/check_budget.py
+      - name: Preserve original screenshots and exact source/build/check receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-fix-ui-actual-browser-evidence
+          path: verification/current-ui-report-artifacts
+          if-no-files-found: error
+          retention-days: 14
