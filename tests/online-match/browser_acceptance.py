@@ -437,7 +437,7 @@ def visible_game_facts(page, role: str) -> dict:
         const data = document.documentElement.dataset;
         return {revision:data.onlineRevision ?? null, seat:data.onlineSeat ?? null,
                 status:data.onlineStatus ?? null, connection:data.onlineConnection ?? null,
-                availability:data.onlineAvailability ?? null};
+                availability:data.onlineAvailability ?? null, focused:document.hasFocus(), visibility:document.visibilityState};
     }""")
     return {"role": role,
             "revision": int(values["revision"]) if values["revision"] in ("0", "1", "2", "3", "4") else "not_observed_in_expected_range",
@@ -446,7 +446,9 @@ def visible_game_facts(page, role: str) -> dict:
             "connection_class": {"Connected · server-authoritative": "ready", "Sending move…": "sending",
                                  "The server rejected that action. Choose another move": "rejected",
                                  "Moves are blocked": "blocked", None: "not_available"}.get(values["connection"], "other_connection"),
-            "availability": values["availability"] if values["availability"] in ("available", "unavailable") else "not_reported"}
+            "availability": values["availability"] if values["availability"] in ("available", "unavailable") else "not_reported",
+            "document_has_focus": values.get("focused") if type(values.get("focused")) is bool else None,
+            "visibility_class": values.get("visibility") if values.get("visibility") in ("visible", "hidden") else "not_reported"}
 
 
 def exception_class(error: Exception) -> str:
@@ -586,12 +588,28 @@ def move(page, source: str, target: str, flipped: bool, match_id: str,
     return command
 
 
+def completed_attachment_response(request, match_id: str):
+    """Select only a completed real attachment, never its earlier response headers.
+
+    Call from requestfinished. Response.finished() also resolves on requestfailed,
+    so it cannot establish successful body delivery by itself.
+    """
+    if (request.method != "POST" or urlsplit(request.url).path != f"/api/v1/matches/{match_id}/attach"
+            or request.failure is not None):
+        return None
+    response = request.response()
+    require(response is not None, "completed attachment response was absent")
+    return response if response.status == 200 else None
+
+
 def enter_game(page, match_id: str, expected_seat: int,
                trace: list[dict] | None = None) -> tuple[dict, str]:
     observed = {"expected_seat": expected_seat, "phase": "navigate_and_request_attach",
                 "response_observed": False, "http_status": None,
                 "typed_seat_matches": False, "native_status_observed": False,
-                "loader_hidden": False, "actual_canvas_visible": False}
+                "loader_hidden": False, "actual_canvas_visible": False,
+                "header_responses": 0, "completed_responses": 0, "failed_requests": 0,
+                "attempts": []}
     if trace is not None:
         trace.append(observed)
     # A real foreground document is required before attach. PR3 retires an
@@ -599,27 +617,54 @@ def enter_game(page, match_id: str, expected_seat: int,
     page.bring_to_front()
     page.wait_for_function("() => document.hasFocus() && document.visibilityState === 'visible'", timeout=60_000)
     path = f"/api/v1/matches/{match_id}/attach"
-    def is_attachment(response):
-        return urlsplit(response.url).path == path and response.request.method == "POST"
+    def is_attachment(request):
+        return urlsplit(request.url).path == path and request.method == "POST"
+    def record_attempt(phase, status=None, failure=None, response_facts=None):
+        key = {"headers": "header_responses", "completed": "completed_responses", "failed": "failed_requests"}[phase]
+        observed[key] = min(observed[key] + 1, 255)
+        if len(observed["attempts"]) < 16:
+            attempt = {"phase": phase, "http_status": http_status(status),
+                       "failure_class": navigation_failure(failure) if phase == "failed" else None}
+            if response_facts is not None:
+                attempt["response"] = response_facts
+            observed["attempts"].append(attempt)
     def attachment_response_observed(response):
-        if is_attachment(response):
+        if is_attachment(response.request):
             observed.update({"response_observed": True, "http_status": http_status(response.status)})
-    page.on("response", attachment_response_observed)
+            record_attempt("headers", response.status, response_facts=admission_response_facts(response))
+    def attachment_finished(request):
+        if is_attachment(request):
+            response = request.response()
+            record_attempt("completed", response.status if response is not None else None)
+    def attachment_failed(request):
+        if is_attachment(request):
+            record_attempt("failed", failure=request.failure)
+    listeners = (("response", attachment_response_observed), ("requestfinished", attachment_finished),
+                 ("requestfailed", attachment_failed))
+    for event, listener in listeners:
+        page.on(event, listener)
     try:
-        with page.expect_response(is_attachment, timeout=60_000) as result:
+        # A canceled header-only200 is an attempted attachment, not body evidence.
+        # The actual adapter must recover and finish a fresh200 within this budget.
+        with page.expect_event("requestfinished", predicate=lambda request: completed_attachment_response(request, match_id) is not None,
+                               timeout=60_000) as result:
             page.get_by_test_id("online-enter").click()
     finally:
-        page.remove_listener("response", attachment_response_observed)
-    response = result.value
+        for event, listener in listeners:
+            page.remove_listener(event, listener)
+    response = completed_attachment_response(result.value, match_id)
+    require(response is not None, "actual gameplay attachment failed")
     observed.update({"response_observed": True, "http_status": http_status(response.status),
                      "phase": "validate_existing_attach_contract"})
-    require(response.status == 200, "actual gameplay attachment failed")
+    # No body error is ignored. Every selected completed200 must satisfy the
+    # existing typed contract before current Rust projection/render assertions.
     attachment = actual_response_json(response)
-    require(attachment["seat"] == expected_seat, "browser entered the wrong opponent seat")
+    require(attachment["seat"] == expected_seat and attachment["version"] == MATCH_VERSION,
+            "browser entered an incompatible opponent seat")
     observed["typed_seat_matches"] = True
     require(not private_frame_keys(attachment), "canonical facts leaked on attach")
     observed["phase"] = "wait_native_projection_status"
-    page.wait_for_function("expected => document.documentElement.dataset.onlineSeat === String(expected)",
+    page.wait_for_function("expected => document.documentElement.dataset.onlineAvailability === 'available' && document.documentElement.dataset.onlineSeat === String(expected)",
                            arg=expected_seat, timeout=60_000)
     observed["native_status_observed"] = True
     observed["phase"] = "wait_loader_hidden"

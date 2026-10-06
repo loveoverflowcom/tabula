@@ -150,6 +150,20 @@ class ContinuityHelperTests(unittest.TestCase):
         self.assertIn("d.onlineConnection?.startsWith('Read-only')",CURRENT_BOARD)
         self.assertIn("d.onlineSeat===String(seat)",CURRENT_BOARD)
 
+    def test_pair_ignores_failed_header_only_attachment_and_requires_completed_body(self):
+        pair=Pair.__new__(Pair);pair.match_id='a'*32;pair.attachments=[[],[]]
+        response=mock.Mock(status=200,url='https://localhost:9443/api/v1/matches/'+pair.match_id+'/attach')
+        request=mock.Mock(method='POST',url=response.url,failure='net::ERR_ABORTED')
+        request.response.return_value=response
+        pair.observe_attach_finished(request,1)
+        response.json.assert_not_called();self.assertEqual(pair.attachments,[[],[]])
+        request.failure=None;response.json.return_value={'version':2,'seat':1,'frames':[]}
+        pair.observe_attach_finished(request,1)
+        self.assertEqual(pair.attachments[1],[response.json.return_value])
+        response.json.return_value={'version':2,'seat':0,'frames':[]}
+        with self.assertRaises(AcceptanceFailure):pair.observe_attach_finished(request,1)
+        self.assertEqual(len(pair.attachments[1]),1)
+
     def test_attachment_observer_rejects_wrong_seat_and_canonical_payload(self):
         pair=Pair.__new__(Pair);pair.match_id='a'*32;pair.attachments=[[],[]]
         response=mock.Mock(status=200,url='https://localhost:9443/api/v1/matches/'+pair.match_id+'/attach')

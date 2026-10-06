@@ -1,12 +1,102 @@
 """Offline fixture correctness tests, never actual-browser acceptance evidence."""
 import unittest
 import http.client
+import json
+from playwright.sync_api import Error as BrowserError, TimeoutError as BrowserTimeout
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, fresh_grant_required, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, reattach_required, require, run, start_native_poll
+from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, fresh_grant_required, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, reattach_required, require, run, start_native_poll, enter_game, visible_game_facts
 
 
 class BrowserHelperTests(unittest.TestCase):
+    def attachment_page(self, completed_body=None, completed=True):
+        """Event doubles distinguish headers, canceled delivery and finished body."""
+        path = 'https://localhost:9443/api/v1/matches/' + 'a' * 32 + '/attach'
+        failed, delivered = mock.Mock(status=200, url=path), mock.Mock(status=200, url=path)
+        for response in (failed, delivered):
+            response.header_value.side_effect = {"content-type": "application/json", "cache-control": "no-store", "content-length": "100"}.get
+            request = mock.Mock(method='POST', url=path, failure=None, post_data='original-grant-body')
+            request.response.return_value = response
+            response.request = request
+        failed.json.side_effect = BrowserError('No resource with given identifier found')
+        delivered.json.return_value = completed_body or {'version': 2, 'seat': 1, 'frames': []}
+        page = mock.Mock()
+        page.locator.return_value.is_visible.return_value = True
+        listeners, selections = {}, []
+        page.on.side_effect = lambda name, callback: listeners.setdefault(name, []).append(callback)
+        page.remove_listener.side_effect = lambda name, callback: listeners[name].remove(callback)
+
+        class Selection:
+            def __init__(self, event, predicate, timeout):
+                self.event, self.predicate, self.timeout = event, predicate, timeout
+                self.value = None
+                selections.append(self)
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                if not args[0] and self.value is None:
+                    raise BrowserTimeout('completed attachment did not arrive')
+
+        page.expect_event.side_effect = lambda event, predicate, timeout: Selection(event, predicate, timeout)
+        page.expect_response.side_effect = lambda predicate, timeout: Selection('response', predicate, timeout)
+        def emit(event, value):
+            for callback in list(listeners.get(event, [])):
+                callback(value)
+            for selection in selections:
+                if selection.value is None and event == selection.event and selection.predicate(value):
+                    selection.value = value
+        def navigate():
+            emit('response', failed)
+            failed.request.failure = 'net::ERR_ABORTED'
+            emit('requestfailed', failed.request)
+            if completed:
+                emit('response', delivered)
+                emit('requestfinished', delivered.request)
+        page.get_by_test_id.return_value.click.side_effect = navigate
+        return page, failed, delivered, selections
+
+    def test_attach_selection_requires_a_finished_body_after_canceled_200_headers(self):
+        page, failed, delivered, selections = self.attachment_page()
+        trace = []
+        attachment, body = enter_game(page, 'a' * 32, 1, trace)
+        self.assertEqual(attachment, delivered.json.return_value)
+        self.assertEqual(body, 'original-grant-body')
+        failed.json.assert_not_called()
+        self.assertEqual([(item.event, item.timeout) for item in selections], [('requestfinished', 60_000)])
+        self.assertEqual((trace[0]['header_responses'], trace[0]['failed_requests'], trace[0]['completed_responses']), (2, 1, 1))
+        self.assertEqual(trace[0]['attempts'][1]['failure_class'], 'navigation_aborted')
+        self.assertTrue(trace[0]['typed_seat_matches'] and trace[0]['native_status_observed'] and trace[0]['actual_canvas_visible'])
+
+    def test_canceled_attachment_headers_alone_cannot_satisfy_acceptance(self):
+        page, failed, _, _ = self.attachment_page(completed=False)
+        with self.assertRaises(BrowserTimeout):
+            enter_game(page, 'a' * 32, 1)
+        failed.json.assert_not_called()
+
+    def test_completed_attachment_errors_cannot_be_skipped_for_another_attempt(self):
+        for body in ({'version': 2, 'seat': 0}, {'version': 1, 'seat': 1}, {'version': 2, 'seat': 1, 'seed': []}):
+            page, _, _, _ = self.attachment_page(body)
+            with self.subTest(body=body), self.assertRaises(AcceptanceFailure):
+                enter_game(page, 'a' * 32, 1)
+        page, _, delivered, _ = self.attachment_page()
+        delivered.json.side_effect = json.JSONDecodeError('invalid body', '', 0)
+        with self.assertRaises(json.JSONDecodeError):
+            enter_game(page, 'a' * 32, 1)
+
+    def test_visible_focus_and_visibility_diagnostics_use_closed_classes(self):
+        page = mock.Mock()
+        values = {'revision': '0', 'seat': '1', 'status': None, 'connection': None,
+                  'availability': 'available', 'focused': True, 'visibility': 'visible'}
+        page.evaluate.return_value = values
+        facts = visible_game_facts(page, 'black')
+        self.assertTrue(facts['document_has_focus'])
+        self.assertEqual(facts['visibility_class'], 'visible')
+        values.update(focused='synthetic-private', visibility='synthetic-private')
+        facts = visible_game_facts(page, 'black')
+        self.assertIsNone(facts['document_has_focus'])
+        self.assertEqual(facts['visibility_class'], 'not_reported')
+        self.assertNotIn('synthetic-private', json.dumps(facts))
+
     def test_protected_http_diagnostics_discard_ids_queries_and_foreign_routes(self):
         self.assertEqual(protected_endpoint_class("https://localhost:9443/api/v1/matches/" + "a" * 32 + "/attach"), "attach")
         self.assertEqual(protected_endpoint_class("https://localhost:9443/api/v1/auth/context"), "context")

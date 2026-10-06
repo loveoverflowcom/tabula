@@ -18,7 +18,7 @@ from playwright.sync_api import sync_playwright
 from browser_acceptance import (AcceptanceFailure, GAME_PATH, MATCH_VERSION, ORIGIN,
     SESSION_COOKIE, TERMINAL_STATUS, api, board_square, context_facts, denied,
     enroll_actual_page, enter_game, exception_class, move, private_frame_keys,
-    rendered_canvas_pixels, require, setup_browser_trust, wire_probe, start_native_poll, publication_control, reattach_required)
+    rendered_canvas_pixels, require, setup_browser_trust, wire_probe, start_native_poll, publication_control, reattach_required, completed_attachment_response)
 from capture_evidence import CaptureEvidence
 from actual_response import actual_response_json, install_actual_response_observer
 from process_supervisor import SupervisorClient
@@ -100,7 +100,7 @@ class Pair:
         self.attachments=[[],[]];self.commands=[[],[]]
         self.facts=[];self.match_id=None;self.audit_inputs=0;self.expected_scopes=2
         for role,page in enumerate(self.pages):
-            page.on('response',lambda response,r=role:self.observe_attach(response,r))
+            page.on('requestfinished',lambda request,r=role:self.observe_attach_finished(request,r))
             page.on('request',lambda request,r=role:self.observe_command(request,r))
             page.goto(ORIGIN+'/__fixture/enroll',wait_until='domcontentloaded')
             enroll_actual_page(page,('white','black')[role],{'startup':{'enrollment':[]}})
@@ -119,6 +119,10 @@ class Pair:
             enter_game(page,self.match_id,role)
             self.board(role,'White to move')
         self.write_audit(0)
+    def observe_attach_finished(self,request,role):
+        if self.match_id:
+            response=completed_attachment_response(request,self.match_id)
+            if response is not None:self.observe_attach(response,role)
     def observe_attach(self,response,role):
         path=urlsplit(response.url).path
         if self.match_id and path==f'/api/v1/matches/{self.match_id}/attach' and response.status==200:
@@ -525,7 +529,7 @@ def retired_receipt_game(contexts,private,ca,supervisor,mode,results):
     require(pending_record(white,pair.match_id) is not None,'lost original Ack discarded pending command')
     pair.board(1,'Black to move');pair.write_audit(1)
     replacement=contexts[0].new_page()
-    replacement.on('response',lambda response:pair.observe_attach(response,0))
+    replacement.on('requestfinished',lambda request:pair.observe_attach_finished(request,0))
     replacement.goto(white.url,wait_until='domcontentloaded')
     pair.board(0,'Black to move',page=replacement)
     # Both replacement pages use the same independently issued account; no
@@ -602,7 +606,7 @@ def held_delivery(contexts,private,ca,change,results):
         else:raise AcceptanceFailure('actual projected first-frame handoff never reached barrier')
         require(not done.is_set(),'held protected publication finished before authority fault')
         if change=='attachment':
-            fresh_page=contexts[1].new_page();fresh_page.on('response',lambda response:pair.observe_attach(response,1))
+            fresh_page=contexts[1].new_page();fresh_page.on('requestfinished',lambda request:pair.observe_attach_finished(request,1))
             fresh_page.goto(black_url,wait_until='domcontentloaded');pair.board(1,'Black to move',page=fresh_page)
             fresh=pair.attachments[1][-1]
             require(fresh['attachment_id']!=target['attachment_id'] and fresh['operation_scope']==target['operation_scope'],'new current attachment did not fence the held old delivery')
