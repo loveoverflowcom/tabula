@@ -65,11 +65,40 @@ does not replace issue #81's real-device acceptance.
 
 `tokens.toml` is the single authored source. `cargo xtask gen-tokens` generates
 `shared/.../design/TabulaTokens.kt`; do not edit it. `TabulaTheme` maps these roles
-to Compose. The current minimal shell follows
+to Compose. The adaptive shell follows
 [the compact foundation](../../docs/ui/screens/foundation.md), including 16 dp gutters,
 44 dp minimum targets, wrapping actions and readable error recovery. It is not the
-web discovery/catalog. The canonical T Portal identity uses the generated brand
-paths. No decorative oversized border or second palette is introduced.
+connected web discovery/catalog. The shell top bar uses the canonical T Portal
+identity from the generated brand paths, with one accessible Tabula heading.
+Android/iOS launcher assets remain exports of the approved brand artwork. No decorative oversized border or second palette is introduced.
+
+## Shell navigation and copy
+
+Issue #101 adds the [adaptive shell foundation](../../docs/ui/screens/mobile-shell.md):
+Home, Library, detail/setup scaffolding, Account and the existing `GameHost` seam.
+Production entrypoints keep an empty catalog and unavailable gameplay under ADR-0043;
+the desktop preview supplies explicit catalog and game doubles for navigation tests.
+Home/Library/Account use labeled bottom navigation on phones and a rail from 600 dp.
+Content scrolls within the remaining space, with safe insets owned by the outer shell.
+The Account entry uses a neutral human silhouette; native account and full catalog
+services have visible unavailable states.
+
+`navigation/BackStack.kt` owns bounded public routes and saved-state restoration.
+Nested navigation returns to its caller; the simulated game receives Back first.
+An interrupted local preview restores to setup and requires a fresh explicit launch.
+OS deep links, credentials and native match restoration remain gated.
+
+`localization/ShellStrings.kt` owns exhaustive vi/en shell keys, regional locale
+normalization and English fallback. Fixture game names stay supplied display data.
+Reusable components in `shell/ShellComponents.kt` consume generated semantic tokens
+for surfaces, emphasis, state layers, focus and minimum targets.
+
+`:previewApp:test` covers navigation, unavailable services, simulated local return,
+phone/tablet layouts, themes/locales, large text, long names, voice-control wrapping
+and error recovery. [Issue #101's ledger](../../docs/verification/issue-101-mobile-shell/README.md)
+retains its historical checks separately from native device acceptance. Inspect
+this shell with `:previewApp:run -Ppreview.width=320 -Ppreview.language=vi
+-Ppreview.dark=true -Ppreview.fontScale=2` (simulated game page).
 
 ## Voice and gates
 

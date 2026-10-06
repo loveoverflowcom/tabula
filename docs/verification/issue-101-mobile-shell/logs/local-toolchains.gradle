@@ -1,0 +1,12 @@
+// Supplemental local checks only: use installed JDK/Android platform without changing repository pins.
+allprojects {
+    afterEvaluate { project ->
+        def kotlin = project.extensions.findByName('kotlin')
+        if (kotlin != null) kotlin.jvmToolchain(21)
+        def android = project.extensions.findByName('android')
+        if (android != null) android.compileSdk = 36
+        if (project.name == 'shared') {
+            kotlin.targets.findByName('android').compileSdk = 36
+        }
+    }
+}
