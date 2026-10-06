@@ -798,7 +798,7 @@ async fn attach_serialized(
         Err(e) => return online_problem(e),
     };
     if let Err(e) = verify_grant(&state, body.binding_id(), &m) {
-        return session_problem(e);
+        return grant_problem(e);
     }
     let live = match ensure_live(&state, op, &m).await {
         Ok(l) => l,
@@ -815,7 +815,7 @@ async fn attach_serialized(
         Err(e) => return online_problem(e),
     };
     if let Err(e) = verify_grant(&state, body.binding_id(), &m) {
-        return session_problem(e);
+        return grant_problem(e);
     }
     if live.handle.is_closed() || !live.journal.journal.is_owner_active() {
         return unavailable();
@@ -941,6 +941,15 @@ fn attached(
     live.authority
         .refresh(session, m.scope(), op)
         .map_err(|_| StatusCode::CONFLICT)
+}
+fn grant_problem(error: SessionError) -> Response {
+    // Current cookie and membership already passed; a process restart can
+    // replace the ephemeral signing key without changing the operation scope.
+    if error == SessionError::Unauthenticated {
+        problem(StatusCode::CONFLICT, "fresh_grant_required")
+    } else {
+        session_problem(error)
+    }
 }
 fn attachment_problem(status: StatusCode) -> Response {
     // Current cookie/membership already passed. A retired local transport is
@@ -1194,6 +1203,27 @@ mod recovery_admission_tests {
         assert_eq!(
             attachment_problem(StatusCode::BAD_REQUEST).status(),
             StatusCode::BAD_REQUEST
+        );
+    }
+    #[tokio::test]
+    async fn rejected_grant_is_refreshable_without_weakening_session_denial() {
+        let response = grant_problem(SessionError::Unauthenticated);
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+        let bytes = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(bytes.as_ref(), b"{\"code\":\"fresh_grant_required\"}");
+        assert_eq!(
+            session_problem(SessionError::Unauthenticated).status(),
+            StatusCode::UNAUTHORIZED
+        );
+        assert_eq!(
+            grant_problem(SessionError::InvalidInput).status(),
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            grant_problem(SessionError::Unavailable).status(),
+            StatusCode::SERVICE_UNAVAILABLE
         );
     }
     #[test]
