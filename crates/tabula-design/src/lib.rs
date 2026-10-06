@@ -760,7 +760,7 @@ mod tests {
     }
 
     #[test]
-    fn t_portal_brand_palette_is_additive_to_existing_action_roles() {
+    fn t_portal_brand_palette_preserves_accessible_primary_violet_actions() {
         for (kind, brand, action) in [
             (
                 ThemeKind::Light,
@@ -772,7 +772,7 @@ mod tests {
                     Color::rgb(94, 75, 139),
                     Color::rgb(247, 244, 255),
                 ],
-                [Color::rgb(86, 52, 190), Color::rgb(255, 255, 255)],
+                [Color::rgb(87, 59, 131), Color::rgb(255, 255, 255)],
             ),
             (
                 ThemeKind::Dark,
@@ -784,7 +784,7 @@ mod tests {
                     Color::rgb(94, 75, 139),
                     Color::rgb(247, 244, 255),
                 ],
-                [Color::rgb(207, 188, 255), Color::rgb(50, 0, 126)],
+                [Color::rgb(176, 147, 221), Color::rgb(40, 19, 68)],
             ),
             (
                 ThemeKind::HighContrastLight,
@@ -796,7 +796,7 @@ mod tests {
                     Color::rgb(0, 0, 0),
                     Color::rgb(255, 255, 255),
                 ],
-                [Color::rgb(44, 0, 120), Color::rgb(255, 255, 255)],
+                [Color::rgb(50, 22, 79), Color::rgb(255, 255, 255)],
             ),
             (
                 ThemeKind::HighContrastDark,
@@ -808,7 +808,7 @@ mod tests {
                     Color::rgb(0, 0, 0),
                     Color::rgb(255, 255, 255),
                 ],
-                [Color::rgb(224, 211, 255), Color::rgb(25, 0, 80)],
+                [Color::rgb(223, 204, 249), Color::rgb(25, 11, 42)],
             ),
         ] {
             let c = Theme::by_kind(kind).color;
