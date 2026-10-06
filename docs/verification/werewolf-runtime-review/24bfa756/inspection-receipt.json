@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "inspected_at_utc": "2026-10-05T23:58:58.355195+00:00",
+  "source_commit": "24bfa7567110e83e0879bda12f141b7af47e9b11",
+  "source_tree": "2c9f9d16ff1de2db48baa435af2b3034ac9cd0f0",
+  "workflow_run_id": "37390657748",
+  "inspection_kind": "original full-resolution PNG pixels, after ZIP and per-image size/hash/dimension verification",
+  "original_pngs_unchanged": true,
+  "capture_status": "PASS: 10 real WASM browser states captured and inspected",
+  "visual_quality_status": "FAIL: vertically inverted clipped fronts/logs; narrow footer overlap",
+  "browser_engine": "Chromium 151.0.7922.34",
+  "gpu_path": "headless browser ANGLE/SwiftShader; no physical GPU/device acceptance",
+  "captures": [
+    {
+      "file": "00-own-role-concealed.png",
+      "sha256": "a95c99b79c4f9cdf082af70e996932f892d475ce5f668489d83a88b5b4ad1bf9",
+      "observed": "Night, disposable seat 1: common opaque card back upright; no own role revealed",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    },
+    {
+      "file": "01-wolf-night-target.png",
+      "sha256": "e7f7d06278c2e22d292fc59551441079f53682034e057ac8b4e9c4693e45d182",
+      "observed": "Night, own Wolf view of disposable seat 3: target seat 2 selected; front portrait, role text and authorized teammate information vertically inverted",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    },
+    {
+      "file": "02-witch-potion-target.png",
+      "sha256": "73f6f72943f58a694a9977b05846ec980db7f9a01cc7bca726f201890d6db310",
+      "observed": "Night, own Witch view of disposable seat 1: poison potion and target seat 3 selected; both potion controls rendered; front and information inverted",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    },
+    {
+      "file": "03-dawn-public-deaths.png",
+      "sha256": "3c73d07c6b19bc2ddcd412ca20564e94b4e891e73c1f0572e4db8d13b409aa5d",
+      "observed": "Public Dawn, 2 s remaining: seats 2 and 3 visibly dead; public death disclosures inverted",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    },
+    {
+      "file": "04-day-discussion-public-log.png",
+      "sha256": "5f7d62ab928da9d2510ef73855fe6d4fa1bbf0c9eb95982edb0e2a93de3860eb",
+      "observed": "Public Day discussion phase: public death log present and inverted; no network chat or voice shown",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    },
+    {
+      "file": "05-vote-selection.png",
+      "sha256": "2c5bab5a6462470a7b6f385f3ca0da2a0cfb89ab4e40b04d6b4ba47654f9eea2",
+      "observed": "Vote, living disposable seat 1: seat 6 selected, ballot/abstain/withdraw controls rendered; own card concealed",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    },
+    {
+      "file": "06-public-vote-receipt.png",
+      "sha256": "84e8939d0e4ad8cd5c9cba7cad3ce9cf1cb40dc3dc237d90f0b2090eede28c88",
+      "observed": "Public Vote receipt: one ballot, seat 1 to seat 6; public receipt and death log inverted",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    },
+    {
+      "file": "07-narrow-own-card.png",
+      "sha256": "d1a63a6d124c65d4787220c2e98dedeed034f6674d16fe5451dc3ffc5001dc7c",
+      "observed": "390 by 844 CSS pixels, fresh simulator seat 1: deliberate own Witch front reveal; full front vertically inverted; host controls overlap footer warnings",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    },
+    {
+      "file": "08-narrow-table-potions.png",
+      "sha256": "d2563f2130c1bafdb3f3c004adc8407f662e44f3204e704ef72801d7c833c975",
+      "observed": "390 by 844 CSS pixels, table tab: first page of 8 seats, next-page control, both potion modes and submit/pass controls present; private potion information inverted; host controls overlap footer warnings",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    },
+    {
+      "file": "09-terminal-public-result.png",
+      "sha256": "5b542269a9c213e1f7aff9a6d1e59941943e7b9100b95e19ea9c70e4615ee390",
+      "observed": "Public Ended header at round 10: actual draw; Next phase disabled, New match available; public final roles and draw label inverted",
+      "blank_or_loader": "PASS: actual game rendered, not blank/loading/error/shield",
+      "orientation_review": "FAIL in clipped content where present; original retained",
+      "credential_pixel_review": "PASS within reviewed visible fixture pixels; no broader security claim"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "visible UI defect",
+      "observed_targets": "desktop 1200x880 and narrow 390x844, DPR1, Chromium151.0.7922.34",
+      "observation": "Role-front sprites, faction/role/rules labels and information/public-log text are vertically inverted inside clipping scopes. Common concealed back, un-clipped phase header and controls remain upright.",
+      "candidate_source": "crates/tabula-render-macroquad/src/draw.rs lines189-214 configure_clip_viewport",
+      "candidate_explanation": "Source-read Camera2D::from_display_rect screen-camera Y convention is consistent with observed reflection. This is a candidate location, not a tested fix or a claim about unexecuted platforms."
+    },
+    {
+      "severity": "responsive layout defect",
+      "observed_targets": "390x844 CSS pixels, DPR1 browser viewport only",
+      "observation": "Host Leave setup and Keyboard help buttons overlap the simulator footer warning lines; visible in both original narrow PNGs.",
+      "candidate_source": "apps/game-client/web/standalone.css .runtime-access together with Werewolf footer at games/werewolf/src/presentation/render.rs",
+      "candidate_explanation": "Source-read layout candidate; no fix executed."
+    }
+  ],
+  "privacy_review": "Anonymous disposable local Người N seats or public outsider views only. No real account identifiers, password, cookie, CSRF, active join code, grant/token, financial/identity/health data visible in reviewed pixels. Own-role/team/potion information is intended authorized fixture information. This is not a browser memory/network or authenticated multiplayer privacy audit.",
+  "assessment_only_processing": "Temporary clipped-surface vertical flips and monochrome/upscaled public-header OCR were used to read actual pixels. These transformations were not applied to any published original PNG or game asset.",
+  "document_sequence": [
+    "Fresh desktop simulator via actual setup form, 12 anonymous disposable seats, dark theme",
+    "Ordinary seat/reveal/target/potion/deadline controls; actual public Dawn, Day and Vote",
+    "Separate fresh 390x844 browser context with the same existing runtime, own-card and table tabs",
+    "Narrow context closed; desktop brought forward, private shield resumed/concealed normally, public view selected",
+    "Ordinary Next phase controls reach the bounded real round-10 draw"
+  ],
+  "not_run": [
+    "real online Werewolf multiplayer or accounts",
+    "voice or native audio",
+    "physical mobile touch",
+    "native application and CMP Android/iOS WebView embedding",
+    "persisted resume/replay or production rollout",
+    "full accessibility/screen reader",
+    "200 percent browser zoom and other themes",
+    "320x568 viewport",
+    "real focus/visibility attack or full hidden-information audit"
+  ],
+  "raw_zip_sha256": "19c01bec948e3aaaad923272bb4a7eb210ae025e4286853d90fe0b1dc3b7aed0"
+}

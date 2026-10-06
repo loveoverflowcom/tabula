@@ -1,0 +1,1870 @@
+{
+  "version": 1,
+  "capture_kind": "actual_browser_rendered_png",
+  "scope": "Existing isolated-seat local Werewolf simulator, not online multiplayer",
+  "test_personas": "Anonymous disposable Người N runtime seats; no real users/accounts",
+  "source_commit": "24bfa7567110e83e0879bda12f141b7af47e9b11",
+  "source_tree": "2c9f9d16ff1de2db48baa435af2b3034ac9cd0f0",
+  "build_checkout": "clean before artifacts",
+  "build_command": "cargo build --locked -p tabula-game-client --no-default-features --features web-werewolf --bin tabula-werewolf-client --target wasm32-unknown-unknown --profile wasm-release",
+  "stage_command": "cargo xtask stage-wasm-game --game werewolf",
+  "playwright": "1.62.0",
+  "rustc": "rustc 1.96.1 (31fca3adb 2026-06-26)",
+  "workflow_run_id": "37390657748",
+  "files": [
+    {
+      "path": "assets/LICENSE-OpenSans-Apache-2.0.txt",
+      "size_bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "assets/NotoSerif-Bold.ttf",
+      "size_bytes": 141544,
+      "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+    },
+    {
+      "path": "assets/OFL-Noto.txt",
+      "size_bytes": 5208,
+      "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+    },
+    {
+      "path": "assets/OFL-OpenSans.txt",
+      "size_bytes": 1031,
+      "sha256": "94d4b78643f99d7cfa872145b38da578299f401405ca5cba66a5c95bf13933b0"
+    },
+    {
+      "path": "assets/OpenSans-Regular.ttf",
+      "size_bytes": 40460,
+      "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+    },
+    {
+      "path": "assets/OpenSans-Semibold.ttf",
+      "size_bytes": 41628,
+      "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+    },
+    {
+      "path": "bootstrap.js",
+      "size_bytes": 24770,
+      "sha256": "0947d36fbb235cc1e05ebc028176fe5a977418d32f70438c2e36ec7eeecd5444"
+    },
+    {
+      "path": "index.html",
+      "size_bytes": 3245,
+      "sha256": "b8c9a35614f36955dc5ea7c74ffdae1a9753232cbb8726d37cac772793e1b7bb"
+    },
+    {
+      "path": "launch-options.js",
+      "size_bytes": 8958,
+      "sha256": "55d5a4cac266efb604501c88dc73b8888c960f7380865459eb8b9cc36467be44"
+    },
+    {
+      "path": "mq_js_bundle.js",
+      "size_bytes": 37828,
+      "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+    },
+    {
+      "path": "play.html",
+      "size_bytes": 5110,
+      "sha256": "f58c2240ab522e4af0517d71c266c6c01b1b3ee5d044c323152390b1ab784023"
+    },
+    {
+      "path": "resource-manifest.js",
+      "size_bytes": 4785,
+      "sha256": "eff7eaac8e034a555b95c645f63b9254f1833e80301fb18cfd9843a53edbfa6d"
+    },
+    {
+      "path": "resources/091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84.ttf",
+      "size_bytes": 40460,
+      "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+    },
+    {
+      "path": "resources/0947d36fbb235cc1e05ebc028176fe5a977418d32f70438c2e36ec7eeecd5444.js",
+      "size_bytes": 24770,
+      "sha256": "0947d36fbb235cc1e05ebc028176fe5a977418d32f70438c2e36ec7eeecd5444"
+    },
+    {
+      "path": "resources/09de464c80f20c0ecccae6c2de777e586a2ac5fd1a19d03de6d00d86df1ea19c.js",
+      "size_bytes": 839,
+      "sha256": "09de464c80f20c0ecccae6c2de777e586a2ac5fd1a19d03de6d00d86df1ea19c"
+    },
+    {
+      "path": "resources/0bb2d03d1c0b805b896ed8e557b36f0907e056f78d3e44562e80831a5d2cbf01.png",
+      "size_bytes": 30938,
+      "sha256": "0bb2d03d1c0b805b896ed8e557b36f0907e056f78d3e44562e80831a5d2cbf01"
+    },
+    {
+      "path": "resources/2e10f08d3e9dbaf83186de52d3c4f5dd0cd8a225e03d4cf4cc881e6f9adaf99c.css",
+      "size_bytes": 51315,
+      "sha256": "2e10f08d3e9dbaf83186de52d3c4f5dd0cd8a225e03d4cf4cc881e6f9adaf99c"
+    },
+    {
+      "path": "resources/3f1bc60c9c90c8c005e9292df038c5810f11e9eee2de7d914ecab3937df8f6e6.png",
+      "size_bytes": 211120,
+      "sha256": "3f1bc60c9c90c8c005e9292df038c5810f11e9eee2de7d914ecab3937df8f6e6"
+    },
+    {
+      "path": "resources/4ba002f53e1a5560fc86c13dd2be19d3c2bfed16ccc5a95cd12e35cc5a1f5b04.png",
+      "size_bytes": 212880,
+      "sha256": "4ba002f53e1a5560fc86c13dd2be19d3c2bfed16ccc5a95cd12e35cc5a1f5b04"
+    },
+    {
+      "path": "resources/55d5a4cac266efb604501c88dc73b8888c960f7380865459eb8b9cc36467be44.js",
+      "size_bytes": 8958,
+      "sha256": "55d5a4cac266efb604501c88dc73b8888c960f7380865459eb8b9cc36467be44"
+    },
+    {
+      "path": "resources/5d5e3b7df3046d7f36928424af2337253bf69ac6fcdf74c8ce435fd371fe5256.png",
+      "size_bytes": 56059,
+      "sha256": "5d5e3b7df3046d7f36928424af2337253bf69ac6fcdf74c8ce435fd371fe5256"
+    },
+    {
+      "path": "resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js",
+      "size_bytes": 37828,
+      "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+    },
+    {
+      "path": "resources/82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a.ttf",
+      "size_bytes": 141544,
+      "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+    },
+    {
+      "path": "resources/8fff576efa0c2c4779cc29d4b94c3df56d597cc912ec66b923e3580fe4767bd5.png",
+      "size_bytes": 210708,
+      "sha256": "8fff576efa0c2c4779cc29d4b94c3df56d597cc912ec66b923e3580fe4767bd5"
+    },
+    {
+      "path": "resources/9e1ade159ee69258c8490dbc6789fe19f8f5d5501740cd18eb643bda443c3039.png",
+      "size_bytes": 59276,
+      "sha256": "9e1ade159ee69258c8490dbc6789fe19f8f5d5501740cd18eb643bda443c3039"
+    },
+    {
+      "path": "resources/a0abb639e7fc47fbc0bbae43339ba4aa5b4fcaa1926debfbf4f84cb6378f2088.png",
+      "size_bytes": 194318,
+      "sha256": "a0abb639e7fc47fbc0bbae43339ba4aa5b4fcaa1926debfbf4f84cb6378f2088"
+    },
+    {
+      "path": "resources/b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27.js",
+      "size_bytes": 16910,
+      "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+    },
+    {
+      "path": "resources/b16c4f1e81c6ae383fdfa2f2f22445800faa9d90176933b28c7405922d296a46.png",
+      "size_bytes": 58600,
+      "sha256": "b16c4f1e81c6ae383fdfa2f2f22445800faa9d90176933b28c7405922d296a46"
+    },
+    {
+      "path": "resources/cc4d6bc45d3dc442da8a375c13baa4bb3e66dbf8b175721603911736b81acb56.png",
+      "size_bytes": 212668,
+      "sha256": "cc4d6bc45d3dc442da8a375c13baa4bb3e66dbf8b175721603911736b81acb56"
+    },
+    {
+      "path": "resources/d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366.ttf",
+      "size_bytes": 41628,
+      "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+    },
+    {
+      "path": "resources/d3d7011d9051ab666b1a7e58e0bd958dfbf26ef07d614f209f58482bc439c019.wasm",
+      "size_bytes": 1200199,
+      "sha256": "d3d7011d9051ab666b1a7e58e0bd958dfbf26ef07d614f209f58482bc439c019"
+    },
+    {
+      "path": "resources/d4c984ecea10f7729890f127dff422de8cd62bb0acaf60b029197c5bc8659b9d.css",
+      "size_bytes": 13683,
+      "sha256": "d4c984ecea10f7729890f127dff422de8cd62bb0acaf60b029197c5bc8659b9d"
+    },
+    {
+      "path": "resources/db96960b2cf01ee6bcde58fbc1712ac7cd135521cfb0a08a68159f82ab3e797c.png",
+      "size_bytes": 58078,
+      "sha256": "db96960b2cf01ee6bcde58fbc1712ac7cd135521cfb0a08a68159f82ab3e797c"
+    },
+    {
+      "path": "resources/e33b3ccf8d615d24b5078d6f0bfa664d6414354f815108659e452344d3514a12.png",
+      "size_bytes": 58167,
+      "sha256": "e33b3ccf8d615d24b5078d6f0bfa664d6414354f815108659e452344d3514a12"
+    },
+    {
+      "path": "resources/ed19bdc4399ac2fc36b029f57f5289dcecdca316cf970cf6d6b435d918f32021.png",
+      "size_bytes": 12757,
+      "sha256": "ed19bdc4399ac2fc36b029f57f5289dcecdca316cf970cf6d6b435d918f32021"
+    },
+    {
+      "path": "resources/eff7eaac8e034a555b95c645f63b9254f1833e80301fb18cfd9843a53edbfa6d.js",
+      "size_bytes": 4785,
+      "sha256": "eff7eaac8e034a555b95c645f63b9254f1833e80301fb18cfd9843a53edbfa6d"
+    },
+    {
+      "path": "resources/f17f280b5ff31dfdd4c01b64139acfc3a161dd432e68b2d5d4e6448bf3c5d8cd.png",
+      "size_bytes": 204259,
+      "sha256": "f17f280b5ff31dfdd4c01b64139acfc3a161dd432e68b2d5d4e6448bf3c5d8cd"
+    },
+    {
+      "path": "resources/fcfa10b404f5b57223394fd90c8ed9f87c62107a9c4e33f9f012d4399f3b31af.png",
+      "size_bytes": 59180,
+      "sha256": "fcfa10b404f5b57223394fd90c8ed9f87c62107a9c4e33f9f012d4399f3b31af"
+    },
+    {
+      "path": "resources.js",
+      "size_bytes": 16910,
+      "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+    },
+    {
+      "path": "standalone.css",
+      "size_bytes": 13559,
+      "sha256": "01a27646f4438ca3c1004905f72bb8e1e9b435c45f11eff04bc1959a45977124"
+    },
+    {
+      "path": "tabula-game-client.wasm",
+      "size_bytes": 1200199,
+      "sha256": "d3d7011d9051ab666b1a7e58e0bd958dfbf26ef07d614f209f58482bc439c019"
+    },
+    {
+      "path": "tokens.css",
+      "size_bytes": 51315,
+      "sha256": "2e10f08d3e9dbaf83186de52d3c4f5dd0cd8a225e03d4cf4cc881e6f9adaf99c"
+    },
+    {
+      "path": "werewolf-setup.js",
+      "size_bytes": 839,
+      "sha256": "09de464c80f20c0ecccae6c2de777e586a2ac5fd1a19d03de6d00d86df1ea19c"
+    }
+  ],
+  "actions": [
+    {
+      "utc": "2026-10-05T23:51:54.271119+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:51:54.530897+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:51:57.724047+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:51:57.999554+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:51:58.284557+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:04.681392+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:04.965180+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:05.240928+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:05.512687+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:07.422301+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:07.685663+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:07.957988+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:08.237688+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:08.511149+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:10.132897+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:10.391988+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:10.665075+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:10.941954+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:11.205230+00:00",
+      "action": "Select disposable test seat 4; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:11.470988+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:14.503147+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:14.774778+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:15.044121+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:15.315923+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:15.566207+00:00",
+      "action": "Select disposable test seat 4; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:15.833265+00:00",
+      "action": "Select disposable test seat 5; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:16.098433+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:17.742169+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:18.021171+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:18.284907+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:18.569871+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:18.846097+00:00",
+      "action": "Select disposable test seat 4; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:19.125924+00:00",
+      "action": "Select disposable test seat 5; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:19.403748+00:00",
+      "action": "Select disposable test seat 6; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:19.662693+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:21.780357+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:22.032788+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:22.306537+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:22.565743+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:22.831916+00:00",
+      "action": "Select disposable test seat 4; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:23.086326+00:00",
+      "action": "Select disposable test seat 5; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:23.357210+00:00",
+      "action": "Select disposable test seat 6; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:23.637488+00:00",
+      "action": "Select disposable test seat 7; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:23.908267+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:27.244979+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:27.517577+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:27.790770+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:28.064035+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:28.321539+00:00",
+      "action": "Select disposable test seat 4; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:28.597199+00:00",
+      "action": "Select disposable test seat 5; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:28.860488+00:00",
+      "action": "Select disposable test seat 6; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:29.139669+00:00",
+      "action": "Select disposable test seat 7; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:29.394058+00:00",
+      "action": "Select disposable test seat 8; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:29.683173+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:31.991272+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:32.262270+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:32.523995+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:32.804432+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:33.063025+00:00",
+      "action": "Select disposable test seat 4; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:33.344767+00:00",
+      "action": "Select disposable test seat 5; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:33.617871+00:00",
+      "action": "Select disposable test seat 6; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:33.887518+00:00",
+      "action": "Select disposable test seat 7; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:34.157578+00:00",
+      "action": "Select disposable test seat 8; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:34.420586+00:00",
+      "action": "Select disposable test seat 9; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:34.677819+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:36.468680+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:36.727116+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:37.011566+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:37.273337+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:37.538520+00:00",
+      "action": "Select disposable test seat 4; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:37.796565+00:00",
+      "action": "Select disposable test seat 5; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:38.062808+00:00",
+      "action": "Select disposable test seat 6; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:38.342147+00:00",
+      "action": "Select disposable test seat 7; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:38.625849+00:00",
+      "action": "Select disposable test seat 8; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:38.889692+00:00",
+      "action": "Select disposable test seat 9; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:39.157590+00:00",
+      "action": "Select disposable test seat 10; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:39.430770+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:41.458751+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:41.713948+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:41.982333+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:42.280448+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:42.548917+00:00",
+      "action": "Select disposable test seat 4; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:42.808280+00:00",
+      "action": "Select disposable test seat 5; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:43.066888+00:00",
+      "action": "Select disposable test seat 6; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:43.333615+00:00",
+      "action": "Select disposable test seat 7; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:43.598549+00:00",
+      "action": "Select disposable test seat 8; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:43.856461+00:00",
+      "action": "Select disposable test seat 9; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:44.108401+00:00",
+      "action": "Select disposable test seat 10; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:44.357776+00:00",
+      "action": "Select disposable test seat 11; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:44.612409+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:47.454273+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:47.717067+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:47.986090+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:48.255711+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:48.519417+00:00",
+      "action": "Select disposable test seat 4; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:48.785826+00:00",
+      "action": "Select disposable test seat 5; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:49.046506+00:00",
+      "action": "Select disposable test seat 6; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:49.312196+00:00",
+      "action": "Select disposable test seat 7; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:49.622277+00:00",
+      "action": "Select disposable test seat 8; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:49.875675+00:00",
+      "action": "Select disposable test seat 9; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:50.147703+00:00",
+      "action": "Select disposable test seat 10; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:50.418095+00:00",
+      "action": "Select disposable test seat 11; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:50.668747+00:00",
+      "action": "Select disposable test seat 12; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:50.941084+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:52.557238+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:52.837398+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:53.101233+00:00",
+      "action": "Select disposable test seat 2; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:53.368375+00:00",
+      "action": "Select disposable test seat 3; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:53.637876+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:53.924549+00:00",
+      "action": "Select disposable target seat 2; no command sent yet",
+      "pointer_css_pixels": [
+        630.8,
+        186
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:55.253178+00:00",
+      "action": "Submit the selected real rules command via UI",
+      "pointer_css_pixels": [
+        591.0,
+        356
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:55.510945+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:57.502761+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:57.757997+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:58.036687+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        200.0,
+        638.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:58.291926+00:00",
+      "action": "Select the available poison potion via UI",
+      "pointer_css_pixels": [
+        989.0,
+        356
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:58.555749+00:00",
+      "action": "Select disposable target seat 3; no command sent yet",
+      "pointer_css_pixels": [
+        790.0,
+        186
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:52:59.894702+00:00",
+      "action": "Submit the selected real rules command via UI",
+      "pointer_css_pixels": [
+        591.0,
+        408
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:00.157783+00:00",
+      "action": "Select public outsider perspective; private card concealed",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:00.421459+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:06.252813+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:06.527019+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:06.792100+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        294.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:07.065490+00:00",
+      "action": "Select disposable target seat 6; no command sent yet",
+      "pointer_css_pixels": [
+        471.6,
+        242
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:11.084615+00:00",
+      "action": "Submit the selected real rules command via UI",
+      "pointer_css_pixels": [
+        591.0,
+        356
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:11.370619+00:00",
+      "action": "Select public outsider perspective; private card concealed",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:15.715302+00:00",
+      "action": "Select public outsider perspective before disposable test seat",
+      "pointer_css_pixels": [
+        319.87,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:15.985880+00:00",
+      "action": "Select disposable test seat 1; previous private view concealed",
+      "pointer_css_pixels": [
+        195.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:16.278002+00:00",
+      "action": "Select own-card tab",
+      "pointer_css_pixels": [
+        97.5,
+        152
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:16.553651+00:00",
+      "action": "Deliberately reveal only the selected disposable seat's own card",
+      "pointer_css_pixels": [
+        195.0,
+        688.0
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:17.598401+00:00",
+      "action": "Select table tab while retaining the authorized own-seat reveal",
+      "pointer_css_pixels": [
+        292.5,
+        152
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:18.995706+00:00",
+      "action": "Select public outsider perspective; private card concealed",
+      "pointer_css_pixels": [
+        482.0,
+        102
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:19.822296+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:21.073684+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:22.382941+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:23.643873+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:25.256634+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:27.381274+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:28.787504+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:30.062753+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:31.362705+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:34.022763+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:39.256607+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:40.618657+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:41.859867+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:44.051325+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:46.283980+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:47.926749+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:49.821527+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:51.286914+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:52.579751+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:53.828385+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:55.436465+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:56.915287+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:58.237543+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:53:59.508900+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:00.990959+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:02.465286+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:04.337093+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:05.908855+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:07.238428+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:09.307530+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:11.402584+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:14.070785+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:15.399189+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:17.086223+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:18.385844+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:19.637849+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:20.886978+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:22.675796+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:24.029678+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:25.421751+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:26.667684+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:27.979323+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:34.520479+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    },
+    {
+      "utc": "2026-10-05T23:54:35.814339+00:00",
+      "action": "Advance actual logical deadline through the runtime's Next phase control",
+      "pointer_css_pixels": [
+        146.0,
+        802
+      ]
+    }
+  ],
+  "captures": [
+    {
+      "file": "00-own-role-concealed.png",
+      "label": "Own role remains concealed until deliberate reveal",
+      "captured_at_utc": "2026-10-05T23:51:55.446660+00:00",
+      "perspective": "disposable simulator seat 1",
+      "phase_condition": "night",
+      "actions_completed": 2,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "size_bytes": 118482,
+      "sha256": "a95c99b79c4f9cdf082af70e996932f892d475ce5f668489d83a88b5b4ad1bf9",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    },
+    {
+      "file": "01-wolf-night-target.png",
+      "label": "Own Wolf card and selected real night target; not yet submitted",
+      "captured_at_utc": "2026-10-05T23:52:54.974234+00:00",
+      "perspective": "disposable simulator seat 3",
+      "phase_condition": "night",
+      "actions_completed": 110,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "size_bytes": 271150,
+      "sha256": "e7f7d06278c2e22d292fc59551441079f53682034e057ac8b4e9c4693e45d182",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    },
+    {
+      "file": "02-witch-potion-target.png",
+      "label": "Own Witch card, remaining potion inventory and selected poison target",
+      "captured_at_utc": "2026-10-05T23:52:59.621680+00:00",
+      "perspective": "disposable simulator seat 1",
+      "phase_condition": "night",
+      "actions_completed": 117,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "size_bytes": 282762,
+      "sha256": "73f6f72943f58a694a9977b05846ec980db7f9a01cc7bca726f201890d6db310",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    },
+    {
+      "file": "03-dawn-public-deaths.png",
+      "label": "Actual referee's dawn: public death disclosure",
+      "captured_at_utc": "2026-10-05T23:53:01.368403+00:00",
+      "perspective": "public outsider",
+      "phase_condition": "dawn",
+      "actions_completed": 120,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "size_bytes": 128065,
+      "sha256": "3c73d07c6b19bc2ddcd412ca20564e94b4e891e73c1f0572e4db8d13b409aa5d",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    },
+    {
+      "file": "04-day-discussion-public-log.png",
+      "label": "Actual Day phase with public death log; discussion is local only",
+      "captured_at_utc": "2026-10-05T23:53:04.970406+00:00",
+      "perspective": "public outsider",
+      "phase_condition": "day",
+      "actions_completed": 120,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "size_bytes": 126049,
+      "sha256": "5f7d62ab928da9d2510ef73855fe6d4fa1bbf0c9eb95982edb0e2a93de3860eb",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    },
+    {
+      "file": "05-vote-selection.png",
+      "label": "Living test seat selects a ballot in the actual Vote phase",
+      "captured_at_utc": "2026-10-05T23:53:08.111844+00:00",
+      "perspective": "disposable simulator seat 1",
+      "phase_condition": "vote",
+      "actions_completed": 124,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "size_bytes": 134699,
+      "sha256": "2c5bab5a6462470a7b6f385f3ca0da2a0cfb89ab4e40b04d6b4ba47654f9eea2",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    },
+    {
+      "file": "06-public-vote-receipt.png",
+      "label": "Public Vote phase after the submitted ballot",
+      "captured_at_utc": "2026-10-05T23:53:12.392667+00:00",
+      "perspective": "public outsider",
+      "phase_condition": "vote",
+      "actions_completed": 126,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "size_bytes": 129765,
+      "sha256": "84e8939d0e4ad8cd5c9cba7cad3ce9cf1cb40dc3dc237d90f0b2090eede28c88",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    },
+    {
+      "file": "07-narrow-own-card.png",
+      "label": "390×844 CSS viewport: deliberate own Witch card reveal in fresh local simulator",
+      "captured_at_utc": "2026-10-05T23:53:17.390290+00:00",
+      "perspective": "disposable simulator seat 1",
+      "phase_condition": "night",
+      "actions_completed": 130,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "size_bytes": 229554,
+      "sha256": "d1a63a6d124c65d4787220c2e98dedeed034f6674d16fe5451dc3ffc5001dc7c",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    },
+    {
+      "file": "08-narrow-table-potions.png",
+      "label": "390×844 CSS viewport: real table tab, pagination and potion controls",
+      "captured_at_utc": "2026-10-05T23:53:18.393280+00:00",
+      "perspective": "disposable simulator seat 1",
+      "phase_condition": "night",
+      "actions_completed": 131,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "size_bytes": 65941,
+      "sha256": "d2563f2130c1bafdb3f3c004adc8407f662e44f3204e704ef72801d7c833c975",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    },
+    {
+      "file": "09-terminal-public-result.png",
+      "label": "Actual terminal result reached via runtime logical phase controls",
+      "captured_at_utc": "2026-10-05T23:54:38.915049+00:00",
+      "perspective": "public outsider",
+      "phase_condition": "ended",
+      "actions_completed": 176,
+      "browser_version": "151.0.7922.34",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "size_bytes": 146047,
+      "sha256": "5b542269a9c213e1f7aff9a6d1e59941943e7b9100b95e19ea9c70e4615ee390",
+      "pixel_inspection": "captured; separate human/model pixel inspection pending",
+      "redaction": "none; entirely disposable local simulator; no account or credential UI"
+    }
+  ],
+  "NOT_RUN": [
+    "real online Werewolf multiplayer or accounts",
+    "voice or native audio",
+    "physical mobile touch",
+    "native application and CMP Android/iOS WebView embedding",
+    "persisted resume/replay or production rollout"
+  ]
+}
