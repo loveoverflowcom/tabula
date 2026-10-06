@@ -105,6 +105,13 @@ def reattach_required(response: dict, label: str) -> None:
             "stale attachment was confused with lost authority or another conflict")
 
 
+def fresh_grant_required(response: dict, label: str) -> None:
+    """A current member's rejected grant discloses only its recovery problem."""
+    require(response["status"] == 409, label)
+    require(response["body"] == {"code": "fresh_grant_required"},
+            "rejected signed grant returned a different problem or disclosed extra fields")
+
+
 def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -> dict:
     """Real TLS/header-negative probe; values stay opaque and unlogged.
 
@@ -971,16 +978,16 @@ def run(args) -> None:
             require(fresh_grant["status"] == 200 and fresh_grant["body"]["ready"],
                     "fresh signed grant security partition setup failed")
             fresh_grant_body = {"version": MATCH_VERSION, "binding_id": fresh_grant["body"]["binding_id"]}
-            denied(api(black, f"/api/v1/matches/{match_id}/attach", fresh_grant_body, facts[1]["csrf_token"]),
-                   {401}, "foreign-subject signed grant was accepted")
+            fresh_grant_required(api(black, f"/api/v1/matches/{match_id}/attach", fresh_grant_body, facts[1]["csrf_token"]),
+                                 "foreign-subject grant did not return its required denial classification")
             denied(api(white, f"/api/v1/matches/{match_id}/attach",
                        {"version": MATCH_VERSION, "binding_id": "invalid-grant"}, facts[0]["csrf_token"]),
                    {400}, "malformed signed grant was accepted")
             tampered = fresh_grant_body.copy()
             token = tampered["binding_id"]
             tampered["binding_id"] = token[:-2] + ("B" if token[-2] == "A" else "A") + token[-1]
-            denied(api(white, f"/api/v1/matches/{match_id}/attach", tampered, facts[0]["csrf_token"]),
-                   {401}, "invalid HMAC signed grant was accepted")
+            fresh_grant_required(api(white, f"/api/v1/matches/{match_id}/attach", tampered, facts[0]["csrf_token"]),
+                                 "invalid-HMAC grant did not return its required denial classification")
             invented_seat = json.loads(first)
             invented_seat["seat"] = 1
             denied(api(white, f"/api/v1/matches/{match_id}/command", json.dumps(invented_seat), facts[0]["csrf_token"]),

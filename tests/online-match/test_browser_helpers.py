@@ -3,7 +3,7 @@ import unittest
 import http.client
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, reattach_required, require, run, start_native_poll
+from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, fresh_grant_required, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, reattach_required, require, run, start_native_poll
 
 
 class BrowserHelperTests(unittest.TestCase):
@@ -136,6 +136,35 @@ class BrowserHelperTests(unittest.TestCase):
                          {'status':409,'body':{'code':'busy'}},
                          {'status':409,'body':{'code':'reattach_required','frames':[{'body':'private'}]}}):
             with self.assertRaises(AcceptanceFailure):reattach_required(response,'recovery expected')
+
+    def test_current_member_grant_rejection_requires_the_exact_sole_problem(self):
+        fresh_grant_required({'status':409,'body':{'code':'fresh_grant_required'}},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_every_other_http_status(self):
+        for status in (200,400,401,403,404,429,503):
+            with self.subTest(status=status), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':status,'body':{'code':'fresh_grant_required'}},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_wrong_code_or_non_problem_body(self):
+        for body in (None,[],{},'fresh_grant_required',{'code':'reattach_required'},
+                     {'code':'match_unavailable'},{'code':'unauthenticated'}):
+            with self.subTest(body=body), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':409,'body':body},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_even_empty_or_null_frame_extras(self):
+        for frames in (None,[],[{'body':{'MatchUpdate':{'revision':0,'view':[1]}}}]):
+            with self.subTest(frames=frames), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':409,'body':{'code':'fresh_grant_required','frames':frames}},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_attachment_and_scope_extras(self):
+        for field in ('attachment_id','operation_scope','next_seq','seat'):
+            with self.subTest(field=field), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':409,'body':{'code':'fresh_grant_required',field:None}},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_projection_and_arbitrary_extras(self):
+        for field in ('view','events','revision','canonical_state','unexpected'):
+            with self.subTest(field=field), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':409,'body':{'code':'fresh_grant_required',field:[]}},'grant rejection expected')
 
     def test_denial_with_frames_never_passes(self):
         with self.assertRaisesRegex(AcceptanceFailure, "released gameplay frames"):
