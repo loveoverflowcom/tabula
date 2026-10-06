@@ -4270,7 +4270,6 @@ dependencies = [
  "tabula-game-tiles",
  "tabula-game-werewolf",
  "tabula-presentation",
- "tabula-registry",
  "tabula-testkit",
  "tempfile",
  "thiserror 1.0.69",

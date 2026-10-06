@@ -25,13 +25,13 @@ import com.loveoverflow.tabula.mobile.shell.gamePreferences
 import com.loveoverflow.tabula.mobile.shell.rememberDeviceFacts
 
 /**
- * The host services a first-party packaged game may use. Anything else a page asks for is denied.
+ * The host services a first-party packaged game may use. Anything else a host asks for is denied.
  * Voice credentials/audio stay native and are deliberately absent from this bridge (ADR-0037).
  */
 internal val FirstPartyCapabilities: Set<HostCapability> = setOf(HostCapability.KeepAwake)
 
 /**
- * The Compose Multiplatform app root shared by Android and iOS (ADR-0032, ADR-0033).
+ * The Compose Multiplatform app root shared by Android and iOS (ADR-0032, ADR-0043).
  *
  * It owns screens and navigation only. [gameHost] is where the platform presents a game surface and
  * [games] is the list of games packaged with this build; with neither, the shell says so.
@@ -43,7 +43,7 @@ fun TabulaApp(
     voice: VoiceController? = null,
     voiceScope: String = DevVoiceGrantSource.SCOPE,
 ) {
-    // Voice lifetime belongs to the app/session owner, not the replaceable WebView runtime.
+    // Voice lifetime belongs to the app/session owner, not the replaceable game runtime.
     DisposableEffect(voice) { onDispose { voice?.close() } }
     LaunchedEffect(voice) {
         if (voice != null) while (true) {

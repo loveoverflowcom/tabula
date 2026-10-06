@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="GameSessionTest[desktop]" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-06T15:13:58.167Z" hostname="Mac-mini-cua-Manh.local" time="0.01">
+  <properties/>
+  <testcase name="aDocumentThatStartsWhileTheAppIsBackgroundedIsToldToSuspendRightAfterInit[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.002"/>
+  <testcase name="keepAwakeIsReleasedByExitFailureReloadAndDispose[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.004"/>
+  <testcase name="pageFailureIsRecordedAsShownByTheGameAndRetryStartsAFreshGeneration[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="messagesBeforeHelloOrFromAnEarlierDocumentAreDropped[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="helloStartsAGenerationAndAnswersWithGrantedCapabilitiesAndPreferences[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="exitNotifiesTheShellOnceAndClosesTheSession[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="disposeBeforeAnyPageSpokeSendsNothing[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="backIsRoutedToTheGameOnlyWhileAMatchIsLive[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.001"/>
+  <testcase name="suspendAndResumeAreIdempotentAndOnlyReachAConnectedPage[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="hostFailureIsNotShownByTheGameAndIsReportedOnce[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="silentPageFailsClosedAfterTheHandshakeDeadlineButOnlyWhileWaiting[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="disposeIsIdempotentTellsTheLivePageAndRemovesAllAuthority[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.001"/>
+  <testcase name="readyIsReportedOnceAndOnlyForTheLiveGeneration[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="keepAwakeIsGrantedOnlyWhenTheLaunchAllowsItAndOnlyInAReadyDocument[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <testcase name="malformedOrOversizedTextNeverChangesState[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.001"/>
+  <testcase name="replayedOrReorderedServiceRequestsAreDropped[desktop]" classname="com.loveoverflow.tabula.mobile.GameSessionTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

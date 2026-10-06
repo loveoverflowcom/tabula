@@ -29,7 +29,7 @@
 //! | `gen-tokens` | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json` + Kotlin `TabulaTokens.kt` | 2 |
 //! | `check-no-raw-colors` | No hex literals or `Color::new(`/Compose `Color(` outside `tabula-design` and its generated adapters | 2 |
 //! | `stage-local-play` | Stage the existing local gameplay document beside an opt-in built discovery shell (ADR-0030) | bounded local slice |
-//! | `stage-mobile-game` | Stage the same local gameplay document plus a registry-derived game list for the mobile `GameHost` (ADR-0033) | bounded local slice |
+//! | `stage-mobile-game` | Retired by ADR-0043; exits with an actionable failure, without building a web fallback | native adapter pending |
 //! | `pack-assets <game>` | Build, hash, and manifest a game's asset pack | 3 |
 //! | `gen-protocol-vectors` | Regenerate golden wire vectors — requires `--bump minor\|major` | 4 |
 //! | `check-protocol` | Golden vectors match; the version-bump gate (I-13) | 4 |
@@ -74,7 +74,6 @@ mod game_ids_policy;
 mod graph;
 mod manifest_cmd;
 mod manifest_policy;
-mod mobile_stage_cmd;
 mod pack_assets_cmd;
 mod perft_cmd;
 mod replay_cmd;
@@ -184,14 +183,8 @@ fn main() {
             }
         }
         Some("stage-mobile-game") => {
-            let args: Vec<String> = std::env::args().skip(2).collect();
-            match mobile_stage_cmd::run(&args) {
-                Ok(_) => {}
-                Err(err) => {
-                    eprintln!("stage-mobile-game: {err}");
-                    std::process::exit(1);
-                }
-            }
+            eprintln!("{}", retired_mobile_stage_message());
+            std::process::exit(2);
         }
         Some("stage-local-play") => {
             let args: Vec<String> = std::env::args().skip(2).collect();
@@ -230,7 +223,8 @@ fn print_usage_and_exit(other: Option<&str>) -> ! {
                    new-game <slug>  selfplay <game>  replay <file> [--verify] [--at N] [--diagnose] [--write-reproducer PATH]\n\
                    replay-goldens (intentional fixture regeneration)\n\
          phase 1:  perft chess [depth]\n\
-         phase 2:  gen-tokens  check-no-raw-colors  stage-wasm-game  stage-local-play  stage-mobile-game\n\
+         phase 2:  gen-tokens  check-no-raw-colors  stage-wasm-game  stage-local-play\n\
+         retired:  stage-mobile-game (ADR-0043: native mobile adapter pending)\n\
          phase 3:  pack-assets <game>\n\
          phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\
          See xtask/README.md and docs/architecture/01-stack-and-repository-plan.md §6.3."
@@ -242,6 +236,10 @@ pub fn unavailable_message(command: &str, planned_phase: u8, doc_ref: &str) -> S
     format!(
         "{command} is not available in Phase 2 (planned activation: Phase {planned_phase}, {doc_ref})"
     )
+}
+
+fn retired_mobile_stage_message() -> &'static str {
+    "stage-mobile-game was retired by ADR-0043: Android/iOS gameplay must use a native Macroquad adapter. That adapter and native packaging are not implemented; no HTML/JS/WASM mobile bundle is produced. Build the CMP shell with `cd mobile && ./gradlew :android:assembleDebug`; use `stage-wasm-game` or `stage-local-play` only for web."
 }
 
 pub fn unimplemented_message(command: &str, doc_ref: &str) -> String {

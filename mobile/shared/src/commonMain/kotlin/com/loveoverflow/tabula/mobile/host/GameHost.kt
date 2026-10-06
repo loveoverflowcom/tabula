@@ -21,12 +21,12 @@ data class GameLaunch(
 
 /** What a [GameHost] reports back to the shell. */
 sealed interface GameHostEvent {
-    /** The game surface is interactive. [bootMs] is the page's own navigation-to-ready time. */
+    /** The game surface is interactive. [bootMs] is runtime start to first usable interactive frame, measured by the host. */
     data class Ready(val bootMs: Int) : GameHostEvent
 
     /**
      * The surface could not continue. [reason] is for diagnostics, not for rules. When
-     * [shownByGame] the game document already shows its own recovery overlay; otherwise the
+     * [shownByGame] the game surface already shows its own recovery overlay; otherwise the
      * shell must explain the failure itself because no game UI is available to do so.
      */
     data class Failed(val reason: String, val shownByGame: Boolean) : GameHostEvent
@@ -57,7 +57,10 @@ class GameBackPort {
  * The shell decides when a game is shown and reacts to [GameHostEvent]; the host owns the
  * surface and its lifecycle. A host must create its runtime when it enters the composition and
  * only then: a recomposition, a new [onEvent] lambda or a changed [modifier] never restarts it.
- * Neither side carries rules, canonical state or presentation state across this boundary.
+ * Neither side carries rules, canonical state or per-frame drawing commands across this boundary.
+ * Native adapters separate runtime, surface and match lifetime (ADR-0043): surface recreation cannot
+ * start a new match; retired callbacks are fenced before disposal and render-thread teardown completes
+ * before reopen. The placeholder never reports Ready; native implementation/evidence is still owed.
  */
 interface GameHost {
     @Composable

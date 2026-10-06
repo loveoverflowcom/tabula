@@ -1,5 +1,8 @@
 # ADR-0033: WebView `GameHost` for the first-party packaged game
 
+> **Superseded scope (2026-10-06):** [ADR-0043](0043-native-mobile-gamehost.md) replaces mobile WebView/WKWebView gameplay and its web-bundle pipeline with the native Macroquad direction. CMP UI/navigation, Rust ownership, token authority and unrelated gates remain. The implementation/evidence below is historical; it is not the current mobile runtime. Native adapters remain blocked.
+
+
 - **Status:** accepted for the first-party, packaged, local-play scope below; **Android WebView and iOS WKWebView execution is NOT_RUN** (see the evidence ledger). This is an embedded first-party game, not a dynamic plugin system.
 - **Date:** 2026-10-04
 - **Extends:** ADR-0032 §5 item 3 (the WebView `GameHost` that loads the ADR-0030 local document, with typed lifecycle events). Supersedes nothing.

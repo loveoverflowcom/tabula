@@ -1,0 +1,742 @@
+TAP version 13
+# Subtest: public online launch admits no grant, credential or client config
+ok 1 - public online launch admits no grant, credential or client config
+  ---
+  duration_ms: 3.42175
+  type: 'test'
+  ...
+# Subtest: opaque command JSON keeps u128 identity exact
+ok 2 - opaque command JSON keeps u128 identity exact
+  ---
+  duration_ms: 0.788542
+  type: 'test'
+  ...
+# Subtest: cookie-only context/grant/attach and opaque command stay document-memory
+ok 3 - cookie-only context/grant/attach and opaque command stay document-memory
+  ---
+  duration_ms: 20.089083
+  type: 'test'
+  ...
+# Subtest: wrong package and missing no-store fail before attachment
+ok 4 - wrong package and missing no-store fail before attachment
+  ---
+  duration_ms: 0.823417
+  type: 'test'
+  ...
+# Subtest: response size bound rejects before reading announced oversized body
+ok 5 - response size bound rejects before reading announced oversized body
+  ---
+  duration_ms: 0.616542
+  type: 'test'
+  ...
+# Subtest: no HTTPS or invalid public routing hint can start online transport
+ok 6 - no HTTPS or invalid public routing hint can start online transport
+  ---
+  duration_ms: 0.06825
+  type: 'test'
+  ...
+# Subtest: retirement rejects late private completion and concurrent requests stay bounded
+ok 7 - retirement rejects late private completion and concurrent requests stay bounded
+  ---
+  duration_ms: 0.386791
+  type: 'test'
+  ...
+# Subtest: unannounced oversized streamed private response is cancelled and reader released
+ok 8 - unannounced oversized streamed private response is cancelled and reader released
+  ---
+  duration_ms: 2.718875
+  type: 'test'
+  ...
+# Subtest: status bridge publishes current-generation bounded facts without Fetch
+ok 9 - status bridge publishes current-generation bounded facts without Fetch
+  ---
+  duration_ms: 0.903459
+  type: 'test'
+  ...
+# Subtest: 401/403, malformed JSON and body failure terminally conceal without exposing bodies
+ok 10 - 401/403, malformed JSON and body failure terminally conceal without exposing bodies
+  ---
+  duration_ms: 10.368459
+  type: 'test'
+  ...
+# Subtest: deadline aborts an uncooperative command, retains unknown intent and retires late success
+ok 11 - deadline aborts an uncooperative command, retains unknown intent and retires late success
+  ---
+  duration_ms: 0.782
+  type: 'test'
+  ...
+# Subtest: Rust unavailable notification and malformed status retire transport irreversibly
+ok 12 - Rust unavailable notification and malformed status retire transport irreversibly
+  ---
+  duration_ms: 0.203833
+  type: 'test'
+  ...
+# Subtest: pending refresh hint has no credential/grant/projection and preserves opaque identity
+ok 13 - pending refresh hint has no credential/grant/projection and preserves opaque identity
+  ---
+  duration_ms: 2.396084
+  type: 'test'
+  ...
+# Subtest: Rust runtime unavailability keeps exact or unknown intent across explicit Retry
+ok 14 - Rust runtime unavailability keeps exact or unknown intent across explicit Retry
+  ---
+  duration_ms: 3.294167
+  type: 'test'
+  ...
+# Subtest: Rust explicit wire denial forgets exact and unknown pending hints
+ok 15 - Rust explicit wire denial forgets exact and unknown pending hints
+  ---
+  duration_ms: 0.695334
+  type: 'test'
+  ...
+# Subtest: HTTP authority denial forgets pending intent before an explicit Retry
+ok 16 - HTTP authority denial forgets pending intent before an explicit Retry
+  ---
+  duration_ms: 0.808167
+  type: 'test'
+  ...
+# Subtest: recovery obtains fresh context/grant and never replays a command in JavaScript
+ok 17 - recovery obtains fresh context/grant and never replays a command in JavaScript
+  ---
+  duration_ms: 1.9855
+  type: 'test'
+  ...
+# Subtest: expired/malformed pending storage is unknown and never supplies replay bytes
+ok 18 - expired/malformed pending storage is unknown and never supplies replay bytes
+  ---
+  duration_ms: 0.646583
+  type: 'test'
+  ...
+# Subtest: inaccessible storage blocks submission before any command transmission
+ok 19 - inaccessible storage blocks submission before any command transmission
+  ---
+  duration_ms: 0.249542
+  type: 'test'
+  ...
+# Subtest: six failed fresh-authority attempts stop with an explicit retry and keep the unknown hint
+ok 20 - six failed fresh-authority attempts stop with an explicit retry and keep the unknown hint
+  ---
+  duration_ms: 8.85475
+  type: 'test'
+  ...
+# Subtest: Rust capacity resync conceals immediately and preserves original intent without HTTP
+ok 21 - Rust capacity resync conceals immediately and preserves original intent without HTTP
+  ---
+  duration_ms: 0.420416
+  type: 'test'
+  ...
+# Subtest: window focus-only resume conceals old authority before fresh attach and ignores dialog focus
+ok 22 - window focus-only resume conceals old authority before fresh attach and ignores dialog focus
+  ---
+  duration_ms: 2.917125
+  type: 'test'
+  ...
+# Subtest: retired local attachment409 preserves exact pending intent until fresh same-scope Rust resync
+ok 23 - retired local attachment409 preserves exact pending intent until fresh same-scope Rust resync
+  ---
+  duration_ms: 1.664166
+  type: 'test'
+  ...
+# Subtest: verified stale-CSRF403 keeps pending intent and revalidates context before any Rust replay
+ok 24 - verified stale-CSRF403 keeps pending intent and revalidates context before any Rust replay
+  ---
+  duration_ms: 1.807792
+  type: 'test'
+  ...
+# Subtest: nonexact or untrusted403 and genuine401 cannot become automatic context recovery
+ok 25 - nonexact or untrusted403 and genuine401 cannot become automatic context recovery
+  ---
+  duration_ms: 2.515542
+  type: 'test'
+  ...
+# Subtest: missing or interrupted403 problem body cannot start automatic context recovery
+ok 26 - missing or interrupted403 problem body cannot start automatic context recovery
+  ---
+  duration_ms: 0.48675
+  type: 'test'
+  ...
+# Subtest: every host→page vector decodes exactly as specified or is rejected
+ok 27 - every host→page vector decodes exactly as specified or is rejected
+  ---
+  duration_ms: 1.332167
+  type: 'test'
+  ...
+# Subtest: every page→host vector is produced byte-for-byte by encode, and invalid ones never encode
+ok 28 - every page→host vector is produced byte-for-byte by encode, and invalid ones never encode
+  ---
+  duration_ms: 1.23875
+  type: 'test'
+  ...
+# Subtest: oversized and malformed host input is rejected without throwing
+ok 29 - oversized and malformed host input is rejected without throwing
+  ---
+  duration_ms: 0.135458
+  type: 'test'
+  ...
+# Subtest: encode replaces lone surrogates so the host only sees well-formed text
+ok 30 - encode replaces lone surrogates so the host only sees well-formed text
+  ---
+  duration_ms: 0.192709
+  type: 'test'
+  ...
+# Subtest: encode truncates failure detail to 200 code points and the message stays bounded
+ok 31 - encode truncates failure detail to 200 code points and the message stays bounded
+  ---
+  duration_ms: 0.169375
+  type: 'test'
+  ...
+# Subtest: handshake resolves once; a second init and an out-of-generation message are dropped
+ok 32 - handshake resolves once; a second init and an out-of-generation message are dropped
+  ---
+  duration_ms: 0.386208
+  type: 'test'
+  ...
+# Subtest: nothing is sent before init and nothing after dispose
+ok 33 - nothing is sent before init and nothing after dispose
+  ---
+  duration_ms: 0.164
+  type: 'test'
+  ...
+# Subtest: handshake rejects on silence and on an unavailable port
+ok 34 - handshake rejects on silence and on an unavailable port
+  ---
+  duration_ms: 0.1365
+  type: 'test'
+  ...
+# Subtest: services are granted per capability, ids correlate replies, and unknown replies are dropped
+ok 35 - services are granted per capability, ids correlate replies, and unknown replies are dropped
+  ---
+  duration_ms: 0.370083
+  type: 'test'
+  ...
+# Subtest: a host that never replies cannot make requests pile up without bound
+ok 36 - a host that never replies cannot make requests pile up without bound
+  ---
+  duration_ms: 0.357125
+  type: 'test'
+  ...
+# Subtest: mocked cold/warm cache fetches only requested manifest inventory and re-verifies hits
+ok 37 - mocked cold/warm cache fetches only requested manifest inventory and re-verifies hits
+  ---
+  duration_ms: 28.037542
+  type: 'test'
+  ...
+# Subtest: same alias and identical manifest URL share one pending Promise; settled promises are released
+ok 38 - same alias and identical manifest URL share one pending Promise; settled promises are released
+  ---
+  duration_ms: 1.757875
+  type: 'test'
+  ...
+# Subtest: four loads and 64 MiB aggregate declared size admit bounded concurrent work and release on abort
+ok 39 - four loads and 64 MiB aggregate declared size admit bounded concurrent work and release on abort
+  ---
+  duration_ms: 2.742292
+  type: 'test'
+  ...
+# Subtest: unknown, missing, corrupt, empty, truncated and oversized resources fail without trusted delivery
+ok 40 - unknown, missing, corrupt, empty, truncated and oversized resources fail without trusted delivery
+  ---
+  duration_ms: 6.632834
+  type: 'test'
+  ...
+# Subtest: failed pending resource releases its coalescing entry so a later explicit request can retry
+ok 41 - failed pending resource releases its coalescing entry so a later explicit request can retry
+  ---
+  duration_ms: 0.803
+  type: 'test'
+  ...
+# Subtest: mocked corrupt cached bytes are evicted and get exactly one fresh verified fetch
+ok 42 - mocked corrupt cached bytes are evicted and get exactly one fresh verified fetch
+  ---
+  duration_ms: 11.1365
+  type: 'test'
+  ...
+# Subtest: content versions have distinct cache keys and never reuse stale bytes under the same alias
+ok 43 - content versions have distinct cache keys and never reuse stale bytes under the same alias
+  ---
+  duration_ms: 3.927292
+  type: 'test'
+  ...
+# Subtest: manifest schema, fields, sizes, count, total and canonical hash URLs reject hostile inventory
+ok 44 - manifest schema, fields, sizes, count, total and canonical hash URLs reject hostile inventory
+  ---
+  duration_ms: 21.713
+  type: 'test'
+  ...
+# Subtest: validated inventory is detached from later raw-manifest mutation
+ok 45 - validated inventory is detached from later raw-manifest mutation
+  ---
+  duration_ms: 0.952583
+  type: 'test'
+  ...
+# Subtest: mocked unsupported, denied and quota-limited cache/locks fall back to verified network
+ok 46 - mocked unsupported, denied and quota-limited cache/locks fall back to verified network
+  ---
+  duration_ms: 4.124208
+  type: 'test'
+  ...
+# Subtest: mocked shared Web Locks coalesce identical resource loads across documents
+ok 47 - mocked shared Web Locks coalesce identical resource loads across documents
+  ---
+  duration_ms: 2.810167
+  type: 'test'
+  ...
+# Subtest: mocked LRU bounds total cache entries including its metadata and refreshes file recency
+ok 48 - mocked LRU bounds total cache entries including its metadata and refreshes file recency
+  ---
+  duration_ms: 32.986917
+  type: 'test'
+  ...
+# Subtest: mocked declared-payload accounting reserves metadata inside 150 MiB and evicts before insertion
+ok 49 - mocked declared-payload accounting reserves metadata inside 150 MiB and evicts before insertion
+  ---
+  duration_ms: 19.3035
+  type: 'test'
+  ...
+# Subtest: mocked broken LRU index and orphan entries reconcile without fetching unrelated resources
+ok 50 - mocked broken LRU index and orphan entries reconcile without fetching unrelated resources
+  ---
+  duration_ms: 1.51775
+  type: 'test'
+  ...
+# Subtest: aborts reject at pending fetch and digest boundaries before caching or late delivery
+ok 51 - aborts reject at pending fetch and digest boundaries before caching or late delivery
+  ---
+  duration_ms: 2.256375
+  type: 'test'
+  ...
+# Subtest: aborted streamed reads cancel and release their reader without accepting late chunks
+ok 52 - aborted streamed reads cancel and release their reader without accepting late chunks
+  ---
+  duration_ms: 4.8855
+  type: 'test'
+  ...
+# Subtest: mocked late cache hits and cached-hit verification cannot deliver after cancellation
+ok 53 - mocked late cache hits and cached-hit verification cannot deliver after cancellation
+  ---
+  duration_ms: 4.048125
+  type: 'test'
+  ...
+# Subtest: mocked cache.put finishing after abort is compensated before releasing the shared lock
+ok 54 - mocked cache.put finishing after abort is compensated before releasing the shared lock
+  ---
+  duration_ms: 2.049
+  type: 'test'
+  ...
+# Subtest: non-streaming network responses fail closed without invoking arrayBuffer
+ok 55 - non-streaming network responses fail closed without invoking arrayBuffer
+  ---
+  duration_ms: 0.575875
+  type: 'test'
+  ...
+# Subtest: non-streaming cached responses are evicted before a fresh streamed verified load
+ok 56 - non-streaming cached responses are evicted before a fresh streamed verified load
+  ---
+  duration_ms: 2.511833
+  type: 'test'
+  ...
+# Subtest: defaults are local Fischer 5+2 and bounded arguments
+ok 57 - defaults are local Fischer 5+2 and bounded arguments
+  ---
+  duration_ms: 0.969333
+  type: 'test'
+  ...
+# Subtest: Bronstein and untimed produce only their applicable clock args
+ok 58 - Bronstein and untimed produce only their applicable clock args
+  ---
+  duration_ms: 0.638875
+  type: 'test'
+  ...
+# Subtest: registry namespaced setup arguments share the same bounds
+ok 59 - registry namespaced setup arguments share the same bounds
+  ---
+  duration_ms: 0.775583
+  type: 'test'
+  ...
+# Subtest: unknown, duplicate, conflicting, credential, mode and hostile numeric values fail closed
+ok 60 - unknown, duplicate, conflicting, credential, mode and hostile numeric values fail closed
+  ---
+  duration_ms: 0.443083
+  type: 'test'
+  ...
+# Subtest: system dark/high contrast and reduced motion reach runtime args
+ok 61 - system dark/high contrast and reduced motion reach runtime args
+  ---
+  duration_ms: 0.142792
+  type: 'test'
+  ...
+# Subtest: setup submits exactly once, carries edited config and recovers on Back
+ok 62 - setup submits exactly once, carries edited config and recovers on Back
+  ---
+  duration_ms: 2.918792
+  type: 'test'
+  ...
+# Subtest: untimed removes and disables timed fields; invalid values cannot navigate
+ok 63 - untimed removes and disables timed fields; invalid values cannot navigate
+  ---
+  duration_ms: 1.418791
+  type: 'test'
+  ...
+# Subtest: download and initial async frames never falsely declare board readiness
+ok 64 - download and initial async frames never falsely declare board readiness
+  ---
+  duration_ms: 20.240375
+  type: 'test'
+  ...
+# Subtest: HTTP failure, unknown imports and startup timeout expose recovery
+ok 65 - HTTP failure, unknown imports and startup timeout expose recovery
+  ---
+  duration_ms: 11.679958
+  type: 'test'
+  ...
+# Subtest: frame panic and context loss never silently remount or retain ready state
+ok 66 - frame panic and context loss never silently remount or retain ready state
+  ---
+  duration_ms: 7.871584
+  type: 'test'
+  ...
+# Subtest: leave requires a safe dialog, cancel restores focus, retry is explicit reload
+ok 67 - leave requires a safe dialog, cancel restores focus, retry is explicit reload
+  ---
+  duration_ms: 5.586625
+  type: 'test'
+  ...
+# Subtest: ordinary Tab reaches pinned canvas listener; Shift+Tab explicitly reaches host Leave
+ok 68 - ordinary Tab reaches pinned canvas listener; Shift+Tab explicitly reaches host Leave
+  ---
+  duration_ms: 5.06225
+  type: 'test'
+  ...
+# Subtest: canvas blur clears held-key/drag state before dialog controls and return re-focuses
+ok 69 - canvas blur clears held-key/drag state before dialog controls and return re-focuses
+  ---
+  duration_ms: 3.195833
+  type: 'test'
+  ...
+# Subtest: documents allow zoom, keep board separate and do not load remote scripts
+ok 70 - documents allow zoom, keep board separate and do not load remote scripts
+  ---
+  duration_ms: 0.423583
+  type: 'test'
+  ...
+# Subtest: integrated registry handoffs round-trip and transmit no shell metadata to Rust
+ok 71 - integrated registry handoffs round-trip and transmit no shell metadata to Rust
+  ---
+  duration_ms: 0.50875
+  type: 'test'
+  ...
+# Subtest: integrated configuration rejects unsupported modes, wrong identities, incomplete and irrelevant clock fields
+ok 72 - integrated configuration rejects unsupported modes, wrong identities, incomplete and irrelevant clock fields
+  ---
+  duration_ms: 1.107834
+  type: 'test'
+  ...
+# Subtest: return metadata admits only the exact paired same-origin shell setup destination
+ok 73 - return metadata admits only the exact paired same-origin shell setup destination
+  ---
+  duration_ms: 0.402791
+  type: 'test'
+  ...
+# Subtest: safe shell return remains usable during loading, bad gameplay config, and retired runtime failure
+ok 74 - safe shell return remains usable during loading, bad gameplay config, and retired runtime failure
+  ---
+  duration_ms: 14.787
+  type: 'test'
+  ...
+# Subtest: active host return confirms once, keeps integrated launch on retry, and returns directly to shell
+ok 75 - active host return confirms once, keeps integrated launch on retry, and returns directly to shell
+  ---
+  duration_ms: 4.728917
+  type: 'test'
+  ...
+# Subtest: every asynchronous startup stage is stale after loading cancel or actual Back/close
+ok 76 - every asynchronous startup stage is stale after loading cancel or actual Back/close
+  ---
+  duration_ms: 22.535208
+  type: 'test'
+  ...
+# Subtest: canceled unload warning retains game; actual pagehide retires input, callbacks and buffers; BFCache reloads fresh
+ok 77 - canceled unload warning retains game; actual pagehide retires input, callbacks and buffers; BFCache reloads fresh
+  ---
+  duration_ms: 2.728333
+  type: 'test'
+  ...
+# Subtest: duplicate script starts one instance, and late readiness cannot resurrect failed or closed documents
+ok 78 - duplicate script starts one instance, and late readiness cannot resurrect failed or closed documents
+  ---
+  duration_ms: 4.577875
+  type: 'test'
+  ...
+# Subtest: pinned focus callbacks cannot revive input while host dialogs are open, but frames continue
+ok 79 - pinned focus callbacks cannot revive input while host dialogs are open, but frames continue
+  ---
+  duration_ms: 1.609791
+  type: 'test'
+  ...
+# Subtest: oversized, empty or interrupted streamed download fails boundedly and releases reader
+ok 80 - oversized, empty or interrupted streamed download fails boundedly and releases reader
+  ---
+  duration_ms: 5.827
+  type: 'test'
+  ...
+# Subtest: failed document navigation exposes recovery without reviving the retired runtime
+ok 81 - failed document navigation exposes recovery without reviving the retired runtime
+  ---
+  duration_ms: 6.048
+  type: 'test'
+  ...
+# Subtest: runtime failure closes modal dialogs before focusing usable recovery
+ok 82 - runtime failure closes modal dialogs before focusing usable recovery
+  ---
+  duration_ms: 2.339959
+  type: 'test'
+  ...
+# Subtest: a synchronous failure during a frame cannot resurrect acknowledged readiness
+ok 83 - a synchronous failure during a frame cannot resurrect acknowledged readiness
+  ---
+  duration_ms: 2.20075
+  type: 'test'
+  ...
+# Subtest: oversized query fails before game work and preserves a fixed integrated shell return
+ok 84 - oversized query fails before game work and preserves a fixed integrated shell return
+  ---
+  duration_ms: 1.703958
+  type: 'test'
+  ...
+# Subtest: preserved colocated standalone gameplay returns to its standalone setup entry
+ok 85 - preserved colocated standalone gameplay returns to its standalone setup entry
+  ---
+  duration_ms: 2.27525
+  type: 'test'
+  ...
+# Subtest: integrated index and directory entries require complete handoff metadata without default autorun
+ok 86 - integrated index and directory entries require complete handoff metadata without default autorun
+  ---
+  duration_ms: 23.490458
+  type: 'test'
+  ...
+# Subtest: synthetic Rust startup aliases match real font declarations and selected pack manifest files
+ok 87 - synthetic Rust startup aliases match real font declarations and selected pack manifest files
+  ---
+  duration_ms: 4.156542
+  type: 'test'
+  ...
+# Subtest: missing startup font or selected pack aliases fail before mock Rust can acknowledge readiness
+ok 88 - missing startup font or selected pack aliases fail before mock Rust can acknowledge readiness
+  ---
+  duration_ms: 13.642583
+  type: 'test'
+  ...
+# Subtest: delayed font delivery keeps loader present and a retired runtime rejects late startup assets
+ok 89 - delayed font delivery keeps loader present and a retired runtime rejects late startup assets
+  ---
+  duration_ms: 2.706834
+  type: 'test'
+  ...
+# Subtest: corrupt network WASM never compiles, and unknown same-origin file requests never fetch
+ok 90 - corrupt network WASM never compiles, and unknown same-origin file requests never fetch
+  ---
+  duration_ms: 5.31325
+  type: 'test'
+  ...
+# Subtest: mocked warm cache reuses startup bytes across locale/theme choices but starts a fresh match
+ok 91 - mocked warm cache reuses startup bytes across locale/theme choices but starts a fresh match
+  ---
+  duration_ms: 15.827375
+  type: 'test'
+  ...
+# Subtest: gameplay scripts load the generated manifest and verified loader before bootstrap
+ok 92 - gameplay scripts load the generated manifest and verified loader before bootstrap
+  ---
+  duration_ms: 0.129208
+  type: 'test'
+  ...
+# Subtest: missing or SRI-rejected Miniquad globals still expose usable Error, Return and Retry
+ok 93 - missing or SRI-rejected Miniquad globals still expose usable Error, Return and Retry
+  ---
+  duration_ms: 6.292333
+  type: 'test'
+  ...
+# Subtest: loading cancel and startup timeout retire cleanly with Miniquad globals deliberately absent
+ok 94 - loading cancel and startup timeout retire cleanly with Miniquad globals deliberately absent
+  ---
+  duration_ms: 3.9635
+  type: 'test'
+  ...
+# Subtest: host mode handshakes before any game work and applies only host preferences
+ok 95 - host mode handshakes before any game work and applies only host preferences
+  ---
+  duration_ms: 2.891084
+  type: 'test'
+  ...
+# Subtest: host silence fails closed with a bridge failure and no game fetch
+ok 96 - host silence fails closed with a bridge failure and no game fetch
+  ---
+  duration_ms: 2.431209
+  type: 'test'
+  ...
+# Subtest: ready reports bounded boot time once and requests only granted services
+ok 97 - ready reports bounded boot time once and requests only granted services
+  ---
+  duration_ms: 6.045625
+  type: 'test'
+  ...
+# Subtest: a reply for an unknown request id or a stale generation is dropped
+ok 98 - a reply for an unknown request id or a stale generation is dropped
+  ---
+  duration_ms: 2.881125
+  type: 'test'
+  ...
+# Subtest: exit leaves through the bridge without navigation and a second exit is ignored
+ok 99 - exit leaves through the bridge without navigation and a second exit is ignored
+  ---
+  duration_ms: 2.504666
+  type: 'test'
+  ...
+# Subtest: retry inside the host reloads the document for a fresh handshake
+ok 100 - retry inside the host reloads the document for a fresh handshake
+  ---
+  duration_ms: 0.903959
+  type: 'test'
+  ...
+# Subtest: graphics context loss is reported with its own code
+ok 101 - graphics context loss is reported with its own code
+  ---
+  duration_ms: 2.449542
+  type: 'test'
+  ...
+# Subtest: suspend stops drawing and clears input; resume restarts exactly one frame loop
+ok 102 - suspend stops drawing and clears input; resume restarts exactly one frame loop
+  ---
+  duration_ms: 2.812375
+  type: 'test'
+  ...
+# Subtest: back routes to the leave confirmation while live, closes it on a second press, and leaves when not live
+ok 103 - back routes to the leave confirmation while live, closes it on a second press, and leaves when not live
+  ---
+  duration_ms: 4.314583
+  type: 'test'
+  ...
+# Subtest: dispose retires the runtime; late host messages and outbound requests are dropped
+ok 104 - dispose retires the runtime; late host messages and outbound requests are dropped
+  ---
+  duration_ms: 2.197417
+  type: 'test'
+  ...
+# Subtest: a document without a native port ignores the bridge entirely
+ok 105 - a document without a native port ignores the bridge entirely
+  ---
+  duration_ms: 2.225125
+  type: 'test'
+  ...
+# Subtest: simulator opaque shield survives focus return until flushed conceal acknowledgement
+ok 106 - simulator opaque shield survives focus return until flushed conceal acknowledgement
+  ---
+  duration_ms: 4.848542
+  type: 'test'
+  ...
+# Subtest: stale simulator conceal acknowledgement cannot remove a newer privacy shield
+ok 107 - stale simulator conceal acknowledgement cannot remove a newer privacy shield
+  ---
+  duration_ms: 2.572042
+  type: 'test'
+  ...
+# Subtest: simulator visibility loss conceals immediately and only a visible focused surface can reopen
+ok 108 - simulator visibility loss conceals immediately and only a visible focused surface can reopen
+  ---
+  duration_ms: 2.231834
+  type: 'test'
+  ...
+# Subtest: queued simulator conceal acknowledgements cannot re-enter retired or superseded documents
+ok 109 - queued simulator conceal acknowledgements cannot re-enter retired or superseded documents
+  ---
+  duration_ms: 6.759959
+  type: 'test'
+  ...
+# Subtest: standalone runtime documents reject an incompatible game before resource fetch
+ok 110 - standalone runtime documents reject an incompatible game before resource fetch
+  ---
+  duration_ms: 3.455583
+  type: 'test'
+  ...
+# Subtest: simulator startup interruption is recovered by first-safe-frame conceal ack before ready
+ok 111 - simulator startup interruption is recovered by first-safe-frame conceal ack before ready
+  ---
+  duration_ms: 3.603083
+  type: 'test'
+  ...
+# Subtest: successful public recovery-frame acknowledgement can reopen shielded asset retry
+ok 112 - successful public recovery-frame acknowledgement can reopen shielded asset retry
+  ---
+  duration_ms: 2.528125
+  type: 'test'
+  ...
+# Subtest: simulator frame is forced opaque before startup or interrupted-frame acknowledgement
+ok 113 - simulator frame is forced opaque before startup or interrupted-frame acknowledgement
+  ---
+  duration_ms: 0.257583
+  type: 'test'
+  ...
+# Subtest: online authority loss synchronously clears pixels/a11y and rejects queued status/readiness
+ok 114 - online authority loss synchronously clears pixels/a11y and rejects queued status/readiness
+  ---
+  duration_ms: 2.669291
+  type: 'test'
+  ...
+# Subtest: online pagehide conceals before BFCache capture and pageshow cannot expose old board
+ok 115 - online pagehide conceals before BFCache capture and pageshow cannot expose old board
+  ---
+  duration_ms: 2.799542
+  type: 'test'
+  ...
+# Subtest: online failed body/command and delayed success never republish private bytes
+ok 116 - online failed body/command and delayed success never republish private bytes
+  ---
+  duration_ms: 5.445875
+  type: 'test'
+  ...
+# Subtest: online uncertainty hides all old presenter facts without retiring the recovering runtime
+ok 117 - online uncertainty hides all old presenter facts without retiring the recovering runtime
+  ---
+  duration_ms: 2.355583
+  type: 'test'
+  ...
+# Subtest: online unresolved-result recovery stays neutral and says unknown instead of failed
+ok 118 - online unresolved-result recovery stays neutral and says unknown instead of failed
+  ---
+  duration_ms: 2.338959
+  type: 'test'
+  ...
+# Subtest: isolated-seat simulator config preserves bounded public preferences
+ok 119 - isolated-seat simulator config preserves bounded public preferences
+  ---
+  duration_ms: 1.533
+  type: 'test'
+  ...
+# Subtest: simulator rejects expansion, credentials, repeated settings and online modes
+ok 120 - simulator rejects expansion, credentials, repeated settings and online modes
+  ---
+  duration_ms: 0.273542
+  type: 'test'
+  ...
+# Subtest: classic host configuration remains unchanged
+ok 121 - classic host configuration remains unchanged
+  ---
+  duration_ms: 0.194541
+  type: 'test'
+  ...
+# Subtest: simulator forwards explicit and system reduced motion into the Rust runtime
+ok 122 - simulator forwards explicit and system reduced motion into the Rust runtime
+  ---
+  duration_ms: 0.947375
+  type: 'test'
+  ...
+1..122
+# tests 122
+# suites 0
+# pass 122
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 357.345083

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="VoiceControllerTest[desktop]" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-06T15:13:58.186Z" hostname="Mac-mini-cua-Manh.local" time="0.009">
+  <properties/>
+  <testcase name="repeatedJoinAndMicActionsAreSingleFlight[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.005"/>
+  <testcase name="olderMicCompletionCannotOverrideNewerCommand[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="receiveOnlyGrantCannotEnableLocalMic[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.001"/>
+  <testcase name="firstEnterPreservesTheFreshDevGrantAndConnectsReceiveOnly[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.001"/>
+  <testcase name="interruptionStopsRoomAndLateNativeEventsCannotResumeIt[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.001"/>
+  <testcase name="devFixtureGrammarEndpointLifetimeAndDiagnosticsAreBounded[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="grantWrongScopeExpiredBoundaryAndTooLongLifetimeFailClosed[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="gameDocumentHelloReloadDoesNotDisconnectNativeVoice[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="staleJoinAndMicAfterLeaveCannotRestoreOutput[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="staleGrantAfterLeaveOrLogoutCannotConnect[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="closeIsIdempotentAndTerminalAndClearsGrantSource[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="reconnectReportsNetworkLossAndPendingMicCompletionDoesNotStick[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.001"/>
+  <testcase name="productionUnavailableNeverConnectsOrRequestsMicrophone[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="deadlineDisconnectsAtEqualityAndNeverResumesFromOldCallbacks[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="backgroundStopsResourcesAndDoesNotAutoJoinOrUnmute[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <testcase name="permissionDeniedKeepsListeningAndAllowsExplicitRetry[desktop]" classname="com.loveoverflow.tabula.mobile.VoiceControllerTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

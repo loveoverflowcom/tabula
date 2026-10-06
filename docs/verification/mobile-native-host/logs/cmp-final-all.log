@@ -1,0 +1,73 @@
+
+> Configure project :android
+w: file:///private/tmp/tabula-issue81/mobile-jdk21/android/build.gradle.kts:52:46: 'fun srcDir(srcDir: Any): Any' is deprecated. Use `directories` mutable set instead.
+
+> Configure project :previewApp
+w: file:///private/tmp/tabula-issue81/mobile-jdk21/previewApp/build.gradle.kts:19:40: 'val uiTestJUnit4: String' is deprecated. Specify dependency directly.
+
+> Configure project :shared
+w: file:///private/tmp/tabula-issue81/mobile-jdk21/shared/build.gradle.kts:13:5: 'fun KotlinMultiplatformExtension.androidLibrary(configure: Action<DeprecatedKotlinMultiplatformAndroidLibraryTarget>): Unit' is deprecated. The 'androidLibrary' block is deprecated. Please use 'android' instead.
+
+> Task :shared:checkDesktopMainComposeLibrariesCompatibility
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonMain SKIPPED
+> Task :shared:convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForDesktopMain SKIPPED
+> Task :shared:generateActualResourceCollectorsForDesktopMain SKIPPED
+> Task :shared:generateComposeResClass SKIPPED
+> Task :shared:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :shared:checkDesktopTestComposeLibrariesCompatibility
+> Task :shared:assembleDesktopMainResources
+> Task :shared:desktopProcessResources UP-TO-DATE
+> Task :shared:processDesktopMainResources SKIPPED
+> Task :shared:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonTest SKIPPED
+> Task :shared:convertXmlValueResourcesForDesktopTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForDesktopTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForDesktopTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForDesktopTest SKIPPED
+> Task :shared:assembleDesktopTestResources
+> Task :shared:desktopTestProcessResources UP-TO-DATE
+> Task :shared:processDesktopTestResources SKIPPED
+> Task :previewApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :previewApp:convertXmlValueResourcesForMain NO-SOURCE
+> Task :previewApp:copyNonXmlValueResourcesForMain NO-SOURCE
+> Task :previewApp:prepareComposeResourcesTaskForMain NO-SOURCE
+> Task :previewApp:generateResourceAccessorsForMain SKIPPED
+> Task :previewApp:generateActualResourceCollectorsForMain SKIPPED
+> Task :previewApp:generateComposeResClass SKIPPED
+> Task :previewApp:assembleMainResources
+> Task :previewApp:processResources UP-TO-DATE
+> Task :previewApp:convertXmlValueResourcesForTest NO-SOURCE
+> Task :previewApp:copyNonXmlValueResourcesForTest NO-SOURCE
+> Task :previewApp:prepareComposeResourcesTaskForTest NO-SOURCE
+> Task :previewApp:generateResourceAccessorsForTest SKIPPED
+> Task :previewApp:assembleTestResources
+> Task :previewApp:processTestResources UP-TO-DATE
+> Task :shared:compileKotlinDesktop
+> Task :shared:compileDesktopMainJava NO-SOURCE
+> Task :shared:desktopMainClasses
+> Task :shared:desktopJar
+> Task :shared:compileTestKotlinDesktop
+> Task :shared:compileDesktopTestJava NO-SOURCE
+> Task :shared:desktopTestClasses
+> Task :previewApp:compileKotlin
+> Task :shared:desktopTest
+> Task :previewApp:compileJava NO-SOURCE
+> Task :previewApp:classes UP-TO-DATE
+> Task :previewApp:jar UP-TO-DATE
+> Task :previewApp:compileTestKotlin
+> Task :previewApp:compileTestJava NO-SOURCE
+> Task :previewApp:testClasses UP-TO-DATE
+> Task :previewApp:test
+
+BUILD SUCCESSFUL in 11s
+19 actionable tasks: 14 executed, 5 up-to-date

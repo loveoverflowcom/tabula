@@ -319,7 +319,7 @@ apps/desktop (optional):  Tauri shell evaluation spike — launcher + updater + 
 
 | Field | Content |
 |---|---|
-| **Goal** | Real Android and iOS apps: a Compose Multiplatform shell and navigation hosting the existing Rust/WASM game in a WebView, with mobile-appropriate layout, input, and lifecycle handling ([ADR-0032](../adr/0032-compose-multiplatform-mobile-host.md)). |
+| **Goal** | Real Android and iOS apps: a Compose Multiplatform shell and navigation hosting the existing Rust/Macroquad game natively in the same app, with mobile-appropriate layout, input, and lifecycle handling ([ADR-0043](../adr/0043-native-mobile-gamehost.md)). |
 | **Why now** | Board games are played on phones. Doing this after the shell means the layout system and input model are already exercised on touch via the web build. |
 
 **Slice delivered ahead of the gate (ADR-0032).** The CMP project (`mobile/shared`, `mobile/android`,
@@ -327,11 +327,11 @@ apps/desktop (optional):  Tauri shell evaluation spike — launcher + updater + 
 Kotlin token adapter exist before the Phase 5 exit. That does **not** complete or open Phase 6.
 Everything below except those items stays gated, and the chain's later changes each need their own evidence.
 
-**Second slice (ADR-0033).** A WebView `GameHost` for the one first-party packaged game (the ADR-0030 local
-document, served from the app bundle), a typed bridge for lifecycle, launch preferences and `keep-awake`, and
-the shared `GameSession`. **Executed:** unit, desktop-UI and packaging tests and the real document in desktop
-Chrome. **Not executed:** Android WebView, iOS WKWebView, any device — ADR-0032's embedding evidence is still owed.
-This is not a plugin system and opens no networked play, voice or further host service.
+**Historical second slice (ADR-0033).** WebView/JavaScript/WASM gameplay was tested
+only in desktop stand-ins and Chrome, never on mobile devices. [ADR-0043](../adr/0043-native-mobile-gamehost.md)
+supersedes that choice under #81 and retires mobile selection/packaging. Native
+adapters remain blocked; the CMP shell currently has no playable game. This does
+not complete Phase 6 or open networking, preload/asset services or store release.
 
 **Deliverables**
 
@@ -342,7 +342,7 @@ mobile/android:  Gradle application module; Activity lifecycle bridge (pause/res
                  connection suspend + resume), back button, safe areas, keyboard/IME, push (FCM)
 mobile/ios:      Xcode host of the shared framework; scene lifecycle, safe areas, keyboard bridge,
                  push (APNs)
-GameHost:        WebView host of the Rust/WASM game document (Android WebView, iOS WKWebView);
+GameHost:        Native Macroquad surface/controller in the same CMP Android/iOS app;
                  generation-scoped mount/dispose and typed lifecycle events; local game first
 mobile host:     OS keychain token storage (ADR-0031); deep links (tabula://match/:id and universal
                  links); device permissions; voice capture (Phase 8); low-power/thermal awareness
@@ -353,11 +353,11 @@ server:          push notification service for async turns and invites
 
 | Field | Content |
 |---|---|
-| **Contracts introduced** | `GameHost` interface and its lifecycle events; `MatchContext` handoff struct, deep-link URL scheme, push notification payload schema, lifecycle events into `tabula-net-client` (suspend/resume). Networked WebView attachment needs an ADR against ADR-0031 first. |
-| **Tests required** | Per-platform WebView evidence (input latency vs the web document, frame pacing, WASM load, WebGL and context loss, suspend/resume, process death, safe areas, keyboard, back gesture); smoke tests on a real device matrix (2 Android tiers, 2 iOS tiers) driven by a scripted match; background/foreground reconnect test (background for 5 min, return, resume correctly); battery/thermal measurement over a 20-minute session; touch-target audit; store-compliance checklist (privacy manifest, data disclosure, age rating). |
+| **Contracts introduced** | `GameHost` interface and its lifecycle events; `MatchContext` handoff struct, deep-link URL scheme, push notification payload schema, lifecycle events into `tabula-net-client` (suspend/resume). Native network attachment remains gated against ADR-0031. |
+| **Tests required** | Per-platform native CMP embedding evidence (tap/drag, animation, Back, repeated open/close, stale callbacks, surface/context loss, input cancel, preload failure/cancel, resize/DPI/safe areas, suspend/resume and process death); cold/warm first usable frame, frame-time p50/p95/p99, dropped frames, touch latency, CPU/RAM and background behavior with device/build/backend/cache provenance and explicit budgets; smoke tests on a real device matrix (2 Android tiers, 2 iOS tiers) driven by a scripted match; background/foreground reconnect test (background for 5 min, return, resume correctly); battery/thermal measurement over a 20-minute session; touch-target audit; store-compliance checklist (privacy manifest, data disclosure, age rating). |
 | **Demo / acceptance** | Install from TestFlight/internal track; play a full ranked chess game on a phone; lock the screen mid-game, unlock 3 minutes later, resume correctly; receive a push notification for an async turn and open directly into the match. |
-| **Risks** | (a) iOS build/signing friction — the CMP framework links only on macOS; budget real time and a macOS CI job. (b) **WebView latency and lifecycle are unmeasured** and become the gameplay ceiling if they are poor (ADR-019, accepted by ADR-0032 with an evidence requirement). (c) Store review of a "gambling-adjacent" card game — check content rating early. (d) Compose and Leptos screen implementations doubling UI work — keep them minimal; the web shell remains the full-featured surface. |
-| **Deferred** | Tauri mobile, gamepad support, tablet-specific layouts beyond `medium`, in-app purchase, Android/iOS widgets, networked WebView play. |
+| **Risks** | (a) iOS build/signing friction — the CMP framework links only on macOS; budget real time and a macOS CI job. (b) **Native embedding is blocked** by pinned Miniquad application-loop/lifetime APIs; native speed and safety need actual in-app device evidence (ADR-0043). (c) Store review of a "gambling-adjacent" card game — check content rating early. (d) Compose and Leptos screen implementations doubling UI work — keep them minimal; the web shell remains the full-featured surface. |
+| **Deferred** | Tauri mobile, gamepad support, tablet-specific layouts beyond `medium`, in-app purchase, Android/iOS widgets, networked mobile play. |
 | **Exit criteria** | Both apps play a full match reliably on the device matrix; suspend/resume works; battery drain < 8%/hour of active play on a mid-tier device; crash-free sessions > 99.5% in internal testing; both stores accept the build. |
 
 ---
@@ -554,7 +554,7 @@ Phase C — untrusted third-party modules
 | 3 | `tabula-assets`, `games/caro`, `games/tiles`, `games/werewolf` (rules) | `tabula-presentation` |
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server`, `tests/integration`, `tests/load` | `apps/game-client` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin`, (`apps/desktop` spike) | `services/tabula-server` |
-| 6 | `mobile/shared`, `mobile/android`, `mobile/ios` | `apps/game-client` (wasm build), `tabula-presentation` |
+| 6 | `mobile/shared`, `mobile/android`, `mobile/ios` | `apps/game-client` (future native adapter), `tabula-presentation` |
 | 7 | — | `games/werewolf` (+ui), `tabula-lobby`, `services/tabula-server` |
 | 8 | `tabula-voice` | `services/tabula-server`, `apps/game-client`, `apps/web` |
 | 9 | one new game (external), one board-archetype game | `tabula-game-api` docs, `tabula-match` (async/hibernation), `apps/web` (replay viewer) |

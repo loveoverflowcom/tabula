@@ -4,9 +4,9 @@ import com.loveoverflow.tabula.mobile.bridge.Json
 import com.loveoverflow.tabula.mobile.bridge.StrictJson
 
 /**
- * A first-party game packaged inside the app (ADR-0033). The list comes from `tabula-games.json`,
- * written by `cargo xtask stage-mobile-game` from the Rust registry. [query] is the registry's
- * validated launch configuration: the shell appends it to the document URL and never reads it.
+ * Catalog value retained for the desktop shell fixtures and historical ADR-0033 parser tests.
+ * ADR-0043 retires its production web manifest/staging consumers; Android/iOS currently supply an
+ * empty catalog. [entry] and [query] describe the historical document launch, not a native ABI.
  */
 data class BundledGame(
     val id: String,
@@ -18,6 +18,7 @@ data class BundledGame(
     fun displayName(languageTag: String): String = names[languageTag] ?: names["en"] ?: id
 }
 
+/** Historical ADR-0033 manifest parser; not a production native game catalog. */
 object GameBundle {
     const val MANIFEST_LIMIT_BYTES = 16 * 1024
     private const val MAX_GAMES = 8

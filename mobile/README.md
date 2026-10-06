@@ -1,139 +1,84 @@
 # Tabula mobile
 
-> **First-party embedding, not a plugin system.** [ADR-0032](../docs/adr/0032-compose-multiplatform-mobile-host.md)
-> opened the Compose Multiplatform foundation; [ADR-0033](../docs/adr/0033-webview-gamehost-first-party-embedding.md)
-> adds a WebView `GameHost` for the first-party games packaged with the app.
-> [ADR-0037](../docs/adr/0037-native-mobile-voice-client.md) adds a bounded native voice client and
-> isolated loopback development harness; production voice remains unavailable. It does not open
-> Phase 6/8, production networking/accounts, store builds, third-party games or remote updates. **The Android WebView and the iOS
-> WKWebView have not been run** — see the [evidence ledger](../docs/verification/mobile-game-host/README.md).
+One CMP app tree for Android/iOS. [ADR-0043](../docs/adr/0043-native-mobile-gamehost.md)
+requires the existing Rust/Macroquad gameplay runtime to run natively in the same
+application. It supersedes the gameplay WebView/WKWebView choice and packaging of
+ADR-0032/0033. Web gameplay keeps its Rust/WASM document and verified loader.
 
-One Gradle root for the one mobile app. There is no second mobile tree.
+**Current build: shell only, gameplay unavailable.** Both production entrypoints
+use the unavailable default host and an empty packaged-game list. No native game
+adapter/library/assets pipeline has been delivered; no hidden web fallback is
+selected. The [source spike and evidence ledger](../docs/verification/mobile-native-host/README.md)
+record the pinned Miniquad embedding blockers and actual check results.
 
 ```text
-mobile/
-├── shared/       Compose Multiplatform library: screens, navigation, theme, GameHost, bridge, session
-├── android/      Android application module (a thin Activity over :shared) + the packaged game assets
-├── ios/          Xcode project (a thin SwiftUI container over the :shared framework) + a bundle phase
-└── previewApp/   Desktop preview and UI tests of the shared shell (testing only; simulated game page)
+mobile/shared/      CMP UI/navigation, generated tokens, GameHost seam, native voice policy
+mobile/android/     Android Activity over :shared
+mobile/ios/         SwiftUI/Xcode host of the same static CMP framework
+mobile/previewApp/  Desktop shell layout/lifecycle tests with a labelled simulated game
 ```
 
-## Who owns what
+## Ownership and boundaries
 
-| Owner | Responsibility |
-|---|---|
-| Compose Multiplatform (`shared/`) | App screens, navigation, theming from generated tokens, the shared `GameSession` lifecycle, the bridge codec |
-| `GameHost` (`WebViewGameHost`, `WKWebViewGameHost`) | A platform WebView presenting the packaged Rust/WASM game document and executing `GameSession` effects |
-| Mobile host (Kotlin/Swift) | Keep-awake plus the distinct native `VoiceClient` adapters/permission/audio lifecycle; no push or production voice grant source |
-| The game document (Rust/WASM + `host-bridge.js`) | Rules, `project`, presentation, `RenderList`, renderer, its own loading/error/leave UI |
+CMP owns shell UI/navigation and permitted device services. Rust continues to own
+rules, projection, replay, presenter, RenderList and the Macroquad render loop.
+The future native host owns surface/context/thread lifetime and forwards input;
+it never calculates rules, receives canonical hidden state or transports drawing
+commands to Kotlin/Swift each frame. GameHost carries launch/preferences and
+permitted capabilities in, Ready/Failed/Exited out, and a Back port.
 
-Kotlin and Swift carry **no game logic**: no legality, turn order, projection, hashing or replay. They
-never branch on a game id; the launch query comes from the Rust registry through `tabula-games.json`.
+Recomposition and resize cannot create another runtime. The next adapter must
+separate surface and match lifetime, fence stale callbacks, stop/join before
+reopen, handle cancellation/context loss, and preserve rules-owned clock semantics
+on suspend. These requirements are not proven by the historical simulated-page
+GameSession tests. Native Android/iOS execution and performance remain blocked.
 
-## Playing the packaged game
+## Build and checks
 
-```bash
-just mobile-game            # builds the wasm game and runs `cargo xtask stage-mobile-game`
-cd mobile && ./gradlew :android:assembleDebug -Ptabula.requireGameBundle=true
-```
-
-`cargo xtask stage-mobile-game` writes `target/tabula-mobile-game/` (the integrated `/play/local/`
-document pruned to what it references, plus `tabula-games.json`). Gradle packages it as assets under
-`tabula-game/`; the Xcode "Package game bundle" phase copies it into the app. Without the staged bundle
-the app still builds and its Home screen says no game is packaged; `-Ptabula.requireGameBundle=true`
-(CI) turns that into a build failure.
-
-How the document is served, what the bridge carries and what lifecycle rules apply are in ADR-0033.
-The short version: the document is served from the app bundle on a virtual origin by request
-interception (no `file://`, no network, no permissions), the game's own loader still checks origin, SHA-256
-and size limits, and the only things crossing the bridge are lifecycle events, launch preferences and one
-capability-gated service request.
-
-## Design tokens
-
-`tokens.toml` is the only authored source. `cargo xtask gen-tokens` also writes
-`shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt`; never edit it.
-`design/TabulaTheme.kt` only maps those values onto Compose. A missing role is a `tokens.toml`
-change, not a literal in Kotlin. `cargo xtask check-no-raw-colors` rejects `Color(...)`,
-palette colours and hex literals under `mobile/` (the generated file is the one exemption), and
-`cargo xtask check` fails when the Kotlin adapter is stale. Screens follow
-[`docs/ui/screens/foundation.md`](../docs/ui/screens/foundation.md).
-
-## App identity
-
-The existing Home heading uses `design/TabulaBrand.kt`, which draws the approved T Portal mark
-and outlined wordmark from `assets/brand/` with the generated `brandMark` and `brandWordmark`
-roles. `TabulaBrandPaths.kt` is an export of those SVG paths and lockup coordinates, not a second
-authored logo. It has one accessible heading named Tabula; the mark is decorative. Game titles,
-game artwork, occupant avatars, gameplay and navigation are unchanged. There is no additional
-app loading or About screen in this foundation.
-
-Android's manifest selects `@mipmap/ic_launcher`; legacy square PNGs and the adaptive foreground
-are exported from the canonical square app-icon artwork. Android supplies the adaptive mask.
-The Xcode project's Resources phase includes `TabulaApp/Assets.xcassets` and both build
-configurations select its `AppIcon` set. The iOS icon PNGs are square, opaque and unmasked.
-Regenerate these adapters using the brand export command documented in `assets/brand/README.md`.
-
-`:previewApp:test` includes `BrandIdentityTest` for one accessible name and the rendered identity
-at 320/390 dp in all four authored schemes. Its screenshots are shared-shell preview evidence
-only. Launcher appearance still requires Android/iOS execution; source wiring or exported PNGs
-do not establish a device run. The optional `apps/desktop` product remains a gated no-op skeleton;
-`previewApp` is testing only and does not add a desktop installer or icon target.
-
-## The GameHost seam
-
-`shared/.../host/GameHost.kt` is the only contract between the shell and a game surface: a launch request
-in, `Ready` / `Failed` / `Exited` out, plus a `GameBackPort` through which the shell offers Back to the
-host first. A host builds its runtime through `rememberGameRuntime`, which creates it **once per
-composition entry** and disposes it exactly once; a recomposition, resize or new lambda cannot rebuild it.
-
-## Build and test
-
-Requires JDK 17 and, for Android, an Android SDK (`ANDROID_HOME`) with platform 37.
+The configured mobile build requires JDK 17 and Android SDK platform 37. Xcode
+16.3+/Swift 6.1 is needed for the exact LiveKit Swift dependency; native iOS linking
+requires macOS and the pinned Kotlin/Native toolchain.
 
 ```bash
 cd mobile
-./gradlew :shared:testAndroidHostTest :previewApp:test           # unit tests + desktop UI tests (no device)
-./gradlew :android:assembleDebug -Ptabula.requireGameBundle=true  # debug APK with the game packaged
-./gradlew :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64   # iOS Kotlin → klib (any OS)
-./gradlew :previewApp:run                                         # desktop window of the shell (simulated game page)
-./gradlew :shared:embedAndSignAppleFrameworkForXcode              # iOS framework: called by Xcode, macOS only
-node ../tools/mobile-host-check/run.mjs                           # real staged game in phone-sized Chrome
+./gradlew :shared:testAndroidHostTest :previewApp:test :android:assembleDebug
+./gradlew :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
+./gradlew :previewApp:run -Ppreview.width=320 -Ppreview.height=720
+# On macOS, the Xcode project builds the shared framework itself:
+xcodebuild -project ios/TabulaApp.xcodeproj -scheme Tabula -configuration Debug \
+  -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build
 ```
 
-Open `ios/TabulaApp.xcodeproj` on a Mac; its first build phase runs the Gradle task above and its last
-packages the game bundle.
+The retired `just mobile-game` / `cargo xtask stage-mobile-game` commands fail
+explicitly. Mobile builds do not build/copy HTML/JavaScript/WASM gameplay bundles.
+Native artifact/assets packaging is a required follow-up after the adapter spike,
+not a rename of the old web-bundle task. CI is configured to inspect source/configuration and built
+APK/app contents against the native-only policy; this establishes no native frame.
 
-## What each environment proves
+Desktop CMP tests render actual shared shell pixels and exercise the host seam
+with a simulated page. They can inspect 320/390 dp layout, wrapping, scrolling,
+recomposition and Back routing. They cannot measure Android/iOS touch latency,
+GPU frames, memory, surface loss or process death. A build or simulator result
+does not replace issue #81's real-device acceptance.
 
-| Check | Linux | macOS |
-|---|---|---|
-| Shared Kotlin compiles for Android, iOS (klib) and desktop; unit tests | yes | yes |
-| Shell navigation, `GameSession`, recomposition and back/suspend/failure rules (`:previewApp:test`, simulated page) | yes (headless Skiko) | yes |
-| Debug APK assembles with the game packaged | yes | yes |
-| The real staged game document under the host CSP, bridge stand-in, in phone-sized Chrome (`tools/mobile-host-check`) | yes (Chrome) | yes |
-| iOS static framework links; Xcode project builds; app runs in the simulator | **no** | needed |
-| Android WebView / emulator / device: input latency, frame pacing, memory, context loss, process death | **no — NOT_RUN** | — |
-| iOS WKWebView: custom-scheme secure context, streamed bodies, lifecycle | **no — NOT_RUN** | needed |
+## Design
 
-Compilation is not execution, a simulated page is not a WebView, and desktop Chrome is not either target.
+`tokens.toml` is the single authored source. `cargo xtask gen-tokens` generates
+`shared/.../design/TabulaTokens.kt`; do not edit it. `TabulaTheme` maps these roles
+to Compose. The current minimal shell follows
+[the compact foundation](../docs/ui/screens/foundation.md), including 16 dp gutters,
+44 dp minimum targets, wrapping actions and readable error recovery. It is not the
+web discovery/catalog. The canonical T Portal identity uses the generated brand
+paths. No decorative oversized border or second palette is introduced.
 
-## Native voice (isolated development)
+## Voice and gates
 
-CMP owns the voice controls; LiveKit Android 2.29.0 / Swift 2.17.0 own native media.
-Audio, room endpoints and credentials never enter the WebView bridge/game WS.
-The default production source says unavailable before constructing a native room
-or asking for a microphone. A local mute is not SFU/game-policy enforcement.
+[ADR-0037](../docs/adr/0037-native-mobile-voice-client.md) retains its bounded native
+LiveKit adapters and isolated loopback fixture. Production grants remain unavailable;
+credentials/audio stay outside GameHost. Foreground/background, permission and
+audio-session handling remain owned by the native host. Actual device/SFU/audio
+acceptance is still separate. See [the harness](../tools/native-voice-harness/README.md)
+and [its ledger](../docs/verification/native-mobile-voice/README.md).
 
-The optional ignored `mobile/voice-dev-grant.json` is packaged only in Debug and
-accepted only for the fixed synthetic scope, an exact loopback/emulator endpoint
-and at most ten minutes. See [the harness](../tools/native-voice-harness/README.md)
-and [evidence ledger](../docs/verification/native-mobile-voice/README.md).
-
-The client is foreground-only: actual background entry, audio interruption,
-route leave/logout hook, grant deadline or disposal disconnects and releases
-native media. Returning never autojoins or unmutes. A game WebView reload/retry
-alone keeps voice; no room credentials are attached to its launch/navigation.
-Native audio focus, simultaneous game audio and headset routing need real
-Android/iOS acceptance. Swift needs Xcode 16.3+ / Swift 6.1; CI compiles/links
-its SDK adapter on macOS without claiming simulator/audio execution.
+No production mobile auth/network, new voice authority, third-party game loading,
+store release or Phase 6/8 exit follows from this change.

@@ -2,8 +2,11 @@ package com.loveoverflow.tabula.mobile.shell
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -12,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +29,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.loveoverflow.tabula.mobile.design.LocalTabulaColors
 import com.loveoverflow.tabula.mobile.design.TabulaAccessibility
@@ -32,6 +40,7 @@ import com.loveoverflow.tabula.mobile.design.TabulaShape
 import com.loveoverflow.tabula.mobile.design.TabulaSpace
 import com.loveoverflow.tabula.mobile.design.TabulaText
 import com.loveoverflow.tabula.mobile.design.TabulaType
+import com.loveoverflow.tabula.mobile.design.toTextStyle
 import com.loveoverflow.tabula.mobile.host.BundledGame
 import com.loveoverflow.tabula.mobile.host.GameBackPort
 import com.loveoverflow.tabula.mobile.host.GameHost
@@ -44,7 +53,7 @@ import com.loveoverflow.tabula.mobile.voice.VoiceControls
 object ShellText {
     const val HomeTitle = "Tabula"
     const val HomeStatus = "Games packaged with this app play on this device. Online play, accounts and the full catalog are not connected."
-    const val NoGames = "This build has no packaged game. Run `cargo xtask stage-mobile-game` and rebuild."
+    const val NoGames = "Native gameplay is not available in this build yet."
     const val Back = "Back"
     const val Retry = "Try again"
     const val FailureTitle = "The game could not open"
@@ -84,6 +93,7 @@ fun ShellButton(label: String, filled: Boolean, onClick: () -> Unit, modifier: M
     Box(
         modifier = modifier
             .heightIn(min = TabulaAccessibility.minTarget.dp)
+            .widthIn(min = TabulaAccessibility.minTarget.dp)
             .clip(RoundedCornerShape(TabulaShape.button.dp))
             .background(container)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
@@ -97,18 +107,23 @@ fun ShellButton(label: String, filled: Boolean, onClick: () -> Unit, modifier: M
 @Composable
 fun HomeScreen(games: List<BundledGame>, languageTag: String, onOpen: (BundledGame) -> Unit) {
     ShellPage(ShellText.HomeTitle, titleContent = { TabulaBrand() }) {
-        TabulaText(
-            if (games.isEmpty()) ShellText.NoGames else ShellText.HomeStatus,
-            TabulaType.bodyMd,
-            color = LocalTabulaColors.current.onSurfaceVariant,
-        )
-        for (game in games) {
-            ShellButton(
-                ShellText.play(game.displayName(languageTag)),
-                filled = true,
-                onClick = { onOpen(game) },
-                modifier = Modifier.fillMaxWidth(),
+        Column(
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp),
+        ) {
+            TabulaText(
+                if (games.isEmpty()) ShellText.NoGames else ShellText.HomeStatus,
+                TabulaType.bodyMd,
+                color = LocalTabulaColors.current.onSurfaceVariant,
             )
+            for (game in games) {
+                ShellButton(
+                    ShellText.play(game.displayName(languageTag)),
+                    filled = true,
+                    onClick = { onOpen(game) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
@@ -130,27 +145,54 @@ fun GameScreen(title: String, launch: GameLaunch, host: GameHost, onLeave: () ->
     var failure by remember { mutableStateOf<String?>(null) }
     val leave = { if (!back.requestBack()) onLeave() }
     BackHandler(enabled = true, onBack = leave)
-    ShellPage(title) {
-        Row { ShellButton(ShellText.Back, filled = false, onClick = leave) }
-        if (voice != null) VoiceControls(voice, vietnamese)
-        val reason = failure
-        if (reason != null) {
-            FailurePanel(reason, onRetry = { failure = null }, modifier = Modifier.fillMaxWidth().weight(1f))
-        } else {
-            // The failure panel and this branch are exclusive, so leaving the panel discards the old
-            // runtime with its composition and Try again mounts a new one. Nothing else restarts it.
-            host.Content(
-                launch = launch,
-                onEvent = { event ->
-                    when {
-                        event == GameHostEvent.Exited -> onLeave()
-                        event is GameHostEvent.Failed && !event.shownByGame -> failure = event.reason
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                back = back,
-            )
+    ShellPage(title, titleContent = { GameToolbar(title, leave) }) {
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+            val voiceHeight = maxHeight / 2
+            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp)) {
+                if (voice != null) {
+                    // Text and permissions may grow at 200% font scale. Scroll the native controls
+                    // without giving them the game surface's entire remaining viewport (I-10).
+                    VoiceControls(voice, vietnamese, Modifier.heightIn(max = voiceHeight).verticalScroll(rememberScrollState()))
+                }
+                val reason = failure
+                if (reason != null) {
+                    FailurePanel(reason, onRetry = { failure = null }, modifier = Modifier.fillMaxWidth().weight(1f))
+                } else {
+                    // The failure panel and this branch are exclusive, so leaving the panel discards the old
+                    // runtime with its composition and Try again mounts a new one. Nothing else restarts it.
+                    host.Content(
+                        launch = launch,
+                        onEvent = { event ->
+                            when {
+                                event == GameHostEvent.Exited -> onLeave()
+                                event is GameHostEvent.Failed && !event.shownByGame -> failure = event.reason
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        back = back,
+                    )
+                }
+            }
         }
+    }
+}
+
+/** Long game names retain their semantic text while the compact toolbar reserves room for Back. */
+@Composable
+private fun GameToolbar(title: String, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ShellButton(ShellText.Back, filled = false, onClick = onBack)
+        BasicText(
+            title,
+            modifier = Modifier.weight(1f).semantics { heading() },
+            style = TabulaType.headlineSm.toTextStyle(LocalTabulaColors.current.onSurface),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -159,8 +201,10 @@ private fun FailurePanel(reason: String, onRetry: () -> Unit, modifier: Modifier
     val colors = LocalTabulaColors.current
     Column(
         modifier = modifier
+            .clip(RoundedCornerShape(TabulaShape.card.dp))
             .background(colors.container, RoundedCornerShape(TabulaShape.card.dp))
-            .padding(TabulaSpace.lg.dp),
+            .padding(TabulaSpace.lg.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp),
     ) {
         TabulaText(ShellText.FailureTitle, TabulaType.titleMd)
