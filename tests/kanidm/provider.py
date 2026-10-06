@@ -436,6 +436,28 @@ def authorize_flow(config, authorization_url, consent_receipt, progress):
     raise HarnessError("provider flow exceeded the bounded number of steps", "flow_bound")
 
 
+def provision_person_credential(client, username):
+    """Satisfy real provider MFA for one job-only person; never print secrets."""
+    password = secrets.token_urlsafe(36)
+    session_token, _ = client.json("GET", "/v1/person/" + username + "/_credential/_update")
+    client.json("POST", "/v1/credential/_update", [{"password": password}, session_token], authenticated=False)
+    # Fresh Kanidm 1.11.2 enforces MFA for all persons. Satisfy that policy with
+    # a provider-generated job-only TOTP instead of weakening its security settings.
+    status = client.json("POST", "/v1/credential/_update", ["totpgenerate", session_token], authenticated=False)
+    registration = status.get("mfaregstate")
+    require(isinstance(registration, dict) and set(registration) == {"TotpCheck"},
+            "provider did not offer the expected TOTP enrollment state")
+    totp = registration["TotpCheck"]
+    require(isinstance(totp, dict), "provider did not issue a disposable TOTP enrollment challenge")
+    code = totp_code(totp)
+    status = client.json("POST", "/v1/credential/_update", [{"totpverify": [int(code), "Tabula disposable acceptance"]}, session_token], authenticated=False)
+    require(status.get("can_commit") is True, "test person credential did not satisfy upstream policy")
+    client.json("POST", "/v1/credential/_commit", session_token, authenticated=False)
+    person = client.json("GET", "/v1/person/" + username)
+    return {"admitted_subject": person["attrs"]["uuid"][0],
+            "username": username, "password": password, "totp": totp}
+
+
 def bootstrap(args):
     require(os.environ.get("TABULA_KANIDM_DISPOSABLE") == "1", "disposable runner scope was not set")
     require(args.container.startswith("tabula-kanidm-"), "unexpected provider container")
@@ -451,21 +473,14 @@ def bootstrap(args):
     client.json("POST", "/v1/person", {"attrs": {"name": [USERNAME], "displayname": ["Tabula acceptance person"]}})
     client.json("POST", "/v1/group", {"attrs": {"name": [GROUP]}})
     client.json("PUT", "/v1/group/" + GROUP + "/_attr/member", [USERNAME])
-    password = secrets.token_urlsafe(36)
-    session_token, _ = client.json("GET", "/v1/person/" + USERNAME + "/_credential/_update")
-    client.json("POST", "/v1/credential/_update", [{"password": password}, session_token], authenticated=False)
-    # Fresh Kanidm 1.11.2 enforces MFA for all persons. Satisfy that policy with
-    # a provider-generated job-only TOTP instead of weakening its security settings.
-    status = client.json("POST", "/v1/credential/_update", ["totpgenerate", session_token], authenticated=False)
-    registration = status.get("mfaregstate")
-    require(isinstance(registration, dict) and set(registration) == {"TotpCheck"},
-            "provider did not offer the expected TOTP enrollment state")
-    totp = registration["TotpCheck"]
-    require(isinstance(totp, dict), "provider did not issue a disposable TOTP enrollment challenge")
-    code = totp_code(totp)
-    status = client.json("POST", "/v1/credential/_update", [{"totpverify": [int(code), "Tabula disposable acceptance"]}, session_token], authenticated=False)
-    require(status.get("can_commit") is True, "test person credential did not satisfy upstream policy")
-    client.json("POST", "/v1/credential/_commit", session_token, authenticated=False)
+    credential = provision_person_credential(client, USERNAME)
+    peer = None
+    if os.environ.get("TABULA_KANIDM_SOCIAL") == "1":
+        peer_name = "tabula_oidc_peer"
+        client.json("POST", "/v1/person", {"attrs": {
+            "name": [peer_name], "displayname": ["Tabula disposable peer"]}})
+        client.json("PUT", "/v1/group/" + GROUP + "/_attr/member", [USERNAME, peer_name])
+        peer = provision_person_credential(client, peer_name)
     client.json("POST", "/v1/oauth2/_basic", {"attrs": {
         "name": [CLIENT_ID], "displayname": ["Tabula disposable OIDC acceptance"],
         "oauth2_rs_origin_landing": ["https://app.localhost:8444"], "oauth2_strict_redirect_uri": ["true"],
@@ -474,8 +489,6 @@ def bootstrap(args):
     client.json("POST", "/v1/oauth2/" + CLIENT_ID + "/_scopemap/" + GROUP, ["openid"])
     secret = client.json("GET", "/v1/oauth2/" + CLIENT_ID + "/_basic_secret")
     require(isinstance(secret, str) and bool(secret), "test client secret was not issued")
-    person = client.json("GET", "/v1/person/" + USERNAME)
-    subject = person["attrs"]["uuid"][0]
     issuer = ORIGIN + "/oauth2/openid/" + CLIENT_ID
     discovery = client.json("GET", issuer + "/.well-known/openid-configuration", authenticated=False)
     require(discovery.get("issuer") == issuer, "upstream issuer differs from configured issuer")
@@ -489,7 +502,7 @@ def bootstrap(args):
     require(bool(keys.get("keys")), "upstream JWKS was empty")
     private_json(args.config, {"provider_origin": ORIGIN, "issuer": issuer, "client_id": CLIENT_ID,
                               "client_secret": secret, "callback_url": CALLBACK, "ca_path": str(args.ca.resolve()),
-                              "admitted_subject": subject, "username": USERNAME, "password": password, "totp": totp})
+                              **credential, **({"social_peer": peer} if peer is not None else {})})
     # These files contain public endpoints/keys only, not credentials or person data.
     (args.artifacts / "provider-discovery.json").write_text(json.dumps(discovery, indent=2) + "\n")
     (args.artifacts / "provider-jwks.json").write_text(json.dumps(keys, indent=2) + "\n")

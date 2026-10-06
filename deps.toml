@@ -161,7 +161,8 @@ allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry",
 
 [crate."tabula-lobby"]
 tier  = "runtime"
-allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tokio", "tracing", "thiserror"]
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tokio", "tracing", "thiserror", "serde"]
+feature = { authority = ["tabula-session"] }
 # Forbidden: sqlx, axum, game crates, AND tabula-game-api — the lobby reasons
 # about GameCapabilities, never about rules (ADR-023).
 
@@ -173,7 +174,7 @@ forbidden_categories = ["rendering", "ui_framework", "web_framework", "networkin
 [crate."tabula-session-http"]
 tier = "runtime"
 # core/tower/proptest are native test-only authority/wire/Origin evidence.
-allow = ["serde", "serde_json", "tabula-core", "tower", "proptest"]
+allow = ["serde", "serde_json", "tabula-core", "tower", "proptest", "tabula-lobby", "thiserror", "futures"]
 feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body", "url"], postgres = ["tabula-storage", "sqlx"] }
 forbidden_categories = ["rendering", "ui_framework", "application", "game_specific"]
 
@@ -187,7 +188,7 @@ forbid = ["macroquad", "miniquad", "wgpu", "tabula-render-macroquad", "tabula-re
 
 [crate."tabula-storage"]
 tier  = "runtime"
-allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session", "tabula-match-journal", "serde", "blake3"]
+allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session", "tabula-match-journal", "serde", "blake3", "tabula-lobby"]
 # The ONLY crate allowed to know SQL exists. Forbidden: axum, game crates,
 # renderers, tabula-registry.
 
@@ -211,7 +212,7 @@ allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "t
 [crate."services/tabula-auth"]
 tier  = "binary"
 allow = ["tower", "tabula-core", "ring"] # Native test-only router/ephemeral crypto evidence.
-feature = { web-oidc = ["tabula-session", "tabula-session-http", "tokio", "reqwest", "serde", "serde_json", "url", "sha2", "base64", "jsonwebtoken", "axum"], postgres-acceptance = ["tabula-storage", "sqlx"] }
+feature = { web-oidc = ["tabula-session", "tabula-session-http", "tokio", "reqwest", "serde", "serde_json", "url", "sha2", "base64", "jsonwebtoken", "axum"], postgres-acceptance = ["tabula-storage", "sqlx"], accounts-social = ["tabula-lobby"] }
 forbidden_categories = ["game_specific", "rendering", "ui_framework"]
 
 [crate."apps/game-client"]

@@ -133,7 +133,6 @@ fn exact_v1_json_vector_is_stable_and_browser_shape_validation_fails_closed() {
         ),
         ("/capabilities/login", serde_json::json!(true)),
         ("/capabilities/register", serde_json::json!(true)),
-        ("/capabilities/friends", serde_json::json!(true)),
         ("/capabilities/read_self_profile", serde_json::json!(false)),
     ] {
         let mut value = base.clone();
@@ -147,6 +146,44 @@ fn exact_v1_json_vector_is_stable_and_browser_shape_validation_fails_closed() {
     assert!(serde_json::from_str::<ContextResponse>(
         "{\"version\":1,\"version\":1,\"disposition\":\"signed_out\",\"account_id\":null,\"csrf_token\":null,\"capabilities\":{\"login\":false,\"register\":false,\"friends\":false,\"read_self_profile\":false}}"
     ).is_err());
+}
+
+#[test]
+fn isolated_account_capabilities_are_scoped_to_their_session_disposition() {
+    let mut context = ContextResponse {
+        version: 1,
+        disposition: SessionDisposition::SignedOut,
+        account_id: None,
+        csrf_token: Some("A".repeat(43)),
+        capabilities: AccountCapabilities {
+            login: true,
+            register: true,
+            friends: false,
+            read_self_profile: false,
+        },
+    };
+    assert!(context.validate_for_browser().is_ok());
+    context.capabilities.friends = true;
+    assert!(context.validate_for_browser().is_err());
+    context.capabilities.friends = false;
+    context.csrf_token = None;
+    assert!(context.validate_for_browser().is_err());
+    context.csrf_token = Some("A".repeat(43));
+    context.disposition = SessionDisposition::Authenticated;
+    context.account_id = Some("00000000000000000000000000000001".into());
+    context.capabilities.login = false;
+    context.capabilities.register = false;
+    context.capabilities.read_self_profile = true;
+    context.capabilities.friends = true;
+    assert!(context.validate_for_browser().is_ok());
+    context.capabilities.register = true;
+    assert!(context.validate_for_browser().is_err());
+    context.capabilities.register = false;
+    context.disposition = SessionDisposition::Unavailable;
+    context.account_id = None;
+    context.csrf_token = None;
+    context.capabilities.read_self_profile = false;
+    assert!(context.validate_for_browser().is_err());
 }
 
 #[test]

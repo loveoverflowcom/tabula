@@ -1,8 +1,8 @@
-//! Compact account state and immutable self-profile under ADR-0036.
+//! Compact account state and immutable account identity under ADR-0036.
 //!
 //! The isolated adapter owns authority and cleanup. This view only renders its
-//! structured dispositions; provider sign-in uses only a top-level redirect while
-//! unavailable registration/social routes collect nothing
+//! structured dispositions; provider sign-in uses only a top-level redirect.
+//! Separate ADR-0043 controls render a confirmed v2 self profile when available
 //! (docs/ui/screens/account-state-isolated.md). Fixed escapes deliberately ignore
 //! return parameters rather than interpreting a URL as authorization.
 
@@ -18,54 +18,103 @@ use crate::{
     },
 };
 
+/// Teardown can queue an old render before its arena values are disposed.
+/// Retired bindings select public pending output, never the last private facts.
+fn presentation_snapshot(state: ReadSignal<AccountSnapshot>) -> AccountSnapshot {
+    state.try_get().unwrap_or(AccountSnapshot {
+        status: AccountStatus::Resolving,
+        busy: None,
+        presentation_generation: 0,
+        login_available: false,
+    })
+}
+
+/// Unlike `NodeRef::on_load`, this queued effect tolerates route-owner retirement.
+pub(super) fn focus_on_arrival<T>(node: NodeRef<T>)
+where
+    T: leptos::tachys::html::element::ElementType + 'static,
+    T::Output: AsRef<web_sys::HtmlElement> + wasm_bindgen::JsCast + Clone + 'static,
+{
+    let focused = StoredValue::new(false);
+    Effect::new(move |_| {
+        if !focused.try_with_value(|focused| !*focused).unwrap_or(false) {
+            return;
+        }
+        if let Some(element) = node.try_get().flatten() {
+            focused.try_update_value(|focused| *focused = true);
+            let target: &web_sys::HtmlElement = element.as_ref();
+            let _ = target.focus();
+        }
+    });
+}
+
 /// Current account state at `/account`, without an identity-provider form.
 #[component]
 pub fn AccountPage() -> impl IntoView {
-    view! { <AccountTask title_key="accounts.title"/> }
+    view! { <AccountTask task=AccountTaskKind::Account/> }
 }
 
-/// The permitted read-only self task at `/me`; never an other-profile lookup.
+/// Current self task at `/me`; separate v2 controls require a fresh profile read.
 #[component]
 pub fn SelfProfile() -> impl IntoView {
-    view! { <AccountTask title_key="accounts.profile.self"/> }
+    view! { <AccountTask task=AccountTaskKind::Profile/> }
+}
+
+/// The route's task changes presentation, never session permissions.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AccountTaskKind {
+    Account,
+    Login,
+    Profile,
+}
+
+impl AccountTaskKind {
+    const fn keys(self) -> (&'static str, &'static str) {
+        match self {
+            Self::Account => ("accounts.title", "accounts.intro.account"),
+            Self::Login => ("accounts.login.title", "accounts.intro.login"),
+            Self::Profile => ("accounts.profile.self", "accounts.intro.profile"),
+        }
+    }
 }
 
 #[component]
-fn AccountTask(title_key: &'static str) -> impl IntoView {
+fn AccountTask(task: AccountTaskKind) -> impl IntoView {
+    let (title_key, intro_key) = task.keys();
     let locale = use_locale();
     let controller = use_account();
     let state = controller.state;
+    let snapshot = move || presentation_snapshot(state);
     let confirming = RwSignal::new(false);
+    let full_profile = RwSignal::new(false);
     let heading = NodeRef::<html::H1>::new();
     let logout_invoker = NodeRef::<html::Button>::new();
-    heading.on_load(|element| {
-        let _ = element.focus();
-    });
+    focus_on_arrival(heading);
 
     // A permission/lifecycle transition dismisses a merely local confirmation.
     // It cannot execute a logout or preserve a former viewer's private data.
     Effect::new(move |_| {
-        if profile_for(&state.get()).is_none() {
-            confirming.set(false);
+        if profile_for(&snapshot()).is_none() {
+            confirming.try_set(false);
         }
     });
 
-    view! {
+    let page = view! {
         <section class="section account" aria-labelledby="account-title">
             <h1 id="account-title" class="section__title" tabindex="-1" node_ref=heading>
                 {translated(title_key)}
             </h1>
             <p class="section__body">
-                {translated("accounts.scope")}
+                {translated(intro_key)}
             </p>
-            <div class="account__state" aria-busy=move || state.get().busy.is_some()>
+            <div class="account__state" aria-busy=move || if snapshot().busy.is_some() { "true" } else { "false" }>
                 <p class="status" role="status" aria-atomic="true">
-                    {move || Messages::new(locale.get()).text(status_key(&state.get()))}
+                    {move || Messages::new(locale.get()).text(status_key(&snapshot()))}
                 </p>
-                <Show when=move || failure_key(&state.get()).is_some()>
+                <Show when=move || failure_key(&snapshot()).is_some()>
                     <p class="banner banner--error" role="alert">
                         {move || {
-                            failure_key(&state.get())
+                            failure_key(&snapshot())
                                 .map(|key| Messages::new(locale.get()).text(key))
                         }}
                     </p>
@@ -75,23 +124,32 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
             // A fresh generation key forces new private nodes, including after a
             // restored document was synchronously masked by the adapter.
             <For
-                each={move || profile_for(&state.get()).into_iter().collect::<Vec<_>>()}
+                each={move || profile_for(&snapshot()).into_iter().collect::<Vec<_>>()}
                 key={|(generation, account_id)| (*generation, account_id.clone())}
-                children={move |(_, account_id)| view! { <ProfileFacts account_id/> }}
+                children={move |(_, account_id)| {
+                    if task == AccountTaskKind::Login {
+                        view! { <SignedInDestination/> }.into_any()
+                    } else {
+                        view! { <ProfileFacts account_id/> }.into_any()
+                    }
+                }}
             />
+            {if task == AccountTaskKind::Profile {
+                Some(view! { <super::accounts_full::ProfileControls account=controller verified=full_profile/> })
+            } else { None }}
 
-            <Show when=move || login_allowed(&state.get())>
+            <Show when=move || login_allowed(&snapshot())>
                 <p class="section__body">
                     {translated("accounts.login.invited")}
                 </p>
             </Show>
-            <Show when=move || profile_for(&state.get()).is_some()>
+            <Show when=move || profile_for(&snapshot()).is_some()>
                 <p class="section__body">
                     {translated("accounts.login.switch")}
                 </p>
             </Show>
             <Show when=move || {
-                let state = state.get();
+                let state = snapshot();
                 state.busy.is_none() && !state.login_available
                     && matches!(state.status, AccountStatus::SignedOut | AccountStatus::Expired)
             }>
@@ -100,10 +158,10 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                 </p>
             </Show>
             <div class="actions account__actions">
-                <Show when=move || login_allowed(&state.get())>
+                <Show when=move || login_allowed(&snapshot())>
                     <LoginAction on_start=move || {
-                        confirming.set(false);
-                        if let Some(element) = heading.get() {
+                        confirming.try_set(false);
+                        if let Some(element) = heading.try_get().flatten() {
                             let _ = element.focus();
                         }
                         controller.login();
@@ -111,11 +169,13 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                 </Show>
                 <button
                     type="button"
-                    class=move || if login_allowed(&state.get()) { "btn btn--tonal" } else { "btn btn--filled btn--principal" }
-                    disabled=move || state.get().busy.is_some()
+                    class=move || if full_profile.try_get().unwrap_or(false) || login_allowed(&snapshot())
+                        || (task == AccountTaskKind::Login && profile_for(&snapshot()).is_some())
+                    { "btn btn--tonal" } else { "btn btn--filled btn--principal" }
+                    disabled=move || snapshot().busy.is_some()
                     on:click=move |_| {
-                        confirming.set(false);
-                        if let Some(element) = heading.get() {
+                        confirming.try_set(false);
+                        if let Some(element) = heading.try_get().flatten() {
                             let _ = element.focus();
                         }
                         controller.recheck();
@@ -123,13 +183,14 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                 >
                     {translated("accounts.action.check")}
                 </button>
-                <Show when=move || profile_for(&state.get()).is_some()>
+                <Show when=move || profile_for(&snapshot()).is_some()>
                     <button
                         type="button"
                         class="btn btn--tonal"
+                        data-account-private=""
                         on:click=move |_| {
-                            confirming.set(false);
-                            if let Some(element) = heading.get() {
+                            confirming.try_set(false);
+                            if let Some(element) = heading.try_get().flatten() {
                                 let _ = element.focus();
                             }
                             controller.refresh();
@@ -140,22 +201,23 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                     <button
                         type="button"
                         class="btn btn--tonal"
+                        data-account-private=""
                         node_ref=logout_invoker
-                        aria-expanded=move || confirming.get()
-                        aria-controls=move || confirming.get().then_some("logout-confirmation")
-                        on:click=move |_| confirming.set(true)
+                        aria-expanded=move || if confirming.try_get().unwrap_or(false) { "true" } else { "false" }
+                        aria-controls=move || confirming.try_get().unwrap_or(false).then_some("logout-confirmation")
+                        on:click=move |_| { confirming.try_set(true); }
                     >
                         {translated("accounts.action.logout")}
                     </button>
                 </Show>
                 <Show when=move || {
-                    logout_retry_allowed(&state.get())
+                    logout_retry_allowed(&snapshot())
                 }>
                     <button
                         type="button"
                         class="btn btn--tonal"
                         on:click=move |_| {
-                            if let Some(element) = heading.get() {
+                            if let Some(element) = heading.try_get().flatten() {
                                 let _ = element.focus();
                             }
                             controller.logout();
@@ -164,13 +226,13 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                         {translated("accounts.action.logout_retry")}
                     </button>
                 </Show>
-                <Show when=move || state.get().busy.is_some()>
+                <Show when=move || snapshot().busy.is_some()>
                     <button
                         type="button"
                         class="btn btn--tonal"
                         on:click=move |_| {
                             controller.cancel();
-                            if let Some(element) = heading.get() {
+                            if let Some(element) = heading.try_get().flatten() {
                                 let _ = element.focus();
                             }
                         }
@@ -180,17 +242,17 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                 </Show>
             </div>
 
-            <Show when=move || confirming.get() && profile_for(&state.get()).is_some()>
+            <Show when=move || confirming.try_get().unwrap_or(false) && profile_for(&snapshot()).is_some()>
                 <LogoutConfirmation
                     on_cancel=move || {
-                        confirming.set(false);
-                        if let Some(element) = logout_invoker.get() {
+                        confirming.try_set(false);
+                        if let Some(element) = logout_invoker.try_get().flatten() {
                             let _ = element.focus();
                         }
                     }
                     on_confirm=move || {
-                        confirming.set(false);
-                        if let Some(element) = heading.get() {
+                        confirming.try_set(false);
+                        if let Some(element) = heading.try_get().flatten() {
                             let _ = element.focus();
                         }
                         controller.logout();
@@ -198,23 +260,57 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                 />
             </Show>
 
-            <p class="section__body">
-                {translated("accounts.local.explanation")}
-            </p>
+            <LocalEscape on_leave=move || controller.cancel()/>
+            <UnavailableLinks controller/>
+        </section>
+    };
+    // Routes can rebuild identical DOM shapes before disposing the previous
+    // owner. A different task must remount its owner-bound reactive closures,
+    // rather than retain bindings to the previous route's disposed signals.
+    match task {
+        AccountTaskKind::Account => leptos::either::EitherOf3::A(page),
+        AccountTaskKind::Login => leptos::either::EitherOf3::B(page),
+        AccountTaskKind::Profile => leptos::either::EitherOf3::C(page),
+    }
+}
+
+/// Already signed-in Login has one read-only destination, with no ID in copy.
+/// This node shares the same synchronous lifecycle mask as private facts.
+#[component]
+fn SignedInDestination() -> impl IntoView {
+    view! {
+        <div class="account__profile" data-account-private="">
+            <p class="section__body">{translated("accounts.login.already_signed_in")}</p>
             <div class="actions account__actions">
-                <A
-                    href="/games"
-                    attr:class="btn btn--tonal"
-                    on:click=move |_| controller.cancel()
-                >
+                <A href="/me" attr:class="btn btn--filled btn--principal">
+                    {translated("accounts.action.profile")}
+                </A>
+            </div>
+        </div>
+    }
+}
+
+/// Account-independent escape shared by every account task (doc 04 §2).
+#[component]
+fn LocalEscape(
+    on_leave: impl Fn() + Send + Sync + Copy + 'static,
+    #[prop(default = false)] principal: bool,
+) -> impl IntoView {
+    view! {
+        <aside class="account__local" aria-labelledby="account-local-title">
+            <h2 id="account-local-title" class="field__label">{translated("accounts.local.title")}</h2>
+            <p class="section__body">{translated("accounts.local.explanation")}</p>
+            <div class="actions account__actions">
+                <A href="/games"
+                    attr:class=if principal { "btn btn--filled btn--principal" } else { "btn btn--tonal" }
+                    on:click=move |_| on_leave()>
                     {translated("accounts.action.library")}
                 </A>
-                <A href="/" attr:class="btn btn--tonal" on:click=move |_| controller.cancel()>
+                <A href="/" attr:class="btn btn--text" on:click=move |_| on_leave()>
                     {translated("nav.home")}
                 </A>
             </div>
-            <UnavailableLinks/>
-        </section>
+        </aside>
     }
 }
 
@@ -228,15 +324,15 @@ fn LoginAction(on_start: impl Fn() + Send + Sync + Copy + 'static) -> impl IntoV
     }
 }
 
-/// Only the immutable ID is returned by PR2. No name, handle, avatar, statistics,
-/// history or edit fields are synthesized from that identity.
+/// Immutable ID facts do not establish availability of v2 profile metadata.
+/// The separate profile controls require their own validated permitted response.
 #[component]
 fn ProfileFacts(account_id: String) -> impl IntoView {
     view! {
         <section class="account__profile" data-account-private="" aria-labelledby="self-facts-title">
             <h2 id="self-facts-title" class="section__subtitle">
                 <NeutralAvatar/>
-                {translated("accounts.profile.read_only")}
+                {translated("accounts.profile.id")}
             </h2>
             <dl class="facts account__facts">
                 <dt>{translated("accounts.profile.id")}</dt>
@@ -257,13 +353,12 @@ fn LogoutConfirmation(
     on_confirm: impl Fn() + Send + Sync + Copy + 'static,
 ) -> impl IntoView {
     let cancel = NodeRef::<html::Button>::new();
-    cancel.on_load(|element| {
-        let _ = element.focus();
-    });
+    focus_on_arrival(cancel);
     view! {
         <fieldset
             id="logout-confirmation"
             class="account__confirmation"
+            data-account-private=""
             aria-describedby="logout-consequence"
             on:keydown=move |event| {
                 if event.key() == "Escape" {
@@ -314,7 +409,7 @@ impl UnavailableTask {
 #[component]
 pub fn LoginPage() -> impl IntoView {
     // Availability comes from fresh backend capabilities; no credential form.
-    view! { <AccountTask title_key="accounts.login.title"/> }
+    view! { <AccountTask task=AccountTaskKind::Login/> }
 }
 
 #[component]
@@ -337,47 +432,46 @@ pub fn OtherProfileUnavailable() -> impl IntoView {
 fn UnavailablePage(task: UnavailableTask) -> impl IntoView {
     let (title_key, body_key) = task.keys();
     let heading = NodeRef::<html::H1>::new();
-    heading.on_load(|element| {
-        let _ = element.focus();
-    });
+    focus_on_arrival(heading);
     view! {
-        <section class="section account">
-            <h1 class="section__title" tabindex="-1" node_ref=heading>
+        <section class="section account" aria-labelledby="account-title">
+            <h1 id="account-title" class="section__title" tabindex="-1" node_ref=heading>
                 {translated(title_key)}
             </h1>
-            <p class="banner">{translated(body_key)}</p>
-            <p class="section__body">
-                {translated("accounts.local.explanation")}
-            </p>
-            <div class="actions account__actions">
-                <A href="/games" attr:class="btn btn--filled btn--principal">
-                    {translated("accounts.action.library")}
-                </A>
-                <A href="/account" attr:class="btn btn--tonal">
-                    {translated("accounts.action.back_account")}
-                </A>
-                <A href="/" attr:class="btn btn--tonal">
-                    {translated("nav.home")}
-                </A>
+            <div class="account__state">
+                <p class="status">{translated("accounts.features.unavailable")}</p>
+                <p class="section__body">{translated(body_key)}</p>
+                <div class="actions account__actions">
+                    <A href="/login" attr:class="btn btn--tonal">
+                        {translated("accounts.action.signin")}
+                    </A>
+                    <A href="/account" attr:class="btn btn--text">
+                        {translated("accounts.action.back_account")}
+                    </A>
+                </div>
             </div>
+            <LocalEscape on_leave=|| {} principal=true/>
         </section>
     }
 }
 
 #[component]
-fn UnavailableLinks() -> impl IntoView {
+fn UnavailableLinks(controller: crate::account::AccountController) -> impl IntoView {
+    let locale = use_locale();
     view! {
         <nav aria-label=translated("accounts.features.title")>
             <ul class="rows">
                 <li class="row">
                     <A href="/register" attr:class="account__feature-link">
-                        {translated("accounts.register.link_unavailable")}
+                        {move || Messages::new(locale.get()).text(if controller.enrollment_navigation_ticket().is_some() { "accounts.register.title" } else { "accounts.register.link_unavailable" })}
                     </A>
+                    <p class="row__body">{move || Messages::new(locale.get()).text(if controller.enrollment_navigation_ticket().is_some() { "accounts.full.register_available" } else { "accounts.register.reason" })}</p>
                 </li>
                 <li class="row">
                     <A href="/friends" attr:class="account__feature-link">
-                        {translated("accounts.friends.link_unavailable")}
+                        {move || Messages::new(locale.get()).text(if controller.social_available() { "accounts.friends.title" } else { "accounts.friends.link_unavailable" })}
                     </A>
+                    <p class="row__body">{move || Messages::new(locale.get()).text(if controller.social_available() { "accounts.full.friends_available" } else { "accounts.friends.reason" })}</p>
                 </li>
             </ul>
         </nav>

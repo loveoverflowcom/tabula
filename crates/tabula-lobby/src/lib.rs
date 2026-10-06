@@ -87,3 +87,8 @@
 //! ```
 
 #![forbid(unsafe_code)]
+
+pub mod social;
+pub use social::*;
+mod presence;
+pub use presence::*;

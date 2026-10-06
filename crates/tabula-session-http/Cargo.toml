@@ -12,15 +12,20 @@ publish.workspace = true
 default = []
 isolated = ["dep:tabula-session", "dep:axum", "dep:tokio", "dep:hmac", "dep:sha2", "dep:base64", "dep:bytes", "dep:http-body", "dep:url"]
 postgres = ["isolated", "dep:tabula-storage", "dep:sqlx"]
+accounts = ["isolated"]
+social = ["accounts", "tabula-lobby/authority", "axum/ws", "dep:futures"]
 
 # The locked url/IDNA/ICU graph is native isolated-only; default DTO declaration stays 1.85.
 [package.metadata.tabula-msrv]
 isolated = "1.88"
 postgres = "1.94"
+accounts = "1.94"
+social = "1.94"
 
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
+tabula-lobby = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tabula-session = { workspace = true, optional = true }
@@ -34,6 +39,7 @@ http-body = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
 tabula-storage = { workspace = true, optional = true, features = ["session-postgres"] }
 sqlx = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
 
 [lints]
 workspace = true

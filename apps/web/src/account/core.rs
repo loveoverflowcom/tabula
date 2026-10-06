@@ -222,10 +222,18 @@ pub(super) fn decode_logout_fingerprint(value: &str) -> Result<[u8; 32], Invalid
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InvalidLogoutIntent;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SocialAccess {
+    Available,
+    Unavailable,
+}
+
 /// Pure operation lifecycle shared by route owners in one application document.
 /// Logout suppression can be exported as bounded non-authorizing fingerprints;
 /// identity, credentials and CSRF never cross document cleanup/persistence.
 pub struct AccountCore {
+    registration_token: Option<String>,
+    social_access: SocialAccess,
     generation: u64,
     sequence: u64,
     pending: Option<AccountRequest>,
@@ -246,6 +254,8 @@ pub struct AccountCore {
 impl Default for AccountCore {
     fn default() -> Self {
         Self {
+            registration_token: None,
+            social_access: SocialAccess::Unavailable,
             generation: 0,
             sequence: 0,
             pending: None,
@@ -269,12 +279,48 @@ impl Default for AccountCore {
     }
 }
 impl AccountCore {
+    /// Current document-only control facts for v2 leaf adapters (ADR-0043).
+    /// The caller must also fence route, connectivity and presentation generation.
+    pub(super) fn current_document_context(&self) -> Option<(String, String)> {
+        if self.pending.is_some() || self.logout_suppressed || self.persistence_unavailable {
+            return None;
+        }
+        let AccountStatus::Authenticated { account_id } = &self.snapshot.status else {
+            return None;
+        };
+        if self.snapshot.busy.is_some() || self.context_account.as_ref() != Some(account_id) {
+            return None;
+        }
+        Some((account_id.clone(), self.csrf_token.clone()?))
+    }
+
+    /// Signed-out preauthentication control for explicit enrollment navigation.
+    pub(super) fn current_pre_auth_control(&self) -> Option<String> {
+        if self.pending.is_some()
+            || self.logout_suppressed
+            || self.persistence_unavailable
+            || self.snapshot.busy.is_some()
+            || !matches!(
+                self.snapshot.status,
+                AccountStatus::SignedOut | AccountStatus::Expired
+            )
+        {
+            return None;
+        }
+        self.registration_token.clone()
+    }
+
+    pub(super) fn social_available(&self) -> bool {
+        self.social_access == SocialAccess::Available && self.current_document_context().is_some()
+    }
     #[must_use]
     pub fn snapshot(&self) -> AccountSnapshot {
         self.snapshot.clone()
     }
 
     fn clear_private(&mut self) {
+        self.registration_token = None;
+        self.social_access = SocialAccess::Unavailable;
         self.context_account = None;
         self.csrf_token = None;
         self.login_token = None;
@@ -565,6 +611,12 @@ impl AccountCore {
             AccountStatus::Resolving
         });
     }
+    /// A browser disconnection retires requests and private data without deciding
+    /// session validity. A targeted, unconfirmed logout remains unconfirmed.
+    pub fn disconnect(&mut self) {
+        self.advance();
+        self.finish(self.failure_status(AccountFailure::Transport));
+    }
     /// Missing mandatory browser cleanup hooks fail closed without bootstrap.
     #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))] // Browser listener setup only.
     pub fn lifecycle_unavailable(&mut self) {
@@ -695,6 +747,11 @@ impl AccountCore {
     fn apply_context(&mut self, context: ContextResponse) -> Option<AccountRequest> {
         match context.disposition {
             SessionDisposition::Authenticated => {
+                self.social_access = if context.capabilities.friends {
+                    SocialAccess::Available
+                } else {
+                    SocialAccess::Unavailable
+                };
                 self.had_authenticated = true;
                 self.context_account = context.account_id;
                 self.csrf_token = context.csrf_token;
@@ -738,6 +795,11 @@ impl AccountCore {
             }
             SessionDisposition::SignedOut => {
                 self.clear_private();
+                self.registration_token = context
+                    .capabilities
+                    .register
+                    .then(|| context.csrf_token.clone())
+                    .flatten();
                 if matches!(self.context_purpose, ContextPurpose::StartLogin) {
                     if self.logout_suppressed || !context.capabilities.login {
                         self.finish(if self.logout_suppressed {
@@ -993,6 +1055,108 @@ mod tests {
             assert_eq!(core.snapshot().status, AccountStatus::Resolving);
             core.complete(&private, profile(A));
         }
+    }
+    #[test]
+    fn disconnection_clears_private_facts_and_requires_fresh_context_then_profile() {
+        let mut core = AccountCore::default();
+        ready(&mut core, A);
+        let generation = core.snapshot().presentation_generation;
+        core.disconnect();
+        assert_eq!(core.snapshot().status, AccountStatus::Disconnected);
+        assert!(core.snapshot().busy.is_none());
+        assert!(core.snapshot().presentation_generation > generation);
+        assert!(core.context_account.is_none());
+        assert!(core.csrf_token.is_none());
+        assert!(core.login_token.is_none());
+        assert!(core.refresh().is_none());
+        let context_request = core.recheck().unwrap();
+        assert_eq!(context_request.kind(), RequestKind::Context);
+        let profile_request = core
+            .complete(&context_request, context(B, OTHER_TOKEN))
+            .unwrap();
+        assert_eq!(core.snapshot().status, AccountStatus::Resolving);
+        core.complete(&profile_request, profile(B));
+        assert_eq!(
+            core.snapshot().status,
+            AccountStatus::Authenticated {
+                account_id: B.to_owned()
+            }
+        );
+    }
+    #[test]
+    fn disconnection_retires_in_flight_profile_and_login_navigation() {
+        let mut core = AccountCore::default();
+        let context_request = core.recheck().unwrap();
+        let old_profile = core.complete(&context_request, context(A, TOKEN)).unwrap();
+        core.disconnect();
+        let disconnected = core.snapshot();
+        assert!(core.complete(&old_profile, profile(A)).is_none());
+        assert_eq!(core.snapshot(), disconnected);
+
+        let context_request = core.recheck().unwrap();
+        core.complete(
+            &context_request,
+            response(
+                200,
+                &json!({"version":1,"disposition":"signed_out","account_id":null,
+                "csrf_token":TOKEN,"capabilities":{"login":true,"register":false,
+                "friends":false,"read_self_profile":false}}),
+            ),
+        );
+        let cancel = core.login().unwrap();
+        let context_request = core.complete(&cancel, no_content()).unwrap();
+        let login = core
+            .complete(
+                &context_request,
+                response(
+                    200,
+                    &json!({"version":1,"disposition":"signed_out","account_id":null,
+                "csrf_token":TOKEN,"capabilities":{"login":true,"register":false,
+                "friends":false,"read_self_profile":false}}),
+                ),
+            )
+            .unwrap();
+        core.complete(
+            &login,
+            response(
+                200,
+                &json!({"version":1,"authorization_url":"https://id.example/oauth2/authorize"}),
+            ),
+        );
+        assert_eq!(core.snapshot().status, AccountStatus::LoginRedirecting);
+        core.disconnect();
+        assert_eq!(core.snapshot().status, AccountStatus::Disconnected);
+        assert!(core.take_login_navigation().is_none());
+        assert!(!core.snapshot().login_available);
+    }
+    #[test]
+    fn disconnection_keeps_unconfirmed_logout_and_storage_failure_masked() {
+        let mut core = AccountCore::default();
+        ready(&mut core, A);
+        let logout = core.logout().unwrap();
+        let intents = core.logout_intents();
+        core.disconnect();
+        assert_eq!(core.snapshot().status, AccountStatus::LogoutPending);
+        assert_eq!(core.logout_intents(), intents);
+        assert!(core.complete(&logout, no_content()).is_none());
+        assert_eq!(core.logout_intents(), intents);
+        let context_request = core.recheck().unwrap();
+        assert!(core.complete(&context_request, context(A, TOKEN)).is_none());
+        assert_eq!(core.snapshot().status, AccountStatus::LogoutPending);
+        let explicit_retry = core.logout().unwrap();
+        assert_eq!(explicit_retry.kind(), RequestKind::Logout);
+        assert_eq!(explicit_retry.csrf_token(), Some(TOKEN));
+        core.complete(&explicit_retry, no_content());
+        assert_eq!(core.snapshot().status, AccountStatus::SignedOut);
+        assert!(core.logout_intents().is_empty());
+
+        core.logout_storage_unavailable();
+        core.disconnect();
+        assert_eq!(
+            core.snapshot().status,
+            AccountStatus::LogoutStorageUnavailable
+        );
+        assert!(core.recheck().is_none());
     }
     #[test]
     fn malformed_unknown_array_duplicate_and_unsupported_capabilities_fail_closed() {

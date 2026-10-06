@@ -23,6 +23,26 @@ use tabula_session::{
 };
 use url::Url;
 
+type AdmissionFuture<'a, T> =
+    std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, SessionError>> + Send + 'a>>;
+trait EnrollmentAdmission: Send + Sync {
+    fn accounts(
+        &self,
+        issuer: String,
+    ) -> AdmissionFuture<'_, Vec<(ProviderIdentityKey, AccountEpoch)>>;
+    fn policy(&self) -> AdmissionFuture<'_, tabula_session::EnrollmentPolicy>;
+}
+impl<A: tabula_session::EnrollmentAuthority> EnrollmentAdmission for A {
+    fn accounts(
+        &self,
+        issuer: String,
+    ) -> AdmissionFuture<'_, Vec<(ProviderIdentityKey, AccountEpoch)>> {
+        Box::pin(self.admitted_accounts(issuer))
+    }
+    fn policy(&self) -> AdmissionFuture<'_, tabula_session::EnrollmentPolicy> {
+        Box::pin(self.enrollment_policy())
+    }
+}
 const BODY_LIMIT: usize = 65_536;
 const TOKEN_LIMIT: usize = 16_384;
 const PENDING_LIMIT: usize = 128;
@@ -40,6 +60,7 @@ struct Inner<A> {
     metadata: Metadata,
     authority: A,
     pending: Mutex<PendingState>,
+    enrollment: Option<Arc<dyn EnrollmentAdmission>>,
 }
 #[derive(Default)]
 struct PendingState {
@@ -57,6 +78,7 @@ struct Pending {
     started_seconds: u64,
     expires: Instant,
     epochs: BTreeMap<ProviderIdentityKey, AccountEpoch>,
+    enrollment_epoch: Option<AccountEpoch>,
     cancelled: Arc<AtomicBool>,
 }
 impl<A> Clone for KanidmOidc<A> {
@@ -136,6 +158,7 @@ impl<A: SessionAuthority> KanidmOidc<A> {
                 metadata,
                 authority,
                 pending: Mutex::new(PendingState::default()),
+                enrollment: None,
             }),
         })
     }
@@ -203,12 +226,88 @@ impl<A: SessionAuthority> BrowserLoginProvider for KanidmOidc<A> {
         let pending = self.inner.pending.lock().map_err(unavailable)?;
         Ok(pending.flows.get(callback.state()).is_some_and(|flow| {
             flow.binding == binding
+                && flow.enrollment_epoch.is_none()
                 && !flow.epochs.is_empty()
                 && flow.expires > Instant::now()
                 && !flow.cancelled.load(Ordering::Acquire)
         }))
     }
     async fn begin(&self, preauth_binding: String) -> Result<BrowserLoginStart, SessionError> {
+        self.begin_purpose(preauth_binding, None).await
+    }
+
+    async fn complete(
+        &self,
+        preauth_binding: String,
+        callback: BrowserLoginCallback,
+    ) -> Result<CompletedBrowserLogin, SessionError> {
+        let binding = binding_key(&preauth_binding)?;
+        let flow = {
+            let mut pending = self.inner.pending.lock().map_err(unavailable)?;
+            prune(&mut pending);
+            let candidate = pending
+                .flows
+                .get(callback.state())
+                .ok_or(SessionError::Unauthenticated)?;
+            // Wrong-cookie callbacks cannot consume another browser's pending flow.
+            if candidate.binding != binding
+                || candidate.enrollment_epoch.is_some()
+                || candidate.epochs.is_empty()
+            {
+                return Err(SessionError::Unauthenticated);
+            }
+            pending
+                .flows
+                .remove(callback.state())
+                .ok_or(SessionError::Unauthenticated)?
+        };
+        // Consume before the network await: every outcome, including timeout, is terminal.
+        let result = if callback
+            .issuer()
+            .is_some_and(|issuer| issuer != self.inner.config.issuer)
+        {
+            Err(SessionError::Unauthenticated)
+        } else {
+            self.exchange_and_verify(&flow, &callback)
+                .await
+                .and_then(|identity| {
+                    let expected_epoch = *flow
+                        .epochs
+                        .get(&identity)
+                        .ok_or(SessionError::Unauthenticated)?;
+                    Ok(CompletedBrowserLogin {
+                        identity,
+                        expected_epoch,
+                    })
+                })
+        };
+        let mut pending = self.inner.pending.lock().map_err(unavailable)?;
+        if let Some(reservation) = pending.reservations.get(&binding) {
+            if Arc::ptr_eq(&reservation.cancelled, &flow.cancelled) {
+                pending.reservations.remove(&binding);
+            }
+        }
+        result
+    }
+    fn cancel(&self, preauth_binding: &str) {
+        let Ok(binding) = binding_key(preauth_binding) else {
+            return;
+        };
+        if let Ok(mut pending) = self.inner.pending.lock() {
+            if let Some(reservation) = pending.reservations.remove(&binding) {
+                reservation.cancelled.store(true, Ordering::Release);
+            }
+            pending.flows.retain(|_, flow| flow.binding != binding);
+        }
+    }
+}
+
+impl<A: SessionAuthority> KanidmOidc<A> {
+    async fn begin_purpose(
+        &self,
+        preauth_binding: String,
+        enrollment_epoch: Option<AccountEpoch>,
+    ) -> Result<BrowserLoginStart, SessionError> {
         let binding = binding_key(&preauth_binding)?;
         let state_value = random_value()?;
         let nonce = random_value()?;
@@ -241,6 +340,7 @@ impl<A: SessionAuthority> BrowserLoginProvider for KanidmOidc<A> {
                     started_seconds,
                     expires,
                     epochs: BTreeMap::new(),
+                    enrollment_epoch,
                     cancelled: cancelled.clone(),
                 },
             );
@@ -262,13 +362,22 @@ impl<A: SessionAuthority> BrowserLoginProvider for KanidmOidc<A> {
             };
             epochs.insert(identity.clone(), account.authorization_epoch());
         }
+        if let Some(admission) = &self.inner.enrollment {
+            let Ok(accounts) = admission.accounts(self.inner.config.issuer.clone()).await else {
+                self.cancel(&preauth_binding);
+                return Err(SessionError::Unavailable);
+            };
+            for (identity, epoch) in accounts {
+                epochs.insert(identity, epoch);
+            }
+        }
         {
             let mut pending = self.inner.pending.lock().map_err(unavailable)?;
             let flow = pending
                 .flows
                 .get_mut(&state_value)
                 .ok_or(SessionError::Unauthenticated)?;
-            if epochs.is_empty()
+            if (epochs.is_empty() && enrollment_epoch.is_none())
                 || flow.expires <= Instant::now()
                 || cancelled.load(Ordering::Acquire)
             {
@@ -297,57 +406,6 @@ impl<A: SessionAuthority> BrowserLoginProvider for KanidmOidc<A> {
         Ok(BrowserLoginStart {
             authorization_url: url.into(),
         })
-    }
-
-    async fn complete(
-        &self,
-        preauth_binding: String,
-        callback: BrowserLoginCallback,
-    ) -> Result<CompletedBrowserLogin, SessionError> {
-        let binding = binding_key(&preauth_binding)?;
-        let flow = {
-            let mut pending = self.inner.pending.lock().map_err(unavailable)?;
-            prune(&mut pending);
-            let candidate = pending
-                .flows
-                .get(callback.state())
-                .ok_or(SessionError::Unauthenticated)?;
-            // Wrong-cookie callbacks cannot consume another browser's pending flow.
-            if candidate.binding != binding || candidate.epochs.is_empty() {
-                return Err(SessionError::Unauthenticated);
-            }
-            pending
-                .flows
-                .remove(callback.state())
-                .ok_or(SessionError::Unauthenticated)?
-        };
-        // Consume before the network await: every outcome, including timeout, is terminal.
-        let result = if callback
-            .issuer()
-            .is_some_and(|issuer| issuer != self.inner.config.issuer)
-        {
-            Err(SessionError::Unauthenticated)
-        } else {
-            self.exchange_and_verify(&flow, &callback).await
-        };
-        let mut pending = self.inner.pending.lock().map_err(unavailable)?;
-        if let Some(reservation) = pending.reservations.get(&binding) {
-            if Arc::ptr_eq(&reservation.cancelled, &flow.cancelled) {
-                pending.reservations.remove(&binding);
-            }
-        }
-        result
-    }
-    fn cancel(&self, preauth_binding: &str) {
-        let Ok(binding) = binding_key(preauth_binding) else {
-            return;
-        };
-        if let Ok(mut pending) = self.inner.pending.lock() {
-            if let Some(reservation) = pending.reservations.remove(&binding) {
-                reservation.cancelled.store(true, Ordering::Release);
-            }
-            pending.flows.retain(|_, flow| flow.binding != binding);
-        }
     }
 }
 
@@ -405,7 +463,7 @@ impl<A: SessionAuthority> KanidmOidc<A> {
         &self,
         flow: &Pending,
         callback: &BrowserLoginCallback,
-    ) -> Result<CompletedBrowserLogin, SessionError> {
+    ) -> Result<ProviderIdentityKey, SessionError> {
         if flow.cancelled.load(Ordering::Acquire) || flow.expires <= Instant::now() {
             return Err(SessionError::Unauthenticated);
         }
@@ -450,14 +508,7 @@ impl<A: SessionAuthority> KanidmOidc<A> {
         if flow.cancelled.load(Ordering::Acquire) || flow.expires <= Instant::now() {
             return Err(SessionError::Unauthenticated);
         }
-        let expected_epoch = *flow
-            .epochs
-            .get(&identity)
-            .ok_or(SessionError::Unauthenticated)?;
-        Ok(CompletedBrowserLogin {
-            identity,
-            expected_epoch,
-        })
+        Ok(identity)
     }
 }
 fn canonical_segment(segment: &str, max: usize) -> Result<Vec<u8>, SessionError> {
@@ -559,3 +610,96 @@ fn verify_id_token(
 
 #[cfg(test)]
 mod tests;
+
+impl<A: SessionAuthority + tabula_session::EnrollmentAuthority + Clone + 'static> KanidmOidc<A> {
+    /// Explicit enrollment composition; existing invited-only discovery is unchanged.
+    pub async fn discover_enrollment(
+        config: KanidmConfig,
+        authority: A,
+    ) -> Result<Self, SessionError> {
+        if !config.enrollment_enabled {
+            return Err(SessionError::InvalidInput);
+        }
+        let admissions = Arc::new(authority.clone());
+        let mut provider = Self::discover(config, authority).await?;
+        Arc::get_mut(&mut provider.inner)
+            .ok_or(SessionError::Conflict)?
+            .enrollment = Some(admissions);
+        Ok(provider)
+    }
+}
+impl<A: SessionAuthority> tabula_session::BrowserEnrollmentProvider for KanidmOidc<A> {
+    async fn begin_enrollment(&self, binding: String) -> Result<BrowserLoginStart, SessionError> {
+        let policy = self
+            .inner
+            .enrollment
+            .as_ref()
+            .ok_or(SessionError::InvalidInput)?
+            .policy()
+            .await?;
+        if !policy.enabled {
+            return Err(SessionError::Unauthenticated);
+        }
+        self.begin_purpose(binding, Some(policy.epoch)).await
+    }
+    fn matches_enrollment_callback(
+        &self,
+        binding: &str,
+        callback: &BrowserLoginCallback,
+    ) -> Result<bool, SessionError> {
+        let binding = binding_key(binding)?;
+        let pending = self.inner.pending.lock().map_err(unavailable)?;
+        Ok(pending.flows.get(callback.state()).is_some_and(|flow| {
+            flow.binding == binding
+                && flow.enrollment_epoch.is_some()
+                && flow.expires > Instant::now()
+                && !flow.cancelled.load(Ordering::Acquire)
+        }))
+    }
+    async fn complete_enrollment(
+        &self,
+        binding: String,
+        callback: BrowserLoginCallback,
+    ) -> Result<tabula_session::VerifiedEnrollment, SessionError> {
+        let key = binding_key(&binding)?;
+        let flow = {
+            let mut pending = self.inner.pending.lock().map_err(unavailable)?;
+            prune(&mut pending);
+            let candidate = pending
+                .flows
+                .get(callback.state())
+                .ok_or(SessionError::Unauthenticated)?;
+            if candidate.binding != key || candidate.enrollment_epoch.is_none() {
+                return Err(SessionError::Unauthenticated);
+            }
+            pending
+                .flows
+                .remove(callback.state())
+                .ok_or(SessionError::Unauthenticated)?
+        };
+        let result = if callback
+            .issuer()
+            .is_some_and(|issuer| issuer != self.inner.config.issuer)
+        {
+            Err(SessionError::Unauthenticated)
+        } else {
+            self.exchange_and_verify(&flow, &callback).await
+        };
+        let mut pending = self.inner.pending.lock().map_err(unavailable)?;
+        if pending
+            .reservations
+            .get(&key)
+            .is_some_and(|reservation| Arc::ptr_eq(&reservation.cancelled, &flow.cancelled))
+        {
+            pending.reservations.remove(&key);
+        }
+        result.map(|identity| tabula_session::VerifiedEnrollment {
+            expected_account_epoch: flow.epochs.get(&identity).copied(),
+            identity,
+            expected_policy_epoch: flow.enrollment_epoch.expect("checked purpose"),
+        })
+    }
+    fn cancel_enrollment(&self, binding: &str) {
+        BrowserLoginProvider::cancel(self, binding);
+    }
+}

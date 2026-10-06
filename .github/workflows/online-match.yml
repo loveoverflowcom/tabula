@@ -10,6 +10,7 @@ on:
       - 'apps/game-client/**'
       - 'xtask/**'
       - 'tests/online-match/**'
+      - 'tests/accounts/**'
       - '.github/workflows/online-match.yml'
       - 'Cargo.toml'
       - 'Cargo.lock'
@@ -104,6 +105,10 @@ jobs:
           cargo tree -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --edges normal > verification/online-match-artifacts/online-game-graph.txt
           python3 tools/tests/check-loading-budgets.py --game-wasm target/wasm32-unknown-unknown/wasm-release/tabula-game-client.wasm --game-tree verification/online-match-artifacts/online-game-graph.txt --shell-dist apps/web/dist --write-receipt verification/online-match-artifacts/loading-budget-receipt.json
           python3 tools/tests/check-staged-loading.py --shell-dist apps/web/dist --write-receipt verification/online-match-artifacts/staged-loading-receipt.json
+      # Account route rendering and lifecycle use explicit synthetic HTTP DTOs.
+      # Keep these receipts separate from the real provider/PostgreSQL proof.
+      - name: Render account task matrix and connectivity with HTTP doubles
+        run: python3 tests/accounts/browser_acceptance.py --web-dist apps/web/dist --receipt verification/online-match-artifacts/account-ui-double-receipt.json
       - name: Complete actual rendered Chess and network/refresh/authority/SIGKILL continuity partitions
         run: xvfb-run -a -s '-screen 0 1280x960x24 -nolisten tcp' bash tests/online-match/run.sh
       - name: Preserve only secret-free screenshots, actions and durable verdict
