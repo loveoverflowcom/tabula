@@ -241,3 +241,38 @@ test("retired local attachment409 preserves exact pending intent until fresh sam
   assert.equal(paths.filter(path=>path.endsWith("/command")).length,1,"JavaScript must never replay pending intent");
   f.transport.retire();
 });
+
+test("verified stale-CSRF403 keeps pending intent and revalidates context before any Rust replay",async()=>{
+  const paths=[],storage=memoryStorage(),command='{"seq":1}',newToken="C".repeat(43);let contexts=0;
+  const f=fixture(async(path,init)=>{
+    paths.push({path,init});
+    if(path.endsWith("/context"))return response({version:1,disposition:"authenticated",csrf_token:contexts++===0?"A".repeat(43):newToken});
+    if(path.endsWith("/command"))return response('{"code":"request_rejected"}',{status:403,headers:{"Cache-Control":"no-store","Content-Type":"application/problem+json"}});
+    return authFetcher()(path,init);
+  },{storage});
+  await f.transport.file("tabula-online-attach.txt");
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-command/"+hex(command)))),{transport:"recovering"});
+  const fresh=JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-recover.txt")));
+  assert.equal(fresh.bootstrap.pending.command,command);assert.equal(fresh.bootstrap.pending.operation_scope,scope);
+  assert.equal(paths.filter(call=>call.path.endsWith("/command")).length,1);
+  assert.equal(paths.at(-1).init.headers["X-Tabula-CSRF"],newToken);
+  f.transport.retire();
+});
+test("nonexact or untrusted403 and genuine401 cannot become automatic context recovery",async()=>{
+  const invalid=[
+    ['{"code":"request_rejected","code":"request_rejected"}',403,true],
+    ['{"code":"request_rejected","secret":"private-body"}',403,true],
+    ['{"code":"match_unavailable"}',403,true],
+    ['\uFEFF{"code":"request_rejected"}',403,true],
+    ['\u000b{"code":"request_rejected"}',403,true],
+    ['{"code":"request_rejected"}',403,false],
+    ['{"code":"request_rejected"}',401,true],
+    ['{"code":"request_rejected"}'+" ".repeat(1024),403,true],
+  ];
+  for(const [body,status,noStore] of invalid){
+    const f=fixture(authFetcher(()=>response(body,{status,headers:{"Content-Type":"application/problem+json",...(noStore?{"Cache-Control":"no-store"}:{})}})));
+    await f.transport.file("tabula-online-attach.txt");
+    await assert.rejects(f.transport.file("tabula-online-command/"+hex('{"seq":1}')),error=>!error.message.includes("private-body"));
+    await assert.rejects(f.transport.file("tabula-online-recover.txt"),/retired/);
+  }
+});

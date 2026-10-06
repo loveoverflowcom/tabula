@@ -107,6 +107,24 @@
         try { if (abort.signal.aborted) throw new Retryable("Online request interrupted"); return await Promise.race([promise, interrupted]); }
         finally { abort.signal.removeEventListener("abort", rejectAbort); }
       }
+      async function boundedBody(response, limit) {
+        const claimed = response.headers.get("Content-Length");
+        if (claimed !== null && (!/^\d+$/.test(claimed) || Number(claimed) > limit)) throw new Error("Online response exceeds budget");
+        if (!response.body) throw new Retryable("Online response body missing");
+        reader = response.body.getReader(); const chunks = []; let size = 0;
+        try {
+          for (;;) {
+            const {done,value} = await wait(Promise.resolve().then(() => reader.read())).catch(() => { throw new Retryable("Online response body interrupted"); });
+            if (done) break;
+            if (!(value instanceof Uint8Array) || value.length > limit-size) throw new Error("Online response exceeds budget");
+            size += value.length; chunks.push(value);
+          }
+        } finally { reader.releaseLock(); }
+        if (!valid()) throw new Retryable("Online request retired");
+        const bytes = new Uint8Array(size); let at = 0;
+        for (const chunk of chunks) { bytes.set(chunk,at); at += chunk.length; }
+        return bytes;
+      }
       signal.addEventListener("abort", cancel, {once:true});
       const timeout = timers.setTimeout(cancel, path.endsWith("/command") ? 30000 : 20000);
       try {
@@ -115,25 +133,23 @@
           headers:body === null ? {"Accept":"application/json"} : {"Accept":"application/json","Content-Type":"application/json","X-Tabula-CSRF":csrf}, ...(body === null ? {} : {body})
         }))).catch(() => { throw new Retryable("Online request interrupted"); });
         if (!valid()) throw new Retryable("Online request retired");
-        if ([401,403].includes(response.status)) throw new AuthorityDenied("Online authority is unavailable");
+        if (response.status === 401) throw new AuthorityDenied("Online authority is unavailable");
+        if (response.status === 403) {
+          const matchPost = body !== null && ["grant","attach","command","poll"].some(operation => path === endpoint(operation));
+          const problem = !response.redirected && matchPost && response.headers.get("Content-Type")?.split(";")[0].trim() === "application/problem+json" && response.headers.get("Cache-Control")?.split(",").some(v => v.trim().toLowerCase() === "no-store");
+          if (problem) {
+            // A restart changes the memory-only CSRF key. The rejected POST
+            // remains rejected; fresh context/grant/scope must precede any retry.
+            const bytes = await boundedBody(response,1024);
+            let exact = false;
+            try { exact = /^[ \t\r\n]*\{[ \t\r\n]*"code"[ \t\r\n]*:[ \t\r\n]*"request_rejected"[ \t\r\n]*\}[ \t\r\n]*$/.test(new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes)); } catch (_) {}
+            if (exact) throw new Retryable("Online request context needs revalidation");
+          }
+          throw new AuthorityDenied("Online authority is unavailable");
+        }
         if ([409,429,500,502,503,504].includes(response.status)) throw new Retryable("Online service is recovering");
         if (response.redirected || response.status !== 200 || !response.headers.get("Cache-Control")?.split(",").some(v => v.trim().toLowerCase() === "no-store") || response.headers.get("Content-Type")?.split(";")[0].trim() !== "application/json") throw new Error("Online authority could not be confirmed");
-        const claimed = response.headers.get("Content-Length");
-        if (claimed !== null && (!/^\d+$/.test(claimed) || Number(claimed) > MAX_RESPONSE)) throw new Error("Online response exceeds budget");
-        if (!response.body) throw new Retryable("Online response body missing");
-        reader = response.body.getReader(); const chunks = []; let size = 0;
-        try {
-          for (;;) {
-            const {done,value} = await wait(Promise.resolve().then(() => reader.read())).catch(() => { throw new Retryable("Online response body interrupted"); });
-            if (done) break;
-            if (!(value instanceof Uint8Array) || value.length > MAX_RESPONSE-size) throw new Error("Online response exceeds budget");
-            size += value.length; chunks.push(value);
-          }
-        } finally { reader.releaseLock(); }
-        if (!valid()) throw new Retryable("Online request retired");
-        const bytes = new Uint8Array(size); let at = 0;
-        for (const chunk of chunks) { bytes.set(chunk,at); at += chunk.length; }
-        return bytes;
+        return await boundedBody(response,MAX_RESPONSE);
       } catch (error) { cancel(); throw error; }
       finally { cancellations.delete(cancel); requestCancellations.delete(cancel); timers.clearTimeout(timeout); signal.removeEventListener("abort", cancel); }
     }
