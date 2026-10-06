@@ -42,6 +42,7 @@ class TabulaColors(
     val shellArtPieceDark: Color,
     val shellArtRoad: Color,
     val shellArtEarth: Color,
+    val shellArtPieceRed: Color,
     val team: List<Color>,
     val seatMarker: List<Color>,
 )
@@ -83,6 +84,7 @@ object TabulaSchemes {
         shellArtPieceDark = Color(0xFF30343D),
         shellArtRoad = Color(0xFFF8ECD1),
         shellArtEarth = Color(0xFFC79872),
+        shellArtPieceRed = Color(0xFFA44747),
         team = listOf(Color(0xFF005F73), Color(0xFFCA6702), Color(0xFF6D597A), Color(0xFF127D66), Color(0xFFB64664), Color(0xFF385F91), Color(0xFF79521E), Color(0xFF5E587E)),
         seatMarker = listOf(Color(0xFF005F73), Color(0xFFCA6702), Color(0xFF6D597A), Color(0xFF127D66), Color(0xFFB64664), Color(0xFF385F91), Color(0xFF79521E), Color(0xFF5E587E)),
     )
@@ -121,6 +123,7 @@ object TabulaSchemes {
         shellArtPieceDark = Color(0xFF30343D),
         shellArtRoad = Color(0xFFF8ECD1),
         shellArtEarth = Color(0xFFC79872),
+        shellArtPieceRed = Color(0xFFA44747),
         team = listOf(Color(0xFF66D9EF), Color(0xFFFFB86C), Color(0xFFD6A5E8), Color(0xFF74F8A6), Color(0xFFFF9DB8), Color(0xFF8AB4F8), Color(0xFFE8C48A), Color(0xFFB8B0FF)),
         seatMarker = listOf(Color(0xFF66D9EF), Color(0xFFFFB86C), Color(0xFFD6A5E8), Color(0xFF74F8A6), Color(0xFFFF9DB8), Color(0xFF8AB4F8), Color(0xFFE8C48A), Color(0xFFB8B0FF)),
     )
@@ -159,6 +162,7 @@ object TabulaSchemes {
         shellArtPieceDark = Color(0xFF000000),
         shellArtRoad = Color(0xFFFFFFFF),
         shellArtEarth = Color(0xFF79747E),
+        shellArtPieceRed = Color(0xFF000000),
         team = listOf(Color(0xFF004B5C), Color(0xFF984D00), Color(0xFF4B3158), Color(0xFF005A20), Color(0xFF8F153C), Color(0xFF003D7A), Color(0xFF5E3E00), Color(0xFF42306D)),
         seatMarker = listOf(Color(0xFF004B5C), Color(0xFF984D00), Color(0xFF4B3158), Color(0xFF005A20), Color(0xFF8F153C), Color(0xFF003D7A), Color(0xFF5E3E00), Color(0xFF42306D)),
     )
@@ -197,6 +201,7 @@ object TabulaSchemes {
         shellArtPieceDark = Color(0xFF000000),
         shellArtRoad = Color(0xFFFFFFFF),
         shellArtEarth = Color(0xFF79747E),
+        shellArtPieceRed = Color(0xFF000000),
         team = listOf(Color(0xFF7DEBFF), Color(0xFFFFD39B), Color(0xFFEFC8FF), Color(0xFF86FFA9), Color(0xFFFFB0C7), Color(0xFFB4C5FF), Color(0xFFFFE0A6), Color(0xFFD7C8FF)),
         seatMarker = listOf(Color(0xFF7DEBFF), Color(0xFFFFD39B), Color(0xFFEFC8FF), Color(0xFF86FFA9), Color(0xFFFFB0C7), Color(0xFFB4C5FF), Color(0xFFFFE0A6), Color(0xFFD7C8FF)),
     )

@@ -453,8 +453,7 @@ fn selected_only_option(
     let label = match label_key {
         "library.filter.duration" => messages.format("unit.minutes", &[value]),
         "library.filter.mode" => LaunchMode::parse(value)
-            .map(|mode| messages.text(mode.label_key()))
-            .unwrap_or_else(|| value.to_owned()),
+            .map_or_else(|| value.to_owned(), |mode| messages.text(mode.label_key())),
         _ => value.to_owned(),
     };
     Some((value.to_owned(), label))

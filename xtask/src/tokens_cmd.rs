@@ -33,7 +33,7 @@ const SCHEMES: [Scheme; 4] = [
         kind: "ThemeKind::HighContrastDark",
     },
 ];
-const COLOR_KEYS: [&str; 34] = [
+const COLOR_KEYS: [&str; 35] = [
     "surface",
     "container",
     "container-high",
@@ -68,6 +68,7 @@ const COLOR_KEYS: [&str; 34] = [
     "shell-art-piece-dark",
     "shell-art-road",
     "shell-art-earth",
+    "shell-art-piece-red",
 ];
 /// Compose Multiplatform adapter of the same semantic contract (ADR-0032).
 const KOTLIN_TOKENS_PATH: &str =
@@ -301,6 +302,8 @@ struct SchemeSource {
     shell_art_road: String,
     #[serde(rename = "shell-art-earth")]
     shell_art_earth: String,
+    #[serde(rename = "shell-art-piece-red")]
+    shell_art_piece_red: String,
     team: [String; 8],
     #[serde(rename = "seat-marker")]
     seat_marker: [String; 8],
@@ -910,7 +913,7 @@ fn duration(name: DurationName, motion: &MotionSource) -> u16 {
     }
 }
 fn color_tokens(scheme: &SchemeSource) -> String {
-    format!("ColorTokens {{ surface: {}, surface_container: {}, surface_container_high: {}, on_surface: {}, on_surface_variant: {}, outline: {}, primary: {}, on_primary: {}, success: {}, on_success: {}, danger: {}, on_danger: {}, turn_active: {}, turn_waiting: {}, legal_target: {}, illegal_target: {}, selected: {}, last_action: {}, threat: {}, hidden: {}, shell_canvas: {}, shell_paper: {}, shell_hero: {}, shell_on_hero: {}, shell_note: {}, shell_cover_sage: {}, shell_cover_mint: {}, shell_art_field_light: {}, shell_art_field_dark: {}, shell_art_line: {}, shell_art_piece_light: {}, shell_art_piece_dark: {}, shell_art_road: {}, shell_art_earth: {}, team: [{}], seat_marker: [{}] }}", color_rust(&scheme.surface), color_rust(&scheme.container), color_rust(&scheme.container_high), color_rust(&scheme.on_surface), color_rust(&scheme.on_surface_variant), color_rust(&scheme.outline), color_rust(&scheme.primary), color_rust(&scheme.on_primary), color_rust(&scheme.success), color_rust(&scheme.on_success), color_rust(&scheme.danger), color_rust(&scheme.on_danger), color_rust(&scheme.turn_active), color_rust(&scheme.turn_waiting), color_rust(&scheme.legal_target), color_rust(&scheme.illegal_target), color_rust(&scheme.selected), color_rust(&scheme.last_action), color_rust(&scheme.threat), color_rust(&scheme.hidden), color_rust(&scheme.shell_canvas), color_rust(&scheme.shell_paper), color_rust(&scheme.shell_hero), color_rust(&scheme.shell_on_hero), color_rust(&scheme.shell_note), color_rust(&scheme.shell_cover_sage), color_rust(&scheme.shell_cover_mint), color_rust(&scheme.shell_art_field_light), color_rust(&scheme.shell_art_field_dark), color_rust(&scheme.shell_art_line), color_rust(&scheme.shell_art_piece_light), color_rust(&scheme.shell_art_piece_dark), color_rust(&scheme.shell_art_road), color_rust(&scheme.shell_art_earth), scheme.team.iter().map(|value| color_rust(value)).collect::<Vec<_>>().join(", "), scheme.seat_marker.iter().map(|value| color_rust(value)).collect::<Vec<_>>().join(", "))
+    format!("ColorTokens {{ surface: {}, surface_container: {}, surface_container_high: {}, on_surface: {}, on_surface_variant: {}, outline: {}, primary: {}, on_primary: {}, success: {}, on_success: {}, danger: {}, on_danger: {}, turn_active: {}, turn_waiting: {}, legal_target: {}, illegal_target: {}, selected: {}, last_action: {}, threat: {}, hidden: {}, shell_canvas: {}, shell_paper: {}, shell_hero: {}, shell_on_hero: {}, shell_note: {}, shell_cover_sage: {}, shell_cover_mint: {}, shell_art_field_light: {}, shell_art_field_dark: {}, shell_art_line: {}, shell_art_piece_light: {}, shell_art_piece_dark: {}, shell_art_road: {}, shell_art_earth: {}, shell_art_piece_red: {}, team: [{}], seat_marker: [{}] }}", color_rust(&scheme.surface), color_rust(&scheme.container), color_rust(&scheme.container_high), color_rust(&scheme.on_surface), color_rust(&scheme.on_surface_variant), color_rust(&scheme.outline), color_rust(&scheme.primary), color_rust(&scheme.on_primary), color_rust(&scheme.success), color_rust(&scheme.on_success), color_rust(&scheme.danger), color_rust(&scheme.on_danger), color_rust(&scheme.turn_active), color_rust(&scheme.turn_waiting), color_rust(&scheme.legal_target), color_rust(&scheme.illegal_target), color_rust(&scheme.selected), color_rust(&scheme.last_action), color_rust(&scheme.threat), color_rust(&scheme.hidden), color_rust(&scheme.shell_canvas), color_rust(&scheme.shell_paper), color_rust(&scheme.shell_hero), color_rust(&scheme.shell_on_hero), color_rust(&scheme.shell_note), color_rust(&scheme.shell_cover_sage), color_rust(&scheme.shell_cover_mint), color_rust(&scheme.shell_art_field_light), color_rust(&scheme.shell_art_field_dark), color_rust(&scheme.shell_art_line), color_rust(&scheme.shell_art_piece_light), color_rust(&scheme.shell_art_piece_dark), color_rust(&scheme.shell_art_road), color_rust(&scheme.shell_art_earth), color_rust(&scheme.shell_art_piece_red), scheme.team.iter().map(|value| color_rust(value)).collect::<Vec<_>>().join(", "), scheme.seat_marker.iter().map(|value| color_rust(value)).collect::<Vec<_>>().join(", "))
 }
 
 fn css(source: &TokenSource) -> String {
@@ -1317,7 +1320,7 @@ fn game_art_tokens(art: &ChessArtSource, cards: &WerewolfArtSource) -> String {
     format!("GameArtTokens::generated(ChessArtTokens {{ {fields} }}, WerewolfArtTokens {{ {card_fields} }})")
 }
 
-fn scheme_colors(scheme: &SchemeSource) -> [&str; 34] {
+fn scheme_colors(scheme: &SchemeSource) -> [&str; 35] {
     [
         &scheme.surface,
         &scheme.container,
@@ -1353,6 +1356,7 @@ fn scheme_colors(scheme: &SchemeSource) -> [&str; 34] {
         &scheme.shell_art_piece_dark,
         &scheme.shell_art_road,
         &scheme.shell_art_earth,
+        &scheme.shell_art_piece_red,
     ]
 }
 fn shape_values(shape: &ShapeSource) -> [(&'static str, f32); 13] {

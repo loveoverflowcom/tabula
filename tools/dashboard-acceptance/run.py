@@ -107,6 +107,26 @@ def load_shell_handler():
     return module.LocalShellHandler
 
 
+def load_loading_budgets():
+    path = Path(__file__).resolve().parents[1] / "tests" / "check-loading-budgets.py"
+    spec = importlib.util.spec_from_file_location("dashboard_existing_loading_budgets", path)
+    require(spec is not None and spec.loader is not None, "existing loading budget owner missing")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def emitted_shell_budget(root: Path) -> dict:
+    """Use the exact existing shell_budget and its shell-only raw WASM limit."""
+    owner = load_loading_budgets()
+    try:
+        result = owner.shell_budget(root)
+    except AssertionError as error:
+        raise AcceptanceFailure(str(error)) from None
+    return {"budget_owner": "tools/tests/check-loading-budgets.py::shell_budget",
+            "shell_raw_wasm_limit": owner.SHELL_RAW_LIMIT, **result}
+
+
 @contextmanager
 def static_origin(root: Path, *, shell: bool):
     """Real bytes + existing documented SPA routing, no manufactured API reply."""
@@ -141,13 +161,33 @@ def settle(page, url: str):
     page.evaluate("document.fonts.ready")
 
 
+def require_filtered_empty(page):
+    """The results' own announced empty state; continue status cannot satisfy it."""
+    require(page.locator(".card").count() == 0, "unmatched search is not empty")
+    status = page.locator(".catalog__empty [role=status], .catalog__empty[role=status]")
+    require(status.count() == 1 and status.first.is_visible() and bool(status.first.inner_text().strip()),
+            "filtered results have no visible nonempty announced state")
+    recovery = page.locator('.catalog__empty a[href="/games"]')
+    require(recovery.count() == 1 and recovery.is_visible(), "filtered empty state has no real reset recovery")
+
+
 MEASURE = """() => {
  const rect = el => {const b=el.getBoundingClientRect();return {x:b.x,y:b.y,width:b.width,height:b.height,bottom:b.bottom,right:b.right}};
- const visible = el => {const c=getComputedStyle(el),b=el.getBoundingClientRect();return c.display!=='none'&&c.visibility!=='hidden'&&b.width>0&&b.height>0&&!el.closest('[inert]')};
+ const visible = el => {const c=getComputedStyle(el),b=el.getBoundingClientRect();return c.display!=='none'&&c.visibility!=='hidden'&&c.clipPath==='none'&&b.width>0&&b.height>0&&!el.closest('[inert]')};
  const one = selector => {const el=document.querySelector(selector);return el&&visible(el)?rect(el):null};
  const text = selector => {const el=document.querySelector(selector); if(!el)return null;const c=getComputedStyle(el);return {font_family:c.fontFamily,font_size:parseFloat(c.fontSize),font_weight:c.fontWeight}};
  const controls=[...document.querySelectorAll('a,button,input,select,summary,[role="button"]')].filter(el=>visible(el)&&!el.classList.contains('skip-link')&&el.getBoundingClientRect().x>=0);
  const clip=[...document.querySelectorAll('h1,h2,h3,p,.btn,.nav-link')].filter(visible).filter(el=>el.scrollWidth>el.clientWidth+2&&['hidden','clip'].includes(getComputedStyle(el).overflowX)).map(el=>({tag:el.tagName,class:el.className}));
+ // A word can overflow its own visible box and be cut by an ancestor instead.
+ // Measure real text line rectangles; exclude intentionally decorative art and
+ // visually hidden assistive labels, never insert CSS to force a result.
+ for(const el of [...document.querySelectorAll('h1,h2,h3,p,small,.btn,.shell-link,.brand,.field__label')].filter(visible)){
+   if(el.closest('[aria-hidden="true"]'))continue;
+   const clips=[];for(let p=el;p;p=p.parentElement){const c=getComputedStyle(p);if(['hidden','clip'].includes(c.overflowX)||['hidden','clip'].includes(c.overflowY))clips.push({el:p,c,rect:p.getBoundingClientRect()})}
+   if(!clips.length)continue;
+   const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let node,cut=false;
+   while((node=walker.nextNode())&&!cut){if(!node.textContent.trim()||node.parentElement.closest('[aria-hidden="true"]'))continue;const range=document.createRange();range.selectNodeContents(node);for(const textRect of range.getClientRects())for(const parent of clips){const horizontal=['hidden','clip'].includes(parent.c.overflowX)&&(textRect.left<parent.rect.left-2||textRect.right>parent.rect.right+2);const vertical=['hidden','clip'].includes(parent.c.overflowY)&&(textRect.top<parent.rect.top-2||textRect.bottom>parent.rect.bottom+2);if(horizontal||vertical){clip.push({tag:el.tagName,class:el.className,ancestor_class:parent.el.className,reason:'text glyph line exceeds clipping ancestor'});cut=true;break}}range.detach()}
+ }
  const nav=document.querySelector('.bottom-nav');
  const grid=document.querySelector('.cards');
  return {viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},document_width:document.documentElement.scrollWidth,body_width:document.body.scrollWidth,scroll_height:document.documentElement.scrollHeight,scroll_y:scrollY,
@@ -161,7 +201,7 @@ MEASURE = """() => {
 # Only solid, actually computed foreground/background pairs are contrast oracles.
 # Decorative artwork and gradients are reviewed as pixels, not guessed here.
 CONTRAST = """() => {
- const parse=color=>{const p=color.match(/[\\d.]+/g)?.map(Number);return p&&p.length>=3?[p[0],p[1],p[2],p[3]??1]:null};
+ const parse=color=>{const encoded=color.startsWith('color(srgb '),legacy=/^rgba?\\(/.test(color);if(!encoded&&!legacy)return null;const p=color.match(/[\\d.]+/g)?.map(Number),scale=encoded?255:1;return p&&p.length>=3?[p[0]*scale,p[1]*scale,p[2]*scale,p[3]??1]:null};
  const background=el=>{for(let p=el;p;p=p.parentElement){const c=getComputedStyle(p);if(c.backgroundImage!=='none')return null;const bg=parse(c.backgroundColor);if(bg&&bg[3]===1)return bg.slice(0,3);if(bg&&bg[3]!==0)return null}return [255,255,255]};
  return ['body','h1','.feature-hero h2','.feature-hero .btn--filled','.continue-strip','.card__title','.bottom-nav a'].flatMap(selector=>[...document.querySelectorAll(selector)].map(el=>{const c=getComputedStyle(el),b=el.getBoundingClientRect(),fg=parse(c.color),bg=background(el);return b.width&&b.height&&fg&&fg[3]===1&&bg?{selector,foreground:fg.slice(0,3),background:bg,font_size:parseFloat(c.fontSize),font_weight:Number(c.fontWeight)}:null}).filter(Boolean));
 }"""
@@ -262,11 +302,32 @@ def capture_comparison(browser, evidence, origins):
                     except AcceptanceFailure as error:
                         failures.append({"viewport": name, "reason": str(error)})
                 result.append({"source": source, "viewport": name, "captures": captures, "metrics": metrics})
+                if source != "prototype":
+                    # The original combines Home/Catalog. Keep that same visual
+                    # oracle beside both real route mappings, without implying
+                    # the prototype contains a separate product /games route.
+                    settle(page, origin + "/games")
+                    locale(page)
+                    catalog_captures = [evidence.capture(page, f"{source}-catalog-{name}-{width}x{height}")]
+                    if name == "desktop":
+                        catalog_captures.append(evidence.capture(page, f"{source}-catalog-{name}-{width}x{height}-full", True))
+                    catalog_metrics = page.evaluate(MEASURE)
+                    if source == "after":
+                        try:
+                            assert_layout(catalog_metrics, width, small=width <= 768 or name == "low-landscape")
+                            require(catalog_metrics["continue_strip"] is not None, "catalog continue region missing")
+                            require(page.locator("#search").is_visible() and page.locator(".catalog__filters").is_visible(),
+                                    "catalog search or supported filters missing")
+                        except AcceptanceFailure as error:
+                            failures.append({"viewport": name, "route": "/games", "reason": str(error)})
+                    result.append({"source": source + "-catalog", "route": "/games", "viewport": name,
+                                   "captures": catalog_captures, "metrics": catalog_metrics,
+                                   "visual_reference": "prototype #library combines Home and Catalog"})
                 (evidence.output / "comparison.json").write_text(json.dumps({"comparisons": result, "failures": failures}, indent=2) + "\n")
             finally:
                 context.close()
     require(not failures, "responsive comparison has recorded layout failures")
-    require(len(result) == len(VIEWPORTS) * 3, "comparison selection incomplete")
+    require(len(result) == len(VIEWPORTS) * 5, "comparison selection incomplete")
     return result
 
 
@@ -295,12 +356,11 @@ def preference_matrix(browser, origin, evidence):
                 # Genuine reachable catalog states, using the URL contract.
                 settle(page, origin + "/games?q=__dashboard_no_match_87__")
                 locale(page, language)
-                require(page.locator(".card").count() == 0, "unmatched search is not empty")
-                require(page.locator("[role=status]").count() > 0, "empty filter has no announced state")
+                require_filtered_empty(page)
                 captures.append(evidence.capture(page, f"after-{scheme}-{language}-empty"))
                 settle(page, origin + "/games?players=0&category=__invalid__")
                 locale(page, language)
-                require(page.locator(".banner--error[role=status]").count() >= 1, "invalid query has no visible recoverable state")
+                require(page.locator(".banner--error[role=status]").count() == 2, "invalid query axes have no visible recoverable states")
                 captures.append(evidence.capture(page, f"after-{scheme}-{language}-invalid"))
                 result.append({"scheme": scheme, "language": language, "contrast_pairs": measured, "captures": captures})
             finally:
@@ -336,7 +396,34 @@ def drawer_keyboard(browser, origin, evidence):
         dialog.locator('a[href="/games"]').first.click()
         page.wait_for_url("**/games")
         require(not dialog.evaluate("el => el.open"), "navigation left modal drawer open")
-        return {"focusable_controls": count, "capture": capture, "escape": True, "focus_restore": True, "repeated_open": True, "navigation_close": True}
+        # Brand is outside the navigation group. Mouse and Enter must still
+        # dismiss the persistent modal rather than strand the new Home behind it.
+        toggle.focus()
+        page.keyboard.press("Enter")
+        dialog.locator(".brand").click()
+        page.wait_for_function("location.pathname === '/'")
+        require(not dialog.evaluate("el => el.open"), "Brand click left modal drawer open on Home")
+        page.locator('.bottom-nav a[href="/games"]').click()
+        page.wait_for_url("**/games")
+        toggle.focus()
+        page.keyboard.press("Enter")
+        dialog.locator(".brand").focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("location.pathname === '/'")
+        require(not dialog.evaluate("el => el.open"), "Brand Enter left modal drawer open on Home")
+        toggle.focus()
+        page.keyboard.press("Enter")
+        page.go_back(wait_until="networkidle")
+        page.wait_for_function("location.pathname === '/games'")
+        require(not dialog.evaluate("el => el.open"), "Back changed route but left modal drawer open")
+        toggle.focus()
+        page.keyboard.press("Enter")
+        page.go_forward(wait_until="networkidle")
+        page.wait_for_function("location.pathname === '/'")
+        require(not dialog.evaluate("el => el.open"), "Forward changed route but left modal drawer open")
+        return {"focusable_controls": count, "capture": capture, "escape": True, "focus_restore": True,
+                "repeated_open": True, "navigation_close": True, "brand_click_and_enter_close": True,
+                "back_and_forward_while_modal_close": True}
     finally:
         context.close()
 
@@ -450,8 +537,7 @@ def catalog_interactions(browser, origin, evidence):
             require(page.locator("#filter-" + axis).input_value() == value,
                     "valid deep-link constraint disappeared from native select")
         require(page.locator(".banner--error").count() == 0, "valid absent-inventory constraint mislabeled invalid")
-        require(page.locator(".card").count() == 0 and page.locator("[role=status]").count() > 0,
-                "valid unsatisfied query failed to announce truthful empty results")
+        require_filtered_empty(page)
         return {"multiword_draft_preserved": True, "search_and_select_focus_preserved": True,
                 "latest_constraints_combined": True, "reset_controls": True, "valid_deep_link_selections": selected,
                 "captures": [typing_capture, evidence.capture(page, "after-mobile-valid-absent-inventory-deep-link")]}
@@ -462,6 +548,7 @@ def catalog_interactions(browser, origin, evidence):
 def text_scale(playwright, origin, evidence, private):
     """Real browser user font preferences; no CSS-injected fake reflow evidence."""
     result = []
+    failures = []
     for scale in (1, 2):
         profile = private / f"font-{scale}"
         default = profile / "Default"
@@ -473,31 +560,49 @@ def text_scale(playwright, origin, evidence, private):
                     viewport={"width": 390, "height": 844}, device_scale_factor=1)
         try:
             page = context.pages[0]
-            settle(page, origin + "/")
-            locale(page)
-            home = page.evaluate(MEASURE)
-            assert_layout(home, 390, small=True)
-            capture = evidence.capture(page, f"after-mobile-default-font-{scale * 100}percent", True)
-            settle(page, origin + "/games")
-            library = page.evaluate(MEASURE)
-            assert_layout(library, 390, small=True)
-            page.locator("#menu-toggle").click()
-            dialog = page.locator("#shell-menu")
-            require(dialog.evaluate("el => el.open && el.scrollWidth <= el.clientWidth + 1"),
-                    "scaled modal drawer overflows horizontally")
-            require(dialog.evaluate("el => el.contains(document.activeElement)"), "scaled drawer did not own focus")
-            drawer_capture = evidence.capture(page, f"after-mobile-drawer-font-{scale * 100}percent")
-            page.keyboard.press("Escape")
-            require(not dialog.evaluate("el => el.open"), "Escape did not close scaled drawer")
-            require(page.locator("#menu-toggle").evaluate("el => el === document.activeElement"),
-                    "scaled drawer did not restore toggle focus")
-            result.append({"scale": scale, "home": home, "library": library, "captures": [capture, drawer_capture]})
+            for language in ("vi", "en"):
+                settle(page, origin + "/")
+                locale(page, language)
+                home = page.evaluate(MEASURE)
+                home_capture = evidence.capture(page, f"after-mobile-{language}-default-font-{scale * 100}percent", True)
+                try:
+                    assert_layout(home, 390, small=True)
+                except AcceptanceFailure as error:
+                    failures.append({"scale": scale, "language": language, "route": "/", "reason": str(error)})
+                settle(page, origin + "/games")
+                locale(page, language)
+                library = page.evaluate(MEASURE)
+                library_capture = evidence.capture(page, f"after-catalog-mobile-{language}-default-font-{scale * 100}percent", True)
+                try:
+                    assert_layout(library, 390, small=True)
+                except AcceptanceFailure as error:
+                    failures.append({"scale": scale, "language": language, "route": "/games", "reason": str(error)})
+                page.locator("#menu-toggle").click()
+                dialog = page.locator("#shell-menu")
+                drawer_capture = evidence.capture(page, f"after-mobile-{language}-drawer-font-{scale * 100}percent")
+                drawer = dialog.evaluate("el => ({open:el.open,scroll_width:el.scrollWidth,client_width:el.clientWidth,focus_inside:el.contains(document.activeElement)})")
+                if not drawer["open"] or drawer["scroll_width"] > drawer["client_width"] + 1:
+                    failures.append({"scale": scale, "language": language, "route": "drawer", "reason": "scaled modal drawer overflows horizontally"})
+                if not drawer["focus_inside"]:
+                    failures.append({"scale": scale, "language": language, "route": "drawer", "reason": "scaled drawer did not own focus"})
+                page.keyboard.press("Escape")
+                require(not dialog.evaluate("el => el.open"), "Escape did not close scaled drawer")
+                require(page.locator("#menu-toggle").evaluate("el => el === document.activeElement"),
+                        "scaled drawer did not restore toggle focus")
+                result.append({"scale": scale, "language": language, "home": home, "library": library, "drawer": drawer,
+                               "captures": [home_capture, library_capture, drawer_capture]})
+                (evidence.output / "font-scaling.json").write_text(json.dumps({"observations": result, "failures": failures}, indent=2) + "\n")
         finally:
             context.close()
-    require(result[1]["home"]["title"]["font_size"] >= result[0]["home"]["title"]["font_size"] * 1.95,
-            "display text ignores genuine 200-percent browser default font size")
-    require(result[1]["home"]["body"]["font_size"] >= result[0]["home"]["body"]["font_size"] * 1.95,
-            "body text ignores genuine 200-percent browser default font size")
+    for language in ("vi", "en"):
+        normal = next(row for row in result if row["scale"] == 1 and row["language"] == language)
+        doubled = next(row for row in result if row["scale"] == 2 and row["language"] == language)
+        require(doubled["home"]["title"]["font_size"] >= normal["home"]["title"]["font_size"] * 1.95,
+                "display text ignores genuine 200-percent browser default font size")
+        require(doubled["home"]["body"]["font_size"] >= normal["home"]["body"]["font_size"] * 1.95,
+                "body text ignores genuine 200-percent browser default font size")
+    require(len(result) == 4, "bilingual text-scale selection incomplete")
+    require(not failures, "bilingual font scaling has recorded layout failures")
     return result
 
 
@@ -530,6 +635,8 @@ def main():
         "browser_route": "official Playwright Chromium in disposable authorized GitHub Actions",
         "tls_verification_disabled": False, "http_mocking": False, "layout_css_injection": False,
     }, indent=2) + "\n")
+    evidence.case("before actual emitted shell uses existing raw-WASM loading budget", lambda: emitted_shell_budget(args.before_dist))
+    evidence.case("after actual emitted shell uses existing raw-WASM loading budget", lambda: emitted_shell_budget(args.after_dist))
     with tempfile.TemporaryDirectory(prefix="tabula-dashboard-profile-") as temp, \
             static_origin(args.after_dist.resolve(), shell=True) as after, \
             static_origin(args.before_dist.resolve(), shell=True) as before, \

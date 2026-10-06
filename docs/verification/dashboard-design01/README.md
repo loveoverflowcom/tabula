@@ -28,7 +28,7 @@ clocks, profile, favorites/counts and AI are fixtures, not runtime product facts
 | Continue and catalog states are truthful | current resume adapter boundary and registry | unavailable continue, empty unmatched filter, invalid query recovery; fixture absence | NOT_RUN | ready/empty/error session adapter is absent; asynchronous catalog loading/server-error is NOT_APPLICABLE |
 | Deep links/search/Back/setup preserved | router/query and registry descriptors | real search/filter→detail→setup→Back/Forward; online-control presence | NOT_RUN | actual create/join/play owned by existing online-match job on same revision |
 | Landing remains lightweight | separate-document boundary ADR-011 | actual request paths + encoded bytes; no gameplay WASM/atlas/model requests | NOT_RUN | no production/CDN/cache performance claim |
-| Acceptance assertions detect plausible violations | independent Python helpers | contrast, both target dimensions, missing nav slot, overflow/clipped text, empty selection, resource classifier, byte hashes and implemented route handler | PASS, example-tested | nine local tests, no browser execution inferred |
+| Acceptance assertions detect plausible violations | independent Python helpers | contrast, both target dimensions, missing nav slot, overflow/clipped text, empty selection, resource classifier, byte hashes and implemented route handler | PASS, example-tested | eleven local tests, no browser execution inferred |
 
 ## Exact local helper checks
 
@@ -38,7 +38,7 @@ python3 -m py_compile tools/dashboard-acceptance/run.py
 ```
 
 Both passed while preparing this harness; the helper suite selected and executed
-9 tests. They prove the scoped assertion helpers, not runtime Leptos UI.
+11 tests. They prove the scoped assertion helpers, not runtime Leptos UI.
 
 ## Actual execution and screenshots
 
@@ -72,3 +72,23 @@ and the inherited actual create/join Chess verdict are reported independently.
 
 These are bounded source/example/compile results, not full core or runtime acceptance.
 The early durable draft PR is [#88](https://github.com/loveoverflowcom/tabula/pull/88); exact final-source results follow after the remaining checks.
+
+Inherited navigation limits: the existing visible detail “Back to games” link
+returns to unfiltered `/games`; only browser Back/Forward preserves the previous
+URL constraints. Generic cross-route invoking-card/configure focus restoration
+and explicit route scroll persistence are not implemented by this slice. Drawer
+focus restoration and persistent in-route filter focus have separate actual-browser
+checks; do not describe these narrower checks as complete route focus acceptance.
+
+Portable core `cargo xtask check` completed successfully on the pre-final-review
+working source (all ordered gates). The final drawer-wide route dismissal changes
+compiled and passed focused all-feature web Clippy; full exact-final rerun is
+pending. No real screenshot verdict is implied by these results.
+
+Independent source/reference review found no remaining blocking source defect
+after bounded corrections. It verified the registry/artwork/neutral-avatar/auth
+boundaries and caught the drawer Brand/navigation cleanup, wide-screen centering,
+discovery-only serif scope, scaled text wrapping and decorative-glyph contrast.
+Actual Chromium helper coverage now includes bilingual real font preferences,
+Brand and browser-history modal dismissal, clipped glyph geometry, and an
+empty-result oracle that cannot pass on the unrelated Continue status.

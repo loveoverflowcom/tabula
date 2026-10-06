@@ -17,19 +17,14 @@ pub fn TopBar() -> impl IntoView {
     let location = leptos_router::hooks::use_location();
     let menu = NodeRef::<leptos::html::Dialog>::new();
     let menu_open = RwSignal::new(false);
-    Effect::new(move |_| {
-        let messages = Messages::new(locale.get());
-        if let Some(root) = document().document_element() {
-            let _ = root.set_attribute("lang", messages.locale().tag());
-            let _ = root.set_attribute("data-theme", scheme.get());
-        }
-    });
+    track_document_preferences(locale, scheme);
     let close_menu = move || {
         if let Some(dialog) = menu.get() {
             dialog.close();
         }
         menu_open.set(false);
     };
+    close_menu_on_navigation(location.pathname, location.search, menu, menu_open);
     view! {
         <aside class="sidebar" aria-label=move || Messages::new(locale.get()).text("shell.navigation")>
             <Brand/>
@@ -54,11 +49,7 @@ pub fn TopBar() -> impl IntoView {
                 <span aria-hidden="true">"/"</span>
                 <span>{move || {
                     let path = location.pathname.get();
-                    let key = if path == "/" { "nav.home" }
-                        else if path == "/games" { "nav.library" }
-                        else if path.starts_with("/games/") { "shell.context.game" }
-                        else { "nav.account" };
-                    Messages::new(locale.get()).text(key)
+                    Messages::new(locale.get()).text(route_context_key(&path))
                 }}</span>
             </div>
             <div class="topbar__actions">
@@ -94,38 +85,109 @@ pub fn TopBar() -> impl IntoView {
             </div>
         </header>
         <dialog id="shell-menu" class="shell-menu" node_ref=menu
+            on:click=move |event| {
+                if event.target().and_then(|target| target.dyn_into::<web_sys::Element>().ok())
+                    .and_then(|element| element.closest("a").ok().flatten()).is_some() { close_menu(); }
+            }
             aria-label=move || Messages::new(locale.get()).text("shell.navigation")
             on:close=move |_: leptos::ev::Event| menu_open.set(false)
             on:cancel=move |_: leptos::ev::Event| menu_open.set(false)
-            on:keydown=move |event| {
-                if event.key() != "Tab" { return; }
-                let Some(dialog) = menu.get() else { return; };
-                let Ok(targets) = dialog.query_selector_all("a[href], button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex=\"0\"]") else { return; };
-                let Some(first) = targets.item(0).and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok()) else { return; };
-                let Some(last) = targets.item(targets.length().saturating_sub(1)).and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok()) else { return; };
-                let active = document().active_element();
-                if event.shift_key() && active.as_ref().is_some_and(|active| active.is_same_node(Some(first.as_ref()))) {
-                    event.prevent_default();
-                    let _ = last.focus();
-                } else if !event.shift_key() && active.as_ref().is_some_and(|active| active.is_same_node(Some(last.as_ref()))) {
-                    event.prevent_default();
-                    let _ = first.focus();
-                }
-            }>
+            on:keydown=move |event| trap_dialog_tab(menu, &event)>
             <div class="shell-menu__header">
                 <Brand/>
                 <button type="button" class="icon-button" autofocus=true
                     aria-label=move || Messages::new(locale.get()).text("shell.menu.close")
                     on:click=move |_| close_menu()><Icon kind="close"/></button>
             </div>
-            <div on:click=move |event| {
-                if event.target().and_then(|target| target.dyn_into::<web_sys::Element>().ok())
-                    .and_then(|element| element.closest("a").ok().flatten()).is_some() { close_menu(); }
-            }><ShellNavigation/></div>
+            <ShellNavigation/>
         </dialog>
         <nav class="bottom-nav" aria-label=move || Messages::new(locale.get()).text("shell.navigation")>
             <ShellLinks/>
         </nav>
+    }
+}
+
+/// A known document names its own task; unknown addresses claim no account context.
+fn route_context_key(pathname: &str) -> &'static str {
+    match pathname {
+        "/" => "nav.home",
+        "/games" => "nav.library",
+        "/account" => "nav.account",
+        "/me" => "accounts.profile.self",
+        "/login" => "accounts.login.title",
+        "/register" => "accounts.register.title",
+        "/friends" => "accounts.friends.title",
+        path if path.starts_with("/games/") => "shell.context.game",
+        path if path.starts_with("/u/") => "accounts.profile.title",
+        _ => "app.title",
+    }
+}
+
+/// One application owner synchronizes language and generated system scheme.
+fn track_document_preferences(locale: super::LocaleSignal, scheme: ReadSignal<&'static str>) {
+    Effect::new(move |_| {
+        let messages = Messages::new(locale.get());
+        if let Some(root) = document().document_element() {
+            let _ = root.set_attribute("lang", messages.locale().tag());
+            let _ = root.set_attribute("data-theme", scheme.get());
+        }
+    });
+}
+
+/// Back/Forward and programmatic route changes also retire a modal drawer.
+fn close_menu_on_navigation(
+    pathname: Memo<String>,
+    search: Memo<String>,
+    menu: NodeRef<leptos::html::Dialog>,
+    menu_open: RwSignal<bool>,
+) {
+    Effect::new(move |_| {
+        let _ = (pathname.get(), search.get());
+        if menu_open.get_untracked() {
+            if let Some(dialog) = menu.get() {
+                dialog.close();
+            }
+            menu_open.set(false);
+        }
+    });
+}
+
+/// Wrap Tab at the native dialog boundary, including reverse traversal.
+fn trap_dialog_tab(menu: NodeRef<leptos::html::Dialog>, event: &leptos::ev::KeyboardEvent) {
+    if event.key() != "Tab" {
+        return;
+    }
+    let Some(dialog) = menu.get() else {
+        return;
+    };
+    let Ok(targets) = dialog.query_selector_all("a[href], button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex=\"0\"]") else { return; };
+    let Some(first) = targets
+        .item(0)
+        .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
+    else {
+        return;
+    };
+    let Some(last) = targets
+        .item(targets.length().saturating_sub(1))
+        .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
+    else {
+        return;
+    };
+    let active = document().active_element();
+    if event.shift_key()
+        && active
+            .as_ref()
+            .is_some_and(|active| active.is_same_node(Some(first.as_ref())))
+    {
+        event.prevent_default();
+        let _ = last.focus();
+    } else if !event.shift_key()
+        && active
+            .as_ref()
+            .is_some_and(|active| active.is_same_node(Some(last.as_ref())))
+    {
+        event.prevent_default();
+        let _ = first.focus();
     }
 }
 
@@ -292,7 +354,24 @@ const fn scheme_for(dark: bool, more_contrast: bool) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::scheme_for;
+    use super::{route_context_key, scheme_for};
+
+    #[test]
+    fn chrome_context_names_supported_documents_without_fabricating_account_state() {
+        for (path, key) in [
+            ("/", "nav.home"),
+            ("/games", "nav.library"),
+            ("/games/example", "shell.context.game"),
+            ("/me", "accounts.profile.self"),
+            ("/login", "accounts.login.title"),
+            ("/register", "accounts.register.title"),
+            ("/friends", "accounts.friends.title"),
+            ("/u/example", "accounts.profile.title"),
+            ("/unknown", "app.title"),
+        ] {
+            assert_eq!(route_context_key(path), key);
+        }
+    }
 
     /// Every combination of the two preferences names a distinct scheme, and
     /// each one is a scheme the generated stylesheet actually defines. A

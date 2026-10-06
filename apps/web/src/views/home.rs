@@ -27,7 +27,7 @@ pub fn Home() -> impl IntoView {
                     <p class="eyebrow"><Icon kind="spark"/>{move || Messages::new(locale.get()).text("home.hero.eyebrow")}</p>
                     <h2 id="hero-heading">{move || Messages::new(locale.get()).text("home.hero.heading")}</h2>
                     <p>{move || Messages::new(locale.get()).text("home.hero.body")}</p>
-                    <A href="/games" attr:class="btn btn--filled"><Icon kind="arrow"/>{move || Messages::new(locale.get()).text("home.hero.action")}</A>
+                    <A href="/games" attr:class="btn btn--filled"><Icon kind="arrow"/><span>{move || Messages::new(locale.get()).text("home.hero.action")}</span></A>
                 </div>
                 // The original ornamental token composition is a design illustration.
                 // It is not a game offer, an engine preview, or a runtime resource.

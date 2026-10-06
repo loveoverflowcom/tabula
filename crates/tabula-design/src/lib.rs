@@ -299,6 +299,8 @@ pub struct ColorTokens {
     pub shell_art_piece_dark: Color,
     pub shell_art_road: Color,
     pub shell_art_earth: Color,
+    /// Ornament lettering on physical token faces, distinct from error feedback.
+    pub shell_art_piece_red: Color,
     pub team: [Color; 8],
     pub seat_marker: [Color; 8],
 }
@@ -727,6 +729,10 @@ mod tests {
                 );
                 assert!(ratio(c.primary, surface) >= 3.0, "{kind:?}: shell focus");
             }
+            assert!(
+                ratio(c.shell_art_piece_red, c.shell_art_road) >= 3.0,
+                "{kind:?}: ornamental token lettering"
+            );
             assert!(
                 ratio(c.shell_on_hero, c.shell_hero) >= 4.5,
                 "{kind:?}: hero text"

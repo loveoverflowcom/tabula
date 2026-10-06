@@ -15,10 +15,10 @@
 //   - a disabled control must also be EXPLAINED (tooltip / aria), because a
 //     greyed-out button with no reason is a dead end
 //
-// Hierarchy follows the compact Material 3 Expressive foundation
-// (docs/ui/screens/foundation.md): grouping is tonal, not decorative. There is
-// no ornamental border or shadow anywhere below. An outline appears only where
-// it carries meaning — focus, selection, or error.
+// Shared controls retain the Material 3 Expressive foundation. Original Design 01
+// shell/discovery composition lives in shell.scss and library.scss (issue #87).
+// Outlines on controls carry focus, selection or error; ornamental hero material
+// is decorative artwork and never communicates interaction state.
 
 * {
   box-sizing: border-box;

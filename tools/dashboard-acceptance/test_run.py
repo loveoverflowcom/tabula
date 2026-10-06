@@ -83,6 +83,54 @@ class OracleTests(unittest.TestCase):
         source = Path(module.__file__).resolve().parents[1] / "serve-local-shell.py"
         self.assertIn("creates no identity, session or API response", source.read_text())
 
+    def test_exact_existing_shell_budget_is_used_without_replacing_wasm_cap(self):
+        owner = module.load_loading_budgets()
+        self.assertEqual(owner.SHELL_RAW_LIMIT, 900_000)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "index.html").write_text('<link href="/shell.wasm" rel="preload">')
+            (root / "shell.wasm").write_bytes(bytes([0, 97, 115, 109, 1, 0, 0, 0]))
+            receipt = module.emitted_shell_budget(root)
+            self.assertEqual(receipt["shell_raw_wasm_limit"], owner.SHELL_RAW_LIMIT)
+            self.assertEqual(receipt["unique_resource_count_including_document"], 2)
+            (root / "shell.wasm").write_bytes(b"x" * (owner.SHELL_RAW_LIMIT + 1))
+            with self.assertRaisesRegex(module.AcceptanceFailure, "shell WASM raw budget exceeded"):
+                module.emitted_shell_budget(root)
+
+    def test_empty_oracle_cannot_be_satisfied_by_continue_status(self):
+        class Locator:
+            def __init__(self, count, text="No matching games"):
+                self.number, self.text = count, text
+                self.first = self
+
+            def count(self):
+                return self.number
+
+            def is_visible(self):
+                return self.number > 0
+
+            def inner_text(self):
+                return self.text
+
+        class Page:
+            def __init__(self, status=1, recovery=1, text="No matching games"):
+                self.status, self.recovery, self.text = status, recovery, text
+
+            def locator(self, selector):
+                if selector == ".card":
+                    return Locator(0)
+                if selector == ".catalog__empty [role=status], .catalog__empty[role=status]":
+                    return Locator(self.status, self.text)
+                if selector == '.catalog__empty a[href="/games"]':
+                    return Locator(self.recovery)
+                # A global continue status always exists but is irrelevant.
+                return Locator(1, "Saved games are unavailable")
+
+        module.require_filtered_empty(Page())
+        for page in (Page(status=0), Page(recovery=0), Page(text="   ")):
+            with self.assertRaises(module.AcceptanceFailure):
+                module.require_filtered_empty(page)
+
 
 if __name__ == "__main__":
     unittest.main()

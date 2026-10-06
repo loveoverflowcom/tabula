@@ -287,6 +287,7 @@ pub const LIGHT: Theme = theme(
         shell_art_piece_dark: Color::rgb(48, 52, 61),
         shell_art_road: Color::rgb(248, 236, 209),
         shell_art_earth: Color::rgb(199, 152, 114),
+        shell_art_piece_red: Color::rgb(164, 71, 71),
         team: [
             Color::rgb(0, 95, 115),
             Color::rgb(202, 103, 2),
@@ -372,6 +373,7 @@ pub const DARK: Theme = theme(
         shell_art_piece_dark: Color::rgb(48, 52, 61),
         shell_art_road: Color::rgb(248, 236, 209),
         shell_art_earth: Color::rgb(199, 152, 114),
+        shell_art_piece_red: Color::rgb(164, 71, 71),
         team: [
             Color::rgb(102, 217, 239),
             Color::rgb(255, 184, 108),
@@ -457,6 +459,7 @@ pub const HIGH_CONTRAST_LIGHT: Theme = theme(
         shell_art_piece_dark: Color::rgb(0, 0, 0),
         shell_art_road: Color::rgb(255, 255, 255),
         shell_art_earth: Color::rgb(121, 116, 126),
+        shell_art_piece_red: Color::rgb(0, 0, 0),
         team: [
             Color::rgb(0, 75, 92),
             Color::rgb(152, 77, 0),
@@ -542,6 +545,7 @@ pub const HIGH_CONTRAST_DARK: Theme = theme(
         shell_art_piece_dark: Color::rgb(0, 0, 0),
         shell_art_road: Color::rgb(255, 255, 255),
         shell_art_earth: Color::rgb(121, 116, 126),
+        shell_art_piece_red: Color::rgb(0, 0, 0),
         team: [
             Color::rgb(125, 235, 255),
             Color::rgb(255, 211, 155),
