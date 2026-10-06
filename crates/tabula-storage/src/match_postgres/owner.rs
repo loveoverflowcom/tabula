@@ -250,15 +250,21 @@ mod tests {
         assert!(!repeated);
         let mut guard = PgMatchPublication {
             owner: None,
-            expires_at: Instant::now() + Duration::from_millis(10),
+            expires_at: Instant::now() + Duration::from_millis(50),
             published: false,
         };
+        let mut constructed = false;
         assert_eq!(
             guard.publish(|| {
-                std::thread::sleep(Duration::from_millis(20));
+                constructed = true;
+                std::thread::sleep(Duration::from_millis(100));
                 "late private frame"
             }),
             Err(RuntimePortError::Unavailable)
+        );
+        assert!(
+            constructed,
+            "post-construction expiry case must reach the callback"
         );
     }
 }

@@ -168,13 +168,13 @@ fn command(fixture: &RuntimeFixture, seq: u64, payload: Vec<u8>) -> ClientEnvelo
     .unwrap()
 }
 
-#[tokio::test]
-async fn restart_restores_original_receipt_time_and_scope_before_fresh_projection() {
-    let fixture = approved_checkmate_fixture();
-    let journal = Arc::new(MemoryJournal::default());
-    let frames = Arc::new(Frames::default());
-    let effects = Arc::new(KeyedEffects::default());
-    let clock = Arc::new(Time::new(1000, 0));
+async fn first_committed_receipt(
+    fixture: &RuntimeFixture,
+    journal: &Arc<MemoryJournal>,
+    frames: &Arc<Frames>,
+    effects: &Arc<KeyedEffects>,
+    clock: &Arc<Time>,
+) -> tabula_match::durable::OperationReceipt {
     let created = fixture
         .game
         .create_match(&fixture.config, &fixture.roster, fixture.seed.clone())
@@ -182,7 +182,7 @@ async fn restart_restores_original_receipt_time_and_scope_before_fresh_projectio
     let (handle, host, task) = runtime::spawn(
         ID,
         created,
-        ports(&journal, &frames, &effects, &clock),
+        ports(journal, frames, effects, clock),
         Limits::default(),
     )
     .unwrap();
@@ -194,7 +194,7 @@ async fn restart_restores_original_receipt_time_and_scope_before_fresh_projectio
         .await
         .unwrap();
     clock.mono.store(40, Ordering::SeqCst);
-    let first = command(&fixture, 1, fixture.commands[0].1.clone());
+    let first = command(fixture, 1, fixture.commands[0].1.clone());
     assert_eq!(
         handle
             .command(original, first.clone())
@@ -208,7 +208,19 @@ async fn restart_restores_original_receipt_time_and_scope_before_fresh_projectio
     assert_eq!(task.await.unwrap().version, StateVersion(1));
     let before = journal.load(ID).await.unwrap();
     assert_eq!(before.records[1].now.0, 40);
-    let original_receipt = before.ledger[0].recent[0].clone();
+    before.ledger[0].recent[0].clone()
+}
+
+#[tokio::test]
+async fn restart_restores_original_receipt_time_and_scope_before_fresh_projection() {
+    let fixture = approved_checkmate_fixture();
+    let journal = Arc::new(MemoryJournal::default());
+    let frames = Arc::new(Frames::default());
+    let effects = Arc::new(KeyedEffects::default());
+    let clock = Arc::new(Time::new(1000, 0));
+    let original_receipt =
+        first_committed_receipt(&fixture, &journal, &frames, &effects, &clock).await;
+    let first = command(&fixture, 1, fixture.commands[0].1.clone());
     frames.0.lock().unwrap().clear();
     let clock = Arc::new(Time::new(6000, 9000));
     let (handle, host, task) = runtime::recover_for_admission(

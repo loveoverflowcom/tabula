@@ -89,13 +89,14 @@ async fn real_postgres_native_owner_excludes_live_competitor_and_backend_death_a
     assert!(replacement.fence > owner.fence);
     assert_ne!(replacement.owner_backend_pid_for_test().unwrap(), pid);
     let recovered = replacement.load(MATCH).await.unwrap();
-    assert_eq!(
-        canonical_encode(&before.creation).unwrap(),
-        canonical_encode(&recovered.creation).unwrap()
+    assert!(
+        canonical_encode(&before.creation).unwrap()
+            == canonical_encode(&recovered.creation).unwrap(),
+        "recovery must preserve exact private creation bytes"
     );
-    assert_eq!(
-        canonical_encode(&before.records).unwrap(),
-        canonical_encode(&recovered.records).unwrap()
+    assert!(
+        canonical_encode(&before.records).unwrap() == canonical_encode(&recovered.records).unwrap(),
+        "recovery must preserve the exact private committed prefix"
     );
     assert_eq!(before.ledger, recovered.ledger);
     assert_eq!(before.observed_ms, recovered.observed_ms);
@@ -104,7 +105,7 @@ async fn real_postgres_native_owner_excludes_live_competitor_and_backend_death_a
         .await
         .is_err());
     assert!(owner.load(MATCH).await.is_err());
-    assert!(matches!(replacement.begin_publication().await, Ok(_)));
+    assert!(replacement.begin_publication().await.is_ok());
     drop(owner);
     drop(replacement);
     db.close().await;

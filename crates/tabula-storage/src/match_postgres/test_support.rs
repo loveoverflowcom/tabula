@@ -207,10 +207,22 @@ impl PgMatchStore {
 
     async fn check_disposable_schema(&self) -> Result<(), RuntimePortError> {
         let schema = self.test_schema().await?;
-        if !(schema.starts_with("match_test_") || schema.starts_with("tabula_match_acceptance_")) {
-            return Err(RuntimePortError::Unavailable);
+        if schema.starts_with("match_test_") || schema.starts_with("tabula_match_acceptance_") {
+            return Ok(());
         }
-        Ok(())
+        let database: String = sqlx::query_scalar("SELECT current_database()::text")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(unavailable)?;
+        if schema == "public"
+            && database == "tabula_online_acceptance"
+            && std::env::var("CI").as_deref() == Ok("true")
+            && std::env::var("TABULA_ONLINE_MATCH_DISPOSABLE").as_deref() == Ok("1")
+        {
+            Ok(())
+        } else {
+            Err(RuntimePortError::Unavailable)
+        }
     }
 
     /// Install a test-only deferred constraint trigger that rejects non-genesis
