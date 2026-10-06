@@ -729,7 +729,7 @@ mod tests {
     #[test]
     fn design01_shell_preserves_brand_and_contrasted_four_scheme_surfaces() {
         let light = Theme::by_kind(ThemeKind::Light).color;
-        assert_eq!(light.primary, Color::rgb(86, 52, 190));
+        assert_eq!(light.primary, Color::rgb(87, 59, 131));
         assert_eq!(light.shell_canvas, Color::rgb(249, 247, 244));
         assert_eq!(light.shell_paper, Color::rgb(255, 255, 255));
         assert_eq!(light.shell_hero, Color::rgb(233, 224, 247));

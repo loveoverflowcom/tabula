@@ -117,7 +117,7 @@ commands (total 135):
   109: pop-opacity layer=modal(40) z=-1
   110: rect [origin=(185.000, 236.000) size=(270.000, 168.000)] radii=uniform(24.000) fill=solid(#f4edf7ff) border=none layer=modal(40) z=0
   111: text "Choose promotion" at=(197.000, 248.000) style=TitleMd align=Start max_width=246.000 color=#1e1c21ff layer=modal(40) z=0
-  112: rect [origin=(197.000, 280.000) size=(60.000, 60.000)] radii=(tl=30.000, tr=8.000, br=8.000, bl=30.000) fill=solid(#5634beff) border=none layer=modal(40) z=0
+  112: rect [origin=(197.000, 280.000) size=(60.000, 60.000)] radii=(tl=30.000, tr=8.000, br=8.000, bl=30.000) fill=solid(#573b83ff) border=none layer=modal(40) z=0
   113: push-opacity opacity=0.120 layer=modal(40) z=0
   114: rect [origin=(197.000, 280.000) size=(60.000, 60.000)] radii=(tl=30.000, tr=8.000, br=8.000, bl=30.000) fill=solid(#ffffffff) border=none layer=modal(40) z=0
   115: pop-opacity layer=modal(40) z=0
@@ -130,7 +130,7 @@ commands (total 135):
   122: text "" at=(413.000, 300.000) style=LabelLg align=Center max_width=44.000 color=#1e1c21ff layer=modal(40) z=0
   123: rect [origin=(197.000, 348.000) size=(246.000, 44.000)] radii=uniform(14.000) fill=solid(#eae3edff) border=none layer=modal(40) z=0
   124: text "Cancel" at=(320.000, 360.000) style=LabelLg align=Center max_width=230.000 color=#1e1c21ff layer=modal(40) z=0
-  125: rect [origin=(193.500, 276.500) size=(67.000, 67.000)] radii=(tl=33.500, tr=11.500, br=11.500, bl=33.500) fill=none border=[width=3.000 color=#5634beff] layer=modal(40) z=1
+  125: rect [origin=(193.500, 276.500) size=(67.000, 67.000)] radii=(tl=33.500, tr=11.500, br=11.500, bl=33.500) fill=none border=[width=3.000 color=#573b83ff] layer=modal(40) z=1
   126: rect [origin=(196.000, 279.000) size=(62.000, 62.000)] radii=(tl=31.000, tr=9.000, br=9.000, bl=31.000) fill=none border=[width=2.000 color=#fffbffff] layer=modal(40) z=1
   127: sprite asset="pieces/white-queen" rect=[origin=(207.776, 284.376) size=(38.448, 38.448)] tint=#ffffffff rotation=0.000 pivot=(227.000, 303.600) layer=modal(40) z=2
   128: text "queen" at=(227.000, 316.000) style=LabelMd align=Center max_width=none color=#ffffffff layer=modal(40) z=2

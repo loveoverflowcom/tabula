@@ -11,7 +11,7 @@ commands (total 48):
   3: text "Rotate" at=(32.000, 88.000) style=LabelSm align=Center max_width=56.000 color=#cac3ceff layer=board(0) z=1
   4: rect [origin=(0.000, 0.000) size=(64.000, 64.000)] radii=uniform(1.000) fill=solid(#1e1c21ff) border=[width=1.000 color=#938f99ff] layer=pieces(10) z=0
   5: sprite asset="tiles/city-cap-road" rect=[origin=(0.000, 0.000) size=(64.000, 64.000)] tint=#e7e1e5ff rotation=0.000 pivot=(32.000, 32.000) layer=pieces(10) z=1
-  6: rect [origin=(0.000, 0.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=3.000 color=#cfbcffff] layer=overlay(20) z=20
+  6: rect [origin=(0.000, 0.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=3.000 color=#b093ddff] layer=overlay(20) z=20
   7: push-transform matrix=[4.000, 0.000, 0.000, 4.000, -1168.000, -1248.000] layer=hud(30) z=0
   8: rect [origin=(0.000, 0.000) size=(800.000, 64.000)] radii=uniform(0.000) fill=solid(#2b282fff) border=none layer=hud(30) z=0
   9: rect [origin=(600.000, 72.000) size=(192.000, 136.000)] radii=uniform(16.000) fill=solid(#1e1c21ff) border=none layer=hud(30) z=0

@@ -37,7 +37,8 @@ adapters. Light canvas `#F9F7F4` and paper `#FFFFFF` retain the original quiet
 chrome. [Issue #91](https://github.com/loveoverflowcom/tabula/issues/91) supersedes
 only the conflicting old logo: [canonical T Portal sources](../../../assets/brand/README.md)
 and additive semantic `brand-*` roles own identity across shell/targets.
-Action primary/selected, gameplay material palettes and interaction semantics
+The shared primary violet is authored in the [token contract](../tokens.md#shared-primary-violet).
+Gameplay material palettes and interaction semantics
 remain independent. Web typography metrics use root-relative units for font scaling.
 
 ## Task and route distinction
