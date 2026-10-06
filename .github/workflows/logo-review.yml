@@ -1,0 +1,65 @@
+name: bounded-logo-screenshots
+on:
+  push:
+    branches: ['evidence/logo-runtime-review-20261006']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bounded-logo-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  actual-logo:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - snapshot: before
+            source: 5e66202cc6b7bb64ec96dea15d8f10b58f53744f
+          - snapshot: candidate
+            source: 291fc9d067999aa44f5425f7ab7a64d9378a55ff
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      TABULA_LOGO_QA: '1'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+        with: {path: harness}
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.source }}
+          path: actual-src
+      - uses: dtolnay/rust-toolchain@master
+        with: {toolchain: '1.96', targets: wasm32-unknown-unknown}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: actual-src -> target
+          cache-on-failure: true
+      - name: Official browser and actual source build tooling
+        run: |
+          python3 -m pip install -r actual-src/tests/online-match/requirements.txt
+          python3 -m playwright install --with-deps chromium
+          cargo install trunk --version 0.21.14 --locked
+      - name: Real compiled source-owned shell and standalone Chess WASM
+        working-directory: actual-src
+        run: |
+          cargo clean --locked
+          (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
+          cargo build --locked -p tabula-game-client --no-default-features --features web --bin tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+          cargo xtask stage-wasm-game
+      - name: Actual source-separated logo snapshots, four schemes and narrow drawer
+        run: python3 harness/tools/logo-review/capture.py --source-root actual-src --output verification/logo-${{ matrix.snapshot }} --snapshot ${{ matrix.snapshot }} --expected-sha ${{ matrix.source }}
+      - name: Preserve original PNGs and source/build/action receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actual-logo-${{ matrix.snapshot }}
+          path: verification/logo-${{ matrix.snapshot }}
+          if-no-files-found: error
+          retention-days: 14
