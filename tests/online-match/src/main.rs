@@ -15,6 +15,7 @@ use axum::{
 use serde::Deserialize;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::{
+    future::Future,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -44,6 +45,8 @@ use tabula_storage::{
 const ORIGIN: &str = "https://localhost:9443";
 const ENROLL_HTML: &str = "<!doctype html><html lang=en><meta charset=utf-8><title>Disposable Tabula acceptance</title><h1>Disposable acceptance identity</h1><p>This isolated fixture provisions a synthetic account and uses real durable session authority. It does not test provider login.</p><form action=/__fixture/enroll method=post><button data-testid=fixture-enroll>Start disposable acceptance session</button></form></html>";
 type Checked<T> = Result<T, &'static str>;
+const AUDIT_OWNER_CLAIM_BUDGET: Duration = Duration::from_secs(5);
+const AUDIT_OWNER_CLAIM_RETRY: Duration = Duration::from_millis(50);
 
 #[cfg(feature = "continuity-test")]
 mod continuity;
@@ -369,6 +372,64 @@ impl Clock for AuditClock {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AuditOwnerClaimError {
+    Unavailable,
+    Indeterminate,
+    Deadline,
+}
+
+impl AuditOwnerClaimError {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Unavailable => "fresh durable audit fence unavailable",
+            Self::Indeterminate => "fresh durable audit fence indeterminate",
+            Self::Deadline => "fresh durable audit fence deadline exhausted",
+        }
+    }
+}
+
+// ADR-0042's persisted publication exclusion can outlive the stopped server.
+// Only a known Busy permits another claim; one deadline covers every attempt
+// and wait. Timeout leaves ownership uncertain and cannot admit audit recovery.
+async fn claim_audit_owner<T, Claim, ClaimFuture>(
+    deadline: tokio::time::Instant,
+    mut claim: Claim,
+) -> Result<T, AuditOwnerClaimError>
+where
+    Claim: FnMut() -> ClaimFuture,
+    ClaimFuture: Future<Output = Result<T, RuntimePortError>>,
+{
+    loop {
+        if tokio::time::Instant::now() >= deadline {
+            return Err(AuditOwnerClaimError::Deadline);
+        }
+        match tokio::time::timeout_at(deadline, claim()).await {
+            Ok(Ok(owner)) => {
+                // An immediately-ready future can complete past timeout_at's
+                // deadline without yielding. It still cannot prove timely claim.
+                if tokio::time::Instant::now() >= deadline {
+                    return Err(AuditOwnerClaimError::Deadline);
+                }
+                return Ok(owner);
+            }
+            Ok(Err(RuntimePortError::Busy)) => {
+                tokio::time::sleep_until(
+                    (tokio::time::Instant::now() + AUDIT_OWNER_CLAIM_RETRY).min(deadline),
+                )
+                .await;
+            }
+            Ok(Err(RuntimePortError::Unavailable)) => {
+                return Err(AuditOwnerClaimError::Unavailable);
+            }
+            Ok(Err(RuntimePortError::Indeterminate)) => {
+                return Err(AuditOwnerClaimError::Indeterminate);
+            }
+            Err(_) => return Err(AuditOwnerClaimError::Deadline),
+        }
+    }
+}
+
 async fn audit(path: &str) -> Checked<()> {
     let bytes = std::fs::read(path).map_err(|_| "private audit input absent")?;
     if bytes.len() > 1024 {
@@ -394,10 +455,12 @@ async fn audit(path: &str) -> Checked<()> {
     let pool = connect().await?;
     let store = PgMatchStore::new(pool.clone());
     let journal = Arc::new(
-        store
-            .claim(id)
-            .await
-            .map_err(|_| "fresh durable audit fence failed")?,
+        claim_audit_owner(
+            tokio::time::Instant::now() + AUDIT_OWNER_CLAIM_BUDGET,
+            || store.claim(id),
+        )
+        .await
+        .map_err(AuditOwnerClaimError::label)?,
     );
     let loaded = journal
         .load(id)
@@ -588,7 +651,134 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{checked_id, enrollment_page, failure, AuditInput};
+    use super::{
+        checked_id, claim_audit_owner, enrollment_page, failure, AuditInput, AuditOwnerClaimError,
+        RuntimePortError, AUDIT_OWNER_CLAIM_BUDGET, AUDIT_OWNER_CLAIM_RETRY,
+    };
+    use std::{cell::Cell, future::ready};
+
+    #[tokio::test]
+    async fn audit_owner_claim_retries_only_busy_before_known_success() {
+        let deadline = tokio::time::Instant::now() + AUDIT_OWNER_CLAIM_BUDGET;
+        let mut attempts = Vec::new();
+        let result = claim_audit_owner(deadline, || {
+            attempts.push(tokio::time::Instant::now());
+            ready(if attempts.len() < 3 {
+                Err(RuntimePortError::Busy)
+            } else {
+                Ok(7)
+            })
+        })
+        .await;
+
+        assert_eq!(result, Ok(7));
+        assert_eq!(attempts.len(), 3);
+        assert!(attempts
+            .windows(2)
+            .all(|pair| pair[1].duration_since(pair[0]) >= AUDIT_OWNER_CLAIM_RETRY));
+        assert!(tokio::time::Instant::now() < deadline);
+    }
+
+    #[tokio::test]
+    async fn audit_owner_claim_non_busy_errors_fail_without_retry() {
+        for (port_error, expected) in [
+            (
+                RuntimePortError::Unavailable,
+                AuditOwnerClaimError::Unavailable,
+            ),
+            (
+                RuntimePortError::Indeterminate,
+                AuditOwnerClaimError::Indeterminate,
+            ),
+        ] {
+            let attempts = Cell::new(0);
+            let result = claim_audit_owner(
+                tokio::time::Instant::now() + AUDIT_OWNER_CLAIM_BUDGET,
+                || {
+                    attempts.set(attempts.get() + 1);
+                    ready(if attempts.get() == 1 {
+                        Err(port_error)
+                    } else {
+                        Ok(7)
+                    })
+                },
+            )
+            .await;
+
+            assert_eq!(result, Err(expected));
+            assert_eq!(attempts.get(), 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn audit_owner_claim_busy_wait_cannot_retry_after_shared_deadline() {
+        let deadline = tokio::time::Instant::now() + AUDIT_OWNER_CLAIM_RETRY / 2;
+        let attempts = Cell::new(0);
+        let result = claim_audit_owner(deadline, || {
+            attempts.set(attempts.get() + 1);
+            ready(if attempts.get() == 1 {
+                Err(RuntimePortError::Busy)
+            } else {
+                Ok(7)
+            })
+        })
+        .await;
+
+        assert_eq!(result, Err(AuditOwnerClaimError::Deadline));
+        assert_eq!(attempts.get(), 1);
+        assert!(tokio::time::Instant::now() >= deadline);
+    }
+
+    #[tokio::test]
+    async fn audit_owner_claim_in_flight_timeout_never_becomes_success() {
+        let deadline = tokio::time::Instant::now() + AUDIT_OWNER_CLAIM_RETRY / 2;
+        let attempts = Cell::new(0);
+        let completed = Cell::new(false);
+        let completed = &completed;
+        let result = claim_audit_owner(deadline, || {
+            attempts.set(attempts.get() + 1);
+            async move {
+                tokio::time::sleep(AUDIT_OWNER_CLAIM_RETRY).await;
+                completed.set(true);
+                Ok(7)
+            }
+        })
+        .await;
+
+        assert_eq!(result, Err(AuditOwnerClaimError::Deadline));
+        assert_eq!(attempts.get(), 1);
+        assert!(!completed.get());
+        assert!(tokio::time::Instant::now() >= deadline);
+    }
+
+    #[tokio::test]
+    async fn audit_owner_claim_expired_deadline_refuses_even_ready_success() {
+        let attempts = Cell::new(0);
+        let result = claim_audit_owner(tokio::time::Instant::now(), || {
+            attempts.set(attempts.get() + 1);
+            ready(Ok(7))
+        })
+        .await;
+
+        assert_eq!(result, Err(AuditOwnerClaimError::Deadline));
+        assert_eq!(attempts.get(), 0);
+    }
+
+    #[test]
+    fn audit_owner_claim_failure_labels_are_closed_and_private_data_free() {
+        assert_eq!(
+            AuditOwnerClaimError::Unavailable.label(),
+            "fresh durable audit fence unavailable"
+        );
+        assert_eq!(
+            AuditOwnerClaimError::Indeterminate.label(),
+            "fresh durable audit fence indeterminate"
+        );
+        assert_eq!(
+            AuditOwnerClaimError::Deadline.label(),
+            "fresh durable audit fence deadline exhausted"
+        );
+    }
 
     #[tokio::test]
     async fn enrollment_document_preserves_form_origin_without_changing_api_policy() {

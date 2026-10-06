@@ -71,6 +71,26 @@ def fault_control(ca: Path, operation: str, token: str) -> dict:
                        ('X-Tabula-Fixture-Control',token)], '{"version":1}')
 
 
+def held_prefix(ca: Path, token: str, expected: int) -> None:
+    """Only the existing ephemeral gate capability observes committed truth.
+
+    Session/room authentication can wait on the transaction deliberately held
+    by this gate. This witness never releases it or supplies gameplay output.
+    """
+    require(type(expected) is int and 0<=expected<=4,
+            'unexpected held public transcript prefix')
+    reply=wire_probe(ca, '/__fixture/continuity/held-prefix',
+                     [('Origin',ORIGIN),('Content-Type','application/json'),
+                      ('X-Tabula-Fixture-Control',token)],
+                     json.dumps({'version':1,'expected_inputs':expected}))
+    body=reply.get('body')
+    require(reply['status']==200 and type(body) is dict
+            and set(body)=={'version','expected_public_transcript_prefix'}
+            and type(body['version']) is int and body['version']==1
+            and body['expected_public_transcript_prefix'] is True,
+            'held committed prefix differs from expected public moves')
+
+
 def held(ca: Path, token: str) -> None:
     deadline=time.monotonic()+15
     while time.monotonic()<deadline:
@@ -204,6 +224,9 @@ class Pair:
         self.audit_inputs=expected
         (self.private/('continuity-audit-'+self.label+'.json')).write_text(json.dumps(
             {'match_id':self.match_id,'accounts':[f['account_id'] for f in self.facts],'expected_inputs':expected,'expected_scopes':self.expected_scopes}))
+    def held_prefix(self,ca,token,expected):
+        held_prefix(ca,token,expected)
+        self.write_audit(expected)
     def full(self,start=0,white=None):
         for index in range(start,4):
             role=index%2;page=white if role==0 and white is not None else self.pages[role]
@@ -262,7 +285,7 @@ def network_refresh_game(contexts,private,ca,results,evidence):
     # Real SQL writes are staged while the request connection drops. The server
     # owns commit resolution; client cancellation cannot decide the outcome.
     old=pair.attachments[1][-1];gate=pair.arm(1,'staged_commit');black_network=PageNetwork(black)
-    original=pair.tap(1,1);held(ca,gate);pair.oracle(1,0)
+    original=pair.tap(1,1);held(ca,gate);pair.held_prefix(ca,gate,1)
     black_network.offline(True)
     released=fault_control(ca,'release',gate)
     require(released['status']==200,'staged actual COMMIT gate could not release')
@@ -292,7 +315,7 @@ def crash_game(contexts,private,ca,supervisor,committed,results):
     original=pair.tap(0,0);held(ca,gate)
     # A confirmed phase, not elapsed time, selects the committed/uncommitted
     # partition. The independent second process sees durable truth after restart.
-    pair.oracle(1 if committed else 0,1)
+    pair.held_prefix(ca,gate,1 if committed else 0)
     white_network=PageNetwork(white);white_network.offline(True)
     white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
     outcome=supervisor.kill();require(outcome['sigkill_reaped'] is True,'actual native server SIGKILL was not reaped')
@@ -310,7 +333,7 @@ def apply_and_committed_refresh_game(contexts,private,ca,point,results):
     label='pure-apply-loss' if point=='before_commit' else 'committed-refresh'
     pair=Pair(contexts,private,label);white,black=pair.pages;old=pair.attachments[0][-1]
     gate=pair.arm(0,point);original=pair.tap(0,0);held(ca,gate)
-    pair.oracle(0 if point=='before_commit' else 1)
+    pair.held_prefix(ca,gate,0 if point=='before_commit' else 1)
     network=PageNetwork(white);network.offline(True)
     require(fault_control(ca,'release',gate)['status']==200,'actual apply/receipt barrier could not release')
     white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
@@ -327,7 +350,7 @@ def apply_and_committed_refresh_game(contexts,private,ca,point,results):
 def same_record_rotation_game(contexts,private,ca,results):
     pair=Pair(contexts,private,'same-record-rotation');white,black=pair.pages
     old=pair.attachments[0][-1];gate=pair.arm(0,'after_commit')
-    original=pair.tap(0,0);held(ca,gate);pair.oracle(1)
+    original=pair.tap(0,0);held(ca,gate);pair.held_prefix(ca,gate,1)
     network=PageNetwork(white);network.offline(True)
     require(fault_control(ca,'release',gate)['status']==200,'committed rotation-case barrier could not release')
     white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
@@ -406,7 +429,7 @@ def current_context_after_restart(ca:Path,cookie:str,account:str)->dict:
 def restart_between_grant_and_attach_game(contexts,private,ca,supervisor,results):
     pair=Pair(contexts,private,'restart-grant-attach');white,black=pair.pages
     old=pair.attachments[0][-1];gate=pair.arm(0,'after_commit')
-    original=pair.tap(0,0);held(ca,gate);pair.oracle(1)
+    original=pair.tap(0,0);held(ca,gate);pair.held_prefix(ca,gate,1)
     network=PageNetwork(white);network.offline(True)
     require(fault_control(ca,'release',gate)['status']==200,'grant-restart committed barrier could not release')
     white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)

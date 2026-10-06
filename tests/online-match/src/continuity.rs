@@ -11,7 +11,7 @@ use axum::{
     routing::post,
     Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     future::Future,
     pin::Pin,
@@ -67,6 +67,20 @@ struct Flow {
     deadline: Instant,
     phase: Phase,
     release: Option<oneshot::Sender<()>>,
+}
+impl Flow {
+    fn held_match(&self, token: CredentialDigest, now: Instant) -> Result<MatchId, StatusCode> {
+        if self.token != token {
+            return Err(StatusCode::FORBIDDEN);
+        }
+        if now >= self.deadline {
+            return Err(StatusCode::GONE);
+        }
+        if self.phase != Phase::Held {
+            return Err(StatusCode::CONFLICT);
+        }
+        Ok(self.match_id)
+    }
 }
 #[derive(Default)]
 pub struct ContinuityHook {
@@ -154,6 +168,7 @@ pub fn compose(
             .route("/__fixture/continuity/arm", post(arm))
             .route("/__fixture/continuity/status", post(status))
             .route("/__fixture/continuity/release", post(release))
+            .route("/__fixture/continuity/held-prefix", post(held_prefix))
             .route("/__fixture/continuity/authority", post(authority))
             .route("/__fixture/continuity/oracle", post(oracle))
             .route("/__fixture/continuity/new-record", post(new_record))
@@ -172,6 +187,20 @@ struct Arm {
 #[serde(deny_unknown_fields)]
 struct Control {
     version: u16,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HeldPrefix {
+    version: u16,
+    expected_inputs: u8,
+}
+impl HeldPrefix {
+    fn expected(&self) -> Result<u64, StatusCode> {
+        if self.version != 1 || self.expected_inputs > 4 {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+        Ok(u64::from(self.expected_inputs))
+    }
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -323,7 +352,9 @@ async fn arm(State(state): State<Arc<Controls>>, request: Request) -> Response {
         serde_json::json!({"version":1,"control_token":token.expose_encoded()}),
     )
 }
-async fn control_request(request: Request) -> Result<CredentialDigest, StatusCode> {
+async fn control_request<T: DeserializeOwned>(
+    request: Request,
+) -> Result<(CredentialDigest, T), StatusCode> {
     if request.uri().query().is_some()
         || single(request.headers(), "origin") != Some(ORIGIN)
         || single(request.headers(), "content-type") != Some("application/json")
@@ -340,11 +371,8 @@ async fn control_request(request: Request) -> Result<CredentialDigest, StatusCod
         .await
         .map_err(|_| StatusCode::REQUEST_TIMEOUT)?
         .map_err(|_| StatusCode::PAYLOAD_TOO_LARGE)?;
-    let body: Control = serde_json::from_slice(&bytes).map_err(|_| StatusCode::BAD_REQUEST)?;
-    if body.version != 1 {
-        return Err(StatusCode::BAD_REQUEST);
-    }
-    Ok(token)
+    let body = serde_json::from_slice(&bytes).map_err(|_| StatusCode::BAD_REQUEST)?;
+    Ok((token, body))
 }
 async fn status(State(state): State<Arc<Controls>>, request: Request) -> Response {
     control(state, request, false).await
@@ -356,8 +384,9 @@ async fn control(state: Arc<Controls>, request: Request, release: bool) -> Respo
     let Ok(_permit) = state.reads.clone().try_acquire_owned() else {
         return rejected(StatusCode::TOO_MANY_REQUESTS);
     };
-    let token = match control_request(request).await {
-        Ok(value) => value,
+    let token = match control_request::<Control>(request).await {
+        Ok((token, body)) if body.version == 1 => token,
+        Ok(_) => return rejected(StatusCode::BAD_REQUEST),
         Err(status) => return rejected(status),
     };
     let Ok(mut slot) = state.hook.flow.lock() else {
@@ -388,6 +417,60 @@ async fn control(state: Arc<Controls>, request: Request, release: bool) -> Respo
         }
     }
     phase(flow.phase)
+}
+
+/// Test coordination only: the token already binds a trusted match and record.
+/// No current-session lookup may wait behind the deliberately held transaction.
+/// Only equality with the fixture's bounded known public transcript is emitted.
+async fn held_prefix(State(state): State<Arc<Controls>>, request: Request) -> Response {
+    let Ok(_permit) = state.reads.clone().try_acquire_owned() else {
+        return rejected(StatusCode::TOO_MANY_REQUESTS);
+    };
+    let (token, body) = match control_request::<HeldPrefix>(request).await {
+        Ok(value) => value,
+        Err(status) => return rejected(status),
+    };
+    let expected = match body.expected() {
+        Ok(value) => value,
+        Err(status) => return rejected(status),
+    };
+    let target = || {
+        let slot = state
+            .hook
+            .flow
+            .lock()
+            .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+        slot.as_ref()
+            .ok_or(StatusCode::FORBIDDEN)?
+            .held_match(token, Instant::now())
+    };
+    let match_id = match target() {
+        Ok(value) => value,
+        Err(status) => return rejected(status),
+    };
+    // This storage-owned statement observes only committed MVCC data, without
+    // session, membership, room or journal row locks. Timeout is never truth.
+    let prefix = tokio::time::timeout(
+        Duration::from_secs(1),
+        state.matches.committed_prefix_for_test(match_id),
+    )
+    .await;
+    match target() {
+        Ok(current) if current == match_id => {}
+        Ok(_) => return rejected(StatusCode::FORBIDDEN),
+        Err(status) => return rejected(status),
+    }
+    let Ok(Ok((version, index, count))) = prefix else {
+        return rejected(StatusCode::SERVICE_UNAVAILABLE);
+    };
+    prefix_reply(version.0 == expected && index.0 == expected && count == expected + 1)
+}
+
+fn prefix_reply(matches: bool) -> Response {
+    response(
+        StatusCode::OK,
+        serde_json::json!({"version":1,"expected_public_transcript_prefix":matches}),
+    )
 }
 async fn authority(State(state): State<Arc<Controls>>, request: Request) -> Response {
     let Ok(_permit) = state.reads.clone().try_acquire_owned() else {
@@ -551,15 +634,168 @@ async fn oracle(State(state): State<Arc<Controls>>, request: Request) -> Respons
         return rejected(StatusCode::SERVICE_UNAVAILABLE);
     };
     let expected = u64::from(body.expected_inputs);
-    response(
-        StatusCode::OK,
-        serde_json::json!({"version":1,"expected_public_transcript_prefix":version.0==expected&&index.0==expected&&count==expected+1}),
-    )
+    prefix_reply(version.0 == expected && index.0 == expected && count == expected + 1)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn fixture_request(body: impl Into<axum::body::Body>) -> Request {
+        Request::builder()
+            .uri("/__fixture/continuity/held-prefix")
+            .header("origin", ORIGIN)
+            .header("content-type", "application/json")
+            .header(
+                "x-tabula-fixture-control",
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            )
+            .body(body.into())
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn held_prefix_dto_has_only_bounded_known_public_expectation() {
+        for expected in 0..=4 {
+            let (_, body) = control_request::<HeldPrefix>(fixture_request(format!(
+                "{{\"version\":1,\"expected_inputs\":{expected}}}"
+            )))
+            .await
+            .unwrap();
+            assert_eq!(body.expected(), Ok(expected));
+        }
+        for bytes in [
+            "{}",
+            r#"{"version":1}"#,
+            r#"{"version":1,"expected_inputs":-1}"#,
+            r#"{"version":1,"expected_inputs":256}"#,
+            r#"{"version":1,"expected_inputs":true}"#,
+            r#"{"version":1,"expected_inputs":0,"match_id":"foreign"}"#,
+            r#"{"version":1,"expected_inputs":0,"seat":1}"#,
+            r#"{"version":1,"expected_inputs":0,"state":{}}"#,
+            r#"{"version":1,"expected_inputs":0,"expected_inputs":1}"#,
+            r#"{"version":1,"expected_inputs":0} {}"#,
+        ] {
+            assert_eq!(
+                control_request::<HeldPrefix>(fixture_request(bytes))
+                    .await
+                    .err(),
+                Some(StatusCode::BAD_REQUEST)
+            );
+        }
+        for bytes in [
+            r#"{"version":2,"expected_inputs":0}"#,
+            r#"{"version":1,"expected_inputs":5}"#,
+        ] {
+            let (_, body) = control_request::<HeldPrefix>(fixture_request(bytes))
+                .await
+                .unwrap();
+            assert_eq!(body.expected(), Err(StatusCode::BAD_REQUEST));
+        }
+    }
+
+    #[tokio::test]
+    async fn control_transport_rejects_ambiguous_origin_token_and_over_limit_body() {
+        for key in ["origin", "content-type", "x-tabula-fixture-control"] {
+            let mut request = fixture_request(r#"{"version":1}"#);
+            let value = request.headers()[key].clone();
+            request.headers_mut().append(key, value);
+            assert_eq!(
+                control_request::<Control>(request).await.err(),
+                Some(StatusCode::FORBIDDEN)
+            );
+            let mut request = fixture_request(r#"{"version":1}"#);
+            request.headers_mut().remove(key);
+            assert_eq!(
+                control_request::<Control>(request).await.err(),
+                Some(StatusCode::FORBIDDEN)
+            );
+        }
+        for (key, value) in [
+            ("origin", "http://localhost:9443"),
+            ("origin", "https://localhost:9443/"),
+            ("origin", "null"),
+            ("content-type", "text/plain"),
+            ("x-tabula-fixture-control", "malformed"),
+            ("content-encoding", "gzip"),
+        ] {
+            let mut request = fixture_request(r#"{"version":1}"#);
+            request
+                .headers_mut()
+                .insert(key, HeaderValue::from_static(value));
+            assert_eq!(
+                control_request::<Control>(request).await.err(),
+                Some(StatusCode::FORBIDDEN)
+            );
+        }
+        let mut request = fixture_request(r#"{"version":1}"#);
+        *request.uri_mut() = "/__fixture/continuity/held-prefix?target=foreign"
+            .parse()
+            .unwrap();
+        assert_eq!(
+            control_request::<Control>(request).await.err(),
+            Some(StatusCode::FORBIDDEN)
+        );
+        let mut body = r#"{"version":1,"expected_inputs":0}"#.to_owned();
+        body.extend(std::iter::repeat_n(' ', LIMIT - body.len()));
+        assert!(control_request::<HeldPrefix>(fixture_request(body.clone()))
+            .await
+            .is_ok());
+        body.push(' ');
+        assert_eq!(
+            control_request::<HeldPrefix>(fixture_request(body))
+                .await
+                .err(),
+            Some(StatusCode::PAYLOAD_TOO_LARGE)
+        );
+    }
+
+    #[test]
+    fn held_prefix_requires_current_gate_token_held_phase_and_deadline() {
+        let now = Instant::now();
+        let token = CredentialDigest::from_bytes([1; 32]);
+        let mut flow = Flow {
+            match_id: MatchId(7),
+            attachment_id: "00000000000000000000000000000001".to_owned(),
+            record: AuthSessionId::new(2).unwrap(),
+            staged: true,
+            point: AcceptanceFaultPhase::BeforeCommit,
+            token,
+            deadline: now + LIFETIME,
+            phase: Phase::Held,
+            release: None,
+        };
+        assert_eq!(flow.held_match(token, now), Ok(MatchId(7)));
+        assert_eq!(
+            flow.held_match(CredentialDigest::from_bytes([2; 32]), now),
+            Err(StatusCode::FORBIDDEN)
+        );
+        for phase in [Phase::Armed, Phase::Released, Phase::Failed] {
+            flow.phase = phase;
+            assert_eq!(flow.held_match(token, now), Err(StatusCode::CONFLICT));
+        }
+        flow.phase = Phase::Held;
+        assert_eq!(flow.held_match(token, flow.deadline), Err(StatusCode::GONE));
+        assert_eq!(
+            flow.held_match(token, flow.deadline + Duration::from_nanos(1)),
+            Err(StatusCode::GONE)
+        );
+    }
+
+    #[tokio::test]
+    async fn prefix_response_emits_only_boolean_without_canonical_or_authorizing_data() {
+        for matches in [false, true] {
+            let reply = prefix_reply(matches);
+            assert_eq!(reply.status(), StatusCode::OK);
+            assert_eq!(reply.headers()[header::CACHE_CONTROL], "no-store");
+            let bytes = to_bytes(reply.into_body(), LIMIT).await.unwrap();
+            let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(
+                body,
+                serde_json::json!({"version":1,"expected_public_transcript_prefix":matches})
+            );
+        }
+    }
 
     #[test]
     fn controls_reject_unknown_fields_and_unbounded_targets() {

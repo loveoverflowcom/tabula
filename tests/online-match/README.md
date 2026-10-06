@@ -364,6 +364,21 @@ Chess commands and immutable actual roster, durable watermarks and terminal
 snapshot/verdict where applicable, and forbids all client output. Audit inputs,
 credentials, grants, CSRF, pending command bytes, ephemeral TLS keys and profiles
 remain outside public artifacts and are destroyed by the enclosing trap.
+The fresh audit claim respects the persisted two-second owner-publication
+exclusion after server exit. Only a known `Busy` permits retry, with one total
+five-second owner budget; other errors and timeout fail immediately with closed
+public-safe classifications. No exclusion is removed or interpreted as success.
+
+While an actual command boundary is held, the existing ephemeral CI-control
+token can check only whether that already-bound match has the independently
+expected public transcript prefix (zero through four moves). Its strict bounded
+DTO accepts no match, record, seat or game action. Exact HTTPS Origin, current
+token, held phase and deadline are checked before and after the one-second
+storage-owned nonlocking committed-MVCC observation; only a versioned boolean
+is returned. This avoids fixture authentication queueing behind its deliberately
+held room/session transaction. It supplies no Ack, projection or commit result.
+After release/restart, ordinary current-authority browser checks and every final
+independent native recovery audit remain required.
 
 `finalize_evidence.py` requires the unchanged complete-game browser/audit success,
 all twenty-eight distinct successful fault partitions, and all twenty-four successful
