@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Static emitted Werewolf inventory, not browser network/performance evidence."""
-import argparse,gzip,hashlib,json,re
+import argparse,gzip,hashlib,json,re,tomllib
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 p=argparse.ArgumentParser(description=__doc__)
@@ -15,12 +15,18 @@ for folder in ['assets/fonts','games/chess/assets','games/tiles/assets','games/w
  for f in sorted((ROOT/folder).iterdir()):
   if f.suffix in ['.png','.ttf']:
    assert f.read_bytes() not in b,f;absent.append(str(f.relative_to(ROOT)))
-text=(a.bundle/'resource-manifest.js').read_text();manifest=json.loads(text.removeprefix('window.TabulaResourceManifest=').rstrip(';\n'));files=manifest['files'];assert manifest['schema']==1 and len(files)==18
+text=(a.bundle/'resource-manifest.js').read_text();manifest=json.loads(text.removeprefix('window.TabulaResourceManifest=').rstrip(';\n'));files=manifest['files'];assert manifest['schema']==1
+# The game-owned fixture is the inventory authority; role-pack versions can add
+# approved artwork without changing the host's WASM/font or byte budgets.
+fixture=tomllib.loads((ROOT/'games/werewolf/assets/fixture.pack.toml').read_text())
+pack_paths={file['path'] for file in fixture['files']}
+assert pack_paths and len(pack_paths)==len(fixture['files'])
+assert set(files)==pack_paths | {'tabula-game-client.wasm','assets/OpenSans-Regular.ttf','assets/OpenSans-Semibold.ttf','assets/NotoSerif-Bold.ttf'}
 rows=[]
 for alias,entry in files.items():
  payload=(a.bundle/entry['url']).read_bytes();assert len(payload)==entry['bytes'];assert hashlib.sha256(payload).hexdigest()==entry['sha256'];rows.append({'alias':alias,'bytes':len(payload),'sha256':entry['sha256']})
 setup=(a.bundle/'index.html').read_text();assert not re.search(r'<(?:img|link)[^>]+(?:png|wasm)',setup);assert 'glcanvas' not in setup
-pack_rows=[row for row in rows if row['alias'].startswith('werewolf/')];assert len(pack_rows)==14
+pack_rows=[row for row in rows if row['alias'] in pack_paths];assert len(pack_rows)==len(pack_paths)
 assert sum(row['bytes'] for row in pack_rows)<=2*1024*1024
 result={'evidence':'static emitted selected-game inventory, not real browser request waterfall or runtime performance','wasm':{'bytes':len(b),'gzip9_bytes':len(compressed),'sha256':hashlib.sha256(b).hexdigest(),'selected_normal_graph':'PASS Werewolf only, no Chess/Tiles/Leptos','external_payloads_absent':absent},'runtime_payloads':rows,'encoded_pack_bytes_all_densities':sum(row['bytes'] for row in pack_rows),'setup_game_art_or_wasm_references':0}
 a.receipt.parent.mkdir(parents=True,exist_ok=True);a.receipt.write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result['wasm'],indent=2));print('PASS static Werewolf emitted budgets and complete content hashes')

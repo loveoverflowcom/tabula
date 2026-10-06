@@ -90,7 +90,8 @@ jobs:
       - run: |
           for game in chess tiles werewolf; do
             cargo xtask pack-assets "$game"
-            cmp "target/asset-packs/$game/0.1.0/pack.toml" "games/$game/assets/fixture.pack.toml"
+            version=$(python3 -c 'import sys,tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["version"])' "games/$game/assets/fixture.pack.toml")
+            cmp "target/asset-packs/$game/$version/pack.toml" "games/$game/assets/fixture.pack.toml"
           done
 
   # Generated files are committed. If they are stale the diff is a silent lie.
