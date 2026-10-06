@@ -1,0 +1,166 @@
+{
+  "ui_source": "5e66202cc6b7bb64ec96dea15d8f10b58f53744f",
+  "ui_tree": "32705eb93a814297df5505d12b50bbc6b74ee97e",
+  "capture_checkout": "56b5c276bac6082195ac7dbcc25dab4b7d65c7b8",
+  "capture_tree": "05de8975121b72b79660a60d3218e5f4b9ae2cff",
+  "source_equivalence": "only2 added workflow/capture files compared with exact merged UI source",
+  "workflow_run_id": 37450749806,
+  "artifact_id": 11405199351,
+  "zip_sha256": "7dbb2f53747b25a0a2dcdae50a0769e135fb0be27cce56a73804faff3886a94a",
+  "zip_bytes": 77947,
+  "github_digest_matches": true,
+  "inspected_at_utc": "2026-10-06T10:53:25.942293+00:00",
+  "status": "PASS for the bounded320px EN/light/DPR1/genuine200% condition",
+  "original_pngs_unchanged": true,
+  "first_attempt": "Run37448882018 reported focused geometry FAIL because it sampled before screenshot paint; its original pixels already showed the proper focus frame. Only measurement ordering was corrected on unchanged production source, matching the maintained desktop helper. Failed receipt preserved separately",
+  "checks": [
+    {
+      "name": "unfocused skip-link fully above viewport",
+      "status": "PASS",
+      "measurement": {
+        "rect": {
+          "x": 8,
+          "y": -112,
+          "width": 312,
+          "height": 104,
+          "bottom": -8,
+          "right": 320
+        },
+        "active": false,
+        "focus_visible": false,
+        "transform": "matrix(1, 0, 0, 1, 0, -112)",
+        "top": "0px",
+        "scroll_y": 0,
+        "viewport": {
+          "width": 320,
+          "height": 640
+        },
+        "lang": "en",
+        "scheme": "light",
+        "root_font_px": 32
+      }
+    },
+    {
+      "name": "first Tab fully reveals skip-link",
+      "status": "PASS",
+      "measurement": {
+        "rect": {
+          "x": 8,
+          "y": 8,
+          "width": 312,
+          "height": 104,
+          "bottom": 112,
+          "right": 320
+        },
+        "active": true,
+        "focus_visible": true,
+        "transform": "none",
+        "top": "8px",
+        "scroll_y": 0,
+        "viewport": {
+          "width": 320,
+          "height": 640
+        },
+        "lang": "en",
+        "scheme": "light",
+        "root_font_px": 32
+      }
+    },
+    {
+      "name": "Enter focuses main and reconceals skip-link",
+      "status": "PASS",
+      "main_focused": true,
+      "measurement": {
+        "rect": {
+          "x": 8,
+          "y": -112,
+          "width": 312,
+          "height": 104,
+          "bottom": -8,
+          "right": 320
+        },
+        "active": false,
+        "focus_visible": false,
+        "transform": "matrix(1, 0, 0, 1, 0, -112)",
+        "top": "0px",
+        "scroll_y": 277,
+        "viewport": {
+          "width": 320,
+          "height": 640
+        },
+        "lang": "en",
+        "scheme": "light",
+        "root_font_px": 32
+      }
+    }
+  ],
+  "unrun": "other schemes/viewports/engines, physical mobile/touch/native/CMP, provider login, gameplay/audio/network suites; no unrelated CI or merge gate",
+  "entries": [
+    {
+      "file": "skip-unfocused-320-en-font200.png",
+      "label": "actual before intentional keyboard focus",
+      "captured_at_utc": "2026-10-06T10:44:07.269850+00:00",
+      "route_path": "/",
+      "bytes": 22977,
+      "sha256": "6fd7db4452d1c8f402363c9ebe7ae73d43d1a05bc7d7ec4856949424a782267d",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "dpr": 1,
+      "original_png_unchanged": true,
+      "png_pixels": [
+        320,
+        640
+      ],
+      "git_blob_sha1": "75eedbe4dc613e7e285ecbb6584393b844c54a60",
+      "pixel_inspected": "original view_image",
+      "finding": "no unfocused purple tail",
+      "real_account_or_credentials_visible": false
+    },
+    {
+      "file": "skip-focused-320-en-font200.png",
+      "label": "actual first Tab focused skip-link",
+      "captured_at_utc": "2026-10-06T10:44:07.327479+00:00",
+      "route_path": "/",
+      "bytes": 25986,
+      "sha256": "2741e9093fe17abe502d196219ad2bc018a5b2d754ae8fad719b223c5917920f",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "dpr": 1,
+      "original_png_unchanged": true,
+      "png_pixels": [
+        320,
+        640
+      ],
+      "git_blob_sha1": "67dfd5300d05d587d8efde12b845a3e29cf895f3",
+      "pixel_inspected": "original view_image",
+      "finding": "full focused skip link visible",
+      "real_account_or_credentials_visible": false
+    },
+    {
+      "file": "skip-main-focused-320-en-font200.png",
+      "label": "actual Enter transfers native fragment focus to main",
+      "captured_at_utc": "2026-10-06T10:44:07.395470+00:00",
+      "route_path": "/",
+      "bytes": 30968,
+      "sha256": "15b4928ca4edbd2bf5730afa24f00f2b3680437617c101bd88ea21bdbbedf6e4",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "dpr": 1,
+      "original_png_unchanged": true,
+      "png_pixels": [
+        320,
+        640
+      ],
+      "git_blob_sha1": "1d87159024b0ec8bfc72d3866df6b375116c87ee",
+      "pixel_inspected": "original view_image",
+      "finding": "main focused; skip link concealed again",
+      "real_account_or_credentials_visible": false
+    }
+  ]
+}

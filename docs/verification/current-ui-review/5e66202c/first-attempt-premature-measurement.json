@@ -1,0 +1,166 @@
+{
+  "source_commit": "234241cf14a1c6f95242f640e1424378043da07e",
+  "source_tree": "8fe5236b878b28e100fb840972f0185554f978c7",
+  "run_id": "37448882018",
+  "started_at_utc": "2026-10-06T10:27:09.394678+00:00",
+  "scope": "actual public Leptos,320x640 EN/light,DPR1, independent Chromium32px user font; no physical-device claim",
+  "build_command": "TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online",
+  "builds": [
+    {
+      "path": "app-732f3c719ae22615.css",
+      "bytes": 31560,
+      "sha256": "9225125367a313a01704720b42df34a05c8fb24484f45c89dc0e2edd8f08e393"
+    },
+    {
+      "path": "index.html",
+      "bytes": 1647,
+      "sha256": "12614f843fd1c348515b4ce4eb66fb42ff0b6402b9a11b825ac645e4f286f6cc"
+    },
+    {
+      "path": "tabula-web-5370facd944d71f8.js",
+      "bytes": 57928,
+      "sha256": "a6782776378ecc9ec44a50e70a9ac75564a5f8beaad5bc4ea8dbcb26f7e4dd87"
+    },
+    {
+      "path": "tabula-web-5370facd944d71f8_bg.wasm",
+      "bytes": 737400,
+      "sha256": "0a1e52ac980307b574afcff0381b6d990ba845cb89170ccd356e9a3cb8e48314"
+    },
+    {
+      "path": "tokens-bc39b86a977675d7.css",
+      "bytes": 53955,
+      "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+    }
+  ],
+  "fixtures": "anonymous public shell; no real account/provider; no page/HTTP/layout mocks",
+  "playwright": "1.62.0",
+  "captures": [
+    {
+      "file": "skip-unfocused-320-en-font200.png",
+      "label": "actual before intentional keyboard focus",
+      "captured_at_utc": "2026-10-06T10:27:11.427260+00:00",
+      "route_path": "/",
+      "bytes": 22977,
+      "sha256": "6fd7db4452d1c8f402363c9ebe7ae73d43d1a05bc7d7ec4856949424a782267d",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "dpr": 1,
+      "original_png_unchanged": true
+    },
+    {
+      "file": "skip-focused-320-en-font200.png",
+      "label": "actual first Tab focused skip-link",
+      "captured_at_utc": "2026-10-06T10:27:11.488052+00:00",
+      "route_path": "/",
+      "bytes": 25986,
+      "sha256": "2741e9093fe17abe502d196219ad2bc018a5b2d754ae8fad719b223c5917920f",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "dpr": 1,
+      "original_png_unchanged": true
+    },
+    {
+      "file": "skip-main-focused-320-en-font200.png",
+      "label": "actual Enter transfers native fragment focus to main",
+      "captured_at_utc": "2026-10-06T10:27:11.552134+00:00",
+      "route_path": "/",
+      "bytes": 30968,
+      "sha256": "15b4928ca4edbd2bf5730afa24f00f2b3680437617c101bd88ea21bdbbedf6e4",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "dpr": 1,
+      "original_png_unchanged": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "unfocused skip-link fully above viewport",
+      "status": "PASS",
+      "measurement": {
+        "rect": {
+          "x": 8,
+          "y": -112,
+          "width": 312,
+          "height": 104,
+          "bottom": -8,
+          "right": 320
+        },
+        "active": false,
+        "focus_visible": false,
+        "transform": "matrix(1, 0, 0, 1, 0, -112)",
+        "top": "0px",
+        "scroll_y": 0,
+        "viewport": {
+          "width": 320,
+          "height": 640
+        },
+        "lang": "en",
+        "scheme": "light",
+        "root_font_px": 32
+      }
+    },
+    {
+      "name": "first Tab fully reveals skip-link",
+      "status": "FAIL",
+      "measurement": {
+        "rect": {
+          "x": 8,
+          "y": -112,
+          "width": 312,
+          "height": 104,
+          "bottom": -8,
+          "right": 320
+        },
+        "active": true,
+        "focus_visible": true,
+        "transform": "matrix(1, 0, 0, 1, 0, -112)",
+        "top": "0px",
+        "scroll_y": 0,
+        "viewport": {
+          "width": 320,
+          "height": 640
+        },
+        "lang": "en",
+        "scheme": "light",
+        "root_font_px": 32
+      }
+    },
+    {
+      "name": "Enter focuses main and reconceals skip-link",
+      "status": "PASS",
+      "main_focused": true,
+      "measurement": {
+        "rect": {
+          "x": 8,
+          "y": -112,
+          "width": 312,
+          "height": 104,
+          "bottom": -8,
+          "right": 320
+        },
+        "active": false,
+        "focus_visible": false,
+        "transform": "matrix(1, 0, 0, 1, 0, -112)",
+        "top": "0px",
+        "scroll_y": 277,
+        "viewport": {
+          "width": 320,
+          "height": 640
+        },
+        "lang": "en",
+        "scheme": "light",
+        "root_font_px": 32
+      }
+    }
+  ],
+  "browser_version": "151.0.7922.34",
+  "initial_font_probe_px": 32,
+  "status": "FAIL",
+  "finished_at_utc": "2026-10-06T10:27:11.877176+00:00"
+}
