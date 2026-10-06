@@ -117,6 +117,42 @@ request decisions, cancel/decline/accept, observed Online, route scope replaceme
 offline retirement/reconnect and durable logout. Both harnesses require nonempty
 exact case selections and zero uncaught page errors.
 
+The first hosted account-browser runs exposed an inspection-oracle defect:
+Chromium 151 can report `ERR_ABORTED` and lose the inspector response body after
+a `no-store` response has been completely read through a `ReadableStream`.
+An independent six-case loopback reproduction with pinned Chromium
+151.0.7922.34 confirmed complete application EOF and parsed JSON in both
+`no-store`/stream cases, despite failed inspector body reads. Both native JSON
+reader controls and both `no-cache`/stream controls completed normally. This
+matches the primary [Playwright report](https://github.com/microsoft/playwright/issues/42742).
+Temporary private abort diagnostics found no application `AbortController` call
+in the corresponding 42 ms cancellation; the response was HTTP 200, JSON,
+`no-store`, and 545 bytes. The attempted durable CDP-body observer did not repair
+that false terminal signal and is superseded, rather than accepted as proof of
+an application failure or successful journey. The replacement oracle observes
+the unique actual request/status and bounded posted intent, a fresh
+busy-to-validated UI acknowledgment, and the matching durable authority
+postcondition. It rejects missing acknowledgment, duplicate dispatch,
+intervening document/authority retirement and a recovery read substituting for
+the original completion. A two-core working-tree run with pinned Chromium 151
+passed all 21 real-authority cases, with zero runtime errors and strict task-only
+certificate trust. Product Rust, the emitted shell and its authority assertions
+did not change during this inspection-oracle correction. Hosted exact-head
+acceptance remains a separate check.
+
+The separate online-match continuity check failed on published account head
+`15e7524` during a post-restart board predicate. This also fails on the PR's
+unmodified develop bases: [8c5 run](https://github.com/loveoverflowcom/tabula/actions/runs/37490856304)
+and [1147 run](https://github.com/loveoverflowcom/tabula/actions/runs/37503107143).
+The [15e run](https://github.com/loveoverflowcom/tabula/actions/runs/37515322395)
+and 8c5 sanitized continuity receipts are structurally identical, including
+three passed network partitions and the subsequent White-board timeout. The
+reconnect runtime, transport and continuity predicate have no changes across
+those heads. All passed the preceding composed authority, owner-fence and build
+checks. The underlying canvas predicate failure remains unresolved; this
+pre-existing match fault-acceptance failure does not establish account/social
+acceptance or a broad networking phase exit.
+
 ## Completion policy and evidence boundary
 
 #54 stays open until every original criterion has implemented authority and

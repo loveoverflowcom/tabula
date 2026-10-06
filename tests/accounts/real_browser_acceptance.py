@@ -27,6 +27,11 @@ from playwright.async_api import Error as PlaywrightError, async_playwright, exp
 ORIGIN = "https://app.localhost:8444"
 ROOT = Path(__file__).resolve().parents[2]
 SESSION_COOKIE = "__Host-tabula_session"
+POST_LIMIT = 4096
+ACK_COPY = {
+    "en": {"ready": "Account information is ready.", "saved": "Your changes were saved."},
+    "vi": {"ready": "Thông tin tài khoản đã sẵn sàng.", "saved": "Đã lưu thay đổi."},
+}
 
 
 class CheckFailure(Exception):
@@ -128,13 +133,23 @@ class BrowserObservation:
         self.maximum = 0
         self.opened = 0
         self.document = 0
+        self.failed_social_reads = []
+        self.operation_ids = set()
         page.on("pageerror", lambda _error: self.errors.append("page_error"))
+        page.on("requestfailed", self.request_failed)
         page.on("websocket", self.socket)
 
+    def request_failed(self, request):
+        path = urlsplit(request.url).path
+        if path in ("/api/v2/social/search", "/api/v2/social/mutate") and len(self.failed_social_reads) < 16:
+            self.failed_social_reads.append({
+                "task": "search" if path.endswith("search") else "mutation",
+                "kind": "aborted" if request.failure == "net::ERR_ABORTED" else "transport",
+            })
+
     async def observe_documents(self, context, page):
-        # A cross-document navigation retires the old CDP network body/socket
-        # handles. Page.frameNavigated identifies that boundary; SPA navigation
-        # uses Page.navigatedWithinDocument and preserves the app socket count.
+        # A new document retires old socket handles. SPA navigation preserves
+        # the app-owned socket count; this session never intercepts transport.
         self.cdp = await context.new_cdp_session(page)
         await self.cdp.send("Page.enable")
         self.cdp.on("Page.frameNavigated", self.document_changed)
@@ -172,6 +187,149 @@ class BrowserObservation:
                      if friend["identity"]["user_id"] == peer), None)
 
 
+# Observe the existing public task state without altering it. Attribute history
+# also proves a fast busy->ack transition delivered in one observer batch.
+ACK_ARM = """({expected,accepted}) => {
+  const root=document.querySelector('.account');
+  const state=root?.querySelector(':scope > .account__state');
+  if(!state || state.getAttribute('aria-busy')!=='false' || window.__tabulaQaAck) return false;
+  const ack={busy:false,complete:false,valid:false,retired:false,overflow:false,changes:0};
+  const retire=() => { if(!ack.complete) ack.retired=true; };
+  const listeners=[];
+  for(const [target,kinds] of [[window,['focus','pageshow','pagehide','online','offline']],
+                             [document,['visibilitychange','freeze']]])
+    for(const kind of kinds) { target.addEventListener(kind,retire); listeners.push([target,kind]); }
+  const observer=new MutationObserver(records => {
+    ack.changes+=records.length;
+    if(ack.changes>64) { ack.overflow=true; observer.disconnect(); return; }
+    const settled=records.filter(record => record.target===state && record.type==='attributes'
+      && record.attributeName==='aria-busy' && record.oldValue==='true');
+    const alertAdded=records.some(record => record.type==='childList'
+      && Array.from(record.addedNodes).some(node => node.nodeType===Node.ELEMENT_NODE
+        && (node.matches('[role=alert]') || node.querySelector('[role=alert]'))));
+    // Reject even a subsequently removed error subtree or another busy cycle.
+    // The original action has one completer; new requests/recovery are fenced
+    // separately. This observes a fresh ack, not internal phase history.
+    if(settled.length>1 || alertAdded) {
+      ack.complete=true; ack.valid=false; observer.disconnect(); return;
+    }
+    if(settled.length) ack.busy=true;
+    if(state.getAttribute('aria-busy')==='true') ack.busy=true;
+    if(ack.busy && !ack.complete && state.getAttribute('aria-busy')==='false') {
+      ack.complete=true;
+      ack.valid=state.querySelector('[role=status]')?.textContent.trim()===expected
+        && !root.querySelector('[role=alert]')
+        && (!accepted || !!root.querySelector('[data-testid=registration-accepted]'));
+      observer.disconnect();
+    }
+  });
+  observer.observe(root,{subtree:true,attributes:true,attributeOldValue:true,
+    attributeFilter:['aria-busy'],childList:true,characterData:true});
+  ack.cleanup=() => { observer.disconnect(); for(const [target,kind] of listeners)
+    target.removeEventListener(kind,retire); delete window.__tabulaQaAck; };
+  window.__tabulaQaAck=ack;
+  return true;
+}"""
+
+
+async def ui_action(page, observation, method, path, button, acknowledged, accepted=False):
+    """One real UI request, its actual HTTP status, and its fresh validated UI ack.
+
+    Chromium151 misreports EOF of no-store Fetch streams as ERR_ABORTED and
+    loses getResponseBody (microsoft/playwright#42742). Do not reinterpret that
+    signal or reread the response: require the client's busy->validated ack,
+    then independently check committed authority in the caller. No replay.
+    """
+    require(path.startswith("/api/v2/"), "fixed same-origin account action required")
+    url, document, route = ORIGIN + path, observation.document, page.url
+    requests, retired = [], False
+    def started(request):
+        nonlocal retired
+        intended = request.url == url and request.method == method
+        recovery = (request.url == ORIGIN + "/api/v1/auth/context"
+                    or (accepted and request.url == ORIGIN + "/api/v2/auth/enrollment"))
+        if not intended and not recovery:
+            return
+        try:
+            if request.frame != page.main_frame or request.resource_type != "fetch":
+                retired = True
+                return
+        except PlaywrightError:
+            retired = True
+            return
+        if intended:
+            if len(requests) < 2:
+                requests.append(request)
+            else:
+                retired = True
+        if recovery:
+            retired = True
+    def navigated(frame):
+        nonlocal retired
+        if frame == page.main_frame:
+            retired = True
+    page.on("request", started)
+    page.on("framenavigated", navigated)
+    try:
+        locale = await page.locator("#locale").input_value()
+        require(locale in ACK_COPY, "known account acceptance locale required")
+        expected = ACK_COPY[locale][acknowledged]
+        require(await page.evaluate(ACK_ARM, {"expected": expected, "accepted": accepted}),
+                "account action requires an idle task state")
+        async with page.expect_response(lambda response: response.request in requests) as waiting:
+            await button.click()
+        response = await waiting.value
+        require(response.status == 200, "actual account action was not acknowledged by HTTP")
+        await page.wait_for_function("""() => {
+          const ack=window.__tabulaQaAck;
+          return !!ack && (ack.complete || ack.retired || ack.overflow);
+        }""", timeout=15000)
+        ack = await page.evaluate("""() => {
+          const {busy,complete,valid,retired,overflow}=window.__tabulaQaAck;
+          return {busy,complete,valid,retired,overflow};
+        }""")
+        require(ack == {"busy": True, "complete": True, "valid": True,
+                        "retired": False, "overflow": False},
+                "actual UI action lacked a fresh validated acknowledgment")
+        require(not retired and observation.document == document and page.url == route,
+                "account action authority or route retired before acknowledgment")
+        require(len(requests) == 1 and response.request == requests[0]
+                and requests[0].redirected_from is None and requests[0].redirected_to is None,
+                "actual UI action issued ambiguous or redirected requests")
+        await expect(page.locator('.account > .account__state')).to_have_attribute('aria-busy', 'false')
+        await expect(page.locator('.account > .account__state [role=status]')).to_have_text(expected)
+        await expect(page.locator('.account [role=alert]')).to_have_count(0)
+        return requests[0]
+    finally:
+        page.remove_listener("request", started)
+        page.remove_listener("framenavigated", navigated)
+        try:
+            await page.evaluate("window.__tabulaQaAck?.cleanup()")
+        except PlaywrightError:
+            pass
+
+
+def canonical_id(value):
+    return (isinstance(value, str) and len(value) == 32 and any(ch != '0' for ch in value)
+            and all(ch in '0123456789abcdef' for ch in value))
+
+
+def posted_operation(request, observation):
+    # Actual client input remains bounded and job-private. No CSRF/header/cookie
+    # values are read, and no fabricated response or mutation retry is produced.
+    raw = request.post_data
+    require(isinstance(raw, str) and len(raw.encode('utf-8')) <= POST_LIMIT,
+            "actual operation payload exceeded its bound")
+    value = request.post_data_json
+    require(isinstance(value, dict) and canonical_id(value.get('operation_id')),
+            "actual operation identity invalid")
+    operation = value['operation_id']
+    require(len(observation.operation_ids) < 16 and operation not in observation.operation_ids,
+            "explicit new intent reused an earlier operation")
+    observation.operation_ids.add(operation)
+    return value
+
+
 async def provider_callback(page, config_path, button, endpoint):
     # The app consumes the start body before navigating. Chromium then retires
     # that response's CDP body handle; observe its actual validated navigation
@@ -197,7 +355,7 @@ async def provider_callback(page, config_path, button, endpoint):
     await expect(page.locator("#account-title")).to_be_visible()
 
 
-async def enroll(page, context, config_path, handle, name, locale):
+async def enroll(page, context, observation, config_path, handle, name, locale):
     await page.goto(ORIGIN + "/register")
     await page.locator("#locale").select_option(locale)
     await provider_callback(page, config_path, page.get_by_test_id("enrollment-start"),
@@ -218,12 +376,12 @@ async def enroll(page, context, config_path, handle, name, locale):
     await asyncio.sleep(.2)
     require(not submitted, "composition prematurely submitted")
     await page.locator("#register-display-name").dispatch_event("compositionend", {"data": "Đặng"})
-    async with page.expect_response(lambda response: urlsplit(response.url).path == "/api/v2/auth/register") as result:
-        await page.get_by_test_id("register-submit").click()
-    registration = await result.value
-    require(registration.status == 200
-            and (await registration.json())["disposition"] == "accepted_without_session",
-            "registration must establish durable account without login")
+    request = await ui_action(page, observation, "POST", "/api/v2/auth/register",
+                              page.get_by_test_id("register-submit"), "ready", accepted=True)
+    registration = posted_operation(request, observation)
+    require(set(registration) == {"operation_id", "handle", "display_name"}
+            and registration["handle"] == handle and registration["display_name"] == name,
+            "actual registration did not submit the committed fields")
     await expect(page.get_by_test_id("registration-accepted")).to_be_visible()
     require(not any(cookie["name"] == SESSION_COOKIE for cookie in await context.cookies()),
             "registration issued an automatic session")
@@ -246,31 +404,85 @@ async def enroll(page, context, config_path, handle, name, locale):
     return profile["value"]
 
 
-async def search(page, handle):
+async def search(page, observation, handle, viewer):
     await page.locator("#friends-query").fill(handle)
-    async with page.expect_response(lambda response: urlsplit(response.url).path == "/api/v2/social/search") as waiting:
-        await page.get_by_test_id("friends-search").click()
-    response = await waiting.value
-    require(response.status == 200, "authorized directory search failed")
-    try:
-        return (await response.json())["results"]
-    except PlaywrightError as error:
-        error.tabula_step = "search_response_body"
-        raise
+    path = "/api/v2/social/search?q=" + handle
+    await ui_action(page, observation, "GET", path, page.get_by_test_id("friends-search"), "ready")
+    fresh = await api(page, path)
+    require(fresh["status"] == 200 and fresh["value"]["version"] == 2
+            and fresh["value"]["query"] == handle and fresh["value"]["viewer_id"] == viewer,
+            "fresh permitted directory read failed")
+    results = fresh["value"]["results"]
+    require(len(results) <= 20, "directory projection exceeded its bound")
+    expected = [{"user_id": row["identity"]["user_id"], "handle": row["identity"]["handle"]}
+                for row in results]
+    require(all(canonical_id(row["user_id"]) for row in expected)
+            and len({row["user_id"] for row in expected}) == len(expected),
+            "fresh directory identities invalid")
+    rows = page.locator('.account__social-list').first.locator(':scope > li[data-user-id]')
+    await expect(rows).to_have_count(len(expected))
+    rendered = await rows.evaluate_all("""nodes => nodes.map(node => ({
+      user_id:node.dataset.userId,handle:node.querySelector('a')?.textContent.trim()
+    }))""")
+    require(rendered == expected, "rendered directory differed from fresh permitted authority")
+    return results
 
 
-async def mutate_button(page, marker):
-    button = page.get_by_test_id(marker).first
+async def mutate_button(page, observation, test_id, viewer):
+    """Return the actual fresh committed request projection, never a response double."""
+    action = {"friend-send": "send", "friend-cancel": "cancel",
+              "friend-decline": "decline", "friend-accept": "accept"}[test_id]
+    button = page.get_by_test_id(test_id).first
     await expect(button).to_be_visible()
-    async with page.expect_response(lambda response: urlsplit(response.url).path == "/api/v2/social/mutate") as waiting:
-        await button.click()
-    response = await waiting.value
-    require(response.status == 200, "authorized friendship mutation failed")
-    try:
-        return await response.json()
-    except PlaywrightError as error:
-        error.tabula_step = "mutation_response_body"
-        raise
+    row = button.locator('xpath=ancestor::li[1]')
+    resource = await row.get_attribute('data-user-id' if action == 'send' else 'data-request-id')
+    require(canonical_id(resource), "actual friend action resource invalid")
+    before = await api(page, "/api/v2/social")
+    require(before["status"] == 200 and before["value"]["version"] == 2
+            and before["value"]["viewer_id"] == viewer, "fresh pre-action participant projection failed")
+    prior = before["value"]["requests"]
+    request = await ui_action(page, observation, "POST", "/api/v2/social/mutate", button, "saved")
+    sent = posted_operation(request, observation)
+    require(sent.get("action") == action, "actual friend action differed from selected control")
+    if action == 'send':
+        require(set(sent) == {"operation_id", "action", "target_user_id"}
+                and sent['target_user_id'] == resource and resource != viewer,
+                "actual send target differed from selected identity")
+    else:
+        matches = [entry for entry in prior if entry['request_id'] == resource]
+        require(len(matches) == 1 and matches[0]['status'] == 'pending',
+                "selected pending request lacked current authority")
+        old = matches[0]
+        require(set(sent) == {"operation_id", "action", "request_id", "expected_revision"}
+                and sent['request_id'] == resource and sent['expected_revision'] == old['revision']
+                and (old['sender']['user_id'] == viewer if action == 'cancel'
+                     else old['recipient']['user_id'] == viewer),
+                "actual friend transition resource, revision or actor differed")
+    after = await api(page, "/api/v2/social")
+    require(after["status"] == 200 and after["value"]["version"] == 2
+            and after["value"]["viewer_id"] == viewer, "fresh committed participant projection failed")
+    if action == 'send':
+        prior_ids = {entry['request_id'] for entry in prior}
+        committed = [entry for entry in after['value']['requests']
+                     if entry['sender']['user_id'] == viewer and entry['recipient']['user_id'] == resource
+                     and entry['status'] == 'pending' and entry['request_id'] not in prior_ids]
+        require(len(committed) == 1 and committed[0]['revision'] == 1
+                and canonical_id(committed[0]['request_id']),
+                "new pending request absent from fresh committed authority")
+    else:
+        committed = [entry for entry in after['value']['requests'] if entry['request_id'] == resource]
+        status = {'cancel': 'cancelled', 'decline': 'declined', 'accept': 'accepted'}[action]
+        require(len(committed) == 1 and committed[0]['status'] == status
+                and committed[0]['revision'] == old['revision'] + 1
+                and committed[0]['sender']['user_id'] == old['sender']['user_id']
+                and committed[0]['recipient']['user_id'] == old['recipient']['user_id'],
+                "terminal request transition absent from fresh committed authority")
+        if action == 'accept':
+            peer = old['sender']['user_id']
+            require(len([friend for friend in after['value']['friends']
+                         if friend['identity']['user_id'] == peer]) == 1,
+                    "accepted relationship absent from fresh friendship projection")
+    return committed[0]
 
 
 async def fresh_scope(observation, previous, viewer):
@@ -315,8 +527,8 @@ async def run(args):
             first, second = (context.pages[0] for context in contexts)
             a, b = observations
             stage = "verified_registration_and_explicit_login"
-            alice = await enroll(first, contexts[0], config_path, "tabula_alice", "Đặng Mai 東京", "en")
-            bob = await enroll(second, contexts[1], peer_path, "tabula_bob", "Nguyễn Bình", "vi")
+            alice = await enroll(first, contexts[0], a, config_path, "tabula_alice", "Đặng Mai 東京", "en")
+            bob = await enroll(second, contexts[1], b, peer_path, "tabula_bob", "Nguyễn Bình", "vi")
             cases.extend(["independent_real_provider_enrollment", "no_automatic_registration_session",
                           "committed_unicode_and_composition_guard", "secure_httponly_lax_cookie",
                           "fresh_durable_identity_login", "english_vietnamese_journeys"])
@@ -356,10 +568,9 @@ async def run(args):
             await second.goto(ORIGIN + "/friends")
             await second.locator("#locale").select_option("vi")
             stage = "friends_initial_search"
-            require(len(await search(first, "tabula_bob")) == 1, "permitted exact search missing")
+            require(len(await search(first, a, "tabula_bob", alice["account_id"])) == 1, "permitted exact search missing")
             stage = "friends_send_first_request"
-            sent = await mutate_button(first, "friend-send")
-            pending = sent["request"]
+            pending = await mutate_button(first, a, "friend-send", alice["account_id"])
             stage = "friends_read_pending_authority"
             durable = await api(first, "/api/v2/social")
             require(durable["status"] == 200 and any(
@@ -372,20 +583,20 @@ async def run(args):
             require((await api(first, "/api/v2/social/mutate", "POST", forbidden))["status"] == 403,
                     "sender accepted own request")
             stage = "friends_cancel_request"
-            await mutate_button(first, "friend-cancel")
+            await mutate_button(first, a, "friend-cancel", alice["account_id"])
             stage = "friends_search_after_cancel"
-            await search(first, "tabula_bob")
+            await search(first, a, "tabula_bob", alice["account_id"])
             stage = "friends_send_after_cancel"
-            await mutate_button(first, "friend-send")
+            await mutate_button(first, a, "friend-send", alice["account_id"])
             stage = "friends_decline_request"
-            await mutate_button(second, "friend-decline")
+            await mutate_button(second, b, "friend-decline", bob["account_id"])
             stage = "friends_search_after_decline"
-            await search(first, "tabula_bob")
+            await search(first, a, "tabula_bob", alice["account_id"])
             stage = "friends_send_after_decline"
-            await mutate_button(first, "friend-send")
+            await mutate_button(first, a, "friend-send", alice["account_id"])
             stage = "friends_accept_request"
-            accepted = await mutate_button(second, "friend-accept")
-            require(accepted["request"]["status"] == "accepted", "acceptance stayed local")
+            accepted = await mutate_button(second, b, "friend-accept", bob["account_id"])
+            require(accepted["status"] == "accepted", "acceptance stayed local")
             cases.extend(["authorized_directory_search", "sender_cannot_accept_own_request",
                           "explicit_cancel_decline_resend_accept"])
 
@@ -481,13 +692,12 @@ async def run(args):
         kind = browser_failure_kind(error)
         if kind:
             receipt["browser_failure_kind"] = kind
-        step = getattr(error, "tabula_step", None)
-        if step in ("search_response_body", "mutation_response_body"):
-            receipt["browser_step"] = step
         if isinstance(error, CheckFailure):
             receipt["reason"] = str(error)
         receipt["sockets"] = [{"frames": len(observation.frames), "maximum_active": observation.maximum,
-                                "errors": len(observation.errors)} for observation in observations]
+                                "errors": len(observation.errors),
+                                "failed_social_reads": observation.failed_social_reads}
+                               for observation in observations]
         with os.fdopen(os.open(args.private / "browser-failure.txt", os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600), "w") as debug:
             traceback.print_exc(file=debug)
         raise RuntimeError("Actual account/social acceptance failed at " + stage) from None

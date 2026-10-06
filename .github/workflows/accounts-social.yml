@@ -144,6 +144,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - uses: Swatinem/rust-cache@v2
+        with:
+          # Public compiler/build inputs only; provider keys/browser profiles
+          # remain task-local outside this cache. All gates still execute.
+          cache-on-failure: true
       - name: Install pinned browser/build helpers
         run: |
           sudo apt-get update
