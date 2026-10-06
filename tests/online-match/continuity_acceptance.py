@@ -7,6 +7,8 @@ credentials, ignored TLS error, local tunnel, HAR, or private payload artifact.
 """
 from __future__ import annotations
 import argparse
+from contextlib import contextmanager
+from contextvars import ContextVar
 import http.client
 import ssl
 import json
@@ -15,7 +17,7 @@ from pathlib import Path
 import time
 from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright
-from browser_acceptance import (AcceptanceFailure, GAME_PATH, MATCH_VERSION, ORIGIN,
+from browser_acceptance import (AcceptanceFailure, GAME_PATH, MATCH_VERSION, ORIGIN, active_browser_diagnostics,
     SESSION_COOKIE, TERMINAL_STATUS, api, board_square, context_facts, denied,
     enroll_actual_page, enter_game, exception_class, move, private_frame_keys,
     rendered_canvas_pixels, require, setup_browser_trust, wire_probe, start_native_poll, publication_control, reattach_required, completed_attachment_response)
@@ -39,6 +41,27 @@ CURRENT_BOARD = """({seat,status,readonly}) => {
   && (readonly ? d.onlineConnection?.startsWith('Read-only') : d.onlineConnection==='Connected · server-authoritative');
 }"""
 MOVES = [('f2','f3'),('e7','e5'),('g2','g4'),('d8','h4')]
+_PAIR_RESULTS = ContextVar('continuity_pair_results', default=None)
+
+
+@contextmanager
+def pair_diagnostics(results):
+    # Retain only the current pair's source-owned phase/role and bounded attach
+    # facts; account, invitation, match, grant and response bytes stay private.
+    token = _PAIR_RESULTS.set(results)
+    try: yield
+    finally: _PAIR_RESULTS.reset(token)
+
+
+def seat_status(role, status):
+    """Exact Chess a11y wording owned by status_text, including CHECK suffix."""
+    require(type(role) is int and role in (0, 1), 'unexpected scripted board seat')
+    require(status in ('White to move', 'Black to move', 'White to move / CHECK',
+                       'Black to move / CHECK', TERMINAL_STATUS), 'unexpected scripted board status')
+    own_turn = ('White to move', 'Black to move')[role]
+    if status == own_turn or status == own_turn + ' / CHECK':
+        return 'Your turn / ' + ('White', 'Black')[role] + status[len(own_turn):]
+    return status
 
 
 def fault_control(ca: Path, operation: str, token: str) -> dict:
@@ -95,11 +118,15 @@ class PageNetwork:
 
 class Pair:
     def __init__(self,contexts,private:Path,label:str):
+        owner = _PAIR_RESULTS.get()
+        self.trace = {'phase':'new_pages','role':None,'attachments':[]} if owner is not None else None
+        if owner is not None: owner['active_pair'] = self.trace
         self.pages=[context.new_page() for context in contexts]
         self.contexts=contexts;self.private=private;self.label=label
         self.attachments=[[],[]];self.commands=[[],[]]
         self.facts=[];self.match_id=None;self.audit_inputs=0;self.expected_scopes=2
         for role,page in enumerate(self.pages):
+            self.stage('enroll',role)
             page.on('requestfinished',lambda request,r=role:self.observe_attach_finished(request,r))
             page.on('request',lambda request,r=role:self.observe_command(request,r))
             page.goto(ORIGIN+'/__fixture/enroll',wait_until='domcontentloaded')
@@ -107,18 +134,29 @@ class Pair:
             self.facts.append(context_facts(page))
         require(self.facts[0]['account_id']!=self.facts[1]['account_id'],'fault opponents share an account')
         white,black=self.pages
+        self.stage('create',0)
         with white.expect_response(lambda r:urlsplit(r.url).path=='/api/v1/matches') as created:
             white.get_by_test_id('online-create').click()
         require(created.value.status==200,'fault match creation failed')
         admitted=actual_response_json(created.value);self.match_id=admitted['match_id']
+        self.stage('join',1)
         black.get_by_test_id('online-join-code').fill(admitted['join_code'])
         with black.expect_response(lambda r:urlsplit(r.url).path=='/api/v1/matches/join') as joined:
             black.get_by_test_id('online-join').click()
         require(joined.value.status==200 and actual_response_json(joined.value)['seat']==1,'fault opponent admission failed')
         for role,page in enumerate(self.pages):
-            enter_game(page,self.match_id,role)
+            self.stage('enter',role)
+            enter_game(page,self.match_id,role,self.trace['attachments'] if self.trace is not None else None)
             self.board(role,'White to move')
+        self.stage('initial_audit')
         self.write_audit(0)
+        self.stage('ready')
+    def stage(self,phase,role=None):
+        require(phase in ('enroll','create','join','enter','board','initial_audit','ready'),
+                'unexpected pair diagnostic phase')
+        require(role is None or type(role) is int and role in (0,1),'unexpected pair diagnostic role')
+        if self.trace is not None:
+            self.trace.update({'phase':phase,'role':('white','black')[role] if role is not None else None})
     def observe_attach_finished(self,request,role):
         if self.match_id:
             response=completed_attachment_response(request,self.match_id)
@@ -135,6 +173,8 @@ class Pair:
             require(request.post_data is not None,'actual interrupted command body missing')
             self.commands[role].append(request.post_data)
     def board(self,role,status,readonly=False,page=None):
+        status=seat_status(role,status)
+        self.stage('board',role)
         page=page or self.pages[role]
         page.bring_to_front()
         page.wait_for_function(CURRENT_BOARD,arg={'seat':role,'status':status,'readonly':readonly},timeout=60_000)
@@ -752,7 +792,7 @@ def run(args):
     results={'version':1,'optional':{},'status':'fail','actual_chromium_processes':2,'real_postgres':True,'normal_tls_verification':True,'cases':[]}
     contexts=[]
     try:
-        with sync_playwright() as playwright:
+        with sync_playwright() as playwright, active_browser_diagnostics(contexts,results,{}), pair_diagnostics(results):
             for role in ('continuity-white','continuity-black'):
                 home,profile=setup_browser_trust(private,role,ca);environment=os.environ.copy();environment['HOME']=str(home);environment['XDG_DATA_HOME']=str(home/'.local/share')
                 contexts.append(playwright.chromium.launch_persistent_context(str(profile),headless=True,channel='chromium',chromium_sandbox=True,env=environment,viewport={'width':1100,'height':850},reduced_motion='reduce',locale='en-US'))

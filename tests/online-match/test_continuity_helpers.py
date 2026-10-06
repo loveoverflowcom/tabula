@@ -2,16 +2,101 @@
 import json
 from types import SimpleNamespace
 import unittest
-from playwright.sync_api import Error as BrowserError
+from playwright.sync_api import Error as BrowserError, TimeoutError as BrowserTimeout
 from actual_response import ObservationFailure
 from browser_acceptance import admission_response_facts, exception_class, protected_endpoint_class
 from unittest import mock
 from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_CONCEALED,
-    PageNetwork, Pair, command_identity, pending_record, run, current_context_after_restart, FOCUS_OBSERVER,
+    PageNetwork, Pair, command_identity, pending_record, run, pair_diagnostics, current_context_after_restart, FOCUS_OBSERVER,
     same_record_rotation_game, focus_only_revoke_game)
 
 
 class ContinuityHelperTests(unittest.TestCase):
+    def test_board_matches_exact_game_owned_seat_wording(self):
+        # Fixed projected facts are independent examples from Chess status_text.
+        # This fake does not manufacture browser, TLS or rendered acceptance.
+        class ProjectedPage:
+            def __init__(self, seat, status, available=True, visible=True,
+                         connection='Connected · server-authoritative'):
+                self.seat=seat;self.status=status;self.available=available
+                self.visible=visible;self.connection=connection;self.foreground=False
+            def bring_to_front(self): self.foreground=True
+            def wait_for_function(self, predicate, *, arg, timeout):
+                self.last_arg=arg
+                connection=(self.connection.startswith('Read-only') if arg['readonly']
+                            else self.connection=='Connected · server-authoritative')
+                if not (self.foreground and self.available and self.visible and connection
+                        and self.seat==arg['seat'] and self.status==arg['status']):
+                    raise BrowserTimeout('fixed projected board mismatch')
+
+        pair=Pair.__new__(Pair);pair.trace=None
+        examples=((0,'White to move','Your turn / White'),
+                  (1,'White to move','White to move'),
+                  (0,'Black to move','Black to move'),
+                  (1,'Black to move','Your turn / Black'),
+                  (0,'White to move / CHECK','Your turn / White / CHECK'),
+                  (1,'Black to move / CHECK','Your turn / Black / CHECK'),
+                  (0,'Black to move / CHECK','Black to move / CHECK'),
+                  (1,'White to move / CHECK','White to move / CHECK'),
+                  (0,'Game over / Black wins / checkmate','Game over / Black wins / checkmate'),
+                  (1,'Game over / Black wins / checkmate','Game over / Black wins / checkmate'))
+        for role,expected,actual in examples:
+            with self.subTest(role=role,expected=expected), \
+                 mock.patch('continuity_acceptance.rendered_canvas_pixels') as pixels:
+                page=ProjectedPage(role,actual)
+                pair.board(role,expected,page=page)
+                self.assertEqual(page.last_arg,{'seat':role,'status':actual,'readonly':False})
+                pixels.assert_called_once_with(page)
+
+        # Neither observer wording on one's own turn nor another seat/authority
+        # can satisfy the exact predicate. Missing CHECK stays a mismatch.
+        invalid=(ProjectedPage(0,'White to move'),
+                 ProjectedPage(1,'Your turn / White'),
+                 ProjectedPage(0,'Your turn / Black'),
+                 ProjectedPage(0,'Your turn / White',available=False),
+                 ProjectedPage(0,'Your turn / White',visible=False),
+                 ProjectedPage(0,'Your turn / White',connection='Read-only · unresolved'))
+        for page in invalid:
+            with self.subTest(page=page.__dict__), \
+                 mock.patch('continuity_acceptance.rendered_canvas_pixels') as pixels:
+                with self.assertRaises(BrowserTimeout):pair.board(0,'White to move',page=page)
+                pixels.assert_not_called()
+        with self.assertRaises(BrowserTimeout):
+            pair.board(0,'White to move / CHECK',page=ProjectedPage(0,'Your turn / White'))
+        page=ProjectedPage(0,'Black to move',connection='Read-only · unresolved')
+        with mock.patch('continuity_acceptance.rendered_canvas_pixels',side_effect=AcceptanceFailure('no real pixels')) as pixels:
+            with self.assertRaises(AcceptanceFailure):pair.board(0,'Black to move',readonly=True,page=page)
+            pixels.assert_called_once_with(page)
+        with self.assertRaises(AcceptanceFailure):pair.board(2,'White to move',page=page)
+        with self.assertRaises(AcceptanceFailure):pair.board(0,'unknown private text',page=page)
+
+    def test_pair_timeout_retains_closed_stage_and_attach_trace_only(self):
+        pages=[mock.MagicMock(),mock.MagicMock()]
+        contexts=[mock.Mock(),mock.Mock()]
+        for context,page in zip(contexts,pages): context.new_page.return_value=page
+        created=mock.Mock(status=200);joined=mock.Mock(status=200)
+        pages[0].expect_response.return_value.__enter__.return_value=SimpleNamespace(value=created)
+        pages[1].expect_response.return_value.__enter__.return_value=SimpleNamespace(value=joined)
+        pages[0].wait_for_function.side_effect=BrowserTimeout('private match and credentials')
+        facts=[{'account_id':'private-white'},{'account_id':'private-black'}]
+        def enter(page,match_id,role,trace):
+            trace.append({'expected_seat':role,'phase':'complete','typed_seat_matches':True})
+        results={}
+        with pair_diagnostics(results), \
+             mock.patch('continuity_acceptance.enroll_actual_page'), \
+             mock.patch('continuity_acceptance.context_facts',side_effect=facts), \
+             mock.patch('continuity_acceptance.actual_response_json',side_effect=[
+                 {'match_id':'private-match','join_code':'private-invite'}, {'seat':1}]), \
+             mock.patch('continuity_acceptance.enter_game',side_effect=enter), \
+             mock.patch('continuity_acceptance.rendered_canvas_pixels') as pixels:
+            with self.assertRaises(BrowserTimeout):Pair(contexts,mock.Mock(),'private-audit-label')
+        self.assertEqual(results,{'active_pair':{'phase':'board','role':'white','attachments':[
+            {'expected_seat':0,'phase':'complete','typed_seat_matches':True}]}})
+        self.assertNotIn('private',json.dumps(results));pixels.assert_not_called()
+        # A later standalone helper has no retained owner from the failed run.
+        from continuity_acceptance import _PAIR_RESULTS
+        self.assertIsNone(_PAIR_RESULTS.get())
+
     def test_create_join_diagnostics_are_fixed_classes_without_private_routing(self):
         self.assertEqual(protected_endpoint_class('https://localhost:9443/api/v1/matches'),'create')
         self.assertEqual(protected_endpoint_class('https://localhost:9443/api/v1/matches/join'),'join')
