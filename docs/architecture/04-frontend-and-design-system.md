@@ -165,6 +165,16 @@ The duplication cost is real but small: `tabula-protocol`, `tabula-core`, `tabul
 and `tabula-net-client` appear in both bundles. They are the *small* crates. The presenters and
 Macroquad — the big things — appear only in `game.wasm`.
 
+The DOM catalog/setup consumer uses `registered_discovery_games()` and
+`DiscoveryCatalog`: its read-only erased interface carries the existing facts,
+configuration validation and handoff declarations, but no canonical match
+factory/restoration vtable. Each method statically forwards to the unchanged
+game adapter (I-9); the full `ErasedGame`, legacy catalog and server factories
+remain available with their original signatures. This prevents unused authority
+code from being retained merely by discovery, without weakening validation or
+changing the separate-document boundary. The existing emitted shell-WASM cap
+remains 900,000 bytes; source graph and actual emitted bytes are separate evidence.
+
 ### 3.3 Native desktop and mobile
 
 **Desktop** is one binary. The shell screens are drawn by the **same** Macroquad runtime using a

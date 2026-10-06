@@ -6,8 +6,9 @@
 
 use leptos::prelude::*;
 use leptos_router::components::A;
+use tabula_registry::discovery::ErasedDiscoveryGame as ErasedGame;
 use tabula_registry::{
-    bot_level_label_key, Catalog, ErasedGame, FieldKind, GameId, LaunchMode, ModeSupport,
+    bot_level_label_key, DiscoveryCatalog as Catalog, FieldKind, GameId, LaunchMode, ModeSupport,
     RuntimeBinding, SummaryLine, SummaryValue, TimeControlKind,
 };
 use wasm_bindgen::{closure::Closure, JsCast};

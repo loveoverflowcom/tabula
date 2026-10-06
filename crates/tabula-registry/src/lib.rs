@@ -161,6 +161,9 @@
 pub mod availability;
 pub mod catalog;
 pub mod config;
+pub mod discovery;
+#[cfg(test)]
+mod discovery_tests;
 pub mod erased;
 pub mod games;
 pub mod i18n;
@@ -175,6 +178,7 @@ use std::sync::Arc;
 
 pub use availability::{LaunchMode, ModeState, ModeSupport, UnavailableReason};
 pub use catalog::{Catalog, CatalogEntry, CatalogQuery, Localizer};
+pub use discovery::{DiscoveryCatalog, DiscoveryCatalogEntry};
 // Re-exported so a shell can name the catalog's own vocabulary without
 // depending on `tabula-game-api` directly: the game contract is below the
 // catalog boundary, and only the catalog may carry it upward (deps.toml).
@@ -205,6 +209,19 @@ pub use tabula_game_api::{
 /// the Library says so rather than inventing an entry.
 #[must_use]
 pub fn registered_games() -> Vec<Arc<dyn ErasedGame>> {
+    vec![
+        #[cfg(feature = "game-chess")]
+        Arc::new(Adapter::<games::chess::ChessSetup>::new()),
+        #[cfg(feature = "game-tiles")]
+        Arc::new(Adapter::<games::tiles::TilesSetup>::new()),
+    ]
+}
+
+/// Every linked game through its read-only discovery/setup interface.
+/// Game factories/default registration remain unchanged for authority owners.
+/// The DOM shell consumes this path to avoid materializing runtime vtables.
+#[must_use]
+pub fn registered_discovery_games() -> Vec<Arc<dyn discovery::ErasedDiscoveryGame>> {
     vec![
         #[cfg(feature = "game-chess")]
         Arc::new(Adapter::<games::chess::ChessSetup>::new()),
