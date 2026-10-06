@@ -3,7 +3,7 @@
 use std::marker::PhantomData;
 use tabula_core::{canonical_decode, canonical_encode, GameId, GameVersion, MatchId};
 use tabula_game_api::GameRules;
-use tabula_net_client::direct::{DirectClient, DirectState};
+use tabula_net_client::direct::{DirectClient, DirectError, DirectState};
 use tabula_presentation::{AudioCues, FrameCtx, GamePresentation, InputEvent, RenderList};
 use tabula_protocol::{ClientEnvelope, ErrorCode, ServerEnvelope, ServerMessage};
 
@@ -232,9 +232,10 @@ where
                 updates.push((view, events));
             }
         }
-        self.network
-            .receive(frames)
-            .map_err(|_| "The online stream was interrupted")?;
+        self.network.receive(frames).map_err(|error| match error {
+            DirectError::Authority => "Online authority was denied",
+            _ => "The online stream was interrupted",
+        })?;
         let mut cues = AudioCues::new();
         for (view, events) in updates {
             self.view = Some(view);
@@ -443,6 +444,39 @@ mod tests {
         assert!(online.resync(SCOPE, 1, &[malformed]).is_err());
         assert!(online.present(&frame()).is_none());
         assert_eq!(online.description(), None);
+    }
+    #[test]
+    fn explicit_denial_clears_projection_and_busy_retains_only_original_intent() {
+        for error in [ErrorCode::Unauthorized, ErrorCode::Busy] {
+            let mut online = session();
+            online.bind_scope(SCOPE).unwrap();
+            online
+                .on_input(&InputEvent::Key {
+                    key: Key::Enter,
+                    pressed: true,
+                })
+                .unwrap();
+            assert!(online
+                .receive(
+                    &[
+                        ServerEnvelope::new(Some(1), 2, ServerMessage::Reject { seq: 1, error })
+                            .unwrap()
+                    ],
+                    &frame()
+                )
+                .is_err());
+            assert!(online.present(&frame()).is_none());
+            assert_eq!(online.description(), None);
+            assert!(!online.local.held);
+            assert_eq!(online.has_pending(), error == ErrorCode::Busy);
+            if error == ErrorCode::Busy {
+                online.recover();
+                assert!(online
+                    .resync(SCOPE, 1, &[update(1, 0, 2, Vec::new())])
+                    .unwrap()
+                    .is_some());
+            }
+        }
     }
     #[test]
     fn intents_never_run_rules_or_change_the_authoritative_projection() {

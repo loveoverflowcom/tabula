@@ -131,9 +131,36 @@ impl DirectClient {
                     if matches!(
                         frame.body(),
                         ServerMessage::Reject {
+                            error: tabula_protocol::ErrorCode::Unauthorized,
+                            ..
+                        }
+                    ) {
+                        self.pending = None;
+                        self.operation_scope = None;
+                        self.revision = None;
+                        self.frame = 0;
+                        self.disconnect();
+                        return Err(DirectError::Authority);
+                    }
+                    if matches!(
+                        frame.body(),
+                        ServerMessage::Reject {
+                            error: tabula_protocol::ErrorCode::Busy,
+                            ..
+                        }
+                    ) {
+                        // Capacity refusal does not consume the server sequence or
+                        // establish a durable receipt. Retain the original identity.
+                        self.recover();
+                        return Err(DirectError::Retry);
+                    }
+                    if matches!(
+                        frame.body(),
+                        ServerMessage::Reject {
                             error: tabula_protocol::ErrorCode::StaleSeq
                                 | tabula_protocol::ErrorCode::Unavailable
-                                | tabula_protocol::ErrorCode::OperationConflict,
+                                | tabula_protocol::ErrorCode::OperationConflict
+                                | tabula_protocol::ErrorCode::SeqTooFar,
                             ..
                         }
                     ) {
@@ -276,6 +303,12 @@ fn valid_scope(scope: &str) -> bool {
 /// Fixed public-safe boundary failures.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum DirectError {
+    /// The current attachment explicitly denied permission; forget its pending scope.
+    #[error("online authority was denied")]
+    Authority,
+    /// Non-consuming capacity refusal requires bounded fresh-authority recovery.
+    #[error("online capacity must be reacquired")]
+    Retry,
     /// Sending is not currently permitted.
     #[error("the online board is not ready to send")]
     Blocked,
@@ -429,6 +462,54 @@ mod tests {
             assert_eq!(c.state(), DirectState::ReadOnly);
             assert_eq!(c.command(vec![42]), Err(DirectError::Blocked));
         }
+    }
+    #[test]
+    fn explicit_authority_denial_forgets_scope_pending_and_never_restores_old_frames() {
+        let mut c = client();
+        c.bind_scope(SCOPE).unwrap();
+        c.receive(&[update(1, 0)]).unwrap();
+        c.command(vec![42]).unwrap();
+        assert_eq!(
+            c.receive(&[ServerEnvelope::new(
+                Some(4),
+                2,
+                ServerMessage::Reject {
+                    seq: 4,
+                    error: ErrorCode::Unauthorized
+                }
+            )
+            .unwrap()]),
+            Err(DirectError::Authority)
+        );
+        assert_eq!(c.state(), DirectState::Disconnected);
+        assert!(!c.has_pending());
+        assert!(c.operation_scope.is_none());
+        assert_eq!(c.receive(&[update(2, 1)]), Err(DirectError::Blocked));
+    }
+    #[test]
+    fn busy_is_non_consuming_and_recovery_retries_the_original_identity() {
+        let mut c = client();
+        c.bind_scope(SCOPE).unwrap();
+        c.receive(&[update(1, 0)]).unwrap();
+        let original = c.command(vec![42]).unwrap();
+        assert_eq!(
+            c.receive(&[ServerEnvelope::new(
+                Some(4),
+                2,
+                ServerMessage::Reject {
+                    seq: 4,
+                    error: ErrorCode::Busy
+                }
+            )
+            .unwrap()]),
+            Err(DirectError::Retry)
+        );
+        assert_eq!(c.state(), DirectState::UnknownResult);
+        assert!(c.has_pending());
+        assert_eq!(c.revision(), None);
+        assert_eq!(c.command(vec![99]), Err(DirectError::Blocked));
+        assert_eq!(c.resync(SCOPE, 4, &[update(1, 0)]).unwrap(), Some(original));
+        assert_eq!(c.state(), DirectState::Sending);
     }
     #[test]
     fn one_pending_command_until_matching_receipt() {

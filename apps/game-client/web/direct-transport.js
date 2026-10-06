@@ -179,6 +179,7 @@
           throw new Error("Online move result remains unknown");
         }
         if (name === "tabula-online-unavailable.txt") { unavailable(); throw new Error("Online document unavailable"); }
+        if (name === "tabula-online-conceal.txt") { interrupt(); return encode("ok"); }
         if (name === "tabula-online-settled.txt") { clearPending(); return encode("ok"); }
         if (name === "tabula-online-unknown.txt") { markUnknown(); return encode("ok"); }
         if (name.startsWith("tabula-online-status/")) {

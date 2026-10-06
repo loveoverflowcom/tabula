@@ -194,3 +194,16 @@ test("six failed fresh-authority attempts stop with an explicit retry and keep t
   assert.ok(storage.getItem("tabula.pending.v2."+id));
   f.transport.retire();
 });
+test("Rust capacity resync conceals immediately and preserves original intent without HTTP",async()=>{
+  let calls=0,recovering=0,seen=0;
+  const storage=memoryStorage();
+  const f=fixture(async(...args)=>{calls++;return authFetcher()(...args);},{storage,onRecovering(){recovering++;},onStatus(){seen++;}});
+  await f.transport.file("tabula-online-attach.txt");
+  await f.transport.file("tabula-online-command/"+hex('{"seq":1}'));
+  const before=calls;
+  await f.transport.file("tabula-online-conceal.txt");
+  await f.transport.file("tabula-online-status/"+hex(JSON.stringify({generation:0,seat:0,revision:0,status:"old",connection:"old"})));
+  assert.equal(calls,before);assert.equal(recovering,1);assert.equal(seen,0);
+  assert.equal(JSON.parse(storage.getItem("tabula.pending.v2."+id)).command,'{"seq":1}');
+  f.transport.retire();
+});

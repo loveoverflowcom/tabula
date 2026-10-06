@@ -226,10 +226,16 @@ pub(super) async fn run_online<M, P>(
                                 }
                             }
                         } else if let Ok(response) = serde_json::from_slice::<MatchFrames>(&bytes) {
-                            if let Ok(cues) = online.receive(response.frames(), &board_frame) {
+                            let received = online.receive(response.frames(), &board_frame);
+                            if matches!(received, Err("Online authority was denied")) {
+                                online.disconnect();
+                                unavailable().await;
+                                return;
+                            } else if let Ok(cues) = received {
                                 play_cues(audio, &cues);
                             } else {
                                 online.recover();
+                                let _ = mq::load_file("tabula-online-conceal.txt").await;
                                 recover_request = true;
                                 command = None;
                             }
