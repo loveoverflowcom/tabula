@@ -115,3 +115,11 @@ Trunk calibration improved 991,638 to 944,872 bytes; local and CI values are
 reported separately. This is progress, still FAIL against the same cap. Online
 WASM compilation and 77 online web tests pass; no failing cap was waived, no
 route removed, and no game/runtime asset was hidden from the loading inventory.
+
+## Corrective follow-up after the external merge
+
+The fresh-develop [resource/keyboard/large-text correction](corrective-local-20261006.md)
+records the additive discovery boundary, native fragment focus and responsive
+large-text changes plus exact local verification. Its evidence boundary is
+separate from these historical captures and from the separately requested genuine
+post-fix screenshots.

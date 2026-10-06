@@ -33,7 +33,10 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Router>
-            <a class="skip-link" href="#main">
+            // An explicit same-context target bypasses the router's delegated
+            // anchor interception. Native fragment navigation then scrolls AND
+            // focuses the tabindex=-1 main, rather than only scrolling it.
+            <a class="skip-link" href="#main" target="_self">
                 {move || Messages::new(locale.get()).text("app.skip")}
             </a>
             <parts::TopBar/>

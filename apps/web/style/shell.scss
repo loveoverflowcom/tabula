@@ -117,4 +117,18 @@ body { background: var(--sys-color-shell-canvas); }
   .hero-copy h2 { max-width:73%; font-size:2rem; }
   .hero-art { right:-7rem; }
 }
+// This uses the user's initial font size, not physical-pixel heuristics: 320/390
+// at the normal 16px preference retain Design 01. At 200% text they have under
+// 16rem of usable width, so copy gets the whole hero and decoration yields.
+@media(max-width:16rem) {
+  .hero-copy { padding:.5rem; }
+  .hero-copy h2 { max-width:none; overflow-wrap:normal; hyphens:manual; }
+  .hero-copy > p:not(.eyebrow) { max-width:none; }
+  .hero-copy > .btn { padding-inline:.5rem; }
+  .hero-copy > .btn > span { overflow-wrap:normal; word-break:normal; }
+  .hero-art { display:none; }
+  .continue-strip { flex-direction:column; align-items:flex-start; }
+  .continue-strip > div { width:100%; overflow-wrap:normal; }
+  .bottom-nav .shell-link { padding-inline:0; overflow-wrap:normal; word-break:normal; }
+}
 @media(prefers-reduced-motion:reduce) { .shell-menu,.hero-art { animation:none; transition:none; } }

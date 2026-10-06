@@ -11,7 +11,9 @@ use leptos_router::{
     hooks::{use_navigate, use_query_map},
     NavigateOptions,
 };
-use tabula_registry::{Catalog, CatalogEntry, CatalogQuery, LaunchMode};
+use tabula_registry::{
+    CatalogQuery, DiscoveryCatalog as Catalog, DiscoveryCatalogEntry as CatalogEntry, LaunchMode,
+};
 
 use crate::{
     i18n::{shell, Messages},
