@@ -61,11 +61,11 @@ palette colours and hex literals under `apps/mobile/` (the generated file is the
 
 ## App identity
 
-The existing Home heading uses `design/TabulaBrand.kt`, which draws the approved T Portal mark
+The shell top bar uses `design/TabulaBrand.kt`, which draws the approved T Portal mark
 and outlined wordmark from `assets/brand/` with the generated `brandMark` and `brandWordmark`
 roles. `TabulaBrandPaths.kt` is an export of those SVG paths and lockup coordinates, not a second
 authored logo. It has one accessible heading named Tabula; the mark is decorative. Game titles,
-game artwork, occupant avatars, gameplay and navigation are unchanged. There is no additional
+game artwork and gameplay remain registry/runtime owned. There is no additional
 app loading or About screen in this foundation.
 
 Android's manifest selects `@mipmap/ic_launcher`; legacy square PNGs and the adaptive foreground
@@ -79,6 +79,32 @@ at 320/390 dp in all four authored schemes. Its screenshots are shared-shell pre
 only. Launcher appearance still requires Android/iOS execution; source wiring or exported PNGs
 do not establish a device run. The optional `apps/desktop` product remains a gated no-op skeleton;
 `previewApp` is testing only and does not add a desktop installer or icon target.
+
+## Shell navigation and copy
+
+Issue #101 adds the [adaptive shell foundation](../../docs/ui/screens/mobile-shell.md):
+Home, Library, packaged-game detail and local setup, Account, and the existing `GameHost` handoff.
+Home/Library/Account have labeled bottom navigation on phones and a rail from 600 dp. Content
+scrolls inside the remaining space, with safe insets owned by the outer shell. The Account entry
+uses the shared neutral human silhouette; native account services and the full remote catalog
+have explicit unavailable states.
+
+`navigation/BackStack.kt` owns bounded public route identities and saved-state restoration.
+Nested navigation returns to its caller; gameplay offers Back to the host first. Restoration
+returns an interrupted local game to setup, requiring a new launch rather than promising a
+saved match. OS deep-link registration and credentials remain gated.
+
+`localization/ShellStrings.kt` owns exhaustive English/Vietnamese shell message keys, regional
+locale normalization and English fallback. Game names arrive from the packaged manifest.
+Reusable components live in `shell/ShellComponents.kt`; they consume generated semantic tokens
+for surfaces, emphasis, interaction layers, focus and target size.
+
+`:previewApp:test` covers selected navigation, detail/setup/account gates, local return, narrow
+and tablet layouts, themes/locales, large text and long names. The
+[issue #101 ledger](../../docs/verification/issue-101-mobile-shell/README.md) records executed
+checks and screenshots separately from Android/iOS device acceptance. To inspect the shared
+shell interactively, use `:previewApp:run -Ppreview.width=320 -Ppreview.language=vi
+-Ppreview.dark=true -Ppreview.fontScale=2` (simulated game page).
 
 ## The GameHost seam
 

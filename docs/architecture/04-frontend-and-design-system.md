@@ -205,6 +205,14 @@ This is a real divergence between web, desktop and mobile and it is accepted del
   devices. If native shell screens on desktop become a drag, evaluate a Tauri shell for desktop
   only.
 
+Issue #101 extends the existing CMP foundation with adaptive application chrome, shared shell
+components, vi/en copy and public shell route identities for Home, Games, detail, setup and
+Account. Packaged local gameplay still enters through `GameHost`; unavailable catalog/account
+services remain explicit. Saved navigation restores shell locations, never an active local
+match. This supplies the navigation seam for subsequent mobile parity work without opening
+native accounts, remote discovery, OS deep links or a phase exit. See the
+[mobile shell contract](../ui/screens/mobile-shell.md) and its separate execution ledger.
+
 ### 3.4 Handoff: entering and leaving a match
 
 The networked flow below remains a future-phase contract. The implemented opt-in

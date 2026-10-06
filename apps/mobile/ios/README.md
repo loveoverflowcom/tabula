@@ -2,9 +2,11 @@
 
 > **Foundation slice** of [ADR-0032](../../../docs/adr/0032-compose-multiplatform-mobile-host.md) with the
 > first-party WKWebView host of [ADR-0033](../../../docs/adr/0033-webview-gamehost-first-party-embedding.md).
-> Phase 6's gate (the Phase 5 exit) is not met. **This Xcode project has not been built or run, and the
-> WKWebView host has never executed**: it was authored on Linux, where the iOS framework link and Xcode do
-> not exist. Kotlin/Native compiles the host to a klib; that is all that has been shown.
+> Phase 6's gate (the Phase 5 exit) is not met. The foundation was authored on Linux.
+> [Issue #101's scoped ledger](../../../docs/verification/issue-101-mobile-shell/README.md) now records
+> a successful local iOS Kotlin compile, static simulator-framework link and Xcode application build.
+> **The app was not launched and the WKWebView host has not executed**; build evidence does not
+> establish device, media or gameplay acceptance.
 
 A thin SwiftUI container over the `TabulaShared` static framework from `:shared`. `TabulaApp.swift`
 injects the native `VoiceClient` into `TabulaViewController` (Compose Multiplatform). It supersedes the
@@ -56,11 +58,11 @@ including requests from the main document after native microphone permission has
   explicit fresh join with mic off. This conservative policy avoids the SDK's asynchronous local-track
   republishing; it is not a claim of uninterrupted microphone recovery.
 
-Source/API review and project/fixture-script validation are **not native compilation or hardware audio
-evidence**. The Swift adapter, Kotlin export conformance, framework linking and device audio flows are
-**NOT_COMPILED / NOT_RUN locally**: this change was authored where Swift/Xcode are absent. The macOS CI
-gate must compile/link the actual application before those build claims can be made; simulator/device
-permission denial, interruptions, headset routing, backgrounding and two-client audio still need execution.
+The original voice change had source/API review and project/fixture-script validation only locally.
+Issue #101's subsequent Xcode build compiles/links the actual application, including this unchanged
+adapter and Kotlin export boundary. That is **compiled** evidence, not hardware audio evidence;
+simulator/device permission denial, interruptions, headset routing, backgrounding and two-client
+audio still need execution.
 
 ## The WKWebView host and its first macOS check
 

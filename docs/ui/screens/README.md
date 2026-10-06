@@ -8,6 +8,7 @@ They describe intended behavior; implementation and platform evidence are record
 | Foundation used by issues #49–#55 | [Foundation](foundation.md) | `tokens.toml`; small current gameplay widgets in `tabula-presentation`; DOM components in Phase 5 |
 | Discovery/setup contract for issue #50 | [Routes, typed data and states](discovery.md); [availability](discovery-availability.md); [verification](discovery-verification.md) | Module configuration and registry adapters; runtime awaits Phase 4/5 gates |
 | 01 — home and Library | [Library](01-library.md) | Leptos `/` and `/games` in Phase 5; native shell in Phase 6 |
+| CMP shell foundation for issue #101 | [Mobile shell](mobile-shell.md) | ADR-0032 shell/navigation only; packaged local handoff through ADR-0033, backend services unavailable |
 | 02 — game detail | [Detail](02-game-detail.md) | Leptos `/games/:id` through registry interfaces in Phase 5 |
 | 03 — new match setup | [Setup](03-new-match.md) | Proposed `?setup=1` detail substate; real driver/authority validates creation |
 | Gameplay contract for issue #51 | [Ownership, runtime states and input boundaries](gameplay.md); [verification](gameplay-verification.md) | Existing local presenters; network/recovery Phase 4 and Board Reader status/actions Phase 5 |
