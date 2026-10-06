@@ -376,3 +376,20 @@ must receive exact `409 fresh_grant_required`, with no attachment/projection/app
 That probe isolates the grant boundary and never substitutes for the unchanged
 browser request or its earlier CSRF rejection. Old grants, cookies and CSRF are
 runtime-only and never become artifacts.
+
+Admission failure diagnostics now identify only exact create/join endpoint
+classes, request/response presence, fixed click/response/body-parse phases,
+bounded status/content-type/no-store/body-length facts, and allowlisted browser
+protocol error classes. Raw exceptions, call logs, URLs, headers, bodies, join
+codes and credentials are never retained. These facts diagnose a failed actual
+shell action; they do not replace that action or weaken its mandatory result.
+
+The headed focus witness runs immediately after the application's synchronous
+native window-focus concealment handler, before another rendered frame. It
+requires hidden visibility/ARIA, cleared scope/status/accessibility/selection,
+and observational readPixels agreement with the cleared default framebuffer.
+The test first selects a real board piece, holds only genuine current-authority
+requests unchanged, then attempts trusted pointer/keyboard gestures at the former
+board while revalidation remains unresolved. No command may be emitted. Only
+then are those requests released and real revoked-authority terminal concealment
+required. Eventual zero dimensions alone cannot seal this first-restored proof.

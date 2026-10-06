@@ -38,6 +38,8 @@ def actual_continuity_receipts(artifacts: Path) -> bool:
                 or any(case.get('pass') is not True for case in cases)):
             return False
         for case in cases:
+            if case['case']=='trusted_focus_only_restore_revalidates_revoked_authority':
+                if any(case.get(key) is not True for key in ('immediate_focus_surface_concealed','cleared_framebuffer_before_restored_paint','genuine_blocked_input_attempt','actual_protected_poll_401')):return False
             if case['case']=='restart_between_grant_and_attach_recovers_unchanged_old_csrf':
                 if any(case.get(key) is not True for key in ('actual_sigkill_reaped','unchanged_request_403_without_frames','fresh_context_grant_scope_before_restore','exact_original_ack')):return False
             if case['case']=='old_signed_grant_with_fresh_current_csrf_requires_fresh_grant':

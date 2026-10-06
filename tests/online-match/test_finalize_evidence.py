@@ -34,6 +34,8 @@ class FinalizeEvidenceTests(unittest.TestCase):
         cases=[]
         for label in CONTINUITY_CASES:
             case={'case':label,'pass':True}
+            if label=='trusted_focus_only_restore_revalidates_revoked_authority':
+                case.update(immediate_focus_surface_concealed=True,cleared_framebuffer_before_restored_paint=True,genuine_blocked_input_attempt=True,actual_protected_poll_401=True)
             if label=='restart_between_grant_and_attach_recovers_unchanged_old_csrf':
                 case.update(actual_sigkill_reaped=True,unchanged_request_403_without_frames=True,fresh_context_grant_scope_before_restore=True,exact_original_ack=True)
             if label=='old_signed_grant_with_fresh_current_csrf_requires_fresh_grant':
@@ -73,6 +75,12 @@ class FinalizeEvidenceTests(unittest.TestCase):
         selected=next(case for case in value['cases'] if case['case'].endswith('_at_held_actual_delivery'))
         selected['native_body_bytes']=1;path.write_text(json.dumps(value));self.assertFalse(actual_continuity_receipts(self.artifacts))
         selected['native_body_bytes']=0;selected['actual_inner_guard_error']=False;path.write_text(json.dumps(value));self.assertFalse(actual_continuity_receipts(self.artifacts))
+
+    def test_eventual_focus_denial_cannot_replace_immediate_or_input_witness(self):
+        self.successful_continuity();path=self.artifacts/'continuity-result.json';value=json.loads(path.read_text())
+        selected=next(case for case in value['cases'] if case['case']=='trusted_focus_only_restore_revalidates_revoked_authority')
+        for key in ('immediate_focus_surface_concealed','cleared_framebuffer_before_restored_paint','genuine_blocked_input_attempt','actual_protected_poll_401'):
+            selected[key]=False;path.write_text(json.dumps(value));self.assertFalse(actual_continuity_receipts(self.artifacts));selected[key]=True
 
     def test_unknown_oracle_count_wrong_prefix_and_missing_recovery_cannot_pass(self):
         self.successful_continuity()

@@ -630,32 +630,113 @@ def held_delivery(contexts,private,ca,change,results):
         pair.close()
 
 
+FOCUS_OBSERVER = """() => {
+    window.__tabulaFocusFacts={blur:false,focus:false,visibility:0,immediate:null,input:false,awaiting:false};
+    addEventListener('blur',event=>{if(event.target===window)window.__tabulaFocusFacts.blur=event.isTrusted;});
+    // Registered after the application's synchronous transport focus listener.
+    // Only observation/readback occurs here, before another animation frame.
+    addEventListener('focus',event=>{
+        if(event.target!==window)return;
+        const facts=window.__tabulaFocusFacts;
+        if(!facts.awaiting || facts.immediate!==null || !event.isTrusted)return;
+        facts.focus=true;
+        const d=document.documentElement.dataset,c=document.querySelector('#glcanvas');
+        const status=document.querySelector('#online-status-container');
+        const spans=document.querySelectorAll('#online-status-container span');
+        const selection_clear=!!c && !c.hasAttribute('aria-label') && !c.hasAttribute('aria-describedby')
+            && (window.getSelection()?.rangeCount ?? 0)===0;
+        const concealed=!!c && getComputedStyle(c).visibility==='hidden' && c.getAttribute('aria-hidden')==='true'
+            && c.tabIndex===-1 && !!status && status.hidden
+            && ['onlineSeat','onlineRevision','onlineStatus'].every(key=>!Object.hasOwn(d,key))
+            && Array.from(spans).every(node=>node.textContent.trim()==='');
+        let framebuffer='no_live_webgl';
+        const g=window.gl;
+        if(g && !g.isContextLost()) {
+            const w=g.drawingBufferWidth,h=g.drawingBufferHeight;
+            if(g.getParameter(g.FRAMEBUFFER_BINDING)!==null)framebuffer='non_default_framebuffer';
+            else if(w<=0 || h<=0 || w*h>2097152)framebuffer='invalid_buffer_bounds';
+            else {
+                const pixels=new Uint8Array(w*h*4);
+                g.readPixels(0,0,w,h,g.RGBA,g.UNSIGNED_BYTE,pixels);
+                if(g.getError()!==g.NO_ERROR)framebuffer='read_error';
+                else {
+                    const alpha=g.getContextAttributes()?.alpha===false ? 255 : 0;
+                    let clear=true;
+                    for(let i=0;i<pixels.length;i+=4)if(pixels[i]!==0||pixels[i+1]!==0||pixels[i+2]!==0||pixels[i+3]!==alpha){clear=false;break;}
+                    framebuffer=clear ? 'cleared_pixels' : 'uncleared_pixels';
+                }
+            }
+        }
+        facts.immediate={trusted:event.isTrusted,concealed,selection_clear,framebuffer};
+    });
+    for(const name of ['pointerdown','keydown'])addEventListener(name,event=>{
+        const facts=window.__tabulaFocusFacts;
+        if(facts.awaiting && facts.focus && event.isTrusted)facts.input=true;
+    },{capture:true});
+    document.addEventListener('visibilitychange',()=>window.__tabulaFocusFacts.visibility++);
+}"""
+
+
 def focus_only_revoke_game(contexts,private,results):
     pair=Pair(contexts,private,'focus-only-revoke');white,black=pair.pages
     pair.board(0,'White to move')
-    white.evaluate("""() => {
-        window.__tabulaFocusFacts={blur:false,focus:false,visibility:0};
-        addEventListener('blur',event=>{if(event.target===window)window.__tabulaFocusFacts.blur=event.isTrusted;});
-        addEventListener('focus',event=>{if(event.target===window)window.__tabulaFocusFacts.focus=event.isTrusted;});
-        document.addEventListener('visibilitychange',()=>window.__tabulaFocusFacts.visibility++);
-    }""")
-    # A real separate native popup window leaves the opener visible while
-    # changing window focus. No DOM lifecycle event is dispatched by this test.
-    with white.expect_popup(timeout=15_000) as opened:
-        white.evaluate("url => { window.open(url,'_blank','popup=yes,width=500,height=400'); }",ORIGIN+GAME_PATH)
-    popup=opened.value;popup.wait_for_load_state('domcontentloaded');popup.bring_to_front()
-    white.wait_for_function("() => window.__tabulaFocusFacts.blur===true && document.visibilityState==='visible' && window.__tabulaFocusFacts.visibility===0",timeout=15_000)
-    white.wait_for_function(RECOVERING_CONCEALED,timeout=15_000)
-    facts=context_facts(popup)
-    require(facts['account_id']==pair.facts[0]['account_id'],'focus control popup changed the account')
-    logout=api(popup,'/api/v1/auth/logout',{'version':1},facts['csrf_token'])
-    require(logout['status']==200,'focus-only current session logout did not commit')
-    before=len(pair.commands[0]);popup.close();white.bring_to_front()
-    white.wait_for_function("() => window.__tabulaFocusFacts.focus===true && document.visibilityState==='visible' && window.__tabulaFocusFacts.visibility===0",timeout=15_000)
+    bounds=white.locator('#glcanvas').bounding_box()
+    require(bounds is not None,'focus-only former board geometry unavailable')
+    # A real selection before blur supplies the stale-selection counterexample.
+    x,y=board_square(bounds['width'],bounds['height']-56,'f2',False)
+    white.mouse.click(bounds['x']+x,bounds['y']+y,delay=70)
+    white.wait_for_timeout(150)
+    require(not pair.commands[0],'initial selection unexpectedly submitted a move')
+    white.evaluate(FOCUS_OBSERVER)
+    held_routes=[]
+    def hold_revalidation(route):
+        require(len(held_routes)<16,'focus-only revalidation exceeded its bounded gate')
+        held_routes.append(route)
+    # These real requests are held unchanged, never mocked. Blur cancels any
+    # earlier in-flight request; all newly generated authority work stays held.
+    white.route('**/api/v1/**',hold_revalidation)
+    try:
+        with white.expect_popup(timeout=15_000) as opened:
+            white.evaluate("url => { window.open(url,'_blank','popup=yes,width=500,height=400'); }",ORIGIN+GAME_PATH)
+        popup=opened.value;popup.wait_for_load_state('domcontentloaded');popup.bring_to_front()
+        white.wait_for_function("() => window.__tabulaFocusFacts.blur===true && document.visibilityState==='visible' && window.__tabulaFocusFacts.visibility===0",timeout=15_000)
+        white.wait_for_function(RECOVERING_CONCEALED,timeout=15_000)
+        facts=context_facts(popup)
+        require(facts['account_id']==pair.facts[0]['account_id'],'focus control popup changed the account')
+        logout=api(popup,'/api/v1/auth/logout',{'version':1},facts['csrf_token'])
+        require(logout['status']==200,'focus-only current session logout did not commit')
+        before=len(pair.commands[0]);white.evaluate("() => { const facts=window.__tabulaFocusFacts; facts.focus=false; facts.immediate=null; facts.input=false; facts.awaiting=true; }")
+        popup.close();white.bring_to_front()
+        white.wait_for_function("() => window.__tabulaFocusFacts.focus===true && document.visibilityState==='visible' && window.__tabulaFocusFacts.visibility===0",timeout=15_000)
+        witness=white.evaluate('window.__tabulaFocusFacts.immediate')
+        require(witness is not None and witness['trusted'] is True and witness['concealed'] is True
+                and witness['selection_clear'] is True and witness['framebuffer']=='cleared_pixels',
+                'native first focus restored pixels, selection or accessibility before current authority')
+        # Genuine pointer and keyboard input while current authority is still
+        # unresolved, aimed at the former board without requiring visible canvas.
+        for square in ('f2','f3'):
+            x,y=board_square(bounds['width'],bounds['height']-56,square,False)
+            white.mouse.click(bounds['x']+x,bounds['y']+y,delay=70)
+        white.keyboard.press('ArrowUp');white.keyboard.press('Enter')
+        require(white.evaluate('window.__tabulaFocusFacts.input') is True,
+                'focus-only blocked input did not exercise a trusted native gesture')
+        require(len(pair.commands[0])==before,'uncertain focus restoration submitted a board command')
+    finally:
+        white.unroute('**/api/v1/**',hold_revalidation)
+        for route in held_routes:
+            try:route.continue_()
+            except Exception:pass # Canceled earlier generations cannot be revived.
     white.wait_for_function("() => document.documentElement.dataset.onlineAvailability==='unavailable' && !Object.hasOwn(document.documentElement.dataset,'onlineStatus') && document.querySelector('#glcanvas').hidden && document.querySelector('#glcanvas').width===0 && document.querySelector('#glcanvas').height===0",timeout=30_000)
     require(len(pair.commands[0])==before,'focus restoration sent an input before current authority')
+    denied(api(white,f'/api/v1/matches/{pair.match_id}/poll',
+               {'version':MATCH_VERSION,'attachment_id':pair.attachments[0][-1]['attachment_id']},pair.facts[0]['csrf_token']),
+           {401},'revoked focus-restored browser received protected output')
     pair.oracle(0);pair.write_audit(0)
-    results.append({'case':'trusted_focus_only_restore_revalidates_revoked_authority','pass':True,'actual_native_popup':True,'trusted_window_blur_and_focus':True,'visibility_signals_absent':True,'no_restored_projection_or_input':True})
+    results.append({'case':'trusted_focus_only_restore_revalidates_revoked_authority','pass':True,
+                    'actual_native_popup':True,'trusted_window_blur_and_focus':True,'visibility_signals_absent':True,
+                    'immediate_focus_surface_concealed':True,'cleared_framebuffer_before_restored_paint':True,
+                    'genuine_blocked_input_attempt':True,'actual_protected_poll_401':True,
+                    'no_restored_projection_or_input':True})
     pair.close()
 
 

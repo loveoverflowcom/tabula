@@ -447,7 +447,28 @@ def exception_class(error: Exception) -> str:
     if isinstance(error, BrowserTimeout):
         return "browser_timeout"
     if isinstance(error, BrowserError):
-        return "browser_target_closed" if type(error).__name__ == "TargetClosedError" else "browser_error"
+        if type(error).__name__ == "TargetClosedError":
+            return "browser_target_closed"
+        # Read privately, return only source-owned labels. Never persist the
+        # original Playwright message, call log, URL, header or response body.
+        detail = str(getattr(error, "message", ""))[:16384].casefold()
+        for fragment, label in (
+            ("no resource with given identifier found", "response_body_unavailable"),
+            ("no data found for resource with given identifier", "response_body_unavailable"),
+            ("request content was evicted from inspector cache", "response_body_evicted"),
+            ("target page, context or browser has been closed", "browser_target_closed"),
+            ("execution context was destroyed", "browser_context_destroyed"),
+            ("strict mode violation", "browser_locator_ambiguous"),
+            ("element is not attached to the dom", "browser_element_detached"),
+            ("element is outside of the viewport", "browser_element_outside_viewport"),
+            ("intercepts pointer events", "browser_pointer_intercepted"),
+            ("response.json:", "response_json_failed"),
+            ("response.body:", "response_body_failed"),
+            ("locator.click:", "browser_click_failed"),
+        ):
+            if fragment in detail:
+                return label
+        return "browser_error"
     if isinstance(error, CaptureFailure):
         return "capture_condition_failed"
     for kind, label in ((json.JSONDecodeError, "json_decode_error"), (AttributeError, "python_attribute_error"),
@@ -464,8 +485,30 @@ def protected_endpoint_class(url: str) -> str | None:
         return None
     if parsed.path == "/api/v1/auth/context":
         return "context"
+    if parsed.path == "/api/v1/matches":
+        return "create"
+    if parsed.path == "/api/v1/matches/join":
+        return "join"
     match = re.fullmatch(r"/api/v1/matches/[0-9a-f]{32}/(grant|attach|poll|command)", parsed.path)
     return match.group(1) if match else None
+
+
+def admission_response_facts(response) -> dict:
+    """Bounded response metadata only, never arbitrary header values."""
+    content = (response.header_value("content-type") or "").split(";")[0].strip().lower()
+    length = response.header_value("content-length")
+    if length is None:
+        length_class, bounded_length = "missing", None
+    elif re.fullmatch(r"[0-9]{1,10}", length) is None:
+        length_class, bounded_length = "invalid", None
+    elif int(length) > 2_097_152:
+        length_class, bounded_length = "over_budget", None
+    else:
+        length_class, bounded_length = "bounded", int(length)
+    return {"status": http_status(response.status),
+            "content_type_class": {"application/json":"json", "application/problem+json":"problem_json"}.get(content, "missing" if not content else "other"),
+            "no_store": any(value.strip().lower() == "no-store" for value in (response.header_value("cache-control") or "").split(",")),
+            "body_length_class": length_class, "bounded_body_length": bounded_length}
 
 
 @contextmanager
@@ -762,9 +805,43 @@ def run(args) -> None:
                              "Actual online create and join controls visibly available", secrets=redacted_values)
 
             results["stage"] = "create and join a real code through the shell"
+            results["admission"] = {"phase":"before_create_click", "create_response":None,
+                                    "create_body_parsed":False, "join_response":None,
+                                    "join_body_parsed":False}
+            admission_progress = results["admission"]
+            def record_admission_response(response):
+                endpoint = protected_endpoint_class(response.url)
+                if endpoint in ("create", "join"):
+                    try:
+                        admission_progress[endpoint + "_response"] = admission_response_facts(response)
+                    except Exception as diagnostic_error:
+                        admission_progress[endpoint + "_metadata_error"] = exception_class(diagnostic_error)
+            def record_admission_request(request):
+                endpoint = protected_endpoint_class(request.url)
+                if endpoint in ("create", "join"):
+                    admission_progress[endpoint + "_request_observed"] = True
+            def record_admission_failure(request):
+                endpoint = protected_endpoint_class(request.url)
+                if endpoint in ("create", "join"):
+                    admission_progress[endpoint + "_network_failure"] = navigation_failure(request.failure)
+            white.on("response", record_admission_response)
+            black.on("response", record_admission_response)
+            white.on("request", record_admission_request)
+            black.on("request", record_admission_request)
+            white.on("requestfailed", record_admission_failure)
+            black.on("requestfailed", record_admission_failure)
+            admission_progress["create_control_count"] = min(white.get_by_test_id("online-create").count(), 8)
+            admission_progress["create_control_visible"] = white.get_by_test_id("online-create").is_visible()
+            admission_progress["create_control_enabled"] = white.get_by_test_id("online-create").is_enabled()
             with white.expect_response(lambda r: urlsplit(r.url).path == "/api/v1/matches", timeout=30_000) as created_response:
                 white.get_by_test_id("online-create").click()
+                admission_progress["phase"] = "create_clicked_waiting_response"
+            admission_progress["phase"] = "create_response_observed"
+            admission_progress["create_response"] = admission_response_facts(created_response.value)
+            admission_progress["phase"] = "parse_create_body"
             created = created_response.value.json()
+            admission_progress["create_body_parsed"] = True
+            admission_progress["phase"] = "validate_create_admission"
             require(created_response.value.status == 200 and created["seat"] == 0,
                     "actual shell create action failed")
             match_id, code = created["match_id"], created["join_code"]
@@ -776,12 +853,25 @@ def run(args) -> None:
             denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, "A" * 43),
                    {401}, "third unauthenticated browser obtained opponent output")
             black.get_by_test_id("online-join-code").fill(code)
+            admission_progress["phase"] = "before_join_click"
             with black.expect_response(lambda r: urlsplit(r.url).path == "/api/v1/matches/join", timeout=30_000) as joined_response:
                 black.get_by_test_id("online-join").click()
+                admission_progress["phase"] = "join_clicked_waiting_response"
+            admission_progress["join_response"] = admission_response_facts(joined_response.value)
+            admission_progress["phase"] = "parse_join_body"
             joined = joined_response.value.json()
+            admission_progress["join_body_parsed"] = True
+            admission_progress["phase"] = "validate_join_admission"
             require(joined_response.value.status == 200 and joined["match_id"] == match_id
                     and joined["seat"] == 1 and joined["ready"], "actual code join failed")
             black.get_by_test_id("online-enter").wait_for(state="visible", timeout=30_000)
+            admission_progress["phase"] = "complete"
+            white.remove_listener("response", record_admission_response)
+            black.remove_listener("response", record_admission_response)
+            white.remove_listener("request", record_admission_request)
+            black.remove_listener("request", record_admission_request)
+            white.remove_listener("requestfailed", record_admission_failure)
+            black.remove_listener("requestfailed", record_admission_failure)
             evidence.capture(black, "04-opponent-joined.png", "Opponent joined the real match; code/input redacted", "Black browser",
                              "Actual successful join rendered the opposite seat and enter control", secrets=redacted_values)
             duplicate = api(black, "/api/v1/matches/join", {"version": MATCH_VERSION, "code": code}, facts[1]["csrf_token"])

@@ -2,12 +2,47 @@
 import json
 from types import SimpleNamespace
 import unittest
+from playwright.sync_api import Error as BrowserError
+from browser_acceptance import admission_response_facts, exception_class, protected_endpoint_class
 from unittest import mock
 from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_CONCEALED,
-    PageNetwork, Pair, command_identity, pending_record, run, current_context_after_restart)
+    PageNetwork, Pair, command_identity, pending_record, run, current_context_after_restart, FOCUS_OBSERVER)
 
 
 class ContinuityHelperTests(unittest.TestCase):
+    def test_create_join_diagnostics_are_fixed_classes_without_private_routing(self):
+        self.assertEqual(protected_endpoint_class('https://localhost:9443/api/v1/matches'),'create')
+        self.assertEqual(protected_endpoint_class('https://localhost:9443/api/v1/matches/join'),'join')
+        self.assertIsNone(protected_endpoint_class('https://localhost:9443/api/v1/matches?secret=synthetic'))
+        self.assertIsNone(protected_endpoint_class('https://foreign.invalid/api/v1/matches'))
+
+    def test_browser_protocol_errors_never_return_raw_secret_text(self):
+        for fragment,expected in (('No resource with given identifier found','response_body_unavailable'),
+                                  ('Request content was evicted from inspector cache','response_body_evicted'),
+                                  ('Element is not attached to the DOM','browser_element_detached'),
+                                  ('Response.json: synthetic failure','response_json_failed')):
+            result=exception_class(BrowserError(fragment+' cookie=synthetic-secret'))
+            self.assertEqual(result,expected);self.assertNotIn('secret',result)
+        self.assertEqual(exception_class(BrowserError('arbitrary synthetic-secret')),'browser_error')
+
+    def test_admission_metadata_discards_headers_and_bounds_announced_length(self):
+        response=mock.Mock(status=200)
+        values={'content-type':'application/json; charset=utf-8','cache-control':'private, no-store','content-length':'100'}
+        response.header_value.side_effect=values.get
+        self.assertEqual(admission_response_facts(response),{'status':200,'content_type_class':'json','no_store':True,'body_length_class':'bounded','bounded_body_length':100})
+        for value,expected in ((None,'missing'),('synthetic-secret','invalid'),('2097153','over_budget')):
+            values['content-length']=value;values['content-type']='private/synthetic-secret'
+            facts=admission_response_facts(response)
+            self.assertEqual(facts['body_length_class'],expected);self.assertNotIn('secret',json.dumps(facts))
+
+    def test_first_focus_witness_reads_real_pixels_without_manufacturing_clear(self):
+        for predicate in ('event.isTrusted','g.readPixels','g.FRAMEBUFFER_BINDING','cleared_pixels',
+                          'selection_clear','aria-hidden',"visibility==='hidden'",'rangeCount','textContent.trim()',
+                          '!facts.awaiting', 'facts.immediate!==null', '!event.isTrusted'):
+            self.assertIn(predicate,FOCUS_OBSERVER)
+        for mutation in ('g.clear(', 'g.bindFramebuffer(', 'c.width=', 'dispatchEvent('):
+            self.assertNotIn(mutation,FOCUS_OBSERVER)
+
     def test_disposable_opt_in_precedes_supervisor_or_browser_setup(self):
         with mock.patch.dict('os.environ',{},clear=True),mock.patch('continuity_acceptance.SupervisorClient') as supervisor:
             with self.assertRaises(AcceptanceFailure):run(SimpleNamespace())
