@@ -19,7 +19,7 @@ use tabula_session::{
     CredentialOperation, HttpSessionAuthority, SessionPublication, SessionSnapshot,
 };
 use tabula_storage::{
-    match_postgres::PgMatchJournal,
+    match_postgres::{PgMatchJournal, PgMatchPublication},
     online_match::{PgOnlineMatchStore, PgOnlineOperation},
     session::{PgSessionPublication, PgSessionStore},
 };
@@ -30,7 +30,8 @@ pub(super) struct LiveMatch {
     pub journal: Arc<NetworkJournal>,
     pub authority: Arc<NetworkAuthority>,
     pub output: Arc<QueueOutput>,
-    pub gate: AsyncMutex<()>,
+    pub gate: Arc<AsyncMutex<()>>,
+    pub owner_task: tokio::task::AbortHandle,
 }
 pub(super) struct NetworkClock {
     start: Instant,
@@ -50,7 +51,9 @@ impl Clock for NetworkClock {
         u64::try_from(self.start.elapsed().as_millis()).unwrap_or(u64::MAX)
     }
 }
-pub(super) struct ClosedEffects;
+pub(super) struct ClosedEffects {
+    pub journal: Arc<NetworkJournal>,
+}
 impl Effects for ClosedEffects {
     async fn execute(
         &self,
@@ -58,14 +61,22 @@ impl Effects for ClosedEffects {
         _index: InputIndex,
         effects: Vec<Effect>,
     ) -> Result<(), RuntimePortError> {
+        if effects.is_empty() {
+            return Ok(());
+        }
         if effects.iter().all(|e| matches!(e, Effect::EndMatch { .. })) {
-            Ok(())
+            let mut owner = self.journal.journal.begin_publication().await?;
+            owner.publish(|| ())
         } else {
             Err(RuntimePortError::Unavailable)
         }
     }
 }
 pub(super) struct NetworkJournal {
+    #[cfg(feature = "acceptance-test-support")]
+    hook: Mutex<Option<Arc<dyn crate::AcceptanceFaultHook>>>,
+    #[cfg(feature = "acceptance-test-support")]
+    command: Mutex<Option<crate::AcceptanceFaultPoint>>,
     pub journal: PgMatchJournal,
     active: Mutex<Option<PgOnlineOperation>>,
     initialized: Mutex<Option<oneshot::Sender<Result<(), RuntimePortError>>>>,
@@ -78,6 +89,10 @@ impl NetworkJournal {
     ) -> Self {
         Self {
             journal,
+            #[cfg(feature = "acceptance-test-support")]
+            hook: Mutex::new(None),
+            #[cfg(feature = "acceptance-test-support")]
+            command: Mutex::new(None),
             active: Mutex::new(Some(guard)),
             initialized: Mutex::new(Some(ready)),
         }
@@ -90,10 +105,57 @@ impl NetworkJournal {
             .ok_or(RuntimePortError::Unavailable)
     }
     pub fn set(&self, guard: Option<PgOnlineOperation>) -> Result<(), RuntimePortError> {
+        #[cfg(feature = "acceptance-test-support")]
+        if guard.is_none() {
+            *self
+                .command
+                .lock()
+                .map_err(|_| RuntimePortError::Unavailable)? = None;
+        }
         *self
             .active
             .lock()
             .map_err(|_| RuntimePortError::Unavailable)? = guard;
+        Ok(())
+    }
+    pub fn recovered(journal: PgMatchJournal) -> Self {
+        Self {
+            journal,
+            active: Mutex::new(None),
+            initialized: Mutex::new(None),
+            #[cfg(feature = "acceptance-test-support")]
+            hook: Mutex::new(None),
+            #[cfg(feature = "acceptance-test-support")]
+            command: Mutex::new(None),
+        }
+    }
+    #[cfg(feature = "acceptance-test-support")]
+    pub fn set_hook(
+        &self,
+        hook: Option<Arc<dyn crate::AcceptanceFaultHook>>,
+    ) -> Result<(), RuntimePortError> {
+        *self
+            .hook
+            .lock()
+            .map_err(|_| RuntimePortError::Unavailable)? = hook;
+        Ok(())
+    }
+    #[cfg(feature = "acceptance-test-support")]
+    pub async fn fault(&self, phase: crate::AcceptanceFaultPhase) -> Result<(), RuntimePortError> {
+        let hook = self
+            .hook
+            .lock()
+            .map_err(|_| RuntimePortError::Unavailable)?
+            .clone();
+        let point = self
+            .command
+            .lock()
+            .map_err(|_| RuntimePortError::Unavailable)?
+            .clone();
+        if let (Some(hook), Some(mut point)) = (hook, point) {
+            point.phase = phase;
+            hook.reach(point).await?;
+        }
         Ok(())
     }
 }
@@ -109,6 +171,15 @@ impl ActiveRequest {
         journal.set(Some(guard))?;
         Ok(Self { journal })
     }
+    #[cfg(feature = "acceptance-test-support")]
+    pub fn command(&self, point: crate::AcceptanceFaultPoint) -> Result<(), RuntimePortError> {
+        *self
+            .journal
+            .command
+            .lock()
+            .map_err(|_| RuntimePortError::Unavailable)? = Some(point);
+        Ok(())
+    }
 }
 impl Drop for ActiveRequest {
     fn drop(&mut self) {
@@ -118,10 +189,17 @@ impl Drop for ActiveRequest {
 impl Journal for NetworkJournal {
     async fn append(&self, record: JournalRecord) -> Result<(), RuntimePortError> {
         let genesis = record.creation.is_some();
+        #[cfg(feature = "acceptance-test-support")]
+        self.fault(crate::AcceptanceFaultPhase::BeforeCommit)
+            .await?;
         let result = self
             .journal
             .append_authenticated(record, &self.active()?)
             .await;
+        #[cfg(feature = "acceptance-test-support")]
+        if result.is_ok() {
+            self.fault(crate::AcceptanceFaultPhase::AfterCommit).await?;
+        }
         if genesis {
             if let Ok(mut ready) = self.initialized.lock() {
                 if let Some(ready) = ready.take() {
@@ -138,9 +216,18 @@ impl Journal for NetworkJournal {
         observed: u64,
         ledger: Vec<ScopeState>,
     ) -> Result<(), RuntimePortError> {
-        self.journal
+        #[cfg(feature = "acceptance-test-support")]
+        self.fault(crate::AcceptanceFaultPhase::BeforeCommit)
+            .await?;
+        let result = self
+            .journal
             .update_ledger_authenticated(id, version, observed, ledger, &self.active()?)
-            .await
+            .await;
+        #[cfg(feature = "acceptance-test-support")]
+        if result.is_ok() {
+            self.fault(crate::AcceptanceFaultPhase::AfterCommit).await?;
+        }
+        result
     }
     async fn load(&self, id: MatchId) -> Result<LoadedMatch, RuntimePortError> {
         self.journal.load(id).await
@@ -156,6 +243,7 @@ struct PreparedOutput {
     binding: Binding,
     purpose: Purpose,
     publication: PgSessionPublication,
+    owner: PgMatchPublication,
 }
 pub(super) struct NetworkAuthority {
     id: MatchId,
@@ -273,6 +361,12 @@ impl Authority for NetworkAuthority {
             if m.scope() != e.scope {
                 return Err(AuthorityLost);
             }
+            let owner = self
+                .journal
+                .journal
+                .begin_publication()
+                .await
+                .map_err(|_| AuthorityLost)?;
             let publication = self
                 .sessions
                 .begin_publication(e.credential)
@@ -291,6 +385,7 @@ impl Authority for NetworkAuthority {
                     binding: b.clone(),
                     purpose: p,
                     publication,
+                    owner,
                 },
             );
             Ok(())
@@ -319,7 +414,12 @@ impl Authority for NetworkAuthority {
                     if permit.binding != *b || permit.purpose != p {
                         return Err(AuthorityLost);
                     }
-                    return submit_prepared(&mut permit.publication, &self.output, b, action);
+                    return permit
+                        .owner
+                        .publish(|| {
+                            submit_prepared(&mut permit.publication, &self.output, b, action)
+                        })
+                        .map_err(|_| AuthorityLost)?;
                 }
             }
             let guard = self.journal.active().map_err(|_| AuthorityLost)?;

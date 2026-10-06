@@ -1,6 +1,6 @@
 //! Fresh current authority through the actual first body-frame handoff.
 use super::{
-    native_ports::{snapshot_matches, QueueOutput},
+    native_ports::{snapshot_matches, NetworkJournal, QueueOutput},
     session_problem, unavailable, GatewayState,
 };
 use crate::MAX_RESPONSE_BYTES;
@@ -19,12 +19,22 @@ use std::{
 };
 use tabula_match::runtime::Binding;
 use tabula_session::{CredentialOperation, SessionError, SessionPublication};
-struct GuardedMatchBody<P> {
+use tabula_storage::match_postgres::PgMatchPublication;
+trait OwnerPublication: Unpin {
+    fn publish<T>(&mut self, action: impl FnOnce() -> T) -> Result<T, SessionError>;
+}
+impl OwnerPublication for PgMatchPublication {
+    fn publish<T>(&mut self, action: impl FnOnce() -> T) -> Result<T, SessionError> {
+        PgMatchPublication::publish(self, action).map_err(|_| SessionError::Unauthenticated)
+    }
+}
+struct GuardedMatchBody<P, O> {
+    owner: Option<O>,
     publication: Option<P>,
     bytes: Option<Bytes>,
     attachment: Option<(Arc<QueueOutput>, Binding)>,
 }
-impl<P: SessionPublication + Unpin> HttpBody for GuardedMatchBody<P> {
+impl<P: SessionPublication + Unpin, O: OwnerPublication> HttpBody for GuardedMatchBody<P, O> {
     type Data = Bytes;
     type Error = SessionError;
     fn poll_frame(
@@ -39,19 +49,26 @@ impl<P: SessionPublication + Unpin> HttpBody for GuardedMatchBody<P> {
         let Some(mut publication) = body.publication.take() else {
             return Poll::Ready(Some(Err(SessionError::Unavailable)));
         };
-        let result = publication
-            .publish(|s| {
-                if body
-                    .attachment
-                    .as_ref()
-                    .is_some_and(|(output, b)| !snapshot_matches(s, b) || !output.active(b))
-                {
-                    None
-                } else {
-                    Some(Frame::data(bytes))
-                }
-            })
-            .and_then(|frame| frame.ok_or(SessionError::Unauthenticated));
+        let release = || {
+            publication
+                .publish(|s| {
+                    if body
+                        .attachment
+                        .as_ref()
+                        .is_some_and(|(output, b)| !snapshot_matches(s, b) || !output.active(b))
+                    {
+                        None
+                    } else {
+                        Some(Frame::data(bytes))
+                    }
+                })
+                .and_then(|frame| frame.ok_or(SessionError::Unauthenticated))
+        };
+        let result = match body.owner.as_mut() {
+            Some(owner) => owner.publish(release).and_then(std::convert::identity),
+            None if body.attachment.is_none() => release(),
+            None => Err(SessionError::Unauthenticated),
+        };
         Poll::Ready(Some(result))
     }
     fn is_end_stream(&self) -> bool {
@@ -65,19 +82,28 @@ pub(super) async fn private_response(
     state: &GatewayState,
     op: CredentialOperation,
     value: &impl Serialize,
-    attachment: Option<(Arc<QueueOutput>, Binding)>,
+    attachment: Option<(Arc<QueueOutput>, Binding, Arc<NetworkJournal>)>,
 ) -> Response {
     let Ok(bytes) = bounded_json(value) else {
         return unavailable();
+    };
+    let owner = if let Some((_, _, journal)) = &attachment {
+        match journal.journal.begin_publication().await {
+            Ok(owner) => Some(owner),
+            Err(_) => return unavailable(),
+        }
+    } else {
+        None
     };
     let publication = match state.session_http.begin_publication(op).await {
         Ok(p) => p,
         Err(e) => return session_problem(e),
     };
     let mut r = Response::new(Body::new(GuardedMatchBody {
+        owner,
         publication: Some(publication),
         bytes: Some(bytes),
-        attachment,
+        attachment: attachment.map(|(output, binding, _)| (output, binding)),
     }));
     r.headers_mut().insert(
         header::CONTENT_TYPE,
@@ -125,8 +151,23 @@ mod tests {
             Ok(result)
         }
     }
+    struct FakeOwner {
+        live: Arc<AtomicBool>,
+    }
+    impl OwnerPublication for FakeOwner {
+        fn publish<T>(&mut self, action: impl FnOnce() -> T) -> Result<T, SessionError> {
+            if !self.live.load(Ordering::SeqCst) {
+                return Err(SessionError::Unauthenticated);
+            }
+            let result = action();
+            if !self.live.load(Ordering::SeqCst) {
+                return Err(SessionError::Unauthenticated);
+            }
+            Ok(result)
+        }
+    }
     fn fixture() -> (
-        GuardedMatchBody<FakePublication>,
+        GuardedMatchBody<FakePublication, FakeOwner>,
         Arc<QueueOutput>,
         Binding,
         Arc<AtomicBool>,
@@ -148,6 +189,7 @@ mod tests {
         let live = Arc::new(AtomicBool::new(true));
         (
             GuardedMatchBody {
+                owner: Some(FakeOwner { live: live.clone() }),
                 publication: Some(FakePublication {
                     snapshot,
                     live: live.clone(),

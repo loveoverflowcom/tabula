@@ -573,7 +573,9 @@ impl MatchAttachment {
         if seat > 7
             || next_seq == 0
             || operation_scope.len() != 64
-            || !operation_scope.bytes().all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
+            || !operation_scope
+                .bytes()
+                .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
             || frames.len() > MAX_BUFFERED_FRAMES
         {
             return Err(InvalidMatchHttp);
@@ -613,7 +615,13 @@ impl TryFrom<RawMatchAttachment> for MatchAttachment {
         if raw.version != MATCH_HTTP_VERSION {
             return Err(InvalidMatchHttp);
         }
-        Self::new(raw.attachment_id, raw.seat, raw.next_seq, raw.operation_scope, raw.frames)
+        Self::new(
+            raw.attachment_id,
+            raw.seat,
+            raw.next_seq,
+            raw.operation_scope,
+            raw.frames,
+        )
     }
 }
 impl std::fmt::Debug for MatchAttachment {
