@@ -17,8 +17,9 @@ pub(crate) fn validate(
     game: &dyn tabula_registry::ErasedGame,
     loaded: &crate::durable::LoadedMatch,
     limits: Limits,
+    deadline: std::time::Instant,
 ) -> Result<Box<dyn ErasedMatch>, RecoveryError> {
-    use crate::durable::{MAX_LEDGER_BYTES, MAX_RECOVERY_RECORDS};
+    use crate::durable::{MAX_LEDGER_BYTES, MAX_RECOVERY_RECORDS, MAX_SNAPSHOT_BYTES};
     let fail = || RecoveryError::Corrupt;
     let creation = &loaded.creation;
     if creation.format != JOURNAL_FORMAT
@@ -27,6 +28,8 @@ pub(crate) fn validate(
         || loaded.records.is_empty()
         || loaded.records.len() > MAX_RECOVERY_RECORDS
         || loaded.ledger.len() > limits.operation_scopes
+        || canonical_encode(creation).map_err(|_| fail())?.len() > MAX_SNAPSHOT_BYTES
+        || creation.roster.is_empty()
         || canonical_encode(&loaded.ledger).map_err(|_| fail())?.len() > MAX_LEDGER_BYTES
     {
         return Err(fail());
@@ -47,7 +50,8 @@ pub(crate) fn validate(
     if created.runtime().identity() != &approved {
         return Err(fail());
     }
-    let (state, accepted_scopes) = validate_records(id, game, loaded, &approved, created)?;
+    let (state, accepted_scopes) =
+        validate_records(id, game, loaded, &approved, created, deadline)?;
     validate_ledger(creation, loaded, limits, &accepted_scopes)?;
     Ok(state)
 }
@@ -62,6 +66,8 @@ fn validate_ledger(
     let mut previous_scope = None;
     for scope in &loaded.ledger {
         if previous_scope.is_some_and(|prior| prior >= scope.scope)
+            || scope.scope.record == 0
+            || scope.scope.subject.0 == 0
             || scope.recent.len() > limits.receipts_per_scope
             || creation.roster.get(scope.scope.seat).is_none()
             || accepted_scopes
@@ -118,15 +124,23 @@ fn validate_records(
     loaded: &LoadedMatch,
     approved: &RuntimeIdentity,
     created: CreatedMatch,
+    deadline: std::time::Instant,
 ) -> Result<ReplayedPrefix, RecoveryError> {
     let fail = || RecoveryError::Corrupt;
     let creation = &loaded.creation;
     let (mut state, seed, initial_events, initial_effects) = created.into_parts();
-    let mut bytes = 0usize;
+    let mut bytes = canonical_encode(creation)
+        .map_err(|_| fail())?
+        .len()
+        .checked_add(canonical_encode(&loaded.ledger).map_err(|_| fail())?.len())
+        .ok_or_else(fail)?;
     let mut time = 0u64;
     let mut terminal = false;
     let mut accepted_scopes = BTreeMap::<OperationScope, u64>::new();
     for (ordinal, record) in loaded.records.iter().enumerate() {
+        if std::time::Instant::now() >= deadline {
+            return Err(RecoveryError::Unavailable);
+        }
         bytes = bytes
             .checked_add(canonical_encode(record).map_err(|_| fail())?.len())
             .ok_or_else(fail)?;
@@ -171,7 +185,9 @@ fn validate_records(
             return Err(fail());
         }
         if let Some(snapshot) = &record.snapshot {
-            if state.snapshot().map_err(|_| fail())? != *snapshot {
+            if snapshot.len() > crate::durable::MAX_SNAPSHOT_BYTES
+                || state.snapshot().map_err(|_| fail())? != *snapshot
+            {
                 return Err(fail());
             }
             let restored = game
@@ -185,6 +201,9 @@ fn validate_records(
             state = restored;
         }
         time = record.now.0;
+    }
+    if std::time::Instant::now() >= deadline {
+        return Err(RecoveryError::Unavailable);
     }
     let last = loaded.records.last().ok_or_else(fail)?;
     if last.index != loaded.index || last.version != loaded.version {

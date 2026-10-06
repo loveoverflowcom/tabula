@@ -6,6 +6,7 @@
 //! queries. Real `PostgreSQL` acceptance owns their schema/type evidence.
 
 use std::fmt;
+use std::sync::Arc;
 
 use serde::{de::DeserializeOwned, Serialize};
 use sqlx::{PgPool, Postgres, Transaction};
@@ -21,12 +22,15 @@ use uuid::Uuid;
 #[cfg(any(test, feature = "match-postgres-test-support"))]
 use std::sync::{
     atomic::{AtomicU8, Ordering},
-    Arc, Mutex,
+    Mutex,
 };
 #[cfg(any(test, feature = "match-postgres-test-support"))]
 use tokio::sync::oneshot;
 
 static MIGRATIONS: sqlx::migrate::Migrator = sqlx::migrate!("./match_migrations");
+
+mod owner;
+pub use owner::PgMatchPublication;
 
 /// Explicitly selected pool for the isolated journal; no automatic migration.
 #[derive(Clone)]
@@ -49,6 +53,7 @@ pub struct PgMatchJournal {
     pool: PgPool,
     match_id: MatchId,
     fence: i64,
+    owner: Option<Arc<owner::OwnerLock>>,
     #[cfg(any(test, feature = "match-postgres-test-support"))]
     controls: Arc<TestControls>,
 }
@@ -462,11 +467,83 @@ impl PgMatchStore {
 
     /// Acquire a new durable owner generation; never initializes game state.
     pub async fn claim(&self, match_id: MatchId) -> Result<PgMatchJournal, RuntimePortError> {
+        tokio::time::timeout(owner::OWNER_BUDGET, self.claim_inner(match_id, None, false))
+            .await
+            .map_err(unavailable)?
+    }
+
+    /// Acquire native process-lifetime ownership for a not-yet-started room.
+    /// A live online owner is never displaced; initialized rows require recovery.
+    pub async fn claim_online(
+        &self,
+        match_id: MatchId,
+    ) -> Result<PgMatchJournal, RuntimePortError> {
+        self.online_owner(match_id, false).await
+    }
+
+    /// Recover native ownership only for an existing initialized journal.
+    /// No absent/uninitialized row can become a fresh seeded match on this path.
+    pub async fn reclaim_online(
+        &self,
+        match_id: MatchId,
+    ) -> Result<PgMatchJournal, RuntimePortError> {
+        self.online_owner(match_id, true).await
+    }
+
+    async fn online_owner(
+        &self,
+        match_id: MatchId,
+        recovering: bool,
+    ) -> Result<PgMatchJournal, RuntimePortError> {
+        tokio::time::timeout(owner::OWNER_BUDGET, async {
+            if match_id.0 == 0 { return Err(RuntimePortError::Unavailable); }
+            let mut connection = self.pool.acquire().await.map_err(unavailable)?;
+            connection.close_on_drop();
+            let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(542, hashtext('match_journal_heads'::regclass::oid::text || ':' || $1::uuid::text))")
+                .bind(Uuid::from_u128(match_id.0)).fetch_one(&mut *connection).await.map_err(unavailable)?;
+            if !acquired { return Err(RuntimePortError::Busy); }
+            #[cfg(any(test, feature = "match-postgres-test-support"))]
+            let backend_pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+                .fetch_one(&mut *connection).await.map_err(unavailable)?;
+            // Detaching frees bounded pool capacity while preserving all selected
+            // after-connect/search-path configuration on this physical backend.
+            let connection = connection.detach();
+            let owner = owner::OwnerLock::retain(connection,
+                #[cfg(any(test, feature = "match-postgres-test-support"))]
+                backend_pid,
+            );
+            self.claim_inner(match_id, Some(owner), recovering).await
+        }).await.map_err(unavailable)?
+    }
+
+    async fn claim_inner(
+        &self,
+        match_id: MatchId,
+        owner: Option<Arc<owner::OwnerLock>>,
+        recovering: bool,
+    ) -> Result<PgMatchJournal, RuntimePortError> {
         if match_id.0 == 0 {
             return Err(RuntimePortError::Unavailable);
         }
         let mut tx = self.pool.begin().await.map_err(unavailable)?;
         write_settings(&mut tx).await?;
+        if owner.is_none() {
+            owner::lock_transaction_owner(&mut tx, match_id).await?;
+        }
+        // The head orders fence changes with publication-window creation.
+        let initialized: Option<Option<i64>> = sqlx::query_scalar(
+            "SELECT version FROM match_journal_heads WHERE match_id = $1 FOR UPDATE",
+        )
+        .bind(Uuid::from_u128(match_id.0))
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(unavailable)?;
+        if recovering && !matches!(initialized, Some(Some(_)))
+            || owner.is_some() && !recovering && matches!(initialized, Some(Some(_)))
+        {
+            return Err(RuntimePortError::Unavailable);
+        }
+        owner::check_publication_window(&mut tx, match_id).await?;
         let fence: Option<i64> = sqlx::query_scalar("INSERT INTO match_journal_heads (match_id, fence, format) VALUES ($1, 1, 1) ON CONFLICT (match_id) DO UPDATE SET fence = match_journal_heads.fence + 1 WHERE match_journal_heads.fence < 9223372036854775807 RETURNING fence")
             .bind(Uuid::from_u128(match_id.0)).fetch_optional(&mut *tx).await.map_err(unavailable)?;
         let fence = fence
@@ -479,6 +556,7 @@ impl PgMatchStore {
             pool: self.pool.clone(),
             match_id,
             fence,
+            owner,
             #[cfg(any(test, feature = "match-postgres-test-support"))]
             controls: Arc::new(TestControls::default()),
         })
@@ -490,6 +568,10 @@ async fn write_settings(tx: &mut Transaction<'_, Postgres>) -> Result<(), Runtim
         .execute(&mut **tx)
         .await
         .map_err(unavailable)?;
+    sqlx::query("SET LOCAL statement_timeout = '5s'")
+        .execute(&mut **tx)
+        .await
+        .map_err(unavailable)?;
     Ok(())
 }
 
@@ -498,6 +580,7 @@ impl PgMatchJournal {
         &self,
         tx: &mut Transaction<'_, Postgres>,
     ) -> Result<HeadRow, RuntimePortError> {
+        self.check_native_owner()?;
         let head = sqlx::query_as::<_, HeadRow>("SELECT match_id, fence, format, version, input_index, observed_ms, record_count, record_bytes, creation, creation_hash, ledger, ledger_hash, latest_hash FROM match_journal_heads WHERE match_id = $1 FOR UPDATE")
             .bind(Uuid::from_u128(self.match_id.0)).fetch_optional(&mut **tx).await.map_err(unavailable)?.ok_or(RuntimePortError::Unavailable)?;
         head.check_owner(self.match_id, self.fence)?;

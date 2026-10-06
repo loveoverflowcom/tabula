@@ -453,18 +453,84 @@ where
     E: Effects,
     C: Clock + 'static,
 {
+    recover_inner(id, game, ports, limits, None).await
+}
+
+/// Exact recovery additionally binds canonical creation config and immutable
+/// roster to the host's current durable admission (ADR-0041, I-14).
+/// Historical data is rejected before state, effects or projections are exposed.
+pub async fn recover_for_admission<A, J, O, E, C>(
+    id: MatchId,
+    game: Arc<dyn tabula_registry::ErasedGame>,
+    config: &[u8],
+    roster: &tabula_core::SeatRoster,
+    ports: Ports<A, J, O, E, C>,
+    limits: Limits,
+) -> Result<(MatchHandle, HostControl, tokio::task::JoinHandle<Summary>), RecoveryError>
+where
+    A: Authority,
+    J: Journal,
+    O: Output,
+    E: Effects,
+    C: Clock + 'static,
+{
+    recover_inner(id, game, ports, limits, Some((config, roster))).await
+}
+
+async fn recover_inner<A, J, O, E, C>(
+    id: MatchId,
+    game: Arc<dyn tabula_registry::ErasedGame>,
+    ports: Ports<A, J, O, E, C>,
+    limits: Limits,
+    admission: Option<(&[u8], &tabula_core::SeatRoster)>,
+) -> Result<(MatchHandle, HostControl, tokio::task::JoinHandle<Summary>), RecoveryError>
+where
+    A: Authority,
+    J: Journal,
+    O: Output,
+    E: Effects,
+    C: Clock + 'static,
+{
     if !limits.valid() {
         return Err(RecoveryError::InvalidLimits);
     }
-    let loaded = ports
-        .journal
-        .load(id)
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    let loaded = tokio::time::timeout_at(deadline, ports.journal.load(id))
         .await
+        .map_err(|_| RecoveryError::Unavailable)?
         .map_err(|_| RecoveryError::Unavailable)?;
-    let recovered = catch_unwind(AssertUnwindSafe(|| {
-        crate::runtime_recovery::validate(id, game.as_ref(), &loaded, limits)
-    }))
+    if let Some((config, roster)) = admission {
+        if loaded.creation.config != config
+            || canonical_encode(&loaded.creation.roster).map_err(|_| RecoveryError::Corrupt)?
+                != canonical_encode(roster).map_err(|_| RecoveryError::Corrupt)?
+        {
+            return Err(RecoveryError::Corrupt);
+        }
+    }
+    // Approved-module replay is CPU work. Its bounded prefix never blocks the
+    // HTTP runtime thread; load, validation and replay share one whole deadline.
+    let (recovered, loaded) = tokio::time::timeout_at(
+        deadline,
+        tokio::task::spawn_blocking(move || {
+            let recovered = catch_unwind(AssertUnwindSafe(|| {
+                crate::runtime_recovery::validate(
+                    id,
+                    game.as_ref(),
+                    &loaded,
+                    limits,
+                    deadline.into_std(),
+                )
+            }))
+            .map_err(|_| RecoveryError::Corrupt)??;
+            Ok::<_, RecoveryError>((recovered, loaded))
+        }),
+    )
+    .await
+    .map_err(|_| RecoveryError::Unavailable)?
     .map_err(|_| RecoveryError::Corrupt)??;
+    if tokio::time::Instant::now() >= deadline {
+        return Err(RecoveryError::Unavailable);
+    }
     let Ports {
         authority,
         journal,

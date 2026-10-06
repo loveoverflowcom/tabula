@@ -26,6 +26,140 @@ use uuid::Uuid;
 
 use super::{PgMatchJournal, PgMatchStore};
 
+async fn reclaim_online_after_release(store: &PgMatchStore, id: MatchId) -> PgMatchJournal {
+    tokio::time::timeout(WAIT_LIMIT, async {
+        loop {
+            match store.reclaim_online(id).await {
+                Ok(journal) => return journal,
+                Err(RuntimePortError::Busy) => tokio::time::sleep(Duration::from_millis(10)).await,
+                Err(error) => panic!("initialized online recovery failed: {error:?}"),
+            }
+        }
+    })
+    .await
+    .expect("released native owner must become recoverable")
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires disposable real PostgreSQL 16 via TABULA_MATCH_DATABASE_URL"]
+async fn real_postgres_native_owner_excludes_live_competitor_and_backend_death_allows_exact_recovery(
+) {
+    let db = DatabaseFixture::new().await;
+    let first = PgMatchStore::new(db.first.clone());
+    let second = PgMatchStore::new(db.second.clone());
+    assert!(matches!(
+        second.reclaim_online(MATCH).await,
+        Err(RuntimePortError::Unavailable)
+    ));
+    let absent: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM match_journal_heads WHERE match_id = $1")
+            .bind(Uuid::from_u128(MATCH.0))
+            .fetch_one(&db.observer)
+            .await
+            .unwrap();
+    assert_eq!(absent, 0, "recovery must not initialize an absent room");
+    let owner = first.claim_online(MATCH).await.unwrap();
+    let pid = owner.owner_backend_pid_for_test().unwrap();
+    assert_ne!(
+        pid,
+        backend_pid(&db.first).await,
+        "lifetime ownership has a dedicated physical backend"
+    );
+    owner.append(genesis(MATCH)).await.unwrap();
+    owner.append(accepted_transition(MATCH)).await.unwrap();
+    let before = owner.load(MATCH).await.unwrap();
+    assert!(matches!(
+        second.reclaim_online(MATCH).await,
+        Err(RuntimePortError::Busy)
+    ));
+    assert!(
+        matches!(second.claim(MATCH).await, Err(RuntimePortError::Busy)),
+        "offline claim cannot steal an online owner"
+    );
+    let terminated: bool = sqlx::query_scalar("SELECT pg_terminate_backend($1)")
+        .bind(pid)
+        .fetch_one(&db.admin)
+        .await
+        .unwrap();
+    assert!(
+        terminated,
+        "test must kill the actual lifetime owner backend"
+    );
+    let replacement = reclaim_online_after_release(&second, MATCH).await;
+    assert!(replacement.fence > owner.fence);
+    assert_ne!(replacement.owner_backend_pid_for_test().unwrap(), pid);
+    let recovered = replacement.load(MATCH).await.unwrap();
+    assert_eq!(
+        canonical_encode(&before.creation).unwrap(),
+        canonical_encode(&recovered.creation).unwrap()
+    );
+    assert_eq!(
+        canonical_encode(&before.records).unwrap(),
+        canonical_encode(&recovered.records).unwrap()
+    );
+    assert_eq!(before.ledger, recovered.ledger);
+    assert_eq!(before.observed_ms, recovered.observed_ms);
+    assert!(owner
+        .update_ledger(MATCH, before.version, before.observed_ms, before.ledger)
+        .await
+        .is_err());
+    assert!(owner.load(MATCH).await.is_err());
+    assert!(matches!(replacement.begin_publication().await, Ok(_)));
+    drop(owner);
+    drop(replacement);
+    db.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires disposable real PostgreSQL 16 via TABULA_MATCH_DATABASE_URL"]
+async fn real_postgres_native_owner_publication_survives_backend_death_and_suppresses_old_queued_frame(
+) {
+    let db = DatabaseFixture::new().await;
+    let owner = PgMatchStore::new(db.first.clone())
+        .claim_online(MATCH)
+        .await
+        .unwrap();
+    owner.append(genesis(MATCH)).await.unwrap();
+    let mut held = owner.begin_publication().await.unwrap();
+    let pid = owner.owner_backend_pid_for_test().unwrap();
+    let terminated: bool = sqlx::query_scalar("SELECT pg_terminate_backend($1)")
+        .bind(pid)
+        .fetch_one(&db.admin)
+        .await
+        .unwrap();
+    assert!(terminated);
+    let store = PgMatchStore::new(db.second.clone());
+    assert!(
+        matches!(
+            store.reclaim_online(MATCH).await,
+            Err(RuntimePortError::Busy)
+        ),
+        "committed first-frame exclusion must survive physical owner backend death"
+    );
+    let replacement = reclaim_online_after_release(&store, MATCH).await;
+    assert!(replacement.fence > owner.fence);
+    let mut emitted = false;
+    assert_eq!(
+        held.publish(|| emitted = true),
+        Err(RuntimePortError::Unavailable)
+    );
+    assert!(
+        !emitted,
+        "former owner cannot hand out even one queued body frame"
+    );
+    let mut fresh = replacement.begin_publication().await.unwrap();
+    assert_eq!(fresh.publish(|| "bounded frame"), Ok("bounded frame"));
+    assert_eq!(
+        fresh.publish(|| "second frame"),
+        Err(RuntimePortError::Unavailable)
+    );
+    drop(held);
+    drop(fresh);
+    drop(owner);
+    drop(replacement);
+    db.close().await;
+}
+
 static NEXT_SCHEMA: AtomicU64 = AtomicU64::new(1);
 const WAIT_LIMIT: Duration = Duration::from_secs(15);
 const MATCH: MatchId = MatchId(101);
