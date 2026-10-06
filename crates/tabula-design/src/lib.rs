@@ -290,6 +290,16 @@ pub struct ColorTokens {
     pub last_action: Color,
     pub threat: Color,
     pub hidden: Color,
+    /// T Portal symbol on light/dark chrome, separate from action and selection (issue #91).
+    pub brand_mark: Color,
+    /// Accessible T Portal lettering on shell and brand surfaces (doc 04 §8).
+    pub brand_wordmark: Color,
+    /// Optional identity canvas and panel; these do not replace gameplay surfaces.
+    pub brand_canvas: Color,
+    pub brand_panel: Color,
+    /// Identity backing for app icons, paired with `brand_on_ink`.
+    pub brand_ink: Color,
+    pub brand_on_ink: Color,
     /// Warm application canvas and paper from the original Design 01 (issue #87).
     pub shell_canvas: Color,
     pub shell_paper: Color,
@@ -745,6 +755,118 @@ mod tests {
             assert!(
                 ratio(c.shell_on_hero, c.shell_hero) >= 4.5,
                 "{kind:?}: hero text"
+            );
+        }
+    }
+
+    #[test]
+    fn t_portal_brand_palette_is_additive_to_existing_action_roles() {
+        for (kind, brand, action) in [
+            (
+                ThemeKind::Light,
+                [
+                    Color::rgb(124, 99, 237),
+                    Color::rgb(94, 75, 139),
+                    Color::rgb(235, 230, 247),
+                    Color::rgb(226, 218, 250),
+                    Color::rgb(94, 75, 139),
+                    Color::rgb(247, 244, 255),
+                ],
+                [Color::rgb(86, 52, 190), Color::rgb(255, 255, 255)],
+            ),
+            (
+                ThemeKind::Dark,
+                [
+                    Color::rgb(185, 167, 243),
+                    Color::rgb(247, 244, 255),
+                    Color::rgb(71, 61, 102),
+                    Color::rgb(94, 75, 139),
+                    Color::rgb(94, 75, 139),
+                    Color::rgb(247, 244, 255),
+                ],
+                [Color::rgb(207, 188, 255), Color::rgb(50, 0, 126)],
+            ),
+            (
+                ThemeKind::HighContrastLight,
+                [
+                    Color::rgb(0, 0, 0),
+                    Color::rgb(0, 0, 0),
+                    Color::rgb(255, 255, 255),
+                    Color::rgb(255, 255, 255),
+                    Color::rgb(0, 0, 0),
+                    Color::rgb(255, 255, 255),
+                ],
+                [Color::rgb(44, 0, 120), Color::rgb(255, 255, 255)],
+            ),
+            (
+                ThemeKind::HighContrastDark,
+                [
+                    Color::rgb(255, 255, 255),
+                    Color::rgb(255, 255, 255),
+                    Color::rgb(0, 0, 0),
+                    Color::rgb(28, 28, 28),
+                    Color::rgb(0, 0, 0),
+                    Color::rgb(255, 255, 255),
+                ],
+                [Color::rgb(224, 211, 255), Color::rgb(25, 0, 80)],
+            ),
+        ] {
+            let c = Theme::by_kind(kind).color;
+            assert_eq!(
+                [
+                    c.brand_mark,
+                    c.brand_wordmark,
+                    c.brand_canvas,
+                    c.brand_panel,
+                    c.brand_ink,
+                    c.brand_on_ink
+                ],
+                brand,
+                "{kind:?}: approved identity palette"
+            );
+            assert_eq!(
+                [c.primary, c.on_primary],
+                action,
+                "{kind:?}: existing actions"
+            );
+            assert_eq!(c.selected, action[0], "{kind:?}: existing selection");
+        }
+    }
+
+    /// A symbol needs non-text contrast; the accompanying lettering is text.
+    /// HC adaptation raises both to 7:1 on every intended identity/chrome surface.
+    #[test]
+    fn t_portal_brand_pairs_meet_four_scheme_contrast() {
+        for kind in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            let c = Theme::by_kind(kind).color;
+            let (mark_minimum, text_minimum) = match kind {
+                ThemeKind::Light | ThemeKind::Dark => (3.0, 4.5),
+                ThemeKind::HighContrastLight | ThemeKind::HighContrastDark => (7.0, 7.0),
+            };
+            for background in [
+                c.shell_canvas,
+                c.shell_paper,
+                c.shell_note,
+                c.brand_canvas,
+                c.brand_panel,
+            ] {
+                assert!(
+                    ratio(c.brand_mark, background) >= mark_minimum,
+                    "{kind:?}: mark"
+                );
+                assert!(
+                    ratio(c.brand_wordmark, background) >= text_minimum,
+                    "{kind:?}: wordmark"
+                );
+            }
+            assert!(
+                ratio(c.brand_on_ink, c.brand_ink) >= text_minimum,
+                "{kind:?}: app icon"
             );
         }
     }

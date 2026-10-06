@@ -16,7 +16,7 @@ from `tabula-design-html-mjs-png.zip`. The reference's hash routes are prototype
 navigation, not product deep links. Compare actual app and prototype at the same
 CSS viewport, DPR, locale and scheme before assessing coordinates.
 
-Restore the warm paper canvas, Tabula brand mark, 224px desktop sidebar,
+Restore the warm paper canvas, shared Tabula T Portal identity, 224px desktop sidebar,
 80px context topbar and neutral account area; display-serif page/hero headings,
 lavender split discovery hero, quiet white continue region and three-column
 landscape-artwork catalog. Body, control labels and metadata remain sans. The
@@ -33,9 +33,12 @@ verified avatar is available. It is a silhouette, not an invented account.
 `tokens.toml` owns additive `shell-canvas`, `shell-paper`, `shell-hero`,
 `shell-on-hero`, `shell-note` and `shell-cover-*` / `shell-art-*` semantic roles.
 All four schemes are authored and generated through existing Rust/CSS/JSON/Kotlin
-adapters. Light canvas `#F9F7F4`, paper `#FFFFFF` and primary `#5634BE` retain the
-original identity; gameplay material palettes and interaction semantics remain
-independent. Web typography metrics use root-relative units for font scaling.
+adapters. Light canvas `#F9F7F4` and paper `#FFFFFF` retain the original quiet
+chrome. [Issue #91](https://github.com/loveoverflowcom/tabula/issues/91) supersedes
+only the conflicting old logo: [canonical T Portal sources](../../../assets/brand/README.md)
+and additive semantic `brand-*` roles own identity across shell/targets.
+Action primary/selected, gameplay material palettes and interaction semantics
+remain independent. Web typography metrics use root-relative units for font scaling.
 
 ## Task and route distinction
 

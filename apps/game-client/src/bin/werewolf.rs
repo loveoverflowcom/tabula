@@ -32,6 +32,8 @@ fn window_conf() -> mq::Conf {
         window_width: 1200,
         window_height: 880,
         high_dpi: true,
+        #[cfg(not(target_arch = "wasm32"))]
+        icon: Some(tabula_game_client::brand_icon()),
         ..mq::Conf::default()
     }
 }

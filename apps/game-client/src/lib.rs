@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod brand;
 pub mod fixture_assets;
 pub mod host_resources;
 #[cfg(feature = "online")]
@@ -27,6 +28,8 @@ use tabula_presentation::{
     PointerPosition, RenderList, Viewport,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use brand::brand_icon;
 pub use replay_capture::{AcceptedReplayInput, LocalReplayTrace, RecordedInput};
 
 /// Validates platform-reported display dimensions and device-pixel scale.

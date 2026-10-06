@@ -226,11 +226,7 @@ fn ShellNavigation() -> impl IntoView {
 fn Brand() -> impl IntoView {
     view! {
         <A href="/" attr:class="brand" attr:aria-label="Tabula">
-            {InertElement::new(r#"<svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                <rect x="2" y="2" width="36" height="36" rx="12" fill="currentColor"/>
-                <path d="M11 12h18v5h-6v12h-6V17h-6z" fill="var(--sys-color-on-primary)"/>
-                <circle cx="28" cy="27" r="2.5" fill="var(--sys-color-on-primary)"/>
-            </svg>"#)}<span>"tabula"</span>
+            {InertElement::new(include_str!("../../../../assets/brand/generated/tabula-lockup.svg"))}
         </A>
     }
 }

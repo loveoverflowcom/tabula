@@ -86,3 +86,11 @@ login  register  room-browser  room-detail  queue  match-result  profile  friend
 Plus the in-canvas screens the game runtime owns (doc 04 §3.4): branded loader,
 in-match HUD, chat overlay, turn indicator, clocks, in-match settings, the ready
 panel, and the result summary.
+
+## Shared brand identity
+
+[Canonical T Portal assets and export contract](../../assets/brand/README.md)
+implement issue #91. [Verification](../verification/brand-identity/README.md)
+records source/build/pixel evidence separately from browser/device runtime.
+The original Design01 dashboard hierarchy is retained; game art and avatars
+are independent of the platform logo.

@@ -38,6 +38,7 @@ pub struct LocalSpriteResources {
     pack: AssetPackRef,
     setup: Vec<AssetRef>,
     gameplay: Vec<AssetRef>,
+    shared_images: &'static [(&'static str, &'static [u8])],
     #[cfg(not(target_arch = "wasm32"))]
     images: &'static [(&'static str, &'static [u8])],
 }
@@ -69,9 +70,20 @@ impl LocalSpriteResources {
             pack: pack.clone(),
             setup,
             gameplay,
+            shared_images: &[],
             #[cfg(not(target_arch = "wasm32"))]
             images: &[],
         })
+    }
+
+    /// Supplies only the small shared brand exception (assets/README.md).
+    /// Bytes still cross the exact manifest, integrity and decoder boundaries.
+    pub(crate) fn with_shared_images(
+        mut self,
+        images: &'static [(&'static str, &'static [u8])],
+    ) -> Self {
+        self.shared_images = images;
+        self
     }
 
     /// Supplies the native host's tiny embedded fixtures, never original artwork.
@@ -193,6 +205,13 @@ impl AssetSource for LocalSpriteResources {
             .iter()
             .find(|file| file.path() == path)
             .ok_or_else(|| format!("local art path is undeclared: {path}"))?;
+        if let Some((_, bytes)) = self
+            .shared_images
+            .iter()
+            .find(|(name, _)| *name == file.name().as_str())
+        {
+            return Ok(UnverifiedAssetBytes::new(bytes.to_vec()));
+        }
         #[cfg(target_arch = "wasm32")]
         {
             macroquad::file::load_file(file.path().as_str())

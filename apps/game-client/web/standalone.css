@@ -20,7 +20,10 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
 .skip-link:focus{top:12px}
 
 .shared-header{min-height:76px;display:flex;align-items:center;gap:64px;max-width:1440px;margin:auto;padding:10px 5%;background:var(--sys-color-surface)}
-.brand{font:700 30px/1.2 Noto Serif,var(--sys-type-family-display);text-decoration:none}
+.brand{display:flex;align-items:center;min-height:44px;text-decoration:none}
+.brand-lockup{display:block;width:138px;height:auto;flex:none}
+.runtime-brand{display:flex;justify-content:center;margin:0 auto 16px}
+.runtime-brand .brand-lockup{width:176px}
 .shared-header nav{display:flex;gap:8px;align-items:center}
 .shared-header nav a{padding:14px 30px;border-radius:var(--sys-shape-lg);font-weight:600;text-decoration:none}
 .shared-header nav .current{background:var(--sys-color-container);color:var(--sys-color-primary)}
@@ -114,7 +117,7 @@ dialog p{line-height:1.7}
 }
 
 @media(max-width:760px){.shared-header{min-height:60px;padding:10px 16px;gap:20px}
-.brand{font-size:24px}
+.brand .brand-lockup{width:110px}
 .shared-header nav a{font-size:12px;padding:10px 18px}
 .shared-header nav span,.locale span{display:none}
 .locale{gap:0}

@@ -92,14 +92,7 @@ impl StandaloneSetup {
             theme.color.surface_container,
             0.0,
         )?;
-        text(
-            &mut builder,
-            "Tabula",
-            Vec2::new(24.0, 12.0),
-            TextStyleToken::TitleLg,
-            theme.color.on_surface,
-            None,
-        )?;
+        brand_lockup(&mut builder, &theme)?;
         text(
             &mut builder,
             "LOCAL / OFFLINE",
@@ -214,6 +207,44 @@ impl StandaloneSetup {
         }
         builder.finish()
     }
+}
+
+fn brand_lockup(
+    builder: &mut RenderListBuilder,
+    theme: &tabula_design::Theme,
+) -> Result<(), RenderListError> {
+    // Preserve the canonical 705.276×256 lockup: 256×256 mark and the
+    // 391.276×100 outlined wordmark translated by (294, 77), with 20 units
+    // of trailing clear space. The brand bar remains 56dp tall, independently
+    // of the game-scoped setup layout.
+    let scale = 40.0 / 256.0;
+    let origin = Vec2::new(24.0, 8.0);
+    for (asset, rect, tint) in [
+        (
+            tabula_game_client::brand::mark_asset(),
+            Rect::new(origin, Vec2::splat(256.0 * scale))?,
+            theme.color.brand_mark,
+        ),
+        (
+            tabula_game_client::brand::wordmark_asset(),
+            Rect::new(
+                origin + Vec2::new(294.0, 77.0) * scale,
+                Vec2::new(391.276, 100.0) * scale,
+            )?,
+            theme.color.brand_wordmark,
+        ),
+    ] {
+        builder.push(RenderCmd::Sprite {
+            asset,
+            rect,
+            tint,
+            rotation: 0.0,
+            pivot: Vec2::ZERO,
+            layer: Layer::HUD,
+            z: 0,
+        })?;
+    }
+    Ok(())
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -479,6 +510,75 @@ mod tests {
                     .cmple(size)
                     .all());
             }
+        }
+    }
+
+    #[test]
+    fn setup_header_uses_outlined_lockup_geometry_and_semantic_roles_in_all_schemes() {
+        for kind in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            let theme = Theme::by_kind(kind);
+            let frame = FrameCtx::new(
+                Viewport::new(Vec2::new(900.0, 720.0)).unwrap(),
+                Dpi::new(2.0).unwrap(),
+                0,
+                theme,
+            );
+            let cover = AssetRef::new("catalog/cover").unwrap();
+            let list = StandaloneSetup::new(LocalClockOptions::default())
+                .present(&frame, cover.clone())
+                .unwrap();
+            let find_sprite = |expected: AssetRef| {
+                let sprites: Vec<_> = list
+                    .commands()
+                    .iter()
+                    .filter_map(|command| match command {
+                        RenderCmd::Sprite {
+                            asset,
+                            rect,
+                            tint,
+                            rotation,
+                            pivot,
+                            layer,
+                            ..
+                        } if *asset == expected => Some((*rect, *tint, *rotation, *pivot, *layer)),
+                        _ => None,
+                    })
+                    .collect();
+                assert_eq!(
+                    sprites.len(),
+                    1,
+                    "exactly one sprite per identity in {kind:?}"
+                );
+                sprites[0]
+            };
+            let (mark, mark_tint, rotation, pivot, layer) =
+                find_sprite(tabula_game_client::brand::mark_asset());
+            assert_eq!(mark.origin(), Vec2::new(24.0, 8.0));
+            assert_eq!(mark.size(), Vec2::splat(40.0));
+            assert_eq!(mark_tint, theme.color.brand_mark);
+            assert_eq!((rotation, pivot, layer), (0.0, Vec2::ZERO, Layer::HUD));
+            let (wordmark, wordmark_tint, rotation, pivot, layer) =
+                find_sprite(tabula_game_client::brand::wordmark_asset());
+            assert_eq!(wordmark.origin(), Vec2::new(69.9375, 20.03125));
+            assert_eq!(wordmark.size(), Vec2::new(61.136_875, 15.625));
+            assert_eq!(wordmark_tint, theme.color.brand_wordmark);
+            assert_eq!((rotation, pivot, layer), (0.0, Vec2::ZERO, Layer::HUD));
+            let width =
+                wordmark.origin().x + wordmark.size().x - mark.origin().x + 20.0 * 40.0 / 256.0; // Canonical viewBox includes trailing clear space.
+            assert!((width / mark.size().y - 705.276 / 256.0).abs() < 0.000_01);
+            assert!((wordmark.origin() + wordmark.size()).y < 56.0);
+            assert_eq!(find_sprite(cover).1, theme.game_art.chess.piece_tint); // xtask-allow-game-id: direct Phase 2 local standalone art regression only.
+            assert!(
+                !list.commands().iter().any(|command| {
+                    matches!(command, RenderCmd::Text { text, .. } if text == "Tabula")
+                }),
+                "the shared identity must never fall back to an installed font"
+            );
         }
     }
 }

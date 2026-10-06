@@ -2,8 +2,8 @@
 // rem type/layout measurements follow user font scale; fixed safe-area space is real.
 body { background: var(--sys-color-shell-canvas); }
 .icon { width: 1.25rem; height: 1.25rem; flex: none; }
-.brand { display:flex; align-items:center; gap:.5rem; min-height:2.75rem; color:var(--sys-color-on-surface); text-decoration:none; font-size:1.875rem; font-weight:750; letter-spacing:-.055em; }
-.brand-mark { width:2.5rem; height:2.5rem; color:var(--sys-color-primary); flex:none; }
+.brand { display:flex; align-items:center; min-height:2.75rem; text-decoration:none; }
+.brand-lockup { width:6.8875rem; height:2.5rem; flex:none; }
 .sidebar { position:fixed; inset:0 auto 0 0; width:14rem; padding:1.5rem 1.125rem; border-right:1px solid color-mix(in srgb,var(--sys-color-outline) 18%,transparent); display:flex; flex-direction:column; gap:1.5rem; overflow-y:auto; z-index:20; background:var(--sys-color-shell-canvas); }
 .sidebar > .brand { margin:.25rem .5rem 1rem; }
 .sidebar__nav { display:flex; flex-direction:column; gap:.375rem; }
@@ -68,7 +68,8 @@ body { background: var(--sys-color-shell-canvas); }
 .shell-menu::backdrop { background:color-mix(in srgb,var(--sys-color-on-surface) 45%,transparent); }
 .shell-menu__header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:2rem; }
 .shell-menu .sidebar__caption { margin-block:2rem 1.25rem; }
-.shell-menu .brand { max-width:100%; flex-wrap:wrap; font-size:1.5rem; }
+.shell-menu .brand { min-width:0; max-width:100%; flex-wrap:wrap; font-size:1.5rem; }
+.shell-menu .brand-lockup { max-width:100%; height:auto; aspect-ratio:705.276 / 256; }
 .shell-menu__header > .icon-button { margin-left:auto; }
 :root[data-theme^="hc-"] .feature-hero, :root[data-theme^="hc-"] .continue-strip { outline:1px solid var(--sys-color-outline); outline-offset:-1px; }
 @media(max-width:62rem) {
@@ -78,7 +79,7 @@ body { background: var(--sys-color-shell-canvas); }
   .topbar__context { display:none; }
   .topbar__brand { display:block; }
   .topbar__brand .brand { font-size:1.5rem; }
-  .topbar__brand .brand-mark { width:2rem; height:2rem; }
+  .topbar__brand .brand-lockup { width:5.51rem; height:2rem; }
   .mobile-menu-button { display:inline-flex; }
   .main { padding:1.5rem 1.5rem calc(6rem + env(safe-area-inset-bottom)); }
   .bottom-nav { position:fixed; inset:auto 0 0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); min-height:4.5rem; padding:.5rem max(.5rem,env(safe-area-inset-right)) calc(.5rem + env(safe-area-inset-bottom)) max(.5rem,env(safe-area-inset-left)); border-top:1px solid color-mix(in srgb,var(--sys-color-outline) 18%,transparent); background:var(--sys-color-shell-canvas); z-index:15; }
