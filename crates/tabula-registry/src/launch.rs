@@ -57,14 +57,31 @@ impl RuntimeBinding {
     /// This is a navigation fact, never authentication, permission or live-service proof.
     #[must_use]
     pub fn supports_direct(&self, game: &dyn crate::ErasedGame) -> bool {
-        self.is_bound()
-            && (game.direct_document() || (self.direct_online && game.direct_host_supported()))
+        supports_direct_impl(self, game)
+    }
+
+    /// Discovery-only view of the same deployment/package navigation facts.
+    #[must_use]
+    pub fn supports_discovery_direct(
+        &self,
+        game: &dyn crate::discovery::ErasedDiscoveryGame,
+    ) -> bool {
+        supports_direct_impl(self, game)
     }
 
     #[must_use]
     pub fn is_bound(&self) -> bool {
         matches!(self.play_base, Some("/play" | "/play/"))
     }
+}
+
+// One decision owner for both erased interfaces; no runtime factory is called.
+fn supports_direct_impl<G: crate::discovery::ErasedDiscoveryGame + ?Sized>(
+    binding: &RuntimeBinding,
+    game: &G,
+) -> bool {
+    binding.is_bound()
+        && (game.direct_document() || (binding.direct_online && game.direct_host_supported()))
 }
 
 /// A confirmed handoff target: a real document navigation.
@@ -145,10 +162,30 @@ pub fn resolve_direct(
     match_id: &str,
     locale: Locale,
 ) -> Result<LaunchHandoff, UnavailableReason> {
+    resolve_direct_impl(binding, game, match_id, locale)
+}
+
+/// The same bounded direct handoff for a discovery-only descriptor interface.
+/// All package/deployment, match-id and URL checks share the original owner.
+pub fn resolve_discovery_direct(
+    binding: RuntimeBinding,
+    game: &dyn crate::discovery::ErasedDiscoveryGame,
+    match_id: &str,
+    locale: Locale,
+) -> Result<LaunchHandoff, UnavailableReason> {
+    resolve_direct_impl(binding, game, match_id, locale)
+}
+
+fn resolve_direct_impl<G: crate::discovery::ErasedDiscoveryGame + ?Sized>(
+    binding: RuntimeBinding,
+    game: &G,
+    match_id: &str,
+    locale: Locale,
+) -> Result<LaunchHandoff, UnavailableReason> {
     if !binding.is_bound() {
         return Err(UnavailableReason::NoGameplayRuntime);
     }
-    if !binding.supports_direct(game)
+    if !supports_direct_impl(&binding, game)
         || match_id.len() != 32
         || !match_id
             .bytes()

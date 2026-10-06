@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pure acceptance-oracle sensitivity tests; no browser or network execution."""
 import importlib.util
+from copy import deepcopy
 from pathlib import Path
 import tempfile
 import unittest
@@ -11,6 +12,21 @@ spec.loader.exec_module(module)
 
 
 class OracleTests(unittest.TestCase):
+    def test_unfocused_skip_requires_whole_wrapped_box_hidden_and_native_tab_preserved(self):
+        original = {"count": 1, "focused": False, "display": "block", "visibility": "visible",
+                    "tab_index": 0, "inert_or_hidden": False,
+                    "rect": {"width": 300, "height": 44, "bottom": -8}}
+        for height in (44, 84, 160, 320):
+            module.require_skip_concealed({**original, "rect": {**original["rect"], "height": height}})
+        for change in ({"count": 0}, {"count": 2}, {"focused": True}, {"display": "none"},
+                       {"visibility": "hidden"}, {"tab_index": -1}, {"inert_or_hidden": True},
+                       {"rect": {"width": 0, "height": 84, "bottom": -8}},
+                       {"rect": {"width": 300, "height": 0, "bottom": -8}},
+                       {"rect": {"width": 300, "height": 84, "bottom": 20}},
+                       {"rect": {"width": 300, "height": 84, "bottom": -.5}}):
+            with self.subTest(change=change), self.assertRaises(module.AcceptanceFailure):
+                module.require_skip_concealed({**original, **change})
+
     def test_contrast_uses_independent_wcag_linear_luminance(self):
         self.assertAlmostEqual(module.contrast_ratio((0, 0, 0), (255, 255, 255)), 21)
         self.assertAlmostEqual(module.contrast_ratio((128, 128, 128), (128, 128, 128)), 1)
@@ -47,6 +63,83 @@ class OracleTests(unittest.TestCase):
             evidence.case("real font setting", lambda: module.require_font_preference(16, 32))
             self.assertEqual(evidence.records[0]["status"], "BLOCKED")
             self.assertEqual(evidence.errors, ["real font setting"])
+
+    def font_observations(self):
+        return [{"scale": scale, "language": language, "viewport": {"width": width, "height": height},
+                 "home": {"title": {"font_size": 34 * scale}, "body": {"font_size": 14 * scale}},
+                 "library": {"title": {"font_size": 34 * scale}, "body": {"font_size": 14 * scale}}}
+                for scale in (1, 2) for language in ("vi", "en")
+                for width, height in ((320, 640), (390, 844))]
+
+    def test_font_matrix_requires_both_widths_languages_and_real_doubling(self):
+        module.assert_font_scaling(self.font_observations())
+        for changed in (self.font_observations()[:-1], self.font_observations()[1:] + self.font_observations()[1:2]):
+            with self.assertRaises(module.AcceptanceFailure):
+                module.assert_font_scaling(changed)
+        for width in (320, 390):
+            for language in ("vi", "en"):
+                for route in ("home", "library"):
+                    for text in ("body", "title"):
+                        with self.subTest(width=width, language=language, route=route, text=text):
+                            observations = self.font_observations()
+                            row = next(item for item in observations if item["scale"] == 2 and item["language"] == language
+                                       and item["viewport"]["width"] == width)
+                            row[route][text]["font_size"] /= 2
+                            with self.assertRaises(module.AcceptanceFailure):
+                                module.assert_font_scaling(observations)
+
+    def narrow_metrics(self, language="en"):
+        def label(text):
+            return {"text": text, "words": [{"text": word, "line_count": 1, "outside_target": False}
+                                             for word in text.split()]}
+        expected = {"en": {"cta": ["Explore games"], "navigation": ["Home", "Library", "Account"]},
+                    "vi": {"cta": ["Khám phá game"], "navigation": ["Trang chính", "Thư viện", "Tài khoản"]}}[language]
+        return {"navigation": [label(text) for text in expected["navigation"]],
+                "cta": [label(text) for text in expected["cta"]], "visible_hero_art": [],
+                "hero": {"inner_width": 248, "copy": {"width": 248}, "copy_inner_width": 216,
+                         "heading": {"width": 216}},
+                "continue": {"inner_width": 184, "icon": {"bottom": 88}, "copy": {"y": 112, "width": 184}}}
+
+    def test_narrow_oracle_reaches_320_390_at_200_but_leaves_normal_reference_layout(self):
+        for width in (320, 390):
+            for language in ("vi", "en"):
+                self.assertTrue(module.assert_narrow_usability(self.narrow_metrics(language), width, 32, language, home=True))
+                self.assertFalse(module.assert_narrow_usability({}, width, 16, language, home=True))
+        self.assertTrue(module.assert_narrow_usability(self.narrow_metrics(), 512, 32, "en", home=True))
+        self.assertFalse(module.assert_narrow_usability({}, 513, 32, "en", home=True))
+
+    def test_narrow_label_oracle_rejects_split_words_clipping_and_missing_copy(self):
+        for name in ("cta", "navigation"):
+            for change in ("split", "outside", "empty", "missing", "changed"):
+                with self.subTest(name=name, change=change):
+                    metrics = self.narrow_metrics()
+                    if change == "split":
+                        metrics[name][-1]["words"][-1]["line_count"] = 2
+                    elif change == "outside":
+                        metrics[name][-1]["words"][-1]["outside_target"] = True
+                    elif change == "empty":
+                        metrics[name][-1]["words"] = []
+                    elif change == "missing":
+                        metrics[name] = []
+                    else:
+                        metrics[name][-1]["text"] = "Different label"
+                    with self.assertRaises(module.AcceptanceFailure):
+                        module.assert_narrow_usability(metrics, 320, 32, "en", home=True)
+
+    def test_narrow_geometry_oracle_rejects_competing_art_and_narrow_continue_column(self):
+        mutations = [{"visible_hero_art": [{"width": 100}]}, {"hero": None},
+                     {"hero": {**self.narrow_metrics()["hero"], "copy": {"width": 180}}},
+                     {"hero": {**self.narrow_metrics()["hero"], "heading": {"width": 150}}},
+                     {"continue": None},
+                     {"continue": {**self.narrow_metrics()["continue"], "copy": {"y": 0, "width": 184}}},
+                     {"continue": {**self.narrow_metrics()["continue"], "copy": {"y": 112, "width": 110}}}]
+        for change in mutations:
+            with self.subTest(change=change), self.assertRaises(module.AcceptanceFailure):
+                module.assert_narrow_usability({**self.narrow_metrics(), **deepcopy(change)}, 390, 32, "en", home=True)
+        # Catalog contains Continue and navigation but has no Home hero or CTA.
+        catalog = self.narrow_metrics()
+        catalog.update(hero=None, cta=[], visible_hero_art=[])
+        self.assertTrue(module.assert_narrow_usability(catalog, 320, 32, "en", home=False))
 
     def test_shell_wasm_is_allowed_but_game_runtime_atlas_model_is_not(self):
         allowed = {"/tabula-web-a.wasm"}

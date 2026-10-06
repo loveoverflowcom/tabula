@@ -84,11 +84,14 @@ fn open_admission(
     let target = GameId::new(game_id.to_owned())
         .ok()
         .and_then(|id| catalog.get(&id))
-        .filter(|entry| binding.supports_direct(entry.game()));
+        .filter(|entry| binding.supports_discovery_direct(entry.game()));
     if let Some(entry) = target {
-        if let Ok(handoff) =
-            tabula_registry::launch::resolve_direct(binding, entry.game(), match_id, locale)
-        {
+        if let Ok(handoff) = tabula_registry::launch::resolve_discovery_direct(
+            binding,
+            entry.game(),
+            match_id,
+            locale,
+        ) {
             navigate(&handoff.url);
             return;
         }

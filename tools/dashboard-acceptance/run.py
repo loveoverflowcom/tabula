@@ -38,6 +38,12 @@ SCHEMES = (
     ("hc-light", "light", "more"),
     ("hc-dark", "dark", "more"),
 )
+FONT_VIEWPORTS = (("mobile", 390, 844), ("small-mobile", 320, 640))
+FONT_LANGUAGES = ("vi", "en")
+NARROW_LABELS = {
+    "en": {"cta": ["Explore games"], "navigation": ["Home", "Library", "Account"]},
+    "vi": {"cta": ["Khám phá game"], "navigation": ["Trang chính", "Thư viện", "Tài khoản"]},
+}
 FORBIDDEN_FIXTURES = ("Minh Anh", "Mạnh Duy", "05:42", "Xiangqi Tutor")
 HEAVY_RESOURCE = re.compile(r"(?:/play/|atlas|role[-_]?pack|\.(?:onnx|gguf|ggml|safetensors|gltf|glb|bin|pt|pth|tbr)(?:$|\?))", re.I)
 
@@ -58,6 +64,27 @@ def require(condition: bool, label: str) -> None:
 def require_font_preference(measured: float, expected: int):
     if abs(measured - expected) > 0.1:
         raise PrerequisiteBlocker("actual Chromium did not apply requested default font preference")
+
+
+def require_skip_concealed(metrics: dict):
+    """The whole unfocused box is above the viewport, while native Tab remains usable."""
+    require(metrics["count"] == 1 and not metrics["focused"], "initial skip-link state is not unique and unfocused")
+    require(metrics["display"] != "none" and metrics["visibility"] == "visible"
+            and metrics["tab_index"] >= 0 and not metrics["inert_or_hidden"],
+            "concealing skip link removed its keyboard/accessibility path")
+    box = metrics["rect"]
+    require(box["width"] > 0 and box["height"] > 0 and box["bottom"] <= -1,
+            "unfocused wrapped skip link leaks into the viewport")
+
+
+SKIP_STATE = """() => {
+ const links=document.querySelectorAll('.skip-link'),el=links[0];
+ if(!el)return {count:links.length,focused:false};
+ const b=el.getBoundingClientRect(),c=getComputedStyle(el);
+ return {count:links.length,focused:el===document.activeElement,display:c.display,visibility:c.visibility,
+   tab_index:el.tabIndex,inert_or_hidden:!!el.closest('[inert],[aria-hidden="true"]'),
+   rect:{x:b.x,y:b.y,width:b.width,height:b.height,bottom:b.bottom,right:b.right}};
+}"""
 
 
 def luminance(rgb: tuple[float, float, float]) -> float:
@@ -266,6 +293,75 @@ def assert_layout(metrics: dict, width: int, *, small=False):
                     for item in metrics["controls"] if not item["disabled"]), "enabled touch target below 44 CSS px")
 
 
+def assert_narrow_usability(metrics: dict, width: int, initial_font_px: float, language: str, *, home: bool):
+    """Require readable words and available copy width only at <=16 initial rem."""
+    if width / initial_font_px > 16:
+        return False
+    expected = NARROW_LABELS[language]
+    for name in ("navigation", "cta") if home else ("navigation",):
+        labels = metrics[name]
+        require([item["text"] for item in labels] == expected[name], "narrow CTA/navigation labels changed or missing")
+        require(all(item["words"] and all(word["line_count"] == 1 and not word["outside_target"]
+                    for word in item["words"]) for item in labels), "narrow CTA/navigation splits or obscures a word")
+    if home:
+        hero = metrics["hero"]
+        require(hero is not None and hero["copy"] is not None and hero["heading"] is not None,
+                "narrow hero copy missing")
+        require(abs(hero["copy"]["width"] - hero["inner_width"]) <= 2,
+                "narrow hero copy does not use full available width")
+        require(hero["heading"]["width"] >= hero["copy_inner_width"] - 2,
+                "narrow hero heading retains a restricted text column")
+        require(not metrics["visible_hero_art"], "narrow hero decoration competes with full-width copy")
+    continuation = metrics["continue"]
+    require(continuation is not None and continuation["icon"] is not None and continuation["copy"] is not None,
+            "narrow Continue content missing")
+    require(continuation["copy"]["y"] >= continuation["icon"]["bottom"] - 2,
+            "narrow Continue copy remains beside the icon")
+    require(abs(continuation["copy"]["width"] - continuation["inner_width"]) <= 2,
+            "narrow Continue copy does not use full available width")
+    return True
+
+
+def assert_font_scaling(observations: list[dict]):
+    expected = {(scale, language, width) for scale in (1, 2) for language in FONT_LANGUAGES
+                for _, width, _ in FONT_VIEWPORTS}
+    rows = {(row["scale"], row["language"], row["viewport"]["width"]): row for row in observations}
+    require(len(observations) == len(expected) and set(rows) == expected,
+            "320/390 bilingual text-scale selection incomplete or duplicated")
+    for _, width, _ in FONT_VIEWPORTS:
+        for language in FONT_LANGUAGES:
+            normal, doubled = rows[(1, language, width)], rows[(2, language, width)]
+            for route in ("home", "library"):
+                for text in ("title", "body"):
+                    ratio = doubled[route][text]["font_size"] / normal[route][text]["font_size"]
+                    require(1.95 <= ratio <= 2.05,
+                            "display/body text does not double with genuine 200-percent browser default font size")
+
+
+NARROW_USABILITY = r"""() => {
+ const rect=el=>{const b=el.getBoundingClientRect();return {x:b.x,y:b.y,width:b.width,height:b.height,bottom:b.bottom,right:b.right}};
+ const visible=el=>{const c=getComputedStyle(el),b=el.getBoundingClientRect();return c.display!=='none'&&c.visibility!=='hidden'&&b.width>0&&b.height>0};
+ const innerWidth=el=>{const c=getComputedStyle(el);return el.getBoundingClientRect().width-parseFloat(c.paddingLeft)-parseFloat(c.paddingRight)-parseFloat(c.borderLeftWidth)-parseFloat(c.borderRightWidth)};
+ const labels=selector=>[...document.querySelectorAll(selector)].filter(visible).map(el=>{
+   const target=el.closest('a,button'),bounds=target.getBoundingClientRect(),words=[];
+   const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let node;
+   while((node=walker.nextNode()))for(const match of node.textContent.matchAll(/\S+/gu)){
+     const range=document.createRange();range.setStart(node,match.index);range.setEnd(node,match.index+match[0].length);
+     const boxes=[...range.getClientRects()].filter(b=>b.width>0&&b.height>0),lines=[];
+     for(const b of boxes)if(!lines.some(y=>Math.abs(y-b.top)<=2))lines.push(b.top);
+     words.push({text:match[0],line_count:lines.length,outside_target:boxes.some(b=>b.left<bounds.left-2||b.right>bounds.right+2||b.top<bounds.top-2||b.bottom>bounds.bottom+2)});range.detach();
+   }
+   return {text:el.textContent.replace(/\u00ad/g,'').trim().replace(/\s+/gu,' '),words};
+ });
+ const hero=document.querySelector('.feature-hero'),copy=hero?.querySelector('.hero-copy'),heading=copy?.querySelector('h2');
+ const continuation=document.querySelector('.continue-strip'),icon=continuation?.querySelector('.continue-strip__icon'),continueCopy=continuation?.querySelector(':scope > div');
+ return {navigation:labels('.bottom-nav .shell-link > span'),cta:labels('.hero-copy > .btn > span'),
+   hero:hero?{inner_width:innerWidth(hero),copy:copy?rect(copy):null,copy_inner_width:copy?innerWidth(copy):null,heading:heading?rect(heading):null}:null,
+   visible_hero_art:[...document.querySelectorAll('.hero-art')].filter(visible).map(rect),
+   continue:continuation?{inner_width:innerWidth(continuation),icon:icon?rect(icon):null,copy:continueCopy?rect(continueCopy):null}:null};
+}"""
+
+
 def traced_page(context, root: Path):
     page = context.new_page()
     requests, sizes, errors = [], [], []
@@ -442,6 +538,8 @@ def desktop_skip_link(browser, origin, evidence):
     try:
         page = context.new_page()
         settle(page, origin + "/")
+        unfocused = page.evaluate(SKIP_STATE)
+        require_skip_concealed(unfocused)
         # No programmatic focus: the very first real Tab must reach the skip link.
         page.keyboard.press("Tab")
         link = page.locator(".skip-link")
@@ -451,7 +549,8 @@ def desktop_skip_link(browser, origin, evidence):
         require(visible["on_screen"] and visible["topmost"], "focused skip link is covered by desktop chrome")
         page.keyboard.press("Enter")
         require(page.locator("main#main").evaluate("el => el === document.activeElement"), "skip-link Enter did not focus main")
-        return {"first_tab": True, "visible_hit_test": visible, "enter_main_focus": True, "capture": capture}
+        return {"unfocused": unfocused, "first_tab": True, "visible_hit_test": visible,
+                "enter_main_focus": True, "capture": capture}
     finally:
         context.close()
 
@@ -597,48 +696,56 @@ def text_scale(playwright, origin, evidence, private):
                 "actual_blank_document_root_font_px": probe,
                 "established": abs(probe - 16 * scale) <= 0.1}, indent=2) + "\n")
             require_font_preference(probe, 16 * scale)
-            for language in ("vi", "en"):
-                settle(page, origin + "/")
-                locale(page, language)
-                home = page.evaluate(MEASURE)
-                home_capture = evidence.capture(page, f"after-mobile-{language}-default-font-{scale * 100}percent", True)
-                try:
-                    assert_layout(home, 390, small=True)
-                except AcceptanceFailure as error:
-                    failures.append({"scale": scale, "language": language, "route": "/", "reason": str(error)})
-                settle(page, origin + "/games")
-                locale(page, language)
-                library = page.evaluate(MEASURE)
-                library_capture = evidence.capture(page, f"after-catalog-mobile-{language}-default-font-{scale * 100}percent", True)
-                try:
-                    assert_layout(library, 390, small=True)
-                except AcceptanceFailure as error:
-                    failures.append({"scale": scale, "language": language, "route": "/games", "reason": str(error)})
-                page.locator("#menu-toggle").click()
-                dialog = page.locator("#shell-menu")
-                drawer_capture = evidence.capture(page, f"after-mobile-{language}-drawer-font-{scale * 100}percent")
-                drawer = dialog.evaluate("el => ({open:el.open,scroll_width:el.scrollWidth,client_width:el.clientWidth,focus_inside:el.contains(document.activeElement)})")
-                if not drawer["open"] or drawer["scroll_width"] > drawer["client_width"] + 1:
-                    failures.append({"scale": scale, "language": language, "route": "drawer", "reason": "scaled modal drawer overflows horizontally"})
-                if not drawer["focus_inside"]:
-                    failures.append({"scale": scale, "language": language, "route": "drawer", "reason": "scaled drawer did not own focus"})
-                page.keyboard.press("Escape")
-                require(not dialog.evaluate("el => el.open"), "Escape did not close scaled drawer")
-                require(page.locator("#menu-toggle").evaluate("el => el === document.activeElement"),
-                        "scaled drawer did not restore toggle focus")
-                result.append({"scale": scale, "language": language, "home": home, "library": library, "drawer": drawer,
-                               "captures": [home_capture, library_capture, drawer_capture]})
-                (evidence.output / "font-scaling.json").write_text(json.dumps({"observations": result, "failures": failures}, indent=2) + "\n")
+            for name, width, height in FONT_VIEWPORTS:
+                page.set_viewport_size({"width": width, "height": height})
+                for language in FONT_LANGUAGES:
+                    partition = {"scale": scale, "language": language, "viewport": {"width": width, "height": height}}
+                    settle(page, origin + "/")
+                    locale(page, language)
+                    home = page.evaluate(MEASURE)
+                    home_words = page.evaluate(NARROW_USABILITY)
+                    home_skip = page.evaluate(SKIP_STATE)
+                    home_capture = evidence.capture(page, f"after-{name}-{language}-default-font-{scale * 100}percent", True)
+                    try:
+                        assert_layout(home, width, small=True)
+                        require_skip_concealed(home_skip)
+                        assert_narrow_usability(home_words, width, probe, language, home=True)
+                    except AcceptanceFailure as error:
+                        failures.append({**partition, "route": "/", "reason": str(error)})
+                    settle(page, origin + "/games")
+                    locale(page, language)
+                    library = page.evaluate(MEASURE)
+                    library_words = page.evaluate(NARROW_USABILITY)
+                    library_skip = page.evaluate(SKIP_STATE)
+                    library_capture = evidence.capture(page, f"after-catalog-{name}-{language}-default-font-{scale * 100}percent", True)
+                    try:
+                        assert_layout(library, width, small=True)
+                        require_skip_concealed(library_skip)
+                        assert_narrow_usability(library_words, width, probe, language, home=False)
+                    except AcceptanceFailure as error:
+                        failures.append({**partition, "route": "/games", "reason": str(error)})
+                    page.locator("#menu-toggle").click()
+                    dialog = page.locator("#shell-menu")
+                    drawer_capture = evidence.capture(page, f"after-{name}-{language}-drawer-font-{scale * 100}percent")
+                    drawer = dialog.evaluate("el => ({open:el.open,scroll_width:el.scrollWidth,client_width:el.clientWidth,focus_inside:el.contains(document.activeElement)})")
+                    if not drawer["open"] or drawer["scroll_width"] > drawer["client_width"] + 1:
+                        failures.append({**partition, "route": "drawer", "reason": "scaled modal drawer overflows horizontally"})
+                    if not drawer["focus_inside"]:
+                        failures.append({**partition, "route": "drawer", "reason": "scaled drawer did not own focus"})
+                    page.keyboard.press("Escape")
+                    require(not dialog.evaluate("el => el.open"), "Escape did not close scaled drawer")
+                    require(page.locator("#menu-toggle").evaluate("el => el === document.activeElement"),
+                            "scaled drawer did not restore toggle focus")
+                    result.append({**partition, "initial_font_px": probe, "narrow_reflow_required": width / probe <= 16,
+                                   "home": home, "library": library, "drawer": drawer,
+                                   "unfocused_skip": {"home": home_skip, "library": library_skip},
+                                   "narrow_usability": {"home": home_words, "library": library_words},
+                                   "captures": [home_capture, library_capture, drawer_capture]})
+                    (evidence.output / "font-scaling.json").write_text(json.dumps({"observations": result, "failures": failures,
+                        "capture_note": "Home and catalog are full-page rasters; fixed navigation is painted at its initial viewport position. Actual viewport/slot geometry is measured separately."}, indent=2) + "\n")
         finally:
             context.close()
-    for language in ("vi", "en"):
-        normal = next(row for row in result if row["scale"] == 1 and row["language"] == language)
-        doubled = next(row for row in result if row["scale"] == 2 and row["language"] == language)
-        require(doubled["home"]["title"]["font_size"] >= normal["home"]["title"]["font_size"] * 1.95,
-                "display text ignores genuine 200-percent browser default font size")
-        require(doubled["home"]["body"]["font_size"] >= normal["home"]["body"]["font_size"] * 1.95,
-                "body text ignores genuine 200-percent browser default font size")
-    require(len(result) == 4, "bilingual text-scale selection incomplete")
+    assert_font_scaling(result)
     require(not failures, "bilingual font scaling has recorded layout failures")
     return result
 

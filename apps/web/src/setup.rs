@@ -11,8 +11,8 @@
 //! nor a second submission.
 
 use tabula_registry::{
-    BotLevel, ConfigDraft, ConfigRejection, ErasedGame, LaunchHandoff, LaunchMode,
-    NormalizedConfig, SetupRequest, UnavailableReason,
+    BotLevel, ConfigDraft, ConfigRejection, LaunchHandoff, LaunchMode, NormalizedConfig,
+    SetupRequest, UnavailableReason,
 };
 
 /// Where the draft is in its lifecycle.
@@ -80,7 +80,10 @@ impl SetupState {
     /// still a supported mode, and otherwise the first supported mode is used.
     /// A game with no supported mode starts `Unavailable`.
     #[must_use]
-    pub fn new(game: &dyn ErasedGame, preselected: Option<LaunchMode>) -> Self {
+    pub fn new(
+        game: &(impl tabula_registry::discovery::ErasedDiscoveryGame + ?Sized),
+        preselected: Option<LaunchMode>,
+    ) -> Self {
         let supported: Vec<LaunchMode> = game
             .modes()
             .iter()

@@ -13,6 +13,7 @@ use tabula_game_api::{
 
 use crate::{
     availability::{LaunchMode, ModeSupport},
+    discovery::ErasedDiscoveryGame,
     erased::ErasedGame,
 };
 
@@ -26,12 +27,26 @@ pub trait Localizer {
 }
 
 /// One registered game together with the facts the Library lists.
-#[derive(Clone)]
-pub struct CatalogEntry {
-    game: Arc<dyn ErasedGame>,
+/// The legacy alias retains its original full erased-game construction surface.
+pub type CatalogEntry = CatalogEntryStorage<dyn ErasedGame>;
+/// The registered games, ordered for display; legacy constructors remain unambiguous.
+pub type Catalog = CatalogStorage<dyn ErasedGame>;
+
+/// One registered game together with the facts the Library lists.
+#[doc(hidden)]
+pub struct CatalogEntryStorage<G: ?Sized> {
+    game: Arc<G>,
 }
 
-impl fmt::Debug for CatalogEntry {
+impl<G: ?Sized> Clone for CatalogEntryStorage<G> {
+    fn clone(&self) -> Self {
+        Self {
+            game: self.game.clone(),
+        }
+    }
+}
+
+impl<G: ErasedDiscoveryGame + ?Sized> fmt::Debug for CatalogEntryStorage<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CatalogEntry")
             .field("id", &self.id().as_str())
@@ -39,9 +54,9 @@ impl fmt::Debug for CatalogEntry {
     }
 }
 
-impl CatalogEntry {
+impl<G: ErasedDiscoveryGame + ?Sized> CatalogEntryStorage<G> {
     #[must_use]
-    pub fn game(&self) -> &dyn ErasedGame {
+    pub fn game(&self) -> &G {
         self.game.as_ref()
     }
 
@@ -64,12 +79,28 @@ impl CatalogEntry {
 }
 
 /// The registered games, ordered for display.
-#[derive(Clone, Default)]
-pub struct Catalog {
-    entries: Vec<CatalogEntry>,
+#[doc(hidden)]
+pub struct CatalogStorage<G: ?Sized> {
+    entries: Vec<CatalogEntryStorage<G>>,
 }
 
-impl fmt::Debug for Catalog {
+impl<G: ?Sized> Clone for CatalogStorage<G> {
+    fn clone(&self) -> Self {
+        Self {
+            entries: self.entries.clone(),
+        }
+    }
+}
+
+impl<G: ?Sized> Default for CatalogStorage<G> {
+    fn default() -> Self {
+        Self {
+            entries: Vec::new(),
+        }
+    }
+}
+
+impl<G: ErasedDiscoveryGame + ?Sized> fmt::Debug for CatalogStorage<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(&self.entries).finish()
     }
@@ -98,16 +129,16 @@ impl CatalogQuery {
     }
 }
 
-impl Catalog {
+impl<G: ErasedDiscoveryGame + ?Sized> CatalogStorage<G> {
     /// The catalog this build links, ordered by localized title then game id.
     ///
     /// Ordering is resolved once, against the supplied locale, so the list does
     /// not reorder while the viewer types.
     #[must_use]
-    pub fn new(games: Vec<Arc<dyn ErasedGame>>, localizer: &dyn Localizer) -> Self {
-        let mut entries: Vec<CatalogEntry> = games
+    pub fn new(games: Vec<Arc<G>>, localizer: &dyn Localizer) -> Self {
+        let mut entries: Vec<CatalogEntryStorage<G>> = games
             .into_iter()
-            .map(|game| CatalogEntry { game })
+            .map(|game| CatalogEntryStorage { game })
             .collect();
         entries.sort_by(|left, right| {
             let left_title = localized(localizer, left.game.metadata().name_key());
@@ -136,7 +167,7 @@ impl Catalog {
     }
 
     #[must_use]
-    pub fn entries(&self) -> &[CatalogEntry] {
+    pub fn entries(&self) -> &[CatalogEntryStorage<G>] {
         &self.entries
     }
 
@@ -150,13 +181,17 @@ impl Catalog {
     /// An unknown but well-formed id is a not-found state, never a fallback
     /// game (docs/ui/screens/discovery.md).
     #[must_use]
-    pub fn get(&self, id: &GameId) -> Option<&CatalogEntry> {
+    pub fn get(&self, id: &GameId) -> Option<&CatalogEntryStorage<G>> {
         self.entries.iter().find(|entry| entry.id() == id)
     }
 
     /// Apply the Library constraints, preserving catalog order.
     #[must_use]
-    pub fn query(&self, query: &CatalogQuery, localizer: &dyn Localizer) -> Vec<&CatalogEntry> {
+    pub fn query(
+        &self,
+        query: &CatalogQuery,
+        localizer: &dyn Localizer,
+    ) -> Vec<&CatalogEntryStorage<G>> {
         self.entries
             .iter()
             .filter(|entry| matches_query(entry, query, localizer))
@@ -164,7 +199,11 @@ impl Catalog {
     }
 }
 
-fn matches_query(entry: &CatalogEntry, query: &CatalogQuery, localizer: &dyn Localizer) -> bool {
+fn matches_query<G: ErasedDiscoveryGame + ?Sized>(
+    entry: &CatalogEntryStorage<G>,
+    query: &CatalogQuery,
+    localizer: &dyn Localizer,
+) -> bool {
     let metadata = entry.game.metadata();
     let capabilities = entry.game.capabilities();
 
@@ -210,7 +249,11 @@ fn matches_query(entry: &CatalogEntry, query: &CatalogQuery, localizer: &dyn Loc
 ///
 /// Matching is case-insensitive and diacritic-insensitive so a Vietnamese
 /// viewer typing without tone marks still finds the game; see [`fold`].
-fn matches_text(entry: &CatalogEntry, needle: &str, localizer: &dyn Localizer) -> bool {
+fn matches_text<G: ErasedDiscoveryGame + ?Sized>(
+    entry: &CatalogEntryStorage<G>,
+    needle: &str,
+    localizer: &dyn Localizer,
+) -> bool {
     let metadata = entry.game.metadata();
     let haystacks = [
         localized(localizer, metadata.name_key()),

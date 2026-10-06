@@ -1,0 +1,104 @@
+{
+  "evidence": "actual final Trunk dist, unchanged shell_budget, emitted-CSS assertions; no local browser run",
+  "base_commit": "59ec8c62152d0b2d749f1a6ceba9982b5e8d2ac6",
+  "base_tree": "fa4f55e81bc1bd860ccfb58cb1738a8e3aa2a176",
+  "source_hashes": {
+    "Cargo.toml": "3bc148fc81c99dfe3e37a49cad75a67ecf072789ebc8e104e840337176f718b6",
+    "Cargo.lock": "16acf5776933de394a4d6ccc7c4914f045a825652545ba37e9efae154d7fa6d8",
+    "apps/web/Cargo.toml": "028f60e8fc515a59f60b6aa97bc858a27fac0443f8410dcb75e509a6b3971e4c",
+    "apps/web/Trunk.toml": "eaee830f0f7a208df5f22b0f73d259d06b65552b775e572acaa188468f366b81",
+    "apps/web/index.html": "dedf526594aea298960a2eab522a9ad4feb42b5c14c2fb0fc6ca8dbd774c441e",
+    "apps/web/src/i18n.rs": "75a1cea3f76e0e95a5eee24bcf50bbcffa94b219a4a07e08bb297c3e38b9a277",
+    "apps/web/src/online.rs": "598a2b9ee967572d6faec00c59da352d7d42d3b9256dd398646c84e920303fe6",
+    "apps/web/src/setup.rs": "00878d2acd51e5ef417d48902a95f04192d894673e9886924d35c5d511f593a7",
+    "apps/web/src/views/mod.rs": "6c919d11f5bb99043d184338b78f4ace19269f7da4b826a24495ba48e7212025",
+    "apps/web/src/views/account.rs": "bb782c091f1b7447b7652208ad2e2e92d5dd80af7f8aad77791aa517de51848d",
+    "apps/web/src/views/home.rs": "d9f371cfece3371d88ca02a523ec072a6556ecfb7756364d7e4a2e0af7965aa9",
+    "apps/web/src/views/parts.rs": "b1b4915e7f31997c31e50152b029772f38a569328665788c56a60dbc7aa6d9f5",
+    "apps/web/src/views/detail.rs": "e1a633853b521fcc382fd9ec771b8ac8dbc37c8fb5a43a86884cf244950b3148",
+    "apps/web/src/views/library.rs": "3632ed4dbec23d672badb8a9361f009a70dcb7a0a233305bfe650fef94bf86d4",
+    "apps/web/src/views/new_match.rs": "831642eaf3f0cc215f3d93a406bafef6c78e766eca231845f1de4df4142b0e74",
+    "apps/web/style/app.scss": "7dca3f91210c4cb558db6b9728167fcbd1c946580e651d6a357d121e78ddbbd2",
+    "apps/web/style/shell.scss": "55a47fed7c63779ed4cea985c2d526e40aa237d11da0be546e583dbdf6f7a1e0",
+    "apps/web/style/tokens.css": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e",
+    "crates/tabula-registry/src/discovery.rs": "5fce2841be064ff302bce297b3daec760dedaa2a4ec31c940d603f0b02f8c177",
+    "crates/tabula-registry/src/discovery_tests.rs": "10e14dd979867f91755e93c3b24e769c82a71300b88fb9a095a8768499c500d2",
+    "crates/tabula-registry/src/catalog.rs": "f4b28b4771001d0ccbcfe5429c8b085cac6af5c1d3b29d076eb6f7c69def00d7",
+    "crates/tabula-registry/src/lib.rs": "704ca298edb3395f661c42df9e9e2dc8b41f28d0b17ab72ffb63bdbf849621e0",
+    "crates/tabula-registry/src/launch.rs": "e8852a1d152aeb309a6f918cd91f472b41afd34319149344cc3b28145f181fab",
+    "crates/tabula-registry/src/erased.rs": "c87e9ebc5c223a372ed61ade1fa5b6cd06aa574d12b9a5c8a2b486f3eb7d9aeb",
+    "crates/tabula-registry/src/runtime.rs": "4eccd091cec66ab69b6539529321dfeffa1e4dd535f4221de2eb2b40d5e83741"
+  },
+  "tools": {
+    "rust": "1.96.1",
+    "cargo": "1.96.1",
+    "trunk": "0.21.14",
+    "wasm_bindgen": "0.2.129",
+    "binaryen": "123",
+    "sass": "1.69.5"
+  },
+  "command": "TABULA_PLAY_BASE=/play RUSTFLAGS=\"-D warnings\" trunk build --release --cargo-profile wasm-release --features online --verbose",
+  "profile": "workspace wasm-release: opt-level z, fat LTO, codegen-units1, panic abort, strip symbols",
+  "jobs": 2,
+  "incremental": 0,
+  "wasm_opt_flags": [
+    "-Oz",
+    "--enable-bulk-memory-opt"
+  ],
+  "emitted_wasm_bytes": 739144,
+  "emitted_wasm_sha256": "3cf77b4726c22c1befaa42f15b1bf5697ce2b7edfb003611bed2a40811cd3462",
+  "emitted_wasm_gzip9_bytes": 293714,
+  "cap_bytes": 900000,
+  "unchanged_shell_budget": "PASS",
+  "emitted_css_width_hyphens": "PASS: max-width16rem and hyphensmanual present",
+  "shell_inventory": {
+    "evidence": "static emitted dependency inventory, not browser request waterfall",
+    "unique_resource_count_including_document": 5,
+    "raw_bytes": 884192,
+    "individual_gzip9_sum": 313059,
+    "resources": [
+      {
+        "path": "index.html",
+        "bytes": 1647,
+        "gzip9_bytes": 1004,
+        "sha256": "df1c020eddc6fc9256a172ef309ce53ba5e31e5b15edab4373c73a4259d8fdb0"
+      },
+      {
+        "path": "app-cc11be02f777f39d.css",
+        "bytes": 31518,
+        "gzip9_bytes": 5289,
+        "sha256": "9301f00b9738ee99804a1b25b3ca330279b0d239afcd6634932dcc238d737ec3"
+      },
+      {
+        "path": "tabula-web-2c1ad042019e6c36.js",
+        "bytes": 57928,
+        "gzip9_bytes": 9456,
+        "sha256": "a6782776378ecc9ec44a50e70a9ac75564a5f8beaad5bc4ea8dbcb26f7e4dd87"
+      },
+      {
+        "path": "tabula-web-2c1ad042019e6c36_bg.wasm",
+        "bytes": 739144,
+        "gzip9_bytes": 293714,
+        "sha256": "3cf77b4726c22c1befaa42f15b1bf5697ce2b7edfb003611bed2a40811cd3462"
+      },
+      {
+        "path": "tokens-bc39b86a977675d7.css",
+        "bytes": 53955,
+        "gzip9_bytes": 3596,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      }
+    ],
+    "gameplay_asset_references": 0
+  },
+  "production_code_tree": "35ec467fd66678d75f2faf2a815d87c68e2529d3",
+  "remote_code_commit": "ada5d982d03cad04e30ba14780d092d28024c90f",
+  "browser_acceptance": "NOT_RUN locally; genuine postmerge screenshot task is separate",
+  "core_gate": {
+    "command": "cargo xtask check",
+    "status": "PASS",
+    "passed_tests": 1260,
+    "failed_tests": 0,
+    "existing_ignored_documentation_tests": 18,
+    "log_sha256": "82a89febef864e3050a9b7533c3a4559a9539882bc8dd87f02d275e356f78588"
+  }
+}

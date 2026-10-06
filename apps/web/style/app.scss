@@ -38,7 +38,9 @@ body {
 .skip-link {
   position: fixed;
   left: var(--sys-space-sm);
-  top: calc(var(--sys-space-sm) * -8);
+  // Translate by the actual box height: large text can wrap past a fixed offset.
+  top: 0;
+  transform: translateY(calc(-100% - var(--sys-space-sm)));
   z-index: 100;
   padding: var(--sys-space-md) var(--sys-space-lg);
   border-radius: var(--sys-shape-button);
@@ -46,8 +48,9 @@ body {
   color: var(--sys-color-on-primary);
   text-decoration: none;
 
-  &:focus-visible {
+  &:focus {
     top: var(--sys-space-sm);
+    transform: none;
   }
 }
 

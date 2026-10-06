@@ -29,7 +29,8 @@ const SHELL_EN: &[(&str, &str)] = &[
     ("home.eyebrow", "Your play space"),
     ("home.lead", "A little pause. A new move."),
     ("home.hero.eyebrow", "A little discovery"),
-    ("home.hero.heading", "Every move,\na little discovery."),
+    // Discretionary syllable breaks preserve the authored words at large text.
+    ("home.hero.heading", "Every move,\na little dis\u{00ad}cov\u{00ad}ery."),
     ("home.hero.body", "Find a game that feels right. Explore the ways you can play."),
     ("home.hero.action", "Explore games"),
     ("home.continue.heading", "Continue playing"),
@@ -417,7 +418,7 @@ impl Messages {
         };
         let mut table = shell.to_vec();
         table.extend(tabula_registry::platform_messages(locale));
-        for game in tabula_registry::registered_games() {
+        for game in tabula_registry::registered_discovery_games() {
             table.extend_from_slice(game.messages(locale));
         }
         Self { locale, table }
@@ -473,9 +474,12 @@ impl Localizer for Messages {
 ///
 /// Ordering is locale-dependent, so the two are always built together.
 #[must_use]
-pub fn shell(locale: Locale) -> (Messages, tabula_registry::Catalog) {
+pub fn shell(locale: Locale) -> (Messages, tabula_registry::DiscoveryCatalog) {
     let messages = Messages::new(locale);
-    let catalog = tabula_registry::Catalog::new(tabula_registry::registered_games(), &messages);
+    let catalog = tabula_registry::DiscoveryCatalog::new(
+        tabula_registry::registered_discovery_games(),
+        &messages,
+    );
     (messages, catalog)
 }
 
@@ -508,6 +512,20 @@ mod tests {
             assert!(!vietnamese.is_empty(), "{key}");
             assert_eq!(arguments(english), arguments(vietnamese), "{key}");
         }
+    }
+
+    #[test]
+    fn hero_discretionary_breaks_preserve_the_authored_sentence() {
+        let english = Messages::new(Locale::En).text("home.hero.heading");
+        assert_eq!(
+            english.replace('\u{00ad}', ""),
+            "Every move,\na little discovery."
+        );
+        assert!(english.contains("dis\u{00ad}cov\u{00ad}ery"));
+        assert_eq!(
+            Messages::new(Locale::Vi).text("home.hero.heading"),
+            "Mỗi nước đi,\nmột điều để học."
+        );
     }
 
     #[test]

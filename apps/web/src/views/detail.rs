@@ -10,7 +10,7 @@ use leptos_router::{
     components::A,
     hooks::{use_params_map, use_query_map},
 };
-use tabula_registry::{CatalogEntry, GameId, LaunchMode, ModeSupport};
+use tabula_registry::{DiscoveryCatalogEntry as CatalogEntry, GameId, LaunchMode, ModeSupport};
 
 use crate::{
     i18n::{shell, Messages},
@@ -91,7 +91,7 @@ fn detail_body(messages: &Messages, entry: &CatalogEntry) -> AnyView {
     let setup_label = messages.text("detail.setup");
     #[cfg(feature = "online")]
     let online = crate::online::runtime_binding()
-        .supports_direct(game)
+        .supports_discovery_direct(game)
         .then(|| view! { <crate::online::OnlinePanel id=id.clone()/> });
     #[cfg(not(feature = "online"))]
     let online = ();

@@ -153,3 +153,9 @@ outside this series unless separately requested and proved.
 ## Issue #87 — original Design 01 dashboard
 
 [Restore Design 01 discovery](110-restore-design01-discovery.md) is the current bounded web shell/catalog task, from fresh develop `ab0983e`. Existing work ordering and independent phase gates above are preserved.
+
+The initial restoration was externally merged as PR88. Its demonstrated loading,
+skip-link and large-text defects are the bounded
+[dashboard correction](120-repair-dashboard-loading-access.md), from freshly
+fetched develop `59ec8c6`. Unrelated game/theme work and existing phase gates remain
+separate.
