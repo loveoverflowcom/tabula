@@ -44,7 +44,7 @@ body { background: var(--sys-color-shell-canvas); }
 .feature-hero { position:relative; display:grid; grid-template-columns:1.05fr 1fr; border-radius:2rem; overflow:hidden; min-height:20rem; color:var(--sys-color-shell-on-hero); background:var(--sys-color-shell-hero); }
 .hero-copy { min-width:0; position:relative; z-index:1; padding:2.25rem; display:flex; flex-direction:column; align-items:flex-start; gap:1.25rem; }
 .hero-copy .eyebrow { color:var(--sys-color-shell-on-hero); display:flex; align-items:center; gap:.5rem; font-size:.5625rem; }
-.hero-copy h2 { overflow-wrap:anywhere; min-width:0; margin:0; max-width:24rem; font-family:var(--sys-type-display-md-family); font-size:2.8125rem; font-weight:400; line-height:1.08; letter-spacing:-.04em; }
+.hero-copy h2 { white-space:pre-line; overflow-wrap:anywhere; min-width:0; margin:0; max-width:24rem; font-family:var(--sys-type-display-md-family); font-size:2.8125rem; font-weight:400; line-height:1.08; letter-spacing:-.04em; }
 .hero-copy > p:not(.eyebrow) { margin:0; max-width:21rem; font-size:.8125rem; line-height:1.6; }
 .hero-copy > .btn { margin-top:auto; min-height:2.75rem; gap:.75rem; max-width:100%; padding:.625rem 1rem; border-radius:var(--sys-shape-button); white-space:normal; }
 .hero-copy > .btn > span { min-width:0; overflow-wrap:anywhere; }
@@ -97,8 +97,8 @@ body { background: var(--sys-color-shell-canvas); }
   .home .section__subtitle, .catalog .section__subtitle { font-size:1.75rem; }
   .feature-hero { grid-template-columns:1fr; min-height:19rem; border-radius:1.5rem; }
   .hero-copy { padding:1.5rem; gap:1.25rem; }
-  .hero-copy h2 { font-size:2.25rem; max-width:70%; }
-  .hero-copy > p:not(.eyebrow) { max-width:70%; font-size:.75rem; }
+  .hero-copy h2 { font-size:2.0625rem; max-width:min(13.75rem,100%); }
+  .hero-copy > p:not(.eyebrow) { max-width:min(12.875rem,100%); font-size:.75rem; }
   .hero-copy > .btn { font-size:.75rem; max-width:100%; }
   .hero-art { position:absolute; top:2rem; right:-6rem; width:13rem; height:15rem; pointer-events:none; }
   .hero-art__grid { background-size:2rem 2rem; }

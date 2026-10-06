@@ -46,9 +46,18 @@ class AcceptanceFailure(Exception):
     """Public, fixed claim failure. No request body or identity is recorded."""
 
 
+class PrerequisiteBlocker(AcceptanceFailure):
+    """The intended real-browser condition was not established; no app verdict."""
+
+
 def require(condition: bool, label: str) -> None:
     if not condition:
         raise AcceptanceFailure(label)
+
+
+def require_font_preference(measured: float, expected: int):
+    if abs(measured - expected) > 0.1:
+        raise PrerequisiteBlocker("actual Chromium did not apply requested default font preference")
 
 
 def luminance(rgb: tuple[float, float, float]) -> float:
@@ -221,7 +230,7 @@ class Evidence:
         except Exception as error:
             # No traceback/HTTP state is copied into public artifacts.
             label = str(error) if isinstance(error, AcceptanceFailure) else type(error).__name__
-            self.records.append({"claim": name, "status": "FAIL", "reason": label})
+            self.records.append({"claim": name, "status": "BLOCKED" if isinstance(error, PrerequisiteBlocker) else "FAIL", "reason": label})
             self.errors.append(name)
         self.write()
 
@@ -428,6 +437,25 @@ def drawer_keyboard(browser, origin, evidence):
         context.close()
 
 
+def desktop_skip_link(browser, origin, evidence):
+    context = browser.new_context(viewport={"width": 1440, "height": 1000}, device_scale_factor=1)
+    try:
+        page = context.new_page()
+        settle(page, origin + "/")
+        # No programmatic focus: the very first real Tab must reach the skip link.
+        page.keyboard.press("Tab")
+        link = page.locator(".skip-link")
+        require(link.evaluate("el => el === document.activeElement"), "first desktop Tab did not reach skip link")
+        capture = evidence.capture(page, "after-desktop-focused-skip-link")
+        visible = link.evaluate("""el => {const b=el.getBoundingClientRect();const hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);return {on_screen:b.x>=0&&b.y>=0&&b.right<=innerWidth&&b.bottom<=innerHeight,topmost:el===hit||el.contains(hit),rect:{x:b.x,y:b.y,width:b.width,height:b.height},z_index:getComputedStyle(el).zIndex}}""")
+        require(visible["on_screen"] and visible["topmost"], "focused skip link is covered by desktop chrome")
+        page.keyboard.press("Enter")
+        require(page.locator("main#main").evaluate("el => el === document.activeElement"), "skip-link Enter did not focus main")
+        return {"first_tab": True, "visible_hit_test": visible, "enter_main_focus": True, "capture": capture}
+    finally:
+        context.close()
+
+
 def route_and_loading(browser, origin, root, evidence):
     context = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=1)
     try:
@@ -556,10 +584,19 @@ def text_scale(playwright, origin, evidence, private):
         (default / "Preferences").write_text(json.dumps({"webkit": {"webprefs": {
             "default_font_size": 16 * scale, "default_fixed_font_size": 13 * scale,
             "minimum_font_size": 0}}, "profile": {"default_zoom_level": 0}}))
-        context = playwright.chromium.launch_persistent_context(str(profile), headless=True,
+        # Default Playwright headless uses a separate shell embedder. Its lack
+        # of Chrome profile preference behavior cannot stand in for 200% text.
+        # Official channel='chromium' uses full Chromium's new headless mode.
+        context = playwright.chromium.launch_persistent_context(str(profile), headless=True, channel="chromium",
                     viewport={"width": 390, "height": 844}, device_scale_factor=1)
         try:
             page = context.pages[0]
+            probe = page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
+            (evidence.output / f"font-preference-probe-{scale}.json").write_text(json.dumps({
+                "browser_channel": "chromium", "requested_default_font_px": 16 * scale,
+                "actual_blank_document_root_font_px": probe,
+                "established": abs(probe - 16 * scale) <= 0.1}, indent=2) + "\n")
+            require_font_preference(probe, 16 * scale)
             for language in ("vi", "en"):
                 settle(page, origin + "/")
                 locale(page, language)
@@ -628,11 +665,12 @@ def main():
         "after_revision": args.after_revision, "before_revision": args.before_revision,
         "reference_revision": args.reference_revision,
         "github_run_id": os.environ.get("GITHUB_RUN_ID"),
+        "after_tree": subprocess.run(["git", "rev-parse", "HEAD^{tree}"], check=True, capture_output=True, text=True).stdout.strip(),
         "after_dist": file_manifest(args.after_dist), "before_dist": file_manifest(args.before_dist),
         "reference_standalone": file_manifest(args.reference_root),
         "reference_verification": verified_reference,
         "viewports": [{"name": n, "width": w, "height": h, "dpr": 1} for n, w, h in VIEWPORTS],
-        "browser_route": "official Playwright Chromium in disposable authorized GitHub Actions",
+        "browser_route": "official Playwright channel chromium (full new-headless) in disposable authorized GitHub Actions",
         "tls_verification_disabled": False, "http_mocking": False, "layout_css_injection": False,
     }, indent=2) + "\n")
     evidence.case("before actual emitted shell uses existing raw-WASM loading budget", lambda: emitted_shell_budget(args.before_dist))
@@ -641,11 +679,12 @@ def main():
             static_origin(args.after_dist.resolve(), shell=True) as after, \
             static_origin(args.before_dist.resolve(), shell=True) as before, \
             static_origin(args.reference_root.resolve(), shell=False) as prototype, sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
+        browser = playwright.chromium.launch(headless=True, channel="chromium")
         try:
             evidence.case("same-viewport actual before/after/prototype pixels and responsive layout", lambda: capture_comparison(browser, evidence, {"before": before, "prototype": prototype, "after": after}))
             evidence.case("four real system schemes, vi/en, reduced motion, contrast, empty and invalid query", lambda: preference_matrix(browser, after, evidence))
             evidence.case("genuine native drawer keyboard trap, Escape, restore focus and repeated route dismissal", lambda: drawer_keyboard(browser, after, evidence))
+            evidence.case("real desktop first-Tab skip link is topmost and Enter focuses main", lambda: desktop_skip_link(browser, after, evidence))
             evidence.case("real catalog/detail/setup Back/Forward and lazy landing network bytes", lambda: route_and_loading(browser, after, args.after_dist, evidence))
             evidence.case("multiword typing/native-select focus, latest-query combination and valid deep links", lambda: catalog_interactions(browser, after, evidence))
             evidence.case("320px fixed bottom nav leaves reachable last card slot", lambda: mobile_content_slot(browser, after, evidence))

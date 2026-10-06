@@ -76,7 +76,7 @@
   --sys-shape-sheet: 24.0px;
   --sys-shape-button: 14.0px;
   --sys-shape-chip: 8.0px;
-  --sys-type-family-display: ui-serif, Georgia, serif;
+  --sys-type-family-display: Georgia, "Noto Serif", "Times New Roman", serif;
   --sys-type-family-text: ui-sans-serif, system-ui, sans-serif;
   --sys-type-family-mono: ui-monospace, SFMono-Regular, monospace;
   --sys-type-display-lg-family: var(--sys-type-family-display);
@@ -375,7 +375,7 @@
   --sys-shape-sheet: 24.0px;
   --sys-shape-button: 14.0px;
   --sys-shape-chip: 8.0px;
-  --sys-type-family-display: ui-serif, Georgia, serif;
+  --sys-type-family-display: Georgia, "Noto Serif", "Times New Roman", serif;
   --sys-type-family-text: ui-sans-serif, system-ui, sans-serif;
   --sys-type-family-mono: ui-monospace, SFMono-Regular, monospace;
   --sys-type-display-lg-family: var(--sys-type-family-display);
@@ -674,7 +674,7 @@
   --sys-shape-sheet: 24.0px;
   --sys-shape-button: 14.0px;
   --sys-shape-chip: 8.0px;
-  --sys-type-family-display: ui-serif, Georgia, serif;
+  --sys-type-family-display: Georgia, "Noto Serif", "Times New Roman", serif;
   --sys-type-family-text: ui-sans-serif, system-ui, sans-serif;
   --sys-type-family-mono: ui-monospace, SFMono-Regular, monospace;
   --sys-type-display-lg-family: var(--sys-type-family-display);
@@ -973,7 +973,7 @@
   --sys-shape-sheet: 24.0px;
   --sys-shape-button: 14.0px;
   --sys-shape-chip: 8.0px;
-  --sys-type-family-display: ui-serif, Georgia, serif;
+  --sys-type-family-display: Georgia, "Noto Serif", "Times New Roman", serif;
   --sys-type-family-text: ui-sans-serif, system-ui, sans-serif;
   --sys-type-family-mono: ui-monospace, SFMono-Regular, monospace;
   --sys-type-display-lg-family: var(--sys-type-family-display);

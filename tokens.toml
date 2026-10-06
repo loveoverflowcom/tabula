@@ -223,7 +223,7 @@ chip = 8.0
 [sys.type]
 # All metrics are logical units. `family` is a renderer-neutral family role.
 [sys.type.family]
-display = "ui-serif, Georgia, serif"
+display = 'Georgia, "Noto Serif", "Times New Roman", serif'
 text = "ui-sans-serif, system-ui, sans-serif"
 mono = "ui-monospace, SFMono-Regular, monospace"
 [sys.type.display.lg]

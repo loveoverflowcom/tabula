@@ -12,7 +12,7 @@ use leptos_router::components::A;
 use crate::{
     account::{use_account, AccountOperation, AccountSnapshot, AccountStatus},
     i18n::Messages,
-    views::use_locale,
+    views::{parts::translated, use_locale},
 };
 
 /// Current account state at `/account`, without an identity-provider form.
@@ -50,10 +50,10 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
     view! {
         <section class="section account" aria-labelledby="account-title">
             <h1 id="account-title" class="section__title" tabindex="-1" node_ref=heading>
-                {move || Messages::new(locale.get()).text(title_key)}
+                {translated(title_key)}
             </h1>
             <p class="section__body">
-                {move || Messages::new(locale.get()).text("accounts.scope")}
+                {translated("accounts.scope")}
             </p>
             <div class="account__state" aria-busy=move || state.get().busy.is_some()>
                 <p class="status" role="status" aria-atomic="true">
@@ -79,12 +79,12 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
 
             <Show when=move || login_allowed(&state.get())>
                 <p class="section__body">
-                    {move || Messages::new(locale.get()).text("accounts.login.invited")}
+                    {translated("accounts.login.invited")}
                 </p>
             </Show>
             <Show when=move || profile_for(&state.get()).is_some()>
                 <p class="section__body">
-                    {move || Messages::new(locale.get()).text("accounts.login.switch")}
+                    {translated("accounts.login.switch")}
                 </p>
             </Show>
             <Show when=move || {
@@ -93,7 +93,7 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                     && matches!(state.status, AccountStatus::SignedOut | AccountStatus::Expired)
             }>
                 <p class="section__body">
-                    {move || Messages::new(locale.get()).text("accounts.login.unavailable")}
+                    {translated("accounts.login.unavailable")}
                 </p>
             </Show>
             <div class="actions account__actions">
@@ -118,7 +118,7 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                         controller.recheck();
                     }
                 >
-                    {move || Messages::new(locale.get()).text("accounts.action.check")}
+                    {translated("accounts.action.check")}
                 </button>
                 <Show when=move || profile_for(&state.get()).is_some()>
                     <button
@@ -132,7 +132,7 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                             controller.refresh();
                         }
                     >
-                        {move || Messages::new(locale.get()).text("accounts.action.refresh")}
+                        {translated("accounts.action.refresh")}
                     </button>
                     <button
                         type="button"
@@ -142,7 +142,7 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                         aria-controls=move || confirming.get().then_some("logout-confirmation")
                         on:click=move |_| confirming.set(true)
                     >
-                        {move || Messages::new(locale.get()).text("accounts.action.logout")}
+                        {translated("accounts.action.logout")}
                     </button>
                 </Show>
                 <Show when=move || {
@@ -158,7 +158,7 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                             controller.logout();
                         }
                     >
-                        {move || Messages::new(locale.get()).text("accounts.action.logout_retry")}
+                        {translated("accounts.action.logout_retry")}
                     </button>
                 </Show>
                 <Show when=move || state.get().busy.is_some()>
@@ -172,7 +172,7 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                             }
                         }
                     >
-                        {move || Messages::new(locale.get()).text("accounts.action.cancel")}
+                        {translated("accounts.action.cancel")}
                     </button>
                 </Show>
             </div>
@@ -196,7 +196,7 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
             </Show>
 
             <p class="section__body">
-                {move || Messages::new(locale.get()).text("accounts.local.explanation")}
+                {translated("accounts.local.explanation")}
             </p>
             <div class="actions account__actions">
                 <A
@@ -204,10 +204,10 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
                     attr:class="btn btn--tonal"
                     on:click=move |_| controller.cancel()
                 >
-                    {move || Messages::new(locale.get()).text("accounts.action.library")}
+                    {translated("accounts.action.library")}
                 </A>
                 <A href="/" attr:class="btn btn--tonal" on:click=move |_| controller.cancel()>
-                    {move || Messages::new(locale.get()).text("nav.home")}
+                    {translated("nav.home")}
                 </A>
             </div>
             <UnavailableLinks/>
@@ -218,10 +218,9 @@ fn AccountTask(title_key: &'static str) -> impl IntoView {
 /// Explicit provider continuation; no credential fields or direct provider URL.
 #[component]
 fn LoginAction(on_start: impl Fn() + Send + Sync + Copy + 'static) -> impl IntoView {
-    let locale = use_locale();
     view! {
         <button type="button" class="btn btn--filled btn--principal" on:click=move |_| on_start()>
-            {move || Messages::new(locale.get()).text("accounts.action.login")}
+            {translated("accounts.action.login")}
         </button>
     }
 }
@@ -230,18 +229,17 @@ fn LoginAction(on_start: impl Fn() + Send + Sync + Copy + 'static) -> impl IntoV
 /// history or edit fields are synthesized from that identity.
 #[component]
 fn ProfileFacts(account_id: String) -> impl IntoView {
-    let locale = use_locale();
     view! {
         <section class="account__profile" data-account-private="" aria-labelledby="self-facts-title">
             <h2 id="self-facts-title" class="section__subtitle">
-                {move || Messages::new(locale.get()).text("accounts.profile.read_only")}
+                {translated("accounts.profile.read_only")}
             </h2>
             <dl class="facts account__facts">
-                <dt>{move || Messages::new(locale.get()).text("accounts.profile.id")}</dt>
+                <dt>{translated("accounts.profile.id")}</dt>
                 <dd class="account__id">{account_id}</dd>
             </dl>
             <p class="section__body">
-                {move || Messages::new(locale.get()).text("accounts.profile.only_id")}
+                {translated("accounts.profile.only_id")}
             </p>
         </section>
     }
@@ -254,7 +252,6 @@ fn LogoutConfirmation(
     on_cancel: impl Fn() + Send + Sync + Copy + 'static,
     on_confirm: impl Fn() + Send + Sync + Copy + 'static,
 ) -> impl IntoView {
-    let locale = use_locale();
     let cancel = NodeRef::<html::Button>::new();
     cancel.on_load(|element| {
         let _ = element.focus();
@@ -272,17 +269,17 @@ fn LogoutConfirmation(
             }
         >
             <legend class="field__label">
-                {move || Messages::new(locale.get()).text("accounts.logout.title")}
+                {translated("accounts.logout.title")}
             </legend>
             <p id="logout-consequence" class="section__body">
-                {move || Messages::new(locale.get()).text("accounts.logout.explanation")}
+                {translated("accounts.logout.explanation")}
             </p>
             <div class="actions account__actions">
                 <button type="button" class="btn btn--tonal" node_ref=cancel on:click=move |_| on_cancel()>
-                    {move || Messages::new(locale.get()).text("accounts.action.cancel")}
+                    {translated("accounts.action.cancel")}
                 </button>
                 <button type="button" class="btn btn--danger" on:click=move |_| on_confirm()>
-                    {move || Messages::new(locale.get()).text("accounts.action.logout")}
+                    {translated("accounts.action.logout")}
                 </button>
             </div>
         </fieldset>
@@ -334,7 +331,6 @@ pub fn OtherProfileUnavailable() -> impl IntoView {
 
 #[component]
 fn UnavailablePage(task: UnavailableTask) -> impl IntoView {
-    let locale = use_locale();
     let (title_key, body_key) = task.keys();
     let heading = NodeRef::<html::H1>::new();
     heading.on_load(|element| {
@@ -343,21 +339,21 @@ fn UnavailablePage(task: UnavailableTask) -> impl IntoView {
     view! {
         <section class="section account">
             <h1 class="section__title" tabindex="-1" node_ref=heading>
-                {move || Messages::new(locale.get()).text(title_key)}
+                {translated(title_key)}
             </h1>
-            <p class="banner">{move || Messages::new(locale.get()).text(body_key)}</p>
+            <p class="banner">{translated(body_key)}</p>
             <p class="section__body">
-                {move || Messages::new(locale.get()).text("accounts.local.explanation")}
+                {translated("accounts.local.explanation")}
             </p>
             <div class="actions account__actions">
                 <A href="/games" attr:class="btn btn--filled btn--principal">
-                    {move || Messages::new(locale.get()).text("accounts.action.library")}
+                    {translated("accounts.action.library")}
                 </A>
                 <A href="/account" attr:class="btn btn--tonal">
-                    {move || Messages::new(locale.get()).text("accounts.action.back_account")}
+                    {translated("accounts.action.back_account")}
                 </A>
                 <A href="/" attr:class="btn btn--tonal">
-                    {move || Messages::new(locale.get()).text("nav.home")}
+                    {translated("nav.home")}
                 </A>
             </div>
         </section>
@@ -366,18 +362,17 @@ fn UnavailablePage(task: UnavailableTask) -> impl IntoView {
 
 #[component]
 fn UnavailableLinks() -> impl IntoView {
-    let locale = use_locale();
     view! {
-        <nav aria-label=move || Messages::new(locale.get()).text("accounts.features.title")>
+        <nav aria-label=translated("accounts.features.title")>
             <ul class="rows">
                 <li class="row">
                     <A href="/register" attr:class="account__feature-link">
-                        {move || Messages::new(locale.get()).text("accounts.register.link_unavailable")}
+                        {translated("accounts.register.link_unavailable")}
                     </A>
                 </li>
                 <li class="row">
                     <A href="/friends" attr:class="account__feature-link">
-                        {move || Messages::new(locale.get()).text("accounts.friends.link_unavailable")}
+                        {translated("accounts.friends.link_unavailable")}
                     </A>
                 </li>
             </ul>

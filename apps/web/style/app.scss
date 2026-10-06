@@ -36,10 +36,10 @@ body {
 // ---------------------------------------------------------------- scaffolding
 
 .skip-link {
-  position: absolute;
+  position: fixed;
   left: var(--sys-space-sm);
   top: calc(var(--sys-space-sm) * -8);
-  z-index: 2;
+  z-index: 100;
   padding: var(--sys-space-md) var(--sys-space-lg);
   border-radius: var(--sys-shape-button);
   background: var(--sys-color-primary);

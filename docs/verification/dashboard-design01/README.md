@@ -92,3 +92,26 @@ discovery-only serif scope, scaled text wrapping and decorative-glyph contrast.
 Actual Chromium helper coverage now includes bilingual real font preferences,
 Brand and browser-history modal dismissal, clipped glyph geometry, and an
 empty-result oracle that cannot pass on the unrelated Continue status.
+
+## First authentic run and bounded resource repair
+
+[First runtime evidence](first-runtime-d20774f.md) records the exact-source
+Chromium run, original prototype comparison, 77 genuine PNGs and normal-size
+visual inspection. Six actual browser cases passed; the before-build static
+budget passed separately. After WASM was 989,770 bytes against the unchanged
+900,000-byte cap, so neither this run nor the PR is ready. The online gameplay
+workflow stopped at that same introduced budget regression before browser play.
+
+The apparent 200% font failure did not establish doubled browser preferences:
+both profiles measured normal font metrics. The next harness uses full official
+Chromium plus an independent blank-page preference probe; blocked setup cannot
+be called an app reflow failure or a font-scale pass. The focused desktop skip
+link has a restored foreground layer and a genuine keyboard/hit-test assertion.
+
+A measured, source-compatible UI dedup checkpoint shares static translation
+renderers (including account labels only; private state/controllers untouched),
+native filter callback types and trusted inert vector markup. Local official
+Trunk calibration improved 991,638 to 944,872 bytes; local and CI values are
+reported separately. This is progress, still FAIL against the same cap. Online
+WASM compilation and 77 online web tests pass; no failing cap was waived, no
+route removed, and no game/runtime asset was hidden from the loading inventory.

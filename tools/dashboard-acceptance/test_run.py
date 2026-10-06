@@ -37,6 +37,17 @@ class OracleTests(unittest.TestCase):
         self.assertFalse(module.usable_target(80, 42))
         self.assertFalse(module.usable_target(42, 80))
 
+    def test_font_preference_must_be_established_before_app_scale_claim(self):
+        module.require_font_preference(16, 16)
+        module.require_font_preference(32, 32)
+        with self.assertRaises(module.PrerequisiteBlocker):
+            module.require_font_preference(16, 32)
+        with tempfile.TemporaryDirectory() as temp:
+            evidence = module.Evidence(Path(temp))
+            evidence.case("real font setting", lambda: module.require_font_preference(16, 32))
+            self.assertEqual(evidence.records[0]["status"], "BLOCKED")
+            self.assertEqual(evidence.errors, ["real font setting"])
+
     def test_shell_wasm_is_allowed_but_game_runtime_atlas_model_is_not(self):
         allowed = {"/tabula-web-a.wasm"}
         self.assertFalse(module.is_heavy_resource("http://127.0.0.1/tabula-web-a.wasm", allowed))

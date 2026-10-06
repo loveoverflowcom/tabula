@@ -3,7 +3,9 @@
 //! Search and filters live in the address so Back restores them. Every card
 //! links to detail and starts nothing (docs/ui/screens/01-library.md).
 
-use leptos::prelude::*;
+use std::rc::Rc;
+
+use leptos::{prelude::*, tachys::html::InertElement};
 use leptos_router::{
     components::A,
     hooks::{use_navigate, use_query_map},
@@ -175,22 +177,22 @@ pub fn card(messages: &Messages, entry: &CatalogEntry) -> AnyView {
                 <h3 class="card__title">
                     <A href=href attr:class="card__action" attr:aria-label=details>
                         {name}
-                        <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        {InertElement::new(r#"<svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                             <path d="M5 12h14m-5-5 5 5-5 5"/>
-                        </svg>
+                        </svg>"#)}
                     </A>
                 </h3>
                 <ul class="card__metadata">
                     <li title=messages.text("detail.seats")>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        {InertElement::new(r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                             <circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m5 11v-3a6 6 0 0 0-4-5"/>
-                        </svg>
+                        </svg>"#)}
                         {seats}
                     </li>
                     <li title=messages.text("detail.duration")>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        {InertElement::new(r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                             <circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>
-                        </svg>
+                        </svg>"#)}
                         {duration}
                     </li>
                 </ul>
@@ -210,7 +212,7 @@ pub fn card(messages: &Messages, entry: &CatalogEntry) -> AnyView {
 fn neutral_cover() -> AnyView {
     view! {
         <div class="card__art card__art--neutral">
-            <svg viewBox="0 0 364 160" aria-hidden="true" focusable="false">
+            {InertElement::new(r#"<svg viewBox="0 0 364 160" aria-hidden="true" focusable="false">
                 <g fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="120" y="20" width="94" height="120" rx="12" transform="rotate(-16 167 80)"/>
                     <rect x="154" y="20" width="94" height="120" rx="12" transform="rotate(14 201 80)"/>
@@ -218,7 +220,7 @@ fn neutral_cover() -> AnyView {
                     <circle cx="74" cy="58" r="10"/><circle cx="285" cy="117" r="14"/>
                     <path d="M292 33v14m-7-7h14M60 117v10m-5-5h10"/>
                 </g>
-            </svg>
+            </svg>"#)}
         </div>
     }.into_any()
 }
@@ -270,9 +272,9 @@ fn search(messages: &Messages, parsed: Memo<ParsedQuery>) -> AnyView {
                 {messages.text("library.search.label")}
             </label>
             <div class="catalog__search-control">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                {InertElement::new(r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>
-                </svg>
+                </svg>"#)}
                 <input id="search" class="field__control" type="search"
                     placeholder=messages.text("library.search.label")
                     prop:value=move || draft.get()
@@ -375,15 +377,15 @@ fn filters(
         <fieldset class="filters catalog__filters">
             <legend class="filters__legend">{messages.text("library.filter.heading")}</legend>
             {select(messages, "filter-category", "library.filter.category", &any, category_options,
-                move || parsed.get().query.category.map(category_value).unwrap_or_default().to_owned(), on_category)}
+                Memo::new(move |_| parsed.get().query.category.map(category_value).unwrap_or_default().to_owned()), Rc::new(on_category))}
             {select(messages, "filter-players", "library.filter.players", &any, player_options,
-                move || parsed.get().query.players.map(|value| value.to_string()).unwrap_or_default(), on_players)}
+                Memo::new(move |_| parsed.get().query.players.map(|value| value.to_string()).unwrap_or_default()), Rc::new(on_players))}
             {select(messages, "filter-duration", "library.filter.duration", &any, duration_options,
-                move || parsed.get().query.max_minutes.map(|value| value.to_string()).unwrap_or_default(), on_duration)}
+                Memo::new(move |_| parsed.get().query.max_minutes.map(|value| value.to_string()).unwrap_or_default()), Rc::new(on_duration))}
             {select(messages, "filter-complexity", "library.filter.complexity", &any, complexity_options,
-                move || parsed.get().query.complexity.map(complexity_value).unwrap_or_default().to_owned(), on_complexity)}
+                Memo::new(move |_| parsed.get().query.complexity.map(complexity_value).unwrap_or_default().to_owned()), Rc::new(on_complexity))}
             {select(messages, "filter-mode", "library.filter.mode", &any, mode_options,
-                move || parsed.get().query.mode.map(|value| value.as_str().to_owned()).unwrap_or_default(), on_mode)}
+                Memo::new(move |_| parsed.get().query.mode.map(|value| value.as_str().to_owned()).unwrap_or_default()), Rc::new(on_mode))}
             <button type="button" class="btn catalog__reset" on:click=reset>
                 {messages.text("library.filter.reset")}
             </button>
@@ -406,33 +408,35 @@ fn axis(
 }
 
 /// A visible label and the native select preserve platform keyboard/touch UX.
+/// One concrete signal/callback boundary shares the native control renderer
+/// across all axes instead of specializing its DOM state for each closure.
 fn select(
     messages: &Messages,
     id: &'static str,
     label_key: &'static str,
     any_label: &str,
     options: Vec<(String, String)>,
-    value: impl Fn() -> String + Clone + Send + 'static,
-    on_change: impl Fn(String) + 'static,
+    value: Memo<String>,
+    on_change: Rc<dyn Fn(String)>,
 ) -> AnyView {
     let any_label = any_label.to_owned();
-    let property_value = value.clone();
-    let empty_value = value.clone();
-    let option_value = value.clone();
+    let property_value = value;
+    let empty_value = value;
+    let option_value = value;
     let selected_messages = messages.clone();
     let known_options = options.clone();
     view! {
         <div class="field">
             <label class="field__label" for=id>{messages.text(label_key)}</label>
-            <select id=id class="field__control" prop:value=property_value
+            <select id=id class="field__control" prop:value=move || property_value.get()
                 on:change=move |event| on_change(event_target_value(&event))>
-                <option value="" prop:selected=move || empty_value().is_empty()>{any_label}</option>
+                <option value="" prop:selected=move || empty_value.get().is_empty()>{any_label}</option>
                 {options.into_iter().map(|(value, label)| {
-                    let selected = option_value.clone();
+                    let selected = option_value;
                     let selected_value = value.clone();
-                    view! { <option value=value prop:selected=move || selected() == selected_value>{label}</option> }
+                    view! { <option value=value prop:selected=move || selected.get() == selected_value>{label}</option> }
                 }).collect_view()}
-                {move || selected_only_option(&selected_messages, label_key, &value(), &known_options)
+                {move || selected_only_option(&selected_messages, label_key, &value.get(), &known_options)
                     .map(|(value, label)| view! { <option value=value selected=true>{label}</option> })}
             </select>
         </div>

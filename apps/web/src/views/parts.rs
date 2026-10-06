@@ -1,12 +1,20 @@
 //! Shared chrome: the top bar, the locale control, and the route fallback.
 
-use leptos::prelude::*;
+use leptos::{prelude::*, tachys::html::InertElement};
 use leptos_router::components::A;
 use tabula_registry::Locale;
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::MediaQueryList;
 
 use crate::{i18n::Messages, views::use_locale};
+
+/// One reactive text renderer for static translation keys. Sharing this
+/// callable type avoids duplicating tachys effect/state code for each label;
+/// every use still tracks locale changes independently.
+pub fn translated(key: &'static str) -> impl Fn() -> String + Copy + Send + Sync + 'static {
+    let locale = use_locale();
+    move || Messages::new(locale.get()).text(key)
+}
 
 /// Persistent Design 01 chrome. The neutral avatar is a shared decorative fallback,
 /// never a claim that this document has confirmed an account (issue #87 / #84).
@@ -26,18 +34,18 @@ pub fn TopBar() -> impl IntoView {
     };
     close_menu_on_navigation(location.pathname, location.search, menu, menu_open);
     view! {
-        <aside class="sidebar" aria-label=move || Messages::new(locale.get()).text("shell.navigation")>
+        <aside class="sidebar" aria-label=translated("shell.navigation")>
             <Brand/>
             <ShellNavigation/>
             <div class="sidebar__spacer"></div>
             <div class="sidebar__note">
                 <Icon kind="leaf"/>
-                <p>{move || Messages::new(locale.get()).text("shell.note")}</p>
-                <small>{move || Messages::new(locale.get()).text("shell.note.detail")}</small>
+                <p>{translated("shell.note")}</p>
+                <small>{translated("shell.note.detail")}</small>
             </div>
             <A href="/account" attr:class="sidebar__profile">
                 <NeutralAvatar/>
-                <span>{move || Messages::new(locale.get()).text("nav.account")}</span>
+                <span>{translated("nav.account")}</span>
                 <Icon kind="arrow"/>
             </A>
         </aside>
@@ -45,7 +53,7 @@ pub fn TopBar() -> impl IntoView {
             <div class="topbar__brand"><Brand/></div>
             <div class="topbar__context">
                 <Icon kind="grid"/>
-                <span>{move || Messages::new(locale.get()).text("shell.context")}</span>
+                <span>{translated("shell.context")}</span>
                 <span aria-hidden="true">"/"</span>
                 <span>{move || {
                     let path = location.pathname.get();
@@ -55,7 +63,7 @@ pub fn TopBar() -> impl IntoView {
             <div class="topbar__actions">
                 <div class="topbar__locale">
                     <label class="field__label" for="locale">
-                        {move || Messages::new(locale.get()).text("app.locale")}
+                        {translated("app.locale")}
                     </label>
                     <select id="locale" class="field__control" on:change=move |event| {
                         if let Some(next) = Locale::parse(&event_target_value(&event)) {
@@ -69,11 +77,11 @@ pub fn TopBar() -> impl IntoView {
                         }).collect_view()}
                     </select>
                 </div>
-                <A href="/account" attr:class="topbar__profile" attr:aria-label=move || Messages::new(locale.get()).text("nav.account")>
+                <A href="/account" attr:class="topbar__profile" attr:aria-label=translated("nav.account")>
                     <NeutralAvatar/>
                 </A>
                 <button id="menu-toggle" type="button" class="icon-button mobile-menu-button"
-                    aria-label=move || Messages::new(locale.get()).text("shell.menu.open")
+                    aria-label=translated("shell.menu.open")
                     aria-controls="shell-menu" aria-haspopup="dialog" aria-expanded=move || menu_open.get()
                     on:click=move |_| {
                         if let Some(dialog) = menu.get() {
@@ -89,19 +97,19 @@ pub fn TopBar() -> impl IntoView {
                 if event.target().and_then(|target| target.dyn_into::<web_sys::Element>().ok())
                     .and_then(|element| element.closest("a").ok().flatten()).is_some() { close_menu(); }
             }
-            aria-label=move || Messages::new(locale.get()).text("shell.navigation")
+            aria-label=translated("shell.navigation")
             on:close=move |_: leptos::ev::Event| menu_open.set(false)
             on:cancel=move |_: leptos::ev::Event| menu_open.set(false)
             on:keydown=move |event| trap_dialog_tab(menu, &event)>
             <div class="shell-menu__header">
                 <Brand/>
                 <button type="button" class="icon-button" autofocus=true
-                    aria-label=move || Messages::new(locale.get()).text("shell.menu.close")
+                    aria-label=translated("shell.menu.close")
                     on:click=move |_| close_menu()><Icon kind="close"/></button>
             </div>
             <ShellNavigation/>
         </dialog>
-        <nav class="bottom-nav" aria-label=move || Messages::new(locale.get()).text("shell.navigation")>
+        <nav class="bottom-nav" aria-label=translated("shell.navigation")>
             <ShellLinks/>
         </nav>
     }
@@ -193,24 +201,22 @@ fn trap_dialog_tab(menu: NodeRef<leptos::html::Dialog>, event: &leptos::ev::Keyb
 
 #[component]
 fn ShellLinks() -> impl IntoView {
-    let locale = use_locale();
     view! {
-        <A href="/" exact=true attr:class="shell-link"><Icon kind="home"/><span>{move || Messages::new(locale.get()).text("nav.home")}</span></A>
-        <A href="/games" attr:class="shell-link"><Icon kind="grid"/><span>{move || Messages::new(locale.get()).text("nav.library")}</span></A>
-        <A href="/account" attr:class="shell-link"><Icon kind="user"/><span>{move || Messages::new(locale.get()).text("nav.account")}</span></A>
+        <A href="/" exact=true attr:class="shell-link"><Icon kind="home"/><span>{translated("nav.home")}</span></A>
+        <A href="/games" attr:class="shell-link"><Icon kind="grid"/><span>{translated("nav.library")}</span></A>
+        <A href="/account" attr:class="shell-link"><Icon kind="user"/><span>{translated("nav.account")}</span></A>
     }
 }
 
 #[component]
 fn ShellNavigation() -> impl IntoView {
-    let locale = use_locale();
     view! {
         <nav class="sidebar__nav"><ShellLinks/></nav>
-        <p class="sidebar__caption">{move || Messages::new(locale.get()).text("shell.upcoming")}</p>
+        <p class="sidebar__caption">{translated("shell.upcoming")}</p>
         <div class="sidebar__unavailable">
-            <span><Icon kind="history"/>{move || Messages::new(locale.get()).text("shell.history")}</span>
-            <span><Icon kind="users"/>{move || Messages::new(locale.get()).text("shell.rooms")}</span>
-            <small>{move || Messages::new(locale.get()).text("shell.upcoming.reason")}</small>
+            <span><Icon kind="history"/>{translated("shell.history")}</span>
+            <span><Icon kind="users"/>{translated("shell.rooms")}</span>
+            <small>{translated("shell.upcoming.reason")}</small>
         </div>
     }
 }
@@ -219,11 +225,11 @@ fn ShellNavigation() -> impl IntoView {
 fn Brand() -> impl IntoView {
     view! {
         <A href="/" attr:class="brand" attr:aria-label="Tabula">
-            <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            {InertElement::new(r#"<svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
                 <rect x="2" y="2" width="36" height="36" rx="12" fill="currentColor"/>
                 <path d="M11 12h18v5h-6v12h-6V17h-6z" fill="var(--sys-color-on-primary)"/>
                 <circle cx="28" cy="27" r="2.5" fill="var(--sys-color-on-primary)"/>
-            </svg><span>"tabula"</span>
+            </svg>"#)}<span>"tabula"</span>
         </A>
     }
 }
@@ -261,17 +267,16 @@ pub fn Icon(kind: &'static str) -> impl IntoView {
 /// A URL no route owns.
 #[component]
 pub fn RouteNotFound() -> impl IntoView {
-    let locale = use_locale();
     view! {
         <section class="section">
             <h1 class="section__title">
-                {move || Messages::new(locale.get()).text("detail.notfound.heading")}
+                {translated("detail.notfound.heading")}
             </h1>
             <p class="section__body">
-                {move || Messages::new(locale.get()).text("detail.notfound.body")}
+                {translated("detail.notfound.body")}
             </p>
             <A href="/games" attr:class="btn btn--tonal">
-                {move || Messages::new(locale.get()).text("detail.back")}
+                {translated("detail.back")}
             </A>
         </section>
     }
@@ -280,15 +285,14 @@ pub fn RouteNotFound() -> impl IntoView {
 /// A reason and its recovery, at full contrast and never only a tooltip.
 #[component]
 pub fn Reason(reason_key: &'static str, recovery_key: &'static str) -> impl IntoView {
-    let locale = use_locale();
     view! {
         <p class="reason">
             <span class="reason__why">
-                {move || Messages::new(locale.get()).text(reason_key)}
+                {translated(reason_key)}
             </span>
             " "
             <span class="reason__how">
-                {move || Messages::new(locale.get()).text(recovery_key)}
+                {translated(recovery_key)}
             </span>
         </p>
     }
