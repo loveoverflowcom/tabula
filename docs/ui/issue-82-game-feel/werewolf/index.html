@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tabula · Ma Sói — Đêm ở làng Sương</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-phase="night">
+  <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg"><defs>
+    <symbol id="moon" viewBox="0 0 24 24"><path d="M20.4 14.8A9 9 0 0 1 9.2 3.6 9 9 0 1 0 20.4 14.8Z"/></symbol>
+    <symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+    <symbol id="eye" viewBox="0 0 24 24"><path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="spark" viewBox="0 0 24 24"><path d="m12 2 2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z"/></symbol>
+    <symbol id="leaf" viewBox="0 0 24 24"><path d="M20 3c1 12-4 19-11 17C0 17 4 5 20 3Z M6 21 17 7"/></symbol>
+    <symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/><path d="M12 14v3"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  </defs></svg>
+  <header class="app-header">
+    <a href="#" class="brand" aria-label="Tabula"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><b>tabula</b></a>
+    <span class="breadcrumb">Bàn chơi <span>/</span> <strong>Ma Sói</strong></span>
+    <div class="header-end"><span class="header-account-avatar" aria-label="Avatar tài khoản của bạn — mẫu"></span><span class="local-tag"><i></i>Mô phỏng cục bộ</span><button class="quiet-btn motion-button" aria-pressed="false" title="Giảm chuyển động"><svg><use href="#spark"/></svg><span>Chuyển động</span></button></div>
+  </header>
+
+  <main>
+    <div class="chapter-heading">
+      <div><span class="eyebrow">CLASSIC · 12 NGƯỜI</span><h1 id="scene-title">Đêm ở làng Sương</h1><p id="intro-copy">Mọi người nhắm mắt. Những bí mật bắt đầu thức giấc.</p></div>
+      <div class="phase-clock"><svg><use href="#moon"/></svg><div><span id="phase-label">ĐÊM THỨ 02</span><strong><span id="timer">01:24</span><small>còn lại · mẫu</small></strong></div></div>
+    </div>
+    <div class="game-layout">
+      <section class="arena" aria-label="Làng Sương — chọn một ghế trong dữ liệu mẫu">
+        <div class="scene" aria-hidden="true"></div><div class="scene scene-dawn" aria-hidden="true"></div><div class="scene-shade" aria-hidden="true"></div>
+        <div class="phase-wash" aria-hidden="true"></div><div class="embers" aria-hidden="true"></div>
+        <div class="arena-caption"><span class="scene-label"><svg><use href="#leaf"/></svg>LÀNG SƯƠNG</span><span class="alive-count">12 người còn sống</span></div>
+        <div class="table-orbit" aria-hidden="true"><span></span></div>
+        <div class="village-center"><span class="center-rune"><svg><use href="#moon"/></svg></span><span id="center-phase">Làng đang ngủ</span><p id="center-copy">Chọn mục tiêu trong vùng ánh trăng.</p></div>
+        <div id="seats" class="seats"></div>
+        <div class="public-token" aria-hidden="true"><svg><use href="#leaf"/></svg></div>
+        <div class="arena-bottom"><span class="hint-dot"></span><span id="selection-caption">Chạm vào chân dung để chọn mục tiêu</span><span class="keyboard-hint">Tab · Enter</span></div>
+      </section>
+      <aside class="private-aside">
+        <section class="role-panel">
+          <div class="panel-heading"><svg><use href="#lock"/></svg><span>LÁ BÀI CỦA BẠN</span><span class="small-tag">Ghế 04</span></div>
+          <button class="role-card" aria-label="Lật lá bài của tôi trong bản thiết kế" aria-pressed="false">
+            <span class="card-flipper">
+              <span class="card-face card-back" aria-hidden="false"><span class="card-corner tl"></span><span class="card-corner br"></span><span class="card-wordmark">T A B U L A</span><span class="wolf-sigil"><svg viewBox="0 0 120 126"><path d="m30 23 12 12 18-8 18 8 12-12 4 29-10 37-24 17-24-17-10-37Z"/><path d="m36 59 14 6-6 9-12-9m52-6-14 6 6 9 12-9M47 91l13 10 13-10-13-8Z"/><path d="m42 35-8 17m44-17 8 17M60 30v19"/></svg></span><span class="card-back-name">MA SÓI</span><span class="back-rule"></span><span class="card-back-copy">Một lá bài.<br>Một bí mật.</span></span>
+              <span class="card-face card-front" aria-hidden="true" inert><img src="assets/werewolf.png" alt="Tranh minh họa Ma Sói của lá bài mẫu"><span class="role-title"><small>PHE MA SÓI · DỮ LIỆU MẪU</small><strong>Ma Sói</strong><span>Chọn một người khác trong đêm.</span></span></span>
+            </span>
+          </button>
+          <button class="reveal-action"><svg><use href="#eye"/></svg><span id="reveal-label">Lật xem lá bài của tôi</span></button>
+          <p class="private-hint">Chỉ lá bài của bạn được lật.<br>Vai trò các ghế khác vẫn được che.</p>
+        </section>
+        <section class="narrator-panel">
+          <span class="eyebrow">LỜI DẪN CỦA QUẢN TRÒ</span><p id="narrator">“Ánh trăng rọi qua mái nhà. Hãy chọn mục tiêu của bạn, rồi để màn đêm tiếp tục.”</p>
+          <div class="narrator-sign"><span></span>Quản trò máy · câu dẫn mẫu</div>
+        </section>
+      </aside>
+    </div>
+    <button class="own-role-toggle" aria-haspopup="dialog" aria-controls="role-dialog"><svg><use href="#lock"/></svg><span>Lá bài của bạn</span><small>Mở vùng riêng</small><svg><use href="#chevron"/></svg></button>
+    <section class="action-dock" aria-label="Hành động mẫu">
+      <div class="action-heading"><span class="action-number">02</span><div><span class="eyebrow" id="action-eyebrow">HÀNH ĐỘNG TRONG ĐÊM</span><h2 id="action-title">Bạn sẽ chọn ai?</h2><p id="action-description">Chọn một chân dung. Vai trò của họ vẫn là bí mật.</p></div></div>
+      <div class="selected-target"><span class="target-preview"></span><div><small>MỤC TIÊU</small><strong id="target-name">Chưa chọn</strong></div></div>
+      <button class="submit-action" disabled><span id="submit-label">Xác nhận mục tiêu</span><svg><use href="#chevron"/></svg></button>
+    </section>
+    <div class="demo-footer"><span>Bản thiết kế • dữ liệu mẫu • mô phỏng cục bộ</span><details><summary>Thử chuyển cảnh <svg><use href="#chevron"/></svg></summary><div class="demo-controls"><label>Cảnh mẫu<select id="phase-demo"><option value="night">Đêm · chọn mục tiêu</option><option value="day">Ngày · thảo luận</option><option value="vote">Biểu quyết · công khai</option></select></label><button id="reset-demo">Đặt lại mẫu</button><a class="avatar-compare-link" href="dashboard-avatar-sync.html">So sánh avatar mẫu</a></div></details></div>
+    <div class="toast" role="status" aria-live="polite"></div>
+  </main>
+  <dialog id="role-dialog" aria-label="Lá bài riêng của bạn — dữ liệu mẫu"><div class="role-dialog-content"></div><button class="role-dialog-close">Đóng vùng riêng</button></dialog>
+  <script type="module" src="preview.mjs"></script>
+</body>
+</html>
