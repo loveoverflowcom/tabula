@@ -33,4 +33,8 @@ focus or pixel quality; post-fix Chromium captures are a separate allowed task.
 Concurrent develop changes must be preserved and reverified before merge.
 
 ## Status
-In progress from develop `59ec8c62152d0b2d749f1a6ceba9982b5e8d2ac6`.
+Implemented and independently reviewed from develop
+`59ec8c62152d0b2d749f1a6ceba9982b5e8d2ac6`; local core, compatibility,
+feature/WASM and emitted-budget checks pass. Exact-final documentation/checkpoint
+verification and ordinary merge follow the owner-requested local gate. Genuine
+post-fix screenshots remain a separate evidence task, not a local UI pass.

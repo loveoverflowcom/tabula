@@ -10,7 +10,7 @@ historical regression evidence, not current-develop acceptance.
 | Claim | Owner / failure | Evidence | Status |
 |---|---|---|---|
 | Shell remains within unchanged 900,000-byte raw-WASM cap | discovery's full-game vtable retained unused canonical factories | actual official Trunk online wasm-release output and existing shell_budget | PASS, fresh local output; exact-final receipt below |
-| Existing full game APIs/config/handoffs are preserved | generic erasure could change constructors, coercions or validation | descriptor/query/normalization/API-compatibility differentials, feature/native/WASM consumers | Focused PASS; aggregate/feature completion pending |
+| Existing full game APIs/config/handoffs are preserved | generic erasure could change constructors, coercions or validation | descriptor/query/normalization/API-compatibility differentials, feature/native/WASM consumers | PASS, bounded local selection recorded below |
 | Skip activation uses native fragment focus | router intercepted #main and only scrolled | explicit target=_self bypass on existing tabindex=-1 main; unchanged genuine Enter assertion | Source-reviewed; post-fix browser NOT_RUN |
 | 200% text gets usable width without shrinking fonts | narrow percentage hero/nav and side-by-side Continue forced arbitrary word splits | font-relative <=16rem full-width hero, yielded art, stacked Continue, intact-label oracle and original-copy assertion | Source-reviewed; post-fix browser NOT_RUN |
 
@@ -52,6 +52,46 @@ these bounded source/build/unit checks.
 - Independent fresh-source review: no open API/security/source defect. Current
   public-display/avatar, full erased factories/runtime, game and theme code preserved
 
-The portable `cargo xtask check` and remaining feature/target checks are running
-for exact-final local verification. No automatic GitHub CI status is inspected or
-claimed here. No real post-fix keyboard/font/pixel PASS is inferred from compilation.
+## Completed local verification
+
+The production/test code tree is `35ec467fd66678d75f2faf2a815d87c68e2529d3`
+(remote `ada5d982d03cad04e30ba14780d092d28024c90f`). The final documentation
+checkpoint repeats the portable gate; its result is reported in the PR.
+
+- `cargo xtask check`: PASS, every ordered gate including strict all-feature
+  Clippy, workspace tests, dependency/game-id/manifest/token/color checks and
+  cargo-deny. 1,260 tests passed, zero failed; 18 existing documentation examples
+  were ignored. No lint or budget suppression added
+- `cargo check --workspace --no-default-features` and `--all-features`: PASS
+- Registry zero-game: one compatibility unit + five compile-fail doctests PASS
+- Registry Chess-only: four units + six recovery + eleven runtime tests + five
+  compile-fail doctests PASS; Tiles-only: four units + five doctests PASS. Both
+  feature selections execute the new descriptor/config/handoff differentials
+- Zero-game's unchanged private parse helpers produce inherited dead-code
+  warnings. The new test import warning was corrected; strict warning-clean
+  zero-game is not claimed. Three legacy illustrative doctests are ignored in
+  each registry selection; zero selected integration targets are not called tests
+- WASM compilation: web default/online; protocol/registry/match all-features;
+  game-client web and web+online PASS. These are compilation, not WASM execution
+- Separate native match-postgres and online-match acceptance manifests compile
+  successfully, including online-match all-features/continuity/body-publication;
+  this does not execute PostgreSQL, faults or browser gameplay
+- Final emitted shell: 739,144 bytes, SHA-256
+  `3cf77b4726c22c1befaa42f15b1bf5697ce2b7edfb003611bed2a40811cd3462`.
+  Existing shell_budget PASS with five resources, 884,192 raw bytes total and
+  zero gameplay references. This inventory is not a request waterfall/CDN result
+- Final CSS contains the 16rem large-text and manual-hyphenation rules, SHA-256
+  `9301f00b9738ee99804a1b25b3ca330279b0d239afcd6634932dcc238d737ec3`
+- Independent final source/API/security and test-refactor review: PASS within
+  this scope; no lost cases or changed validation/handoff behavior
+
+[Exact local emitted loading receipt](corrective-loading-receipt.json) records
+shipping source hashes, tool/profile settings and every selected artifact's byte
+count/hash. The unchanged budget owner, protocol, canonical full factories/runtime,
+current public-display/avatar, gameplay, tokens/theme and CI workflows remain
+byte-identical to the freshly fetched baseline.
+
+No automatic GitHub CI status is inspected or claimed here. No real post-fix
+keyboard/font/pixel PASS is inferred from compilation. The extended genuine
+eight-partition font and unchanged first-Tab/Enter scenarios remain implemented
+for the separately requested post-merge capture.
