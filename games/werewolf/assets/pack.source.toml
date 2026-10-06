@@ -84,6 +84,30 @@ source = "back@2x.png"
 priority = "critical"
 density = 2
 
+[[files]]
+name = "village-night@1x.image"
+source = "village-night@1x.png"
+priority = "critical"
+density = 1
+
+[[files]]
+name = "village-night@2x.image"
+source = "village-night@2x.png"
+priority = "critical"
+density = 2
+
+[[files]]
+name = "village-dawn@1x.image"
+source = "village-dawn@1x.png"
+priority = "critical"
+density = 1
+
+[[files]]
+name = "village-dawn@2x.image"
+source = "village-dawn@2x.png"
+priority = "critical"
+density = 2
+
 [[resources]]
 id = "cards/villager"
 
@@ -146,3 +170,21 @@ file = "back@1x.image"
 
 [[resources.variants]]
 file = "back@2x.image"
+
+[[resources]]
+id = "scenes/village-night"
+
+[[resources.variants]]
+file = "village-night@1x.image"
+
+[[resources.variants]]
+file = "village-night@2x.image"
+
+[[resources]]
+id = "scenes/village-dawn"
+
+[[resources.variants]]
+file = "village-dawn@1x.image"
+
+[[resources.variants]]
+file = "village-dawn@2x.image"

@@ -77,17 +77,17 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
 .setup .error{margin:0}
 
 .play-page{height:100vh;height:100dvh;overflow:hidden;background:var(--sys-color-surface);font-family:system-ui,sans-serif}
-#runtime{height:100%;position:relative}
-#glcanvas{display:block;width:100%;height:100%;touch-action:none}
+#runtime{height:100%;position:relative;display:flex;flex-direction:column}
+#glcanvas{display:block;width:100%;height:100%;flex:1 1 0;min-height:0;touch-action:none}
 #glcanvas:focus-visible{outline-offset:-4px}
 .runtime-overlay{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;padding:24px;background:var(--sys-color-surface);color:var(--sys-color-on-surface);text-align:center;overflow:auto}
 .runtime-overlay img{width:min(440px,80vw);height:220px;object-fit:cover;object-position:65% center;border-radius:var(--sys-shape-xl)}
 .runtime-overlay h1{font:700 32px/1.3 system-ui,sans-serif;margin:0}
 .runtime-overlay p{margin:0;max-width:560px;line-height:1.6;overflow-wrap:anywhere}
 .runtime-overlay progress{width:min(360px,80vw);accent-color:var(--sys-color-primary)}
-.runtime-access{position:absolute;z-index:2;right:8px;bottom:8px;display:flex;gap:8px;opacity:.85}
+.runtime-access{position:relative;z-index:2;display:flex;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--sys-color-surface)}
 .runtime-access:focus-within{opacity:1;pointer-events:auto}
-.runtime-access button{border:1px solid var(--sys-color-outline);border-radius:var(--sys-shape-sm);padding:12px;background:var(--sys-color-surface);color:var(--sys-color-on-surface);min-height:44px}
+.runtime-access button{border:1px solid var(--sys-color-outline);border-radius:var(--sys-shape-sm);padding:8px 12px;background:var(--sys-color-surface);color:var(--sys-color-on-surface);min-height:44px}
 .recovery-actions,.dialog-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
 .play-page dialog{max-width:min(520px,calc(100vw - 32px));border:1px solid var(--sys-color-outline);border-radius:var(--sys-shape-xl);padding:24px;background:var(--sys-color-surface);color:var(--sys-color-on-surface)}
 dialog::backdrop{background:color-mix(in srgb,var(--sys-color-on-surface) 50%,transparent)}

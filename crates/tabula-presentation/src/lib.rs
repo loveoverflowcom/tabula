@@ -11,6 +11,7 @@ mod focus;
 mod game;
 mod input;
 mod motion;
+mod public_display;
 mod render;
 mod renderer;
 
@@ -29,6 +30,10 @@ pub use motion::{
     is_stale_on_arrival, lerp_f32, lerp_vec2, resolve_duration, resolve_motion_start,
     resolve_spring, staggered_start, MotionMode, MotionSample, MotionStart, MotionTimeline,
     STALE_ANIMATION_THRESHOLD_MS,
+};
+pub use public_display::{
+    AvatarFallback, AvatarRequest, PublicAvatar, PublicDisplay, PublicDisplayLabel,
+    PublicDisplayMap, PublicDisplayMapError, PublicSubject,
 };
 pub use render::{
     Align, Border, Camera2D, Corners, GradientStop, Layer, LinearGradient, Opacity, OpacityError,

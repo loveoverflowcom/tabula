@@ -1286,7 +1286,8 @@ mod tests {
         )
         .unwrap();
         assert_eq!(report.host_file_count, SIMULATOR_HOST_FILES.len());
-        assert_eq!(report.runtime_resource_count, 18);
+        // Six fronts, one back and two scenes at two densities, plus four host resources.
+        assert_eq!(report.runtime_resource_count, 22);
         assert!(!out.join("assets/chess-cover.png").exists()); // xtask-allow-game-id: packaging isolation assertion.
         assert!(!out.join("setup.js").exists());
         assert!(!out.join("host-bridge.js").exists());
@@ -1305,13 +1306,13 @@ mod tests {
         )
         .unwrap();
         let files = value["files"].as_object().unwrap();
-        assert_eq!(files.len(), 18);
+        assert_eq!(files.len(), 22);
         assert_eq!(
             files
                 .keys()
-                .filter(|key| key.starts_with("werewolf/0.1.0/"))
+                .filter(|key| key.starts_with("werewolf/0.2.0/"))
                 .count(),
-            14
+            18
         ); // xtask-allow-game-id: pack isolation assertion.
         assert!(!files.keys().any(|key| key.starts_with("chess/"))); // xtask-allow-game-id: pack isolation assertion.
         for entry in files.values() {

@@ -97,7 +97,11 @@
     return result.toString();
   }
   function argumentsFor(config) {
-    if (config.game === "werewolf") return ["--seats",String(config.seats),"--theme",config.resolvedTheme].join("\n"); // xtask-allow-game-id: ADR-0035 opt-in standalone leaf.
+    if (config.game === "werewolf") { // xtask-allow-game-id: ADR-0035 opt-in standalone leaf.
+      const result = ["--seats",String(config.seats),"--theme",config.resolvedTheme];
+      if (config.reducedMotion) result.push("--reduced-motion");
+      return result.join("\n");
+    }
 
     const result = ["--game", "chess", "--skip-setup", "--clock", config.clock, "--theme", config.resolvedTheme]; // xtask-allow-game-id: direct Phase 2 standalone game-client leaf wiring; not platform dispatch.
     if (config.clock !== "untimed") result.push("--initial-ms", String(config.initialMs), config.clock === "fischer" ? "--increment-ms" : "--delay-ms", String(config.clock === "fischer" ? config.incrementMs : config.delayMs));

@@ -2,6 +2,7 @@
 
 use leptos::{prelude::*, tachys::html::InertElement};
 use leptos_router::components::A;
+use tabula_design::AvatarFallback;
 use tabula_registry::Locale;
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::MediaQueryList;
@@ -234,12 +235,6 @@ fn Brand() -> impl IntoView {
     }
 }
 
-#[component]
-fn NeutralAvatar() -> impl IntoView {
-    view! { <span class="neutral-avatar" aria-hidden="true"
-    inner_html=include_str!("../../../../crates/tabula-design/assets/avatar-neutral.svg")></span> }
-}
-
 /// Original Design 01 vector icons, with no icon font or runtime request.
 #[component]
 pub fn Icon(kind: &'static str) -> impl IntoView {
@@ -262,6 +257,31 @@ pub fn Icon(kind: &'static str) -> impl IntoView {
         _ => r#"<path d="M4 12h16m-6-6 6 6-6 6"/>"#,
     };
     view! { <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" inner_html=paths></svg> }
+}
+
+/// Shared public fallback, without requesting or synthesizing profile fields.
+/// Dashboard, header and gameplay use the same semantic occupant marker.
+#[component]
+pub fn NeutralAvatar(
+    #[prop(default = AvatarFallback::Human)] fallback: AvatarFallback,
+) -> impl IntoView {
+    // Keep both optional children typed: the default CSR build's static HTML
+    // checks can render these without an SSR-only erased-view implementation.
+    let silhouette = (fallback == AvatarFallback::Human).then(|| {
+        view! {
+            <svg viewBox="0 0 100 100" fill="currentColor" focusable="false">
+                <circle cx="50" cy="34" r="14"/>
+                <rect x="23" y="53" width="54" height="25" rx="12"/>
+            </svg>
+        }
+    });
+    let glyph = (fallback != AvatarFallback::Human).then(|| fallback.glyph());
+    view! {
+        <span class="neutral-avatar" data-avatar-kind=fallback.kind() aria-hidden="true">
+            {silhouette}
+            {glyph}
+        </span>
+    }
 }
 
 /// A URL no route owns.

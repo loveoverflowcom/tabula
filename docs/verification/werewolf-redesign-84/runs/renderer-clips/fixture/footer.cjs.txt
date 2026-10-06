@@ -1,0 +1,22 @@
+const fs = require('node:fs');
+const {chromium} = require('/Users/manh.pd1/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+(async()=>{
+ const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+ const results=[];
+ const html='<body class="play-page"><main id="runtime"><canvas id="glcanvas" tabindex="0"></canvas><div class="runtime-access"><button>Về thiết lập</button><button>Trợ giúp bàn phím</button><span class="sr-only">Instructions</span></div></main></body>';
+ for (const before of [true,false]) for (const dpr of [1,2]) for (const [width,height] of [[1200,880],[1100,850],[390,844],[320,640],[844,390]]) {
+  const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr});
+  const page=await context.newPage(); await page.setContent(html);
+  await page.addStyleTag({content:fs.readFileSync(before?'/tmp/tabula-issue84-renderer/standalone-before.css':'/Users/manh.pd1/Projects/Mine/tabula/apps/game-client/web/standalone.css','utf8')});
+  const layout=await page.evaluate(()=>{
+   const canvas=document.querySelector('canvas').getBoundingClientRect(), footer=document.querySelector('.runtime-access').getBoundingClientRect();
+   return {canvas:{top:canvas.top,bottom:canvas.bottom,height:canvas.height},footer:{top:footer.top,bottom:footer.bottom,height:footer.height},bodyScroll:document.body.scrollHeight,width:window.innerWidth,height:window.innerHeight};
+  });
+  const overlaps=layout.canvas.bottom>layout.footer.top;
+  if(before&&!overlaps)throw Error('Negative control unexpectedly nonoverlapping');
+  if(!before&&(overlaps||layout.footer.bottom>height||layout.canvas.height<=0))throw Error('Flow row invalid '+JSON.stringify(layout));
+  if(!before) await page.screenshot({path:`/tmp/tabula-issue84-renderer/evidence/footer-${width}x${height}-dpr${dpr}.png`});
+  results.push({before,width,height,dpr,overlaps,layout}); await context.close();
+ }
+ await browser.close(); fs.writeFileSync('/tmp/tabula-issue84-renderer/evidence/footer-layout.json',JSON.stringify(results,null,2)); console.log(JSON.stringify({pass:results.length,negative_controls:results.filter(x=>x.before).length}));
+})().catch(e=>{console.error(e);process.exit(1)});

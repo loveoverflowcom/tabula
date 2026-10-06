@@ -1,0 +1,129 @@
+{
+  "name": "844x390-dpr1",
+  "width": 844,
+  "height": 390,
+  "dpr": 1,
+  "started_at": "2026-10-06T05:08:31.751Z",
+  "scope": "Actual Chromium/Macroquad local simulator; public DOM and real input only; no native/online/a11y-mirror claim",
+  "steps": [
+    {
+      "action": "startup and host footer layout",
+      "status": "PASS",
+      "layout": {
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 844,
+          "height": 334,
+          "bottom": 334
+        },
+        "hostFooter": {
+          "top": 334,
+          "bottom": 390,
+          "width": 844
+        },
+        "canvasPixels": {
+          "width": 844,
+          "height": 334
+        },
+        "theme": "dark"
+      },
+      "sampled_colors": 817,
+      "screenshot": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/runner-drift-844x390-dpr1-public.png"
+    },
+    {
+      "action": "open tools, ArrowRight/Enter next seat, Enter reveal",
+      "status": "PASS",
+      "tools": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-W5c5Dp/844x390-dpr1-tools.png",
+      "screenshot": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/runner-drift-844x390-dpr1-revealed.png",
+      "card_difference": {
+        "changed": 35455,
+        "total": 36504,
+        "fraction": 0.9712634231865002
+      }
+    },
+    {
+      "action": "explicit drawer close returns to table",
+      "status": "PASS",
+      "screenshot": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-W5c5Dp/844x390-dpr1-drawer-closed.png",
+      "drawer_difference": {
+        "changed": 34539,
+        "total": 36504,
+        "fraction": 0.9461702827087443
+      }
+    }
+  ],
+  "runtime_artifact": {
+    "url": "resources/0e5a6fa9c485cf510972f21c0b6c796c8ce11cb27da11e575c426031b756a350.wasm",
+    "bytes": 999070,
+    "sha256": "0e5a6fa9c485cf510972f21c0b6c796c8ce11cb27da11e575c426031b756a350"
+  },
+  "status": "FAIL",
+  "error": "Escape did not restore the concealed card/table pixels",
+  "failure_screenshot": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/runner-drift-844x390-dpr1-failure.png",
+  "elapsed_ms": 3907,
+  "errors": [],
+  "console_messages": [
+    {
+      "type": "warning",
+      "message": "Some of the registred plugins do not have name or version",
+      "url": "http://127.0.0.1:8085/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+    },
+    {
+      "type": "warning",
+      "message": "Probably old version of the plugin used",
+      "url": "http://127.0.0.1:8085/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+    }
+  ],
+  "captures": [
+    {
+      "name": "844x390-dpr1-public",
+      "filename": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/runner-drift-844x390-dpr1-public.png",
+      "retained": true,
+      "bytes": 213264,
+      "sha256": "6c5bdc594dc6719b0c5a044a45b64befc333e0349d82fcd0a0abddcef653e1cc"
+    },
+    {
+      "name": "844x390-dpr1-tools",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-W5c5Dp/844x390-dpr1-tools.png",
+      "retained": false,
+      "bytes": 47845,
+      "sha256": "9c911284970213d1d3970e948892d89508047b6c861f67caa0e0e1a63d4d1c55"
+    },
+    {
+      "name": "844x390-dpr1-seat-concealed",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-W5c5Dp/844x390-dpr1-seat-concealed.png",
+      "retained": false,
+      "bytes": 213642,
+      "sha256": "3168ea4cf7c7b40e9e0aa3281d28e51e555db74dfbb67605c6088e8ef1344626"
+    },
+    {
+      "name": "844x390-dpr1-revealed",
+      "filename": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/runner-drift-844x390-dpr1-revealed.png",
+      "retained": true,
+      "bytes": 95818,
+      "sha256": "7b2998bc8fb4372d98997952b2f8e9755a3ba36f4db549904592ccce3be5c409"
+    },
+    {
+      "name": "844x390-dpr1-drawer-closed",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-W5c5Dp/844x390-dpr1-drawer-closed.png",
+      "retained": false,
+      "bytes": 19478,
+      "sha256": "3cbe3ddb0c44d17e0032c51796d2ec299f911acfb7a85c63ac289d3a5b60647f"
+    },
+    {
+      "name": "844x390-dpr1-escape-concealed",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-W5c5Dp/844x390-dpr1-escape-concealed.png",
+      "retained": false,
+      "bytes": 19478,
+      "sha256": "3cbe3ddb0c44d17e0032c51796d2ec299f911acfb7a85c63ac289d3a5b60647f"
+    },
+    {
+      "name": "844x390-dpr1-failure",
+      "filename": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/runner-drift-844x390-dpr1-failure.png",
+      "retained": true,
+      "bytes": 19478,
+      "sha256": "3cbe3ddb0c44d17e0032c51796d2ec299f911acfb7a85c63ac289d3a5b60647f"
+    }
+  ]
+}

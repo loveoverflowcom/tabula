@@ -27,14 +27,21 @@ Implemented presenters and tests:
 - [Tiles](../../../../games/tiles/src/presentation.rs): placement/claim,
   pan/zoom, keyboard navigation, HUD transform, camera noninterference,
   event cues, accessible cursor description and snapshots.
+- [Werewolf](../../../../games/werewolf/src/presentation/mod.rs): ADR-0035's
+  opt-in isolated-seat local simulator; authorized reveal/conceal, target then
+  explicit command, projection privacy, responsive roster/drawer, local motion,
+  and semantic accessibility. Use the [Werewolf rubric](werewolf.md) and
+  [#84 ledger](../../../../docs/verification/werewolf-redesign-84/README.md).
 
 Enable the feature and confirm nonzero selected tests:
 
 ```bash
 cargo nextest run -p tabula-game-chess --features presentation --lib -E 'test(presentation::tests)'
 cargo nextest run -p tabula-game-tiles --features presentation --lib -E 'test(presentation::tests)'
+cargo nextest run -p tabula-game-werewolf --features presentation --lib -E 'test(presentation::tests)'
 ```
 
 Tiles has no camera rotation, wheel/pinch events or full Board Reader. Caro
-has no presenter; Werewolf presentation/social UX is Phase 7 and voice Phase 8.
+has no presenter. Werewolf's bounded local presentation exception does not open
+Phase-7 online/social UX or Phase-8 voice.
 Do not add fake presentation checks or launch unsupported games to fill a row.

@@ -1,0 +1,1 @@
+{"status":"PASS","corner_sets":16,"current_corner_sets":8,"negative_corner_sets":8,"ink_comparisons":2,"ink_strip":{"first_origin":[30,180],"second_origin":[280,180],"logical_size":[180,40]},"corner_samples":"x+20/x+140 at y75/y155; RGB equality"}

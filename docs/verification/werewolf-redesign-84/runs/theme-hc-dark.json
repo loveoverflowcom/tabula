@@ -1,0 +1,22 @@
+{
+  "name": "theme-hc-dark",
+  "status": "PASS",
+  "evidence": "screenshot-captured",
+  "theme": "hc-dark",
+  "screenshot": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/theme-hc-dark.png",
+  "runtime_artifact": {
+    "url": "resources/82f52fc44d66c369b2108b0e96d8e8d3fed3afc6c79486a0525c4b3e7c0df7c0.wasm",
+    "bytes": 999543,
+    "sha256": "82f52fc44d66c369b2108b0e96d8e8d3fed3afc6c79486a0525c4b3e7c0df7c0"
+  },
+  "errors": [],
+  "captures": [
+    {
+      "name": "theme-hc-dark",
+      "filename": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/theme-hc-dark.png",
+      "retained": true,
+      "bytes": 812131,
+      "sha256": "cac3f5b48abf65ab55ac32c571a2b99c4517db7ec70ce52a00721c5400346779"
+    }
+  ]
+}

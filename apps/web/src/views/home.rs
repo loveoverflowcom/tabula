@@ -11,7 +11,7 @@ use crate::{
     i18n::shell,
     views::{
         library::card,
-        parts::{translated, Icon},
+        parts::{translated, Icon, NeutralAvatar},
         use_locale,
     },
 };
@@ -25,6 +25,7 @@ pub fn Home() -> impl IntoView {
                 <p class="eyebrow">{translated("home.eyebrow")}</p>
                 <h1 class="section__title">{translated("home.heading")}</h1>
                 <p class="section__body">{translated("home.lead")}</p>
+                <A href="/account" attr:class="public-account"><NeutralAvatar/>{translated("nav.account")}</A>
             </div>
             <section class="feature-hero" aria-labelledby="hero-heading">
                 <div class="hero-copy">

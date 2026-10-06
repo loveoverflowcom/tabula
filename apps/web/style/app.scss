@@ -588,6 +588,15 @@ body {
   text-underline-offset: var(--sys-space-xxs);
 }
 
+.public-account {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sys-density-min-target);
+  margin-block-end: var(--sys-space-md);
+  color: var(--sys-color-on-surface);
+  gap: var(--sys-space-sm);
+}
+
 @media (max-width: 599px) {
   .account .section__title {
     font-size: var(--sys-type-headline-sm-size);

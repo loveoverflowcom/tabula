@@ -17,3 +17,12 @@ test('classic host configuration remains unchanged',()=>{
   const cfg=launch.parse('game=chess&mode=hot-seat&clock=untimed');
   assert.equal(cfg.clock,'untimed');assert.match(launch.argumentsFor(launch.resolve(cfg,()=>({matches:false}))),/^--game\nchess\n/);
 });
+test('simulator forwards explicit and system reduced motion into the Rust runtime',()=>{
+  for(const motion of ['reduced','system']){
+    const cfg=launch.parse(`game=werewolf&mode=simulator&seats=12&theme=dark&motion=${motion}`);
+    const resolved=launch.resolve(cfg,query=>({matches:query.includes('prefers-reduced-motion')}));
+    assert.match(launch.argumentsFor(resolved),/--reduced-motion$/);
+  }
+  const full=launch.parse('game=werewolf&mode=simulator&seats=12&motion=system');
+  assert.doesNotMatch(launch.argumentsFor(launch.resolve(full,()=>({matches:false}))),/--reduced-motion/);
+});

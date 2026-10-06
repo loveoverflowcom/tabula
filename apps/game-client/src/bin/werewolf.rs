@@ -24,7 +24,7 @@ use tabula_game_werewolf::{ // xtask-allow-game-id: ADR-0035 opt-in local leaf w
     WerewolfModule,
     WerewolfRules,
 }; // xtask-allow-game-id: ADR-0035 opt-in local leaf wiring.
-use tabula_presentation::Renderer;
+use tabula_presentation::{PublicDisplay, PublicDisplayMap, PublicSubject, Renderer};
 
 fn window_conf() -> mq::Conf {
     mq::Conf {
@@ -38,7 +38,7 @@ fn window_conf() -> mq::Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let (seats, theme_kind) = parse_options().await;
+    let (seats, theme_kind, reduced_motion) = parse_options().await;
     let theme = tabula_design::Theme::by_kind(theme_kind);
     let mut renderer = loop {
         let mut candidate = MacroquadRenderer::new();
@@ -75,11 +75,15 @@ async fn main() {
             show_asset_failure(&mut renderer, &theme, &error).await;
             continue;
         }
-        let game = create_simulator(seats, session);
+        let mut game = create_simulator(seats, session);
+        game.local_mut().set_reduced_motion(reduced_motion);
         if let Err(error) = run_session(game, &mut renderer, &resources, &theme).await {
             show_asset_failure(&mut renderer, &theme, &error).await;
         }
-        session = session.saturating_add(1);
+        let Some(next_session) = session.checked_add(1) else {
+            return;
+        };
+        session = next_session;
     }
 }
 
@@ -119,6 +123,21 @@ fn create_simulator(seats: u8, session: u64) -> Simulator {
         Viewer::Spectator(SpectatorTier::Live),
     )
     .expect("validated simulator configuration");
+    // This isolated roster uses synthetic human identifiers for referee input;
+    // it has no authenticated account/profile source. Public guests therefore
+    // share the host's neutral fallback, never a role- or seat-derived image.
+    let mut public_display = PublicDisplayMap::new(session);
+    for entry in &roster {
+        let subject = match entry.occupant {
+            Occupant::Human(user) => PublicSubject::Guest(user.0),
+            Occupant::Bot { .. } => PublicSubject::Bot(u128::from(entry.seat.0)),
+            Occupant::Empty => PublicSubject::Empty,
+        };
+        public_display
+            .set(entry.seat, PublicDisplay::new(subject, 0, None, None))
+            .expect("bounded distinct local public display bindings");
+    }
+    game.local_mut().set_public_display(public_display);
     for (key, native) in [
         (tabula_presentation::Key::Enter, mq::KeyCode::Enter),
         (tabula_presentation::Key::Space, mq::KeyCode::Space),
@@ -245,7 +264,15 @@ fn process_inputs(
         if game.local_mut().take_advance_phase_request() && game.ended().is_none() {
             game.local_mut().conceal();
             let deadline = game.view().phase_ends_at;
-            game.advance_to(deadline, frame)
+            // The simulator jumps logical time; projected feedback starts on
+            // that same clock rather than appearing hundreds of seconds stale.
+            let transition_frame = tabula_presentation::FrameCtx::new(
+                frame.viewport(),
+                frame.dpi(),
+                deadline.0,
+                frame.theme(),
+            );
+            game.advance_to(deadline, &transition_frame)
                 .map_err(|error| format!("Referee stopped: {error:?}"))?;
             clock.offset = deadline.0.saturating_sub(elapsed);
         }
@@ -274,7 +301,7 @@ async fn notify_ready() {
     }
 }
 #[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
-async fn parse_options() -> (u8, tabula_design::ThemeKind) {
+async fn parse_options() -> (u8, tabula_design::ThemeKind, bool) {
     #[cfg(not(target_arch = "wasm32"))]
     let args: Vec<String> = std::env::args().skip(1).collect();
     #[cfg(target_arch = "wasm32")]
@@ -296,5 +323,9 @@ async fn parse_options() -> (u8, tabula_design::ThemeKind) {
         .find(|pair| pair[0] == "--theme")
         .and_then(|pair| tabula_game_client::runtime_ui::parse_local_theme(&pair[1]))
         .unwrap_or(tabula_design::ThemeKind::Dark);
-    (seats, theme)
+    (
+        seats,
+        theme,
+        args.iter().any(|arg| arg == "--reduced-motion"),
+    )
 }

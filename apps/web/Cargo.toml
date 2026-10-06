@@ -15,6 +15,7 @@ publish.workspace      = true
 
 [dependencies]
 tabula-registry = { workspace = true }
+tabula-design = { workspace = true }
 tabula-match-http = { workspace = true, optional = true }
 leptos          = { workspace = true }
 leptos_router   = { workspace = true }

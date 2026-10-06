@@ -7,7 +7,10 @@
 #![allow(clippy::float_arithmetic, clippy::doc_markdown)]
 
 pub mod assets;
+mod layout;
 mod render;
+use layout::Layout;
+use std::collections::BTreeMap;
 #[cfg(test)]
 mod tests;
 
@@ -26,9 +29,10 @@ use crate::{Alignment, Ballot, Command, NightChoice, Phase, PlayerStatus, Role, 
 /// One client-side view tab, not an authoritative phase or command.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum Panel {
-    #[default]
     Card,
+    #[default]
     Table,
+    Tools,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -56,6 +60,13 @@ struct ActivationKeys {
     space: bool,
 }
 
+#[derive(Clone, Debug, Default)]
+struct HostRequests {
+    viewer: Option<Viewer>,
+    advance: bool,
+    restart: bool,
+}
+
 /// Ephemeral controls and reveal state, never saved or sent upstream. (I-10)
 #[derive(Clone, Debug)]
 pub struct WerewolfLocal {
@@ -67,12 +78,22 @@ pub struct WerewolfLocal {
     potion: PotionMode,
     panel: Panel,
     page: usize,
+    info_page: usize,
     focus: FocusState,
     interaction: ButtonInteraction,
     activation_keys: ActivationKeys,
-    viewer_request: Option<Viewer>,
-    advance_request: bool,
-    restart_request: bool,
+    requests: HostRequests,
+    reduced_motion: bool,
+    now_ms: u64,
+    started_at_ms: Option<u64>,
+    deal_cancelled: bool,
+    reveal_started_ms: Option<u64>,
+    selected_started_ms: Option<u64>,
+    phase_motion: Option<(Phase, u64)>,
+    vote_motion: Option<(SeatId, SeatId, u64)>,
+    death_motion: BTreeMap<SeatId, u64>,
+    win_motion: Option<(tabula_core::MatchOutcome, u64)>,
+    public_display: tabula_presentation::PublicDisplayMap,
 }
 
 impl Default for WerewolfLocal {
@@ -84,14 +105,24 @@ impl Default for WerewolfLocal {
             selected: None,
             selection_scope: None,
             potion: PotionMode::Heal,
-            panel: Panel::Card,
+            panel: Panel::Table,
             page: 0,
+            info_page: 0,
             focus: FocusState::default(),
             interaction: ButtonInteraction::default(),
             activation_keys: ActivationKeys::default(),
-            viewer_request: None,
-            advance_request: false,
-            restart_request: false,
+            requests: HostRequests::default(),
+            reduced_motion: false,
+            now_ms: 0,
+            started_at_ms: None,
+            deal_cancelled: false,
+            reveal_started_ms: None,
+            selected_started_ms: None,
+            phase_motion: None,
+            vote_motion: None,
+            death_motion: BTreeMap::new(),
+            win_motion: None,
+            public_display: tabula_presentation::PublicDisplayMap::new(0),
         }
     }
 }
@@ -99,14 +130,63 @@ impl Default for WerewolfLocal {
 impl WerewolfLocal {
     /// Keeps input and rendering geometry identical for the current native/WASM frame.
     pub fn set_frame_context(&mut self, frame: &FrameCtx) {
+        if !Layout::supports(frame.viewport()) {
+            self.conceal();
+        }
+        self.update_frame_context(frame);
+        // Dealing starts only at explicit host initialization, never because
+        // a private projected event happened to reach this local presenter.
+        self.started_at_ms.get_or_insert(frame.now_ms());
+    }
+
+    fn update_frame_context(&mut self, frame: &FrameCtx) {
         self.viewport = frame.viewport();
         self.theme = frame.theme();
+        self.now_ms = frame.now_ms();
+        // Expired public timelines disappear; no missed frames create a backlog.
+        let death_duration = u64::from(self.theme.motion.exit.duration.milliseconds());
+        self.death_motion
+            .retain(|_, start| frame.now_ms().saturating_sub(*start) < death_duration);
+        if self.win_motion.as_ref().is_some_and(|(_, start)| {
+            frame.now_ms().saturating_sub(*start)
+                >= u64::from(self.theme.motion.win.duration.milliseconds())
+        }) {
+            self.win_motion = None;
+        }
+    }
+
+    /// Receives only host-authorized public occupant facts, outside canonical rules (I-10).
+    pub fn set_public_display(&mut self, display: tabula_presentation::PublicDisplayMap) {
+        self.conceal();
+        self.public_display = display;
+    }
+
+    /// Resolves the host/browser preference without replaying cancelled motion.
+    pub fn set_reduced_motion(&mut self, reduced: bool) {
+        self.reduced_motion = reduced;
+        if reduced {
+            self.deal_cancelled = true;
+            self.reveal_started_ms = None;
+            self.selected_started_ms = None;
+            self.phase_motion = None;
+            self.vote_motion = None;
+            self.death_motion.clear();
+            self.win_motion = None;
+        }
     }
 
     /// Immediately clears private-local selection, card reveal and pending presses.
     /// The host must call this before replacing a projection or restarting.
     pub fn conceal(&mut self) {
         self.reveal = None;
+        self.info_page = 0;
+        self.panel = Panel::Table;
+        self.reveal_started_ms = None;
+        self.selected_started_ms = None;
+        self.phase_motion = None;
+        self.vote_motion = None;
+        self.death_motion.clear();
+        self.win_motion = None;
         self.selected = None;
         self.selection_scope = None;
         self.potion = PotionMode::Heal;
@@ -139,17 +219,17 @@ impl WerewolfLocal {
 
     /// Consumes an explicit local seat/public perspective request; there is no Audit switch.
     pub fn take_viewer_request(&mut self) -> Option<Viewer> {
-        self.viewer_request.take()
+        self.requests.viewer.take()
     }
 
     /// Consumes the local simulator's request to fire the real projected phase deadline.
     pub fn take_advance_phase_request(&mut self) -> bool {
-        core::mem::take(&mut self.advance_request)
+        core::mem::take(&mut self.requests.advance)
     }
 
     /// Consumes an explicit fresh local-match restart request.
     pub fn take_restart_request(&mut self) -> bool {
-        core::mem::take(&mut self.restart_request)
+        core::mem::take(&mut self.requests.restart)
     }
 
     fn is_revealed(&self, view: &View) -> bool {
@@ -194,11 +274,43 @@ impl GamePresentation for WerewolfPresentation {
         render::present(view, local, frame).expect("validated viewport and bounded game geometry")
     }
 
-    fn on_view_event(_event: &ViewEvent, local: &mut Self::Local, frame: &FrameCtx) -> AudioCues {
+    fn on_view_event(event: &ViewEvent, local: &mut Self::Local, frame: &FrameCtx) -> AudioCues {
         // A projected event may replace authorization, phase or lifecycle. Reset
         // conservatively even for private acknowledgements, never animate secrets.
-        local.set_frame_context(frame);
+        local.update_frame_context(frame);
+        // One accepted rules input may announce several deaths and then its
+        // Dawn/Dusk or terminal transition. Keep only those same-frame public
+        // seat facts across that bounded batch; private concealment is unchanged.
+        let mut public_deaths = std::mem::take(&mut local.death_motion);
+        public_deaths.retain(|_, start| *start == frame.now_ms());
         local.conceal();
+        if !local.reduced_motion && local.focus.is_window_focused() {
+            match event {
+                ViewEvent::PhaseChanged { phase, ends_at, .. } if ends_at.0 > frame.now_ms() => {
+                    local.phase_motion = Some((*phase, frame.now_ms()));
+                    if matches!(phase, Phase::Dawn | Phase::Dusk) {
+                        local.death_motion = public_deaths;
+                    }
+                }
+                ViewEvent::BallotChanged {
+                    seat,
+                    ballot: Some(Ballot::Target(target)),
+                } => {
+                    local.vote_motion = Some((*seat, *target, frame.now_ms()));
+                }
+                ViewEvent::DeathRevealed { seat, .. } => {
+                    if public_deaths.len() < 20 || public_deaths.contains_key(seat) {
+                        public_deaths.insert(*seat, frame.now_ms());
+                    }
+                    local.death_motion = public_deaths;
+                }
+                ViewEvent::MatchEnded { outcome } => {
+                    local.death_motion = public_deaths;
+                    local.win_motion = Some((outcome.clone(), frame.now_ms()));
+                }
+                _ => {}
+            }
+        }
         AudioCues::default()
     }
 
@@ -224,10 +336,23 @@ impl GamePresentation for WerewolfPresentation {
                     pressed: true
                 }
         ) {
+            let was_tools = local.panel == Panel::Tools;
             local.conceal();
+            if was_tools {
+                local.focus = FocusState::new(
+                    Some(FocusId::new(22)),
+                    tabula_presentation::FocusModality::Keyboard,
+                    local.focus.is_window_focused(),
+                );
+            }
             if matches!(input, InputEvent::Focus(false)) {
                 local.focus.set_window_focused(false);
+                local.deal_cancelled = true;
             }
+            return None;
+        }
+        if !Layout::supports(local.viewport) {
+            local.conceal();
             return None;
         }
         let controls = controls(view, local, local.viewport);
@@ -264,10 +389,19 @@ impl GamePresentation for WerewolfPresentation {
         }
         match control.action {
             Action::Reveal => {
-                if local.is_revealed(view) {
+                if local.is_revealed(view)
+                    && Layout::new(local.viewport).compact
+                    && local.panel == Panel::Table
+                {
+                    local.panel = Panel::Card;
+                } else if local.is_revealed(view) {
                     local.conceal();
                 } else {
                     local.reveal = reveal_scope(view);
+                    local.reveal_started_ms = Some(local.now_ms);
+                    if Layout::new(local.viewport).compact {
+                        local.panel = Panel::Card;
+                    }
                 }
             }
             Action::PreviousSeat | Action::NextSeat => {
@@ -283,26 +417,43 @@ impl GamePresentation for WerewolfPresentation {
                 if let Some(seat) = view.roster.get(index).map(|s| s.seat) {
                     local.conceal();
                     local.page = 0;
-                    local.viewer_request = Some(Viewer::Seat(seat));
+                    local.requests.viewer = Some(Viewer::Seat(seat));
                 }
             }
             Action::Public => {
                 local.conceal();
-                local.viewer_request = Some(Viewer::Spectator(SpectatorTier::Live));
+                local.requests.viewer = Some(Viewer::Spectator(SpectatorTier::Live));
             }
             Action::Advance => {
                 local.conceal();
-                local.advance_request = true;
+                local.requests.advance = true;
             }
             Action::Restart => {
                 local.conceal();
-                local.restart_request = true;
-            }
-            Action::Card => {
-                local.panel = Panel::Card;
+                local.requests.restart = true;
             }
             Action::Table => {
                 local.panel = Panel::Table;
+                local.focus = FocusState::new(
+                    Some(FocusId::new(6)),
+                    tabula_presentation::FocusModality::Keyboard,
+                    local.focus.is_window_focused(),
+                );
+            }
+            Action::Tools => {
+                let open = local.panel != Panel::Tools;
+                local.conceal();
+                local.panel = if open { Panel::Tools } else { Panel::Table };
+                local.focus = FocusState::new(
+                    Some(FocusId::new(if open { 1 } else { 22 })),
+                    tabula_presentation::FocusModality::Keyboard,
+                    local.focus.is_window_focused(),
+                );
+            }
+            Action::Motion => local.set_reduced_motion(!local.reduced_motion),
+            Action::Info => {
+                local.info_page =
+                    (local.info_page + 1) % knowledge_lines(view).len().div_ceil(3).max(1);
             }
             Action::Page => {
                 local.page = (local.page + 1) % page_count(view, local.viewport).max(1);
@@ -311,6 +462,7 @@ impl GamePresentation for WerewolfPresentation {
                 if target_command(view, local, seat).is_some() {
                     local.selected = Some(seat);
                     local.selection_scope = reveal_scope(view);
+                    local.selected_started_ms = Some(local.now_ms);
                 }
             }
             Action::Heal => {
@@ -334,6 +486,9 @@ impl GamePresentation for WerewolfPresentation {
     }
 
     fn a11y(view: &View, local: &Self::Local) -> A11yDescription {
+        if !Layout::supports(local.viewport) {
+            return resize_description();
+        }
         let revealed = local.is_revealed(view);
         let role = reveal_scope(view)
             .filter(|_| revealed)
@@ -347,14 +502,22 @@ impl GamePresentation for WerewolfPresentation {
                 "Vai của bạn: {r}"
             ))
         );
+        let enabled_targets: Vec<_> = controls(view, local, local.viewport)
+            .into_iter()
+            .filter(|c| c.enabled)
+            .map(|c| c.action)
+            .collect();
         let mut regions = vec![A11yRegion {
             label: "Người chơi".into(),
             items: view
                 .roster
                 .iter()
                 .map(|seat| {
-                    let label =
-                        public_seat_label(seat.seat, seat.alive, seat.role, view.phase, revealed);
+                    let label = format!(
+                        "{} · {}",
+                        public_display_label(local, seat.seat),
+                        public_seat_label(seat.seat, seat.alive, seat.role, view.phase, revealed)
+                    );
                     let selected =
                         local.active_selected(view) == Some(seat.seat) && can_select(view, local);
                     A11yItem {
@@ -367,8 +530,8 @@ impl GamePresentation for WerewolfPresentation {
                         } else {
                             "Đã chết".into()
                         },
-                        activates: target_command(view, local, seat.seat)
-                            .is_some()
+                        activates: enabled_targets
+                            .contains(&Action::Target(seat.seat))
                             .then(|| ActionId(format!("target-{}", seat.seat.0))),
                     }
                 })
@@ -381,7 +544,9 @@ impl GamePresentation for WerewolfPresentation {
                     label: format!("{}. {}", role_name(scope.role), role_rules(scope.role)),
                     position: "Lá bài của bạn".into(),
                     state: "Đã mở. Escape để che".into(),
-                    activates: Some(ActionId("reveal-card".into())),
+                    activates: enabled_targets
+                        .contains(&Action::Reveal)
+                        .then(|| ActionId("reveal-card".into())),
                 }],
             });
             let knowledge = knowledge_lines(view);
@@ -423,6 +588,14 @@ impl GamePresentation for WerewolfPresentation {
     }
 }
 
+fn resize_description() -> A11yDescription {
+    A11yDescription {
+        status: "Ma Sói · Mở rộng cửa sổ để tiếp tục".into(),
+        regions: Vec::new(),
+        actions: Vec::new(),
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Action {
     Reveal,
@@ -431,7 +604,6 @@ enum Action {
     Public,
     Advance,
     Restart,
-    Card,
     Table,
     Page,
     Target(SeatId),
@@ -440,6 +612,9 @@ enum Action {
     Submit,
     Pass,
     Unvote,
+    Tools,
+    Motion,
+    Info,
 }
 
 struct Control {
@@ -466,6 +641,15 @@ impl Control {
             .map_or((None, self.label.as_str()), |(icon, label)| {
                 (Some(icon), label)
             });
+        let label = if self.action == Action::Motion {
+            if self.selected {
+                "Bật"
+            } else {
+                "Tắt"
+            }
+        } else {
+            label
+        };
         let button = ActionButton::new(self.id, self.rect, label, theme.density.min_target)
             .expect("all control bounds meet 44dp floor")
             .enabled(self.enabled)
@@ -475,78 +659,6 @@ impl Control {
                 tabula_presentation::ButtonTone::Tonal
             });
         icon.map_or(button, |icon| button.with_icon(icon))
-    }
-}
-
-/// Pure responsive geometry shared by input and drawing. Tiny viewports use
-/// paging and a separate card/table tab instead of reducing touch targets.
-#[derive(Clone, Copy)]
-struct Layout {
-    viewport: Vec2,
-    compact: bool,
-    content: Rect,
-    card: Rect,
-    table: Rect,
-    reveal: Rect,
-}
-
-impl Layout {
-    fn new(viewport: Viewport) -> Self {
-        let size = viewport.size();
-        let compact = size.x < 760.0 || size.y < 620.0;
-        let margin = 16.0_f32.min(size.x * 0.03);
-        let content_y = if compact { 178.0 } else { 128.0 };
-        let content_h = (size.y - content_y - 116.0).max(1.0);
-        let content = rect(
-            margin,
-            content_y,
-            (size.x - margin * 2.0).max(1.0),
-            content_h,
-        );
-        let card_width = if compact {
-            (content.size().x - 20.0)
-                .min((content_h - 52.0).max(50.0) / 1.5)
-                .min(320.0)
-        } else {
-            ((content_h - 62.0).max(60.0) / 1.5)
-                .min(320.0)
-                .min(content.size().x * 0.36)
-        };
-        let card_width = card_width.max(20.0);
-        let card_x = if compact {
-            (size.x - card_width) / 2.0
-        } else {
-            margin + 24.0
-        };
-        let card = rect(card_x, content_y, card_width, card_width * 1.5);
-        let reveal = rect(
-            if compact { margin } else { card_x },
-            card.origin().y + card.size().y + 8.0,
-            if compact {
-                content.size().x
-            } else {
-                card_width
-            },
-            44.0,
-        );
-        let table = if compact {
-            content
-        } else {
-            rect(
-                card_x + card_width + 36.0,
-                content_y,
-                (size.x - margin - card_x - card_width - 36.0).max(44.0),
-                content_h,
-            )
-        };
-        Self {
-            viewport: size,
-            compact,
-            content,
-            card,
-            table,
-            reveal,
-        }
     }
 }
 
@@ -587,85 +699,99 @@ fn viewer_seat(view: &View) -> Option<SeatId> {
     }
 }
 
-fn page_size(viewport: Viewport) -> usize {
-    if Layout::new(viewport).compact {
-        if viewport.size().y < 700.0 {
-            4
-        } else {
-            8
-        }
-    } else {
-        10
-    }
+fn page_size(_viewport: Viewport) -> usize {
+    12
 }
 
 fn page_count(view: &View, viewport: Viewport) -> usize {
     view.roster.len().div_ceil(page_size(viewport))
 }
 
-#[allow(clippy::too_many_lines)] // Single shared control vocabulary owns both rendering and hit testing.
+#[allow(clippy::too_many_lines)]
 fn controls(view: &View, local: &WerewolfLocal, viewport: Viewport) -> Vec<Control> {
+    if !Layout::supports(viewport) {
+        return Vec::new();
+    }
     let layout = Layout::new(viewport);
-    let width = layout.viewport.x;
     let mut result = Vec::new();
-    let mut add = |id, rect, label: String, enabled, action, selected| {
+    let mut add = |id, bounds, label: String, enabled, action, selected| {
         result.push(Control {
             id: FocusId::new(id),
-            rect,
+            rect: bounds,
             label,
             enabled,
             action,
             selected,
         });
     };
-    let margin = layout.content.origin().x;
-    let gap = 8.0;
-    let seat_width = ((width - margin * 2.0 - gap * 2.0) / 3.0).clamp(44.0, 180.0);
-    for (index, (action, label)) in [
-        (Action::PreviousSeat, "Ghế trước"),
-        (Action::NextSeat, "Ghế sau"),
-        (Action::Public, "Công khai"),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        add(
-            1 + u32::try_from(index).expect("three navigation buttons"),
-            rect(
-                margin + (seat_width + gap) * index_f32(index),
-                80.0,
-                seat_width,
-                44.0,
+    if local.panel == Panel::Tools {
+        let options = layout.options();
+        let d = options.dialog;
+        let w = ((d.size().x - 32.0) / 2.0).max(44.0);
+        for (i, (id, action, label)) in [
+            (1, Action::PreviousSeat, "Ghế trước"),
+            (2, Action::NextSeat, "Ghế sau"),
+            (3, Action::Public, "Công khai"),
+            (20, Action::Advance, "Tiếp pha"),
+            (21, Action::Restart, "Ván mới"),
+            (22, Action::Tools, "Về bàn chơi"),
+            (
+                23,
+                Action::Motion,
+                if local.reduced_motion {
+                    "Hiệu ứng: Tắt"
+                } else {
+                    "Hiệu ứng: Bật"
+                },
             ),
-            label.into(),
-            !view.roster.is_empty(),
-            action,
-            matches!(action, Action::Public) && viewer_seat(view).is_none(),
-        );
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            add(
+                id,
+                if action == Action::Motion {
+                    rect(
+                        options.motion.origin().x + options.motion.size().x - 84.0,
+                        options.motion.origin().y + 4.0,
+                        76.0,
+                        44.0,
+                    )
+                } else {
+                    rect(
+                        d.origin().x + 12.0 + index_f32(i % 2) * (w + 8.0),
+                        options.tools_y + index_f32(i / 2) * options.row_step,
+                        w,
+                        44.0,
+                    )
+                },
+                label.into(),
+                action != Action::Advance || view.phase.is_playing(),
+                action,
+                action == Action::Motion && !local.reduced_motion,
+            );
+        }
+        return result;
     }
-    if layout.compact {
-        let tab_width = ((width - margin * 2.0 - gap) / 2.0).max(44.0);
-        add(
-            4,
-            rect(margin, 130.0, tab_width, 44.0),
-            "Lá bài".into(),
-            true,
-            Action::Card,
-            local.panel == Panel::Card,
-        );
-        add(
-            5,
-            rect(margin + tab_width + gap, 130.0, tab_width, 44.0),
-            "Bàn chơi".into(),
-            true,
-            Action::Table,
-            local.panel == Panel::Table,
-        );
-    }
-    if !layout.compact || local.panel == Panel::Card {
+    if layout.compact && local.panel == Panel::Card {
+        let x = if layout.landscape {
+            layout.card.origin().x + layout.card.size().x + 24.0
+        } else {
+            layout.dialog.origin().x + 8.0
+        };
+        let width = if layout.landscape {
+            layout.viewport.x - x - 16.0
+        } else {
+            layout.dialog.size().x - 16.0
+        };
+        let y = if layout.landscape {
+            64.0
+        } else {
+            layout.card.origin().y + layout.card.size().y + 12.0
+        };
         add(
             6,
-            layout.reveal,
+            rect(x, y, width, 44.0),
             if local.is_revealed(view) {
                 "Che lá bài · Esc"
             } else {
@@ -676,165 +802,196 @@ fn controls(view: &View, local: &WerewolfLocal, viewport: Viewport) -> Vec<Contr
             Action::Reveal,
             local.is_revealed(view),
         );
-    }
-    if !layout.compact || local.panel == Panel::Table {
-        let start = local.page * page_size(viewport);
-        let columns = if layout.table.size().x >= 500.0 { 5 } else { 4 };
-        let cell_width =
-            ((layout.table.size().x - gap * index_f32(columns - 1)) / index_f32(columns)).max(44.0);
-        for (i, seat) in view
-            .roster
-            .iter()
-            .skip(start)
-            .take(page_size(viewport))
-            .enumerate()
-        {
-            let selected =
-                local.active_selected(view) == Some(seat.seat) && can_select(view, local);
-            let label = format!(
-                "{}\n{}",
-                u16::from(seat.seat.0) + 1,
-                if selected {
-                    "Chọn"
-                } else if seat.alive {
-                    "Sống"
-                } else {
-                    "Chết"
-                }
-            );
+        add(
+            5,
+            rect(x, y + 52.0, width, 44.0),
+            "Đóng · Về bàn chơi".into(),
+            true,
+            Action::Table,
+            false,
+        );
+        if local.is_revealed(view) && knowledge_lines(view).len() > 3 {
             add(
-                100 + u32::from(seat.seat.0),
-                rect(
-                    layout.table.origin().x + (cell_width + gap) * index_f32(i % columns),
-                    layout.table.origin().y + 34.0 + 56.0 * index_f32(i / columns),
-                    cell_width,
-                    48.0,
-                ),
-                label,
-                seat.alive && target_command(view, local, seat.seat).is_some(),
-                Action::Target(seat.seat),
-                selected,
+                25,
+                rect(x, layout.viewport.y - 52.0, width, 44.0),
+                "Thông tin riêng · Trang sau".into(),
+                true,
+                Action::Info,
+                false,
             );
         }
-        let rows = view
-            .roster
-            .iter()
-            .skip(start)
-            .take(page_size(viewport))
-            .count()
-            .div_ceil(columns);
-        let mut action_y = layout.table.origin().y + 34.0 + index_f32(rows) * 56.0 + 8.0;
-        if page_count(view, viewport) > 1 {
+        return result;
+    }
+    let reveal_button = if layout.compact {
+        rect(
+            layout.reveal.origin().x + 40.0,
+            layout.reveal.origin().y,
+            layout.reveal.size().x - 40.0,
+            44.0,
+        )
+    } else {
+        layout.reveal
+    };
+    add(
+        6,
+        reveal_button,
+        if local.is_revealed(view) {
+            "Bài riêng · Đang mở"
+        } else {
+            "Xem lá bài của tôi"
+        }
+        .into(),
+        reveal_scope(view).is_some(),
+        Action::Reveal,
+        local.is_revealed(view),
+    );
+    let start = local.page * page_size(viewport);
+    let count = view
+        .roster
+        .iter()
+        .skip(start)
+        .take(page_size(viewport))
+        .count();
+    for (i, seat) in view
+        .roster
+        .iter()
+        .skip(start)
+        .take(page_size(viewport))
+        .enumerate()
+    {
+        let selected = local.active_selected(view) == Some(seat.seat) && can_select(view, local);
+        add(
+            100 + u32::from(seat.seat.0),
+            layout.seat_rect(i, count),
+            format!(
+                "{} · {}",
+                public_display_label(local, seat.seat),
+                if selected {
+                    "Đã chọn"
+                } else if seat.alive {
+                    "Còn sống"
+                } else {
+                    "Đã bị loại"
+                }
+            ),
+            target_command(view, local, seat.seat).is_some(),
+            Action::Target(seat.seat),
+            selected,
+        );
+    }
+    let dock = layout.dock;
+    let half = ((dock.size().x - 24.0) / 2.0).max(44.0);
+    let witch = view.phase == Phase::Night
+        && local.is_revealed(view)
+        && reveal_scope(view).is_some_and(|scope| scope.role == Role::Witch);
+    if witch {
+        let inventory = match &view.knowledge {
+            PrivateKnowledge::Living { witch_potions, .. } => *witch_potions,
+            _ => None,
+        };
+        add(
+            11,
+            rect(dock.origin().x + 8.0, dock.origin().y + 4.0, half, 44.0),
+            "Bình cứu".into(),
+            inventory.is_some_and(|p| p.heal),
+            Action::Heal,
+            local.potion == PotionMode::Heal,
+        );
+        add(
+            12,
+            rect(
+                dock.origin().x + 16.0 + half,
+                dock.origin().y + 4.0,
+                half,
+                44.0,
+            ),
+            "Bình độc".into(),
+            inventory.is_some_and(|p| p.poison),
+            Action::Poison,
+            local.potion == PotionMode::Poison,
+        );
+    }
+    if can_select(view, local) {
+        let y = dock.origin().y + 54.0;
+        add(
+            13,
+            rect(dock.origin().x + 8.0, y, half, 44.0),
+            if view.phase == Phase::Vote {
+                "Bỏ phiếu"
+            } else {
+                "Gửi lựa chọn"
+            }
+            .into(),
+            selected_command(view, local).is_some(),
+            Action::Submit,
+            true,
+        );
+        add(
+            14,
+            rect(dock.origin().x + 16.0 + half, y, half, 44.0),
+            if view.phase == Phase::Vote {
+                "Trắng phiếu"
+            } else {
+                "Bỏ qua"
+            }
+            .into(),
+            pass_command(view).is_some(),
+            Action::Pass,
+            false,
+        );
+        if view.legal_commands.contains(&Command::Unvote) {
             add(
-                10,
+                15,
                 rect(
-                    layout.table.origin().x,
-                    action_y,
-                    layout.table.size().x,
+                    dock.origin().x + dock.size().x - 112.0,
+                    dock.origin().y + 4.0,
+                    104.0,
                     44.0,
                 ),
-                format!(
-                    "Người chơi {}/{} · Trang sau",
-                    local.page + 1,
-                    page_count(view, viewport)
-                ),
+                "Rút phiếu".into(),
                 true,
-                Action::Page,
+                Action::Unvote,
                 false,
             );
-            action_y += 52.0;
-        }
-        if view.phase == Phase::Night
-            && local.is_revealed(view)
-            && reveal_scope(view).is_some_and(|scope| scope.role == Role::Witch)
-        {
-            let w = ((layout.table.size().x - gap) / 2.0).max(44.0);
-            let inventory = match &view.knowledge {
-                PrivateKnowledge::Living { witch_potions, .. } => *witch_potions,
-                _ => None,
-            };
-            add(
-                11,
-                rect(layout.table.origin().x, action_y, w, 44.0),
-                "Bình cứu".into(),
-                inventory.is_some_and(|p| p.heal),
-                Action::Heal,
-                local.potion == PotionMode::Heal,
-            );
-            add(
-                12,
-                rect(layout.table.origin().x + w + gap, action_y, w, 44.0),
-                "Bình độc".into(),
-                inventory.is_some_and(|p| p.poison),
-                Action::Poison,
-                local.potion == PotionMode::Poison,
-            );
-            action_y += 52.0;
-        }
-        if can_select(view, local) {
-            let w = ((layout.table.size().x - gap) / 2.0).max(44.0);
-            add(
-                13,
-                rect(layout.table.origin().x, action_y, w, 44.0),
-                if view.phase == Phase::Vote {
-                    "Bỏ phiếu"
-                } else {
-                    "Gửi lựa chọn"
-                }
-                .into(),
-                selected_command(view, local).is_some(),
-                Action::Submit,
-                false,
-            );
-            add(
-                14,
-                rect(layout.table.origin().x + w + gap, action_y, w, 44.0),
-                if view.phase == Phase::Vote {
-                    "Trắng phiếu"
-                } else {
-                    "Bỏ qua"
-                }
-                .into(),
-                pass_command(view).is_some(),
-                Action::Pass,
-                false,
-            );
-            if view.legal_commands.contains(&Command::Unvote) {
-                add(
-                    15,
-                    rect(
-                        layout.table.origin().x,
-                        action_y + 52.0,
-                        layout.table.size().x,
-                        44.0,
-                    ),
-                    "Rút phiếu".into(),
-                    true,
-                    Action::Unvote,
-                    false,
-                );
-            }
         }
     }
-    let footer_y = (layout.viewport.y - 100.0).max(0.0);
-    let w = ((width - margin * 2.0 - gap) / 2.0).clamp(44.0, 260.0);
+    let w = ((layout.footer.size().x - 8.0) / 2.0).min(156.0);
     add(
-        20,
-        rect(margin, footer_y, w, 44.0),
-        "Pha tiếp theo".into(),
-        view.phase.is_playing(),
-        Action::Advance,
-        false,
-    );
-    add(
-        21,
-        rect(margin + w + gap, footer_y, w, 44.0),
-        "Ván mới".into(),
+        22,
+        rect(layout.footer.origin().x, layout.footer.origin().y, w, 44.0),
+        "Tùy chọn".into(),
         true,
-        Action::Restart,
+        Action::Tools,
         false,
     );
+    if page_count(view, viewport) > 1 {
+        add(
+            10,
+            rect(
+                layout.footer.origin().x + w + 8.0,
+                layout.footer.origin().y,
+                w,
+                44.0,
+            ),
+            format!(
+                "Trang {}/{} · Sau",
+                local.page + 1,
+                page_count(view, viewport)
+            ),
+            true,
+            Action::Page,
+            false,
+        );
+    }
     result
+}
+
+fn public_display_label(local: &WerewolfLocal, seat: SeatId) -> String {
+    local
+        .public_display
+        .get(seat)
+        .and_then(tabula_presentation::PublicDisplay::label)
+        .map_or_else(|| format!("Người {}", u16::from(seat.0) + 1), str::to_owned)
 }
 
 fn can_select(view: &View, local: &WerewolfLocal) -> bool {
@@ -1015,6 +1172,17 @@ fn knowledge_lines(view: &View) -> Vec<String> {
             history,
         } => {
             let mut lines = vec!["Góc nhìn người chết: thấy mọi vai; không thể hành động".into()];
+            // Full vision remains inside the deliberately opened private region.
+            // Public portraits never become role art, including for a dead viewer.
+            for seat in view.roster.iter().take(20) {
+                if let RoleKnowledge::Known(role) = seat.role {
+                    lines.push(format!(
+                        "Người {}: {}",
+                        u16::from(seat.seat.0) + 1,
+                        role_name(role)
+                    ));
+                }
+            }
             for (seat, choice) in night_choices {
                 lines.push(format!(
                     "Người {}: {}",

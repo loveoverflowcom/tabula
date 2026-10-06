@@ -1,0 +1,227 @@
+{
+  "method": "fault injection: original negative screen-camera Y zoom restored in disposable backend, all other drawing and assets unchanged",
+  "corner_samples": [
+    {
+      "dpr": 1,
+      "scope": "unbounded",
+      "flipped": false,
+      "colors": [
+        [
+          240,
+          30,
+          40
+        ],
+        [
+          30,
+          200,
+          50
+        ],
+        [
+          40,
+          80,
+          230
+        ],
+        [
+          240,
+          190,
+          20
+        ]
+      ]
+    },
+    {
+      "dpr": 1,
+      "scope": "clipped",
+      "flipped": true,
+      "colors": [
+        [
+          40,
+          80,
+          230
+        ],
+        [
+          240,
+          190,
+          20
+        ],
+        [
+          240,
+          30,
+          40
+        ],
+        [
+          30,
+          200,
+          50
+        ]
+      ]
+    },
+    {
+      "dpr": 1,
+      "scope": "nested",
+      "flipped": true,
+      "colors": [
+        [
+          40,
+          80,
+          230
+        ],
+        [
+          240,
+          190,
+          20
+        ],
+        [
+          240,
+          30,
+          40
+        ],
+        [
+          30,
+          200,
+          50
+        ]
+      ]
+    },
+    {
+      "dpr": 1,
+      "scope": "reset",
+      "flipped": false,
+      "colors": [
+        [
+          240,
+          30,
+          40
+        ],
+        [
+          30,
+          200,
+          50
+        ],
+        [
+          40,
+          80,
+          230
+        ],
+        [
+          240,
+          190,
+          20
+        ]
+      ]
+    },
+    {
+      "dpr": 2,
+      "scope": "unbounded",
+      "flipped": false,
+      "colors": [
+        [
+          240,
+          30,
+          40
+        ],
+        [
+          30,
+          200,
+          50
+        ],
+        [
+          40,
+          80,
+          230
+        ],
+        [
+          240,
+          190,
+          20
+        ]
+      ]
+    },
+    {
+      "dpr": 2,
+      "scope": "clipped",
+      "flipped": true,
+      "colors": [
+        [
+          40,
+          80,
+          230
+        ],
+        [
+          240,
+          190,
+          20
+        ],
+        [
+          240,
+          30,
+          40
+        ],
+        [
+          30,
+          200,
+          50
+        ]
+      ]
+    },
+    {
+      "dpr": 2,
+      "scope": "nested",
+      "flipped": true,
+      "colors": [
+        [
+          40,
+          80,
+          230
+        ],
+        [
+          240,
+          190,
+          20
+        ],
+        [
+          240,
+          30,
+          40
+        ],
+        [
+          30,
+          200,
+          50
+        ]
+      ]
+    },
+    {
+      "dpr": 2,
+      "scope": "reset",
+      "flipped": false,
+      "colors": [
+        [
+          240,
+          30,
+          40
+        ],
+        [
+          30,
+          200,
+          50
+        ],
+        [
+          40,
+          80,
+          230
+        ],
+        [
+          240,
+          190,
+          20
+        ]
+      ]
+    }
+  ],
+  "corner_order": [
+    "top-left",
+    "top-right",
+    "bottom-left",
+    "bottom-right"
+  ]
+}

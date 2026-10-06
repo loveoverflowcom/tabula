@@ -191,11 +191,16 @@ pub(crate) fn draw(
             Align::End => -container_width.unwrap_or(width),
         };
         let baseline = style.line_height().get()
-            * f32::from(u16::try_from(index + 1).map_err(|_| {
+            * f32::from(u16::try_from(index).map_err(|_| {
                 RenderError::Execution(String::from(
                     "tabula-render-macroquad text has more than u16::MAX lines",
                 ))
-            })?);
+            })?)
+            + line_baseline(
+                style.line_height().get(),
+                raw_measure(line, layout.font_size, layout.font),
+                layout.logical_font_scale,
+            );
         layout_line(
             line,
             layout.digit_advance,
@@ -219,6 +224,16 @@ pub(crate) fn draw(
         );
     }
     Ok(())
+}
+
+/// `at.y` is the top of the token's line box. Macroquad draws from a baseline and reports
+/// ink at `baseline - offset_y`; center that measured ink, including accents and descenders,
+/// in the line box rather than placing the baseline at its bottom (doc 04 §5.1.1).
+fn line_baseline(line_height: f32, metrics: mq::TextDimensions, logical_scale: f32) -> f32 {
+    if !metrics.height.is_finite() || !metrics.offset_y.is_finite() {
+        return line_height / 2.0;
+    }
+    (line_height - metrics.height * logical_scale) / 2.0 + metrics.offset_y * logical_scale
 }
 
 /// One unscaled fallback layout, shared by wrapping, measuring, and drawing.
@@ -391,6 +406,44 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn accents_and_descenders_are_centered_inside_the_logical_line_box() {
+        // Independent ink bounds: top = baseline - ascent; bottom = top + ink height.
+        // The old baseline of line_height puts the ink center below the line-box center.
+        for (line_height, height, ascent, scale, expected_baseline, expected_top) in [
+            (20.0, 14.0, 12.0, 1.0, 15.0, 3.0),
+            (20.0, 18.0, 15.0, 1.0, 16.0, 1.0),
+            (16.0, 16.0, 14.0, 0.75, 12.5, 2.0),
+            (28.0, 24.0, 19.0, 1.0, 21.0, 2.0),
+        ] {
+            let metrics = mq::TextDimensions {
+                width: 50.0,
+                height,
+                offset_y: ascent,
+            };
+            let baseline = line_baseline(line_height, metrics, scale);
+            assert_eq!(baseline, expected_baseline);
+            let top = baseline - ascent * scale;
+            let bottom = top + height * scale;
+            assert_eq!(top, expected_top);
+            assert_eq!(
+                top,
+                line_height - bottom,
+                "equal top and bottom ink padding"
+            );
+        }
+        assert_eq!(
+            line_baseline(20.0, mq::TextDimensions::default(), 1.0),
+            10.0
+        );
+        let empty = mq::TextDimensions {
+            width: 0.0,
+            height: f32::NEG_INFINITY,
+            offset_y: f32::MIN,
+        };
+        assert_eq!(line_baseline(20.0, empty, 1.0), 10.0);
+    }
 
     #[test]
     fn small_font_rasters_keep_token_size_and_share_the_preparation_size() {

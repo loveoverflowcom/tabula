@@ -12,7 +12,7 @@ fn frame(w: f32, h: f32) -> FrameCtx {
     FrameCtx::new(
         Viewport::new(Vec2::new(w, h)).unwrap(),
         Dpi::new(1.0).unwrap(),
-        0,
+        1000,
         Theme::by_kind(tabula_design::ThemeKind::Dark),
     )
 }
@@ -70,6 +70,24 @@ fn view(role: Role) -> View {
     view
 }
 fn click(local: &mut WerewolfLocal, view: &View, action: Action) -> Option<Intent<Command>> {
+    if matches!(
+        action,
+        Action::PreviousSeat
+            | Action::NextSeat
+            | Action::Public
+            | Action::Advance
+            | Action::Restart
+    ) && local.panel != Panel::Tools
+    {
+        click(local, view, Action::Tools);
+    }
+    if matches!(
+        action,
+        Action::Target(_) | Action::Submit | Action::Pass | Action::Heal | Action::Poison
+    ) && local.panel == Panel::Card
+    {
+        click(local, view, Action::Table);
+    }
     if let Action::Target(seat) = action {
         let index = view
             .roster
@@ -92,7 +110,7 @@ fn click(local: &mut WerewolfLocal, view: &View, action: Action) -> Option<Inten
         view,
         local,
     );
-    WerewolfPresentation::on_input(
+    let intent = WerewolfPresentation::on_input(
         &InputEvent::Pointer {
             position,
             button: PointerButton::Primary,
@@ -100,16 +118,29 @@ fn click(local: &mut WerewolfLocal, view: &View, action: Action) -> Option<Inten
         },
         view,
         local,
-    )
+    );
+    if action == Action::Reveal {
+        local.reveal_started_ms = None;
+    }
+    intent
 }
 fn assets(list: &RenderList) -> Vec<&str> {
-    list.commands()
+    let mut assets: Vec<_> = list
+        .commands()
         .iter()
         .filter_map(|c| match c {
-            RenderCmd::Sprite { asset, .. } => Some(asset.as_str()),
+            RenderCmd::Sprite { asset, .. } if asset.as_str().starts_with("cards/") => {
+                Some(asset.as_str())
+            }
             _ => None,
         })
-        .collect()
+        .collect();
+    assets.sort_unstable();
+    assets.dedup();
+    if assets.iter().any(|a| *a != "cards/back") {
+        assets.retain(|a| *a != "cards/back");
+    }
+    assets
 }
 #[test]
 fn concealed_render_and_accessibility_are_identical_for_all_six_roles() {
@@ -244,8 +275,8 @@ fn keyboard_reveal_is_explicit_and_selection_is_labelled_before_command() {
     let f = frame(1024.0, 768.0);
     let mut local = WerewolfLocal::default();
     local.set_frame_context(&f);
-    // The first three controls select a perspective; the fourth is reveal.
-    for _ in 0..4 {
+    // Board-first focus order starts at the deliberate own-card reveal.
+    for _ in 0..1 {
         WerewolfPresentation::on_input(
             &InputEvent::Key {
                 key: Key::Tab,
@@ -352,6 +383,8 @@ fn pointer_commands_roundtrip_through_real_rules_and_rejected_targets_do_not_emi
 #[test]
 fn compact_tabs_paging_and_responsive_controls_fit_320_to_1440() {
     for (w, h) in [
+        (280.0, 500.0),
+        (600.0, 300.0),
         (320.0, 568.0),
         (390.0, 844.0),
         (760.0, 640.0),
@@ -593,4 +626,592 @@ fn held_activation_cannot_reveal_after_conceal_restart_or_viewer_switch() {
         WerewolfPresentation::on_input(&InputEvent::Key { key, pressed: true }, &v, &mut fresh);
         assert!(fresh.is_revealed(&v));
     }
+}
+
+#[test]
+fn twelve_portraits_and_primary_slot_are_visible_together_in_portrait_and_landscape() {
+    // Canvas height already excludes the56dp host row. Geometry is an oracle
+    // over the visible viewport, not a screenshot assertion.
+    for (width, height) in [
+        (390.0, 788.0),
+        (320.0, 584.0),
+        (844.0, 334.0),
+        (1200.0, 824.0),
+    ] {
+        let f = frame(width, height);
+        let v = view(Role::Witch);
+        let mut local = WerewolfLocal::default();
+        local.set_frame_context(&f);
+        let layout = Layout::new(f.viewport());
+        let list = controls(&v, &local, f.viewport());
+        let targets: Vec<_> = list
+            .iter()
+            .filter(|c| matches!(c.action, Action::Target(_)))
+            .collect();
+        assert_eq!(targets.len(), 12);
+        for c in targets {
+            assert!(layout.table.contains(c.rect.origin()));
+            assert!(layout.table.contains(c.rect.origin() + c.rect.size()));
+            let d = (c.rect.size().x - 12.0)
+                .min(c.rect.size().y - 40.0)
+                .clamp(18.0, 64.0);
+            assert!(
+                d + 38.0 <= c.rect.size().y + 0.1,
+                "portrait and both labels overflow {width}x{height}"
+            );
+        }
+        assert!(layout.dock.origin().y + layout.dock.size().y <= layout.footer.origin().y);
+        assert!(layout.footer.origin().y + layout.footer.size().y <= height);
+        assert_eq!(local.panel, Panel::Table);
+    }
+}
+
+fn overlaps(a: Rect, b: Rect) -> bool {
+    a.origin().x < b.origin().x + b.size().x - 0.1
+        && b.origin().x < a.origin().x + a.size().x - 0.1
+        && a.origin().y < b.origin().y + b.size().y - 0.1
+        && b.origin().y < a.origin().y + a.size().y - 0.1
+}
+
+#[test]
+fn paging_witch_and_ballot_controls_do_not_overlap_and_modal_actions_are_closed() {
+    for (w, h) in [
+        (280.0, 500.0),
+        (600.0, 300.0),
+        (320.0, 584.0),
+        (390.0, 788.0),
+        (844.0, 334.0),
+        (760.0, 640.0),
+        (1200.0, 824.0),
+    ] {
+        let f = frame(w, h);
+        let mut local = WerewolfLocal::default();
+        local.set_frame_context(&f);
+        let mut v = view(Role::Witch);
+        v.roster.extend((12..20).map(|id| SeatView {
+            seat: SeatId(id),
+            alive: true,
+            status: PlayerStatus::Active,
+            role: RoleKnowledge::Hidden,
+        }));
+        local.reveal = reveal_scope(&v);
+        for phase in [Phase::Night, Phase::Vote] {
+            v.phase = phase;
+            local.reveal = reveal_scope(&v);
+            local.selection_scope = reveal_scope(&v);
+            local.selected = Some(SeatId(1));
+            if phase == Phase::Vote {
+                v.legal_commands = vec![
+                    Command::Vote(Ballot::Target(SeatId(1))),
+                    Command::Vote(Ballot::Abstain),
+                    Command::Unvote,
+                ];
+            }
+            for page in 0..2 {
+                local.page = page;
+                let cs = controls(&v, &local, f.viewport());
+                let enabled: Vec<_> = cs.iter().filter(|c| c.enabled).collect();
+                for (i, a) in enabled.iter().enumerate() {
+                    for b in enabled.iter().skip(i + 1) {
+                        assert!(
+                            !overlaps(a.rect, b.rect),
+                            "{w}x{h} {:?}/{:?}",
+                            a.action,
+                            b.action
+                        );
+                    }
+                }
+            }
+        }
+        for panel in [Panel::Table, Panel::Card, Panel::Tools] {
+            local.panel = panel;
+            let a = WerewolfPresentation::a11y(&v, &local);
+            let enabled: Vec<_> = a
+                .actions
+                .iter()
+                .filter(|a| a.enabled)
+                .map(|a| &a.id)
+                .collect();
+            for item in a.regions.iter().flat_map(|r| &r.items) {
+                if let Some(action) = &item.activates {
+                    assert!(enabled.contains(&action), "dangling action {action:?}");
+                }
+            }
+            if panel == Panel::Tools {
+                assert!(a.actions.iter().all(|a| !a.id.0.starts_with("target-")));
+                let dialog = Layout::new(f.viewport()).options().dialog;
+                let cs = controls(&v, &local, f.viewport());
+                for (i, control) in cs.iter().enumerate() {
+                    assert!(dialog.contains(control.rect.origin()));
+                    assert!(dialog.contains(control.rect.origin() + control.rect.size()));
+                    for other in cs.iter().skip(i + 1) {
+                        assert!(
+                            !overlaps(control.rect, other.rect),
+                            "{w}x{h} options overlap"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn reveal_face_swap_cancels_immediately_and_reduced_motion_never_replays_backlog() {
+    let f = frame(1024.0, 768.0);
+    let v = view(Role::Seer);
+    let mut local = WerewolfLocal::default();
+    local.set_frame_context(&f);
+    local.reveal = reveal_scope(&v);
+    local.reveal_started_ms = Some(1000);
+    local.deal_cancelled = true;
+    let initial = WerewolfPresentation::present(&v, &local, &f);
+    assert_eq!(assets(&initial), vec!["cards/back"]);
+    let later = FrameCtx::new(f.viewport(), f.dpi(), 1600, f.theme());
+    assert_eq!(
+        assets(&WerewolfPresentation::present(&v, &local, &later)),
+        vec!["cards/seer"]
+    );
+    WerewolfPresentation::on_input(&InputEvent::Focus(false), &v, &mut local);
+    assert_eq!(
+        assets(&WerewolfPresentation::present(&v, &local, &later)),
+        vec!["cards/back"]
+    );
+    local.phase_motion = Some((Phase::Dawn, 1000));
+    local.vote_motion = Some((SeatId(0), SeatId(1), 1000));
+    local.set_reduced_motion(true);
+    local.set_reduced_motion(false);
+    assert!(
+        local.phase_motion.is_none()
+            && local.vote_motion.is_none()
+            && local.reveal_started_ms.is_none()
+    );
+    assert!(local.deal_cancelled);
+}
+
+#[test]
+fn tiny_positive_viewports_are_noninteractive_and_remove_private_output() {
+    for (w, h) in [
+        (1.0, 1.0),
+        (32.0, 120.0),
+        (279.0, 844.0),
+        (320.0, 480.0),
+        (844.0, 299.0),
+    ] {
+        let f = frame(w, h);
+        let mut expected = None;
+        for role in [
+            Role::Werewolf,
+            Role::Seer,
+            Role::Doctor,
+            Role::Hunter,
+            Role::Witch,
+            Role::Villager,
+        ] {
+            let v = view(role);
+            let mut local = WerewolfLocal {
+                reveal: reveal_scope(&v),
+                panel: Panel::Card,
+                ..WerewolfLocal::default()
+            };
+            // Even stale revealed local state cannot reach the tiny canvas.
+            let rendered = WerewolfPresentation::present(&v, &local, &f);
+            assert!(!rendered
+                .commands()
+                .iter()
+                .any(|c| matches!(c, RenderCmd::Sprite { .. })));
+            if let Some(expected) = &expected {
+                assert_eq!(&rendered, expected);
+            } else {
+                expected = Some(rendered);
+            }
+            local.set_frame_context(&f);
+            assert!(local.reveal.is_none());
+            assert!(controls(&v, &local, f.viewport()).is_empty());
+            let a11y = WerewolfPresentation::a11y(&v, &local);
+            assert!(a11y.regions.is_empty() && a11y.actions.is_empty());
+            assert!(WerewolfPresentation::on_input(
+                &InputEvent::Key {
+                    key: Key::Enter,
+                    pressed: true
+                },
+                &v,
+                &mut local
+            )
+            .is_none());
+        }
+    }
+}
+
+#[test]
+fn dead_full_vision_lists_authorized_roles_only_after_opening_the_private_region() {
+    let f = frame(390.0, 788.0);
+    let mut v = view(Role::Seer);
+    v.roster[0].alive = false;
+    v.roster[1].role = RoleKnowledge::Known(Role::Doctor);
+    v.perspective = Perspective::Seat {
+        seat: SeatId(0),
+        role: Role::Seer,
+        alive: false,
+        can_act: false,
+    };
+    v.legal_commands.clear();
+    v.knowledge = PrivateKnowledge::Full {
+        night_choices: BTreeMap::new(),
+        seer_reports: BTreeMap::new(),
+        witch_potions: None,
+        history: Vec::new(),
+        hunter_mark: None,
+        hunter_fired: false,
+        doctor_previous: None,
+    };
+    let mut local = WerewolfLocal::default();
+    local.set_frame_context(&f);
+    let has_other_role = |list: &RenderList| {
+        list.commands()
+            .iter()
+            .any(|c| matches!(c, RenderCmd::Text { text, .. } if text.contains("Người 2: Bác sĩ")))
+    };
+    assert!(!has_other_role(&WerewolfPresentation::present(
+        &v, &local, &f
+    )));
+    click(&mut local, &v, Action::Reveal);
+    assert!(has_other_role(&WerewolfPresentation::present(
+        &v, &local, &f
+    )));
+    assert!(controls(&v, &local, f.viewport())
+        .iter()
+        .all(|c| !c.enabled || !matches!(c.action, Action::Submit | Action::Target(_))));
+    WerewolfPresentation::on_input(&InputEvent::Focus(false), &v, &mut local);
+    assert!(!has_other_role(&WerewolfPresentation::present(
+        &v, &local, &f
+    )));
+}
+
+fn fallback_opacities(list: &RenderList) -> Vec<u8> {
+    list.commands()
+        .iter()
+        .filter_map(|command| match command {
+            RenderCmd::Rect {
+                fill: Some(tabula_presentation::Paint::Solid(color)),
+                layer,
+                z: 3,
+                ..
+            } if *layer == tabula_presentation::Layer::HUD => Some(color.alpha()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn public_deaths_dim_only_the_named_portraits_and_finish_without_frame_backlog() {
+    let f = frame(1024.0, 768.0);
+    let mut v = view(Role::Seer);
+    v.phase = Phase::Dawn;
+    v.roster[1].alive = false;
+    v.roster[1].role = RoleKnowledge::Known(Role::Doctor);
+    let mut local = WerewolfLocal::default();
+    local.set_frame_context(&f);
+    local.deal_cancelled = true;
+    WerewolfPresentation::on_view_event(
+        &ViewEvent::DeathRevealed {
+            seat: SeatId(1),
+            role: Role::Doctor,
+        },
+        &mut local,
+        &f,
+    );
+    WerewolfPresentation::on_view_event(
+        &ViewEvent::PhaseChanged {
+            phase: Phase::Dawn,
+            round: 1,
+            ends_at: LogicalTime(30000),
+        },
+        &mut local,
+        &f,
+    );
+    let start = WerewolfPresentation::present(&v, &local, &f);
+    assert_eq!(fallback_opacities(&start)[2], 255);
+    assert!(start
+        .commands()
+        .iter()
+        .any(|c| matches!(c, RenderCmd::Text { text, .. } if text == "Loại")));
+    assert!(start
+        .commands()
+        .iter()
+        .any(|c| matches!(c, RenderCmd::Text { text, .. } if text == "Bác sĩ")));
+    let mut dense = local.clone();
+    let end_ms = f.now_ms() + u64::from(f.theme().motion.exit.duration.milliseconds());
+    for now in f.now_ms()..=end_ms {
+        dense.set_frame_context(&FrameCtx::new(f.viewport(), f.dpi(), now, f.theme()));
+    }
+    let end = FrameCtx::new(f.viewport(), f.dpi(), end_ms, f.theme());
+    local.set_frame_context(&end);
+    let final_list = WerewolfPresentation::present(&v, &local, &end);
+    assert_eq!(final_list, WerewolfPresentation::present(&v, &dense, &end));
+    assert_eq!(fallback_opacities(&final_list)[2], 114);
+    assert_eq!(fallback_opacities(&final_list)[0], 255);
+    assert!(local.death_motion.is_empty());
+    assert!(assets(&start)
+        .iter()
+        .all(|asset| !asset.starts_with("cards/doctor")));
+}
+
+#[test]
+fn public_death_batch_is_bounded_and_cancels_on_blur_reduction_or_unrelated_event() {
+    let f = frame(1024.0, 768.0);
+    let v = view(Role::Seer);
+    let mut local = WerewolfLocal::default();
+    local.set_frame_context(&f);
+    for id in 0..=20 {
+        WerewolfPresentation::on_view_event(
+            &ViewEvent::DeathRevealed {
+                seat: SeatId(id),
+                role: Role::Villager,
+            },
+            &mut local,
+            &f,
+        );
+    }
+    assert_eq!(local.death_motion.len(), 20);
+    WerewolfPresentation::on_view_event(
+        &ViewEvent::SeerReport {
+            seer: SeatId(0),
+            target: SeatId(1),
+            alignment: Alignment::Wolf,
+            round: 1,
+        },
+        &mut local,
+        &f,
+    );
+    assert!(local.death_motion.is_empty());
+    WerewolfPresentation::on_view_event(
+        &ViewEvent::DeathRevealed {
+            seat: SeatId(1),
+            role: Role::Doctor,
+        },
+        &mut local,
+        &f,
+    );
+    local.set_reduced_motion(true);
+    local.set_reduced_motion(false);
+    assert!(local.death_motion.is_empty());
+    WerewolfPresentation::on_view_event(
+        &ViewEvent::DeathRevealed {
+            seat: SeatId(1),
+            role: Role::Doctor,
+        },
+        &mut local,
+        &f,
+    );
+    WerewolfPresentation::on_input(&InputEvent::Focus(false), &v, &mut local);
+    WerewolfPresentation::on_input(&InputEvent::Focus(true), &v, &mut local);
+    assert!(local.death_motion.is_empty());
+}
+
+#[test]
+fn terminal_outcome_is_immediate_while_win_highlight_is_cancellable() {
+    let f = frame(1024.0, 768.0);
+    let mut v = view(Role::Seer);
+    let outcome = tabula_core::MatchOutcome::new(
+        tabula_core::OutcomeKind::Decisive,
+        v.roster
+            .iter()
+            .map(|s| tabula_core::Standing {
+                seat: s.seat,
+                rank: 0,
+                score: 0,
+            })
+            .collect(),
+        "werewolf.village_wins".into(),
+    )
+    .unwrap();
+    v.phase = Phase::Ended;
+    v.outcome = Some(outcome.clone());
+    v.legal_commands.clear();
+    let mut local = WerewolfLocal::default();
+    local.set_frame_context(&f);
+    WerewolfPresentation::on_view_event(&ViewEvent::MatchEnded { outcome }, &mut local, &f);
+    let initial = WerewolfPresentation::present(&v, &local, &f);
+    assert!(initial
+        .commands()
+        .iter()
+        .any(|c| matches!(c, RenderCmd::Text { text, .. } if text == "Dân làng chiến thắng")));
+    assert!(!can_select(&v, &local));
+    let highlight_width = |list: &RenderList| {
+        list.commands()
+            .iter()
+            .find_map(|c| match c {
+                RenderCmd::Rect {
+                    rect,
+                    fill: Some(_),
+                    layer,
+                    z: 4,
+                    ..
+                } if *layer == tabula_presentation::Layer::HUD
+                    && (rect.size().y - 3.0).abs() < f32::EPSILON =>
+                {
+                    Some(rect.size().x)
+                }
+                _ => None,
+            })
+            .unwrap()
+    };
+    let end = FrameCtx::new(
+        f.viewport(),
+        f.dpi(),
+        f.now_ms() + u64::from(f.theme().motion.win.duration.milliseconds()),
+        f.theme(),
+    );
+    assert!(
+        highlight_width(&initial)
+            < highlight_width(&WerewolfPresentation::present(&v, &local, &end))
+    );
+    local.set_reduced_motion(true);
+    assert!(local.win_motion.is_none());
+    assert!(
+        (highlight_width(&WerewolfPresentation::present(&v, &local, &f))
+            - highlight_width(&WerewolfPresentation::present(&v, &local, &end)))
+        .abs()
+            < f32::EPSILON
+    );
+    local.set_reduced_motion(false);
+    WerewolfPresentation::on_view_event(
+        &ViewEvent::MatchEnded {
+            outcome: v.outcome.clone().unwrap(),
+        },
+        &mut local,
+        &f,
+    );
+    WerewolfPresentation::on_input(&InputEvent::Focus(false), &v, &mut local);
+    assert!(local.win_motion.is_none());
+}
+
+#[test]
+fn current_announcement_does_not_repeat_previous_round_deaths_and_counts_current_batch() {
+    let mut v = view(Role::Seer);
+    let local = WerewolfLocal::default();
+    let changed = |phase, round| ViewEvent::PhaseChanged {
+        phase,
+        round,
+        ends_at: LogicalTime(30000),
+    };
+    v.phase = Phase::Dawn;
+    v.round = 2;
+    v.public_history = vec![
+        changed(Phase::Night, 1),
+        ViewEvent::DeathRevealed {
+            seat: SeatId(1),
+            role: Role::Doctor,
+        },
+        changed(Phase::Dawn, 1),
+        changed(Phase::Night, 2),
+        changed(Phase::Dawn, 2),
+    ];
+    assert_eq!(render::current_death_notice(&v, &local), None);
+    v.public_history.insert(
+        4,
+        ViewEvent::DeathRevealed {
+            seat: SeatId(2),
+            role: Role::Hunter,
+        },
+    );
+    assert_eq!(
+        render::current_death_notice(&v, &local).unwrap(),
+        "Người 3 đã bị loại · Thợ săn"
+    );
+    v.public_history.insert(
+        5,
+        ViewEvent::DeathRevealed {
+            seat: SeatId(3),
+            role: Role::Villager,
+        },
+    );
+    assert!(render::current_death_notice(&v, &local)
+        .unwrap()
+        .starts_with("2 người đã bị loại"));
+}
+
+#[test]
+fn voting_hint_and_paged_motion_control_have_real_nonoverlapping_slots() {
+    let f = frame(320.0, 584.0);
+    let mut v = view(Role::Seer);
+    v.phase = Phase::Vote;
+    v.legal_commands = vec![
+        Command::Vote(Ballot::Target(SeatId(1))),
+        Command::Vote(Ballot::Abstain),
+        Command::Unvote,
+    ];
+    let mut local = WerewolfLocal::default();
+    local.set_frame_context(&f);
+    local.selected = Some(SeatId(1));
+    local.selection_scope = reveal_scope(&v);
+    let (_, hint, style) = render::dock_selection_hint(&v, &local, Layout::new(f.viewport()));
+    let unvote = controls(&v, &local, f.viewport())
+        .into_iter()
+        .find(|c| c.action == Action::Unvote)
+        .unwrap();
+    assert!(!overlaps(hint, unvote.rect));
+    assert_eq!(style, tabula_presentation::TextStyleToken::LabelMd);
+    v.roster.extend((12..20).map(|id| SeatView {
+        seat: SeatId(id),
+        alive: true,
+        status: PlayerStatus::Active,
+        role: RoleKnowledge::Hidden,
+    }));
+    local.panel = Panel::Tools;
+    let motion = controls(&v, &local, f.viewport())
+        .into_iter()
+        .find(|c| c.action == Action::Motion)
+        .unwrap();
+    assert!(motion.enabled && motion.rect.size().x >= 44.0 && motion.rect.size().y >= 44.0);
+    assert!(motion.selected, "effects on uses the active button tone");
+    click(&mut local, &v, Action::Motion);
+    assert!(local.reduced_motion);
+    assert!(controls(&v, &local, f.viewport())
+        .iter()
+        .any(|c| c.action == Action::Motion && !c.selected));
+}
+
+#[test]
+fn vote_badge_and_managed_image_ring_keep_semantic_contrast_and_stacking() {
+    let f = frame(390.0, 788.0);
+    let mut v = view(Role::Seer);
+    v.phase = Phase::Vote;
+    v.votes.insert(SeatId(0), Ballot::Target(SeatId(1)));
+    let mut local = WerewolfLocal::default();
+    local.set_frame_context(&f);
+    let asset = tabula_game_api::AssetRef::new("account/avatar").unwrap();
+    let mut displays = tabula_presentation::PublicDisplayMap::new(1);
+    displays
+        .set(
+            SeatId(1),
+            tabula_presentation::PublicDisplay::new(
+                tabula_presentation::PublicSubject::Guest(99),
+                0,
+                None,
+                Some(asset.clone()),
+            ),
+        )
+        .unwrap();
+    let request = displays.avatar_request(SeatId(1)).unwrap();
+    assert!(displays.complete_avatar(&request, true));
+    local.set_public_display(displays);
+    let list = WerewolfPresentation::present(&v, &local, &f);
+    assert!(list.commands().iter().any(|c| matches!(c, RenderCmd::Rect { fill: Some(tabula_presentation::Paint::Solid(color)), z: 5, .. } if *color == f.theme().color.primary)));
+    assert!(list.commands().iter().any(|c| matches!(c, RenderCmd::Text { text, color, z: 6, .. } if text == "1" && *color == f.theme().color.on_primary)));
+    let image = list
+        .commands()
+        .iter()
+        .find_map(|c| match c {
+            RenderCmd::Sprite {
+                asset: current,
+                rect,
+                z: 3,
+                ..
+            } if *current == asset => Some(*rect),
+            _ => None,
+        })
+        .unwrap();
+    assert!(list.commands().iter().any(|c| matches!(c, RenderCmd::Rect { rect, fill: None, border: Some(_), z: 4, .. } if *rect == image)));
 }

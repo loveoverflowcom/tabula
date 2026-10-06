@@ -1,0 +1,12 @@
+   Compiling tabula-design v0.0.0 (/Users/manh.pd1/Projects/Mine/tabula/crates/tabula-design)
+   Compiling tabula-presentation v0.0.0 (/Users/manh.pd1/Projects/Mine/tabula/crates/tabula-presentation)
+   Compiling tabula-game-tiles v0.1.0 (/Users/manh.pd1/Projects/Mine/tabula/games/tiles)
+   Compiling tabula-game-chess v0.1.2 (/Users/manh.pd1/Projects/Mine/tabula/games/chess)
+   Compiling tabula-render-macroquad v0.0.0 (/Users/manh.pd1/Projects/Mine/tabula/crates/tabula-render-macroquad)
+   Compiling tabula-game-werewolf v0.0.0 (/Users/manh.pd1/Projects/Mine/tabula/games/werewolf)
+   Compiling tabula-registry v0.0.0 (/Users/manh.pd1/Projects/Mine/tabula/crates/tabula-registry)
+   Compiling tabula-game-client v0.0.0 (/Users/manh.pd1/Projects/Mine/tabula/apps/game-client)
+   Compiling xtask v0.1.0 (/Users/manh.pd1/Projects/Mine/tabula/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.48s
+     Running `target/debug/xtask check-no-raw-colors`
+check-no-raw-colors: all presentation sources use semantic tokens

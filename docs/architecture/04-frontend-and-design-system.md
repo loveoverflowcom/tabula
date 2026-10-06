@@ -59,6 +59,31 @@ Ambiguous cases and their rulings:
 - **Settings during a match**: a canvas-drawn overlay with only the handful of in-match toggles
   (sound, motion, board theme); the full settings page is shell.
 
+### 1.2 Public occupant display
+
+`tabula-presentation` owns the pure host-to-gameplay `PublicDisplay` / `PublicDisplayMap`
+contract. Its neutral `AvatarFallback` semantics live in `tabula-design`, allowing shell and
+canvas to share the same fallback without the shell importing the presentation runtime.
+The host supplies an explicit public subject, display revision,
+optionally permitted label, and optionally declared managed `AssetRef`; rules and projections
+do not fetch profiles or derive an avatar from a seat, role, phase or alive status. Game status
+is a separate marker outside the avatar. No account identifier is a display label.
+
+An image remains on the shared human/bot/empty neutral fallback until the host completes its
+exact resource ticket after its existing managed loading boundary succeeds. Occupant changes,
+vacating, rebinding, display revisions and new host epochs retire old image state and late
+callbacks. Every new host activation uses a fresh epoch; clones are display snapshots within
+that activation, not independent resource owners. Hosts retain the same display facts across
+their dashboard/header/game surfaces and keep image crop and dimensions consistent.
+
+The current self-profile HTTP DTO has only `version` and `account_id`. This contract adds no
+HTTP field, avatar URL, profile lookup, delivery service or authenticated simulator seat.
+ADR-0035's local Werewolf host supplies synthetic guest subjects and no image or label; the
+shell's header/home/self-profile and the local game therefore use the same neutral human
+fallback. Managed account image delivery remains unavailable until an approved public source
+and resource adapter exist. Pure readiness tests prove callback binding, not actual image
+delivery or account integration.
+
 ---
 
 ## 2. The Leptos application shell

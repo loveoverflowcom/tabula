@@ -202,15 +202,24 @@ fn configure_clip_viewport(
         return Ok(());
     };
     let viewport = clip_device_viewport(rect, frame)?;
-    let mut camera = mq::Camera2D::from_display_rect(mq::Rect::new(
-        rect.origin().x,
-        rect.origin().y,
-        rect.size().x,
-        rect.size().y,
-    ));
-    camera.viewport = Some(viewport);
+    let camera = clip_camera(rect, viewport);
     mq::set_camera(&camera);
     Ok(())
+}
+
+/// Matches the default screen camera's downward logical Y axis inside the GPU viewport.
+/// Macroquad's screen-camera matrix already negates Y; `from_display_rect` also supplies a
+/// negative Y zoom, which cancels that conversion and mirrors every clipped primitive.
+fn clip_camera(rect: Rect, viewport: (i32, i32, i32, i32)) -> mq::Camera2D {
+    mq::Camera2D {
+        target: mq::vec2(
+            rect.origin().x + rect.size().x / 2.0,
+            rect.origin().y + rect.size().y / 2.0,
+        ),
+        zoom: mq::vec2(2.0 / rect.size().x, 2.0 / rect.size().y),
+        viewport: Some(viewport),
+        ..mq::Camera2D::default()
+    }
 }
 
 fn validate_clip(clip: Clip, frame: &tabula_presentation::FrameCtx) -> Result<(), RenderError> {
@@ -599,6 +608,39 @@ mod tests {
         let frame = clip_frame(Vec2::new(80.0, 100.0), 1.0);
         let full = Rect::new(Vec2::ZERO, frame.viewport().size()).unwrap();
         assert_eq!(clip_device_viewport(full, &frame), Ok((0, 0, 80, 100)));
+    }
+
+    #[test]
+    fn actual_screen_camera_keeps_all_four_clip_corners_upright_at_each_dpi() {
+        use macroquad::camera::Camera;
+
+        // Test the backend's real projection matrix, rather than merely the integer viewport.
+        // Includes an inner clip and a later restored outer clip, the role-card/log failure.
+        let outer = Rect::new(Vec2::new(40.0, 155.0), Vec2::new(175.0, 150.0)).unwrap();
+        let inner = Rect::new(Vec2::new(60.0, 175.0), Vec2::new(100.0, 90.0)).unwrap();
+        for dpi in [1.0, 2.0] {
+            let frame = clip_frame(Vec2::new(960.0, 720.0), dpi);
+            for rect in [outer, inner, outer] {
+                let camera = clip_camera(rect, clip_device_viewport(rect, &frame).unwrap());
+                for (local, expected) in [
+                    (rect.origin(), mq::vec2(-1.0, 1.0)),
+                    (
+                        rect.origin() + Vec2::new(rect.size().x, 0.0),
+                        mq::vec2(1.0, 1.0),
+                    ),
+                    (rect.origin() + rect.size(), mq::vec2(1.0, -1.0)),
+                    (
+                        rect.origin() + Vec2::new(0.0, rect.size().y),
+                        mq::vec2(-1.0, -1.0),
+                    ),
+                ] {
+                    let actual = camera
+                        .matrix()
+                        .transform_point3(mq::vec3(local.x, local.y, 0.0));
+                    assert!((actual.truncate() - expected).abs().max_element() < 0.000_01);
+                }
+            }
+        }
     }
 
     #[test]

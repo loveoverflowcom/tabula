@@ -1,0 +1,204 @@
+   Compiling tabula-game-werewolf v0.0.0 (/Users/manh.pd1/Projects/Mine/tabula/games/werewolf)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.44s
+     Running unittests src/lib.rs (target/debug/deps/tabula_game_werewolf-24461979e85bb7a1)
+
+running 26 tests
+test presentation::tests::current_announcement_does_not_repeat_previous_round_deaths_and_counts_current_batch ... ok
+test presentation::tests::held_activation_cannot_reveal_after_conceal_restart_or_viewer_switch ... ok
+test presentation::tests::dead_full_vision_lists_authorized_roles_only_after_opening_the_private_region ... ok
+test presentation::tests::focus_loss_public_switch_and_all_events_clear_private_local_state ... ok
+test presentation::tests::keyboard_reveal_is_explicit_and_selection_is_labelled_before_command ... ok
+test presentation::assets::tests::all_roles_and_back_resolve_at_both_densities_without_atlas_regions ... ok
+test presentation::tests::compact_tabs_paging_and_responsive_controls_fit_320_to_1440 ... ok
+test presentation::tests::outside_cannot_reveal_and_votes_work_without_role_reveal ... ok
+test presentation::tests::four_semantic_theme_modes_keep_art_and_functional_labels_valid ... ok
+test presentation::tests::concealed_render_and_accessibility_are_identical_for_all_six_roles ... ok
+test presentation::tests::paging_witch_and_ballot_controls_do_not_overlap_and_modal_actions_are_closed ... ok
+test presentation::tests::public_death_batch_is_bounded_and_cancels_on_blur_reduction_or_unrelated_event ... ok
+test presentation::tests::pointer_commands_roundtrip_through_real_rules_and_rejected_targets_do_not_emit ... ok
+test presentation::tests::explicit_reveal_emits_only_own_art_and_live_vietnamese_text_then_escape_conceals ... ok
+test presentation::tests::potion_type_and_own_hunter_mark_are_explicit_authorized_knowledge ... ok
+test presentation::tests::private_submission_report_inventory_and_mark_changes_have_no_concealed_output ... ok
+test presentation::tests::public_deaths_dim_only_the_named_portraits_and_finish_without_frame_backlog ... ok
+test presentation::tests::reveal_face_swap_cancels_immediately_and_reduced_motion_never_replays_backlog ... ok
+test presentation::tests::tiny_positive_viewports_are_noninteractive_and_remove_private_output ... ok
+test presentation::tests::simulator_host_requests_are_one_shot_and_conceal_immediately ... ok
+test presentation::tests::twelve_portraits_and_primary_slot_are_visible_together_in_portrait_and_landscape ... ok
+test presentation::tests::voting_hint_and_paged_motion_control_have_real_nonoverlapping_slots ... ok
+test presentation::tests::terminal_outcome_is_immediate_while_win_highlight_is_cancellable ... ok
+test presentation::tests::vote_badge_and_managed_image_ring_keep_semantic_contrast_and_stacking ... ok
+test presentation::tests::role_phase_round_lifecycle_and_seat_replacements_fail_closed_before_input ... ok
+test presentation::assets::tests::bounded_independent_images_match_pinned_metadata ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/assignment.rs (target/debug/deps/assignment-dc35d5639ceb0861)
+
+running 8 tests
+test fixed_seed_and_roster_produce_pinned_assignment_vector ... ok
+test initial_state_has_valid_night_1_structure ... ok
+test role_assignment_works_with_non_contiguous_and_irregular_seat_ids ... ok
+test roster_order_invariance_produces_identical_assignment ... ok
+test seed_determinism_produces_byte_identical_state ... ok
+test seed_sensitivity_positive_control_produces_different_assignments ... ok
+test role_assignment_exhaustive_across_all_supported_seat_counts ... ok
+test every_roster_permutation_preserves_assignment ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/config.rs (target/debug/deps/config-66e059d93458e847)
+
+running 17 tests
+test config_default_is_semantically_valid ... ok
+test deserialization_rejects_out_of_range_max_rounds ... ok
+test deserialization_rejects_out_of_range_phase_duration ... ok
+test deserialization_rejects_config_with_invalid_nested_durations ... ok
+test config_canonical_round_trip ... ok
+test classic_v1_table_matches_pinned_specification_for_all_seat_counts ... ok
+test deserialization_rejects_config_with_invalid_max_rounds ... ok
+test deserialization_rejects_out_of_range_seat_count ... ok
+test max_rounds_boundaries ... ok
+test phase_duration_boundaries ... ok
+test primitive_types_canonical_round_trip ... ok
+test role_alignment_mapping_is_correct ... ok
+test role_all_contains_all_six_roles_uniquely ... ok
+test role_counts_by_role_query_matches_fields ... ok
+test roster_validation_enforces_boundaries_and_rules ... ok
+test seat_count_boundaries ... ok
+test validate_seat_count_matches_bounds ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/conformance.rs (target/debug/deps/conformance-bf81d5e97521c80b)
+
+running 11 tests
+test tabula_conformance_stable_identity ... ok
+test tabula_conformance_deterministic_initialization ... ok
+test tabula_conformance_invalid_command_safety ... ok
+test tabula_conformance_serialization_roundtrip ... ok
+test tabula_conformance_ordered_events ... ok
+test tabula_conformance_deterministic_rng ... ok
+test tabula_conformance_state_hash_sensitivity ... ok
+test tabula_conformance_deterministic_command_execution ... ok
+test tabula_conformance_terminal_behavior ... ok
+test tabula_conformance_deterministic_replay ... ok
+test tabula_conformance_legal_commands_sanity ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/metadata.rs (target/debug/deps/metadata-5a4d548e5dc5e049)
+
+running 3 tests
+test compiled_capabilities_preserve_werewolf_decisions ... ok
+test compiled_metadata_matches_werewolf_manifest_identity ... ok
+test manifest_uses_recommended_voice_and_no_fixed_hard_stop ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/replay.rs (target/debug/deps/replay-ee4d0e073e12885f)
+
+running 7 tests
+test stale_source_hash_is_compatible_only_and_old_rules_version_is_explicitly_unsupported ... ok
+test all_timeout_golden_expires_every_phase_at_its_exact_deadline_and_draws_at_dusk_cap ... ok
+test tied_attack_and_six_six_vote_preserve_all_living_seats_before_the_cap_draw ... ok
+test rules_hash_matches_independently_sorted_recursive_source_preimage ... ok
+test canonical_rules_source_cannot_reach_unhashed_root_or_presentation_sources ... ok
+test normal_golden_covers_all_roles_and_resolves_a_village_win_with_hunter_retaliation ... ok
+test committed_complete_matches_have_exact_identity_checkpoints_and_pinned_final_hashes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/rules.rs (target/debug/deps/rules-2823bd2b0c286276)
+
+running 21 tests
+test fixed_phase_scope_effects_are_absolute_and_separate_living_dead_wolves ... ok
+test killed_actors_keep_actions_and_seer_receives_dead_target_report ... ok
+test doctor_self_save_repeat_rejection_and_pass_reset ... ok
+test hunter_mark_expires_each_round_and_already_dying_target_is_not_double_killed ... ok
+test hunter_precommit_night_and_vote_death_fire_once_before_victory ... ok
+test hostile_inputs_and_overflow_are_transactional_without_rng_consumption ... ok
+test production_module_never_exposes_bots ... ok
+test absence_keeps_choices_reconnect_allows_action_and_substitution_is_forbidden ... ok
+test fixed_timers_never_close_early_and_deadline_is_exclusive ... ok
+test poison_ignores_protection_and_duplicates_merge_sorted ... ok
+test reconstructed_pending_choices_cannot_restore_potions_repeat_saves_or_change_marks ... ok
+test disconnect_idle_and_reconnect_preserve_fixed_windows_in_every_phase ... ok
+test round_cap_and_terminal_rejections_and_cancel_end_once ... ok
+test victory_zero_alive_then_village_then_parity_and_dead_team_standings ... ok
+test reconstructed_retained_facts_reject_forged_actors_targets_rounds_and_resources ... ok
+test witch_blind_heal_consumed_on_submission_and_one_potion_per_night ... ok
+test vote_replace_unvote_abstain_tie_and_majority_threshold ... ok
+test wolf_consensus_tie_pass_and_plurality_are_independent_of_submission_order ... ok
+test public_ballot_spam_does_not_expand_retained_history ... ok
+test randomized_legal_matches_terminate_deterministically_with_roundtrip_each_phase ... ok
+test maximum_rounds_with_all_roles_acting_has_bounded_history_and_small_state ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.10s
+
+     Running tests/security.rs (target/debug/deps/security-f39ce35850323b86)
+
+running 20 tests
+test all_public_event_classes_remain_visible_to_every_client ... ok
+test containment::six::tabula_hidden_information_security_suite ... ok
+test an_effective_save_and_an_unused_save_have_identical_owner_acknowledgements ... ok
+test containment::twelve::tabula_hidden_information_security_suite ... ok
+test death_grants_full_seat_knowledge_while_outside_receives_only_public_role_reveal ... ok
+test containment::twenty::tabula_hidden_information_security_suite ... ok
+test ended_match_declassifies_roles_without_releasing_private_history_to_outside ... ok
+test containment::whole_assignment_tokens_detect_injected_fields_without_clean_output_collisions ... ok
+test changing_only_retained_private_history_changes_no_ended_outside_observation ... ok
+test hunter_owner_keeps_its_precommitted_mark_through_dawn_and_vote ... ok
+test hunter_retaliation_details_are_visible_only_to_full_vision_viewers ... ok
+test initial_assignment_event_is_audit_only_even_when_roles_are_later_public ... ok
+test unknown_seat_never_acquires_dead_or_audit_privileges ... ok
+test wolf_teammates_cannot_observe_submission_order_or_each_others_choices ... ok
+test living_knowledge_matrix_covers_every_preset_role_at_six_twelve_twenty_seats ... ok
+test swapping_genuinely_unknown_roles_changes_no_unauthorized_projection ... ok
+test enumerated_affordances_apply_at_the_same_public_checkpoint_without_oracle_leaks ... ok
+test every_private_night_choice_variant_has_explicit_event_nonexistence_coverage ... ok
+test a_private_submission_changes_neither_view_affordances_nor_visible_event_existence_for_others ... ok
+test different_private_choices_remain_indistinguishable_to_unauthorized_viewers ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/state.rs (target/debug/deps/state-b2d94da8a47c0560)
+
+running 29 tests
+test rules_hash_is_non_zero ... ok
+test checked_deadline_is_exact_until_u64_overflow ... ok
+test rules_version_matches_manifest ... ok
+test initial_state_creation_rejects_deadline_overflow ... ok
+test state_reconstruction_rejects_extra_role ... ok
+test state_reconstruction_accepts_role_specific_living_targets ... ok
+test state_reconstruction_rejects_invalid_doctor_target ... ok
+test state_reconstruction_rejects_invalid_alive_set ... ok
+test state_reconstruction_rejects_incoherent_revealed_set ... ok
+test state_reconstruction_rejects_invalid_round ... ok
+test state_reconstruction_rejects_dead_doctor_and_witch_targets ... ok
+test state_reconstruction_rejects_invalid_timer ... ok
+test state_reconstruction_rejects_invalid_hunter_targets ... ok
+test state_reconstruction_rejects_invalid_witch_potions ... ok
+test state_reconstruction_rejects_night_choices_outside_night_phase ... ok
+test state_reconstruction_rejects_missing_role ... ok
+test state_reconstruction_rejects_phase_and_outcome_mismatch ... ok
+test state_reconstruction_rejects_invalid_wolf_targets ... ok
+test state_reconstruction_rejects_seer_history_alignment_mismatch ... ok
+test state_canonical_round_trip ... ok
+test state_reconstruction_rejects_self_vote_in_vote_phase ... ok
+test state_reconstruction_rejects_unauthorized_night_choice ... ok
+test state_reconstruction_rejects_unknown_seat_in_roles ... ok
+test state_reconstruction_rejects_unsorted_or_duplicate_roster ... ok
+test state_reconstruction_rejects_votes_outside_vote_phase ... ok
+test state_reconstruction_rejects_wrong_preset_counts ... ok
+test rules_subtree_is_discovered_recursively_in_canonical_order ... ok
+test rules_hash_matches_independent_rules_subtree_oracle ... ok
+test changing_canonical_rules_source_changes_hash_oracle ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabula_game_werewolf
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s
+

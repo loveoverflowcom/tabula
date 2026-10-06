@@ -8,6 +8,9 @@
 
 use serde::{Deserialize, Serialize};
 
+mod public_display;
+pub use public_display::AvatarFallback;
+
 /// An sRGB colour used by semantic tokens and render commands.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Color {
@@ -53,6 +56,12 @@ impl Color {
     #[must_use]
     pub const fn alpha(self) -> u8 {
         self.alpha
+    }
+
+    /// Adjusts a semantic colour's opacity without creating a new RGB palette value (doc 04 §8.1).
+    #[must_use]
+    pub const fn with_alpha(self, alpha: u8) -> Self {
+        Self { alpha, ..self }
     }
 }
 

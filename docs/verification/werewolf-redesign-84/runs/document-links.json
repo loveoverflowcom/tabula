@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "checked_local_targets": 103,
+  "sources": [
+    "docs/verification/werewolf-redesign-84/README.md",
+    "docs/verification/werewolf-redesign-84/runs/renderer-clips/README.md",
+    "docs/ui/screens/07-werewolf.md",
+    "docs/ui/werewolf-approved/README.md",
+    ".agents/skills/tabula-game-audit/references/werewolf.md",
+    ".agents/skills/tabula-game-audit/references/presentation-review.md",
+    "games/werewolf/assets/README.md",
+    "games/werewolf/assets/source/PROVENANCE.md"
+  ],
+  "missing": []
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "dpr": 1,
+    "dimensions": {
+      "width": 960,
+      "height": 360,
+      "dpr": 1
+    },
+    "errors": []
+  },
+  {
+    "dpr": 2,
+    "dimensions": {
+      "width": 1920,
+      "height": 720,
+      "dpr": 2
+    },
+    "errors": []
+  }
+]

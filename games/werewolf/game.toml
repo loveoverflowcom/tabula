@@ -53,8 +53,8 @@ max_apply_micros     = 2000
 max_events_per_input = 64
 
 [assets]
-pack    = "werewolf@0.1.0"
-size_kb = 1601
+pack    = "werewolf@0.2.0"
+size_kb = 3129
 
 [rollout]
 enabled  = false

@@ -1,0 +1,12 @@
+[package]
+name="tabula-render-macroquad"
+version="0.0.0"
+edition="2021"
+[dependencies]
+tabula-core = {path="/Users/manh.pd1/Projects/Mine/tabula/crates/tabula-core"}
+tabula-design = {path="/Users/manh.pd1/Projects/Mine/tabula/crates/tabula-design"}
+tabula-presentation = {path="/Users/manh.pd1/Projects/Mine/tabula/crates/tabula-presentation"}
+tabula-assets = {path="/Users/manh.pd1/Projects/Mine/tabula/crates/tabula-assets"}
+macroquad={version="=0.4.16",default-features=false}
+glam="=0.29.3"
+image={version="=0.24.9",default-features=false,features=["png"]}

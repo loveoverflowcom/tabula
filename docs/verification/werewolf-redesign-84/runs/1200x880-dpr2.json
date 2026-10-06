@@ -1,0 +1,178 @@
+{
+  "name": "1200x880-dpr2",
+  "width": 1200,
+  "height": 880,
+  "dpr": 2,
+  "started_at": "2026-10-06T05:19:41.521Z",
+  "scope": "Actual Chromium/Macroquad local simulator; public DOM and real input only; no native/online/a11y-mirror claim",
+  "steps": [
+    {
+      "action": "startup and host footer layout",
+      "status": "PASS",
+      "layout": {
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 824,
+          "bottom": 824
+        },
+        "hostFooter": {
+          "top": 824,
+          "bottom": 880,
+          "width": 1200
+        },
+        "canvasPixels": {
+          "width": 2400,
+          "height": 1648
+        },
+        "theme": "dark"
+      },
+      "sampled_colors": 3079,
+      "screenshot": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/1200x880-dpr2-public.png"
+    },
+    {
+      "action": "open tools, ArrowRight/Enter next seat, Enter reveal",
+      "status": "PASS",
+      "tools": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-tools.png",
+      "screenshot": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-revealed.png",
+      "card_difference": {
+        "changed": 314165,
+        "total": 317400,
+        "fraction": 0.989807813484562
+      }
+    },
+    {
+      "action": "Escape conceals role and closes drawer",
+      "status": "PASS",
+      "screenshot": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-escape-concealed.png",
+      "concealed_difference": {
+        "changed": 0,
+        "total": 317400,
+        "fraction": 0
+      }
+    },
+    {
+      "action": "focus loss shields immediately; resume stays concealed",
+      "status": "PASS",
+      "shield": {
+        "visible": true,
+        "opacity": "1",
+        "coversCanvas": true
+      },
+      "screenshot": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-focus-concealed.png",
+      "resume": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-resumed-concealed.png",
+      "concealed_difference": {
+        "changed": 0,
+        "total": 317400,
+        "fraction": 0
+      }
+    },
+    {
+      "action": "public phase controls, keyboard target and keyboard vote submit",
+      "status": "PASS",
+      "selected": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-target-selected.png",
+      "submit_focused": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-submit-focused.png",
+      "screenshot": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-keyboard-submitted.png",
+      "tabs_to_submit": 11,
+      "public_board_difference": {
+        "changed": 10875,
+        "total": 1946496,
+        "fraction": 0.005586962418623003
+      }
+    }
+  ],
+  "runtime_artifact": {
+    "url": "resources/82f52fc44d66c369b2108b0e96d8e8d3fed3afc6c79486a0525c4b3e7c0df7c0.wasm",
+    "bytes": 999543,
+    "sha256": "82f52fc44d66c369b2108b0e96d8e8d3fed3afc6c79486a0525c4b3e7c0df7c0"
+  },
+  "document_residuals": [],
+  "status": "PASS",
+  "elapsed_ms": 20140,
+  "errors": [],
+  "console_messages": [
+    {
+      "type": "warning",
+      "message": "Some of the registred plugins do not have name or version",
+      "url": "http://127.0.0.1:8085/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+    },
+    {
+      "type": "warning",
+      "message": "Probably old version of the plugin used",
+      "url": "http://127.0.0.1:8085/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+    }
+  ],
+  "captures": [
+    {
+      "name": "1200x880-dpr2-public",
+      "filename": "/Users/manh.pd1/Projects/Mine/tabula/docs/verification/werewolf-redesign-84/screenshots/1200x880-dpr2-public.png",
+      "retained": true,
+      "bytes": 2747537,
+      "sha256": "5a8834b9758c4fa9d6806101fc97486bebbfe71ee5cb2b7c3fec240219421362"
+    },
+    {
+      "name": "1200x880-dpr2-tools",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-tools.png",
+      "retained": false,
+      "bytes": 415310,
+      "sha256": "296a620a0cc08f48c731ce80aec1652ce0f8c83f06781ffe47cb44cdc939a67f"
+    },
+    {
+      "name": "1200x880-dpr2-seat-concealed",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-seat-concealed.png",
+      "retained": false,
+      "bytes": 2747127,
+      "sha256": "b4cb1befcb43f7a2fb162a474cb87da8e2c9d06b17786a795232ed56613355e3"
+    },
+    {
+      "name": "1200x880-dpr2-revealed",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-revealed.png",
+      "retained": false,
+      "bytes": 3036779,
+      "sha256": "494d0826e52808636f2dff9a1f0ec144f4d7f6b7f6a6e193803ea804cfc3dc5d"
+    },
+    {
+      "name": "1200x880-dpr2-escape-concealed",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-escape-concealed.png",
+      "retained": false,
+      "bytes": 2747014,
+      "sha256": "962c99fdec48b407ab44bfc5ecc62a6f7aac0b37623c80330f1ef76cdcd9135d"
+    },
+    {
+      "name": "1200x880-dpr2-focus-concealed",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-focus-concealed.png",
+      "retained": false,
+      "bytes": 56748,
+      "sha256": "132b8e454f35d842357d42138058a7b8ab5773f04c4edaa08b5c72203255bd86"
+    },
+    {
+      "name": "1200x880-dpr2-resumed-concealed",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-resumed-concealed.png",
+      "retained": false,
+      "bytes": 2746837,
+      "sha256": "0bbeb68b16d71220605ce0e69cffc7bd097e8c620f3034a24f5450164b6409d5"
+    },
+    {
+      "name": "1200x880-dpr2-target-selected",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-target-selected.png",
+      "retained": false,
+      "bytes": 3077377,
+      "sha256": "3dda5796d86aaa0028889bcae7cc43d544083f8c83630440172af58b0af1f52c"
+    },
+    {
+      "name": "1200x880-dpr2-submit-focused",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-submit-focused.png",
+      "retained": false,
+      "bytes": 3079658,
+      "sha256": "00e01665c1e1a50a78c82a103c0ff6261045a173ce53a32ae043e395d5094114"
+    },
+    {
+      "name": "1200x880-dpr2-keyboard-submitted",
+      "filename": "/var/folders/lv/9y_j0d_d785gx9_6f9qg2bmwgd7s_4/T/tabula-werewolf84-captures-GM5TFT/1200x880-dpr2-keyboard-submitted.png",
+      "retained": false,
+      "bytes": 3075672,
+      "sha256": "6c80d6c652a48b314b18bfe50921cbec819fbda2c1cf9c046a931796473e8f48"
+    }
+  ]
+}

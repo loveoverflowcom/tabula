@@ -1,95 +1,120 @@
-# 07 — Werewolf gameplay (future-gated)
+# 07 — Werewolf local gameplay
 
-Issue #51; shared [gameplay contract](gameplay.md) and [foundation](foundation.md).
-Reviewed `develop @ 1d8fab294931750f45ef5d7b498f34b5b0417188` and pinned
-`03-gameplay/screens/07-werewolf.svg` source. This companion sheet includes
-the same Caro/private-role/recovery regions as screen 05. Its private role
-card and public phase/vote panel describe intended UI, not supplied gameplay.
+Issue [#84](https://github.com/loveoverflowcom/tabula/issues/84), following the
+game-feel review in #82. The [shared gameplay contract](gameplay.md) and
+[foundation](foundation.md) apply. Rust presentation commands and Macroquad own
+gameplay; HTML/SVG design samples are references, not runtime screenshots.
 
 ## Gate and source authority
 
-[`games/werewolf/src/rules`](../../../games/werewolf/src/rules/mod.rs) supplies
-validated configuration, role/state/event types and deterministic initial
-assignment. It has no complete `GameRules`/`GameModule`, command reducer,
-per-viewer `View`/projection, security/conformance fixture or presenter at
-this base. W2 initial state is canonical and must never be given to a UI as
-a temporary projection. The artwork's "Rules/UI stub" label must not imply
-that a complete headless game or redaction already exists.
+[ADR-0035](../../adr/0035-werewolf-local-simulator.md) authorizes the complete
+ClassicV1 pure referee and opt-in isolated-seat local simulator. The
+[rules](../../../games/werewolf/src/rules/mod.rs),
+[projection](../../../games/werewolf/src/rules/projection.rs),
+[presenter](../../../games/werewolf/src/presentation/mod.rs), and separate
+[host](../../../apps/game-client/src/bin/werewolf.rs) are implemented. The operator
+explicitly selects one seat or the public outsider view; this is local testing
+on one device, not authenticated social play or a secure human hot-seat mode.
 
-Complete Phase-3 rules/projection/security validation before Phase 4 freezes
-the protocol. Werewolf presentation, social and online UX wait for Phase 7
-after Phases 4/5; voice waits for Phase 8. A test-only terminal projection
-viewer is Phase-3 verification tooling, not a gameplay presenter. The
-maintained [Werewolf decisions and knowledge matrix](../../games/werewolf.md)
-own role, phase, vote, lifecycle and secrecy semantics; this document adds
-no game-rule variant or host power.
+Online/social UX, chat transport and enforcement, voice, authenticated seats,
+persisted resume, CMP WebView embedding and rollout remain gated. The maintained
+[Werewolf decisions](../../games/werewolf.md) own role, phase, vote, lifecycle and
+secrecy semantics. This redesign introduces no new role, rule or player authority.
 
-## Private view and local interaction
+## Village, roster and actions
 
-The future presenter receives only authorized `View` and `ViewEvent`.
-Private role display, selected target, open role card and reveal animation
-are local UI; the role itself comes from the viewer's permitted projection.
-Public roster/liveness, phase/deadline, revealed roles and ballots come from
-that same boundary. The UI never asks canonical state for another role.
+The public village is the primary surface. Desktop places up to twelve portraits
+around the village fire, with a smaller private-card/narrator region on the right
+and a separate action dock. Compact portrait uses a four-column, three-row roster
+instead of shrinking the desktop ellipse. Its default surface is the table; the
+private card opens deliberately in a contained drawer. Low landscape puts the
+roster on the left and secondary information/actions on the right. Larger rosters
+use pages of twelve while preserving the 44 dp minimum hit target.
 
-| Viewer / fact | Future disclosure contract |
+At the 390×844 reference size, the twelve-seat roster and primary action must
+remain within the first screen. Short portrait/landscape layouts retain the same
+actions with secondary content contained separately. Host leave/help controls
+occupy their own layout slot; they cannot cover the canvas dock or last roster row.
+These are acceptance requirements, not a claim that every browser, text scale or
+safe-area configuration has been exercised.
+
+Selecting a portrait changes only local selection. The selected ring includes a
+text label; it never auto-submits. The phase-specific dock constructs an explicit
+`Intent<Command>` from the projected legal commands. Witch heal/poison selection
+is separate and displays only permitted potion inventory. Public ballots and
+revealed deaths come from the projection, not local animation. Simulator seat,
+phase-deadline and restart controls live behind one “Tùy chọn” button in the
+footer. The effects toggle also lives in that panel; the main screen has no
+duplicate simulator shortcut or effects toggle. The compact labeled trigger uses
+a slider mark. Its bounded panel groups motion separately from simulator actions;
+the enabled effects state is highlighted, and short landscape retains every
+control without extending below the viewport.
+Advancing the simulator fires the real projected deadline through the authority;
+it does not grant a player power to shorten a window.
+
+## Public identity and private knowledge
+
+Public portraits are independent of roles, night choices, selected viewer and
+phase. Alive/dead, current-seat and selection markers are separate from the image.
+The account/dashboard/game avatar source is currently unavailable: the isolated
+profile response contains an account ID, not an approved avatar or display label.
+The local simulator therefore uses neutral fallback identities. Design fixture
+names/avatars are not real accounts and do not prove profile integration. An
+eventual account resolver belongs to the host/resource boundary; it must update
+or clear the seat display on occupant changes without putting profile data into
+canonical game state or accepting arbitrary image URLs in game rules.
+
+The presenter receives only authorized `View` and `ViewEvent` (I-5/I-6).
+Opening a card does not broaden knowledge. Its reveal is bound to seat, role,
+phase, round and lifecycle. Conceal/Escape, blur, viewer replacement, permission
+change and restart remove private art, text, selection and accessibility labels
+immediately, including during a flip. A held activation key cannot reopen a card
+after conceal or viewer replacement.
+
+| Viewer / fact | Disclosure contract |
 |---|---|
-| Living seated player | Own role plus authorized role knowledge; public roster/phase/ballots; own private choices/reports only where W-D decisions permit |
-| Living wolf | Authorized teammate identity; no live teammate target or private-submission-progress indicator |
-| Dead `Viewer::Seat` | Permitted full vision from completed death transition; no gameplay commands |
-| Outside `Viewer::Spectator` | Public-only facts, with roles revealed only by permitted death/end transitions |
-| Internal `Viewer::Audit` | Never a reachable gameplay viewer |
-| Unauthorized private night action | `view_event → None`, including its existence; no generic "someone acted" cue |
+| Living seated player | Own role/resources and authorized reports, public roster/phase/ballots |
+| Living wolf | Permitted teammate identities, without teammates' live night choices or submission progress |
+| Dead seated player | Permitted full current knowledge, without gameplay commands |
+| Outside spectator | Public facts; roles only after permitted death/end disclosure |
+| Internal Audit | Never a reachable gameplay-view switch |
+| Unauthorized private night event | Omitted entirely; no counter, token, sound or timing cue |
 
-Do not use absence of a death to announce a save; do not show private ready
-counts, pending checks or timing cues for other players. Role hide/reveal
-changes local visibility only and cannot broaden knowledge. Clear private
-UI when the authorized viewer/session changes; a stale role card must not
-remain behind a public reconnect or spectator screen.
+Do not infer a save from no death, publish private ready counts or use role-coded
+portrait styling. Accessibility descriptions obey the same deliberate disclosure
+guard as canvas output; hidden private text cannot remain in a DOM/native mirror.
 
-## Intended action mapping
+## Motion and accessibility
 
-The following rows use maintained game concepts, not current command APIs.
+Motion belongs to `GamePresentation::Local` (I-10) and uses semantic profiles:
+common-back deal, deliberate own-card reveal, selection lift, public ballot
+feedback, day/night scene change and bounded ambient embers. Scene/ballot/death
+feedback is driven by permitted projected events. No private cross-seat progress
+is inferred. Motion never holds an intent, acknowledgement, phase or deadline;
+interruption and skipping preserve the current view. Ambient motion is disabled
+in reduced mode or an unfocused window. Timelines are bounded and late sampling
+resolves completed motion directly. The synchronous local host has no replay
+animation queue; `ViewEvent` carries no general arrival timestamp, so this is
+not evidence for stale-event handling by a future network client.
 
-| Intended UI action | Future local / authority path | Current status |
-|---|---|---|
-| View/hide own role | Local card expansion and focus restoration from permitted role fact | Presenter NOT_IMPLEMENTED |
-| Select night target or pass | Local target, then game-owned night command in `Intent` → `Input::Player`; role/phase/alive/deadline gates | Reducer/projection NOT_IMPLEMENTED |
-| Cast/replace public ballot, abstain or unvote | Game-owned ballot intent; authority confirms resulting public view | Reducer/projection NOT_IMPLEMENTED |
-| Inspect public roster/revealed roles | Focus/description only | Presenter/mirror NOT_IMPLEMENTED |
-| Chat send | Platform transport with game-provided read/write scopes, socket enforcement | Phase 7 NOT_IMPLEMENTED |
-| Voice join/mute/listen | Platform/SFU enforcement of authorized voice scopes | Phase 8 NOT_IMPLEMENTED |
-| Reconnect/leave | Session adapter; phase timers continue per rules, no local pause or substitute occupant | Phase 4/7 NOT_IMPLEMENTED |
+Keyboard focus and portrait activation share the same hit geometry as pointer
+input. Focus/selection have rings and labels, and all four semantic themes retain
+functional typography and controls. `a11y(View, Local)` describes the public
+phase/roster, permitted private region and available actions. Full Board Reader
+dispatch, assistive-technology play, physical touch, mobile safe areas and 200%
+text scaling require their own exercised evidence.
 
-No speech/Ready/host command is added solely because a doc-02 illustrative
-sketch mentions it. Match controls must match the eventual implemented
-module contract. Substitution remains forbidden; a disconnected seat's
-missing choice defaults under W-D8, not a client-chosen automatic death.
+## Acceptance and evidence
 
-## Layout, descriptions and acceptance
+The [#84 verification ledger](../../verification/werewolf-redesign-84/README.md)
+records exact final commands, selected tests, retained artifacts and remaining
+scope. The earlier [standalone ledger](../../verification/werewolf-standalone/README.md)
+is historical evidence for its named source, not pixel acceptance of this change.
 
-Use a compact phase/status region, public seat roster with readable living/
-dead/ballot labels and a separately contained private role/target region.
-Avoid a persistent large hero that displaces voting or role actions. Compact
-portrait places legal primary actions within reach with ≥44 dp targets;
-20-seat rosters wrap or scroll without exposing hidden data. Phase motion is
-skippable and never gates command submission; reduced motion keeps phase,
-deadline and last public outcome clear. A displayed countdown estimates an
-authoritative deadline and never advances the phase by itself.
-
-Future `a11y(View, Local)` must name allowed phase, roster, own role/selected
-target, enabled legal actions and scope reasons without private cross-seat
-data. Native/DOM privacy must be reviewed as carefully as the canvas: hidden
-role text is still exposed if it remains in an unauthorized accessibility
-tree. Board Reader status/actions need the real dispatcher; full regions
-remain Phase 9 and voice is not required for an accessible text path.
-
-Before presentation/online acceptance, exercise living seats by role, dead
-seats and outsiders through reachable phase transitions, explicit private
-event omission, viewer replacement, late pending/reconnect/resync, vote
-replacement and deadline races. Socket-level chat tests and a second-engineer
-leak review are separate Phase-7 obligations. The canonical version/ack
-metadata side channel and asymmetric voice permissions in the maintained
-model require platform ADR resolution at their respective gates. A private
-card screenshot cannot settle either. Today all Werewolf UI execution is
-NOT_IMPLEMENTED; see [the ledger](gameplay-verification.md).
+Before accepting the redesign, exercise all six roles, public/dead perspectives,
+reveal/conceal, pointer/keyboard selection, submit/pass, replace/unvote, dawn/death,
+terminal composition and viewer/focus interruption. Inspect real Macroquad pixels
+at 1200×880, 1100×850, 390×844, 320×640 and 844×390, DPR1/2; check clip orientation,
+Vietnamese baseline/labels and host/dock bounds. Check four themes and reduced
+motion separately. Render-list tests and WASM/native compilation establish their
+bounded claims, not visual quality, frame pacing, memory or online privacy.

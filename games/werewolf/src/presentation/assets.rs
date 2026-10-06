@@ -59,6 +59,22 @@ pub const ALL_IMAGES: &[(&str, &[u8])] = &[
     ),
     ("back@1x.image", include_bytes!("../../assets/back@1x.png")),
     ("back@2x.image", include_bytes!("../../assets/back@2x.png")),
+    (
+        "village-night@1x.image",
+        include_bytes!("../../assets/village-night@1x.png"),
+    ),
+    (
+        "village-night@2x.image",
+        include_bytes!("../../assets/village-night@2x.png"),
+    ),
+    (
+        "village-dawn@1x.image",
+        include_bytes!("../../assets/village-dawn@1x.png"),
+    ),
+    (
+        "village-dawn@2x.image",
+        include_bytes!("../../assets/village-dawn@2x.png"),
+    ),
 ];
 
 /// Logical images needed by this local simulator, all independent of assignments.
@@ -67,14 +83,14 @@ pub fn gameplay_resources() -> Vec<AssetRef> {
     Role::ALL
         .into_iter()
         .map(role_asset)
-        .chain([back_asset()])
+        .chain([back_asset(), scene_asset(true), scene_asset(false)])
         .collect()
 }
 
 /// Exact artwork identity, independent of physical density resolution.
 #[must_use]
 pub fn asset_pack() -> AssetPackRef {
-    AssetPackRef::from_static("werewolf", "0.1.0")
+    AssetPackRef::from_static("werewolf", "0.2.0")
 }
 
 /// One portrait identity, chosen only after an authorized own-role reveal.
@@ -97,6 +113,16 @@ pub fn back_asset() -> AssetRef {
     AssetRef::new("cards/back").expect("literal resource is canonical")
 }
 
+/// Original village artwork; its lighting depends only on the public phase.
+pub fn scene_asset(night: bool) -> AssetRef {
+    AssetRef::new(if night {
+        "scenes/village-night"
+    } else {
+        "scenes/village-dawn"
+    })
+    .expect("closed scene vocabulary")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,8 +133,8 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     fn bounded_independent_images_match_pinned_metadata() {
         let manifest = AssetPackManifest::from_toml(MANIFEST).unwrap();
-        assert_eq!(manifest.files().len(), 14);
-        assert_eq!(ALL_IMAGES.len(), 14);
+        assert_eq!(manifest.files().len(), 18);
+        assert_eq!(ALL_IMAGES.len(), 18);
         let mut encoded = 0;
         for file in manifest.files() {
             let bytes = ALL_IMAGES
@@ -120,11 +146,11 @@ mod tests {
             assert_eq!(&bytes[..8], b"\x89PNG\r\n\x1a\n");
             let width = u32::from_be_bytes(bytes[16..20].try_into().unwrap());
             let height = u32::from_be_bytes(bytes[20..24].try_into().unwrap());
-            assert!(width <= 512 && height <= 576);
-            assert!(u64::from(width) * u64::from(height) * 4 <= 1024 * 1024);
+            assert!(width <= 1280 && height <= 720);
+            assert!(u64::from(width) * u64::from(height) * 4 <= 4 * 1024 * 1024);
             encoded += bytes.len();
         }
-        assert!(encoded <= 2 * 1024 * 1024);
+        assert!(encoded <= 4 * 1024 * 1024);
     }
 
     #[test]
@@ -133,7 +159,7 @@ mod tests {
         let game = GameId::new("com.tabula.werewolf").unwrap();
         let pack = asset_pack();
         let bound = manifest.validate_binding(&pack, &game).unwrap();
-        assert_eq!(manifest.resources().len(), 7);
+        assert_eq!(manifest.resources().len(), 9);
         for asset in gameplay_resources() {
             for d in [1, 2] {
                 let density = AssetDensity::new(d).unwrap();

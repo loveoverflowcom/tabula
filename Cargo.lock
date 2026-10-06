@@ -3469,6 +3469,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tabula-core",
+ "tabula-design",
  "tabula-match-http",
  "tabula-registry",
  "tabula-session",

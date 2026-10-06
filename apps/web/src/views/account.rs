@@ -12,7 +12,10 @@ use leptos_router::components::A;
 use crate::{
     account::{use_account, AccountOperation, AccountSnapshot, AccountStatus},
     i18n::Messages,
-    views::{parts::translated, use_locale},
+    views::{
+        parts::{translated, NeutralAvatar},
+        use_locale,
+    },
 };
 
 /// Current account state at `/account`, without an identity-provider form.
@@ -232,6 +235,7 @@ fn ProfileFacts(account_id: String) -> impl IntoView {
     view! {
         <section class="account__profile" data-account-private="" aria-labelledby="self-facts-title">
             <h2 id="self-facts-title" class="section__subtitle">
+                <NeutralAvatar/>
                 {translated("accounts.profile.read_only")}
             </h2>
             <dl class="facts account__facts">

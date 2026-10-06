@@ -1,0 +1,22 @@
+   Compiling tabula-game-werewolf v0.0.0 (/Users/manh.pd1/Projects/Mine/tabula/games/werewolf)
+   Compiling xtask v0.1.0 (/Users/manh.pd1/Projects/Mine/tabula/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.76s
+     Running unittests src/main.rs (target/debug/deps/xtask-a41b2bc1901305c6)
+
+running 1 test
+test wasm_stage_cmd::tests::simulator_stage_uses_only_its_pack_and_keeps_runtime_identity ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 113 filtered out; finished in 0.18s
+
+     Running tests/pack_assets_cli.rs (target/debug/deps/pack_assets_cli-2d0ee0d2b6a4c70d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/wasm_stage_cli.rs (target/debug/deps/wasm_stage_cli-32aa61eda725115d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
