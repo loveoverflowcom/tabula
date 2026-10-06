@@ -1,0 +1,3105 @@
+{
+  "version": 1,
+  "source_commit": "1d5d0666d261b098efe7ab221938fc7591e06526",
+  "source_tree": "3b474c8c9f2d5172fb3927ce8745aa851c5652ca",
+  "build_checkout": "clean after builds before capture outputs",
+  "started_at_utc": "2026-10-06T09:49:32.160279+00:00",
+  "workflow_run_id": "37444732095",
+  "playwright": "1.62.0",
+  "browser_kind": "actual official Chromium, headless, ANGLE/SwiftShader; no physical-device claim",
+  "build_commands": [
+    "TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online",
+    "cargo build --locked -p tabula-game-client --no-default-features --features web --bin tabula-game-client --target wasm32-unknown-unknown --profile wasm-release",
+    "cargo xtask stage-wasm-game",
+    "cargo build --locked -p tabula-game-client --no-default-features --features web-werewolf --bin tabula-werewolf-client --target wasm32-unknown-unknown --profile wasm-release",
+    "cargo xtask stage-wasm-game --game werewolf"
+  ],
+  "builds": {
+    "dashboard": [
+      {
+        "path": "app-cc11be02f777f39d.css",
+        "bytes": 31518,
+        "sha256": "9301f00b9738ee99804a1b25b3ca330279b0d239afcd6634932dcc238d737ec3"
+      },
+      {
+        "path": "index.html",
+        "bytes": 1647,
+        "sha256": "7e9b77fec308feb72e37269adfc4438a7aa05b47ed74b6dc81e5a824895d4943"
+      },
+      {
+        "path": "tabula-web-5370facd944d71f8.js",
+        "bytes": 57928,
+        "sha256": "a6782776378ecc9ec44a50e70a9ac75564a5f8beaad5bc4ea8dbcb26f7e4dd87"
+      },
+      {
+        "path": "tabula-web-5370facd944d71f8_bg.wasm",
+        "bytes": 737400,
+        "sha256": "0a1e52ac980307b574afcff0381b6d990ba845cb89170ccd356e9a3cb8e48314"
+      },
+      {
+        "path": "tokens-bc39b86a977675d7.css",
+        "bytes": 53955,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      }
+    ],
+    "chess": [
+      {
+        "path": "assets/LICENSE-OpenSans-Apache-2.0.txt",
+        "bytes": 11358,
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "path": "assets/NotoSerif-Bold.ttf",
+        "bytes": 141544,
+        "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+      },
+      {
+        "path": "assets/OFL-Noto.txt",
+        "bytes": 5208,
+        "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+      },
+      {
+        "path": "assets/OFL-OpenSans.txt",
+        "bytes": 1031,
+        "sha256": "94d4b78643f99d7cfa872145b38da578299f401405ca5cba66a5c95bf13933b0"
+      },
+      {
+        "path": "assets/OpenSans-Regular.ttf",
+        "bytes": 40460,
+        "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+      },
+      {
+        "path": "assets/OpenSans-Semibold.ttf",
+        "bytes": 41628,
+        "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+      },
+      {
+        "path": "assets/chess-cover-provenance.md",
+        "bytes": 3725,
+        "sha256": "3e9ab2a3df36234d14d6bfa68fb885f1722afc85e09e604f0c947c9af2bf4eab"
+      },
+      {
+        "path": "assets/chess-cover-small.png",
+        "bytes": 168293,
+        "sha256": "fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b"
+      },
+      {
+        "path": "assets/chess-cover.png",
+        "bytes": 1958467,
+        "sha256": "054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233"
+      },
+      {
+        "path": "bootstrap.js",
+        "bytes": 32434,
+        "sha256": "b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda"
+      },
+      {
+        "path": "direct-transport.js",
+        "bytes": 19874,
+        "sha256": "d199054680c7d01908793615fab818b508b0c1936aa41ee87ff36ef10b35c5e6"
+      },
+      {
+        "path": "host-bridge.js",
+        "bytes": 9256,
+        "sha256": "f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d"
+      },
+      {
+        "path": "index.html",
+        "bytes": 6930,
+        "sha256": "3caa9222644b32ac1c617d5878032b79e287594168ac1ca0e3547aaf2568ae07"
+      },
+      {
+        "path": "launch-options.js",
+        "bytes": 9817,
+        "sha256": "0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795"
+      },
+      {
+        "path": "mq_js_bundle.js",
+        "bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "play.html",
+        "bytes": 5460,
+        "sha256": "31332ef3e6c8d3e7e4e8300f8ebf11c37f53a1aef7de8ee33c865ba249a397ad"
+      },
+      {
+        "path": "resource-manifest.js",
+        "bytes": 1987,
+        "sha256": "23bc43501f89c1f66148e2158e455a154a085696ebd768d8ee7bec97f9e91f54"
+      },
+      {
+        "path": "resources/054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233.png",
+        "bytes": 1958467,
+        "sha256": "054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233"
+      },
+      {
+        "path": "resources/0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795.js",
+        "bytes": 9817,
+        "sha256": "0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795"
+      },
+      {
+        "path": "resources/091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84.ttf",
+        "bytes": 40460,
+        "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+      },
+      {
+        "path": "resources/1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849.js",
+        "bytes": 6751,
+        "sha256": "1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849"
+      },
+      {
+        "path": "resources/22a8b0248ff93b107e24331356abaa48efa6b89cffb92ca6ae9f1ec78f7ba0d0.css",
+        "bytes": 13863,
+        "sha256": "22a8b0248ff93b107e24331356abaa48efa6b89cffb92ca6ae9f1ec78f7ba0d0"
+      },
+      {
+        "path": "resources/23bc43501f89c1f66148e2158e455a154a085696ebd768d8ee7bec97f9e91f54.js",
+        "bytes": 1987,
+        "sha256": "23bc43501f89c1f66148e2158e455a154a085696ebd768d8ee7bec97f9e91f54"
+      },
+      {
+        "path": "resources/28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e.css",
+        "bytes": 53955,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      },
+      {
+        "path": "resources/2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9.wasm",
+        "bytes": 926379,
+        "sha256": "2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9"
+      },
+      {
+        "path": "resources/48514213be0f88c77ea3025e5994b29c265edd0fbdbf3d900e06b14927c7f8dc.png",
+        "bytes": 44320,
+        "sha256": "48514213be0f88c77ea3025e5994b29c265edd0fbdbf3d900e06b14927c7f8dc"
+      },
+      {
+        "path": "resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js",
+        "bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "resources/82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a.ttf",
+        "bytes": 141544,
+        "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+      },
+      {
+        "path": "resources/b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27.js",
+        "bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "resources/b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda.js",
+        "bytes": 32434,
+        "sha256": "b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda"
+      },
+      {
+        "path": "resources/d199054680c7d01908793615fab818b508b0c1936aa41ee87ff36ef10b35c5e6.js",
+        "bytes": 19874,
+        "sha256": "d199054680c7d01908793615fab818b508b0c1936aa41ee87ff36ef10b35c5e6"
+      },
+      {
+        "path": "resources/d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366.ttf",
+        "bytes": 41628,
+        "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+      },
+      {
+        "path": "resources/e7b5e385f0a040fed4bba33309b706fed5a90969b1c4086678743c5d6379baab.png",
+        "bytes": 21488,
+        "sha256": "e7b5e385f0a040fed4bba33309b706fed5a90969b1c4086678743c5d6379baab"
+      },
+      {
+        "path": "resources/ee76f8c7fd12c27464984279a650af97b7aacdc6113899def8715ac7393f0504.png",
+        "bytes": 46139,
+        "sha256": "ee76f8c7fd12c27464984279a650af97b7aacdc6113899def8715ac7393f0504"
+      },
+      {
+        "path": "resources/f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d.js",
+        "bytes": 9256,
+        "sha256": "f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d"
+      },
+      {
+        "path": "resources/fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b.png",
+        "bytes": 168293,
+        "sha256": "fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b"
+      },
+      {
+        "path": "resources.js",
+        "bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "setup.js",
+        "bytes": 6751,
+        "sha256": "1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849"
+      },
+      {
+        "path": "standalone.css",
+        "bytes": 13739,
+        "sha256": "cf23833140455cbc9bf2cce40fc739495d7075d0fe74da8a593f1ac71f7451bf"
+      },
+      {
+        "path": "tabula-game-client.wasm",
+        "bytes": 926379,
+        "sha256": "2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9"
+      },
+      {
+        "path": "tokens.css",
+        "bytes": 53955,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      }
+    ],
+    "werewolf": [
+      {
+        "path": "assets/LICENSE-OpenSans-Apache-2.0.txt",
+        "bytes": 11358,
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "path": "assets/NotoSerif-Bold.ttf",
+        "bytes": 141544,
+        "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+      },
+      {
+        "path": "assets/OFL-Noto.txt",
+        "bytes": 5208,
+        "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+      },
+      {
+        "path": "assets/OFL-OpenSans.txt",
+        "bytes": 1031,
+        "sha256": "94d4b78643f99d7cfa872145b38da578299f401405ca5cba66a5c95bf13933b0"
+      },
+      {
+        "path": "assets/OpenSans-Regular.ttf",
+        "bytes": 40460,
+        "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+      },
+      {
+        "path": "assets/OpenSans-Semibold.ttf",
+        "bytes": 41628,
+        "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+      },
+      {
+        "path": "bootstrap.js",
+        "bytes": 32434,
+        "sha256": "b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda"
+      },
+      {
+        "path": "index.html",
+        "bytes": 3245,
+        "sha256": "11999c52f93c48643962ddf5e4c90bb97918125c4b1153af7aa901912b5a3d33"
+      },
+      {
+        "path": "launch-options.js",
+        "bytes": 9817,
+        "sha256": "0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795"
+      },
+      {
+        "path": "mq_js_bundle.js",
+        "bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "play.html",
+        "bytes": 5110,
+        "sha256": "b72ec5a2765245d09516fed89da5841cd632689b745744cc3fa81f6a7f06fa72"
+      },
+      {
+        "path": "resource-manifest.js",
+        "bytes": 5927,
+        "sha256": "f1b59d545d5e3f12e3ca2cdb7d228489ec1b8ade620f5dd1af0aa20053c840ed"
+      },
+      {
+        "path": "resources/0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795.js",
+        "bytes": 9817,
+        "sha256": "0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795"
+      },
+      {
+        "path": "resources/091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84.ttf",
+        "bytes": 40460,
+        "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+      },
+      {
+        "path": "resources/09de464c80f20c0ecccae6c2de777e586a2ac5fd1a19d03de6d00d86df1ea19c.js",
+        "bytes": 839,
+        "sha256": "09de464c80f20c0ecccae6c2de777e586a2ac5fd1a19d03de6d00d86df1ea19c"
+      },
+      {
+        "path": "resources/13dbed22804d58b657136bfd25f9f80ff5eb4b62044e70b542fdcd66679af0f1.png",
+        "bytes": 177280,
+        "sha256": "13dbed22804d58b657136bfd25f9f80ff5eb4b62044e70b542fdcd66679af0f1"
+      },
+      {
+        "path": "resources/1b661dd18b171491b8cd6482f2d37e007a6821344ee3bd61a5522728f5d1b11f.png",
+        "bytes": 55301,
+        "sha256": "1b661dd18b171491b8cd6482f2d37e007a6821344ee3bd61a5522728f5d1b11f"
+      },
+      {
+        "path": "resources/22a8b0248ff93b107e24331356abaa48efa6b89cffb92ca6ae9f1ec78f7ba0d0.css",
+        "bytes": 13863,
+        "sha256": "22a8b0248ff93b107e24331356abaa48efa6b89cffb92ca6ae9f1ec78f7ba0d0"
+      },
+      {
+        "path": "resources/2829c98565c4c533b74cb00ba8c06c660a853257f2c7d6f824ac4e00b15728f5.png",
+        "bytes": 198303,
+        "sha256": "2829c98565c4c533b74cb00ba8c06c660a853257f2c7d6f824ac4e00b15728f5"
+      },
+      {
+        "path": "resources/28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e.css",
+        "bytes": 53955,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      },
+      {
+        "path": "resources/2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a.wasm",
+        "bytes": 1001281,
+        "sha256": "2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a"
+      },
+      {
+        "path": "resources/3162f9f593ac510795cbcf00d9b7825aae705c3607cdf22cf9121531ed6b658a.png",
+        "bytes": 628304,
+        "sha256": "3162f9f593ac510795cbcf00d9b7825aae705c3607cdf22cf9121531ed6b658a"
+      },
+      {
+        "path": "resources/38c58a31444038d8f78beaf0b0ff09cb0269744185f683874c227fe3c5226739.png",
+        "bytes": 206431,
+        "sha256": "38c58a31444038d8f78beaf0b0ff09cb0269744185f683874c227fe3c5226739"
+      },
+      {
+        "path": "resources/434420c994c44af5cdb787826c2b5b158f77951649657a725db5af31db401e90.png",
+        "bytes": 204750,
+        "sha256": "434420c994c44af5cdb787826c2b5b158f77951649657a725db5af31db401e90"
+      },
+      {
+        "path": "resources/4d7ceba3f93f8465591c15f10757d3675353d0b3b2b429eb122cfef46cbe4848.png",
+        "bytes": 57729,
+        "sha256": "4d7ceba3f93f8465591c15f10757d3675353d0b3b2b429eb122cfef46cbe4848"
+      },
+      {
+        "path": "resources/5000fdfbfc0d10238fb5f27074278f27f71ed5bde5f610bd368a7073adb70718.png",
+        "bytes": 58319,
+        "sha256": "5000fdfbfc0d10238fb5f27074278f27f71ed5bde5f610bd368a7073adb70718"
+      },
+      {
+        "path": "resources/5fd6be3a91657e7bfd94e2ffc9dce90ecb5b5467738f90a3f482ad65d766a241.png",
+        "bytes": 618093,
+        "sha256": "5fd6be3a91657e7bfd94e2ffc9dce90ecb5b5467738f90a3f482ad65d766a241"
+      },
+      {
+        "path": "resources/6219cab0712d3e5cf93f67d0c3ed1e8a1664a12485110dae737fb5f52613e9cf.png",
+        "bytes": 206221,
+        "sha256": "6219cab0712d3e5cf93f67d0c3ed1e8a1664a12485110dae737fb5f52613e9cf"
+      },
+      {
+        "path": "resources/6cafa8e58a9cd6fabb929e33376df25e8cf84938ab711fa20dbebdda2a89d936.png",
+        "bytes": 182287,
+        "sha256": "6cafa8e58a9cd6fabb929e33376df25e8cf84938ab711fa20dbebdda2a89d936"
+      },
+      {
+        "path": "resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js",
+        "bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "resources/82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a.ttf",
+        "bytes": 141544,
+        "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+      },
+      {
+        "path": "resources/a73e800d797eae8f1680cdd61136789b19d717a2d1754773a7d0dae64ab1e847.png",
+        "bytes": 57444,
+        "sha256": "a73e800d797eae8f1680cdd61136789b19d717a2d1754773a7d0dae64ab1e847"
+      },
+      {
+        "path": "resources/b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27.js",
+        "bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "resources/b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda.js",
+        "bytes": 32434,
+        "sha256": "b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda"
+      },
+      {
+        "path": "resources/b5a1af5ebd86fc83f917a82ef67f38a2339a6916d34010058857ca2c2449e9df.png",
+        "bytes": 30196,
+        "sha256": "b5a1af5ebd86fc83f917a82ef67f38a2339a6916d34010058857ca2c2449e9df"
+      },
+      {
+        "path": "resources/b93d0b1f9c21d7bcabb137264d479d083c63f6264a5dd6fadd11f912f43aa33e.png",
+        "bytes": 57062,
+        "sha256": "b93d0b1f9c21d7bcabb137264d479d083c63f6264a5dd6fadd11f912f43aa33e"
+      },
+      {
+        "path": "resources/ba806034c2fbc6e708764cb9675bd03a2fbae7f44823df5e404c739fe74caf85.png",
+        "bytes": 12454,
+        "sha256": "ba806034c2fbc6e708764cb9675bd03a2fbae7f44823df5e404c739fe74caf85"
+      },
+      {
+        "path": "resources/d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366.ttf",
+        "bytes": 41628,
+        "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+      },
+      {
+        "path": "resources/e836dc5fefb0ae380fce91a2452e6637d62f69d5269c9ff86f2ebd9aa7592b0b.png",
+        "bytes": 205503,
+        "sha256": "e836dc5fefb0ae380fce91a2452e6637d62f69d5269c9ff86f2ebd9aa7592b0b"
+      },
+      {
+        "path": "resources/ecaf11c0f3a108b154b2acf2b96a193f0b43d2db96a2da67425caebf57b8fa13.png",
+        "bytes": 58256,
+        "sha256": "ecaf11c0f3a108b154b2acf2b96a193f0b43d2db96a2da67425caebf57b8fa13"
+      },
+      {
+        "path": "resources/f0bdf857b7be4081d067a5cbc5319b2fb78d07aae66224e03283532fde535b8e.png",
+        "bytes": 189850,
+        "sha256": "f0bdf857b7be4081d067a5cbc5319b2fb78d07aae66224e03283532fde535b8e"
+      },
+      {
+        "path": "resources/f1b59d545d5e3f12e3ca2cdb7d228489ec1b8ade620f5dd1af0aa20053c840ed.js",
+        "bytes": 5927,
+        "sha256": "f1b59d545d5e3f12e3ca2cdb7d228489ec1b8ade620f5dd1af0aa20053c840ed"
+      },
+      {
+        "path": "resources.js",
+        "bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "standalone.css",
+        "bytes": 13739,
+        "sha256": "cf23833140455cbc9bf2cce40fc739495d7075d0fe74da8a593f1ac71f7451bf"
+      },
+      {
+        "path": "tabula-game-client.wasm",
+        "bytes": 1001281,
+        "sha256": "2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a"
+      },
+      {
+        "path": "tokens.css",
+        "bytes": 53955,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      },
+      {
+        "path": "werewolf-setup.js",
+        "bytes": 839,
+        "sha256": "09de464c80f20c0ecccae6c2de777e586a2ac5fd1a19d03de6d00d86df1ea19c"
+      }
+    ]
+  },
+  "captures": [
+    {
+      "file": "dashboard-1440-light-vi-home.png",
+      "label": "Current real dashboard Home",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:33.772428+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "bytes": 170338,
+      "sha256": "81752c003881b72daecae7d21f1fdb65e55d89fb482b0056e316b0645a96aabd",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "dashboard-desktop-first-tab.png",
+      "label": "Actual first Tab skip link",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:33.908256+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "bytes": 172444,
+      "sha256": "caa55cca4f5adb75be570350a7fe94466bebbc23860f2841a48dc7ceb55044b1",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "dashboard-1440-light-vi-library.png",
+      "label": "Current real game Library",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:34.892824+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "bytes": 110878,
+      "sha256": "3c7c498c0414885423d821a3d230534b3cb94e61efbfdd195573b672d40b6fc4",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "dashboard-390-light-vi-home.png",
+      "label": "Current real dashboard Home",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:35.647456+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        844
+      ],
+      "bytes": 66431,
+      "sha256": "f29393c5bdb35fb2d74778c50ffa0b4ec0c35810bfc5ecc13a35a5d798a3d314",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "dashboard-390-light-vi-library.png",
+      "label": "Current real game Library",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:36.376669+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        1367
+      ],
+      "bytes": 72014,
+      "sha256": "46499fdf537d6b12bfb7813f6872fb1e9b65f1df5c2393cbf078698174e1b4f9",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "dashboard-1100-dark-en-home.png",
+      "label": "Current real dashboard Home",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:37.313361+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        1100,
+        850
+      ],
+      "bytes": 136507,
+      "sha256": "6470ae8e93d058d70a2f0338d9d5cc6c31d45c30201374d99aaa90a044abaffc",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "dashboard-1100-dark-en-library.png",
+      "label": "Current real game Library",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:38.054713+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        1100,
+        850
+      ],
+      "bytes": 96365,
+      "sha256": "c8ef2ba2b026c3daae66b522565de824101929f58fec606ab89b583eb9df8dad",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-mobile-vi-default-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:38.979796+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        1523
+      ],
+      "bytes": 120348,
+      "sha256": "f284339e5d74d4172da988187684abb44f4ececf2626f58a5d4d61395093ad3f",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-catalog-mobile-vi-default-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:39.607117+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        1367
+      ],
+      "bytes": 79129,
+      "sha256": "3994faf6f20374fc1cffc1cf50c300e509eaea87f70cedbe14fb79b081097ccc",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-mobile-vi-drawer-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:39.728206+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        844
+      ],
+      "bytes": 23573,
+      "sha256": "a175aa39f8aef3c6284fed96a4a3469dfd92bced5358b204a3ace96ecca3713c",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-mobile-en-default-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:40.377028+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        1563
+      ],
+      "bytes": 111620,
+      "sha256": "f0cdd291ff226f7d069bc3d55d6de234a062c41e8d891b6c8a0fa5c1d74acfe5",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-catalog-mobile-en-default-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:40.987574+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        1387
+      ],
+      "bytes": 78039,
+      "sha256": "b88f7238dc49ee7ea683b8628afdb4bec840dcc1c9e024535515919a7283f4a9",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-mobile-en-drawer-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:41.093698+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        844
+      ],
+      "bytes": 21773,
+      "sha256": "c49b3bc745071e91a4bbc5610674801c28625a2ea67040952b4a4a89664c148e",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-small-mobile-vi-default-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:41.741129+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        1549
+      ],
+      "bytes": 111635,
+      "sha256": "692042b039bc4259f6248d6a2a57af57734c3da65f166c118039385471b942bc",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-catalog-small-mobile-vi-default-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:42.352504+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        1362
+      ],
+      "bytes": 76191,
+      "sha256": "422df67e500b9f0f39ad3dc3886cd90e62131ddf8c808cc8373645f49f39b26d",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-small-mobile-vi-drawer-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:42.408839+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        640
+      ],
+      "bytes": 19212,
+      "sha256": "81b2dcf1d9d2023e49164bde25c1910fcf625e91cac4ebcf4e590c946762aba5",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-small-mobile-en-default-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:43.074557+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        1549
+      ],
+      "bytes": 105900,
+      "sha256": "05d98fb63abdfb5248af3f644973221d60be247722c7658f4f388cf07490800c",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-catalog-small-mobile-en-default-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:43.685422+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        1362
+      ],
+      "bytes": 73158,
+      "sha256": "629eec3170225d8a63ff497ab848166e8b8961462331506c52d9058956704869",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-small-mobile-en-drawer-font-100percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:43.741000+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        640
+      ],
+      "bytes": 18792,
+      "sha256": "2a885e3052c6a8f5e5f9af5b33dd06e43d8ec649ad8a26826c850b17760ddd40",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-mobile-vi-default-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:44.650468+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        3493
+      ],
+      "bytes": 188514,
+      "sha256": "c708e0692c8e98be39656f32b4615920659fa88a6f79da13979e2ca3429fd7cb",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-catalog-mobile-vi-default-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:45.293203+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        2773
+      ],
+      "bytes": 138213,
+      "sha256": "43d57bd70ea07c7c6a98445d1d1113b6f196d0d9fcc1717affcab93682a9971f",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-mobile-vi-drawer-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:45.377351+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        844
+      ],
+      "bytes": 22887,
+      "sha256": "08c475f1f7f73eab72411812b15eaaab21fb537f2247a204e269eb89b501aab5",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-mobile-en-default-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:46.024340+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        3601
+      ],
+      "bytes": 185493,
+      "sha256": "c2ca6d742b65b986ace40a0a832bd93331d94b624377da67aa5b3014617da760",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-catalog-mobile-en-default-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:46.657377+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        2714
+      ],
+      "bytes": 131275,
+      "sha256": "cbc92c80063644de5966fe49b5acd833ac7974f070d1a1f5389d54c69a094137",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-mobile-en-drawer-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:46.710100+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        844
+      ],
+      "bytes": 24524,
+      "sha256": "ac28c3e02a12b7b4ba4bfc8143e082820549dda9d02e60ab940854bc6c120b88",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-small-mobile-vi-default-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:47.367238+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        4035
+      ],
+      "bytes": 179354,
+      "sha256": "84cbf90a261d212ce410dfb562e665cc97b0beef53e46034c1a699b95fcaadd9",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-catalog-small-mobile-vi-default-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:47.988717+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        2941
+      ],
+      "bytes": 128499,
+      "sha256": "dc6e3a2e2db109306444cef3299e830bcebac750e8f673fd192267eb94e13bbb",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-small-mobile-vi-drawer-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:48.040594+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        640
+      ],
+      "bytes": 15585,
+      "sha256": "4f4e141d37c87a401f615768300e8fbe36728f4d24f63c1356cc738cc1f05945",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-small-mobile-en-default-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:48.700305+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        3847
+      ],
+      "bytes": 175083,
+      "sha256": "0a78202dc179df203b4590d949cb3ee2f84f6ba75f4f594dc9d5c284d6487030",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-catalog-small-mobile-en-default-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:49.339381+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        2821
+      ],
+      "bytes": 125656,
+      "sha256": "2851725393ab6b6fe3f544f641fe8df46064244eace24599ba1c5231994de947",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "after-small-mobile-en-drawer-font-200percent.png",
+      "label": "Actual corrected shell font/viewport partition",
+      "scope": "public actual Leptos shell",
+      "captured_at_utc": "2026-10-06T09:49:49.390807+00:00",
+      "route_path": "/games",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        320,
+        640
+      ],
+      "bytes": 17674,
+      "sha256": "d7a0e1bb54d9dc101516b354891dfbfbebf1d16c400286289ee37b41bcb1112d",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "chess-desktop-setup.png",
+      "label": "Actual local two-human Chess setup",
+      "scope": "local anonymous Chess fixture",
+      "captured_at_utc": "2026-10-06T09:49:50.433775+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        1200,
+        1113
+      ],
+      "bytes": 435200,
+      "sha256": "7cd43fd7a292f1454b41436acaaf2a523a0ab9c5387eabef2fc2606b9a77ff3f",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "chess-1200-initial.png",
+      "label": "Actual local Chess initial board",
+      "scope": "local anonymous Chess fixture",
+      "captured_at_utc": "2026-10-06T09:49:52.358444+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "bytes": 97969,
+      "sha256": "deae83d949aedb6861d2165f344c5b02ab58012b3fdb2a44240222e66124e4ba",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "chess-desktop-after-e2-e4.png",
+      "label": "Actual board after ordinary e2-to-e4 pointer input",
+      "scope": "local anonymous Chess fixture",
+      "captured_at_utc": "2026-10-06T09:49:54.448568+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "bytes": 100338,
+      "sha256": "db5bcfbb1d12b0209d446dcbf84eda704a044e66831155534a85f30d6ce55184",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    },
+    {
+      "file": "chess-390-initial.png",
+      "label": "Actual local Chess initial board",
+      "scope": "local anonymous Chess fixture",
+      "captured_at_utc": "2026-10-06T09:49:56.751574+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "device_pixel_ratio": 1,
+      "png_pixels": [
+        390,
+        844
+      ],
+      "bytes": 60942,
+      "sha256": "b4a3902690f39d3e4c4a7d03776312782e9269bb0b98b85bc5b88b96d2a9a1f6",
+      "browser_version": "151.0.7922.34",
+      "original_png_unchanged": true,
+      "pixel_inspection": "pending separate post-download review",
+      "privacy": "public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained"
+    }
+  ],
+  "observations": [
+    {
+      "name": "dashboard-1440-light-vi-home-geometry",
+      "status": "MEASURED",
+      "details": {
+        "viewport": {
+          "width": 1440,
+          "height": 1000,
+          "dpr": 1
+        },
+        "document_width": 1440,
+        "body_width": 1440,
+        "scroll_height": 1229,
+        "scroll_y": 0,
+        "sidebar": {
+          "x": 0,
+          "y": 0,
+          "width": 224,
+          "height": 1000,
+          "bottom": 1000,
+          "right": 224
+        },
+        "topbar": {
+          "x": 224,
+          "y": 0,
+          "width": 1216,
+          "height": 80,
+          "bottom": 80,
+          "right": 1440
+        },
+        "hero": {
+          "x": 264,
+          "y": 329.59375,
+          "width": 1136,
+          "height": 320,
+          "bottom": 649.59375,
+          "right": 1400
+        },
+        "continue_strip": {
+          "x": 264,
+          "y": 673.59375,
+          "width": 1136,
+          "height": 95,
+          "bottom": 768.59375,
+          "right": 1400
+        },
+        "bottom_nav": null,
+        "main": {
+          "x": 224,
+          "y": 80,
+          "width": 1216,
+          "height": 1149.140625,
+          "bottom": 1229.140625,
+          "right": 1440
+        },
+        "main_bottom_padding": 40,
+        "bottom_nav_position": "static",
+        "cards": [
+          {
+            "x": 264,
+            "y": 872.59375,
+            "width": 364,
+            "height": 248.546875,
+            "bottom": 1121.140625,
+            "right": 628
+          },
+          {
+            "x": 650,
+            "y": 872.59375,
+            "width": 364,
+            "height": 248.546875,
+            "bottom": 1121.140625,
+            "right": 1014
+          }
+        ],
+        "grid_columns": "364px 364px 364px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 44,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 26,
+              "y": 28,
+              "width": 171,
+              "height": 44,
+              "bottom": 72,
+              "right": 197
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 112,
+              "width": 187,
+              "height": 46,
+              "bottom": 158,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 164,
+              "width": 187,
+              "height": 46,
+              "bottom": 210,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 216,
+              "width": 187,
+              "height": 46,
+              "bottom": 262,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "sidebar__profile",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 919,
+              "width": 187,
+              "height": 57,
+              "bottom": 976,
+              "right": 205
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 1235,
+              "y": 17.5,
+              "width": 105,
+              "height": 44,
+              "bottom": 61.5,
+              "right": 1340
+            }
+          },
+          {
+            "tag": "A",
+            "class": "topbar__profile",
+            "disabled": false,
+            "rect": {
+              "x": 1356,
+              "y": 17.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 61.5,
+              "right": 1400
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 243.59375,
+              "width": 1136,
+              "height": 44,
+              "bottom": 287.59375,
+              "right": 1400
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 300,
+              "y": 569.59375,
+              "width": 191.59375,
+              "height": 44,
+              "bottom": 613.59375,
+              "right": 491.59375
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 1238.609375,
+              "y": 804.59375,
+              "width": 161.390625,
+              "height": 44,
+              "bottom": 848.59375,
+              "right": 1400
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 872.59375,
+              "width": 364,
+              "height": 160,
+              "bottom": 1032.59375,
+              "right": 628
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 1035.59375,
+              "width": 364,
+              "height": 44,
+              "bottom": 1079.59375,
+              "right": 628
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 650,
+              "y": 872.59375,
+              "width": 364,
+              "height": 160,
+              "bottom": 1032.59375,
+              "right": 1014
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 650,
+              "y": 1035.59375,
+              "width": 364,
+              "height": 44,
+              "bottom": 1079.59375,
+              "right": 1014
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      }
+    },
+    {
+      "name": "desktop skip-link Enter focuses main",
+      "status": "PASS",
+      "details": {
+        "first_tab_focuses_skip": true,
+        "enter_focuses_main": true
+      }
+    },
+    {
+      "name": "dashboard-1440-light-vi-library-geometry",
+      "status": "MEASURED",
+      "details": {
+        "viewport": {
+          "width": 1440,
+          "height": 1000,
+          "dpr": 1
+        },
+        "document_width": 1440,
+        "body_width": 1440,
+        "scroll_height": 1000,
+        "scroll_y": 0,
+        "sidebar": {
+          "x": 0,
+          "y": 0,
+          "width": 224,
+          "height": 1000,
+          "bottom": 1000,
+          "right": 224
+        },
+        "topbar": {
+          "x": 224,
+          "y": 0,
+          "width": 1216,
+          "height": 80,
+          "bottom": 80,
+          "right": 1440
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 264,
+          "y": 208,
+          "width": 1136,
+          "height": 95,
+          "bottom": 303,
+          "right": 1400
+        },
+        "bottom_nav": null,
+        "main": {
+          "x": 224,
+          "y": 80,
+          "width": 1216,
+          "height": 718.640625,
+          "bottom": 798.640625,
+          "right": 1440
+        },
+        "main_bottom_padding": 40,
+        "bottom_nav_position": "static",
+        "cards": [
+          {
+            "x": 264,
+            "y": 510.09375,
+            "width": 364,
+            "height": 248.546875,
+            "bottom": 758.640625,
+            "right": 628
+          },
+          {
+            "x": 650,
+            "y": 510.09375,
+            "width": 364,
+            "height": 248.546875,
+            "bottom": 758.640625,
+            "right": 1014
+          }
+        ],
+        "grid_columns": "364px 364px 364px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 40,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 26,
+              "y": 28,
+              "width": 171,
+              "height": 44,
+              "bottom": 72,
+              "right": 197
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 112,
+              "width": 187,
+              "height": 46,
+              "bottom": 158,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 164,
+              "width": 187,
+              "height": 46,
+              "bottom": 210,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 216,
+              "width": 187,
+              "height": 46,
+              "bottom": 262,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "sidebar__profile",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 919,
+              "width": 187,
+              "height": 57,
+              "bottom": 976,
+              "right": 205
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 1235,
+              "y": 17.5,
+              "width": 105,
+              "height": 44,
+              "bottom": 61.5,
+              "right": 1340
+            }
+          },
+          {
+            "tag": "A",
+            "class": "topbar__profile",
+            "disabled": false,
+            "rect": {
+              "x": 1356,
+              "y": 17.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 61.5,
+              "right": 1400
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 1096,
+              "y": 140,
+              "width": 304,
+              "height": 44,
+              "bottom": 184,
+              "right": 1400
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 383,
+              "width": 196.796875,
+              "height": 44,
+              "bottom": 427,
+              "right": 460.796875
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 472.796875,
+              "y": 383,
+              "width": 196.796875,
+              "height": 44,
+              "bottom": 427,
+              "right": 669.59375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 681.59375,
+              "y": 383,
+              "width": 196.796875,
+              "height": 44,
+              "bottom": 427,
+              "right": 878.390625
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 890.390625,
+              "y": 383,
+              "width": 196.796875,
+              "height": 44,
+              "bottom": 427,
+              "right": 1087.1875
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 1099.1875,
+              "y": 383,
+              "width": 196.796875,
+              "height": 44,
+              "bottom": 427,
+              "right": 1295.984375
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 1307.984375,
+              "y": 383,
+              "width": 92.015625,
+              "height": 44,
+              "bottom": 427,
+              "right": 1400
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 510.09375,
+              "width": 364,
+              "height": 160,
+              "bottom": 670.09375,
+              "right": 628
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 673.09375,
+              "width": 364,
+              "height": 44,
+              "bottom": 717.09375,
+              "right": 628
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 650,
+              "y": 510.09375,
+              "width": 364,
+              "height": 160,
+              "bottom": 670.09375,
+              "right": 1014
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 650,
+              "y": 673.09375,
+              "width": 364,
+              "height": 44,
+              "bottom": 717.09375,
+              "right": 1014
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      }
+    },
+    {
+      "name": "dashboard-390-light-vi-home-geometry",
+      "status": "MEASURED",
+      "details": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 1523,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 64,
+          "bottom": 64,
+          "right": 390
+        },
+        "hero": {
+          "x": 18,
+          "y": 288.09375,
+          "width": 354,
+          "height": 304,
+          "bottom": 592.09375,
+          "right": 372
+        },
+        "continue_strip": {
+          "x": 18,
+          "y": 612.09375,
+          "width": 354,
+          "height": 95,
+          "bottom": 707.09375,
+          "right": 372
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 772,
+          "width": 390,
+          "height": 72,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 390,
+          "height": 1458.96875,
+          "bottom": 1522.96875,
+          "right": 390
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 852.6875,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1096.828125,
+            "right": 372
+          },
+          {
+            "x": 18,
+            "y": 1118.828125,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1362.96875,
+            "right": 372
+          }
+        ],
+        "grid_columns": "354px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 34,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 118.4375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 136.4375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 231,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 324
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 328,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 132.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 132.65625,
+              "y": 781,
+              "width": 124.671875,
+              "height": 55,
+              "bottom": 836,
+              "right": 257.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 257.328125,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 381.984375
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 206.09375,
+              "width": 354,
+              "height": 44,
+              "bottom": 250.09375,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 42,
+              "y": 524.09375,
+              "width": 173.359375,
+              "height": 44,
+              "bottom": 568.09375,
+              "right": 215.359375
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 788.6875,
+              "width": 161.390625,
+              "height": 44,
+              "bottom": 832.6875,
+              "right": 179.390625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 852.6875,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 1008.28125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1011.28125,
+              "width": 354,
+              "height": 44,
+              "bottom": 1055.28125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1118.828125,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 1274.421875,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1277.421875,
+              "width": 354,
+              "height": 44,
+              "bottom": 1321.421875,
+              "right": 372
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      }
+    },
+    {
+      "name": "dashboard-390-light-vi-library-geometry",
+      "status": "MEASURED",
+      "details": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 1367,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 64,
+          "bottom": 64,
+          "right": 390
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 18,
+          "y": 236.390625,
+          "width": 354,
+          "height": 95,
+          "bottom": 331.390625,
+          "right": 372
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 772,
+          "width": 390,
+          "height": 72,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 390,
+          "height": 1302.765625,
+          "bottom": 1366.765625,
+          "right": 390
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 760.484375,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1004.625,
+            "right": 372
+          },
+          {
+            "x": 18,
+            "y": 1026.625,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1270.765625,
+            "right": 372
+          }
+        ],
+        "grid_columns": "354px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 32,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 118.4375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 136.4375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 231,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 324
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 328,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 132.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 132.65625,
+              "y": 781,
+              "width": 124.671875,
+              "height": 55,
+              "bottom": 836,
+              "right": 257.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 257.328125,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 381.984375
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 168.390625,
+              "width": 354,
+              "height": 44,
+              "bottom": 212.390625,
+              "right": 372
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 411.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 455.390625,
+              "right": 188
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 202,
+              "y": 411.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 455.390625,
+              "right": 372
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 493.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 537.390625,
+              "right": 188
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 202,
+              "y": 493.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 537.390625,
+              "right": 372
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 575.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 619.390625,
+              "right": 188
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 633.390625,
+              "width": 92.015625,
+              "height": 44,
+              "bottom": 677.390625,
+              "right": 110.015625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 760.484375,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 916.078125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 919.078125,
+              "width": 354,
+              "height": 44,
+              "bottom": 963.078125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1026.625,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 1182.21875,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1185.21875,
+              "width": 354,
+              "height": 44,
+              "bottom": 1229.21875,
+              "right": 372
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      }
+    },
+    {
+      "name": "dashboard-1100-dark-en-home-geometry",
+      "status": "MEASURED",
+      "details": {
+        "viewport": {
+          "width": 1100,
+          "height": 850,
+          "dpr": 1
+        },
+        "document_width": 1100,
+        "body_width": 1100,
+        "scroll_height": 1211,
+        "scroll_y": 0,
+        "sidebar": {
+          "x": 0,
+          "y": 0,
+          "width": 224,
+          "height": 850,
+          "bottom": 850,
+          "right": 224
+        },
+        "topbar": {
+          "x": 224,
+          "y": 0,
+          "width": 876,
+          "height": 80,
+          "bottom": 80,
+          "right": 1100
+        },
+        "hero": {
+          "x": 264,
+          "y": 329.59375,
+          "width": 796,
+          "height": 334.78125,
+          "bottom": 664.375,
+          "right": 1060
+        },
+        "continue_strip": {
+          "x": 264,
+          "y": 688.375,
+          "width": 796,
+          "height": 95,
+          "bottom": 783.375,
+          "right": 1060
+        },
+        "bottom_nav": null,
+        "main": {
+          "x": 224,
+          "y": 80,
+          "width": 876,
+          "height": 1131.140625,
+          "bottom": 1211.140625,
+          "right": 1100
+        },
+        "main_bottom_padding": 40,
+        "bottom_nav_position": "static",
+        "cards": [
+          {
+            "x": 264,
+            "y": 887.375,
+            "width": 250.65625,
+            "height": 215.765625,
+            "bottom": 1103.140625,
+            "right": 514.65625
+          },
+          {
+            "x": 536.65625,
+            "y": 887.375,
+            "width": 250.671875,
+            "height": 215.765625,
+            "bottom": 1103.140625,
+            "right": 787.328125
+          }
+        ],
+        "grid_columns": "250.656px 250.672px 250.672px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 44,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 26,
+              "y": 28,
+              "width": 171,
+              "height": 44,
+              "bottom": 72,
+              "right": 197
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 112,
+              "width": 187,
+              "height": 46,
+              "bottom": 158,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 164,
+              "width": 187,
+              "height": 46,
+              "bottom": 210,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 216,
+              "width": 187,
+              "height": 46,
+              "bottom": 262,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "sidebar__profile",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 769,
+              "width": 187,
+              "height": 57,
+              "bottom": 826,
+              "right": 205
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 895,
+              "y": 17.5,
+              "width": 105,
+              "height": 44,
+              "bottom": 61.5,
+              "right": 1000
+            }
+          },
+          {
+            "tag": "A",
+            "class": "topbar__profile",
+            "disabled": false,
+            "rect": {
+              "x": 1016,
+              "y": 17.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 61.5,
+              "right": 1060
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 243.59375,
+              "width": 796,
+              "height": 44,
+              "bottom": 287.59375,
+              "right": 1060
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 300,
+              "y": 584.375,
+              "width": 180.203125,
+              "height": 44,
+              "bottom": 628.375,
+              "right": 480.203125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 908.75,
+              "y": 819.375,
+              "width": 151.25,
+              "height": 44,
+              "bottom": 863.375,
+              "right": 1060
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 887.375,
+              "width": 250.65625,
+              "height": 110.171875,
+              "bottom": 997.546875,
+              "right": 514.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 1000.546875,
+              "width": 250.65625,
+              "height": 44,
+              "bottom": 1044.546875,
+              "right": 514.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 536.65625,
+              "y": 887.375,
+              "width": 250.671875,
+              "height": 110.171875,
+              "bottom": 997.546875,
+              "right": 787.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 536.65625,
+              "y": 1000.546875,
+              "width": 250.671875,
+              "height": 44,
+              "bottom": 1044.546875,
+              "right": 787.328125
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "dark",
+        "lang": "en"
+      }
+    },
+    {
+      "name": "dashboard-1100-dark-en-library-geometry",
+      "status": "MEASURED",
+      "details": {
+        "viewport": {
+          "width": 1100,
+          "height": 850,
+          "dpr": 1
+        },
+        "document_width": 1100,
+        "body_width": 1100,
+        "scroll_height": 850,
+        "scroll_y": 0,
+        "sidebar": {
+          "x": 0,
+          "y": 0,
+          "width": 224,
+          "height": 850,
+          "bottom": 850,
+          "right": 224
+        },
+        "topbar": {
+          "x": 224,
+          "y": 0,
+          "width": 876,
+          "height": 80,
+          "bottom": 80,
+          "right": 1100
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 264,
+          "y": 208,
+          "width": 796,
+          "height": 95,
+          "bottom": 303,
+          "right": 1060
+        },
+        "bottom_nav": null,
+        "main": {
+          "x": 224,
+          "y": 80,
+          "width": 876,
+          "height": 685.859375,
+          "bottom": 765.859375,
+          "right": 1100
+        },
+        "main_bottom_padding": 40,
+        "bottom_nav_position": "static",
+        "cards": [
+          {
+            "x": 264,
+            "y": 510.09375,
+            "width": 250.65625,
+            "height": 215.765625,
+            "bottom": 725.859375,
+            "right": 514.65625
+          },
+          {
+            "x": 536.65625,
+            "y": 510.09375,
+            "width": 250.671875,
+            "height": 215.765625,
+            "bottom": 725.859375,
+            "right": 787.328125
+          }
+        ],
+        "grid_columns": "250.656px 250.672px 250.672px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 40,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 26,
+              "y": 28,
+              "width": 171,
+              "height": 44,
+              "bottom": 72,
+              "right": 197
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 112,
+              "width": 187,
+              "height": 46,
+              "bottom": 158,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 164,
+              "width": 187,
+              "height": 46,
+              "bottom": 210,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 216,
+              "width": 187,
+              "height": 46,
+              "bottom": 262,
+              "right": 205
+            }
+          },
+          {
+            "tag": "A",
+            "class": "sidebar__profile",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 769,
+              "width": 187,
+              "height": 57,
+              "bottom": 826,
+              "right": 205
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 895,
+              "y": 17.5,
+              "width": 105,
+              "height": 44,
+              "bottom": 61.5,
+              "right": 1000
+            }
+          },
+          {
+            "tag": "A",
+            "class": "topbar__profile",
+            "disabled": false,
+            "rect": {
+              "x": 1016,
+              "y": 17.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 61.5,
+              "right": 1060
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 756,
+              "y": 140,
+              "width": 304,
+              "height": 44,
+              "bottom": 184,
+              "right": 1060
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 383,
+              "width": 126.90625,
+              "height": 44,
+              "bottom": 427,
+              "right": 390.90625
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 402.90625,
+              "y": 383,
+              "width": 126.90625,
+              "height": 44,
+              "bottom": 427,
+              "right": 529.8125
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 541.8125,
+              "y": 383,
+              "width": 126.90625,
+              "height": 44,
+              "bottom": 427,
+              "right": 668.71875
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 680.71875,
+              "y": 383,
+              "width": 126.90625,
+              "height": 44,
+              "bottom": 427,
+              "right": 807.625
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 819.625,
+              "y": 383,
+              "width": 126.90625,
+              "height": 44,
+              "bottom": 427,
+              "right": 946.53125
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 958.53125,
+              "y": 383,
+              "width": 101.46875,
+              "height": 44,
+              "bottom": 427,
+              "right": 1060
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 510.09375,
+              "width": 250.65625,
+              "height": 110.171875,
+              "bottom": 620.265625,
+              "right": 514.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 264,
+              "y": 623.265625,
+              "width": 250.65625,
+              "height": 44,
+              "bottom": 667.265625,
+              "right": 514.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 536.65625,
+              "y": 510.09375,
+              "width": 250.671875,
+              "height": 110.171875,
+              "bottom": 620.265625,
+              "right": 787.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 536.65625,
+              "y": 623.265625,
+              "width": 250.671875,
+              "height": 44,
+              "bottom": 667.265625,
+              "right": 787.328125
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "dark",
+        "lang": "en"
+      }
+    },
+    {
+      "name": "maintained 320/390 bilingual genuine browser-font matrix",
+      "status": "PASS",
+      "details": {
+        "partitions": 8,
+        "original_receipt": "font-scaling.json",
+        "scope": "actual public Home/Catalog/drawer; 16/32px Chromium profile preferences"
+      }
+    },
+    {
+      "name": "Chess 1200 actual canvas/pointer geometry",
+      "status": "MEASURED",
+      "details": {
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 824
+        },
+        "board": {
+          "x": 167.78400000000002,
+          "y": 145.78400000000002,
+          "side": 515.2479999999999,
+          "square": 64.40599999999999
+        }
+      }
+    },
+    {
+      "name": "Chess visible response to e2-e4",
+      "status": "PASS",
+      "details": {
+        "sum_mean_pixel_difference": 4.82283428030303,
+        "semantic_move_verdict": "requires independent original-pixel review; no canonical state read"
+      }
+    },
+    {
+      "name": "Chess 390 actual canvas/pointer geometry",
+      "status": "MEASURED",
+      "details": {
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 788
+        },
+        "board": {
+          "x": 24.531000000000002,
+          "y": 132.299,
+          "side": 340.938,
+          "square": 42.61725
+        }
+      }
+    },
+    {
+      "name": "maintained current Werewolf driver",
+      "status": "PASS",
+      "details": {
+        "exit_code": 0,
+        "receipts": "werewolf/runs/summary.json",
+        "original_screenshots": "werewolf/screenshots"
+      }
+    }
+  ],
+  "fixtures": "No real accounts; public missing-adapter shell and disposable local game seats",
+  "NOT_RUN": [
+    "physical mobile/touch",
+    "CMP/native GameHost",
+    "real login/accounts/avatar provider",
+    "Werewolf online/chat/voice",
+    "full fresh online Chess fault acceptance",
+    "full accessibility and frame-pacing acceptance"
+  ],
+  "browser_version": "151.0.7922.34",
+  "werewolf_driver": {
+    "original_source": "games/werewolf/tests/verify-redesign.mjs",
+    "original_sha256": "3fe023ea73fcd9ecafc537f06f2efb66559e7ed8356c1ff59ad4e3e490f9561a",
+    "executed_copy_sha256": "e6367a7a1ff8799b88547b3ed0fafb4a23309f9efdd2e46a0408b30e8971e4e4",
+    "only_change": "official CI browser launch and public pointer locations matching current Layout::options; no game state or source edits",
+    "cases": "1200x880-dpr1,390x844-dpr1; theme-light and public-phase-captures extras"
+  },
+  "finished_at_utc": "2026-10-06T09:51:09.814628+00:00"
+}

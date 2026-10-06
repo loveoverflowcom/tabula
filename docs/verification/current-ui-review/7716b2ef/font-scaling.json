@@ -1,0 +1,6014 @@
+{
+  "observations": [
+    {
+      "scale": 1,
+      "language": "vi",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "initial_font_px": 16,
+      "narrow_reflow_required": false,
+      "home": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 1523,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 64,
+          "bottom": 64,
+          "right": 390
+        },
+        "hero": {
+          "x": 18,
+          "y": 288.09375,
+          "width": 354,
+          "height": 304,
+          "bottom": 592.09375,
+          "right": 372
+        },
+        "continue_strip": {
+          "x": 18,
+          "y": 612.09375,
+          "width": 354,
+          "height": 95,
+          "bottom": 707.09375,
+          "right": 372
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 772,
+          "width": 390,
+          "height": 72,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 390,
+          "height": 1458.96875,
+          "bottom": 1522.96875,
+          "right": 390
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 852.6875,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1096.828125,
+            "right": 372
+          },
+          {
+            "x": 18,
+            "y": 1118.828125,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1362.96875,
+            "right": 372
+          }
+        ],
+        "grid_columns": "354px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 34,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 118.4375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 136.4375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 231,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 324
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 328,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 132.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 132.65625,
+              "y": 781,
+              "width": 124.671875,
+              "height": 55,
+              "bottom": 836,
+              "right": 257.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 257.328125,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 381.984375
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 206.09375,
+              "width": 354,
+              "height": 44,
+              "bottom": 250.09375,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 42,
+              "y": 524.09375,
+              "width": 173.359375,
+              "height": 44,
+              "bottom": 568.09375,
+              "right": 215.359375
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 788.6875,
+              "width": 161.390625,
+              "height": 44,
+              "bottom": 832.6875,
+              "right": 179.390625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 852.6875,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 1008.28125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1011.28125,
+              "width": 354,
+              "height": 44,
+              "bottom": 1055.28125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1118.828125,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 1274.421875,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1277.421875,
+              "width": 354,
+              "height": 44,
+              "bottom": 1321.421875,
+              "right": 372
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      },
+      "library": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 1367,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 64,
+          "bottom": 64,
+          "right": 390
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 18,
+          "y": 236.390625,
+          "width": 354,
+          "height": 95,
+          "bottom": 331.390625,
+          "right": 372
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 772,
+          "width": 390,
+          "height": 72,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 390,
+          "height": 1302.765625,
+          "bottom": 1366.765625,
+          "right": 390
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 760.484375,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1004.625,
+            "right": 372
+          },
+          {
+            "x": 18,
+            "y": 1026.625,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1270.765625,
+            "right": 372
+          }
+        ],
+        "grid_columns": "354px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 32,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 118.4375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 136.4375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 231,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 324
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 328,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 132.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 132.65625,
+              "y": 781,
+              "width": 124.671875,
+              "height": 55,
+              "bottom": 836,
+              "right": 257.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 257.328125,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 381.984375
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 168.390625,
+              "width": 354,
+              "height": 44,
+              "bottom": 212.390625,
+              "right": 372
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 411.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 455.390625,
+              "right": 188
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 202,
+              "y": 411.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 455.390625,
+              "right": 372
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 493.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 537.390625,
+              "right": 188
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 202,
+              "y": 493.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 537.390625,
+              "right": 372
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 575.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 619.390625,
+              "right": 188
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 633.390625,
+              "width": 92.015625,
+              "height": 44,
+              "bottom": 677.390625,
+              "right": 110.015625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 760.484375,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 916.078125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 919.078125,
+              "width": 354,
+              "height": 44,
+              "bottom": 963.078125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1026.625,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 1182.21875,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1185.21875,
+              "width": 354,
+              "height": 44,
+              "bottom": 1229.21875,
+              "right": 372
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      },
+      "drawer": {
+        "open": true,
+        "scroll_width": 320,
+        "client_width": 320,
+        "focus_inside": true
+      },
+      "narrow_usability": {
+        "home": {
+          "navigation": [
+            {
+              "text": "Trang ch\u00ednh",
+              "words": [
+                {
+                  "text": "Trang",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ch\u00ednh",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Th\u01b0 vi\u1ec7n",
+              "words": [
+                {
+                  "text": "Th\u01b0",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "vi\u1ec7n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "T\u00e0i kho\u1ea3n",
+              "words": [
+                {
+                  "text": "T\u00e0i",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "kho\u1ea3n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [
+            {
+              "text": "Kh\u00e1m ph\u00e1 game",
+              "words": [
+                {
+                  "text": "Kh\u00e1m",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ph\u00e1",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "game",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "hero": {
+            "inner_width": 354,
+            "copy": {
+              "x": 18,
+              "y": 288.09375,
+              "width": 354,
+              "height": 304,
+              "bottom": 592.09375,
+              "right": 372
+            },
+            "copy_inner_width": 306,
+            "heading": {
+              "x": 42,
+              "y": 352.09375,
+              "width": 217.53125,
+              "height": 71.25,
+              "bottom": 423.34375,
+              "right": 259.53125
+            }
+          },
+          "visible_hero_art": [
+            {
+              "x": 260,
+              "y": 320.09375,
+              "width": 208,
+              "height": 240,
+              "bottom": 560.09375,
+              "right": 468
+            }
+          ],
+          "continue": {
+            "inner_width": 322,
+            "icon": {
+              "x": 34,
+              "y": 637.59375,
+              "width": 44,
+              "height": 44,
+              "bottom": 681.59375,
+              "right": 78
+            },
+            "copy": {
+              "x": 90,
+              "y": 628.09375,
+              "width": 262.09375,
+              "height": 63,
+              "bottom": 691.09375,
+              "right": 352.09375
+            }
+          }
+        },
+        "library": {
+          "navigation": [
+            {
+              "text": "Trang ch\u00ednh",
+              "words": [
+                {
+                  "text": "Trang",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ch\u00ednh",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Th\u01b0 vi\u1ec7n",
+              "words": [
+                {
+                  "text": "Th\u01b0",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "vi\u1ec7n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "T\u00e0i kho\u1ea3n",
+              "words": [
+                {
+                  "text": "T\u00e0i",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "kho\u1ea3n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [],
+          "hero": null,
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 322,
+            "icon": {
+              "x": 34,
+              "y": 261.890625,
+              "width": 44,
+              "height": 44,
+              "bottom": 305.890625,
+              "right": 78
+            },
+            "copy": {
+              "x": 90,
+              "y": 252.390625,
+              "width": 262.09375,
+              "height": 63,
+              "bottom": 315.390625,
+              "right": 352.09375
+            }
+          }
+        }
+      },
+      "captures": [
+        "after-mobile-vi-default-font-100percent.png",
+        "after-catalog-mobile-vi-default-font-100percent.png",
+        "after-mobile-vi-drawer-font-100percent.png"
+      ]
+    },
+    {
+      "scale": 1,
+      "language": "en",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "initial_font_px": 16,
+      "narrow_reflow_required": false,
+      "home": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 1563,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 64,
+          "bottom": 64,
+          "right": 390
+        },
+        "hero": {
+          "x": 18,
+          "y": 288.09375,
+          "width": 354,
+          "height": 304,
+          "bottom": 592.09375,
+          "right": 372
+        },
+        "continue_strip": {
+          "x": 18,
+          "y": 612.09375,
+          "width": 354,
+          "height": 115,
+          "bottom": 727.09375,
+          "right": 372
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 772,
+          "width": 390,
+          "height": 72,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 390,
+          "height": 1498.96875,
+          "bottom": 1562.96875,
+          "right": 390
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 872.6875,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1116.828125,
+            "right": 372
+          },
+          {
+            "x": 18,
+            "y": 1138.828125,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1382.96875,
+            "right": 372
+          }
+        ],
+        "grid_columns": "354px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 34,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 118.4375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 136.4375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 231,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 324
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 328,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 132.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 132.65625,
+              "y": 781,
+              "width": 124.671875,
+              "height": 55,
+              "bottom": 836,
+              "right": 257.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 257.328125,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 381.984375
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 206.09375,
+              "width": 354,
+              "height": 44,
+              "bottom": 250.09375,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 42,
+              "y": 524.09375,
+              "width": 163.59375,
+              "height": 44,
+              "bottom": 568.09375,
+              "right": 205.59375
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 808.6875,
+              "width": 151.25,
+              "height": 44,
+              "bottom": 852.6875,
+              "right": 169.25
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 872.6875,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 1028.28125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1031.28125,
+              "width": 354,
+              "height": 44,
+              "bottom": 1075.28125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1138.828125,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 1294.421875,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1297.421875,
+              "width": 354,
+              "height": 44,
+              "bottom": 1341.421875,
+              "right": 372
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "en"
+      },
+      "library": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 1387,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 64,
+          "bottom": 64,
+          "right": 390
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 18,
+          "y": 236.390625,
+          "width": 354,
+          "height": 115,
+          "bottom": 351.390625,
+          "right": 372
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 772,
+          "width": 390,
+          "height": 72,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 390,
+          "height": 1322.765625,
+          "bottom": 1386.765625,
+          "right": 390
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 780.484375,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1024.625,
+            "right": 372
+          },
+          {
+            "x": 18,
+            "y": 1046.625,
+            "width": 354,
+            "height": 244.140625,
+            "bottom": 1290.765625,
+            "right": 372
+          }
+        ],
+        "grid_columns": "354px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 32,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 118.4375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 136.4375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 231,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 324
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 328,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 132.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 132.65625,
+              "y": 781,
+              "width": 124.671875,
+              "height": 55,
+              "bottom": 836,
+              "right": 257.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 257.328125,
+              "y": 781,
+              "width": 124.65625,
+              "height": 55,
+              "bottom": 836,
+              "right": 381.984375
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 168.390625,
+              "width": 354,
+              "height": 44,
+              "bottom": 212.390625,
+              "right": 372
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 431.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 475.390625,
+              "right": 188
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 202,
+              "y": 431.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 475.390625,
+              "right": 372
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 513.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 557.390625,
+              "right": 188
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 202,
+              "y": 513.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 557.390625,
+              "right": 372
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 595.390625,
+              "width": 170,
+              "height": 44,
+              "bottom": 639.390625,
+              "right": 188
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 653.390625,
+              "width": 101.46875,
+              "height": 44,
+              "bottom": 697.390625,
+              "right": 119.46875
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 780.484375,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 936.078125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 939.078125,
+              "width": 354,
+              "height": 44,
+              "bottom": 983.078125,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1046.625,
+              "width": 354,
+              "height": 155.59375,
+              "bottom": 1202.21875,
+              "right": 372
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1205.21875,
+              "width": 354,
+              "height": 44,
+              "bottom": 1249.21875,
+              "right": 372
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "en"
+      },
+      "drawer": {
+        "open": true,
+        "scroll_width": 320,
+        "client_width": 320,
+        "focus_inside": true
+      },
+      "narrow_usability": {
+        "home": {
+          "navigation": [
+            {
+              "text": "Home",
+              "words": [
+                {
+                  "text": "Home",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Library",
+              "words": [
+                {
+                  "text": "Library",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Account",
+              "words": [
+                {
+                  "text": "Account",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [
+            {
+              "text": "Explore games",
+              "words": [
+                {
+                  "text": "Explore",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "games",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "hero": {
+            "inner_width": 354,
+            "copy": {
+              "x": 18,
+              "y": 288.09375,
+              "width": 354,
+              "height": 304,
+              "bottom": 592.09375,
+              "right": 372
+            },
+            "copy_inner_width": 306,
+            "heading": {
+              "x": 42,
+              "y": 352.09375,
+              "width": 200.96875,
+              "height": 71.25,
+              "bottom": 423.34375,
+              "right": 242.96875
+            }
+          },
+          "visible_hero_art": [
+            {
+              "x": 260,
+              "y": 320.09375,
+              "width": 208,
+              "height": 240,
+              "bottom": 560.09375,
+              "right": 468
+            }
+          ],
+          "continue": {
+            "inner_width": 322,
+            "icon": {
+              "x": 34,
+              "y": 647.59375,
+              "width": 44,
+              "height": 44,
+              "bottom": 691.59375,
+              "right": 78
+            },
+            "copy": {
+              "x": 90,
+              "y": 628.09375,
+              "width": 266,
+              "height": 83,
+              "bottom": 711.09375,
+              "right": 356
+            }
+          }
+        },
+        "library": {
+          "navigation": [
+            {
+              "text": "Home",
+              "words": [
+                {
+                  "text": "Home",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Library",
+              "words": [
+                {
+                  "text": "Library",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Account",
+              "words": [
+                {
+                  "text": "Account",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [],
+          "hero": null,
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 322,
+            "icon": {
+              "x": 34,
+              "y": 271.890625,
+              "width": 44,
+              "height": 44,
+              "bottom": 315.890625,
+              "right": 78
+            },
+            "copy": {
+              "x": 90,
+              "y": 252.390625,
+              "width": 266,
+              "height": 83,
+              "bottom": 335.390625,
+              "right": 356
+            }
+          }
+        }
+      },
+      "captures": [
+        "after-mobile-en-default-font-100percent.png",
+        "after-catalog-mobile-en-default-font-100percent.png",
+        "after-mobile-en-drawer-font-100percent.png"
+      ]
+    },
+    {
+      "scale": 1,
+      "language": "vi",
+      "viewport": {
+        "width": 320,
+        "height": 640
+      },
+      "initial_font_px": 16,
+      "narrow_reflow_required": false,
+      "home": {
+        "viewport": {
+          "width": 320,
+          "height": 640,
+          "dpr": 1
+        },
+        "document_width": 320,
+        "body_width": 320,
+        "scroll_height": 1549,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 64,
+          "bottom": 64,
+          "right": 320
+        },
+        "hero": {
+          "x": 18,
+          "y": 288.09375,
+          "width": 284,
+          "height": 314.015625,
+          "bottom": 602.109375,
+          "right": 302
+        },
+        "continue_strip": {
+          "x": 18,
+          "y": 622.109375,
+          "width": 284,
+          "height": 135,
+          "bottom": 757.109375,
+          "right": 302
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 568,
+          "width": 320,
+          "height": 72,
+          "bottom": 640,
+          "right": 320
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 320,
+          "height": 1484.5,
+          "bottom": 1548.5,
+          "right": 320
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 902.703125,
+            "width": 284,
+            "height": 213.375,
+            "bottom": 1116.078125,
+            "right": 302
+          },
+          {
+            "x": 18,
+            "y": 1138.078125,
+            "width": 284,
+            "height": 230.421875,
+            "bottom": 1368.5,
+            "right": 302
+          }
+        ],
+        "grid_columns": "284px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 34,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 101.375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 119.375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 161,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 254
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 258,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 577,
+              "width": 101.328125,
+              "height": 55,
+              "bottom": 632,
+              "right": 109.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 109.328125,
+              "y": 577,
+              "width": 101.328125,
+              "height": 55,
+              "bottom": 632,
+              "right": 210.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 210.65625,
+              "y": 577,
+              "width": 101.34375,
+              "height": 55,
+              "bottom": 632,
+              "right": 312
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 206.09375,
+              "width": 284,
+              "height": 44,
+              "bottom": 250.09375,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 42,
+              "y": 534.109375,
+              "width": 173.359375,
+              "height": 44,
+              "bottom": 578.109375,
+              "right": 215.359375
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 838.703125,
+              "width": 161.390625,
+              "height": 44,
+              "bottom": 882.703125,
+              "right": 179.390625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 902.703125,
+              "width": 284,
+              "height": 124.828125,
+              "bottom": 1027.53125,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1030.53125,
+              "width": 284,
+              "height": 44,
+              "bottom": 1074.53125,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1138.078125,
+              "width": 284,
+              "height": 124.828125,
+              "bottom": 1262.90625,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1265.90625,
+              "width": 284,
+              "height": 44,
+              "bottom": 1309.90625,
+              "right": 302
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      },
+      "library": {
+        "viewport": {
+          "width": 320,
+          "height": 640,
+          "dpr": 1
+        },
+        "document_width": 320,
+        "body_width": 320,
+        "scroll_height": 1362,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 64,
+          "bottom": 64,
+          "right": 320
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 18,
+          "y": 236.390625,
+          "width": 284,
+          "height": 135,
+          "bottom": 371.390625,
+          "right": 302
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 568,
+          "width": 320,
+          "height": 72,
+          "bottom": 640,
+          "right": 320
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 320,
+          "height": 1298.28125,
+          "bottom": 1362.28125,
+          "right": 320
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 800.484375,
+            "width": 284,
+            "height": 213.375,
+            "bottom": 1013.859375,
+            "right": 302
+          },
+          {
+            "x": 18,
+            "y": 1035.859375,
+            "width": 284,
+            "height": 230.421875,
+            "bottom": 1266.28125,
+            "right": 302
+          }
+        ],
+        "grid_columns": "284px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 32,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 101.375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 119.375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 161,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 254
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 258,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 577,
+              "width": 101.328125,
+              "height": 55,
+              "bottom": 632,
+              "right": 109.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 109.328125,
+              "y": 577,
+              "width": 101.328125,
+              "height": 55,
+              "bottom": 632,
+              "right": 210.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 210.65625,
+              "y": 577,
+              "width": 101.34375,
+              "height": 55,
+              "bottom": 632,
+              "right": 312
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 168.390625,
+              "width": 284,
+              "height": 44,
+              "bottom": 212.390625,
+              "right": 302
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 451.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 495.390625,
+              "right": 153
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 167,
+              "y": 451.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 495.390625,
+              "right": 302
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 533.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 577.390625,
+              "right": 153
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 167,
+              "y": 533.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 577.390625,
+              "right": 302
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 615.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 659.390625,
+              "right": 153
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 673.390625,
+              "width": 92.015625,
+              "height": 44,
+              "bottom": 717.390625,
+              "right": 110.015625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 800.484375,
+              "width": 284,
+              "height": 124.828125,
+              "bottom": 925.3125,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 928.3125,
+              "width": 284,
+              "height": 44,
+              "bottom": 972.3125,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1035.859375,
+              "width": 284,
+              "height": 124.828125,
+              "bottom": 1160.6875,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1163.6875,
+              "width": 284,
+              "height": 44,
+              "bottom": 1207.6875,
+              "right": 302
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      },
+      "drawer": {
+        "open": true,
+        "scroll_width": 286,
+        "client_width": 286,
+        "focus_inside": true
+      },
+      "narrow_usability": {
+        "home": {
+          "navigation": [
+            {
+              "text": "Trang ch\u00ednh",
+              "words": [
+                {
+                  "text": "Trang",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ch\u00ednh",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Th\u01b0 vi\u1ec7n",
+              "words": [
+                {
+                  "text": "Th\u01b0",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "vi\u1ec7n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "T\u00e0i kho\u1ea3n",
+              "words": [
+                {
+                  "text": "T\u00e0i",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "kho\u1ea3n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [
+            {
+              "text": "Kh\u00e1m ph\u00e1 game",
+              "words": [
+                {
+                  "text": "Kh\u00e1m",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ph\u00e1",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "game",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "hero": {
+            "inner_width": 284,
+            "copy": {
+              "x": 18,
+              "y": 288.09375,
+              "width": 284,
+              "height": 314.015625,
+              "bottom": 602.109375,
+              "right": 302
+            },
+            "copy_inner_width": 236,
+            "heading": {
+              "x": 42,
+              "y": 352.09375,
+              "width": 172.265625,
+              "height": 103.640625,
+              "bottom": 455.734375,
+              "right": 214.265625
+            }
+          },
+          "visible_hero_art": [
+            {
+              "x": 206,
+              "y": 320.09375,
+              "width": 208,
+              "height": 240,
+              "bottom": 560.09375,
+              "right": 414
+            }
+          ],
+          "continue": {
+            "inner_width": 252,
+            "icon": {
+              "x": 34,
+              "y": 667.609375,
+              "width": 44,
+              "height": 44,
+              "bottom": 711.609375,
+              "right": 78
+            },
+            "copy": {
+              "x": 90,
+              "y": 638.109375,
+              "width": 196,
+              "height": 103,
+              "bottom": 741.109375,
+              "right": 286
+            }
+          }
+        },
+        "library": {
+          "navigation": [
+            {
+              "text": "Trang ch\u00ednh",
+              "words": [
+                {
+                  "text": "Trang",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ch\u00ednh",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Th\u01b0 vi\u1ec7n",
+              "words": [
+                {
+                  "text": "Th\u01b0",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "vi\u1ec7n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "T\u00e0i kho\u1ea3n",
+              "words": [
+                {
+                  "text": "T\u00e0i",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "kho\u1ea3n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [],
+          "hero": null,
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 252,
+            "icon": {
+              "x": 34,
+              "y": 281.890625,
+              "width": 44,
+              "height": 44,
+              "bottom": 325.890625,
+              "right": 78
+            },
+            "copy": {
+              "x": 90,
+              "y": 252.390625,
+              "width": 196,
+              "height": 103,
+              "bottom": 355.390625,
+              "right": 286
+            }
+          }
+        }
+      },
+      "captures": [
+        "after-small-mobile-vi-default-font-100percent.png",
+        "after-catalog-small-mobile-vi-default-font-100percent.png",
+        "after-small-mobile-vi-drawer-font-100percent.png"
+      ]
+    },
+    {
+      "scale": 1,
+      "language": "en",
+      "viewport": {
+        "width": 320,
+        "height": 640
+      },
+      "initial_font_px": 16,
+      "narrow_reflow_required": false,
+      "home": {
+        "viewport": {
+          "width": 320,
+          "height": 640,
+          "dpr": 1
+        },
+        "document_width": 320,
+        "body_width": 320,
+        "scroll_height": 1549,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 64,
+          "bottom": 64,
+          "right": 320
+        },
+        "hero": {
+          "x": 18,
+          "y": 288.09375,
+          "width": 284,
+          "height": 314.015625,
+          "bottom": 602.109375,
+          "right": 302
+        },
+        "continue_strip": {
+          "x": 18,
+          "y": 622.109375,
+          "width": 284,
+          "height": 135,
+          "bottom": 757.109375,
+          "right": 302
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 568,
+          "width": 320,
+          "height": 72,
+          "bottom": 640,
+          "right": 320
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 320,
+          "height": 1484.5,
+          "bottom": 1548.5,
+          "right": 320
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 902.703125,
+            "width": 284,
+            "height": 213.375,
+            "bottom": 1116.078125,
+            "right": 302
+          },
+          {
+            "x": 18,
+            "y": 1138.078125,
+            "width": 284,
+            "height": 230.421875,
+            "bottom": 1368.5,
+            "right": 302
+          }
+        ],
+        "grid_columns": "284px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 34,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 101.375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 119.375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 161,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 254
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 258,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 577,
+              "width": 101.328125,
+              "height": 55,
+              "bottom": 632,
+              "right": 109.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 109.328125,
+              "y": 577,
+              "width": 101.328125,
+              "height": 55,
+              "bottom": 632,
+              "right": 210.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 210.65625,
+              "y": 577,
+              "width": 101.34375,
+              "height": 55,
+              "bottom": 632,
+              "right": 312
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 206.09375,
+              "width": 284,
+              "height": 44,
+              "bottom": 250.09375,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 42,
+              "y": 534.109375,
+              "width": 163.59375,
+              "height": 44,
+              "bottom": 578.109375,
+              "right": 205.59375
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 838.703125,
+              "width": 151.25,
+              "height": 44,
+              "bottom": 882.703125,
+              "right": 169.25
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 902.703125,
+              "width": 284,
+              "height": 124.828125,
+              "bottom": 1027.53125,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1030.53125,
+              "width": 284,
+              "height": 44,
+              "bottom": 1074.53125,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1138.078125,
+              "width": 284,
+              "height": 124.828125,
+              "bottom": 1262.90625,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1265.90625,
+              "width": 284,
+              "height": 44,
+              "bottom": 1309.90625,
+              "right": 302
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "en"
+      },
+      "library": {
+        "viewport": {
+          "width": 320,
+          "height": 640,
+          "dpr": 1
+        },
+        "document_width": 320,
+        "body_width": 320,
+        "scroll_height": 1362,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 64,
+          "bottom": 64,
+          "right": 320
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 18,
+          "y": 236.390625,
+          "width": 284,
+          "height": 135,
+          "bottom": 371.390625,
+          "right": 302
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 568,
+          "width": 320,
+          "height": 72,
+          "bottom": 640,
+          "right": 320
+        },
+        "main": {
+          "x": 0,
+          "y": 64,
+          "width": 320,
+          "height": 1298.28125,
+          "bottom": 1362.28125,
+          "right": 320
+        },
+        "main_bottom_padding": 96,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 18,
+            "y": 800.484375,
+            "width": 284,
+            "height": 213.375,
+            "bottom": 1013.859375,
+            "right": 302
+          },
+          {
+            "x": 18,
+            "y": 1035.859375,
+            "width": 284,
+            "height": 230.421875,
+            "bottom": 1266.28125,
+            "right": 302
+          }
+        ],
+        "grid_columns": "284px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 32,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 14,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 9.5,
+              "width": 101.375,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 119.375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 161,
+              "y": 9.5,
+              "width": 93,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 254
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 258,
+              "y": 9.5,
+              "width": 44,
+              "height": 44,
+              "bottom": 53.5,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 8,
+              "y": 577,
+              "width": 101.328125,
+              "height": 55,
+              "bottom": 632,
+              "right": 109.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 109.328125,
+              "y": 577,
+              "width": 101.328125,
+              "height": 55,
+              "bottom": 632,
+              "right": 210.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 210.65625,
+              "y": 577,
+              "width": 101.34375,
+              "height": 55,
+              "bottom": 632,
+              "right": 312
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 168.390625,
+              "width": 284,
+              "height": 44,
+              "bottom": 212.390625,
+              "right": 302
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 451.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 495.390625,
+              "right": 153
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 167,
+              "y": 451.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 495.390625,
+              "right": 302
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 533.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 577.390625,
+              "right": 153
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 167,
+              "y": 533.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 577.390625,
+              "right": 302
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 615.390625,
+              "width": 135,
+              "height": 44,
+              "bottom": 659.390625,
+              "right": 153
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 673.390625,
+              "width": 101.46875,
+              "height": 44,
+              "bottom": 717.390625,
+              "right": 119.46875
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 800.484375,
+              "width": 284,
+              "height": 124.828125,
+              "bottom": 925.3125,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 928.3125,
+              "width": 284,
+              "height": 44,
+              "bottom": 972.3125,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1035.859375,
+              "width": 284,
+              "height": 124.828125,
+              "bottom": 1160.6875,
+              "right": 302
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 18,
+              "y": 1163.6875,
+              "width": 284,
+              "height": 44,
+              "bottom": 1207.6875,
+              "right": 302
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "en"
+      },
+      "drawer": {
+        "open": true,
+        "scroll_width": 286,
+        "client_width": 286,
+        "focus_inside": true
+      },
+      "narrow_usability": {
+        "home": {
+          "navigation": [
+            {
+              "text": "Home",
+              "words": [
+                {
+                  "text": "Home",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Library",
+              "words": [
+                {
+                  "text": "Library",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Account",
+              "words": [
+                {
+                  "text": "Account",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [
+            {
+              "text": "Explore games",
+              "words": [
+                {
+                  "text": "Explore",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "games",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "hero": {
+            "inner_width": 284,
+            "copy": {
+              "x": 18,
+              "y": 288.09375,
+              "width": 284,
+              "height": 314.015625,
+              "bottom": 602.109375,
+              "right": 302
+            },
+            "copy_inner_width": 236,
+            "heading": {
+              "x": 42,
+              "y": 352.09375,
+              "width": 172.265625,
+              "height": 103.640625,
+              "bottom": 455.734375,
+              "right": 214.265625
+            }
+          },
+          "visible_hero_art": [
+            {
+              "x": 206,
+              "y": 320.09375,
+              "width": 208,
+              "height": 240,
+              "bottom": 560.09375,
+              "right": 414
+            }
+          ],
+          "continue": {
+            "inner_width": 252,
+            "icon": {
+              "x": 34,
+              "y": 667.609375,
+              "width": 44,
+              "height": 44,
+              "bottom": 711.609375,
+              "right": 78
+            },
+            "copy": {
+              "x": 90,
+              "y": 638.109375,
+              "width": 196,
+              "height": 103,
+              "bottom": 741.109375,
+              "right": 286
+            }
+          }
+        },
+        "library": {
+          "navigation": [
+            {
+              "text": "Home",
+              "words": [
+                {
+                  "text": "Home",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Library",
+              "words": [
+                {
+                  "text": "Library",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Account",
+              "words": [
+                {
+                  "text": "Account",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [],
+          "hero": null,
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 252,
+            "icon": {
+              "x": 34,
+              "y": 281.890625,
+              "width": 44,
+              "height": 44,
+              "bottom": 325.890625,
+              "right": 78
+            },
+            "copy": {
+              "x": 90,
+              "y": 252.390625,
+              "width": 196,
+              "height": 103,
+              "bottom": 355.390625,
+              "right": 286
+            }
+          }
+        }
+      },
+      "captures": [
+        "after-small-mobile-en-default-font-100percent.png",
+        "after-catalog-small-mobile-en-default-font-100percent.png",
+        "after-small-mobile-en-drawer-font-100percent.png"
+      ]
+    },
+    {
+      "scale": 2,
+      "language": "vi",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "initial_font_px": 32,
+      "narrow_reflow_required": true,
+      "home": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 3493,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 225,
+          "bottom": 225,
+          "right": 390
+        },
+        "hero": {
+          "x": 36,
+          "y": 801.375,
+          "width": 318,
+          "height": 717.609375,
+          "bottom": 1518.984375,
+          "right": 354
+        },
+        "continue_strip": {
+          "x": 36,
+          "y": 1558.984375,
+          "width": 318,
+          "height": 462,
+          "bottom": 2020.984375,
+          "right": 354
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 663,
+          "width": 390,
+          "height": 181,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 225,
+          "width": 390,
+          "height": 3268.171875,
+          "bottom": 3493.171875,
+          "right": 390
+        },
+        "main_bottom_padding": 192,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 36,
+            "y": 2379.359375,
+            "width": 318,
+            "height": 317.859375,
+            "bottom": 2697.21875,
+            "right": 354
+          },
+          {
+            "x": 36,
+            "y": 2741.21875,
+            "width": 318,
+            "height": 351.953125,
+            "bottom": 3093.171875,
+            "right": 354
+          }
+        ],
+        "grid_columns": "318px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 68,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 28,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 16,
+              "width": 202.734375,
+              "height": 88,
+              "bottom": 104,
+              "right": 238.734375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 93,
+              "y": 142,
+              "width": 165,
+              "height": 44,
+              "bottom": 186,
+              "right": 258
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 266,
+              "y": 120,
+              "width": 88,
+              "height": 88,
+              "bottom": 208,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 16,
+              "y": 680,
+              "width": 119.328125,
+              "height": 148,
+              "bottom": 828,
+              "right": 135.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 135.328125,
+              "y": 680,
+              "width": 119.328125,
+              "height": 148,
+              "bottom": 828,
+              "right": 254.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 254.65625,
+              "y": 680,
+              "width": 119.34375,
+              "height": 148,
+              "bottom": 828,
+              "right": 374
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 657.375,
+              "width": 318,
+              "height": 80,
+              "bottom": 737.375,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 52,
+              "y": 1382.984375,
+              "width": 286,
+              "height": 120,
+              "bottom": 1502.984375,
+              "right": 338
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2251.359375,
+              "width": 318,
+              "height": 88,
+              "bottom": 2339.359375,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2379.359375,
+              "width": 318,
+              "height": 139.765625,
+              "bottom": 2519.125,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2525.125,
+              "width": 318,
+              "height": 44,
+              "bottom": 2569.125,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2741.21875,
+              "width": 318,
+              "height": 139.765625,
+              "bottom": 2880.984375,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2886.984375,
+              "width": 318,
+              "height": 44,
+              "bottom": 2930.984375,
+              "right": 354
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      },
+      "library": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 2773,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 225,
+          "bottom": 225,
+          "right": 390
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 36,
+          "y": 598.59375,
+          "width": 318,
+          "height": 462,
+          "bottom": 1060.59375,
+          "right": 354
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 663,
+          "width": 390,
+          "height": 181,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 225,
+          "width": 390,
+          "height": 2547.59375,
+          "bottom": 2772.59375,
+          "right": 390
+        },
+        "main_bottom_padding": 192,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 36,
+            "y": 1866.78125,
+            "width": 318,
+            "height": 317.859375,
+            "bottom": 2184.640625,
+            "right": 354
+          },
+          {
+            "x": 36,
+            "y": 2228.640625,
+            "width": 318,
+            "height": 351.953125,
+            "bottom": 2580.59375,
+            "right": 354
+          }
+        ],
+        "grid_columns": "318px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 64,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 28,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 16,
+              "width": 202.734375,
+              "height": 88,
+              "bottom": 104,
+              "right": 238.734375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 93,
+              "y": 142,
+              "width": 165,
+              "height": 44,
+              "bottom": 186,
+              "right": 258
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 266,
+              "y": 120,
+              "width": 88,
+              "height": 88,
+              "bottom": 208,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 16,
+              "y": 680,
+              "width": 119.328125,
+              "height": 148,
+              "bottom": 828,
+              "right": 135.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 135.328125,
+              "y": 680,
+              "width": 119.328125,
+              "height": 148,
+              "bottom": 828,
+              "right": 254.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 254.65625,
+              "y": 680,
+              "width": 119.34375,
+              "height": 148,
+              "bottom": 828,
+              "right": 374
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 506.59375,
+              "width": 318,
+              "height": 44,
+              "bottom": 550.59375,
+              "right": 354
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1256.59375,
+              "width": 145,
+              "height": 44,
+              "bottom": 1300.59375,
+              "right": 181
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 209,
+              "y": 1256.59375,
+              "width": 145,
+              "height": 44,
+              "bottom": 1300.59375,
+              "right": 354
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1412.59375,
+              "width": 145,
+              "height": 44,
+              "bottom": 1456.59375,
+              "right": 181
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 209,
+              "y": 1412.59375,
+              "width": 145,
+              "height": 44,
+              "bottom": 1456.59375,
+              "right": 354
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1528.59375,
+              "width": 145,
+              "height": 44,
+              "bottom": 1572.59375,
+              "right": 181
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1600.59375,
+              "width": 184.03125,
+              "height": 44,
+              "bottom": 1644.59375,
+              "right": 220.03125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1866.78125,
+              "width": 318,
+              "height": 139.765625,
+              "bottom": 2006.546875,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2012.546875,
+              "width": 318,
+              "height": 44,
+              "bottom": 2056.546875,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2228.640625,
+              "width": 318,
+              "height": 139.765625,
+              "bottom": 2368.40625,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2374.40625,
+              "width": 318,
+              "height": 44,
+              "bottom": 2418.40625,
+              "right": 354
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      },
+      "drawer": {
+        "open": true,
+        "scroll_width": 326,
+        "client_width": 326,
+        "focus_inside": true
+      },
+      "narrow_usability": {
+        "home": {
+          "navigation": [
+            {
+              "text": "Trang ch\u00ednh",
+              "words": [
+                {
+                  "text": "Trang",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ch\u00ednh",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Th\u01b0 vi\u1ec7n",
+              "words": [
+                {
+                  "text": "Th\u01b0",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "vi\u1ec7n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "T\u00e0i kho\u1ea3n",
+              "words": [
+                {
+                  "text": "T\u00e0i",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "kho\u1ea3n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [
+            {
+              "text": "Kh\u00e1m ph\u00e1 game",
+              "words": [
+                {
+                  "text": "Kh\u00e1m",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ph\u00e1",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "game",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "hero": {
+            "inner_width": 318,
+            "copy": {
+              "x": 36,
+              "y": 801.375,
+              "width": 318,
+              "height": 717.609375,
+              "bottom": 1518.984375,
+              "right": 354
+            },
+            "copy_inner_width": 286,
+            "heading": {
+              "x": 52,
+              "y": 911.375,
+              "width": 286,
+              "height": 276.4375,
+              "bottom": 1187.8125,
+              "right": 338
+            }
+          },
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 254,
+            "icon": {
+              "x": 68,
+              "y": 1590.984375,
+              "width": 88,
+              "height": 88,
+              "bottom": 1678.984375,
+              "right": 156
+            },
+            "copy": {
+              "x": 68,
+              "y": 1702.984375,
+              "width": 254,
+              "height": 286,
+              "bottom": 1988.984375,
+              "right": 322
+            }
+          }
+        },
+        "library": {
+          "navigation": [
+            {
+              "text": "Trang ch\u00ednh",
+              "words": [
+                {
+                  "text": "Trang",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ch\u00ednh",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Th\u01b0 vi\u1ec7n",
+              "words": [
+                {
+                  "text": "Th\u01b0",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "vi\u1ec7n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "T\u00e0i kho\u1ea3n",
+              "words": [
+                {
+                  "text": "T\u00e0i",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "kho\u1ea3n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [],
+          "hero": null,
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 254,
+            "icon": {
+              "x": 68,
+              "y": 630.59375,
+              "width": 88,
+              "height": 88,
+              "bottom": 718.59375,
+              "right": 156
+            },
+            "copy": {
+              "x": 68,
+              "y": 742.59375,
+              "width": 254,
+              "height": 286,
+              "bottom": 1028.59375,
+              "right": 322
+            }
+          }
+        }
+      },
+      "captures": [
+        "after-mobile-vi-default-font-200percent.png",
+        "after-catalog-mobile-vi-default-font-200percent.png",
+        "after-mobile-vi-drawer-font-200percent.png"
+      ]
+    },
+    {
+      "scale": 2,
+      "language": "en",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "initial_font_px": 32,
+      "narrow_reflow_required": true,
+      "home": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 3601,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 225,
+          "bottom": 225,
+          "right": 390
+        },
+        "hero": {
+          "x": 36,
+          "y": 771.375,
+          "width": 318,
+          "height": 717.609375,
+          "bottom": 1488.984375,
+          "right": 354
+        },
+        "continue_strip": {
+          "x": 36,
+          "y": 1528.984375,
+          "width": 318,
+          "height": 492,
+          "bottom": 2020.984375,
+          "right": 354
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 700,
+          "width": 390,
+          "height": 144,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 225,
+          "width": 390,
+          "height": 3376.359375,
+          "bottom": 3601.359375,
+          "right": 390
+        },
+        "main_bottom_padding": 192,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 36,
+            "y": 2379.359375,
+            "width": 318,
+            "height": 351.953125,
+            "bottom": 2731.3125,
+            "right": 354
+          },
+          {
+            "x": 36,
+            "y": 2775.3125,
+            "width": 318,
+            "height": 386.046875,
+            "bottom": 3161.359375,
+            "right": 354
+          }
+        ],
+        "grid_columns": "318px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 68,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 28,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 16,
+              "width": 202.734375,
+              "height": 88,
+              "bottom": 104,
+              "right": 238.734375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 93,
+              "y": 142,
+              "width": 165,
+              "height": 44,
+              "bottom": 186,
+              "right": 258
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 266,
+              "y": 120,
+              "width": 88,
+              "height": 88,
+              "bottom": 208,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 16,
+              "y": 717,
+              "width": 119.328125,
+              "height": 111,
+              "bottom": 828,
+              "right": 135.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 135.328125,
+              "y": 717,
+              "width": 119.328125,
+              "height": 111,
+              "bottom": 828,
+              "right": 254.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 254.65625,
+              "y": 717,
+              "width": 119.34375,
+              "height": 111,
+              "bottom": 828,
+              "right": 374
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 627.375,
+              "width": 318,
+              "height": 80,
+              "bottom": 707.375,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 52,
+              "y": 1352.984375,
+              "width": 286,
+              "height": 120,
+              "bottom": 1472.984375,
+              "right": 338
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2251.359375,
+              "width": 302.5,
+              "height": 88,
+              "bottom": 2339.359375,
+              "right": 338.5
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2379.359375,
+              "width": 318,
+              "height": 139.765625,
+              "bottom": 2519.125,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2525.125,
+              "width": 318,
+              "height": 44,
+              "bottom": 2569.125,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2775.3125,
+              "width": 318,
+              "height": 139.765625,
+              "bottom": 2915.078125,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2921.078125,
+              "width": 318,
+              "height": 44,
+              "bottom": 2965.078125,
+              "right": 354
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "en"
+      },
+      "library": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "document_width": 390,
+        "body_width": 390,
+        "scroll_height": 2714,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 225,
+          "bottom": 225,
+          "right": 390
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 36,
+          "y": 521.796875,
+          "width": 318,
+          "height": 492,
+          "bottom": 1013.796875,
+          "right": 354
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 700,
+          "width": 390,
+          "height": 144,
+          "bottom": 844,
+          "right": 390
+        },
+        "main": {
+          "x": 0,
+          "y": 225,
+          "width": 390,
+          "height": 2488.984375,
+          "bottom": 2713.984375,
+          "right": 390
+        },
+        "main_bottom_padding": 192,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 36,
+            "y": 1739.984375,
+            "width": 318,
+            "height": 351.953125,
+            "bottom": 2091.9375,
+            "right": 354
+          },
+          {
+            "x": 36,
+            "y": 2135.9375,
+            "width": 318,
+            "height": 386.046875,
+            "bottom": 2521.984375,
+            "right": 354
+          }
+        ],
+        "grid_columns": "318px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 64,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 28,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 16,
+              "width": 202.734375,
+              "height": 88,
+              "bottom": 104,
+              "right": 238.734375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 93,
+              "y": 142,
+              "width": 165,
+              "height": 44,
+              "bottom": 186,
+              "right": 258
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 266,
+              "y": 120,
+              "width": 88,
+              "height": 88,
+              "bottom": 208,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 16,
+              "y": 717,
+              "width": 119.328125,
+              "height": 111,
+              "bottom": 828,
+              "right": 135.328125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 135.328125,
+              "y": 717,
+              "width": 119.328125,
+              "height": 111,
+              "bottom": 828,
+              "right": 254.65625
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 254.65625,
+              "y": 717,
+              "width": 119.34375,
+              "height": 111,
+              "bottom": 828,
+              "right": 374
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 429.796875,
+              "width": 318,
+              "height": 44,
+              "bottom": 473.796875,
+              "right": 354
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1169.796875,
+              "width": 145,
+              "height": 44,
+              "bottom": 1213.796875,
+              "right": 181
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 209,
+              "y": 1169.796875,
+              "width": 145,
+              "height": 44,
+              "bottom": 1213.796875,
+              "right": 354
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1285.796875,
+              "width": 145,
+              "height": 44,
+              "bottom": 1329.796875,
+              "right": 181
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 209,
+              "y": 1285.796875,
+              "width": 145,
+              "height": 44,
+              "bottom": 1329.796875,
+              "right": 354
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1401.796875,
+              "width": 145,
+              "height": 44,
+              "bottom": 1445.796875,
+              "right": 181
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1473.796875,
+              "width": 202.921875,
+              "height": 44,
+              "bottom": 1517.796875,
+              "right": 238.921875
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1739.984375,
+              "width": 318,
+              "height": 139.765625,
+              "bottom": 1879.75,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1885.75,
+              "width": 318,
+              "height": 44,
+              "bottom": 1929.75,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2135.9375,
+              "width": 318,
+              "height": 139.765625,
+              "bottom": 2275.703125,
+              "right": 354
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2281.703125,
+              "width": 318,
+              "height": 44,
+              "bottom": 2325.703125,
+              "right": 354
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "en"
+      },
+      "drawer": {
+        "open": true,
+        "scroll_width": 326,
+        "client_width": 326,
+        "focus_inside": true
+      },
+      "narrow_usability": {
+        "home": {
+          "navigation": [
+            {
+              "text": "Home",
+              "words": [
+                {
+                  "text": "Home",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Library",
+              "words": [
+                {
+                  "text": "Library",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Account",
+              "words": [
+                {
+                  "text": "Account",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [
+            {
+              "text": "Explore games",
+              "words": [
+                {
+                  "text": "Explore",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "games",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "hero": {
+            "inner_width": 318,
+            "copy": {
+              "x": 36,
+              "y": 771.375,
+              "width": 318,
+              "height": 717.609375,
+              "bottom": 1488.984375,
+              "right": 354
+            },
+            "copy_inner_width": 286,
+            "heading": {
+              "x": 52,
+              "y": 881.375,
+              "width": 286,
+              "height": 276.4375,
+              "bottom": 1157.8125,
+              "right": 338
+            }
+          },
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 254,
+            "icon": {
+              "x": 68,
+              "y": 1560.984375,
+              "width": 88,
+              "height": 88,
+              "bottom": 1648.984375,
+              "right": 156
+            },
+            "copy": {
+              "x": 68,
+              "y": 1672.984375,
+              "width": 254,
+              "height": 316,
+              "bottom": 1988.984375,
+              "right": 322
+            }
+          }
+        },
+        "library": {
+          "navigation": [
+            {
+              "text": "Home",
+              "words": [
+                {
+                  "text": "Home",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Library",
+              "words": [
+                {
+                  "text": "Library",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Account",
+              "words": [
+                {
+                  "text": "Account",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [],
+          "hero": null,
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 254,
+            "icon": {
+              "x": 68,
+              "y": 553.796875,
+              "width": 88,
+              "height": 88,
+              "bottom": 641.796875,
+              "right": 156
+            },
+            "copy": {
+              "x": 68,
+              "y": 665.796875,
+              "width": 254,
+              "height": 316,
+              "bottom": 981.796875,
+              "right": 322
+            }
+          }
+        }
+      },
+      "captures": [
+        "after-mobile-en-default-font-200percent.png",
+        "after-catalog-mobile-en-default-font-200percent.png",
+        "after-mobile-en-drawer-font-200percent.png"
+      ]
+    },
+    {
+      "scale": 2,
+      "language": "vi",
+      "viewport": {
+        "width": 320,
+        "height": 640
+      },
+      "initial_font_px": 32,
+      "narrow_reflow_required": true,
+      "home": {
+        "viewport": {
+          "width": 320,
+          "height": 640,
+          "dpr": 1
+        },
+        "document_width": 320,
+        "body_width": 320,
+        "scroll_height": 4035,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 277,
+          "bottom": 277,
+          "right": 320
+        },
+        "hero": {
+          "x": 36,
+          "y": 971.5625,
+          "width": 248,
+          "height": 865.109375,
+          "bottom": 1836.671875,
+          "right": 284
+        },
+        "continue_strip": {
+          "x": 36,
+          "y": 1876.671875,
+          "width": 248,
+          "height": 572,
+          "bottom": 2448.671875,
+          "right": 284
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 459,
+          "width": 320,
+          "height": 181,
+          "bottom": 640,
+          "right": 320
+        },
+        "main": {
+          "x": 0,
+          "y": 277,
+          "width": 320,
+          "height": 3757.703125,
+          "bottom": 4034.703125,
+          "right": 320
+        },
+        "main_bottom_padding": 192,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 36,
+            "y": 2874.234375,
+            "width": 248,
+            "height": 321.1875,
+            "bottom": 3195.421875,
+            "right": 284
+          },
+          {
+            "x": 36,
+            "y": 3239.421875,
+            "width": 248,
+            "height": 355.28125,
+            "bottom": 3594.703125,
+            "right": 284
+          }
+        ],
+        "grid_columns": "248px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 68,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 28,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 16,
+              "width": 202.734375,
+              "height": 88,
+              "bottom": 104,
+              "right": 238.734375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 119,
+              "y": 120,
+              "width": 165,
+              "height": 44,
+              "bottom": 164,
+              "right": 284
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 196,
+              "y": 172,
+              "width": 88,
+              "height": 88,
+              "bottom": 260,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 16,
+              "y": 476,
+              "width": 96,
+              "height": 148,
+              "bottom": 624,
+              "right": 112
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 112,
+              "y": 476,
+              "width": 96,
+              "height": 148,
+              "bottom": 624,
+              "right": 208
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 208,
+              "y": 476,
+              "width": 96,
+              "height": 148,
+              "bottom": 624,
+              "right": 304
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 827.5625,
+              "width": 248,
+              "height": 80,
+              "bottom": 907.5625,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 52,
+              "y": 1660.671875,
+              "width": 216,
+              "height": 160,
+              "bottom": 1820.671875,
+              "right": 268
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2746.234375,
+              "width": 248,
+              "height": 88,
+              "bottom": 2834.234375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2874.234375,
+              "width": 248,
+              "height": 109,
+              "bottom": 2983.234375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2989.234375,
+              "width": 248,
+              "height": 44,
+              "bottom": 3033.234375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 3239.421875,
+              "width": 248,
+              "height": 109,
+              "bottom": 3348.421875,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 3354.421875,
+              "width": 248,
+              "height": 44,
+              "bottom": 3398.421875,
+              "right": 284
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      },
+      "library": {
+        "viewport": {
+          "width": 320,
+          "height": 640,
+          "dpr": 1
+        },
+        "document_width": 320,
+        "body_width": 320,
+        "scroll_height": 2941,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 277,
+          "bottom": 277,
+          "right": 320
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 36,
+          "y": 650.59375,
+          "width": 248,
+          "height": 572,
+          "bottom": 1222.59375,
+          "right": 284
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 459,
+          "width": 320,
+          "height": 181,
+          "bottom": 640,
+          "right": 320
+        },
+        "main": {
+          "x": 0,
+          "y": 277,
+          "width": 320,
+          "height": 2664.25,
+          "bottom": 2941.25,
+          "right": 320
+        },
+        "main_bottom_padding": 192,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 36,
+            "y": 2028.78125,
+            "width": 248,
+            "height": 321.1875,
+            "bottom": 2349.96875,
+            "right": 284
+          },
+          {
+            "x": 36,
+            "y": 2393.96875,
+            "width": 248,
+            "height": 355.28125,
+            "bottom": 2749.25,
+            "right": 284
+          }
+        ],
+        "grid_columns": "248px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 64,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 28,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 16,
+              "width": 202.734375,
+              "height": 88,
+              "bottom": 104,
+              "right": 238.734375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 119,
+              "y": 120,
+              "width": 165,
+              "height": 44,
+              "bottom": 164,
+              "right": 284
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 196,
+              "y": 172,
+              "width": 88,
+              "height": 88,
+              "bottom": 260,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 16,
+              "y": 476,
+              "width": 96,
+              "height": 148,
+              "bottom": 624,
+              "right": 112
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 112,
+              "y": 476,
+              "width": 96,
+              "height": 148,
+              "bottom": 624,
+              "right": 208
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 208,
+              "y": 476,
+              "width": 96,
+              "height": 148,
+              "bottom": 624,
+              "right": 304
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 558.59375,
+              "width": 248,
+              "height": 44,
+              "bottom": 602.59375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1418.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1462.59375,
+              "right": 146
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 174,
+              "y": 1418.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1462.59375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1574.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1618.59375,
+              "right": 146
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 174,
+              "y": 1574.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1618.59375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1690.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1734.59375,
+              "right": 146
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1762.59375,
+              "width": 184.03125,
+              "height": 44,
+              "bottom": 1806.59375,
+              "right": 220.03125
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2028.78125,
+              "width": 248,
+              "height": 109,
+              "bottom": 2137.78125,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2143.78125,
+              "width": 248,
+              "height": 44,
+              "bottom": 2187.78125,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2393.96875,
+              "width": 248,
+              "height": 109,
+              "bottom": 2502.96875,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2508.96875,
+              "width": 248,
+              "height": 44,
+              "bottom": 2552.96875,
+              "right": 284
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "vi"
+      },
+      "drawer": {
+        "open": true,
+        "scroll_width": 256,
+        "client_width": 256,
+        "focus_inside": true
+      },
+      "narrow_usability": {
+        "home": {
+          "navigation": [
+            {
+              "text": "Trang ch\u00ednh",
+              "words": [
+                {
+                  "text": "Trang",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ch\u00ednh",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Th\u01b0 vi\u1ec7n",
+              "words": [
+                {
+                  "text": "Th\u01b0",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "vi\u1ec7n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "T\u00e0i kho\u1ea3n",
+              "words": [
+                {
+                  "text": "T\u00e0i",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "kho\u1ea3n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [
+            {
+              "text": "Kh\u00e1m ph\u00e1 game",
+              "words": [
+                {
+                  "text": "Kh\u00e1m",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ph\u00e1",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "game",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "hero": {
+            "inner_width": 248,
+            "copy": {
+              "x": 36,
+              "y": 971.5625,
+              "width": 248,
+              "height": 865.109375,
+              "bottom": 1836.671875,
+              "right": 284
+            },
+            "copy_inner_width": 216,
+            "heading": {
+              "x": 52,
+              "y": 1081.5625,
+              "width": 216,
+              "height": 345.546875,
+              "bottom": 1427.109375,
+              "right": 268
+            }
+          },
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 184,
+            "icon": {
+              "x": 68,
+              "y": 1908.671875,
+              "width": 88,
+              "height": 88,
+              "bottom": 1996.671875,
+              "right": 156
+            },
+            "copy": {
+              "x": 68,
+              "y": 2020.671875,
+              "width": 184,
+              "height": 396,
+              "bottom": 2416.671875,
+              "right": 252
+            }
+          }
+        },
+        "library": {
+          "navigation": [
+            {
+              "text": "Trang ch\u00ednh",
+              "words": [
+                {
+                  "text": "Trang",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "ch\u00ednh",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Th\u01b0 vi\u1ec7n",
+              "words": [
+                {
+                  "text": "Th\u01b0",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "vi\u1ec7n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "T\u00e0i kho\u1ea3n",
+              "words": [
+                {
+                  "text": "T\u00e0i",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "kho\u1ea3n",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [],
+          "hero": null,
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 184,
+            "icon": {
+              "x": 68,
+              "y": 682.59375,
+              "width": 88,
+              "height": 88,
+              "bottom": 770.59375,
+              "right": 156
+            },
+            "copy": {
+              "x": 68,
+              "y": 794.59375,
+              "width": 184,
+              "height": 396,
+              "bottom": 1190.59375,
+              "right": 252
+            }
+          }
+        }
+      },
+      "captures": [
+        "after-small-mobile-vi-default-font-200percent.png",
+        "after-catalog-small-mobile-vi-default-font-200percent.png",
+        "after-small-mobile-vi-drawer-font-200percent.png"
+      ]
+    },
+    {
+      "scale": 2,
+      "language": "en",
+      "viewport": {
+        "width": 320,
+        "height": 640
+      },
+      "initial_font_px": 32,
+      "narrow_reflow_required": true,
+      "home": {
+        "viewport": {
+          "width": 320,
+          "height": 640,
+          "dpr": 1
+        },
+        "document_width": 320,
+        "body_width": 320,
+        "scroll_height": 3847,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 277,
+          "bottom": 277,
+          "right": 320
+        },
+        "hero": {
+          "x": 36,
+          "y": 823.375,
+          "width": 248,
+          "height": 825.109375,
+          "bottom": 1648.484375,
+          "right": 284
+        },
+        "continue_strip": {
+          "x": 36,
+          "y": 1688.484375,
+          "width": 248,
+          "height": 532,
+          "bottom": 2220.484375,
+          "right": 284
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 496,
+          "width": 320,
+          "height": 144,
+          "bottom": 640,
+          "right": 320
+        },
+        "main": {
+          "x": 0,
+          "y": 277,
+          "width": 320,
+          "height": 3569.515625,
+          "bottom": 3846.515625,
+          "right": 320
+        },
+        "main_bottom_padding": 192,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 36,
+            "y": 2646.046875,
+            "width": 248,
+            "height": 321.1875,
+            "bottom": 2967.234375,
+            "right": 284
+          },
+          {
+            "x": 36,
+            "y": 3011.234375,
+            "width": 248,
+            "height": 355.28125,
+            "bottom": 3366.515625,
+            "right": 284
+          }
+        ],
+        "grid_columns": "248px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 68,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 28,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 16,
+              "width": 202.734375,
+              "height": 88,
+              "bottom": 104,
+              "right": 238.734375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 119,
+              "y": 120,
+              "width": 165,
+              "height": 44,
+              "bottom": 164,
+              "right": 284
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 196,
+              "y": 172,
+              "width": 88,
+              "height": 88,
+              "bottom": 260,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 16,
+              "y": 513,
+              "width": 96,
+              "height": 111,
+              "bottom": 624,
+              "right": 112
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 112,
+              "y": 513,
+              "width": 96,
+              "height": 111,
+              "bottom": 624,
+              "right": 208
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 208,
+              "y": 513,
+              "width": 96,
+              "height": 111,
+              "bottom": 624,
+              "right": 304
+            }
+          },
+          {
+            "tag": "A",
+            "class": "public-account",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 679.375,
+              "width": 248,
+              "height": 80,
+              "bottom": 759.375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "btn btn--filled",
+            "disabled": false,
+            "rect": {
+              "x": 52,
+              "y": 1512.484375,
+              "width": 216,
+              "height": 120,
+              "bottom": 1632.484375,
+              "right": 268
+            }
+          },
+          {
+            "tag": "A",
+            "class": "text-link",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2518.046875,
+              "width": 248,
+              "height": 88,
+              "bottom": 2606.046875,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2646.046875,
+              "width": 248,
+              "height": 109,
+              "bottom": 2755.046875,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2761.046875,
+              "width": 248,
+              "height": 44,
+              "bottom": 2805.046875,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 3011.234375,
+              "width": 248,
+              "height": 109,
+              "bottom": 3120.234375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 3126.234375,
+              "width": 248,
+              "height": 44,
+              "bottom": 3170.234375,
+              "right": 284
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "en"
+      },
+      "library": {
+        "viewport": {
+          "width": 320,
+          "height": 640,
+          "dpr": 1
+        },
+        "document_width": 320,
+        "body_width": 320,
+        "scroll_height": 2821,
+        "scroll_y": 0,
+        "sidebar": null,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 277,
+          "bottom": 277,
+          "right": 320
+        },
+        "hero": null,
+        "continue_strip": {
+          "x": 36,
+          "y": 650.59375,
+          "width": 248,
+          "height": 532,
+          "bottom": 1182.59375,
+          "right": 284
+        },
+        "bottom_nav": {
+          "x": 0,
+          "y": 496,
+          "width": 320,
+          "height": 144,
+          "bottom": 640,
+          "right": 320
+        },
+        "main": {
+          "x": 0,
+          "y": 277,
+          "width": 320,
+          "height": 2544.25,
+          "bottom": 2821.25,
+          "right": 320
+        },
+        "main_bottom_padding": 192,
+        "bottom_nav_position": "fixed",
+        "cards": [
+          {
+            "x": 36,
+            "y": 1908.78125,
+            "width": 248,
+            "height": 321.1875,
+            "bottom": 2229.96875,
+            "right": 284
+          },
+          {
+            "x": 36,
+            "y": 2273.96875,
+            "width": 248,
+            "height": 355.28125,
+            "bottom": 2629.25,
+            "right": 284
+          }
+        ],
+        "grid_columns": "248px",
+        "title": {
+          "font_family": "Georgia, \"Noto Serif\", \"Times New Roman\", serif",
+          "font_size": 64,
+          "font_weight": "400"
+        },
+        "body": {
+          "font_family": "ui-sans-serif, system-ui, sans-serif",
+          "font_size": 28,
+          "font_weight": "400"
+        },
+        "controls": [
+          {
+            "tag": "A",
+            "class": "brand",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 16,
+              "width": 202.734375,
+              "height": 88,
+              "bottom": 104,
+              "right": 238.734375
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 119,
+              "y": 120,
+              "width": 165,
+              "height": 44,
+              "bottom": 164,
+              "right": 284
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "icon-button mobile-menu-button",
+            "disabled": false,
+            "rect": {
+              "x": 196,
+              "y": 172,
+              "width": 88,
+              "height": 88,
+              "bottom": 260,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 16,
+              "y": 513,
+              "width": 96,
+              "height": 111,
+              "bottom": 624,
+              "right": 112
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 112,
+              "y": 513,
+              "width": 96,
+              "height": 111,
+              "bottom": 624,
+              "right": 208
+            }
+          },
+          {
+            "tag": "A",
+            "class": "shell-link",
+            "disabled": false,
+            "rect": {
+              "x": 208,
+              "y": 513,
+              "width": 96,
+              "height": 111,
+              "bottom": 624,
+              "right": 304
+            }
+          },
+          {
+            "tag": "INPUT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 558.59375,
+              "width": 248,
+              "height": 44,
+              "bottom": 602.59375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1338.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1382.59375,
+              "right": 146
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 174,
+              "y": 1338.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1382.59375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1454.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1498.59375,
+              "right": 146
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 174,
+              "y": 1454.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1498.59375,
+              "right": 284
+            }
+          },
+          {
+            "tag": "SELECT",
+            "class": "field__control",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1570.59375,
+              "width": 110,
+              "height": 44,
+              "bottom": 1614.59375,
+              "right": 146
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "class": "btn catalog__reset",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1642.59375,
+              "width": 202.921875,
+              "height": 44,
+              "bottom": 1686.59375,
+              "right": 238.921875
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 1908.78125,
+              "width": 248,
+              "height": 109,
+              "bottom": 2017.78125,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2023.78125,
+              "width": 248,
+              "height": 44,
+              "bottom": 2067.78125,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__cover",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2273.96875,
+              "width": 248,
+              "height": 109,
+              "bottom": 2382.96875,
+              "right": 284
+            }
+          },
+          {
+            "tag": "A",
+            "class": "card__action",
+            "disabled": false,
+            "rect": {
+              "x": 36,
+              "y": 2388.96875,
+              "width": 248,
+              "height": 44,
+              "bottom": 2432.96875,
+              "right": 284
+            }
+          }
+        ],
+        "clipped_text": [],
+        "scheme": "light",
+        "lang": "en"
+      },
+      "drawer": {
+        "open": true,
+        "scroll_width": 256,
+        "client_width": 256,
+        "focus_inside": true
+      },
+      "narrow_usability": {
+        "home": {
+          "navigation": [
+            {
+              "text": "Home",
+              "words": [
+                {
+                  "text": "Home",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Library",
+              "words": [
+                {
+                  "text": "Library",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Account",
+              "words": [
+                {
+                  "text": "Account",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [
+            {
+              "text": "Explore games",
+              "words": [
+                {
+                  "text": "Explore",
+                  "line_count": 1,
+                  "outside_target": false
+                },
+                {
+                  "text": "games",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "hero": {
+            "inner_width": 248,
+            "copy": {
+              "x": 36,
+              "y": 823.375,
+              "width": 248,
+              "height": 825.109375,
+              "bottom": 1648.484375,
+              "right": 284
+            },
+            "copy_inner_width": 216,
+            "heading": {
+              "x": 52,
+              "y": 933.375,
+              "width": 216,
+              "height": 345.546875,
+              "bottom": 1278.921875,
+              "right": 268
+            }
+          },
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 184,
+            "icon": {
+              "x": 68,
+              "y": 1720.484375,
+              "width": 88,
+              "height": 88,
+              "bottom": 1808.484375,
+              "right": 156
+            },
+            "copy": {
+              "x": 68,
+              "y": 1832.484375,
+              "width": 184,
+              "height": 356,
+              "bottom": 2188.484375,
+              "right": 252
+            }
+          }
+        },
+        "library": {
+          "navigation": [
+            {
+              "text": "Home",
+              "words": [
+                {
+                  "text": "Home",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Library",
+              "words": [
+                {
+                  "text": "Library",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            },
+            {
+              "text": "Account",
+              "words": [
+                {
+                  "text": "Account",
+                  "line_count": 1,
+                  "outside_target": false
+                }
+              ]
+            }
+          ],
+          "cta": [],
+          "hero": null,
+          "visible_hero_art": [],
+          "continue": {
+            "inner_width": 184,
+            "icon": {
+              "x": 68,
+              "y": 682.59375,
+              "width": 88,
+              "height": 88,
+              "bottom": 770.59375,
+              "right": 156
+            },
+            "copy": {
+              "x": 68,
+              "y": 794.59375,
+              "width": 184,
+              "height": 356,
+              "bottom": 1150.59375,
+              "right": 252
+            }
+          }
+        }
+      },
+      "captures": [
+        "after-small-mobile-en-default-font-200percent.png",
+        "after-catalog-small-mobile-en-default-font-200percent.png",
+        "after-small-mobile-en-drawer-font-200percent.png"
+      ]
+    }
+  ],
+  "failures": [],
+  "capture_note": "Home and catalog are full-page rasters; fixed navigation is painted at its initial viewport position. Actual viewport/slot geometry is measured separately."
+}

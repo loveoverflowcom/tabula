@@ -1,0 +1,50 @@
+{
+  "owner": "tools/tests/check-loading-budgets.py::shell_budget",
+  "unchanged_limit_bytes": 900000,
+  "actual_shell_wasm": [
+    {
+      "path": "tabula-web-5370facd944d71f8_bg.wasm",
+      "bytes": 737400
+    }
+  ],
+  "status": "PASS",
+  "result": {
+    "evidence": "static emitted dependency inventory, not browser request waterfall",
+    "unique_resource_count_including_document": 5,
+    "raw_bytes": 882448,
+    "individual_gzip9_sum": 313000,
+    "resources": [
+      {
+        "path": "index.html",
+        "bytes": 1647,
+        "gzip9_bytes": 1001,
+        "sha256": "7e9b77fec308feb72e37269adfc4438a7aa05b47ed74b6dc81e5a824895d4943"
+      },
+      {
+        "path": "app-cc11be02f777f39d.css",
+        "bytes": 31518,
+        "gzip9_bytes": 5289,
+        "sha256": "9301f00b9738ee99804a1b25b3ca330279b0d239afcd6634932dcc238d737ec3"
+      },
+      {
+        "path": "tabula-web-5370facd944d71f8.js",
+        "bytes": 57928,
+        "gzip9_bytes": 9456,
+        "sha256": "a6782776378ecc9ec44a50e70a9ac75564a5f8beaad5bc4ea8dbcb26f7e4dd87"
+      },
+      {
+        "path": "tabula-web-5370facd944d71f8_bg.wasm",
+        "bytes": 737400,
+        "gzip9_bytes": 293658,
+        "sha256": "0a1e52ac980307b574afcff0381b6d990ba845cb89170ccd356e9a3cb8e48314"
+      },
+      {
+        "path": "tokens-bc39b86a977675d7.css",
+        "bytes": 53955,
+        "gzip9_bytes": 3596,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      }
+    ],
+    "gameplay_asset_references": 0
+  }
+}
