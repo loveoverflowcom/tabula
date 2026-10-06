@@ -21,7 +21,7 @@ def main():
           'started_at_utc':utc(),'scope':'actual public Leptos,320x640 EN/light,DPR1, independent Chromium32px user font; no physical-device claim',
           'build_command':'TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online',
           'builds':[{'path':x.relative_to(ROOT/'apps/web/dist').as_posix(),'bytes':x.stat().st_size,'sha256':sha(x)} for x in sorted((ROOT/'apps/web/dist').rglob('*')) if x.is_file()],
-          'fixtures':'anonymous public shell; no real account/provider; no page/HTTP/layout mocks','playwright':version('playwright'),'captures':[],'checks':[]}
+          'measurement_timing':'geometry/focus sampled after the original screenshot frame, matching maintained desktop helper','fixtures':'anonymous public shell; no real account/provider; no page/HTTP/layout mocks','playwright':version('playwright'),'captures':[],'checks':[]}
     def save(): (OUT/'skip-link-provenance.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
     def capture(page,name,label):
         f=OUT/(name+'.png');b=page.screenshot(path=str(f),mask=[page.locator('input[type="password"],[data-secret],[data-private],[name*="token" i],[name*="csrf" i]')])
@@ -34,11 +34,11 @@ def main():
             try:
                 page=context.pages[0];probe=page.evaluate('parseFloat(getComputedStyle(document.documentElement).fontSize)');helper.require_font_preference(probe,32)
                 data.update(browser_version=context.browser.version,initial_font_probe_px=probe);save();helper.settle(page,origin+'/');helper.locale(page,'en')
-                before=measure(page);capture(page,'skip-unfocused-320-en-font200','actual before intentional keyboard focus')
+                capture(page,'skip-unfocused-320-en-font200','actual before intentional keyboard focus');before=measure(page)
                 data['checks'].append({'name':'unfocused skip-link fully above viewport','status':'PASS' if not before['active'] and not before['focus_visible'] and before['rect']['bottom']<=0.5 else 'FAIL','measurement':before})
-                page.keyboard.press('Tab');focused=measure(page);capture(page,'skip-focused-320-en-font200','actual first Tab focused skip-link')
+                page.keyboard.press('Tab');capture(page,'skip-focused-320-en-font200','actual first Tab focused skip-link');focused=measure(page)
                 data['checks'].append({'name':'first Tab fully reveals skip-link','status':'PASS' if focused['active'] and focused['focus_visible'] and focused['rect']['y']>=0 and focused['rect']['bottom']<=640 and focused['rect']['right']<=320.5 else 'FAIL','measurement':focused})
-                page.keyboard.press('Enter');main_focus=page.locator('main#main').evaluate('el=>el===document.activeElement');after=measure(page);capture(page,'skip-main-focused-320-en-font200','actual Enter transfers native fragment focus to main')
+                page.keyboard.press('Enter');capture(page,'skip-main-focused-320-en-font200','actual Enter transfers native fragment focus to main');main_focus=page.locator('main#main').evaluate('el=>el===document.activeElement');after=measure(page)
                 data['checks'].append({'name':'Enter focuses main and reconceals skip-link','status':'PASS' if main_focus and not after['active'] and after['rect']['bottom']<=0.5 else 'FAIL','main_focused':main_focus,'measurement':after})
                 data['status']='PASS' if all(x['status']=='PASS' for x in data['checks']) else 'FAIL';save()
             finally: context.close()
