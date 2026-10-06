@@ -857,13 +857,54 @@ test('pagehide disposes completed observations and blocks subsequent captures an
     assert.equal(h.timer.pending(), 0);
 });
 
-test('persisted pageshow disposes old observations while ordinary pageshow preserves them', async () => {
+test('persisted pageshow creates a fresh observation epoch and rejects every old binding', async () => {
     const { h, value, binding } = await observed();
     h.event('pageshow', { persisted: false });
     assert.equal((await read(h, binding, value)).ok, true);
-    h.event('pageshow', { persisted: true });
+    h.event('pagehide', { persisted: true });
     failure(await read(h, binding, value), 'document_disposed');
-    failure(await h.observer.bind(expected(), 'consumer-one'), 'document_disposed');
+    assert.equal(h.timer.pending(), 0);
+    h.event('pageshow', { persisted: true });
+    assert.notEqual(h.observer.identity().document, binding.document);
+    assert.equal(h.observer.identity().disposed, false);
+    failure(await read(h, binding, value), 'document_mismatch');
+    failure(h.observer.retireBody({ id: binding.id, owner: 'consumer-one', document: binding.document }), 'document_mismatch');
+    failure(await h.observer.bind(expected(), 'consumer-one'), 'request_not_observed');
+    // The exact same bytes and owner belong to a new request after restoration.
+    assert.equal(await h.window.fetch(URL_ONE, { method: 'POST', body: BODY }), value);
+    const fresh = await bound(h);
+    assert.notEqual(fresh.document, binding.document);
+    assert.deepEqual(plain(await read(h, fresh, value)), { ok: true, text: '{"frames":[]}' });
+    assert.equal(h.calls.length, 2, 'restoration keeps the original fetch invocation intact');
+    assert.equal(h.timer.pending(), 0);
+});
+
+test('late response and pending read from a retired epoch cannot poison restored observations', async () => {
+    const native = deferred();
+    const freshValue = response('{"fresh":true}');
+    let first = true;
+    const h = harness(() => first ? (first = false, native.promise) : Promise.resolve(freshValue));
+    const original = h.window.fetch(URL_ONE, { method: 'POST', body: BODY });
+    const old = await bound(h);
+    const pending = read(h, old, response());
+    await settle();
+    assert.ok(h.timer.pending() > 0);
+    h.event('pagehide', { persisted: true });
+    h.event('pageshow', { persisted: true });
+    failure(await pending, 'document_disposed');
+    assert.equal(h.timer.pending(), 0);
+    assert.equal(await h.window.fetch(URL_ONE, { method: 'POST', body: BODY }), freshValue);
+    const fresh = await bound(h);
+    // This would fail the old body budget if observed; its original caller still
+    // receives the same Response while the new epoch stays usable.
+    const late = response('x'.repeat(RESPONSE_LIMIT + 1));
+    native.resolve(late);
+    assert.equal(await original, late);
+    await settle();
+    assert.deepEqual(plain(await read(h, fresh, freshValue)), { ok: true, text: '{"fresh":true}' });
+    failure(await read(h, old, late), 'document_mismatch');
+    assert.equal(h.observer.identity().fatal, null);
+    assert.equal(h.timer.pending(), 0);
 });
 
 test('lifecycle disposal unblocks a pending read and clears its deadline', async () => {
