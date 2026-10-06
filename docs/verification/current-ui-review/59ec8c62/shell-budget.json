@@ -1,0 +1,12 @@
+{
+  "owner": "tools/tests/check-loading-budgets.py::shell_budget",
+  "unchanged_limit_bytes": 900000,
+  "actual_shell_wasm": [
+    {
+      "path": "tabula-web-f7779c91238dc4fd_bg.wasm",
+      "bytes": 947044
+    }
+  ],
+  "status": "FAIL",
+  "failure": "shell WASM raw budget exceeded"
+}

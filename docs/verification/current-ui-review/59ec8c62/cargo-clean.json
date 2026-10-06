@@ -1,0 +1,77 @@
+{
+  "started_at_utc": "2026-10-06T06:45:01.370467+00:00",
+  "scope": "User-requested Cargo clean, only explicitly owner-confirmed inactive generated targets",
+  "commands": [
+    {
+      "target_relative": "tabula-issue87/target",
+      "manifest_relative": "tabula-issue87/Cargo.toml",
+      "command": "cargo clean --locked --manifest-path tabula-issue87/Cargo.toml --target-dir tabula-issue87/target",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "     Removed 16314 files, 4.5GiB total\n",
+      "target_exists_after": false
+    },
+    {
+      "target_relative": "pr3-correction-target",
+      "manifest_relative": "tabula-pr3-correction/Cargo.toml",
+      "command": "cargo clean --locked --manifest-path tabula-pr3-correction/Cargo.toml --target-dir pr3-correction-target",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "     Removed 9480 files, 2.1GiB total\n",
+      "target_exists_after": false
+    },
+    {
+      "target_relative": "tabula-pr3/target",
+      "manifest_relative": "tabula-pr3/Cargo.toml",
+      "command": "cargo clean --locked --manifest-path tabula-pr3/Cargo.toml --target-dir tabula-pr3/target",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "     Removed 10896 files, 2.5GiB total\n",
+      "target_exists_after": false
+    },
+    {
+      "target_relative": "tabula-pr3-correction/target",
+      "manifest_relative": "tabula-pr3-correction/Cargo.toml",
+      "command": "cargo clean --locked --manifest-path tabula-pr3-correction/Cargo.toml --target-dir tabula-pr3-correction/target",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "     Removed 1 file, 355B total\n",
+      "target_exists_after": false
+    },
+    {
+      "target_relative": "issue87-bundle-target",
+      "manifest_relative": "tabula-issue87/Cargo.toml",
+      "command": "cargo clean --locked --manifest-path tabula-issue87/Cargo.toml --target-dir issue87-bundle-target",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "     Removed 4114 files, 865.4MiB total\n",
+      "target_exists_after": false
+    },
+    {
+      "target_relative": "issue87-named-target",
+      "manifest_relative": "tabula-issue87/Cargo.toml",
+      "command": "cargo clean --locked --manifest-path tabula-issue87/Cargo.toml --target-dir issue87-named-target",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "     Removed 2133 files, 557.5MiB total\n",
+      "target_exists_after": false
+    },
+    {
+      "target_relative": "issue87-bundle-tools-target",
+      "manifest_relative": "tabula-issue87/Cargo.toml",
+      "command": "cargo clean --locked --manifest-path tabula-issue87/Cargo.toml --target-dir issue87-bundle-tools-target",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "     Removed 3662 files, 896.6MiB total\n",
+      "target_exists_after": false
+    }
+  ],
+  "preserved": "source checkouts, unpushed files, all independent staged bundles/evidence/screenshots/logs/receipts/prototypes, toolchains and download/registry caches",
+  "source_status_unchanged": true,
+  "finished_at_utc": "2026-10-06T06:50:45.400530+00:00",
+  "status": "PASS",
+  "concurrent_cache_race": {
+    "status": "observed/recoverable",
+    "description": "An optimizer old-baseline all-features check started after the main target owner idle snapshot and collided with cleanup, failing generated debug/deps output writes. Source and independent evidence remained unchanged. No-default and WASM/symbol diagnostics were terminal; all-features did not pass and clippy was not reached. Further old-baseline retries were stopped."
+  }
+}

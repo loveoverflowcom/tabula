@@ -1,0 +1,496 @@
+{
+  "version": 1,
+  "inspected_at_utc": "2026-10-06T07:33:33.128594+00:00",
+  "ui_source_commit": "59ec8c62152d0b2d749f1a6ceba9982b5e8d2ac6",
+  "ui_source_tree": "fa4f55e81bc1bd860ccfb58cb1738a8e3aa2a176",
+  "capture_checkout_commit": "f88d8beba7e7db7e25d679a25f9d27bb48268dca",
+  "capture_checkout_tree": "3b7f29a4a791f36e4fbd56ed9f023dce31cb37f1",
+  "production_equivalence": "GitHub compare 59ec8c62...f88d8beb contains only 5 added harness/receipt files; no existing UI/game/asset source modified",
+  "excluded_unmerged_work": "PR90 deeper purple/theme and issue91 branding are not present in these PNGs",
+  "workflow_run_id": 37428712006,
+  "artifact_id": 11395749199,
+  "original_zip_sha256": "51150fd3ff1292c2fe059f1bb84ee8f3f73fbe9b756b1acabd5965eff3e069c1",
+  "original_zip_bytes": 16561060,
+  "browser": "official Chromium 151.0.7922.34 / Playwright 1.62.0, headless ANGLE/SwiftShader",
+  "privacy": "anonymous public shell; disposable local Chess and Werewolf; published role reveal is selected living seat only; terminal roles are game-authorized public. No real account, credentials, canonical state dumps or private eliminated-player drawer images published",
+  "driver_adaptation": {
+    "original_source": "games/werewolf/tests/verify-redesign.mjs",
+    "original_sha256": "3fe023ea73fcd9ecafc537f06f2efb66559e7ed8356c1ff59ad4e3e490f9561a",
+    "executed_copy_sha256": "e6367a7a1ff8799b88547b3ed0fafb4a23309f9efdd2e46a0408b30e8971e4e4",
+    "only_change": "official CI browser launch and public pointer locations matching current Layout::options; no game state or source edits",
+    "cases": "1200x880-dpr1,390x844-dpr1; theme-light and public-phase-captures extras"
+  },
+  "tests": {
+    "fresh_builds_and_capture": "PASS",
+    "werewolf_selected_real_input_cases": "4 PASS / 0 FAIL",
+    "chess_e2_e4_original_pixels": "PASS observed pawn e4, Black turn and public session log",
+    "shell_wasm_budget": "FAIL: 947044 > 900000 bytes; unchanged gate, no waiver",
+    "skip_link": "First Tab PASS, Enter focus main FAIL",
+    "genuine_font200_prerequisite": "PASS root font 32px",
+    "font200_visual_usability": "Remaining within-word splitting and artwork/text collision in EN narrow Home; not accepted based on DOM overflow checks alone"
+  },
+  "unrun": [
+    "physical mobile/touch",
+    "CMP/native GameHost",
+    "real login/accounts/avatar provider",
+    "Werewolf online/chat/voice",
+    "full fresh online Chess fault acceptance",
+    "full accessibility and frame-pacing acceptance"
+  ],
+  "selected_png_count": 16,
+  "entries": [
+    {
+      "source_artifact_path": "dashboard-1440-light-vi-home.png",
+      "published_file": "dashboard-1440-light-vi-home.png",
+      "label": "Dashboard Home, desktop VI/light",
+      "bytes": 170338,
+      "sha256": "81752c003881b72daecae7d21f1fdb65e55d89fb482b0056e316b0645a96aabd",
+      "git_blob_sha1": "d7b90499ef70bc540c462c2580c95716f20edaf3",
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Brand, sidebar, hero artwork and truthful unavailable saved-game state visible",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "captured_at_utc": "2026-10-06T07:21:45.550874+00:00",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "route_path": "/",
+      "theme": "light",
+      "locale": "vi",
+      "locale_confirmation": "document.lang measured in original provenance",
+      "font_preference": "default"
+    },
+    {
+      "source_artifact_path": "dashboard-1440-light-vi-library.png",
+      "published_file": "dashboard-1440-light-vi-library.png",
+      "label": "Dashboard Library, desktop VI/light",
+      "bytes": 110878,
+      "sha256": "3c7c498c0414885423d821a3d230534b3cb94e61efbfdd195573b672d40b6fc4",
+      "git_blob_sha1": "3fda7d06cca2dcb77f0a2f50c090005f86dafe9c",
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Actual public search/filters and two available catalog entries: Chess/Tiles",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "captured_at_utc": "2026-10-06T07:21:46.861664+00:00",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "route_path": "/games",
+      "theme": "light",
+      "locale": "vi",
+      "locale_confirmation": "document.lang measured in original provenance",
+      "font_preference": "default"
+    },
+    {
+      "source_artifact_path": "dashboard-390-light-vi-home.png",
+      "published_file": "dashboard-390-light-vi-home.png",
+      "label": "Dashboard Home, narrow VI/light",
+      "bytes": 66431,
+      "sha256": "f29393c5bdb35fb2d74778c50ffa0b4ec0c35810bfc5ecc13a35a5d798a3d314",
+      "git_blob_sha1": "2d597d9b614787073af19773cb7ca404707f3ae4",
+      "png_pixels": [
+        390,
+        844
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Actual 390px responsive top and fixed bottom navigation; no blank canvas",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "captured_at_utc": "2026-10-06T07:21:47.756340+00:00",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "route_path": "/",
+      "theme": "light",
+      "locale": "vi",
+      "locale_confirmation": "document.lang measured in original provenance",
+      "font_preference": "default"
+    },
+    {
+      "source_artifact_path": "dashboard-390-light-vi-library.png",
+      "published_file": "dashboard-390-light-vi-library.png",
+      "label": "Dashboard Library, narrow VI/light",
+      "bytes": 72014,
+      "sha256": "46499fdf537d6b12bfb7813f6872fb1e9b65f1df5c2393cbf078698174e1b4f9",
+      "git_blob_sha1": "abd7384ba37dbaf0308f214c4714ee2d6358933a",
+      "png_pixels": [
+        390,
+        1367
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Original full-page screenshot; fixed navigation appears at the viewport position, not stitched or moved",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "captured_at_utc": "2026-10-06T07:21:48.563620+00:00",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "route_path": "/games",
+      "theme": "light",
+      "locale": "vi",
+      "locale_confirmation": "document.lang measured in original provenance",
+      "font_preference": "default"
+    },
+    {
+      "source_artifact_path": "dashboard-1100-dark-en-home.png",
+      "published_file": "dashboard-1100-dark-en-home.png",
+      "label": "Dashboard Home, desktop EN/dark",
+      "bytes": 136507,
+      "sha256": "6470ae8e93d058d70a2f0338d9d5cc6c31d45c30201374d99aaa90a044abaffc",
+      "git_blob_sha1": "e603408a4fd945bc08f6d5750cd7b6087856fa9f",
+      "png_pixels": [
+        1100,
+        850
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Dark actual shell, translated public labels and discovery artwork",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "captured_at_utc": "2026-10-06T07:21:49.639960+00:00",
+      "viewport_css_pixels": {
+        "width": 1100,
+        "height": 850
+      },
+      "route_path": "/",
+      "theme": "dark",
+      "locale": "en",
+      "locale_confirmation": "document.lang measured in original provenance",
+      "font_preference": "default"
+    },
+    {
+      "source_artifact_path": "dashboard-390-en-font200-home.png",
+      "published_file": "dashboard-390-en-font200-home.png",
+      "label": "Dashboard Home, narrow EN/light with genuine 200% font preference",
+      "bytes": 207903,
+      "sha256": "905f16e8d7618905d06c2c7b247a78434bcd07cb2129b23c9c80aed392afb82c",
+      "git_blob_sha1": "45298ceba8bd97772b8965017466ab60809be27f",
+      "png_pixels": [
+        390,
+        3901
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "USABILITY FINDING: Account/Explore/discovery text splits within words; decorative hero art crosses text. Geometry-only no-overflow result is insufficient",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "captured_at_utc": "2026-10-06T07:21:53.090631+00:00",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "route_path": "/",
+      "theme": "light",
+      "locale": "en",
+      "locale_confirmation": "document.lang measured in original provenance",
+      "font_preference": "Chromium default and fixed fonts 32px (root observed 32px)"
+    },
+    {
+      "source_artifact_path": "werewolf/screenshots/1200x880-dpr1-public.png",
+      "published_file": "1200x880-dpr1-public.png",
+      "label": "Werewolf public Night, desktop VI/dark",
+      "bytes": 810167,
+      "sha256": "18a9ce448ed99f80daad38e8002882d0d2e75a84d7f5d0714b6c075003aa80ad",
+      "git_blob_sha1": "2b64cda80af7905357c3afaafd74c6156420e57a",
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Neutral roster in village ellipse; role back concealed; title and labels upright; host footer separated",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "theme": "dark",
+      "locale": "vi",
+      "locale_confirmation": "driver launch locale=vi and original visible labels",
+      "capture_window_utc": [
+        "2026-10-06T07:21:43.435985+00:00",
+        "2026-10-06T07:23:23.484051+00:00"
+      ],
+      "timestamp_precision": "original Werewolf driver records case start/run completion, not per-PNG timestamp",
+      "fixture": "disposable local simulator Người 1–12; synthetic seats"
+    },
+    {
+      "source_artifact_path": "werewolf/screenshots/390x844-dpr1-public.png",
+      "published_file": "390x844-dpr1-public.png",
+      "label": "Werewolf public Night, narrow VI/dark",
+      "bytes": 245187,
+      "sha256": "0b82feffa136571147138738aaa2768af61126737381ae07a43af38bf18ac4b5",
+      "git_blob_sha1": "2b56f39339cb172db860c6f8fa701c44e0a57753",
+      "png_pixels": [
+        390,
+        844
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Actual 4x3 neutral roster and concealed role back; canvas ends above host footer",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "locale": "vi",
+      "locale_confirmation": "driver launch locale=vi and original visible labels",
+      "capture_window_utc": [
+        "2026-10-06T07:21:43.435985+00:00",
+        "2026-10-06T07:23:23.484051+00:00"
+      ],
+      "timestamp_precision": "original Werewolf driver records case start/run completion, not per-PNG timestamp",
+      "fixture": "disposable local simulator Người 1–12; synthetic seats"
+    },
+    {
+      "source_artifact_path": "werewolf/screenshots/390x844-dpr1-revealed.png",
+      "published_file": "390x844-dpr1-revealed.png",
+      "label": "Werewolf own living test seat: Witch drawer, narrow VI/dark",
+      "bytes": 167259,
+      "sha256": "349003215c1c23c8602652bd9ce6f38fb1b51539cf8ddd7c929f1b50487594ba",
+      "git_blob_sha1": "f87edfa03e73b2bf9102e0d3c080067fc079a0b9",
+      "png_pixels": [
+        390,
+        844
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Only selected living seat own role revealed; art and labels upright; antidote/poison remaining status visible; no potion action exercised in this image",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "locale": "vi",
+      "locale_confirmation": "driver launch locale=vi and original visible labels",
+      "capture_window_utc": [
+        "2026-10-06T07:21:43.435985+00:00",
+        "2026-10-06T07:23:23.484051+00:00"
+      ],
+      "timestamp_precision": "original Werewolf driver records case start/run completion, not per-PNG timestamp",
+      "fixture": "disposable local simulator Người 1–12; synthetic seats"
+    },
+    {
+      "source_artifact_path": "werewolf/screenshots/1200x880-dpr1-tools.png",
+      "published_file": "1200x880-dpr1-tools.png",
+      "label": "Werewolf combined Options, desktop VI/dark",
+      "bytes": 311161,
+      "sha256": "82512aa70baf6629dde8560c84aef0aadef0a917ebdcb877073c4386cd1857ca",
+      "git_blob_sha1": "96ee750a2d7f55a4bf00759939461205be0cd661",
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Real motion switch and local simulator previous/next seat, public, next phase, new round, return controls",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "theme": "dark",
+      "locale": "vi",
+      "locale_confirmation": "driver launch locale=vi and original visible labels",
+      "capture_window_utc": [
+        "2026-10-06T07:21:43.435985+00:00",
+        "2026-10-06T07:23:23.484051+00:00"
+      ],
+      "timestamp_precision": "original Werewolf driver records case start/run completion, not per-PNG timestamp",
+      "fixture": "disposable local simulator Người 1–12; synthetic seats"
+    },
+    {
+      "source_artifact_path": "werewolf/screenshots/1200x880-dpr1-keyboard-submitted.png",
+      "published_file": "1200x880-dpr1-keyboard-submitted.png",
+      "label": "Werewolf real keyboard vote, desktop VI/dark",
+      "bytes": 906868,
+      "sha256": "28ba3c3a8c2313c9d3199e33e600161931ed01632ad008cfb7577309d3c00394",
+      "git_blob_sha1": "c74f441140ac21976162aed253a0ad29bef58998",
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "After actual target/Tab/Enter inputs, Người 2 shows one public vote and own role stays concealed",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "theme": "dark",
+      "locale": "vi",
+      "locale_confirmation": "driver launch locale=vi and original visible labels",
+      "capture_window_utc": [
+        "2026-10-06T07:21:43.435985+00:00",
+        "2026-10-06T07:23:23.484051+00:00"
+      ],
+      "timestamp_precision": "original Werewolf driver records case start/run completion, not per-PNG timestamp",
+      "fixture": "disposable local simulator Người 1–12; synthetic seats"
+    },
+    {
+      "source_artifact_path": "werewolf/screenshots/phase-public-dawn.png",
+      "published_file": "phase-public-dawn.png",
+      "label": "Werewolf public Dawn, desktop VI/dark",
+      "bytes": 904175,
+      "sha256": "dcdd9e95c798036bcbba5cea8d3ce8cad891f8ba1271a0cc2cbc049b38db5a47",
+      "git_blob_sha1": "10a6ae2dd87234326c31dbfa872e87d4535d32ba",
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Actual Dawn caption and 2s remaining; no secret role front exposed",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "theme": "dark",
+      "locale": "vi",
+      "locale_confirmation": "driver launch locale=vi and original visible labels",
+      "capture_window_utc": [
+        "2026-10-06T07:21:43.435985+00:00",
+        "2026-10-06T07:23:23.484051+00:00"
+      ],
+      "timestamp_precision": "original Werewolf driver records case start/run completion, not per-PNG timestamp",
+      "fixture": "disposable local simulator Người 1–12; synthetic seats"
+    },
+    {
+      "source_artifact_path": "werewolf/screenshots/phase-public-terminal.png",
+      "published_file": "phase-public-terminal.png",
+      "label": "Werewolf public terminal draw, desktop VI/dark",
+      "bytes": 901770,
+      "sha256": "6d484ef8cbbf83a7618aff0eebc7212ea0b1a867a153bcd1481b87be5ed65fa6",
+      "git_blob_sha1": "9d4b79a4c58f6244cdf68c3948a9fd5169f6e099",
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Actual round 10 ended/draw, one eliminated seat and game-authorized public terminal roles",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "theme": "dark",
+      "locale": "vi",
+      "locale_confirmation": "driver launch locale=vi and original visible labels",
+      "capture_window_utc": [
+        "2026-10-06T07:21:43.435985+00:00",
+        "2026-10-06T07:23:23.484051+00:00"
+      ],
+      "timestamp_precision": "original Werewolf driver records case start/run completion, not per-PNG timestamp",
+      "fixture": "disposable local simulator Người 1–12; synthetic seats"
+    },
+    {
+      "source_artifact_path": "chess-1200-initial.png",
+      "published_file": "chess-1200-initial.png",
+      "label": "Chess local two-human initial board, desktop light",
+      "bytes": 97969,
+      "sha256": "deae83d949aedb6861d2165f344c5b02ab58012b3fdb2a44240222e66124e4ba",
+      "git_blob_sha1": "8da64cc6de83fddf82088bc74c1aa4c2138757fd",
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Actual compiled Macroquad board with all initial pieces; flat presentation and English game HUD remain",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "captured_at_utc": "2026-10-06T07:21:56.542798+00:00",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "route_path": "/play.html",
+      "theme": "light",
+      "requested_host_locale": "vi",
+      "observed_game_labels": "English; partial localization",
+      "fixture": "disposable local two-human; no real account"
+    },
+    {
+      "source_artifact_path": "chess-desktop-after-e2-e4.png",
+      "published_file": "chess-desktop-after-e2-e4.png",
+      "label": "Chess after actual e2-to-e4 pointer move, desktop light",
+      "bytes": 100338,
+      "sha256": "db5bcfbb1d12b0209d446dcbf84eda704a044e66831155534a85f30d6ce55184",
+      "git_blob_sha1": "c8c6c28b82df99cedad5f72c2ba25934aa6de318",
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "White pawn is at e4, e2 empty, Black turn and visible session log White e2 -> e4",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "captured_at_utc": "2026-10-06T07:21:58.960386+00:00",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "route_path": "/play.html",
+      "theme": "light",
+      "requested_host_locale": "vi",
+      "observed_game_labels": "English; partial localization",
+      "fixture": "disposable local two-human; no real account"
+    },
+    {
+      "source_artifact_path": "chess-390-initial.png",
+      "published_file": "chess-390-initial.png",
+      "label": "Chess local two-human initial board, narrow light",
+      "bytes": 60942,
+      "sha256": "b4a3902690f39d3e4c4a7d03776312782e9269bb0b98b85bc5b88b96d2a9a1f6",
+      "git_blob_sha1": "e027f8bb86fe8b73f183903f4b96b18f06f5e4af",
+      "png_pixels": [
+        390,
+        844
+      ],
+      "original_png_unchanged": true,
+      "inspected_with": "view_image; original pixels, no transformed comparison or image edits",
+      "pixel_finding": "Actual 390px responsive board, controls and separate host footer; English in-game labels remain",
+      "credential_or_real_account_data_visible": false,
+      "dpr": 1,
+      "captured_at_utc": "2026-10-06T07:22:01.822357+00:00",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "route_path": "/play.html",
+      "theme": "light",
+      "requested_host_locale": "vi",
+      "observed_game_labels": "English; partial localization",
+      "fixture": "disposable local two-human; no real account"
+    }
+  ]
+}

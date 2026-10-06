@@ -1,0 +1,22 @@
+{
+  "name": "theme-light",
+  "status": "PASS",
+  "evidence": "screenshot-captured",
+  "theme": "light",
+  "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/theme-light.png",
+  "runtime_artifact": {
+    "url": "resources/2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a.wasm",
+    "bytes": 1001281,
+    "sha256": "2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a"
+  },
+  "errors": [],
+  "captures": [
+    {
+      "name": "theme-light",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/theme-light.png",
+      "retained": true,
+      "bytes": 798966,
+      "sha256": "b3172b142334dce54fdcf0f3219fad60c7fc63fd0c7a6f367f1635869cc9f70a"
+    }
+  ]
+}

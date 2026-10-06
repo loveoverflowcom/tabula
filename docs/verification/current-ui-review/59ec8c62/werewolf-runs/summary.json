@@ -1,0 +1,742 @@
+{
+  "origin": "http://127.0.0.1:32847",
+  "run_at": "2026-10-06T07:23:23.025Z",
+  "browser": "Google Chrome, disposable headless profiles",
+  "browser_version": "151.0.7922.34",
+  "temporary_captures": "/tmp/tabula-werewolf84-captures-OtIbX4",
+  "captures": [
+    {
+      "name": "1200x880-dpr1-public",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-public.png",
+      "retained": true,
+      "bytes": 810167,
+      "sha256": "18a9ce448ed99f80daad38e8002882d0d2e75a84d7f5d0714b6c075003aa80ad"
+    },
+    {
+      "name": "1200x880-dpr1-tools",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-tools.png",
+      "retained": true,
+      "bytes": 311161,
+      "sha256": "82512aa70baf6629dde8560c84aef0aadef0a917ebdcb877073c4386cd1857ca"
+    },
+    {
+      "name": "1200x880-dpr1-seat-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-seat-concealed.png",
+      "retained": true,
+      "bytes": 810899,
+      "sha256": "b5691bf08167d02cef33b7079e606264c765eae9a5b12f75db4a462553f8ec1a"
+    },
+    {
+      "name": "1200x880-dpr1-revealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-revealed.png",
+      "retained": true,
+      "bytes": 886392,
+      "sha256": "5cb203e578d4d9a8cefb987c85a21ea6e539ea44f1b5e986dae3b6d9c63c4100"
+    },
+    {
+      "name": "1200x880-dpr1-escape-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-escape-concealed.png",
+      "retained": true,
+      "bytes": 810863,
+      "sha256": "0176fae3078b9d2a798b43f1e33782e693a232b83b68f074af99f0f80d722a7a"
+    },
+    {
+      "name": "1200x880-dpr1-focus-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-focus-concealed.png",
+      "retained": true,
+      "bytes": 24035,
+      "sha256": "a473f74fc76ad38d8b84e2e8b6333d33bf138ca5fe70d51cfb9df0cdc1f5dcc5"
+    },
+    {
+      "name": "1200x880-dpr1-resumed-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-resumed-concealed.png",
+      "retained": true,
+      "bytes": 810708,
+      "sha256": "0c0a1db55e4ab118e3fced6b84e5dac0c8184cb29a90183a10b52b5516e7597e"
+    },
+    {
+      "name": "1200x880-dpr1-target-selected",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-target-selected.png",
+      "retained": true,
+      "bytes": 907421,
+      "sha256": "9762d3563d81188b6344b3bd801aae22bf7b93a9ac9402850ee73557f2b21729"
+    },
+    {
+      "name": "1200x880-dpr1-submit-focused",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-submit-focused.png",
+      "retained": true,
+      "bytes": 908302,
+      "sha256": "b74fb1171dc9bddf445b9105f21c2603d2bf929b486d64d3841a465896164159"
+    },
+    {
+      "name": "1200x880-dpr1-keyboard-submitted",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-keyboard-submitted.png",
+      "retained": true,
+      "bytes": 906868,
+      "sha256": "28ba3c3a8c2313c9d3199e33e600161931ed01632ad008cfb7577309d3c00394"
+    },
+    {
+      "name": "390x844-dpr1-public",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-public.png",
+      "retained": true,
+      "bytes": 245187,
+      "sha256": "0b82feffa136571147138738aaa2768af61126737381ae07a43af38bf18ac4b5"
+    },
+    {
+      "name": "390x844-dpr1-tools",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-tools.png",
+      "retained": true,
+      "bytes": 71307,
+      "sha256": "1997186e6ffed4f70673c4d7f05789a67fd5134349fe74ee1d378e0ea9bc8bbb"
+    },
+    {
+      "name": "390x844-dpr1-seat-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-seat-concealed.png",
+      "retained": true,
+      "bytes": 246326,
+      "sha256": "16f775a1e52e8bebdb303340bea1a2a0141aa6c9a107512197b4acf534833093"
+    },
+    {
+      "name": "390x844-dpr1-revealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-revealed.png",
+      "retained": true,
+      "bytes": 167259,
+      "sha256": "349003215c1c23c8602652bd9ce6f38fb1b51539cf8ddd7c929f1b50487594ba"
+    },
+    {
+      "name": "390x844-dpr1-drawer-closed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-drawer-closed.png",
+      "retained": true,
+      "bytes": 250632,
+      "sha256": "a47a7f90ea09c5ccb2da5785f62be5582efffac1c466a127cae9c3f90fc67e77"
+    },
+    {
+      "name": "390x844-dpr1-escape-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-escape-concealed.png",
+      "retained": true,
+      "bytes": 246421,
+      "sha256": "1ecfc74897f2d83a3c9c482e9b40529ab2a2b3811a2fc44a0f2081675ebcd119"
+    },
+    {
+      "name": "390x844-dpr1-focus-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-focus-concealed.png",
+      "retained": true,
+      "bytes": 20951,
+      "sha256": "73057c156dd029e6eb097e1fe89ba29d44c699775a118673a66509da15a20b17"
+    },
+    {
+      "name": "390x844-dpr1-resumed-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-resumed-concealed.png",
+      "retained": true,
+      "bytes": 247057,
+      "sha256": "4449c6f12fd26befa9e6211374bf648918d355b8daaa689f8b1c5905db12c865"
+    },
+    {
+      "name": "390x844-dpr1-target-selected",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-target-selected.png",
+      "retained": true,
+      "bytes": 274929,
+      "sha256": "58e2fb399e13ecf1ce0693e33e244031f6d6898a4c2681cfcf5d6180d4a7eaad"
+    },
+    {
+      "name": "390x844-dpr1-submit-focused",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-submit-focused.png",
+      "retained": true,
+      "bytes": 275715,
+      "sha256": "348a217a79ea3a0ae2ed490a02c53231666308b78d0a8225f9f944c626ca7c9b"
+    },
+    {
+      "name": "390x844-dpr1-keyboard-submitted",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-keyboard-submitted.png",
+      "retained": true,
+      "bytes": 275288,
+      "sha256": "0135d62453444bf8201a4d69d2fb98f482e8843ac3c4299fc3e4f4bb7c759c3d"
+    },
+    {
+      "name": "theme-light",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/theme-light.png",
+      "retained": true,
+      "bytes": 798966,
+      "sha256": "b3172b142334dce54fdcf0f3219fad60c7fc63fd0c7a6f367f1635869cc9f70a"
+    },
+    {
+      "name": "phase-public-dawn",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-dawn.png",
+      "retained": true,
+      "bytes": 904175,
+      "sha256": "dcdd9e95c798036bcbba5cea8d3ce8cad891f8ba1271a0cc2cbc049b38db5a47"
+    },
+    {
+      "name": "phase-public-vote-tally",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-vote-tally.png",
+      "retained": true,
+      "bytes": 901278,
+      "sha256": "4d9d92fe77f481ec4d40df6058596bc41aae37bc9b84537be8729578dfbe125b"
+    },
+    {
+      "name": "phase-public-death",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-death.png",
+      "retained": true,
+      "bytes": 808947,
+      "sha256": "17f19c7b7c5ba45a7cd46abd8e88bad7b7eef582f35cf3e5f9fe08b0ee978028"
+    },
+    {
+      "name": "phase-dead-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-concealed.png",
+      "retained": true,
+      "bytes": 247473,
+      "sha256": "94b990ff2d7c7fbc7623f180d89fba541b37a37761b0ae4097aa861ffa9a60d2"
+    },
+    {
+      "name": "phase-dead-private-drawer",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-private-drawer.png",
+      "retained": true,
+      "bytes": 186853,
+      "sha256": "6eb9a2da25d11b8aaa28721ca9600400717b8b0a9fd77dbef8a526f91c17fffc"
+    },
+    {
+      "name": "phase-dead-private-page2",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-private-page2.png",
+      "retained": true,
+      "bytes": 182614,
+      "sha256": "7b7c98200f80cd73c96f8672abf708eaf039ed11291f970c2b907fbc9fc62047"
+    },
+    {
+      "name": "phase-dead-resumed-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-resumed-concealed.png",
+      "retained": true,
+      "bytes": 248160,
+      "sha256": "511bc4736b3e7bcc53be5ab81728540585d5a686e2240dee3be19142c65dc1bd"
+    },
+    {
+      "name": "phase-public-terminal",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-terminal.png",
+      "retained": true,
+      "bytes": 901770,
+      "sha256": "6d484ef8cbbf83a7618aff0eebc7212ea0b1a867a153bcd1481b87be5ed65fa6"
+    }
+  ],
+  "cases": [
+    {
+      "name": "1200x880-dpr1",
+      "width": 1200,
+      "height": 880,
+      "dpr": 1,
+      "started_at": "2026-10-06T07:22:02.559Z",
+      "scope": "Actual Chromium/Macroquad local simulator; public DOM and real input only; no native/online/a11y-mirror claim",
+      "steps": [
+        {
+          "action": "startup and host footer layout",
+          "status": "PASS",
+          "layout": {
+            "canvas": {
+              "x": 0,
+              "y": 0,
+              "width": 1200,
+              "height": 824,
+              "bottom": 824
+            },
+            "hostFooter": {
+              "top": 824,
+              "bottom": 880,
+              "width": 1200
+            },
+            "canvasPixels": {
+              "width": 1200,
+              "height": 824
+            },
+            "theme": "dark"
+          },
+          "sampled_colors": 3261,
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-public.png"
+        },
+        {
+          "action": "open tools, ArrowRight/Enter next seat, Enter reveal",
+          "status": "PASS",
+          "tools": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-tools.png",
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-revealed.png",
+          "card_difference": {
+            "changed": 78680,
+            "total": 79350,
+            "fraction": 0.9915563957151858
+          }
+        },
+        {
+          "action": "Escape conceals role and closes drawer",
+          "status": "PASS",
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-escape-concealed.png",
+          "concealed_difference": {
+            "changed": 0,
+            "total": 79350,
+            "fraction": 0
+          }
+        },
+        {
+          "action": "focus loss shields immediately; resume stays concealed",
+          "status": "PASS",
+          "shield": {
+            "visible": true,
+            "opacity": "1",
+            "coversCanvas": true
+          },
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-focus-concealed.png",
+          "resume": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-resumed-concealed.png",
+          "concealed_difference": {
+            "changed": 0,
+            "total": 79350,
+            "fraction": 0
+          }
+        },
+        {
+          "action": "public phase controls, keyboard target and keyboard vote submit",
+          "status": "PASS",
+          "selected": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-target-selected.png",
+          "submit_focused": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-submit-focused.png",
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-keyboard-submitted.png",
+          "tabs_to_submit": 11,
+          "public_board_difference": {
+            "changed": 3037,
+            "total": 486624,
+            "fraction": 0.006240958111396067
+          }
+        }
+      ],
+      "runtime_artifact": {
+        "url": "resources/2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a.wasm",
+        "bytes": 1001281,
+        "sha256": "2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a"
+      },
+      "document_residuals": [
+        {
+          "type": "error",
+          "message": "Failed to load resource: the server responded with a status of 404 (File not found)",
+          "url": "http://127.0.0.1:32847/favicon.ico"
+        }
+      ],
+      "status": "PASS",
+      "elapsed_ms": 20095,
+      "errors": [],
+      "console_messages": [
+        {
+          "type": "error",
+          "message": "Failed to load resource: the server responded with a status of 404 (File not found)",
+          "url": "http://127.0.0.1:32847/favicon.ico"
+        },
+        {
+          "type": "warning",
+          "message": "Some of the registred plugins do not have name or version",
+          "url": "http://127.0.0.1:32847/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+        },
+        {
+          "type": "warning",
+          "message": "Probably old version of the plugin used",
+          "url": "http://127.0.0.1:32847/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+        }
+      ],
+      "captures": [
+        {
+          "name": "1200x880-dpr1-public",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-public.png",
+          "retained": true,
+          "bytes": 810167,
+          "sha256": "18a9ce448ed99f80daad38e8002882d0d2e75a84d7f5d0714b6c075003aa80ad"
+        },
+        {
+          "name": "1200x880-dpr1-tools",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-tools.png",
+          "retained": true,
+          "bytes": 311161,
+          "sha256": "82512aa70baf6629dde8560c84aef0aadef0a917ebdcb877073c4386cd1857ca"
+        },
+        {
+          "name": "1200x880-dpr1-seat-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-seat-concealed.png",
+          "retained": true,
+          "bytes": 810899,
+          "sha256": "b5691bf08167d02cef33b7079e606264c765eae9a5b12f75db4a462553f8ec1a"
+        },
+        {
+          "name": "1200x880-dpr1-revealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-revealed.png",
+          "retained": true,
+          "bytes": 886392,
+          "sha256": "5cb203e578d4d9a8cefb987c85a21ea6e539ea44f1b5e986dae3b6d9c63c4100"
+        },
+        {
+          "name": "1200x880-dpr1-escape-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-escape-concealed.png",
+          "retained": true,
+          "bytes": 810863,
+          "sha256": "0176fae3078b9d2a798b43f1e33782e693a232b83b68f074af99f0f80d722a7a"
+        },
+        {
+          "name": "1200x880-dpr1-focus-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-focus-concealed.png",
+          "retained": true,
+          "bytes": 24035,
+          "sha256": "a473f74fc76ad38d8b84e2e8b6333d33bf138ca5fe70d51cfb9df0cdc1f5dcc5"
+        },
+        {
+          "name": "1200x880-dpr1-resumed-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-resumed-concealed.png",
+          "retained": true,
+          "bytes": 810708,
+          "sha256": "0c0a1db55e4ab118e3fced6b84e5dac0c8184cb29a90183a10b52b5516e7597e"
+        },
+        {
+          "name": "1200x880-dpr1-target-selected",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-target-selected.png",
+          "retained": true,
+          "bytes": 907421,
+          "sha256": "9762d3563d81188b6344b3bd801aae22bf7b93a9ac9402850ee73557f2b21729"
+        },
+        {
+          "name": "1200x880-dpr1-submit-focused",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-submit-focused.png",
+          "retained": true,
+          "bytes": 908302,
+          "sha256": "b74fb1171dc9bddf445b9105f21c2603d2bf929b486d64d3841a465896164159"
+        },
+        {
+          "name": "1200x880-dpr1-keyboard-submitted",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/1200x880-dpr1-keyboard-submitted.png",
+          "retained": true,
+          "bytes": 906868,
+          "sha256": "28ba3c3a8c2313c9d3199e33e600161931ed01632ad008cfb7577309d3c00394"
+        }
+      ]
+    },
+    {
+      "name": "390x844-dpr1",
+      "width": 390,
+      "height": 844,
+      "dpr": 1,
+      "started_at": "2026-10-06T07:22:22.674Z",
+      "scope": "Actual Chromium/Macroquad local simulator; public DOM and real input only; no native/online/a11y-mirror claim",
+      "steps": [
+        {
+          "action": "startup and host footer layout",
+          "status": "PASS",
+          "layout": {
+            "canvas": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 788,
+              "bottom": 788
+            },
+            "hostFooter": {
+              "top": 788,
+              "bottom": 844,
+              "width": 390
+            },
+            "canvasPixels": {
+              "width": 390,
+              "height": 788
+            },
+            "theme": "dark"
+          },
+          "sampled_colors": 863,
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-public.png"
+        },
+        {
+          "action": "open tools, ArrowRight/Enter next seat, Enter reveal",
+          "status": "PASS",
+          "tools": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-tools.png",
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-revealed.png",
+          "card_difference": {
+            "changed": 96429,
+            "total": 98304,
+            "fraction": 0.980926513671875
+          }
+        },
+        {
+          "action": "explicit drawer close returns to table",
+          "status": "PASS",
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-drawer-closed.png",
+          "drawer_difference": {
+            "changed": 96408,
+            "total": 98304,
+            "fraction": 0.980712890625
+          }
+        },
+        {
+          "action": "Escape conceals role and closes drawer",
+          "status": "PASS",
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-escape-concealed.png",
+          "concealed_difference": {
+            "changed": 49,
+            "total": 98304,
+            "fraction": 0.0004984537760416666
+          }
+        },
+        {
+          "action": "focus loss shields immediately; resume stays concealed",
+          "status": "PASS",
+          "shield": {
+            "visible": true,
+            "opacity": "1",
+            "coversCanvas": true
+          },
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-focus-concealed.png",
+          "resume": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-resumed-concealed.png",
+          "concealed_difference": {
+            "changed": 53,
+            "total": 98304,
+            "fraction": 0.0005391438802083334
+          }
+        },
+        {
+          "action": "public phase controls, keyboard target and keyboard vote submit",
+          "status": "PASS",
+          "selected": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-target-selected.png",
+          "submit_focused": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-submit-focused.png",
+          "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-keyboard-submitted.png",
+          "tabs_to_submit": 11,
+          "public_board_difference": {
+            "changed": 3038,
+            "total": 169824,
+            "fraction": 0.01788910872432636
+          }
+        }
+      ],
+      "runtime_artifact": {
+        "url": "resources/2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a.wasm",
+        "bytes": 1001281,
+        "sha256": "2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a"
+      },
+      "document_residuals": [],
+      "status": "PASS",
+      "elapsed_ms": 12690,
+      "errors": [],
+      "console_messages": [
+        {
+          "type": "warning",
+          "message": "Some of the registred plugins do not have name or version",
+          "url": "http://127.0.0.1:32847/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+        },
+        {
+          "type": "warning",
+          "message": "Probably old version of the plugin used",
+          "url": "http://127.0.0.1:32847/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+        }
+      ],
+      "captures": [
+        {
+          "name": "390x844-dpr1-public",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-public.png",
+          "retained": true,
+          "bytes": 245187,
+          "sha256": "0b82feffa136571147138738aaa2768af61126737381ae07a43af38bf18ac4b5"
+        },
+        {
+          "name": "390x844-dpr1-tools",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-tools.png",
+          "retained": true,
+          "bytes": 71307,
+          "sha256": "1997186e6ffed4f70673c4d7f05789a67fd5134349fe74ee1d378e0ea9bc8bbb"
+        },
+        {
+          "name": "390x844-dpr1-seat-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-seat-concealed.png",
+          "retained": true,
+          "bytes": 246326,
+          "sha256": "16f775a1e52e8bebdb303340bea1a2a0141aa6c9a107512197b4acf534833093"
+        },
+        {
+          "name": "390x844-dpr1-revealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-revealed.png",
+          "retained": true,
+          "bytes": 167259,
+          "sha256": "349003215c1c23c8602652bd9ce6f38fb1b51539cf8ddd7c929f1b50487594ba"
+        },
+        {
+          "name": "390x844-dpr1-drawer-closed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-drawer-closed.png",
+          "retained": true,
+          "bytes": 250632,
+          "sha256": "a47a7f90ea09c5ccb2da5785f62be5582efffac1c466a127cae9c3f90fc67e77"
+        },
+        {
+          "name": "390x844-dpr1-escape-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-escape-concealed.png",
+          "retained": true,
+          "bytes": 246421,
+          "sha256": "1ecfc74897f2d83a3c9c482e9b40529ab2a2b3811a2fc44a0f2081675ebcd119"
+        },
+        {
+          "name": "390x844-dpr1-focus-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-focus-concealed.png",
+          "retained": true,
+          "bytes": 20951,
+          "sha256": "73057c156dd029e6eb097e1fe89ba29d44c699775a118673a66509da15a20b17"
+        },
+        {
+          "name": "390x844-dpr1-resumed-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-resumed-concealed.png",
+          "retained": true,
+          "bytes": 247057,
+          "sha256": "4449c6f12fd26befa9e6211374bf648918d355b8daaa689f8b1c5905db12c865"
+        },
+        {
+          "name": "390x844-dpr1-target-selected",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-target-selected.png",
+          "retained": true,
+          "bytes": 274929,
+          "sha256": "58e2fb399e13ecf1ce0693e33e244031f6d6898a4c2681cfcf5d6180d4a7eaad"
+        },
+        {
+          "name": "390x844-dpr1-submit-focused",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-submit-focused.png",
+          "retained": true,
+          "bytes": 275715,
+          "sha256": "348a217a79ea3a0ae2ed490a02c53231666308b78d0a8225f9f944c626ca7c9b"
+        },
+        {
+          "name": "390x844-dpr1-keyboard-submitted",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-keyboard-submitted.png",
+          "retained": true,
+          "bytes": 275288,
+          "sha256": "0135d62453444bf8201a4d69d2fb98f482e8843ac3c4299fc3e4f4bb7c759c3d"
+        }
+      ]
+    },
+    {
+      "name": "theme-light",
+      "status": "PASS",
+      "evidence": "screenshot-captured",
+      "theme": "light",
+      "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/theme-light.png",
+      "runtime_artifact": {
+        "url": "resources/2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a.wasm",
+        "bytes": 1001281,
+        "sha256": "2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a"
+      },
+      "errors": [],
+      "captures": [
+        {
+          "name": "theme-light",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/theme-light.png",
+          "retained": true,
+          "bytes": 798966,
+          "sha256": "b3172b142334dce54fdcf0f3219fad60c7fc63fd0c7a6f367f1635869cc9f70a"
+        }
+      ]
+    },
+    {
+      "name": "public-phase-captures",
+      "status": "PASS",
+      "evidence": "screenshot-captured-and-privacy-input-assertions",
+      "semantic_verdict": "Dawn, vote/death, authorized dead drawer and terminal labels require separate screenshot inspection; no internal state queried",
+      "attempted_vote_operators": [
+        "Người 1",
+        "Người 3",
+        "Người 4",
+        "Người 5",
+        "Người 6",
+        "Người 7",
+        "Người 8"
+      ],
+      "public_vote_target": "Người 2",
+      "attempted_deadline_controls": 55,
+      "eliminated_drawer": {
+        "viewport": [
+          390,
+          844
+        ],
+        "scope": "Chosen with real NextSeat controls after public elimination, then opened during long Night phase",
+        "concealed": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-concealed.png",
+        "drawer": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-private-drawer.png",
+        "paginated": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-private-page2.png",
+        "page_difference": {
+          "changed": 2532,
+          "total": 60200,
+          "fraction": 0.04205980066445183
+        },
+        "paged_card_difference": {
+          "changed": 0,
+          "total": 98304,
+          "fraction": 0
+        },
+        "resumed_concealed": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-resumed-concealed.png",
+        "resumed_difference": {
+          "changed": 45,
+          "total": 98304,
+          "fraction": 0.000457763671875
+        }
+      },
+      "screenshots": {
+        "dawn": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-dawn.png",
+        "public_tally": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-vote-tally.png",
+        "public_death": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-death.png",
+        "terminal": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-terminal.png"
+      },
+      "runtime_artifact": {
+        "url": "resources/2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a.wasm",
+        "bytes": 1001281,
+        "sha256": "2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a"
+      },
+      "errors": [],
+      "captures": [
+        {
+          "name": "phase-public-dawn",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-dawn.png",
+          "retained": true,
+          "bytes": 904175,
+          "sha256": "dcdd9e95c798036bcbba5cea8d3ce8cad891f8ba1271a0cc2cbc049b38db5a47"
+        },
+        {
+          "name": "phase-public-vote-tally",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-vote-tally.png",
+          "retained": true,
+          "bytes": 901278,
+          "sha256": "4d9d92fe77f481ec4d40df6058596bc41aae37bc9b84537be8729578dfbe125b"
+        },
+        {
+          "name": "phase-public-death",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-death.png",
+          "retained": true,
+          "bytes": 808947,
+          "sha256": "17f19c7b7c5ba45a7cd46abd8e88bad7b7eef582f35cf3e5f9fe08b0ee978028"
+        },
+        {
+          "name": "phase-dead-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-concealed.png",
+          "retained": true,
+          "bytes": 247473,
+          "sha256": "94b990ff2d7c7fbc7623f180d89fba541b37a37761b0ae4097aa861ffa9a60d2"
+        },
+        {
+          "name": "phase-dead-private-drawer",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-private-drawer.png",
+          "retained": true,
+          "bytes": 186853,
+          "sha256": "6eb9a2da25d11b8aaa28721ca9600400717b8b0a9fd77dbef8a526f91c17fffc"
+        },
+        {
+          "name": "phase-dead-private-page2",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-private-page2.png",
+          "retained": true,
+          "bytes": 182614,
+          "sha256": "7b7c98200f80cd73c96f8672abf708eaf039ed11291f970c2b907fbc9fc62047"
+        },
+        {
+          "name": "phase-dead-resumed-concealed",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-dead-resumed-concealed.png",
+          "retained": true,
+          "bytes": 248160,
+          "sha256": "511bc4736b3e7bcc53be5ab81728540585d5a686e2240dee3be19142c65dc1bd"
+        },
+        {
+          "name": "phase-public-terminal",
+          "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/phase-public-terminal.png",
+          "retained": true,
+          "bytes": 901770,
+          "sha256": "6d484ef8cbbf83a7618aff0eebc7212ea0b1a867a153bcd1481b87be5ed65fa6"
+        }
+      ]
+    }
+  ],
+  "passed": 4,
+  "failed": 0
+}

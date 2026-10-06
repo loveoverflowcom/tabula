@@ -1,0 +1,195 @@
+{
+  "name": "390x844-dpr1",
+  "width": 390,
+  "height": 844,
+  "dpr": 1,
+  "started_at": "2026-10-06T07:22:22.674Z",
+  "scope": "Actual Chromium/Macroquad local simulator; public DOM and real input only; no native/online/a11y-mirror claim",
+  "steps": [
+    {
+      "action": "startup and host footer layout",
+      "status": "PASS",
+      "layout": {
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 788,
+          "bottom": 788
+        },
+        "hostFooter": {
+          "top": 788,
+          "bottom": 844,
+          "width": 390
+        },
+        "canvasPixels": {
+          "width": 390,
+          "height": 788
+        },
+        "theme": "dark"
+      },
+      "sampled_colors": 863,
+      "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-public.png"
+    },
+    {
+      "action": "open tools, ArrowRight/Enter next seat, Enter reveal",
+      "status": "PASS",
+      "tools": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-tools.png",
+      "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-revealed.png",
+      "card_difference": {
+        "changed": 96429,
+        "total": 98304,
+        "fraction": 0.980926513671875
+      }
+    },
+    {
+      "action": "explicit drawer close returns to table",
+      "status": "PASS",
+      "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-drawer-closed.png",
+      "drawer_difference": {
+        "changed": 96408,
+        "total": 98304,
+        "fraction": 0.980712890625
+      }
+    },
+    {
+      "action": "Escape conceals role and closes drawer",
+      "status": "PASS",
+      "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-escape-concealed.png",
+      "concealed_difference": {
+        "changed": 49,
+        "total": 98304,
+        "fraction": 0.0004984537760416666
+      }
+    },
+    {
+      "action": "focus loss shields immediately; resume stays concealed",
+      "status": "PASS",
+      "shield": {
+        "visible": true,
+        "opacity": "1",
+        "coversCanvas": true
+      },
+      "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-focus-concealed.png",
+      "resume": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-resumed-concealed.png",
+      "concealed_difference": {
+        "changed": 53,
+        "total": 98304,
+        "fraction": 0.0005391438802083334
+      }
+    },
+    {
+      "action": "public phase controls, keyboard target and keyboard vote submit",
+      "status": "PASS",
+      "selected": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-target-selected.png",
+      "submit_focused": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-submit-focused.png",
+      "screenshot": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-keyboard-submitted.png",
+      "tabs_to_submit": 11,
+      "public_board_difference": {
+        "changed": 3038,
+        "total": 169824,
+        "fraction": 0.01788910872432636
+      }
+    }
+  ],
+  "runtime_artifact": {
+    "url": "resources/2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a.wasm",
+    "bytes": 1001281,
+    "sha256": "2a5d5c7fe1a55aeeaf774505c6fd56ff80c92f8b6c5a63a71e608e796113748a"
+  },
+  "document_residuals": [],
+  "status": "PASS",
+  "elapsed_ms": 12690,
+  "errors": [],
+  "console_messages": [
+    {
+      "type": "warning",
+      "message": "Some of the registred plugins do not have name or version",
+      "url": "http://127.0.0.1:32847/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+    },
+    {
+      "type": "warning",
+      "message": "Probably old version of the plugin used",
+      "url": "http://127.0.0.1:32847/resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js"
+    }
+  ],
+  "captures": [
+    {
+      "name": "390x844-dpr1-public",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-public.png",
+      "retained": true,
+      "bytes": 245187,
+      "sha256": "0b82feffa136571147138738aaa2768af61126737381ae07a43af38bf18ac4b5"
+    },
+    {
+      "name": "390x844-dpr1-tools",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-tools.png",
+      "retained": true,
+      "bytes": 71307,
+      "sha256": "1997186e6ffed4f70673c4d7f05789a67fd5134349fe74ee1d378e0ea9bc8bbb"
+    },
+    {
+      "name": "390x844-dpr1-seat-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-seat-concealed.png",
+      "retained": true,
+      "bytes": 246326,
+      "sha256": "16f775a1e52e8bebdb303340bea1a2a0141aa6c9a107512197b4acf534833093"
+    },
+    {
+      "name": "390x844-dpr1-revealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-revealed.png",
+      "retained": true,
+      "bytes": 167259,
+      "sha256": "349003215c1c23c8602652bd9ce6f38fb1b51539cf8ddd7c929f1b50487594ba"
+    },
+    {
+      "name": "390x844-dpr1-drawer-closed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-drawer-closed.png",
+      "retained": true,
+      "bytes": 250632,
+      "sha256": "a47a7f90ea09c5ccb2da5785f62be5582efffac1c466a127cae9c3f90fc67e77"
+    },
+    {
+      "name": "390x844-dpr1-escape-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-escape-concealed.png",
+      "retained": true,
+      "bytes": 246421,
+      "sha256": "1ecfc74897f2d83a3c9c482e9b40529ab2a2b3811a2fc44a0f2081675ebcd119"
+    },
+    {
+      "name": "390x844-dpr1-focus-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-focus-concealed.png",
+      "retained": true,
+      "bytes": 20951,
+      "sha256": "73057c156dd029e6eb097e1fe89ba29d44c699775a118673a66509da15a20b17"
+    },
+    {
+      "name": "390x844-dpr1-resumed-concealed",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-resumed-concealed.png",
+      "retained": true,
+      "bytes": 247057,
+      "sha256": "4449c6f12fd26befa9e6211374bf648918d355b8daaa689f8b1c5905db12c865"
+    },
+    {
+      "name": "390x844-dpr1-target-selected",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-target-selected.png",
+      "retained": true,
+      "bytes": 274929,
+      "sha256": "58e2fb399e13ecf1ce0693e33e244031f6d6898a4c2681cfcf5d6180d4a7eaad"
+    },
+    {
+      "name": "390x844-dpr1-submit-focused",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-submit-focused.png",
+      "retained": true,
+      "bytes": 275715,
+      "sha256": "348a217a79ea3a0ae2ed490a02c53231666308b78d0a8225f9f944c626ca7c9b"
+    },
+    {
+      "name": "390x844-dpr1-keyboard-submitted",
+      "filename": "/home/runner/work/tabula/tabula/verification/current-ui-report-artifacts/werewolf/screenshots/390x844-dpr1-keyboard-submitted.png",
+      "retained": true,
+      "bytes": 275288,
+      "sha256": "0135d62453444bf8201a4d69d2fb98f482e8843ac3c4299fc3e4f4bb7c759c3d"
+    }
+  ]
+}
