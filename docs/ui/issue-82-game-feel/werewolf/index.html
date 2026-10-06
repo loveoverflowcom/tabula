@@ -19,7 +19,7 @@
   <header class="app-header">
     <a href="#" class="brand" aria-label="Tabula"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><b>tabula</b></a>
     <span class="breadcrumb">Bàn chơi <span>/</span> <strong>Ma Sói</strong></span>
-    <div class="header-end"><span class="local-tag"><i></i>Mô phỏng cục bộ</span><button class="quiet-btn motion-button" aria-pressed="false" title="Giảm chuyển động"><svg><use href="#spark"/></svg><span>Chuyển động</span></button></div>
+    <div class="header-end"><span class="header-account-avatar" aria-label="Avatar tài khoản của bạn — mẫu"></span><span class="local-tag"><i></i>Mô phỏng cục bộ</span><button class="quiet-btn motion-button" aria-pressed="false" title="Giảm chuyển động"><svg><use href="#spark"/></svg><span>Chuyển động</span></button></div>
   </header>
 
   <main>
@@ -56,14 +56,16 @@
         </section>
       </aside>
     </div>
+    <button class="own-role-toggle" aria-haspopup="dialog" aria-controls="role-dialog"><svg><use href="#lock"/></svg><span>Lá bài của bạn</span><small>Mở vùng riêng</small><svg><use href="#chevron"/></svg></button>
     <section class="action-dock" aria-label="Hành động mẫu">
       <div class="action-heading"><span class="action-number">02</span><div><span class="eyebrow" id="action-eyebrow">HÀNH ĐỘNG TRONG ĐÊM</span><h2 id="action-title">Bạn sẽ chọn ai?</h2><p id="action-description">Chọn một chân dung. Vai trò của họ vẫn là bí mật.</p></div></div>
       <div class="selected-target"><span class="target-preview"></span><div><small>MỤC TIÊU</small><strong id="target-name">Chưa chọn</strong></div></div>
       <button class="submit-action" disabled><span id="submit-label">Xác nhận mục tiêu</span><svg><use href="#chevron"/></svg></button>
     </section>
-    <div class="demo-footer"><span>Bản thiết kế • dữ liệu mẫu • mô phỏng cục bộ</span><details><summary>Thử chuyển cảnh <svg><use href="#chevron"/></svg></summary><div class="demo-controls"><label>Cảnh mẫu<select id="phase-demo"><option value="night">Đêm · chọn mục tiêu</option><option value="day">Ngày · thảo luận</option><option value="vote">Biểu quyết · công khai</option></select></label><button id="reset-demo">Đặt lại mẫu</button></div></details></div>
+    <div class="demo-footer"><span>Bản thiết kế • dữ liệu mẫu • mô phỏng cục bộ</span><details><summary>Thử chuyển cảnh <svg><use href="#chevron"/></svg></summary><div class="demo-controls"><label>Cảnh mẫu<select id="phase-demo"><option value="night">Đêm · chọn mục tiêu</option><option value="day">Ngày · thảo luận</option><option value="vote">Biểu quyết · công khai</option></select></label><button id="reset-demo">Đặt lại mẫu</button><a class="avatar-compare-link" href="dashboard-avatar-sync.html">So sánh avatar mẫu</a></div></details></div>
     <div class="toast" role="status" aria-live="polite"></div>
   </main>
+  <dialog id="role-dialog" aria-label="Lá bài riêng của bạn — dữ liệu mẫu"><div class="role-dialog-content"></div><button class="role-dialog-close">Đóng vùng riêng</button></dialog>
   <script type="module" src="preview.mjs"></script>
 </body>
 </html>

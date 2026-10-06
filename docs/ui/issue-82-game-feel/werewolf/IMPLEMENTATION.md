@@ -7,11 +7,50 @@ Thiết kế bổ sung cho [#82](https://github.com/loveoverflowcom/tabula/issue
 Giữ Rust/Macroquad. Chuyển màn chơi từ lưới nút số sang một cảnh làng 2D: người chơi là các chân dung/ghế quanh lửa trại, chọn bằng cách chạm vào nhân vật. Nền có chiều sâu và ánh sáng nhưng phải dịu sau vùng tên, trạng thái và mục tiêu. Màu điều khiển dùng primary tím hiện có; ánh lửa và trăng là artwork của game, không đổi token danger/selected/focus của nền tảng.
 
 - Desktop: bàn làng chiếm phần lớn khung; lá bài riêng ở vùng nhỏ bên cạnh; header có vòng/pha/thời gian; log công khai gọn. Một CTA theo ngữ cảnh, không hàng dài nút ngang.
-- Mobile: tái bố trí thành lưới chân dung 3×4 hoặc 4×3, không thu nhỏ nguyên vòng desktop. Lá bài riêng mở dạng vùng riêng/drawer có nút che dễ chạm. Thanh hành động có không gian thực trong layout; host/footer có vùng riêng và safe inset. Màn ngắn được cuộn, không đè lên nội dung.
+- Mobile: lưới avatar tài khoản 4×3; lá bài riêng thu vào drawer. 390×844 dành màn đầu cho 12 ghế và CTA; 320×640/landscape có bố cục gọn riêng và vùng phụ cuộn. Dock/host/footer có slot thật và safe inset.
 - Vai của người khác giữ bí mật: không hiện hình/viền/âm thanh theo vai. Artwork riêng chỉ hiện khi projection của đúng viewer cho phép. Avatar công khai không lấy từ role assignment.
 - Simulator: chuyển ghế, pha tiếp theo và ván mới ở nhóm công cụ phụ; luôn ghi mô phỏng cục bộ. Trong sản phẩm không biến các nút simulator thành quyền của người chơi.
 - Trạng thái mục tiêu: chưa chọn → nhấc nhẹ chân dung → vòng selected + chữ “Đã chọn” → gửi → biên nhận riêng. Không bấm/hover tự gửi; hủy/chuyển mục tiêu vẫn dễ dàng.
 - Phù thủy: hai bình minh họa rõ khác nhau, tên và số lượng được phép thấy; chọn bình rồi chọn chân dung. Tiên tri/Bảo vệ/Thợ săn dùng cùng bàn nhưng hướng dẫn riêng. Không thêm luật hoặc vai mới.
+
+## Avatar tài khoản dùng chung với dashboard
+
+Yêu cầu bổ sung cho [#84](https://github.com/loveoverflowcom/tabula/issues/84): avatar trong game phải là cùng avatar tài khoản đã dùng ở dashboard/header. Đổi ghế, vai, pha hoặc trạng thái sống không đổi hình đại diện. Trạng thái game là marker riêng bên ngoài ảnh; không che mặt bằng mặt nạ/role art.
+
+### Hiện trạng source và contract cần bổ sung
+
+Source `develop@e75624ae` hiện chưa cung cấp avatar dashboard: `apps/web/src/views/home.rs` là resume/catalog, `parts.rs::TopBar` chỉ có navigation/locale; `account.rs::ProfileFacts` hiển thị ID bất biến. `crates/tabula-session-http/src/lib.rs::SelfProfileResponse` chỉ có `version` và `account_id`. Không giả định có field `avatar_url`, tên hoặc resolver sẵn có.
+
+`SeatEntry` trong `crates/tabula-core/src/seat.rs` phân biệt `SeatId` với `Occupant::Human(UserId)`, Bot và Empty. `games/werewolf/src/rules/projection.rs::SeatView` có seat/alive/status/role, không có profile. Host/resource layer cần truyền dữ liệu hiển thị công khai được phép; game rules/projector không gọi profile/network.
+
+| Dữ liệu hiển thị đề xuất | Ownership và cách dùng |
+| --- | --- |
+| Public subject/occupant reference | Host xác định đúng occupant hiện tại; không lấy seat number làm account identity |
+| Display label được phép | Cùng nguồn với dashboard; thiếu thì dùng nhãn khách/default chung, không tự bịa profile |
+| Managed avatar asset reference + revision | Resolver chung dashboard/header/game; cache theo subject/ref/revision, crop tròn nhất quán; không fetch URL tùy ý trong game |
+| Shared fallback | Cùng initials nếu host đã cho phép display label; nếu chưa có label dùng neutral default; cùng fallback cho load/error/offline |
+| Seat → public display map | Host-owned typed presentation input đề xuất, không phải field protocol hiện có; refresh/vacate phải xóa avatar occupant cũ |
+
+Không xuất ID account thô lên UI, không log dữ liệu profile không cần thiết, không đưa profile vào canonical game state/replay. Mapping đổi viewer/occupant phải cập nhật ngay và bỏ callback asset cũ; late load không được gắn avatar người cũ vào ghế mới. Layout giữ nguyên kích thước khi ảnh đang tải/lỗi; tải trước/cache nhỏ gọn qua resource boundary hiện có.
+
+### Proof trong bộ design
+
+`avatar-fixtures.json` là danh sách **tài khoản mẫu**, không phải account thật; cùng `account-avatars.mjs` và `assets/account-avatars/*.svg` cấp ảnh cho mini dashboard/profile, header và ghế. `avatar-sync` minh họa cùng người ở hai bề mặt. Bộ SVG là asset mẫu gốc không mặt nạ; trong sản phẩm resolver dùng ảnh tài khoản thật nếu nguồn công khai đã được triển khai và cho phép. Đây là target contract cần implementation, không tuyên bố đã kết nối API avatar.
+
+## Responsive ưu tiên bàn chơi và hành động
+
+| Viewport tham chiếu | Bố cục và ưu tiên |
+| --- | --- |
+| 1440×960 desktop | Vòng ghế quanh làng; bài riêng và narrator bên phải; một CTA ở dock |
+| 390×844 portrait | Header/pha gọn, avatar 4×3, bài riêng thu thành thanh mở drawer; cả 12 ghế và CTA trong màn đầu |
+| 320×640 portrait ngắn | Thu khoảng trắng/cảnh phụ; giữ avatar, nhãn và hit target; panel phụ cuộn, CTA sticky có slot thật |
+| 844×390 landscape thấp | Bàn bên trái, thông tin/phím hành động bên phải; panel cuộn trong vùng được dành, không phủ ghế |
+
+Không co toàn bộ vòng desktop thành hình thu nhỏ. Chữ quan trọng tối thiểu 12 px trong reference, touch target ít nhất 44 dp; tên dài truncate có accessible label/full name khi mở thông tin. Bài riêng trong drawer có nút đóng, focus trap/restore và Escape; blur/mất quyền che mặt trước ngay. Header/footer/dock có ownership rõ và `env(safe-area-inset-*)`; CTA nằm trong slot của layout kể cả sticky, không đè hàng avatar cuối hoặc host footer.
+
+390×844 là yêu cầu màn đầu trong điều kiện viewport tham chiếu; font scale 200%, keyboard mở, safe insets lớn hoặc copy dài được cuộn có kiểm soát, không giữ lời hứa fit bằng cách giảm chữ. Log/simulator và helper text là phần ưu tiên thấp, có thể collapsed/scroll. Drawer mở là thao tác chủ động với modal riêng, không ép card vào bàn mobile.
+
+Tham khảo [Town of Salem 2 trên Steam](https://store.steampowered.com/app/2140510/Town_of_Salem_2/) về bầu không khí làng social deduction; lựa chọn của Tabula là cảnh làng làm tâm điểm, HUD gọn và panel phụ có thể thu. Avatar tài khoản và bố cục mobile được thiết kế riêng cho Tabula; không đưa screenshot/artwork Steam vào asset pack.
 
 ## Animation cần triển khai
 
@@ -40,6 +79,10 @@ Animation không đổi trạng thái luật, không trì hoãn gửi intent/ack
 
 Ownership: `games/werewolf/src/presentation/{mod,render,assets}.rs` cho game feel; `crates/tabula-presentation/src/motion.rs` cho hợp đồng chung; renderer chỉ sửa cơ chế vẽ. Asset runtime riêng tại `games/werewolf/assets/`, version/hash/budget theo pipeline hiện có. Nền mới là art gốc được tạo bằng imagegen; role art tham chiếu pack hiện tại. Đừng tải artwork/role atlas của mọi game vào global startup.
 
+- [ ] Cùng account hiển thị cùng avatar/fallback ở dashboard/header/game; đổi seat/role/phase/death không đổi ảnh. Avatar lỗi/offline/late-load/occupant-change không lưu ảnh người cũ; Bot/Empty/guest có marker và fallback riêng không lộ vai.
+- [ ] Dashboard/game dùng chung asset resolver và public display contract đã review; không tự thêm trường profile chưa có vào protocol. Khi chưa có nguồn avatar công khai, reference dùng fixture rõ nhãn và runtime dùng neutral fallback.
+- [ ] 390×844: 12 ghế và CTA trong màn đầu; 320×640 và 844×390 không horizontal overflow/đè footer; 44 dp hit target, font-scale 200%, long names, safe insets và keyboard không mất CTA hoặc quyền đóng drawer.
+- [ ] Drawer focus trap/restore/Escape và conceal ngay khi blur/viewer/permission đổi; drawer/log scroll không cuốn primary CTA khỏi vùng điều khiển.
 - [ ] Ảnh thật ở 1200×880, 1100×850, 390×844, 320×640 và landscape thấp; DPR1/2; chữ và artwork cùng đúng chiều, vùng chọn trùng chân dung.
 - [ ] Các vai hiện có, reveal/conceal, selection/submit/skip, phiếu công khai, bình minh, người chết, terminal đều có trạng thái rõ. Snapshot/ảnh không chứa bí mật ngoài projection.
 - [ ] Bốn theme và reduced motion: chữ dễ đọc, focus rõ, không chỉ dùng màu; keyboard path hoạt động. Touch/native chỉ nghiệm thu sau chạy trên nền tảng đó.

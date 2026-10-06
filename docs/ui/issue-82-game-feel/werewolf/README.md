@@ -1,29 +1,40 @@
 # Ma Sói — Đêm ở làng Sương
 
-Bản thiết kế tương tác, dữ liệu mẫu, mô phỏng cục bộ. Mở `index.html` qua một server static. Không có luật game, authority, mạng, chat hoặc voice.
+Bản thiết kế • dữ liệu mẫu • mô phỏng cục bộ. Mở `index.html` qua một server static. Không có luật game, authority, mạng, chat hoặc voice.
 
-## Hướng thiết kế
+## Avatar tài khoản chung
 
-Làng dưới trăng và vòng chân dung là bàn chơi chính. 12 chân dung là SVG trung tính với mặt nạ giống nhau; tóc, da và trang phục không mã hóa vai trò. Bài của ghế khác có chung mặt sau. Chỉ lá bài mẫu của bạn được lật. Chọn mục tiêu qua chân dung; hành động chính nằm ở một dock ngắn. Điều khiển demo được thu gọn ở cuối trang.
+Bàn Ma Sói, avatar nhỏ ở header và `dashboard-avatar-sync.html` dùng chung `avatar-fixtures.json` cùng resolver `account-avatars.mjs`. Subject ID, tên, avatar reference/version và chữ cái fallback đều lấy từ cùng public profile mẫu. Các hình SVG gốc ở `assets/account-avatars/` không có mặt nạ, role art hoặc sigil. Vai trò riêng nằm ở lá bài, không nằm trên avatar.
 
-Desktop dùng vòng 12 ghế; mobile 390 px dùng lưới 4×3 và cuộn trang để giữ cỡ chân dung/chữ rõ ràng. Lá bài riêng có vùng riêng, không đè bàn chơi. Không giả lập online/voice.
+`dashboard-avatar-sync.html` chỉ là đối chiếu sáu hồ sơ/ghế dùng đúng cùng asset; không phải thiết kế lại dashboard đầy đủ. Fixture là hợp đồng hiển thị mục tiêu. Source hiện tại chưa có API/avatar resolver hoàn chỉnh; không coi ảnh này là luồng tài khoản đã được tích hợp.
+
+Prototype tải managed asset mẫu cùng origin. Profile không có avatar hoặc ảnh lỗi hiển thị initials cùng kiểu ở cả hai surface. Remount có generation guard để callback cũ không thay avatar/fallback của occupant mới. Ghế của bạn được xác định bằng `fixture.ownSubjectId`, không bằng số ghế cố định. `portraits.mjs` và `portrait-data.json` chỉ là adapter tương thích, trỏ về fixture này, không còn artwork mặt nạ cũ.
+
+## Bố cục theo viewport
+
+- Desktop: 12 avatar quanh bàn làng, vùng bài riêng bên cạnh; chọn một mục tiêu và một CTA theo pha.
+- 390×844: header 56 px, phần tên cảnh gọn, roster 4×3, thanh mở bài riêng thu gọn và dock hành động có slot riêng. 12 người và CTA chính nằm trong màn đầu. Bài riêng mở bằng native dialog, đóng bằng nút hoặc Escape; đóng trả focus về nút mở.
+- 320×640: giảm khoảng cách và avatar; 4×3 vẫn giữ tên/số ghế 12 px. Dock sticky nằm trong flow và có padding safe-area. Footer/công cụ mẫu có vùng riêng dưới bàn; trang có thể cuộn.
+- Landscape 844×390: roster 6×2 ở cột trái; vùng mở bài và hành động nằm ở cột phải đã dành chỗ. Header không nổi đè lên bàn.
+
+Tên đầy đủ nằm trong label/title của ghế; focus và selected có marker riêng, không dùng vai trò để phân biệt người chơi. Blur, hidden, Escape và đổi pha che bài riêng ngay và cancel token; card front được loại khỏi accessibility tree khi che. Reduced motion giữ trạng thái reveal đã chọn, snap mặt bài và cancel token.
 
 ## Chuyển động
 
-- Lật bài riêng: 480 ms. Blur, Escape hoặc đổi cảnh che ngay. Giảm chuyển động đổi mặt tức thì.
-- Chọn chân dung: 160 ms nâng nhẹ + viền focus; giữ trạng thái chọn cuối.
-- Lá phiếu công khai: 160 ms từ trung tâm tới người được chọn; không áp dụng cho lựa chọn đêm.
-- Đổi đêm/ngày/biểu quyết: tonal wash 480 ms. Không chặn input.
-- Tàn lửa nền có giới hạn 12 hạt; giảm chuyển động dừng hẳn.
+- Lật bài riêng: 480 ms; giảm chuyển động đổi mặt tức thì.
+- Chọn avatar: 160 ms nâng nhẹ + focus/selected.
+- Phiếu công khai: token 160 ms; không dùng cho lựa chọn đêm.
+- Đổi ngày/đêm: artwork bình minh thật và tonal wash 480 ms.
+- Tàn lửa giới hạn 12 hạt; giảm chuyển động tắt, hidden pause.
 
-Các duration tham chiếu `docs/ui/tokens.json` và doc 04 §9. Đây là choreography mẫu cho Macroquad, không phải evidence Rust runtime. Khi triển khai, giữ `Local`, `ViewEvent`, reduced-motion, quyền riêng tư và invariant I-10.
+Duration tham chiếu semantic tokens hiện tại. Đây là choreography mẫu cho Macroquad, không phải evidence Rust runtime. Giữ `Local`, `ViewEvent`, reduced motion, projection privacy và invariant I-10 khi triển khai.
 
-## Nguồn ảnh
+## Reference và kiểm chứng
 
-- `assets/village.webp`: derivative tối ưu của cảnh nền nguyên bản do ImageGen tạo trong phiên redesign này, từ `generated_images/exec-7c159190-5976-4b13-a976-58a083eb5808.png`. PNG gốc được giữ trong gói nguồn cuối, không nằm trong thư mục asset này.
-- `assets/werewolf.png`: art runtime hiện có, lấy nguyên vẹn từ `games/werewolf/assets/werewolf@2x.png` ở `develop@e75624ae870a74f62f0f734fbcf2f12043047dd4`. Giữ upright, không xoay source để chữa lỗi UV.
-- Chân dung SVG được tạo trong `portraits.mjs` từ `portrait-data.json`, dùng chung cho HTML và export; không chứa artwork bên thứ ba.
+`export_preview.py` đọc cùng avatar fixture và asset SVG. Desktop night/day/vote 1440×960, mobile 390×844, compact 320×640, landscape 844×390 và `dashboard-avatar-sync` 1440×960 đều có SVG/PNG/JPG. Đây là **static vector references**, không phải browser screenshots hay ảnh Macroquad thật; exporter bố trí thiết kế và cùng dữ liệu, không thay thế browser layout engine.
 
-Các chữ, status, nhãn và nút đều là typography live, không được bake vào ảnh.
+Source syntax, fixture mapping, XML/dimensions và kiểm tra hình static: PASS. Browser interaction/layout/accessibility tree/animation playback: **NOT_RUN** vì browser runtime không có trong môi trường. Rust/Macroquad/native/network checks: **NOT_RUN**; lượt này chỉ cập nhật thiết kế.
 
-`export_preview.py` xuất SVG tự chứa + PNG/JPG tham chiếu bằng Inkscape; không phải ảnh chụp browser hoặc Rust runtime. `portraits.mjs` và `portrait-data.json` dùng chung SVG chân dung cho HTML/export. `assets/village.webp`/`village-dawn.webp` là derivatives tối ưu cho trình diễn; PNG gốc chỉ giữ trong gói nguồn cuối. Dawn là asset riêng đã được tạo trong cùng phiên.
+Nền `village.webp` và `village-dawn.webp` là derivatives tối ưu cho trình diễn. PNG gốc chỉ giữ trong ZIP tổng, không commit vào thư mục asset GitHub; dawn là asset riêng tạo trong cùng phiên. Cảnh đêm gốc từ `generated_images/exec-7c159190-5976-4b13-a976-58a083eb5808.png`; role art giữ nguyên upright từ pack Tabula. Chữ/status/nút là typography live, không bake vào ảnh.
+
+Nguồn ảnh, size/hash và dữ liệu ở `ASSETS.md`; ràng buộc tích hợp ở `IMPLEMENTATION.md`.
