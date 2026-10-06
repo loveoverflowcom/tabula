@@ -61,3 +61,14 @@ named pixel-inspection findings here. Until those artifacts are inspected, all
 runtime rows remain NOT_RUN. Compilation/native/headless assertions are never
 promoted to real Web pixel proof. Repository `just check`, normal feature/WASM CI
 and the inherited actual create/join Chess verdict are reported independently.
+
+## First implementation checks (before authentic pixels)
+
+- `cargo test -p tabula-registry linked_catalog_covers_are_lightweight_static_semantic_art --offline`: PASS, one selected test over both linked lightweight covers
+- `cargo test -p tabula-web --features online views::library::tests --offline`: PASS, three selected tests; latest-constraint combination, multiword draft handling and localized unlisted deep-link selection
+- `cargo test -p tabula-design design01_shell_preserves_brand_and_contrasted_four_scheme_surfaces --offline`: PASS, one selected test for original light identity and four-scheme text/focus contrast pairs
+- Original archive provenance: PASS, all 16 selected reference file byte counts/SHA-256 values verified
+- Source review: fixed missing column/gap wiring, ambiguous dialog custom-event types, selection binding Send constraint and 200% drawer header reflow; removed replaced horizontal-card/toolbar CSS and obsolete service-message keys
+
+These are bounded source/example/compile results, not full core or runtime acceptance.
+The early durable draft PR is [#88](https://github.com/loveoverflowcom/tabula/pull/88); exact final-source results follow after the remaining checks.

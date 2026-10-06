@@ -65,6 +65,7 @@ fn library_body(messages: &Messages, catalog: &Catalog, parsed: Memo<ParsedQuery
             <h1 class="section__title">{messages.text("library.heading")}</h1>
             {search(messages, parsed)}
         </header>
+        <super::home::ContinueRegion/>
         {filters(messages, catalog, parsed, navigator())}
         <div class="catalog__errors">
             {move || parsed.get().invalid.into_iter().map(|axis| {
@@ -251,8 +252,8 @@ fn search(messages: &Messages, parsed: Memo<ParsedQuery>) -> AnyView {
     // address (e.g. Back/Forward) replaces the local native input's draft.
     Effect::new(move |_| {
         let address = parsed.get().query.text.unwrap_or_default();
-        if draft.get_untracked().trim() != address {
-            draft.set(address);
+        if let Some(replacement) = search_address_replacement(&draft.get_untracked(), &address) {
+            draft.set(replacement);
         }
     });
     let on_search = move |event: leptos::ev::Event| {
@@ -280,6 +281,12 @@ fn search(messages: &Messages, parsed: Memo<ParsedQuery>) -> AnyView {
             </div>
         </div>
     }.into_any()
+}
+
+/// A new address replaces the draft; the address's normalized form of the
+/// same in-progress input does not eat the space before the next search word.
+fn search_address_replacement(draft: &str, address: &str) -> Option<String> {
+    (draft.trim() != address).then(|| address.to_owned())
 }
 
 /// Replace the address with the given href, keeping scroll position: typing
@@ -405,20 +412,52 @@ fn select(
     label_key: &'static str,
     any_label: &str,
     options: Vec<(String, String)>,
-    value: impl Fn() -> String + 'static,
+    value: impl Fn() -> String + Clone + Send + 'static,
     on_change: impl Fn(String) + 'static,
 ) -> AnyView {
     let any_label = any_label.to_owned();
+    let property_value = value.clone();
+    let empty_value = value.clone();
+    let option_value = value.clone();
+    let selected_messages = messages.clone();
+    let known_options = options.clone();
     view! {
         <div class="field">
             <label class="field__label" for=id>{messages.text(label_key)}</label>
-            <select id=id class="field__control" prop:value=value
+            <select id=id class="field__control" prop:value=property_value
                 on:change=move |event| on_change(event_target_value(&event))>
-                <option value="">{any_label}</option>
-                {options.into_iter().map(|(value, label)| view! { <option value=value>{label}</option> }).collect_view()}
+                <option value="" prop:selected=move || empty_value().is_empty()>{any_label}</option>
+                {options.into_iter().map(|(value, label)| {
+                    let selected = option_value.clone();
+                    let selected_value = value.clone();
+                    view! { <option value=value prop:selected=move || selected() == selected_value>{label}</option> }
+                }).collect_view()}
+                {move || selected_only_option(&selected_messages, label_key, &value(), &known_options)
+                    .map(|(value, label)| view! { <option value=value selected=true>{label}</option> })}
             </select>
         </div>
     }.into_any()
+}
+
+/// A valid URL constraint may lie outside the catalog's usual menu inventory.
+/// Keep its actual value visible without inventing a supporting game's facts.
+fn selected_only_option(
+    messages: &Messages,
+    label_key: &str,
+    value: &str,
+    options: &[(String, String)],
+) -> Option<(String, String)> {
+    if value.is_empty() || options.iter().any(|(known, _)| known == value) {
+        return None;
+    }
+    let label = match label_key {
+        "library.filter.duration" => messages.format("unit.minutes", &[value]),
+        "library.filter.mode" => LaunchMode::parse(value)
+            .map(|mode| messages.text(mode.label_key()))
+            .unwrap_or_else(|| value.to_owned()),
+        _ => value.to_owned(),
+    };
+    Some((value.to_owned(), label))
 }
 
 /// Seat counts some linked game actually supports.
@@ -464,4 +503,95 @@ fn available_modes(catalog: &Catalog) -> Vec<LaunchMode> {
             })
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{axis, search_address_replacement, selected_only_option};
+    use crate::{i18n::Messages, query::ParsedQuery};
+    use leptos::prelude::*;
+    use std::{cell::RefCell, rc::Rc};
+    use tabula_registry::{Category, Locale};
+
+    #[test]
+    fn axis_change_combines_with_latest_address_instead_of_mount_snapshot() {
+        Owner::new().with(|| {
+            let source = RwSignal::new(ParsedQuery::default());
+            let parsed = Memo::new(move |_| source.get());
+            let destination = Rc::new(RefCell::new(String::new()));
+            let recorded = destination.clone();
+            let change = axis(
+                parsed,
+                move |href| *recorded.borrow_mut() = href,
+                |next, value| {
+                    next.max_minutes = value.parse().ok();
+                },
+            );
+            source.update(|current| {
+                current.query.text = Some("classic strategy".to_owned());
+                current.query.category = Some(Category::Abstract);
+                current.query.players = Some(2);
+            });
+            change("30".to_owned());
+            assert_eq!(
+                *destination.borrow(),
+                "/games?q=classic%20strategy&category=abstract&players=2&duration=30"
+            );
+            source.update(|current| current.query.players = Some(5));
+            change(String::new());
+            assert_eq!(
+                *destination.borrow(),
+                "/games?q=classic%20strategy&category=abstract&players=5"
+            );
+        });
+    }
+
+    #[test]
+    fn search_normalization_preserves_space_before_next_word_but_back_replaces_draft() {
+        assert_eq!(search_address_replacement("classic ", "classic"), None);
+        assert_eq!(
+            search_address_replacement("classic strategy ", "classic strategy"),
+            None
+        );
+        assert_eq!(search_address_replacement("   ", ""), None);
+        assert_eq!(
+            search_address_replacement("classic strategy", "strategy"),
+            Some("strategy".to_owned())
+        );
+        assert_eq!(
+            search_address_replacement("classic strategy", ""),
+            Some(String::new())
+        );
+    }
+
+    #[test]
+    fn valid_unlisted_url_constraints_keep_their_actual_selected_labels() {
+        let en = Messages::new(Locale::En);
+        let vi = Messages::new(Locale::Vi);
+        let players = vec![("2".to_owned(), "2".to_owned())];
+        assert_eq!(
+            selected_only_option(&en, "library.filter.players", "", &players),
+            None
+        );
+        assert_eq!(
+            selected_only_option(&en, "library.filter.players", "2", &players),
+            None
+        );
+        assert_eq!(
+            selected_only_option(&en, "library.filter.players", "8", &players),
+            Some(("8".to_owned(), "8".to_owned()))
+        );
+        assert_eq!(
+            selected_only_option(&en, "library.filter.duration", "15", &[]),
+            Some(("15".to_owned(), "15 min".to_owned()))
+        );
+        assert_eq!(
+            selected_only_option(&vi, "library.filter.duration", "15", &[]),
+            Some(("15".to_owned(), "15 phút".to_owned()))
+        );
+        assert_eq!(
+            selected_only_option(&en, "library.filter.mode", "bots", &[]),
+            Some(("bots".to_owned(), "Against the game's bot".to_owned()))
+        );
+    }
 }

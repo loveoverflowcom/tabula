@@ -123,9 +123,12 @@
   color: var(--sys-color-on-surface);
 }
 
-// More-specific shared-card selectors override the previous horizontal card
-// rules at every breakpoint without changing detail/setup's passive badges.
+// One shared discovery-card implementation; detail/setup passive badges keep their owner.
 .cards {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   grid-template-columns: minmax(0, 1fr);
   gap: 1.375rem;
 }

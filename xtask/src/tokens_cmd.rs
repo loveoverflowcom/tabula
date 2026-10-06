@@ -1044,6 +1044,7 @@ fn css_text_styles(output: &mut String, role: &str, styles: &TextSizesSource) {
         css_text_style(output, &format!("{role}-{size}"), style);
     }
 }
+#[allow(clippy::float_arithmetic)] // Web-only conversion from logical px to scalable root units.
 fn css_text_style(output: &mut String, name: &str, style: &TextStyleSource) {
     writeln!(output, "  --sys-type-{name}-family: var(--sys-type-family-{});\n  --sys-type-{name}-size: {}rem;\n  --sys-type-{name}-line-height: {}rem;\n  --sys-type-{name}-weight: {};\n  --sys-type-{name}-letter-spacing: {}px;\n  --sys-type-{name}-tabular-figures: {};", family_name(style.family), float(style.size / 16.0), float(style.line_height / 16.0), style.weight, float(style.letter_spacing), matches!(style.family, FontFamilySource::Mono)).expect("String write");
 }
@@ -1544,6 +1545,33 @@ mod tests {
     }
     fn source() -> &'static str {
         include_str!("../../tokens.toml")
+    }
+
+    #[test]
+    fn web_type_metrics_are_root_relative_without_changing_logical_adapters() {
+        let artifacts = render_source(Path::new("."), source()).unwrap();
+        let css = artifacts
+            .iter()
+            .find(|(path, _)| path.ends_with("apps/web/style/tokens.css"))
+            .unwrap()
+            .1
+            .as_str();
+        assert!(css.contains("--sys-type-body-md-size: 0.875rem;"));
+        assert!(css.contains("--sys-type-body-md-line-height: 1.25rem;"));
+        let native = artifacts
+            .iter()
+            .find(|(path, _)| path.ends_with("crates/tabula-design/src/generated.rs"))
+            .unwrap()
+            .1
+            .as_str();
+        assert!(native.contains("positive(14.0)"));
+        let kotlin = artifacts
+            .iter()
+            .find(|(path, _)| path.ends_with("TabulaTokens.kt"))
+            .unwrap()
+            .1
+            .as_str();
+        assert!(kotlin.contains("14.0"));
     }
     #[test]
     fn generation_is_idempotent() {

@@ -111,11 +111,6 @@ const SHELL_EN: &[(&str, &str)] = &[
     ("nav.home", "Home"),
     ("nav.library", "Games"),
     ("home.heading", "Shall we play?"),
-    ("home.resume.none", "No match is waiting to be continued."),
-    (
-        "home.resume.unavailable",
-        "Saved-game lookup is not available in this build.",
-    ),
     ("home.browse", "Browse all games"),
     ("home.featured", "Find your next little joy"),
     ("library.heading", "Games"),
@@ -313,11 +308,6 @@ const SHELL_VI: &[(&str, &str)] = &[
     ("nav.home", "Trang chính"),
     ("nav.library", "Trò chơi"),
     ("home.heading", "Chơi một ván nhé?"),
-    ("home.resume.none", "Không có ván nào đang chờ chơi tiếp."),
-    (
-        "home.resume.unavailable",
-        "Bản này chưa hỗ trợ tìm ván đã lưu để tiếp tục.",
-    ),
     ("home.browse", "Xem tất cả trò chơi"),
     ("home.featured", "Tìm niềm vui tiếp theo"),
     ("library.heading", "Trò chơi"),

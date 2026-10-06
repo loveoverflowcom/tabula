@@ -95,8 +95,8 @@ pub fn TopBar() -> impl IntoView {
         </header>
         <dialog id="shell-menu" class="shell-menu" node_ref=menu
             aria-label=move || Messages::new(locale.get()).text("shell.navigation")
-            on:close=move |_| menu_open.set(false)
-            on:cancel=move |_| menu_open.set(false)
+            on:close=move |_: leptos::ev::Event| menu_open.set(false)
+            on:cancel=move |_: leptos::ev::Event| menu_open.set(false)
             on:keydown=move |event| {
                 if event.key() != "Tab" { return; }
                 let Some(dialog) = menu.get() else { return; };

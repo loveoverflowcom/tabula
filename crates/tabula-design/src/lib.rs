@@ -706,6 +706,35 @@ mod tests {
     }
 
     #[test]
+    fn design01_shell_preserves_brand_and_contrasted_four_scheme_surfaces() {
+        let light = Theme::by_kind(ThemeKind::Light).color;
+        assert_eq!(light.primary, Color::rgb(86, 52, 190));
+        assert_eq!(light.shell_canvas, Color::rgb(249, 247, 244));
+        assert_eq!(light.shell_paper, Color::rgb(255, 255, 255));
+        assert_eq!(light.shell_hero, Color::rgb(233, 224, 247));
+        for kind in [
+            ThemeKind::Light,
+            ThemeKind::Dark,
+            ThemeKind::HighContrastLight,
+            ThemeKind::HighContrastDark,
+        ] {
+            let c = Theme::by_kind(kind).color;
+            for surface in [c.shell_canvas, c.shell_paper, c.shell_note] {
+                assert!(ratio(c.on_surface, surface) >= 4.5, "{kind:?}: shell body");
+                assert!(
+                    ratio(c.on_surface_variant, surface) >= 4.5,
+                    "{kind:?}: shell supporting text"
+                );
+                assert!(ratio(c.primary, surface) >= 3.0, "{kind:?}: shell focus");
+            }
+            assert!(
+                ratio(c.shell_on_hero, c.shell_hero) >= 4.5,
+                "{kind:?}: hero text"
+            );
+        }
+    }
+
+    #[test]
     fn game_art_text_pairs_and_identity_tint_preserve_accessibility() {
         for kind in [
             ThemeKind::Light,

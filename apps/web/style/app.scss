@@ -137,15 +137,6 @@ body {
 
 // --------------------------------------------------------------------- toolbar
 
-.toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sys-space-lg);
-  padding: var(--sys-space-lg);
-  border-radius: var(--sys-shape-card);
-  background: var(--sys-color-container);
-}
-
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -168,60 +159,6 @@ body {
 }
 
 // ----------------------------------------------------------------------- cards
-
-.cards {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--sys-space-md);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "art text"
-    "action action";
-  gap: var(--sys-space-md);
-  align-items: start;
-  padding: var(--sys-space-lg);
-  border-radius: var(--sys-shape-card);
-  background: var(--sys-color-container);
-}
-
-.card__art {
-  grid-area: art;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--sys-shape-md);
-  background: var(--sys-color-container-high);
-}
-
-.card__text {
-  grid-area: text;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sys-space-xs);
-}
-
-.card__action {
-  grid-area: action;
-  justify-self: start;
-}
-
-.card__title {
-  margin: 0;
-  font-size: var(--sys-type-title-md-size);
-  line-height: var(--sys-type-title-md-line-height);
-  font-weight: var(--sys-type-title-md-weight);
-}
-
-.card__tagline {
-  margin: 0;
-  color: var(--sys-color-on-surface-variant);
-}
 
 // Passive labels. They carry meaning in text and are deliberately not shaped
 // like the chips that act.
@@ -557,36 +494,8 @@ body {
     padding: var(--sys-space-xxl);
   }
 
-  .card {
-    grid-template-areas: "art text action";
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-  }
-
-  .card__action {
-    justify-self: end;
-  }
-
   .actions {
     flex-wrap: nowrap;
-  }
-}
-
-@media (min-width: 905px) {
-  .cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .toolbar {
-    flex-direction: row;
-    align-items: flex-end;
-    flex-wrap: wrap;
-  }
-}
-
-@media (min-width: 1440px) {
-  .cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

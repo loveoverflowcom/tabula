@@ -400,6 +400,65 @@ def mobile_content_slot(browser, origin, evidence):
         context.close()
 
 
+def catalog_interactions(browser, origin, evidence):
+    """Real input/keyboard flows across URL updates, not a static value snapshot."""
+    context = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=1)
+    try:
+        page = context.new_page()
+        settle(page, origin + "/games?players=2")
+        require(page.locator("#filter-players").input_value() == "2", "initial deep link is not selected")
+        search = page.locator("#search")
+        search.focus()
+        search.press_sequentially("chess ", delay=35)
+        page.wait_for_function("new URL(location.href).searchParams.get('q') === 'chess'")
+        require(search.input_value() == "chess ", "normalized address ate in-progress trailing search space")
+        require(search.evaluate("el => el === document.activeElement"), "query update stole search focus")
+        search.press_sequentially("board", delay=35)
+        page.wait_for_function("new URL(location.href).searchParams.get('q') === 'chess board'")
+        require(search.input_value() == "chess board", "multiword typing did not survive query updates")
+        require(search.evaluate("el => el === document.activeElement"), "multiword query stole search focus")
+        category = page.locator("#filter-category")
+        category.focus()
+        category.press("ArrowDown")
+        page.wait_for_function("new URL(location.href).searchParams.get('category') === 'abstract'")
+        require(category.evaluate("el => el === document.activeElement"), "category result update stole native select focus")
+        require(page.evaluate("new URL(location.href).searchParams.get('q')") == "chess board"
+                and page.evaluate("new URL(location.href).searchParams.get('players')") == "2",
+                "filter update used stale query and lost an existing constraint")
+        duration = page.locator("#filter-duration")
+        first_budget = duration.locator('option[value]:not([value=""])').first.get_attribute("value")
+        require(bool(first_budget), "real duration option selection empty")
+        duration.focus()
+        duration.press("ArrowDown")
+        page.wait_for_function("value => new URL(location.href).searchParams.get('duration') === value", arg=first_budget)
+        require(duration.evaluate("el => el === document.activeElement"), "duration result update stole native select focus")
+        require(page.evaluate("new URL(location.href).searchParams.get('category')") == "abstract"
+                and page.evaluate("new URL(location.href).searchParams.get('q')") == "chess board",
+                "second filter update lost latest first filter or search")
+        typing_capture = evidence.capture(page, "after-mobile-multiword-native-filter-focus")
+        page.locator(".catalog__reset").click()
+        page.wait_for_function("location.search === ''")
+        require(search.input_value() == "", "reset left stale search draft")
+        for axis in ("category", "players", "duration", "complexity", "mode"):
+            require(page.locator("#filter-" + axis).input_value() == "", "reset left a stale native selection")
+        # These are parser-valid constraints even where current catalog inventory
+        # has no matching game or menu item. Do not turn them into invented facts.
+        query = "category=abstract&players=8&duration=15&complexity=heavy&mode=bots"
+        settle(page, origin + "/games?" + query)
+        selected = {"category": "abstract", "players": "8", "duration": "15", "complexity": "heavy", "mode": "bots"}
+        for axis, value in selected.items():
+            require(page.locator("#filter-" + axis).input_value() == value,
+                    "valid deep-link constraint disappeared from native select")
+        require(page.locator(".banner--error").count() == 0, "valid absent-inventory constraint mislabeled invalid")
+        require(page.locator(".card").count() == 0 and page.locator("[role=status]").count() > 0,
+                "valid unsatisfied query failed to announce truthful empty results")
+        return {"multiword_draft_preserved": True, "search_and_select_focus_preserved": True,
+                "latest_constraints_combined": True, "reset_controls": True, "valid_deep_link_selections": selected,
+                "captures": [typing_capture, evidence.capture(page, "after-mobile-valid-absent-inventory-deep-link")]}
+    finally:
+        context.close()
+
+
 def text_scale(playwright, origin, evidence, private):
     """Real browser user font preferences; no CSS-injected fake reflow evidence."""
     result = []
@@ -422,7 +481,17 @@ def text_scale(playwright, origin, evidence, private):
             settle(page, origin + "/games")
             library = page.evaluate(MEASURE)
             assert_layout(library, 390, small=True)
-            result.append({"scale": scale, "home": home, "library": library, "capture": capture})
+            page.locator("#menu-toggle").click()
+            dialog = page.locator("#shell-menu")
+            require(dialog.evaluate("el => el.open && el.scrollWidth <= el.clientWidth + 1"),
+                    "scaled modal drawer overflows horizontally")
+            require(dialog.evaluate("el => el.contains(document.activeElement)"), "scaled drawer did not own focus")
+            drawer_capture = evidence.capture(page, f"after-mobile-drawer-font-{scale * 100}percent")
+            page.keyboard.press("Escape")
+            require(not dialog.evaluate("el => el.open"), "Escape did not close scaled drawer")
+            require(page.locator("#menu-toggle").evaluate("el => el === document.activeElement"),
+                    "scaled drawer did not restore toggle focus")
+            result.append({"scale": scale, "home": home, "library": library, "captures": [capture, drawer_capture]})
         finally:
             context.close()
     require(result[1]["home"]["title"]["font_size"] >= result[0]["home"]["title"]["font_size"] * 1.95,
@@ -471,6 +540,7 @@ def main():
             evidence.case("four real system schemes, vi/en, reduced motion, contrast, empty and invalid query", lambda: preference_matrix(browser, after, evidence))
             evidence.case("genuine native drawer keyboard trap, Escape, restore focus and repeated route dismissal", lambda: drawer_keyboard(browser, after, evidence))
             evidence.case("real catalog/detail/setup Back/Forward and lazy landing network bytes", lambda: route_and_loading(browser, after, args.after_dist, evidence))
+            evidence.case("multiword typing/native-select focus, latest-query combination and valid deep links", lambda: catalog_interactions(browser, after, evidence))
             evidence.case("320px fixed bottom nav leaves reachable last card slot", lambda: mobile_content_slot(browser, after, evidence))
             evidence.case("genuine isolated Chromium 200-percent default font preference reflows", lambda: text_scale(playwright, after, evidence, Path(temp)))
         finally:
