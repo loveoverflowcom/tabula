@@ -74,6 +74,74 @@ where
             presentation: PhantomData,
         })
     }
+    /// Bind a fresh server-derived operation-scope hint, never an authorization token.
+    pub fn bind_scope(&mut self, scope: &str) -> Result<(), &'static str> {
+        self.network
+            .bind_scope(scope)
+            .map_err(|_| "Invalid online operation scope")
+    }
+    /// Restore an opaque original intent only after fresh attachment validation.
+    pub fn restore_pending(
+        &mut self,
+        scope: &str,
+        command: ClientEnvelope,
+    ) -> Result<Option<ClientEnvelope>, &'static str> {
+        self.network
+            .restore_pending(scope, command)
+            .map_err(|_| "Invalid pending online operation")
+    }
+    /// Withdraw all private presentation while retaining the original uncertain intent.
+    pub fn recover(&mut self) {
+        self.network.recover();
+        self.view = None;
+        self.local = P::Local::default();
+        self.rejection = None;
+    }
+    /// Replace the whole projection, clearing animations and checking original retry scope.
+    pub fn resync(
+        &mut self,
+        scope: &str,
+        next_seq: u64,
+        frames: &[ServerEnvelope],
+    ) -> Result<Option<ClientEnvelope>, &'static str> {
+        if frames.len() != 1 {
+            self.disconnect();
+            return Err("Invalid resync snapshot");
+        }
+        let ServerMessage::MatchUpdate {
+            view,
+            events,
+            revision: 0,
+        } = frames[0].body()
+        else {
+            self.disconnect();
+            return Err("Invalid resync snapshot");
+        };
+        if !events.is_empty() {
+            self.disconnect();
+            return Err("Invalid resync events");
+        }
+        let Ok(view) = canonical_decode(view) else {
+            self.disconnect();
+            return Err("The server projection is incompatible");
+        };
+        let Ok(retry) = self.network.resync(scope, next_seq, frames) else {
+            self.disconnect();
+            return Err("Invalid online resync");
+        };
+        self.view = Some(view);
+        self.local = P::Local::default();
+        self.rejection = None;
+        Ok(retry)
+    }
+    /// Keep a fresh authorized board read-only when an old intent cannot be resolved.
+    pub fn mark_unknown(&mut self) {
+        self.network.mark_unknown();
+    }
+    /// Whether a definitive receipt is still missing for this original operation.
+    pub const fn has_pending(&self) -> bool {
+        self.network.has_pending()
+    }
     /// Local controls never travel upstream.
     pub fn local_mut(&mut self) -> &mut P::Local {
         &mut self.local
@@ -302,6 +370,79 @@ mod tests {
             &[update(1, 0, 1, Vec::new())],
         )
         .unwrap()
+    }
+    const SCOPE: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    #[test]
+    fn recovery_drops_private_view_and_local_input_before_fresh_same_scope_retry() {
+        let mut online = session();
+        online.bind_scope(SCOPE).unwrap();
+        let original = online
+            .on_input(&InputEvent::Key {
+                key: Key::Enter,
+                pressed: true,
+            })
+            .unwrap()
+            .unwrap();
+        online.local_mut().events = 9;
+        online.recover();
+        assert_eq!(online.state(), DirectState::UnknownResult);
+        assert_eq!(online.description(), None);
+        assert!(online.present(&frame()).is_none());
+        assert!(!online.local.held);
+        assert_eq!(online.local.events, 0);
+        assert_eq!(
+            online
+                .resync(SCOPE, 2, &[update(1, 0, 2, Vec::new())])
+                .unwrap(),
+            Some(original)
+        );
+        assert_eq!(online.description().as_deref(), Some("2"));
+        assert_eq!(online.local.events, 0);
+        assert_eq!(online.state(), DirectState::Sending);
+    }
+    #[test]
+    fn fresh_projection_with_changed_scope_is_read_only_and_never_runs_rules() {
+        let mut online = session();
+        online.bind_scope(SCOPE).unwrap();
+        online
+            .on_input(&InputEvent::Key {
+                key: Key::Enter,
+                pressed: true,
+            })
+            .unwrap();
+        online.recover();
+        assert!(online
+            .resync(&"b".repeat(64), 1, &[update(1, 0, 2, Vec::new())])
+            .unwrap()
+            .is_none());
+        assert_eq!(online.description().as_deref(), Some("2"));
+        assert_eq!(online.state(), DirectState::ReadOnly);
+        assert!(online
+            .on_input(&InputEvent::Key {
+                key: Key::Enter,
+                pressed: true
+            })
+            .unwrap()
+            .is_none());
+        assert!(!online.local.held);
+    }
+    #[test]
+    fn malformed_resync_withdraws_private_output_even_if_called_without_prior_recover() {
+        let mut online = session();
+        online.bind_scope(SCOPE).unwrap();
+        let malformed = ServerEnvelope::new(
+            None,
+            1,
+            ServerMessage::MatchUpdate {
+                revision: 0,
+                view: vec![255, 255],
+                events: Vec::new(),
+            },
+        )
+        .unwrap();
+        assert!(online.resync(SCOPE, 1, &[malformed]).is_err());
+        assert!(online.present(&frame()).is_none());
+        assert_eq!(online.description(), None);
     }
     #[test]
     fn intents_never_run_rules_or_change_the_authoritative_projection() {

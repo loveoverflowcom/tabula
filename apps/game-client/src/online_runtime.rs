@@ -41,6 +41,21 @@ struct InitialResponse {
     game_id: String,
     game_version: String,
     attachment: MatchAttachment,
+    pending: Option<PendingResponse>,
+    pending_unknown: bool,
+    transport_generation: u64,
+}
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PendingResponse {
+    operation_scope: String,
+    command: String,
+}
+#[derive(serde::Deserialize)]
+#[serde(tag = "transport", rename_all = "lowercase", deny_unknown_fields)]
+enum TransportResponse {
+    Recovering,
+    Resync { bootstrap: InitialResponse },
 }
 
 /// One online loop, holding projections and local presentation only.
@@ -81,6 +96,9 @@ pub(super) async fn run_online<M, P>(
         unavailable().await;
         return;
     }
+    let restored = initial.pending;
+    let pending_unknown = initial.pending_unknown;
+    let mut host_generation = initial.transport_generation;
     let initial = initial.attachment;
     let Ok(mut online) = OnlineMatch::<M::Rules, P>::new(
         id,
@@ -92,9 +110,41 @@ pub(super) async fn run_online<M, P>(
         unavailable().await;
         return;
     };
+    if online.bind_scope(initial.operation_scope()).is_err() {
+        unavailable().await;
+        return;
+    }
+    let mut restored_command = None;
+    if let Some(pending) = restored {
+        if pending.command.len() > tabula_match_http::MAX_REQUEST_BYTES {
+            unavailable().await;
+            return;
+        }
+        match serde_json::from_str::<tabula_protocol::ClientEnvelope>(&pending.command) {
+            Ok(command) => {
+                let Ok(value) = online.restore_pending(&pending.operation_scope, command) else {
+                    unavailable().await;
+                    return;
+                };
+                restored_command = value;
+            }
+            Err(_) => online.mark_unknown(),
+        }
+    }
+    if pending_unknown {
+        online.mark_unknown();
+        restored_command = None;
+    }
+    if online.state() == DirectState::ReadOnly {
+        let _ = mq::load_file("tabula-online-unknown.txt").await;
+    }
     online.local_mut().set_reduced_motion(reduced_motion);
     let mut inflight = None::<ResponseFuture>;
-    let mut command = None::<tabula_protocol::ClientEnvelope>;
+    let mut command = restored_command;
+    let mut recover_request = false;
+    let mut recovery_cycles = 0u8;
+    let mut pending_since = None::<u64>;
+    let mut current_seat = initial.seat();
     let mut next_poll = 0u64;
     let mut ready = false;
     let mut last_status = String::new();
@@ -133,20 +183,68 @@ pub(super) async fn run_online<M, P>(
         if let Some(future) = inflight.as_mut() {
             if let Poll::Ready(result) = poll_request(future) {
                 inflight = None;
+                let previously_pending = online.has_pending();
                 match result {
                     Ok(bytes) if bytes.len() <= tabula_match_http::MAX_RESPONSE_BYTES => {
-                        if let Ok(response) = serde_json::from_slice::<MatchFrames>(&bytes) {
-                            match online.receive(response.frames(), &board_frame) {
-                                Ok(cues) => play_cues(audio, &cues),
-                                Err(_) => online.disconnect(),
+                        if let Ok(response) = serde_json::from_slice::<TransportResponse>(&bytes) {
+                            match response {
+                                TransportResponse::Recovering => {
+                                    online.recover();
+                                    recover_request = true;
+                                    command = None;
+                                }
+                                TransportResponse::Resync { bootstrap } => {
+                                    if bootstrap.game_id != metadata.id().as_str()
+                                        || bootstrap.game_version != metadata.version().as_str()
+                                    {
+                                        online.disconnect();
+                                    } else {
+                                        host_generation = bootstrap.transport_generation;
+                                        current_seat = bootstrap.attachment.seat();
+                                        match online.resync(
+                                            bootstrap.attachment.operation_scope(),
+                                            bootstrap.attachment.next_seq(),
+                                            bootstrap.attachment.frames(),
+                                        ) {
+                                            Ok(retry) => command = retry,
+                                            Err(_) => online.disconnect(),
+                                        }
+                                        if bootstrap.pending_unknown {
+                                            online.mark_unknown();
+                                            command = None;
+                                        }
+                                        online.local_mut().set_reduced_motion(reduced_motion);
+                                        online.local_mut().sync_frame(&board_frame);
+                                        if !online.has_pending()
+                                            && online.state() == DirectState::Ready
+                                        {
+                                            recovery_cycles = 0;
+                                        }
+                                        // The replacement starts at revision0 with no animation/cue replay.
+                                        last_status.clear();
+                                    }
+                                }
+                            }
+                        } else if let Ok(response) = serde_json::from_slice::<MatchFrames>(&bytes) {
+                            if let Ok(cues) = online.receive(response.frames(), &board_frame) {
+                                play_cues(audio, &cues);
+                            } else {
+                                online.recover();
+                                recover_request = true;
+                                command = None;
                             }
                         } else {
                             online.disconnect();
                         }
                     }
-                    _ => {
-                        online.disconnect();
-                    }
+                    _ => online.disconnect(),
+                }
+                if online.state() == DirectState::ReadOnly {
+                    let _ = mq::load_file("tabula-online-unknown.txt").await;
+                } else if previously_pending && !online.has_pending() {
+                    let _ = mq::load_file("tabula-online-settled.txt").await;
+                    pending_since = None;
+                    recovery_cycles = 0;
                 }
                 next_poll = now.saturating_add(500);
             }
@@ -159,14 +257,30 @@ pub(super) async fn run_online<M, P>(
             }
         }
         if inflight.is_none() && online.state() != DirectState::Disconnected {
-            if let Some(command) = command.take() {
+            if online.state() == DirectState::Sending
+                && pending_since.is_some_and(|sent| now.saturating_sub(sent) >= 30000)
+            {
+                online.recover();
+                recover_request = true;
+                command = None;
+            }
+            if recover_request {
+                recovery_cycles = recovery_cycles.saturating_add(1);
+                if recovery_cycles > 6 {
+                    let _ = mq::load_file("tabula-online-unresolved.txt").await;
+                    online.disconnect();
+                } else {
+                    recover_request = false;
+                    pending_since = None;
+                    inflight = Some(request("tabula-online-recover.txt".into()));
+                }
+            } else if let Some(command) = command.take() {
                 match serde_json::to_vec(&command) {
                     Ok(bytes) if bytes.len() <= tabula_match_http::MAX_REQUEST_BYTES => {
+                        pending_since = Some(now);
                         inflight = Some(request(format!("tabula-online-command/{}", hex(&bytes))));
                     }
-                    _ => {
-                        online.disconnect();
-                    }
+                    _ => online.disconnect(),
                 }
             } else if now >= next_poll {
                 inflight = Some(request("tabula-online-poll.txt".into()));
@@ -175,12 +289,25 @@ pub(super) async fn run_online<M, P>(
         // Authority loss discards the projection before either board or a11y output.
         // This host operation synchronously conceals pixels and retires the document.
         let Some(scene) = online.present(&board_frame) else {
-            unavailable().await;
+            if matches!(
+                online.state(),
+                DirectState::Recovering | DirectState::UnknownResult | DirectState::Resyncing
+            ) {
+                draw_status(
+                    renderer,
+                    &frame,
+                    "Recovering · moves blocked · the previous move result may be unknown",
+                );
+                let _ = renderer.end_frame();
+                mq::next_frame().await;
+                continue;
+            }
+            unavailable_with_pending(online.has_pending()).await;
             return;
         };
         if renderer.submit(&scene).is_err() {
             online.disconnect();
-            unavailable().await;
+            unavailable_with_pending(online.has_pending()).await;
             return;
         }
         let message = match online.state() {
@@ -192,13 +319,14 @@ pub(super) async fn run_online<M, P>(
                     "Connected · server-authoritative"
                 }
             }
+            DirectState::ReadOnly => "Read-only · earlier move result unknown · do not repeat it",
             _ => "Moves are blocked",
         };
         draw_status(renderer, &frame, message);
-        let status = serde_json::json!({ "seat": initial.seat(), "revision": online.revision(), "status": online.description().expect("present projection has a description"), "connection": message }).to_string();
+        let status = serde_json::json!({ "generation": host_generation, "seat": current_seat, "revision": online.revision(), "status": online.description().expect("present projection has a description"), "connection": message }).to_string();
         if renderer.end_frame().is_err() {
             online.disconnect();
-            unavailable().await;
+            unavailable_with_pending(online.has_pending()).await;
             return;
         }
         mq::next_frame().await;
@@ -216,7 +344,15 @@ pub(super) async fn run_online<M, P>(
 }
 // No private status or error body crosses this operation.
 async fn unavailable() {
-    let _ = mq::load_file("tabula-online-unavailable.txt").await;
+    unavailable_with_pending(false).await;
+}
+async fn unavailable_with_pending(pending: bool) {
+    let _ = mq::load_file(if pending {
+        "tabula-online-unresolved.txt"
+    } else {
+        "tabula-online-unavailable.txt"
+    })
+    .await;
 }
 #[allow(clippy::float_arithmetic)] // Screen-space presentation only.
 fn draw_status(renderer: &mut MacroquadRenderer, frame: &FrameCtx, message: &str) {

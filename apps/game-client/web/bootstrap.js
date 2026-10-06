@@ -21,6 +21,7 @@
   let config;
   let direct = null;
   let onlineConcealed = false;
+  let onlineRecovering = false;
   // Mobile GameHost (ADR-0033). The native host injects an origin-restricted port at
   // document start; its absence means an ordinary browser document with no bridge.
   const hostMode = typeof window.TabulaHostNative === "object" && window.TabulaHostNative !== null && Boolean(window.TabulaHostBridge);
@@ -65,9 +66,34 @@
     byId("error-detail").textContent = config.locale === "en" ? "The online connection is unavailable. Moves are blocked. Return to Tabula to reopen this match." : "Kết nối trực tuyến không khả dụng. Không thể đi nước. Về Tabula để mở lại ván.";
     for (const id of ["leave-dialog", "help-dialog"]) if (byId(id).open) byId(id).close();
   }
-  function onlineUnavailable() {
+  function onlineRecovery(value) {
+    if (!config?.online || !current() || onlineConcealed) return;
+    onlineRecovering = true;
+    const canvas = byId("glcanvas");
+    // Preserve layout so Miniquad resize continues supplying a usable viewport.
+    // Visibility/aria concealment and cleared pixels hide all private output.
+    canvas.hidden = false; canvas.style.visibility = "hidden";
+    // Reset drawing pixels synchronously, retaining dimensions for a fresh Rust frame.
+    canvas.width = canvas.width;
+    canvas.tabIndex = -1; canvas.setAttribute("aria-hidden", "true");
+    canvas.removeAttribute("aria-label"); canvas.removeAttribute("aria-describedby");
+    const status = byId("online-status-container");
+    status.hidden = true;
+    for (const item of status.querySelectorAll("span")) item.textContent = "";
+    for (const key of ["onlineSeat", "onlineRevision", "onlineStatus"]) delete document.documentElement.dataset[key];
+    document.documentElement.dataset.onlineAvailability = "recovering";
+    document.documentElement.dataset.onlineConnection = value.state;
+    byId("loader").hidden = false;
+    byId("loading-title").textContent = config.locale === "en" ? "Recovering your online game…" : "Đang khôi phục ván trực tuyến…";
+    byId("loading-status").textContent = value.state === "unknown-result" ? (config.locale === "en" ? "The move result is unknown. Checking the saved server result before retrying…" : "Chưa rõ kết quả nước đi. Đang kiểm tra kết quả đã lưu trên máy chủ…") : (config.locale === "en" ? "Checking your session and seat, then requesting a fresh board. Moves are blocked." : "Đang kiểm tra phiên, chỗ chơi và bàn cờ mới. Chưa thể đi nước.");
+    clearTimeout(startupTimer);
+    for (const id of ["leave-dialog", "help-dialog"]) if (byId(id).open) byId(id).close();
+    try { wasm_exports?.focus?.(false); } catch (_) {}
+  }
+  function onlineUnavailable(value) {
     concealOnline();
     stopRuntime();
+    if (value?.unknown) byId("error-detail").textContent = config.locale === "en" ? "The move result is unknown. Moves are blocked. Retry to check the saved server result, or return to Tabula." : "Chưa rõ kết quả nước đi. Không thể đi nước. Thử lại để kiểm tra kết quả trên máy chủ hoặc về Tabula.";
     failed = true;
     if (!leaving) byId("error-back").focus();
   }
@@ -282,9 +308,17 @@
       direct = window.TabulaDirectTransport.create({
         matchId:config.matchId, gameId:config.gameId, signal:controller.signal, current,
         onUnavailable:onlineUnavailable,
+        onRecovering:onlineRecovery,
         onWaiting() { if (!current() || onlineConcealed) return; clearTimeout(startupTimer); byId("loading-status").textContent = config.locale === "en" ? "Waiting for the other player to join…" : "Đang đợi người chơi còn lại…"; },
         onStatus(value) {
           if (!current() || onlineConcealed) return;
+          onlineRecovering = false;
+          const canvas = byId("glcanvas");
+          canvas.hidden = false; canvas.style.visibility = "visible";
+          canvas.tabIndex = 0; canvas.removeAttribute("aria-hidden");
+          canvas.setAttribute("aria-label", text.helpTitle);
+          canvas.setAttribute("aria-describedby", "keyboard-help");
+          byId("loader").hidden = true;
           document.documentElement.dataset.onlineAvailability = "available";
           document.documentElement.dataset.onlineSeat = String(value.seat);
           document.documentElement.dataset.onlineRevision = String(value.revision);
@@ -393,7 +427,7 @@
       try {
         originalAnimation();
         if (!current() || failed || leaving) return;
-        if (!ready && boardAcknowledged) {
+        if (!ready && boardAcknowledged && !onlineRecovering) {
           ready = true;
           clearTimeout(startupTimer);
           byId("loader").hidden = true;

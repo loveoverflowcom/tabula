@@ -116,10 +116,12 @@
 //! src/kv.rs         KvStore trait + per-platform backends
 //! ```
 
-//! ADR-0041 recovers only the pure [`direct`] sequencer. No browser/native
-//! transport or online gameplay consumer is implemented by this module.
+//! The bounded isolated direct-browser slice implements [`direct`] sequencing,
+//! current-scope recovery and exact pending identity. Its HTTPS/credential/storage
+//! adaptation lives in the separate gameplay document, never in game rules.
+//! General WebSocket/native transport remains gated.
 
 #![forbid(unsafe_code)]
 
-/// Bounded direct-play core; robust resume remains gated.
+/// Bounded direct-play core with full projection resync and same-scope original retry.
 pub mod direct;

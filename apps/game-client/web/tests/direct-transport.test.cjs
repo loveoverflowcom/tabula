@@ -1,11 +1,14 @@
 const test = require("node:test"), assert = require("node:assert/strict");
 const direct = require("../direct-transport.js"), launch = require("../launch-options.js");
 const id = "00000000000000000000000000000007", game = "com.tabula.chess"; // xtask-allow-game-id: existing game-client leaf binding, not platform dispatch.
+const scope = "a".repeat(64);
+function memoryStorage() { const data=new Map(); return {data,getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)}; }
+const quickTimers={setTimeout:(fn,ms)=>setTimeout(fn,ms<20000?0:ms),clearTimeout};
 const hex = text => Buffer.from(text).toString("hex");
 const response = (body, extra={}) => new Response(typeof body === "string" ? body : JSON.stringify(body), {status:200,headers:{"Cache-Control":"no-store","Content-Type":"application/json"},...extra});
 function fixture(fetcher, extra={}) {
   const controller = new AbortController();
-  return {controller,transport:direct.create({matchId:id,gameId:game,signal:controller.signal,current:()=>true,protocol:"https:",fetcher,...extra})};
+  return {controller,transport:direct.create({matchId:id,gameId:game,signal:controller.signal,current:()=>true,protocol:"https:",fetcher,storage:memoryStorage(),timers:quickTimers,...extra})};
 }
 test("public online launch admits no grant, credential or client config", () => {
   const query = "?game=" + game + "&mode=network&seats=2&source=tabula&return_to=" + encodeURIComponent("/games/" + game + "?setup=1") + "&locale=en&match_id=" + id;
@@ -24,12 +27,12 @@ test("opaque command JSON keeps u128 identity exact", () => {
   assert.throws(() => direct.commandBody(id, "x".repeat(65536)));
 });
 test("cookie-only context/grant/attach and opaque command stay document-memory", async () => {
-  const calls=[],token="A".repeat(43),grant="A".repeat(100),frames={version:1,frames:[]};
+  const calls=[],token="A".repeat(43),grant="A".repeat(100),frames={version:2,frames:[]};
   const f=fixture(async(path,init)=>{
     calls.push({path,init});
     if(path.endsWith("/context"))return response({version:1,disposition:"authenticated",csrf_token:token});
-    if(path.endsWith("/grant"))return response({version:1,ready:true,binding_id:grant,seat:0,game_id:game,game_version:"1.0.0"});
-    if(path.endsWith("/attach"))return response({version:1,attachment_id:id,seat:0,next_seq:1,frames:[]});
+    if(path.endsWith("/grant"))return response({version:2,ready:true,binding_id:grant,seat:0,game_id:game,game_version:"1.0.0"});
+    if(path.endsWith("/attach"))return response({version:2,attachment_id:id,operation_scope:scope,seat:0,next_seq:1,frames:[]});
     return response(frames);
   });
   const attached=JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-attach.txt")));
@@ -49,7 +52,7 @@ test("cookie-only context/grant/attach and opaque command stay document-memory",
 });
 test("wrong package and missing no-store fail before attachment",async()=>{
   for(const wrong of [true,false]){
-    const f=fixture(async(path)=>path.endsWith("/context")?response({version:1,disposition:"authenticated",csrf_token:"A".repeat(43)}):wrong?response({version:1,ready:true,binding_id:"A".repeat(100),seat:0,game_id:"org.example.other",game_version:"1.0.0"}):response({},{headers:{"Content-Type":"application/json"}}));
+    const f=fixture(async(path)=>path.endsWith("/context")?response({version:1,disposition:"authenticated",csrf_token:"A".repeat(43)}):wrong?response({version:2,ready:true,binding_id:"A".repeat(100),seat:0,game_id:"org.example.other",game_version:"1.0.0"}):response({},{headers:{"Content-Type":"application/json"}}));
     await assert.rejects(f.transport.file("tabula-online-attach.txt"));
   }
 });
@@ -80,12 +83,24 @@ test("unannounced oversized streamed private response is cancelled and reader re
   await assert.rejects(f.transport.file("tabula-online-attach.txt"),/budget/);
   assert.equal(released,true);assert.equal(aborted,true);
 });
-test("status bridge publishes only bounded presenter facts and never performs Fetch",async()=>{
-  let seen=null;
-  const t=direct.create({matchId:id,gameId:game,signal:new AbortController().signal,current:()=>true,protocol:"https:",fetcher:()=>{throw new Error("unexpected HTTP");},onStatus:value=>seen=value});
-  await t.file("tabula-online-status/"+hex(JSON.stringify({seat:1,revision:4,status:"Game over / Black wins",connection:"Connected"})));
-  assert.equal(seen.status,"Game over / Black wins");assert.equal(seen.seat,1);
-  await assert.rejects(t.file("tabula-online-status/"+hex(JSON.stringify({seat:0,revision:-1,status:"x",connection:"x"}))));
+function authFetcher(effect=()=>response({version:2,frames:[]})) {
+  return async (path,init) => {
+    if(path.endsWith("/context"))return response({version:1,disposition:"authenticated",csrf_token:"A".repeat(43)});
+    if(path.endsWith("/grant"))return response({version:2,ready:true,binding_id:"B".repeat(100),seat:0,game_id:game,game_version:"1.0.0"});
+    if(path.endsWith("/attach"))return response({version:2,attachment_id:id,operation_scope:scope,seat:0,next_seq:1,frames:[]});
+    return effect(path,init);
+  };
+}
+test("status bridge publishes current-generation bounded facts without Fetch",async()=>{
+  let seen=null,calls=0;
+  const f=fixture(async(...args)=>{calls++;return authFetcher()(...args);},{onStatus:v=>seen=v});
+  await f.transport.file("tabula-online-attach.txt");
+  const value={generation:0,seat:1,revision:4,status:"Game over / Black wins",connection:"Connected"};
+  await f.transport.file("tabula-online-status/"+hex(JSON.stringify(value)));
+  assert.equal(seen.status,value.status);assert.equal(calls,3);
+  await f.transport.file("tabula-online-status/"+hex(JSON.stringify({...value,generation:99,status:"stale"})));
+  assert.equal(seen.status,value.status);
+  await assert.rejects(f.transport.file("tabula-online-status/"+hex(JSON.stringify({...value,revision:-1}))));
 });
 
 test("401/403, malformed JSON and body failure terminally conceal without exposing bodies",async()=>{
@@ -102,18 +117,18 @@ test("401/403, malformed JSON and body failure terminally conceal without exposi
     assert.equal(status,0); assert.equal(concealed,1);
   }
 });
-test("deadline aborts even an uncooperative fetch and conceals before it resolves",async()=>{
-  let timeout,resolve,concealed=0,aborted=false;
-  const f=fixture((_path,init)=>{init.signal.addEventListener("abort",()=>aborted=true);return new Promise(ok=>resolve=ok);},{onUnavailable(){concealed++;},timers:{setTimeout(fn){timeout=fn;return 1;},clearTimeout(){}}});
-  const pending=f.transport.file("tabula-online-attach.txt");
-  await Promise.resolve();
-  timeout();
-  await assert.rejects(pending,/interrupted/);
-  assert.equal(aborted,true); assert.equal(concealed,1);
-  resolve(response({version:1,disposition:"authenticated",csrf_token:"A".repeat(43)}));
-  await Promise.resolve();
-  await assert.rejects(f.transport.file("tabula-online-poll.txt"),/retired/);
+test("deadline aborts an uncooperative command, retains unknown intent and retires late success",async()=>{
+  let timeout,resolve,recovering=0,aborted=false;
+  const f=fixture(authFetcher((_path,init)=>{init.signal.addEventListener("abort",()=>aborted=true);return new Promise(ok=>resolve=ok);}),{onRecovering(){recovering++;},timers:{setTimeout(fn,ms){if(ms===30000)timeout=fn;return 1;},clearTimeout(){}}});
+  await f.transport.file("tabula-online-attach.txt");
+  const pending=f.transport.file("tabula-online-command/"+hex('{"seq":1}'));
+  await Promise.resolve();timeout();
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(await pending)),{transport:"recovering"});
+  assert.equal(aborted,true);assert.equal(recovering,1);
+  resolve(response({version:2,frames:[]}));await Promise.resolve();
+  f.transport.retire();
 });
+
 test("Rust unavailable notification and malformed status retire transport irreversibly",async()=>{
   for(const operation of ["tabula-online-unavailable.txt","tabula-online-status/"+hex("{malformed"),"tabula-online-status/"+hex(JSON.stringify({seat:0,revision:0,status:"x",connection:"x",secret:"no"}))]){
     let concealed=0,status=0;
@@ -123,4 +138,59 @@ test("Rust unavailable notification and malformed status retire transport irreve
     await assert.rejects(f.transport.file("tabula-online-status/"+hex(JSON.stringify({seat:0,revision:0,status:"old",connection:"old"}))));
     assert.equal(status,0);
   }
+});
+
+test("pending refresh hint has no credential/grant/projection and preserves opaque identity",async()=>{
+  const storage=memoryStorage(),key="tabula.pending.v2."+id;
+  const command='{"seq":1,"command":{"match_id":340282366920938463463374607431768211450}}';
+  const first=fixture(authFetcher(()=>{throw new Error("network");}),{storage});
+  await first.transport.file("tabula-online-attach.txt");
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(await first.transport.file("tabula-online-command/"+hex(command)))),{transport:"recovering"});
+  const saved=JSON.parse(storage.getItem(key));
+  assert.equal(saved.command,command);assert.equal(saved.operation_scope,scope);
+  for(const forbidden of ["csrf_token","binding_id","view","attachment_id","credential"])assert.equal(saved[forbidden],undefined);
+  assert.ok(!storage.getItem(key).includes("A".repeat(43))&&!storage.getItem(key).includes("B".repeat(100)));
+  first.transport.retire();
+  const second=fixture(authFetcher(),{storage});
+  const restored=JSON.parse(new TextDecoder().decode(await second.transport.file("tabula-online-attach.txt")));
+  assert.equal(restored.pending.command,command);assert.equal(restored.pending.operation_scope,scope);
+  await second.transport.file("tabula-online-settled.txt");assert.equal(storage.getItem(key),null);
+});
+test("recovery obtains fresh context/grant and never replays a command in JavaScript",async()=>{
+  const paths=[];let failures=0;
+  const f=fixture(async(path,init)=>{paths.push(path);return authFetcher(()=>{if(failures++===0)throw new Error("drop");return response({version:2,frames:[]});})(path,init);});
+  await f.transport.file("tabula-online-attach.txt");
+  await f.transport.file("tabula-online-command/"+hex('{"seq":1}'));
+  const fresh=JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-recover.txt")));
+  assert.equal(fresh.transport,"resync");assert.equal(fresh.bootstrap.pending.command,'{"seq":1}');
+  assert.equal(paths.filter(p=>p.endsWith("/command")).length,1);
+  assert.equal(paths.filter(p=>p.endsWith("/context")).length,2);
+  assert.equal(paths.filter(p=>p.endsWith("/grant")).length,2);
+});
+test("expired/malformed pending storage is unknown and never supplies replay bytes",async()=>{
+  for(const raw of ["{bad",JSON.stringify({version:2,match_id:id,game_id:game,game_version:"1.0.0",operation_scope:scope,command:'{"seq":1}',expires_at:1})]){
+    const storage=memoryStorage();storage.setItem("tabula.pending.v2."+id,raw);
+    const f=fixture(authFetcher(),{storage});
+    const fresh=JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-attach.txt")));
+    assert.equal(fresh.pending_unknown,true);assert.equal(fresh.pending,null);
+  }
+});
+test("inaccessible storage blocks submission before any command transmission",async()=>{
+  let sent=0;
+  const f=fixture(authFetcher(()=>{sent++;return response({version:2,frames:[]});}),{storage:{getItem:()=>null,setItem(){throw new Error("quota");},removeItem(){}}});
+  await f.transport.file("tabula-online-attach.txt");
+  await assert.rejects(f.transport.file("tabula-online-command/"+hex('{"seq":1}')),/recovery/);
+  assert.equal(sent,0);
+});
+test("six failed fresh-authority attempts stop with an explicit retry and keep the unknown hint",async()=>{
+  const storage=memoryStorage();let requests=0,unknown=false;
+  const f=fixture(authFetcher(()=>{throw new Error("drop");}),{storage,onUnavailable:v=>unknown=v.unknown});
+  await f.transport.file("tabula-online-attach.txt");
+  await f.transport.file("tabula-online-command/"+hex('{"seq":1}'));
+  // Replace context after initial send failure; only six bounded context retries run.
+  const g=fixture(()=>{requests++;throw new Error("offline");},{storage,onUnavailable:v=>unknown=v.unknown});
+  await assert.rejects(g.transport.file("tabula-online-attach.txt"),/explicit retry/);
+  assert.equal(requests,7);assert.equal(unknown,true);
+  assert.ok(storage.getItem("tabula.pending.v2."+id));
+  f.transport.retire();
 });

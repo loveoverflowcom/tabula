@@ -173,3 +173,35 @@ teardown. It additionally shields the canvas opaquely on focus loss and waits fo
 concealed-frame acknowledgment before removing the shield. Actual browser/native pixels
 remain blocked in this cloud executor, as recorded in the
 [host ledger](../../../docs/verification/werewolf-standalone/host-and-build.md).
+
+
+## Isolated direct-match recovery
+
+The opt-in HTTPS gameplay document uses HTTP carrier v2 and full authorized
+projection resync, not a canonical-state cache or global resume counter. On
+uncertain Fetch/body delivery, Rust immediately drops its projection, local
+selection and animations. The host synchronously masks and clears drawing pixels
+and private accessibility/status text. A fresh cookie-authenticated context,
+CSRF token and grant must precede each new attachment. Late generations cannot
+restore a retired surface, including Back/BFCache and visibility transitions.
+
+JavaScript preserves one bounded original command as opaque JSON text under
+`sessionStorage` key `tabula.pending.v2.<match-id>`, before sending. The hint has
+only HTTP version, match/game identity, server-derived non-authorizing operation
+scope, original command and a ten-minute expiry. Credentials, CSRF tokens, grants,
+attachments and projections are never persisted. Storage failure blocks command
+submission. Rust checks match/game/version, original sequence and exact current
+operation scope before retrying; JavaScript never chooses or sends a replay.
+A new auth record, epoch, seat or seat generation cannot replay the old intent.
+
+Recovery has six jittered attempts with an eight-second delay cap and bounded
+request deadlines. Timeout/partial response never means a failed commit. An
+expired/evicted receipt, changed scope or expired/corrupt pending hint leaves the
+fresh authorized board read-only with an explicit unknown-result message.
+A definitive receipt clears the pending hint. An exhausted recovery offers an
+explicit reload/retry while retaining the bounded original hint; revocation or
+sign-out clears it. Only the server supplies board truth and visible revisions.
+
+The Node adapter/host tests cover control-flow and privacy admission using test
+adapters. They do not establish rendered browser, HTTPS, PostgreSQL or process-
+crash acceptance; the real two-browser suite owns that evidence separately.

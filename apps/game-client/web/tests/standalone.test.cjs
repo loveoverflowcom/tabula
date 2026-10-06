@@ -974,3 +974,29 @@ test("online failed body/command and delayed success never republish private byt
   assert.equal(late.context.FS.loaded_files[pending],undefined);
   assert.ok(!late.loaded.includes(pending));
 });
+
+test("online uncertainty hides all old presenter facts without retiring the recovering runtime",async()=>{
+  const mock=await onlineHarness();
+  mock.onlineCallbacks.onRecovering({state:"unknown-result"});
+  const canvas=mock.elements.get("glcanvas"),container=mock.elements.get("online-status-container");
+  assert.equal(canvas.hidden,false);assert.equal(canvas.style.visibility,"hidden");
+  assert.ok(canvas.width>0&&canvas.height>0); // Layout survives resize while pixels remain concealed.
+  assert.equal(canvas.attributes["aria-hidden"],"true");assert.equal(canvas.attributes["aria-label"],undefined);
+  assert.equal(container.hidden,true);for(const span of container.querySelectorAll("span"))assert.equal(span.textContent,"");
+  assert.equal(mock.document.documentElement.dataset.onlineAvailability,"recovering");
+  assert.equal(mock.document.documentElement.dataset.onlineConnection,"unknown-result");
+  assert.match(mock.elements.get("loading-status").textContent,/unknown/);
+  assert.equal(mock.retired(),0);
+  // This callback is admitted by the transport only after a fresh Rust-rendered stream.
+  mock.onlineCallbacks.onStatus({...mock.status,revision:0,connection:"Read-only · earlier move result unknown · do not repeat it"});
+  assert.equal(canvas.hidden,false);assert.equal(mock.elements.get("loader").hidden,true);
+  assert.equal(mock.document.documentElement.dataset.onlineRevision,"0");
+  assert.match(mock.document.documentElement.dataset.onlineConnection,/Read-only/);
+});
+test("online unresolved-result recovery stays neutral and says unknown instead of failed",async()=>{
+  const mock=await onlineHarness();
+  mock.onlineCallbacks.onUnavailable({unknown:true});
+  assert.equal(mock.elements.get("glcanvas").width,0);
+  assert.match(mock.elements.get("error-detail").textContent,/result is unknown/);
+  assert.doesNotMatch(mock.elements.get("error-detail").textContent,/failed|rejected/);
+});
