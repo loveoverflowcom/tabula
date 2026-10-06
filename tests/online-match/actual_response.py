@@ -82,6 +82,15 @@ def _key(value):
     return getattr(value, "_impl_obj", value)
 
 
+def _document(identity):
+    if (not isinstance(identity, dict) or identity.get("disposed") is not False
+            or identity.get("fatal") is not None):
+        return None
+    document = identity.get("document")
+    return document if isinstance(document, str) and re.fullmatch(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", document) else None
+
+
 class _ContextObservation:
     def __init__(self):
         self.requests = weakref.WeakKeyDictionary()
@@ -93,16 +102,36 @@ class _ContextObservation:
     def watch_page(self, page):
         if page in self.pages:
             return
-        self.pages[page] = {"generation": 0, "bytes": {}}
-        page.on("close", lambda *_: self.clear_page(page))
-        page.on("framenavigated", lambda frame: self.clear_page(page)
+        self.pages[page] = {"generation": 0, "bytes": {}, "document": None, "closed": False}
+        page.on("close", lambda *_: self.clear_page(page, closed=True))
+        page.on("framenavigated", lambda frame: self.navigated_page(page)
                 if frame == page.main_frame else None)
 
-    def clear_page(self, page):
+    def navigated_page(self, page):
+        state = self.pages.get(page)
+        if state is None or self.closed or state["closed"]:
+            return
+        generation = state["generation"]
+        try:
+            document = _document(page.evaluate("() => window.__tabulaActualFetchObserver?.identity()"))
+        except Exception:
+            document = None
+        # Evaluation can dispatch another navigation or bind a new document's
+        # actual Request. An older callback must not retire that newer epoch.
+        if self.closed or state["closed"] or generation != state["generation"]:
+            return
+        # Playwright also emits framenavigated for pushState/replaceState/hash.
+        # Retain private bodies only when the same live JS epoch proves ownership.
+        if document is None or document != state["document"]:
+            self.clear_page(page, document=document)
+
+    def clear_page(self, page, *, document=None, closed=False):
         state = self.pages.get(page)
         if state is not None:
             state["generation"] += 1
             state["bytes"].clear()
+            state["document"] = document
+            state["closed"] |= closed
         for mapping in (self.requests, self.responses):
             for key, value in list(mapping.items()):
                 if value.get("page") is page:
@@ -124,6 +153,7 @@ class _ContextObservation:
                 page = request.frame.page
                 self.watch_page(page)
                 entry = {"page": page, "generation": self.pages[page]["generation"],
+                         "document": self.pages[page]["document"],
                          "descriptor": request_descriptor(request), "owner": str(next(self.owners)),
                          "binding": None, "error": None}
                 self.requests[key] = entry
@@ -140,9 +170,32 @@ class _ContextObservation:
             }""", {"expected": entry["descriptor"], "owner": entry["owner"]}), {"id", "document"})
             if type(binding["id"]) is not int or not 1 <= binding["id"] <= 64 or not isinstance(binding["document"], str) or len(binding["document"]) != 36:
                 raise ObservationFailure("observer_protocol_invalid")
-            if entry["generation"] != self.pages[entry["page"]]["generation"]:
+            page = entry["page"]
+            state = self.pages.get(page)
+            if self.closed or state is None or state["closed"]:
                 raise ObservationFailure("document_mismatch")
+            generation = state["generation"]
+            document = _document(page.evaluate("() => window.__tabulaActualFetchObserver?.identity()"))
+            if self.closed or state["closed"]:
+                raise ObservationFailure("document_mismatch")
+            if document != binding["document"]:
+                # An old binding can resume after a fresh request established
+                # the current document. Reject it without clearing that epoch.
+                if generation == state["generation"] and (document is None or document != state["document"]):
+                    self.clear_page(page, document=document)
+                raise ObservationFailure("document_mismatch")
+            if entry["generation"] != state["generation"] and (
+                    state["document"] != document or entry["document"] == document):
+                raise ObservationFailure("document_mismatch")
+            if state["document"] != document:
+                self.clear_page(page, document=document)
+            # A fresh document's request can bind while its navigation callback
+            # is evaluating identity. Adopt that verified epoch once, and keep
+            # this exact event-owned entry rather than selecting another request.
+            entry["generation"] = state["generation"]
+            entry["document"] = document
             entry["binding"] = binding
+            self.requests[key] = entry
         except ObservationFailure as error:
             entry["error"] = error.code
         except Exception:

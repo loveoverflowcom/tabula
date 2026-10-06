@@ -10,6 +10,7 @@ import actual_response as observer
 
 URL = "https://localhost:9443/api/v1/matches/" + "a" * 32 + "/attach"
 DOCUMENT = "11111111-1111-4111-8111-111111111111"
+NEW_DOCUMENT = "22222222-2222-4222-8222-222222222222"
 
 
 class Events:
@@ -121,7 +122,11 @@ class ActualResponseTests(unittest.TestCase):
             def interrupted(source, value=None):
                 result = evaluate(source, value)
                 if "observer.read" in source:
-                    context.emit("close") if close_context else page.emit("framenavigated", page.main_frame)
+                    if close_context:
+                        context.emit("close")
+                    else:
+                        page.document = NEW_DOCUMENT
+                        page.emit("framenavigated", page.main_frame)
                 return result
             with mock.patch.object(page, "evaluate", side_effect=interrupted):
                 self.failure("document_mismatch", lambda: observer.actual_response_json(response))
@@ -194,10 +199,130 @@ class ActualResponseTests(unittest.TestCase):
             with self.subTest(event=event):
                 request = Request(self.page); self.context.emit("request", request)
                 response = Response(request); observer.actual_response_json(response)
-                self.page.emit(event, self.page.main_frame) if event == "framenavigated" else self.page.emit(event)
+                if event == "framenavigated":
+                    self.page.document = NEW_DOCUMENT
+                    self.page.emit(event, self.page.main_frame)
+                else:
+                    self.page.emit(event)
                 self.failure("request_not_observed", lambda: observer.actual_response_json(response))
         self.context.emit("close")
         self.failure("request_not_observed", lambda: observer.actual_response_json(self.response))
+
+    def test_same_document_history_hash_and_subframe_events_preserve_exact_cache_and_budget(self):
+        observer.actual_response_json(self.response)
+        state = observer._CONTEXTS[self.context]
+        generation = state.pages[self.page]["generation"]
+        budget = dict(state.pages[self.page]["bytes"])
+        for navigation in ("pushState", "replaceState", "hash"):
+            with self.subTest(navigation=navigation):
+                self.page.emit("framenavigated", self.page.main_frame)
+                self.assertEqual(observer.actual_response_json(self.response)["seat"], 0)
+                self.assertEqual(state.pages[self.page]["generation"], generation)
+                self.assertEqual(state.pages[self.page]["bytes"], budget)
+        self.page.emit("framenavigated", SimpleNamespace(page=self.page))
+        self.assertEqual(observer.actual_response_json(self.response)["seat"], 0)
+        self.assertEqual(self.page.reads, 1)
+
+    def test_new_document_navigation_clears_bodies_and_allows_fresh_actual_request(self):
+        observer.actual_response_json(self.response)
+        state = observer._CONTEXTS[self.context]
+        generation = state.pages[self.page]["generation"]
+        self.page.document = NEW_DOCUMENT
+        self.page.emit("framenavigated", self.page.main_frame)
+        self.assertEqual(state.pages[self.page]["generation"], generation + 1)
+        self.assertEqual(state.pages[self.page]["bytes"], {})
+        self.assertEqual(len(state.responses), 0)
+        self.failure("request_not_observed", lambda: observer.actual_response_json(self.response))
+        request = Request(self.page); self.context.emit("request", request)
+        self.assertEqual(observer.actual_response_json(Response(request))["seat"], 0)
+        self.assertEqual(set(state.pages[self.page]["bytes"]), {NEW_DOCUMENT})
+
+    def test_unknown_disposed_or_failed_navigation_identity_retires_private_caches(self):
+        for identity in (None, {}, {"document":DOCUMENT,"disposed":True,"fatal":None},
+                         {"document":DOCUMENT,"disposed":False,"fatal":"body_read_deadline"},
+                         {"document":"synthetic-secret","disposed":False,"fatal":None}, RuntimeError("synthetic-secret")):
+            with self.subTest(identity_type=type(identity).__name__):
+                context = Context(); observer.install_actual_response_observer(context)
+                page = Page(context); context.emit("page", page)
+                request = Request(page); context.emit("request", request)
+                response = Response(request); observer.actual_response_json(response)
+                with mock.patch.object(page, "evaluate", side_effect=identity if isinstance(identity, Exception) else None,
+                                       return_value=identity):
+                    page.emit("framenavigated", page.main_frame)
+                self.failure("request_not_observed", lambda: observer.actual_response_json(response))
+                state = observer._CONTEXTS[context]
+                self.assertEqual(state.pages[page]["bytes"], {})
+                self.assertIsNone(state.pages[page]["document"])
+                self.assertEqual(len(state.responses), 0)
+                context.emit("close")
+
+    def test_initial_unknown_navigation_is_retired_then_actual_binding_sets_active_document(self):
+        context = Context(); observer.install_actual_response_observer(context)
+        page = Page(context); context.emit("page", page)
+        state = observer._CONTEXTS[context]
+        self.assertIsNone(state.pages[page]["document"])
+        with mock.patch.object(page, "evaluate", return_value=None):
+            page.emit("framenavigated", page.main_frame)
+        self.assertEqual(state.pages[page]["generation"], 1)
+        request = Request(page); context.emit("request", request)
+        self.assertEqual(state.pages[page]["document"], DOCUMENT)
+        self.assertEqual(observer.actual_response_json(Response(request))["seat"], 0)
+        context.emit("close")
+
+    def test_new_document_request_reentrant_during_navigation_is_not_retired_twice(self):
+        observer.actual_response_json(self.response)
+        self.page.document = NEW_DOCUMENT
+        evaluate = self.page.evaluate; fresh = []
+        def reentrant(source, value=None):
+            result = evaluate(source, value)
+            if "identity()" in source and not fresh:
+                fresh.append(Request(self.page))
+                self.context.emit("request", fresh[0])
+            return result
+        with mock.patch.object(self.page, "evaluate", side_effect=reentrant):
+            self.page.emit("framenavigated", self.page.main_frame)
+        self.failure("request_not_observed", lambda: observer.actual_response_json(self.response))
+        self.assertEqual(observer.actual_response_json(Response(fresh[0]))["seat"], 0)
+        state = observer._CONTEXTS[self.context]
+        self.assertEqual(set(state.pages[self.page]["bytes"]), {NEW_DOCUMENT})
+
+    def test_pending_old_binding_cannot_repopulate_after_unknown_epoch_retirement(self):
+        evaluate = self.page.evaluate; interrupted = []
+        def reentrant(source, value=None):
+            result = evaluate(source, value)
+            if "observer.bind" in source and not interrupted:
+                interrupted.append(True)
+                with mock.patch.object(self.page, "evaluate", return_value=None):
+                    self.page.emit("framenavigated", self.page.main_frame)
+            return result
+        request = Request(self.page)
+        with mock.patch.object(self.page, "evaluate", side_effect=reentrant):
+            self.context.emit("request", request)
+        self.failure("request_not_observed", lambda: observer.actual_response_json(Response(request)))
+        state = observer._CONTEXTS[self.context]
+        self.assertEqual(state.pages[self.page]["bytes"], {})
+        self.assertEqual(len(state.requests), 0)
+
+    def test_old_binding_resuming_after_fresh_document_binding_cannot_clear_fresh_cache(self):
+        evaluate = self.page.evaluate; fresh = []
+        state = observer._CONTEXTS[self.context]
+        def reentrant(source, value=None):
+            result = evaluate(source, value)
+            if "observer.bind" in source and not fresh:
+                self.page.document = NEW_DOCUMENT
+                self.page.emit("framenavigated", self.page.main_frame)
+                fresh.append(Response(Request(self.page)))
+                self.context.emit("request", fresh[0].request)
+                observer.actual_response_json(fresh[0])
+            return result
+        old = Request(self.page)
+        with mock.patch.object(self.page, "evaluate", side_effect=reentrant):
+            self.context.emit("request", old)
+        self.failure("request_not_observed", lambda: observer.actual_response_json(Response(old)))
+        self.assertEqual(observer.actual_response_json(fresh[0])["seat"], 0)
+        self.assertEqual(len(state.responses), 1)
+        self.assertEqual(state.pages[self.page]["generation"], 2)
+        self.assertEqual(state.pages[self.page]["bytes"], {NEW_DOCUMENT:len(self.page.text.encode())})
 
     def test_body_budget_and_invalid_json_are_mandatory(self):
         for text in ("not-json", "NaN", "Infinity", '{"x":NaN}'):
