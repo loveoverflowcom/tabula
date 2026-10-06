@@ -1,5 +1,10 @@
 # Reconnect/resync evidence
 
+This is the archived implementation-checkpoint ledger. Final review, acceptance
+and merge receipts are recorded in [PR83](https://github.com/loveoverflowcom/tabula/pull/83)
+and its linked source-matched Actions artifacts. Pending statuses below describe
+the original checkpoints, not the final review outcome.
+
 Scope: [ADR0042](../../adr/0042-isolated-match-reconnect-resync.md), the third
 owner-requested sequential match PR. Starting source develop
 `e75624ae870a74f62f0f734fbcf2f12043047dd4`; PR83 is initially a draft.
