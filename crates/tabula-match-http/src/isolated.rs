@@ -46,7 +46,7 @@ mod native_body;
 mod native_ports;
 #[cfg(feature = "acceptance-test-support")]
 pub use crate::{AcceptanceFaultHook, AcceptanceFaultPhase, AcceptanceFaultPoint};
-use native_body::private_response;
+use native_body::{private_response, PrivateAttachment};
 use native_ports::{
     ActiveRequest, AuthorizedAttachment, ClosedEffects, LiveMatch, NetworkAuthority, NetworkClock,
     NetworkJournal, QueueOutput,
@@ -104,6 +104,7 @@ struct GatewayState {
     signing_key: [u8; 32],
     live: AsyncMutex<BTreeMap<MatchId, Arc<LiveMatch>>>,
     request_permits: Arc<Semaphore>,
+    work_permits: Arc<Semaphore>,
     limits: std::sync::Mutex<runtime::Limits>,
     #[cfg(feature = "acceptance-test-support")]
     hook: std::sync::Mutex<Option<Arc<dyn AcceptanceFaultHook>>>,
@@ -131,6 +132,7 @@ impl IsolatedMatchHttp {
                 signing_key: random_bytes()?,
                 live: AsyncMutex::new(BTreeMap::new()),
                 request_permits: Arc::new(Semaphore::new(64)),
+                work_permits: Arc::new(Semaphore::new(64)),
                 limits: std::sync::Mutex::new(runtime::Limits::default()),
                 #[cfg(feature = "acceptance-test-support")]
                 hook: std::sync::Mutex::new(None),
@@ -139,6 +141,7 @@ impl IsolatedMatchHttp {
     }
     /// Install only an explicitly opted-in disposable command barrier.
     #[cfg(feature = "acceptance-test-support")]
+    #[must_use]
     pub fn with_acceptance_hook(self, hook: Arc<dyn AcceptanceFaultHook>) -> Self {
         *self
             .state
@@ -149,6 +152,7 @@ impl IsolatedMatchHttp {
     }
     /// Select a bounded receipt policy only for explicit disposable acceptance.
     #[cfg(feature = "acceptance-test-support")]
+    #[must_use]
     pub fn with_acceptance_limits(self, limits: runtime::Limits) -> Self {
         *self
             .state
@@ -176,7 +180,7 @@ impl IsolatedMatchHttp {
             .ok_or(tabula_match::durable::RuntimePortError::Unavailable)?;
         live.journal.journal.pause_before_commit()
     }
-    /// Dispose only the selected test owner's actual PostgreSQL backend.
+    /// Dispose only the selected test owner's actual `PostgreSQL` backend.
     #[cfg(feature = "acceptance-test-support")]
     pub async fn terminate_acceptance_owner_backend(
         &self,
@@ -614,34 +618,7 @@ async fn ensure_live(
         .map_err(online_problem)?;
     let started = guard.membership().started();
     let limits = *state.limits.lock().map_err(|_| unavailable())?;
-    let (journal, ready) = if started {
-        guard.cancel().await.map_err(online_problem)?;
-        // Dead-owner publication exclusion may outlive its physical backend briefly.
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
-        let journal = loop {
-            match state.matches.reclaim_online(m.match_id()).await {
-                Ok(journal) => break journal,
-                Err(tabula_match::durable::RuntimePortError::Busy)
-                    if tokio::time::Instant::now() < deadline =>
-                {
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                }
-                Err(_) => return Err(unavailable()),
-            }
-        };
-        (Arc::new(NetworkJournal::recovered(journal)), None)
-    } else {
-        let journal = state
-            .matches
-            .claim_online(m.match_id())
-            .await
-            .map_err(|_| unavailable())?;
-        let (send, receive) = oneshot::channel();
-        (
-            Arc::new(NetworkJournal::new(journal, guard, send)),
-            Some(receive),
-        )
-    };
+    let (journal, ready) = open_online_journal(state, m.match_id(), guard, started).await?;
     #[cfg(feature = "acceptance-test-support")]
     journal
         .set_hook(state.hook.lock().map_err(|_| unavailable())?.clone())
@@ -650,7 +627,6 @@ async fn ensure_live(
     let authority = Arc::new(NetworkAuthority::new(
         m.match_id(),
         state.online.clone(),
-        state.sessions.clone(),
         journal.clone(),
         output.clone(),
     ));
@@ -709,6 +685,48 @@ async fn ensure_live(
     map.insert(m.match_id(), live.clone());
     Ok(live)
 }
+async fn open_online_journal(
+    state: &GatewayState,
+    id: MatchId,
+    guard: tabula_storage::online_match::PgOnlineOperation,
+    started: bool,
+) -> Result<
+    (
+        Arc<NetworkJournal>,
+        Option<oneshot::Receiver<Result<(), tabula_match::durable::RuntimePortError>>>,
+    ),
+    Response,
+> {
+    let pair = if started {
+        guard.cancel().await.map_err(online_problem)?;
+        // Dead-owner publication exclusion may outlive its physical backend briefly.
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+        let journal = loop {
+            match state.matches.reclaim_online(id).await {
+                Ok(journal) => break journal,
+                Err(tabula_match::durable::RuntimePortError::Busy)
+                    if tokio::time::Instant::now() < deadline =>
+                {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                }
+                Err(_) => return Err(unavailable()),
+            }
+        };
+        (Arc::new(NetworkJournal::recovered(journal)), None)
+    } else {
+        let journal = state
+            .matches
+            .claim_online(id)
+            .await
+            .map_err(|_| unavailable())?;
+        let (send, receive) = oneshot::channel();
+        (
+            Arc::new(NetworkJournal::new(journal, guard, send)),
+            Some(receive),
+        )
+    };
+    Ok(pair)
+}
 async fn retire_seat(
     live: &LiveMatch,
     seat: tabula_core::SeatId,
@@ -724,6 +742,7 @@ async fn retire_seat(
 }
 /// A correlation hint only: current authority and the durable scope still gate every retry.
 fn operation_scope_hint(id: MatchId, scope: tabula_match::durable::OperationScope) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut digest = Sha256::new();
     digest.update(b"tabula-online-operation-scope-v2\0");
     digest.update(id.0.to_be_bytes());
@@ -732,11 +751,12 @@ fn operation_scope_hint(id: MatchId, scope: tabula_match::durable::OperationScop
     digest.update(scope.epoch.to_be_bytes());
     digest.update([scope.seat.0]);
     digest.update(scope.generation.to_be_bytes());
-    digest
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    let mut hint = String::with_capacity(64);
+    for byte in digest.finalize() {
+        hint.push(char::from(HEX[usize::from(byte >> 4)]));
+        hint.push(char::from(HEX[usize::from(byte & 15)]));
+    }
+    hint
 }
 async fn attach(
     State(state): State<Arc<GatewayState>>,
@@ -753,7 +773,13 @@ async fn attach(
     };
     // An HTTP cancellation cannot replace the sole actor's in-flight journal permit.
     // The bounded owned task retains serialization until durable truth is resolved.
-    match tokio::spawn(attach_serialized(state, id, op, body)).await {
+    let Ok(task) = spawn_bounded_work(
+        state.work_permits.clone(),
+        attach_serialized(state, id, op, body),
+    ) else {
+        return problem(StatusCode::TOO_MANY_REQUESTS, "busy");
+    };
+    match task.await {
         Ok(response) => response,
         Err(_) => unavailable(),
     }
@@ -778,11 +804,11 @@ async fn attach_serialized(
         Ok(l) => l,
         Err(r) => return r,
     };
-    let _gate =
-        match tokio::time::timeout(Duration::from_secs(5), live.gate.clone().lock_owned()).await {
-            Ok(gate) => gate,
-            Err(_) => return problem(StatusCode::TOO_MANY_REQUESTS, "busy"),
-        };
+    let Ok(_gate) =
+        tokio::time::timeout(Duration::from_secs(5), live.gate.clone().lock_owned()).await
+    else {
+        return problem(StatusCode::TOO_MANY_REQUESTS, "busy");
+    };
     // Every wait invalidates the earlier observation, including membership/epoch.
     let m = match state.online.resolve(op, id).await {
         Ok(m) => m,
@@ -809,16 +835,9 @@ async fn attach_serialized(
         scope.epoch,
         scope.generation,
     );
-    let next_seq = match live.journal.journal.load(id).await {
-        Ok(loaded) => loaded
-            .ledger
-            .iter()
-            .find(|s| s.scope == scope)
-            .map_or(Some(1), |s| s.highest.checked_add(1)),
-        Err(_) => None,
-    };
-    let Some(next_seq) = next_seq else {
-        return unavailable();
+    let next_seq = match next_sequence(&live, id, scope).await {
+        Ok(seq) => seq,
+        Err(response) => return response,
     };
     let guard = match state.online.begin_operation(op, id).await {
         Ok(g) => g,
@@ -845,12 +864,10 @@ async fn attach_serialized(
     ) else {
         return unavailable();
     };
-    let result = tokio::time::timeout(REQUEST_DEADLINE, ticket.wait()).await;
+    let result = wait_for_owner(&live, ticket).await;
     drop(active);
-    if !matches!(result, Ok(Ok(Completion::Submitted))) {
-        live.owner_task.abort();
-        live.authority.close();
-        return unavailable();
+    if let Err(response) = result {
+        return response;
     }
     let frames = match live.output.drain(&binding) {
         Ok(f) => f,
@@ -865,13 +882,47 @@ async fn attach_serialized(
     ) else {
         return unavailable();
     };
+    publish_attachment(&state, &live, &m, binding, op, &value).await
+}
+async fn publish_attachment(
+    state: &GatewayState,
+    live: &LiveMatch,
+    member: &OnlineMembership,
+    binding: Binding,
+    op: CredentialOperation,
+    value: &impl Serialize,
+) -> Response {
     private_response(
-        &state,
+        state,
         op,
-        &value,
-        Some((live.output.clone(), binding, live.journal.clone())),
+        value,
+        Some(PrivateAttachment {
+            output: live.output.clone(),
+            binding,
+            journal: live.journal.clone(),
+            match_id: member.match_id(),
+            scope: member.scope(),
+        }),
     )
     .await
+}
+async fn next_sequence(
+    live: &LiveMatch,
+    id: MatchId,
+    scope: tabula_match::durable::OperationScope,
+) -> Result<u64, Response> {
+    let loaded = live
+        .journal
+        .journal
+        .load(id)
+        .await
+        .map_err(|_| unavailable())?;
+    loaded
+        .ledger
+        .iter()
+        .find(|s| s.scope == scope)
+        .map_or(Some(1), |s| s.highest.checked_add(1))
+        .ok_or_else(unavailable)
 }
 fn attached(
     live: &LiveMatch,
@@ -906,7 +957,13 @@ async fn command(
     };
     // An HTTP cancellation cannot replace the sole actor's in-flight journal permit.
     // The bounded owned task retains serialization until durable truth is resolved.
-    match tokio::spawn(command_serialized(state, id, op, body)).await {
+    let Ok(task) = spawn_bounded_work(
+        state.work_permits.clone(),
+        command_serialized(state, id, op, body),
+    ) else {
+        return problem(StatusCode::TOO_MANY_REQUESTS, "busy");
+    };
+    match task.await {
         Ok(response) => response,
         Err(_) => unavailable(),
     }
@@ -926,11 +983,11 @@ async fn command_serialized(
     let Some(live) = state.live.lock().await.get(&id).cloned() else {
         return problem(StatusCode::CONFLICT, "reattach_required");
     };
-    let _gate =
-        match tokio::time::timeout(Duration::from_secs(5), live.gate.clone().lock_owned()).await {
-            Ok(gate) => gate,
-            Err(_) => return problem(StatusCode::TOO_MANY_REQUESTS, "busy"),
-        };
+    let Ok(_gate) =
+        tokio::time::timeout(Duration::from_secs(5), live.gate.clone().lock_owned()).await
+    else {
+        return problem(StatusCode::TOO_MANY_REQUESTS, "busy");
+    };
     // Every wait invalidates the earlier observation, including membership/epoch.
     let m = match state.online.resolve(op, id).await {
         Ok(m) => m,
@@ -982,12 +1039,10 @@ async fn command_serialized(
     let Ok(ticket) = live.handle.command(binding.clone(), body.command().clone()) else {
         return unavailable();
     };
-    let result = tokio::time::timeout(REQUEST_DEADLINE, ticket.wait()).await;
+    let result = wait_for_owner(&live, ticket).await;
     drop(active);
-    if !matches!(result, Ok(Ok(Completion::Submitted))) {
-        live.owner_task.abort();
-        live.authority.close();
-        return unavailable();
+    if let Err(response) = result {
+        return response;
     }
     let frames = match live.output.drain(&binding) {
         Ok(f) => f,
@@ -996,13 +1051,35 @@ async fn command_serialized(
     let Ok(value) = MatchFrames::new(frames) else {
         return unavailable();
     };
-    private_response(
-        &state,
-        op,
-        &value,
-        Some((live.output.clone(), binding, live.journal.clone())),
-    )
-    .await
+    publish_attachment(&state, &live, &m, binding, op, &value).await
+}
+/// HTTP requester cancellation cannot release capacity still held by journal work.
+fn spawn_bounded_work<T, F>(
+    permits: Arc<Semaphore>,
+    work: F,
+) -> Result<tokio::task::JoinHandle<T>, ()>
+where
+    T: Send + 'static,
+    F: std::future::Future<Output = T> + Send + 'static,
+{
+    let permit = permits.try_acquire_owned().map_err(|_| ())?;
+    Ok(tokio::spawn(async move {
+        let _permit = permit;
+        work.await
+    }))
+}
+async fn wait_for_owner(live: &LiveMatch, ticket: runtime::Ticket) -> Result<(), Response> {
+    if matches!(
+        tokio::time::timeout(REQUEST_DEADLINE, ticket.wait()).await,
+        Ok(Ok(Completion::Submitted))
+    ) {
+        Ok(())
+    } else {
+        // A timeout does not imply rollback; only a fresh durable owner can resolve it.
+        live.owner_task.abort();
+        live.authority.close();
+        Err(unavailable())
+    }
 }
 async fn poll(
     State(state): State<Arc<GatewayState>>,
@@ -1059,16 +1136,74 @@ async fn poll(
         return unavailable();
     };
     #[allow(unused_mut)]
-    let mut response = private_response(
-        &state,
-        op,
-        &value,
-        Some((live.output.clone(), binding, live.journal.clone())),
-    )
-    .await;
+    let mut response = publish_attachment(&state, &live, &m, binding, op, &value).await;
     #[cfg(feature = "acceptance-test-support")]
     if response.status().is_success() {
         response.extensions_mut().insert(witness);
     }
     response
+}
+
+#[cfg(test)]
+mod recovery_admission_tests {
+    use super::*;
+    #[tokio::test]
+    async fn cancelled_request_keeps_detached_work_bounded() {
+        let permits = Arc::new(Semaphore::new(1));
+        let (release, gate) = oneshot::channel::<()>();
+        let work = spawn_bounded_work(permits.clone(), async move {
+            gate.await.unwrap();
+        })
+        .unwrap();
+        let (waiting, entered) = oneshot::channel();
+        let requester = tokio::spawn(async move {
+            waiting.send(()).unwrap();
+            let _ = work.await;
+        });
+        entered.await.unwrap();
+        requester.abort();
+        assert!(requester.await.unwrap_err().is_cancelled());
+        assert_eq!(permits.available_permits(), 0);
+        assert!(spawn_bounded_work(permits.clone(), async {}).is_err());
+        release.send(()).unwrap();
+        let permit = tokio::time::timeout(Duration::from_secs(1), permits.acquire())
+            .await
+            .unwrap()
+            .unwrap();
+        drop(permit);
+        assert_eq!(permits.available_permits(), 1);
+    }
+    #[test]
+    fn operation_scope_hint_binds_authority_not_transport() {
+        use tabula_core::{SeatId, UserId};
+        let scope = tabula_match::durable::OperationScope {
+            record: 1,
+            subject: UserId(2),
+            epoch: 3,
+            seat: SeatId(0),
+            generation: 4,
+        };
+        let original = operation_scope_hint(MatchId(5), scope);
+        assert_eq!(original.len(), 64);
+        assert_eq!(original, operation_scope_hint(MatchId(5), scope));
+        for changed in [
+            tabula_match::durable::OperationScope { record: 6, ..scope },
+            tabula_match::durable::OperationScope {
+                subject: UserId(7),
+                ..scope
+            },
+            tabula_match::durable::OperationScope { epoch: 8, ..scope },
+            tabula_match::durable::OperationScope {
+                seat: SeatId(1),
+                ..scope
+            },
+            tabula_match::durable::OperationScope {
+                generation: 9,
+                ..scope
+            },
+        ] {
+            assert_ne!(original, operation_scope_hint(MatchId(5), changed));
+        }
+        assert_ne!(original, operation_scope_hint(MatchId(6), scope));
+    }
 }

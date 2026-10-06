@@ -17,9 +17,44 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tabula_match::runtime::Binding;
-use tabula_session::{CredentialOperation, SessionError, SessionPublication};
-use tabula_storage::match_postgres::PgMatchPublication;
+use tabula_core::MatchId;
+use tabula_match::{durable::OperationScope, runtime::Binding};
+use tabula_session::{
+    CredentialOperation, HttpSessionAuthority, SessionError, SessionPublication, SessionSnapshot,
+};
+use tabula_storage::{
+    match_postgres::PgMatchPublication, online_match::PgOnlinePublication,
+    session::PgSessionPublication,
+};
+/// Current storage-owned membership must be checked at the actual delivery boundary.
+pub(super) struct PrivateAttachment {
+    pub output: Arc<QueueOutput>,
+    pub binding: Binding,
+    pub journal: Arc<NetworkJournal>,
+    pub match_id: MatchId,
+    pub scope: OperationScope,
+}
+enum PrivatePublication {
+    Session(Box<PgSessionPublication>),
+    Match(Box<PgOnlinePublication>),
+}
+impl SessionPublication for PrivatePublication {
+    fn snapshot(&self) -> &SessionSnapshot {
+        match self {
+            Self::Session(p) => p.snapshot(),
+            Self::Match(p) => p.snapshot(),
+        }
+    }
+    fn publish<T>(
+        &mut self,
+        action: impl FnOnce(&SessionSnapshot) -> T,
+    ) -> Result<T, SessionError> {
+        match self {
+            Self::Session(p) => p.publish(action),
+            Self::Match(p) => p.publish(action),
+        }
+    }
+}
 trait OwnerPublication: Unpin {
     fn publish<T>(&mut self, action: impl FnOnce() -> T) -> Result<T, SessionError>;
 }
@@ -82,28 +117,39 @@ pub(super) async fn private_response(
     state: &GatewayState,
     op: CredentialOperation,
     value: &impl Serialize,
-    attachment: Option<(Arc<QueueOutput>, Binding, Arc<NetworkJournal>)>,
+    attachment: Option<PrivateAttachment>,
 ) -> Response {
     let Ok(bytes) = bounded_json(value) else {
         return unavailable();
     };
-    let owner = if let Some((_, _, journal)) = &attachment {
-        match journal.journal.begin_publication().await {
+    let publication = if let Some(attachment) = &attachment {
+        match state
+            .online
+            .begin_publication(op, attachment.match_id, attachment.scope)
+            .await
+        {
+            Ok(p) => PrivatePublication::Match(Box::new(p)),
+            Err(error) => return super::online_problem(error),
+        }
+    } else {
+        match state.sessions.begin_publication(op).await {
+            Ok(p) => PrivatePublication::Session(Box::new(p)),
+            Err(error) => return session_problem(error),
+        }
+    };
+    let owner = if let Some(attachment) = &attachment {
+        match attachment.journal.journal.begin_publication().await {
             Ok(owner) => Some(owner),
             Err(_) => return unavailable(),
         }
     } else {
         None
     };
-    let publication = match state.session_http.begin_publication(op).await {
-        Ok(p) => p,
-        Err(e) => return session_problem(e),
-    };
     let mut r = Response::new(Body::new(GuardedMatchBody {
         owner,
         publication: Some(publication),
         bytes: Some(bytes),
-        attachment: attachment.map(|(output, binding, _)| (output, binding)),
+        attachment: attachment.map(|attachment| (attachment.output, attachment.binding)),
     }));
     r.headers_mut().insert(
         header::CONTENT_TYPE,

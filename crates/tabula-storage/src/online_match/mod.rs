@@ -421,6 +421,91 @@ impl PgOnlineMatchStore {
             }))),
         })
     }
+
+    /// Fresh, one-shot account/session/membership authority through a private
+    /// first-frame handoff (ADR-0031, I-5). An earlier `resolve` is insufficient.
+    /// The exact server-owned scope is checked under the retained room lock.
+    /// Membership changes must honor account-publication then room ordering.
+    pub async fn begin_publication(
+        &self,
+        request: CredentialOperation,
+        match_id: MatchId,
+        expected_scope: OperationScope,
+    ) -> Result<PgOnlinePublication, OnlineMatchError> {
+        tokio::time::timeout(Duration::from_secs(5), async {
+            let operation = self.begin_operation(request, match_id).await?;
+            if operation.scope() != expected_scope {
+                operation.cancel().await?;
+                return Err(OnlineMatchError::Session(SessionError::Unauthenticated));
+            }
+            operation.with_current(|_| ())?;
+            let expires_at = operation
+                .state
+                .lock()
+                .map_err(unavailable)?
+                .as_ref()
+                .ok_or(OnlineMatchError::Session(SessionError::Unauthenticated))?
+                .expires_at;
+            Ok(PgOnlinePublication {
+                snapshot: operation.snapshot().clone(),
+                operation: Some(operation),
+                expires_at,
+            })
+        })
+        .await
+        .map_err(unavailable)?
+    }
+}
+
+/// Native private-frame guard retaining current account/session and match
+/// membership in the same ordering domain until actual first-frame handoff.
+///
+/// It owns a live room transaction plus the separately committed bounded
+/// session-publication exclusion. Membership changes honoring the account/room
+/// ordering remain excluded even after loss of both database backends, until
+/// the local monotonic guard is unusable. Drop and every publish result retire
+/// the transaction; this is neither a reusable grant nor an apply permit.
+pub struct PgOnlinePublication {
+    snapshot: SessionSnapshot,
+    operation: Option<PgOnlineOperation>,
+    expires_at: Instant,
+}
+
+impl PgOnlinePublication {
+    /// Immutable minimum session/resource monotonic deadline of the fresh
+    /// authority operation. Outer publication guards must narrow to this bound
+    /// before nested first-frame construction (ADR-0031).
+    pub const fn expires_at(&self) -> Instant {
+        self.expires_at
+    }
+}
+
+impl fmt::Debug for PgOnlinePublication {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("PgOnlinePublication([REDACTED])")
+    }
+}
+
+impl SessionPublication for PgOnlinePublication {
+    fn snapshot(&self) -> &SessionSnapshot {
+        &self.snapshot
+    }
+
+    /// Only bounded pure frame construction/staging is allowed in the callback.
+    /// The current membership and monotonic exclusion are checked on both sides;
+    /// late results are discarded and repeated calls cannot execute a callback.
+    fn publish<R>(
+        &mut self,
+        publication: impl FnOnce(&SessionSnapshot) -> R,
+    ) -> Result<R, SessionError> {
+        let operation = self.operation.take().ok_or(SessionError::Unauthenticated)?;
+        operation
+            .with_current(|member| publication(member.snapshot()))
+            .map_err(|error| match error {
+                OnlineMatchError::Session(error) => error,
+                _ => SessionError::Unavailable,
+            })
+    }
 }
 async fn begin(pool: &PgPool) -> Result<Transaction<'static, Postgres>, OnlineMatchError> {
     let mut tx = pool.begin().await.map_err(unavailable)?;
@@ -819,3 +904,6 @@ impl PgOnlineOperation {
 }
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "online-match-test-support")]
+mod test_support;

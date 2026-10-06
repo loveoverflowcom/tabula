@@ -15,13 +15,10 @@ use tabula_match::{
     runtime_ports::{Authority, AuthorityLost, Effects, Output, Purpose},
 };
 use tabula_protocol::{encode_server, Codec, ServerEnvelope};
-use tabula_session::{
-    CredentialOperation, HttpSessionAuthority, SessionPublication, SessionSnapshot,
-};
+use tabula_session::{CredentialOperation, SessionPublication, SessionSnapshot};
 use tabula_storage::{
     match_postgres::{PgMatchJournal, PgMatchPublication},
-    online_match::{PgOnlineMatchStore, PgOnlineOperation},
-    session::{PgSessionPublication, PgSessionStore},
+    online_match::{PgOnlineMatchStore, PgOnlineOperation, PgOnlinePublication},
 };
 use tokio::sync::{oneshot, Mutex as AsyncMutex};
 
@@ -242,13 +239,12 @@ pub(super) struct AuthorizedAttachment {
 struct PreparedOutput {
     binding: Binding,
     purpose: Purpose,
-    publication: PgSessionPublication,
+    publication: PgOnlinePublication,
     owner: PgMatchPublication,
 }
 pub(super) struct NetworkAuthority {
     id: MatchId,
     online: PgOnlineMatchStore,
-    sessions: PgSessionStore,
     journal: Arc<NetworkJournal>,
     output: Arc<QueueOutput>,
     attachments: Mutex<BTreeMap<SessionId, AuthorizedAttachment>>,
@@ -258,14 +254,12 @@ impl NetworkAuthority {
     pub fn new(
         id: MatchId,
         online: PgOnlineMatchStore,
-        sessions: PgSessionStore,
         journal: Arc<NetworkJournal>,
         output: Arc<QueueOutput>,
     ) -> Self {
         Self {
             id,
             online,
-            sessions,
             journal,
             output,
             attachments: Mutex::new(BTreeMap::new()),
@@ -353,23 +347,15 @@ impl Authority for NetworkAuthority {
             if let Ok(active) = self.journal.active() {
                 active.cancel().await.map_err(|_| AuthorityLost)?;
             }
-            let m = self
+            let publication = self
                 .online
-                .resolve(e.credential, self.id)
+                .begin_publication(e.credential, self.id, e.scope)
                 .await
                 .map_err(|_| AuthorityLost)?;
-            if m.scope() != e.scope {
-                return Err(AuthorityLost);
-            }
             let owner = self
                 .journal
                 .journal
                 .begin_publication()
-                .await
-                .map_err(|_| AuthorityLost)?;
-            let publication = self
-                .sessions
-                .begin_publication(e.credential)
                 .await
                 .map_err(|_| AuthorityLost)?;
             if !snapshot_matches(publication.snapshot(), b) {
