@@ -178,6 +178,12 @@ gated source. PR80 restores the complete explicitly opted-in composition; real
 independent browser/PG acceptance remains required before its merge. Production remains closed; robust reconnect/resync/refresh/network-drop/server-crash
 acceptance is PR3 in a separate chat. No social/lobby/ranked/phase exit is implied.
 
+[ADR-0042](docs/adr/0042-isolated-match-reconnect-resync.md) extends only the
+explicit isolated direct-match slice with bounded fresh-authority reconnect,
+HTTP2 scope correlation, exact online owner restart and guarded resync.
+Actual fault/browser/PostgreSQL acceptance remains required before merge;
+production, native/mobile, clocks, external effects and broad phase exits remain closed.
+
 ---
 
 ## 5. Before you open a pull request

@@ -1,7 +1,10 @@
 # Recover online matches through interruptions
 
-**Status:** owner-requested PR3; deferred to its own later chat after PR2's
-verified normal merge. No network recovery or fault acceptance is claimed yet.
+**Status:** owner-requested PR3 active in its own fresh chat as draft PR83,
+after PR80's verified merge at develop `e75624ae870a74f62f0f734fbcf2f12043047dd4`.
+[ADR0042](../adr/0042-isolated-match-reconnect-resync.md) owns the bounded
+implementation and [its ledger](../verification/reconnect-resync/README.md)
+separates focused evidence from pending actual fault acceptance.
 
 **Outcome:** the two-browser online slice survives reconnect/resync, network loss,
 current-authority revocation and actual server crash with correct committed state,
