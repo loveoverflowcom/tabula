@@ -39,7 +39,7 @@ use tabula_storage::{
     online_match::{OnlineMatchError, OnlineMembership, PgOnlineMatchStore},
     session::PgSessionStore,
 };
-use tokio::sync::{oneshot, Mutex as AsyncMutex, Semaphore};
+use tokio::sync::{oneshot, Mutex as AsyncMutex, MutexGuard as AsyncMutexGuard, Semaphore};
 #[path = "native_body.rs"]
 mod native_body;
 #[path = "native_ports.rs"]
@@ -53,6 +53,7 @@ use native_ports::{
 };
 const MAX_LIVE_MATCHES: usize = 128;
 const REQUEST_DEADLINE: Duration = Duration::from_secs(20);
+const STATE_WAIT_DEADLINE: Duration = Duration::from_secs(5);
 const GRANT_LIFETIME_MS: u64 = 600_000;
 /// Library-only authenticated gameplay adapter; production remains closed.
 #[derive(Clone)]
@@ -566,6 +567,12 @@ async fn grant(
             return r;
         }
     }
+    // Recovery can wait behind another room; no earlier membership observation
+    // may authorize a grant after that wait.
+    let m = match state.online.resolve(op, id).await {
+        Ok(m) => m,
+        Err(e) => return online_problem(e),
+    };
     let token = if m.ready() {
         match mint_grant(&state, &m) {
             Ok(t) => Some(t),
@@ -590,7 +597,7 @@ async fn ensure_live(
     op: CredentialOperation,
     m: &OnlineMembership,
 ) -> Result<Arc<LiveMatch>, Response> {
-    let mut map = state.live.lock().await;
+    let mut map = bounded_state_lock(&state.live, STATE_WAIT_DEADLINE).await?;
     if let Some(live) = map.get(&m.match_id()) {
         if !live.handle.is_closed() && live.journal.journal.is_owner_active() {
             return Ok(live.clone());
@@ -999,7 +1006,11 @@ async fn command_serialized(
     if body.command().command().match_id() != id {
         return invalid();
     }
-    let Some(live) = state.live.lock().await.get(&id).cloned() else {
+    let candidate = match bounded_state_lock(&state.live, STATE_WAIT_DEADLINE).await {
+        Ok(map) => map.get(&id).cloned(),
+        Err(response) => return response,
+    };
+    let Some(live) = candidate else {
         return problem(StatusCode::CONFLICT, "reattach_required");
     };
     let Ok(_gate) =
@@ -1072,6 +1083,16 @@ async fn command_serialized(
     };
     publish_attachment(&state, &live, &m, binding, op, &value).await
 }
+/// Unrelated recovery cannot make shared-map acquisition wait indefinitely.
+async fn bounded_state_lock<T>(
+    state: &AsyncMutex<T>,
+    budget: Duration,
+) -> Result<AsyncMutexGuard<'_, T>, Response> {
+    tokio::time::timeout(budget, state.lock())
+        .await
+        .map_err(|_| problem(StatusCode::TOO_MANY_REQUESTS, "busy"))
+}
+
 /// HTTP requester cancellation cannot release capacity still held by journal work.
 fn spawn_bounded_work<T, F>(
     permits: Arc<Semaphore>,
@@ -1116,16 +1137,24 @@ async fn poll(
     let Ok(id) = parse_match_id(&id) else {
         return invalid();
     };
-    let m = match state.online.resolve(op, id).await {
-        Ok(m) => m,
-        Err(e) => return online_problem(e),
+    if let Err(error) = state.online.resolve(op, id).await {
+        return online_problem(error);
+    }
+    let candidate = match bounded_state_lock(&state.live, STATE_WAIT_DEADLINE).await {
+        Ok(map) => map.get(&id).cloned(),
+        Err(response) => return response,
     };
-    let Some(live) = state.live.lock().await.get(&id).cloned() else {
+    let Some(live) = candidate else {
         return problem(StatusCode::CONFLICT, "reattach_required");
     };
     if live.handle.is_closed() || !live.journal.journal.is_owner_active() {
         return unavailable();
     }
+    // Poll's shared-map wait also invalidates its earlier membership snapshot.
+    let m = match state.online.resolve(op, id).await {
+        Ok(m) => m,
+        Err(e) => return online_problem(e),
+    };
     let binding = match attached(&live, body.attachment_id(), &m, op) {
         Ok(b) => b,
         Err(s) => return attachment_problem(s),
@@ -1191,6 +1220,28 @@ mod recovery_admission_tests {
             .unwrap();
         drop(permit);
         assert_eq!(permits.available_permits(), 1);
+    }
+    #[tokio::test]
+    async fn shared_live_map_wait_is_bounded_without_releasing_the_owner() {
+        let state = AsyncMutex::new(7_u64);
+        let held = state.lock().await;
+        let response = bounded_state_lock(&state, Duration::from_millis(5))
+            .await
+            .unwrap_err();
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(body.as_ref(), b"{\"code\":\"busy\"}");
+        assert_eq!(*held, 7);
+        assert!(state.try_lock().is_err());
+        drop(held);
+        assert_eq!(
+            *bounded_state_lock(&state, Duration::from_secs(1))
+                .await
+                .unwrap(),
+            7
+        );
     }
     #[tokio::test]
     async fn stale_local_attachment_is_reattach_required_without_frames() {

@@ -61,6 +61,9 @@ jobs:
         with: { python-version: '3.12' }
       - uses: Swatinem/rust-cache@v2
         with:
+          # Preserve public build inputs after an acceptance failure; all gates rerun.
+          # Ephemeral credentials, keys and browser profiles live only in RUNNER_TEMP.
+          cache-on-failure: true
           workspaces: |
             . -> target
             tests/online-match -> target
