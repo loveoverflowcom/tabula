@@ -20,9 +20,9 @@ Các duration tham chiếu `docs/ui/tokens.json` và doc 04 §9. Đây là chore
 
 ## Nguồn ảnh
 
-- `assets/village.png`: cảnh nền nguyên bản do ImageGen tạo trong phiên redesign này, bản sao asset từ `generated_images/exec-7c159190-5976-4b13-a976-58a083eb5808.png`.
+- `assets/village.webp`: derivative tối ưu của cảnh nền nguyên bản do ImageGen tạo trong phiên redesign này, từ `generated_images/exec-7c159190-5976-4b13-a976-58a083eb5808.png`. PNG gốc được giữ trong gói nguồn cuối, không nằm trong thư mục asset này.
 - `assets/werewolf.png`: art runtime hiện có, lấy nguyên vẹn từ `games/werewolf/assets/werewolf@2x.png` ở `develop@e75624ae870a74f62f0f734fbcf2f12043047dd4`. Giữ upright, không xoay source để chữa lỗi UV.
-- Chân dung SVG được tạo trực tiếp trong `preview.mjs`, không chứa artwork bên thứ ba.
+- Chân dung SVG được tạo trong `portraits.mjs` từ `portrait-data.json`, dùng chung cho HTML và export; không chứa artwork bên thứ ba.
 
 Các chữ, status, nhãn và nút đều là typography live, không được bake vào ảnh.
 
