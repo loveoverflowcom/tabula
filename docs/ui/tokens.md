@@ -23,6 +23,27 @@ renderer state.
 Resolved scheme colors are explicitly authored. `[ref.palette]` records source
 colors and design provenance; it does not claim an automatic tonal derivation.
 
+### Shared primary violet
+
+The owner's button reference uses a filled-control violet around `#745FA1`
+(`ref.palette.primary-source`). The resolved light primary `#573B83` deepens
+that hue; the dark primary `#B093DD` replaces the pale lavender while retaining
+readable primary text and focus on dark surfaces. HC variants are `#32164F`
+and `#DFCCF9`. `selected` follows each scheme's primary and focus resolves to
+the same role. Shell surfaces, tonal actions, feedback/seat colors, game art,
+and state-layer/disabled opacities keep their existing contracts.
+
+Filled controls already consume `primary` / `on-primary` in shared web SCSS,
+`tabula-presentation::button`, and CMP `ShellButton`; changing individual
+button styles would bypass this shared contract. Functional primary accents
+and selection/focus marks also inherit the palette. Decorative game art does
+not derive from it.
+
+For a build-free color-only check, run `python3 tools/tests/check-primary-theme.py`.
+It compares all scheme colors with the committed Rust/CSS/Kotlin and JSON
+adapters and checks primary label/state/surface contrast. It does not replace
+the typed generator, full token freshness, Rust tests, or the portable core gate.
+
 Typography uses `TextStyleToken`'s closed semantic names such as `BodyMd` and
 `MonoMd`; renderers resolve those names through `Theme::text_style`. `Mono*`
 always requests tabular figures. The runtime has no strings, font files,

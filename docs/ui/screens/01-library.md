@@ -33,9 +33,10 @@ verified avatar is available. It is a silhouette, not an invented account.
 `tokens.toml` owns additive `shell-canvas`, `shell-paper`, `shell-hero`,
 `shell-on-hero`, `shell-note` and `shell-cover-*` / `shell-art-*` semantic roles.
 All four schemes are authored and generated through existing Rust/CSS/JSON/Kotlin
-adapters. Light canvas `#F9F7F4`, paper `#FFFFFF` and primary `#5634BE` retain the
-original identity; gameplay material palettes and interaction semantics remain
-independent. Web typography metrics use root-relative units for font scaling.
+adapters. Light canvas `#F9F7F4` and paper `#FFFFFF` retain the original quiet
+chrome; the shared primary violet is authored in the
+[token contract](../tokens.md#shared-primary-violet). Gameplay material palettes
+remain independent. Web typography metrics use root-relative units for font scaling.
 
 ## Task and route distinction
 
