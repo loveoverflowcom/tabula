@@ -23,7 +23,7 @@ android {
 // WebView through request interception; there is no network and no file:// access. Without the
 // staged bundle the app still builds and its Home screen says no game is packaged, unless
 // `-Ptabula.requireGameBundle=true` (CI and release) turns that into a build failure.
-val gameBundleSource = layout.projectDirectory.dir("../../target/tabula-mobile-game")
+val gameBundleSource = layout.projectDirectory.dir("../../../target/tabula-mobile-game")
 val gameBundleAssets = layout.buildDirectory.dir("generated/tabula-game-assets")
 // A separate check task: a Sync with a missing source is skipped as NO-SOURCE, so a guard inside it
 // would never run and a missing bundle would pass silently.

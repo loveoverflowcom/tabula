@@ -1,17 +1,17 @@
 # Tabula mobile
 
-> **First-party embedding, not a plugin system.** [ADR-0032](../docs/adr/0032-compose-multiplatform-mobile-host.md)
-> opened the Compose Multiplatform foundation; [ADR-0033](../docs/adr/0033-webview-gamehost-first-party-embedding.md)
+> **First-party embedding, not a plugin system.** [ADR-0032](../../docs/adr/0032-compose-multiplatform-mobile-host.md)
+> opened the Compose Multiplatform foundation; [ADR-0033](../../docs/adr/0033-webview-gamehost-first-party-embedding.md)
 > adds a WebView `GameHost` for the first-party games packaged with the app.
-> [ADR-0037](../docs/adr/0037-native-mobile-voice-client.md) adds a bounded native voice client and
+> [ADR-0037](../../docs/adr/0037-native-mobile-voice-client.md) adds a bounded native voice client and
 > isolated loopback development harness; production voice remains unavailable. It does not open
 > Phase 6/8, production networking/accounts, store builds, third-party games or remote updates. **The Android WebView and the iOS
-> WKWebView have not been run** — see the [evidence ledger](../docs/verification/mobile-game-host/README.md).
+> WKWebView have not been run** — see the [evidence ledger](../../docs/verification/mobile-game-host/README.md).
 
 One Gradle root for the one mobile app. There is no second mobile tree.
 
 ```text
-mobile/
+apps/mobile/
 ├── shared/       Compose Multiplatform library: screens, navigation, theme, GameHost, bridge, session
 ├── android/      Android application module (a thin Activity over :shared) + the packaged game assets
 ├── ios/          Xcode project (a thin SwiftUI container over the :shared framework) + a bundle phase
@@ -34,7 +34,7 @@ never branch on a game id; the launch query comes from the Rust registry through
 
 ```bash
 just mobile-game            # builds the wasm game and runs `cargo xtask stage-mobile-game`
-cd mobile && ./gradlew :android:assembleDebug -Ptabula.requireGameBundle=true
+cd apps/mobile && ./gradlew :android:assembleDebug -Ptabula.requireGameBundle=true
 ```
 
 `cargo xtask stage-mobile-game` writes `target/tabula-mobile-game/` (the integrated `/play/local/`
@@ -55,9 +55,9 @@ capability-gated service request.
 `shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt`; never edit it.
 `design/TabulaTheme.kt` only maps those values onto Compose. A missing role is a `tokens.toml`
 change, not a literal in Kotlin. `cargo xtask check-no-raw-colors` rejects `Color(...)`,
-palette colours and hex literals under `mobile/` (the generated file is the one exemption), and
+palette colours and hex literals under `apps/mobile/` (the generated file is the one exemption), and
 `cargo xtask check` fails when the Kotlin adapter is stale. Screens follow
-[`docs/ui/screens/foundation.md`](../docs/ui/screens/foundation.md).
+[`docs/ui/screens/foundation.md`](../../docs/ui/screens/foundation.md).
 
 ## App identity
 
@@ -92,13 +92,13 @@ composition entry** and disposes it exactly once; a recomposition, resize or new
 Requires JDK 17 and, for Android, an Android SDK (`ANDROID_HOME`) with platform 37.
 
 ```bash
-cd mobile
+cd apps/mobile
 ./gradlew :shared:testAndroidHostTest :previewApp:test           # unit tests + desktop UI tests (no device)
 ./gradlew :android:assembleDebug -Ptabula.requireGameBundle=true  # debug APK with the game packaged
 ./gradlew :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64   # iOS Kotlin → klib (any OS)
 ./gradlew :previewApp:run                                         # desktop window of the shell (simulated game page)
 ./gradlew :shared:embedAndSignAppleFrameworkForXcode              # iOS framework: called by Xcode, macOS only
-node ../tools/mobile-host-check/run.mjs                           # real staged game in phone-sized Chrome
+node ../../tools/mobile-host-check/run.mjs                           # real staged game in phone-sized Chrome
 ```
 
 Open `ios/TabulaApp.xcodeproj` on a Mac; its first build phase runs the Gradle task above and its last
@@ -125,10 +125,10 @@ Audio, room endpoints and credentials never enter the WebView bridge/game WS.
 The default production source says unavailable before constructing a native room
 or asking for a microphone. A local mute is not SFU/game-policy enforcement.
 
-The optional ignored `mobile/voice-dev-grant.json` is packaged only in Debug and
+The optional ignored `apps/mobile/voice-dev-grant.json` is packaged only in Debug and
 accepted only for the fixed synthetic scope, an exact loopback/emulator endpoint
-and at most ten minutes. See [the harness](../tools/native-voice-harness/README.md)
-and [evidence ledger](../docs/verification/native-mobile-voice/README.md).
+and at most ten minutes. See [the harness](../../tools/native-voice-harness/README.md)
+and [evidence ledger](../../docs/verification/native-mobile-voice/README.md).
 
 The client is foreground-only: actual background entry, audio interruption,
 route leave/logout hook, grant deadline or disposal disconnects and releases

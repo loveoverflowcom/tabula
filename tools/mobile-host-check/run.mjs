@@ -23,7 +23,7 @@ const chromePath = process.env.TABULA_CHROME ?? 'google-chrome';
 fs.mkdirSync(path.join(out, 'screenshots'), { recursive: true });
 
 // ---- policy shared with the native hosts, read from their source so it cannot silently drift ----
-const bundlePathsSource = fs.readFileSync(path.join(root, 'mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/host/BundlePaths.kt'), 'utf8');
+const bundlePathsSource = fs.readFileSync(path.join(root, 'apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/host/BundlePaths.kt'), 'utf8');
 const cspBlock = bundlePathsSource.match(/const val DOCUMENT_CSP: String =\s*((?:"[^"\n]*"\s*\+?\s*)+)/);
 if (!cspBlock) throw new Error('DOCUMENT_CSP not found in BundlePaths.kt; update this check with the host policy');
 const CSP = [...cspBlock[1].matchAll(/"([^"]*)"/g)].map((m) => m[1]).join('');

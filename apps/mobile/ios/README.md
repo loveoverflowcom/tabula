@@ -1,20 +1,20 @@
 # iOS
 
-> **Foundation slice** of [ADR-0032](../../docs/adr/0032-compose-multiplatform-mobile-host.md) with the
-> first-party WKWebView host of [ADR-0033](../../docs/adr/0033-webview-gamehost-first-party-embedding.md).
+> **Foundation slice** of [ADR-0032](../../../docs/adr/0032-compose-multiplatform-mobile-host.md) with the
+> first-party WKWebView host of [ADR-0033](../../../docs/adr/0033-webview-gamehost-first-party-embedding.md).
 > Phase 6's gate (the Phase 5 exit) is not met. **This Xcode project has not been built or run, and the
 > WKWebView host has never executed**: it was authored on Linux, where the iOS framework link and Xcode do
 > not exist. Kotlin/Native compiles the host to a klib; that is all that has been shown.
 
 A thin SwiftUI container over the `TabulaShared` static framework from `:shared`. `TabulaApp.swift`
 injects the native `VoiceClient` into `TabulaViewController` (Compose Multiplatform). It supersedes the
-earlier plan of a `staticlib` Macroquad wrapper. The bounded voice slice is [ADR-0037](../../docs/adr/0037-native-mobile-voice-client.md);
+earlier plan of a `staticlib` Macroquad wrapper. The bounded voice slice is [ADR-0037](../../../docs/adr/0037-native-mobile-voice-client.md);
 production grant issuance and the phase exits remain closed.
 
 ## Build path
 
 ```text
-mobile/shared  --(Kotlin/Native iosArm64 | iosSimulatorArm64)-->  TabulaShared.framework (static)
+apps/mobile/shared  --(Kotlin/Native iosArm64 | iosSimulatorArm64)-->  TabulaShared.framework (static)
                --(embedAndSignAppleFrameworkForXcode, first Xcode build phase)-->  TabulaApp.xcodeproj
 ```
 
@@ -32,7 +32,7 @@ never enter the WKWebView or the game bridge. The WKWebView explicitly denies al
 including requests from the main document after native microphone permission has been granted.
 
 - The normal source is unavailable. There is no production grant service or provider credential fallback.
-- The Debug-only build phase optionally copies the same ignored `mobile/voice-dev-grant.json` consumed by
+- The Debug-only build phase optionally copies the same ignored `apps/mobile/voice-dev-grant.json` consumed by
   the Android harness. The Swift host reads it only under `#if DEBUG`; Kotlin validates it through
   `DevVoiceGrantSource.parse`. Missing, invalid, expired or oversized input fails closed.
 - Release removes any stale fixture from its resources and supplies no fixture text. Never commit a

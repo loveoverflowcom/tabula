@@ -18,7 +18,7 @@ SCHEMES = {
     "hc-light": "HIGH_CONTRAST_LIGHT",
     "hc-dark": "HIGH_CONTRAST_DARK",
 }
-KOTLIN = "mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt"
+KOTLIN = "apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt"
 
 
 def require(condition, message):

@@ -58,7 +58,7 @@ def main():
             write_private(root / f"{participant}.json", json.dumps(fixture(key, secret, participant, now, endpoint)))
         print(f"Ephemeral local harness directory: {root}")
         print("Native fixtures client-a.json/client-b.json expire in ten minutes. Never commit them.")
-        print("Copy the chosen fixture to ignored mobile/voice-dev-grant.json before a DEBUG native build.")
+        print("Copy the chosen fixture to ignored apps/mobile/voice-dev-grant.json before a DEBUG native build.")
         print("Two distinct client identities are required; fixture generation alone proves no connection.")
         process = subprocess.Popen([executable, "--config", str(config)], stdout=subprocess.DEVNULL)
         try:

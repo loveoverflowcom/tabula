@@ -322,8 +322,8 @@ apps/desktop (optional):  Tauri shell evaluation spike — launcher + updater + 
 | **Goal** | Real Android and iOS apps: a Compose Multiplatform shell and navigation hosting the existing Rust/WASM game in a WebView, with mobile-appropriate layout, input, and lifecycle handling ([ADR-0032](../adr/0032-compose-multiplatform-mobile-host.md)). |
 | **Why now** | Board games are played on phones. Doing this after the shell means the layout system and input model are already exercised on touch via the web build. |
 
-**Slice delivered ahead of the gate (ADR-0032).** The CMP project (`mobile/shared`, `mobile/android`,
-`mobile/ios`), a minimal shell with navigation, a reserved `GameHost` slot, and the generated
+**Slice delivered ahead of the gate (ADR-0032).** The CMP project (`apps/mobile/shared`, `apps/mobile/android`,
+`apps/mobile/ios`), a minimal shell with navigation, a reserved `GameHost` slot, and the generated
 Kotlin token adapter exist before the Phase 5 exit. That does **not** complete or open Phase 6.
 Everything below except those items stays gated, and the chain's later changes each need their own evidence.
 
@@ -336,11 +336,11 @@ This is not a plugin system and opens no networked play, voice or further host s
 **Deliverables**
 
 ```text
-mobile/shared:   Compose Multiplatform shell: screens, navigation, tokens (generated Kotlin adapter),
+apps/mobile/shared:   Compose Multiplatform shell: screens, navigation, tokens (generated Kotlin adapter),
                  GameHost interface                                                [foundation: done]
-mobile/android:  Gradle application module; Activity lifecycle bridge (pause/resume/background →
+apps/mobile/android:  Gradle application module; Activity lifecycle bridge (pause/resume/background →
                  connection suspend + resume), back button, safe areas, keyboard/IME, push (FCM)
-mobile/ios:      Xcode host of the shared framework; scene lifecycle, safe areas, keyboard bridge,
+apps/mobile/ios:      Xcode host of the shared framework; scene lifecycle, safe areas, keyboard bridge,
                  push (APNs)
 GameHost:        WebView host of the Rust/WASM game document (Android WebView, iOS WKWebView);
                  generation-scoped mount/dispose and typed lifecycle events; local game first
@@ -554,7 +554,7 @@ Phase C — untrusted third-party modules
 | 3 | `tabula-assets`, `games/caro`, `games/tiles`, `games/werewolf` (rules) | `tabula-presentation` |
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server`, `tests/integration`, `tests/load` | `apps/game-client` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin`, (`apps/desktop` spike) | `services/tabula-server` |
-| 6 | `mobile/shared`, `mobile/android`, `mobile/ios` | `apps/game-client` (wasm build), `tabula-presentation` |
+| 6 | `apps/mobile/shared`, `apps/mobile/android`, `apps/mobile/ios` | `apps/game-client` (wasm build), `tabula-presentation` |
 | 7 | — | `games/werewolf` (+ui), `tabula-lobby`, `services/tabula-server` |
 | 8 | `tabula-voice` | `services/tabula-server`, `apps/game-client`, `apps/web` |
 | 9 | one new game (external), one board-archetype game | `tabula-game-api` docs, `tabula-match` (async/hibernation), `apps/web` (replay viewer) |

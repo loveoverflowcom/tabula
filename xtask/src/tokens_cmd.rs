@@ -78,7 +78,7 @@ const COLOR_KEYS: [&str; 41] = [
 ];
 /// Compose Multiplatform adapter of the same semantic contract (ADR-0032).
 const KOTLIN_TOKENS_PATH: &str =
-    "mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt";
+    "apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt";
 const WEREWOLF_ART_KEYS: [&str; 9] = [
     "page",
     "surface",

@@ -8,6 +8,7 @@ Client applications. All are **leaves**: nothing depends on them.
 | [`web`](web) | 5 | The Leptos application shell: auth, catalog, rooms, queue, profile, results. CSR. |
 | [`admin`](admin) | 5 | Operator UI. Role-gated, separate bundle. |
 | [`desktop`](desktop) | 5, optional | Tauri launcher/updater. **Never required for gameplay** (ADR-019). |
+| [`mobile`](mobile/README.md) | 6, bounded foundation | One Compose Multiplatform app workspace containing shared UI, Android/iOS hosts and a desktop preview for tests. |
 
 ## The separation rule (doc 04 §1.1, ADR-011)
 
@@ -37,7 +38,7 @@ platform**. On desktop, gameplay in a WebView would make WebView latency the
 product's ceiling. On mobile the owner accepted a WebView `GameHost` under
 [ADR-0032](../docs/adr/0032-compose-multiplatform-mobile-host.md), with that latency
 risk still unmeasured and an evidence requirement before it ships. The mobile app
-lives in [`mobile/`](../mobile/README.md), not in `apps/`.
+lives in [`apps/mobile/`](mobile/README.md).
 
 ## The handoff (doc 04 §3.4)
 
@@ -66,7 +67,7 @@ is passed in-process, so the runtime code is identical everywhere.
 ## Shell screens are implemented once per shell, on purpose
 
 Lobby and catalog UI: once in Leptos, once with `tabula-presentation` widgets for
-the desktop client; Compose Multiplatform in `mobile/` for Android and iOS (ADR-0032).
+the desktop client; Compose Multiplatform in `apps/mobile/` for Android and iOS (ADR-0032).
 About a dozen screens.
 
 The *specification* lives once, in [`docs/ui/screens/`](../docs/ui/README.md), and

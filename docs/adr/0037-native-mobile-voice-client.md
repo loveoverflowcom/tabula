@@ -46,7 +46,7 @@ must revalidate current account/auth-session/membership/voice scope, bind its
 purpose/audience and deadline, and connect revocation to SFU enforcement before
 production activation. No auth/session mock makes that production path available.
 
-A debug native build may load an ignored `mobile/voice-dev-grant.json`. Its strict
+A debug native build may load an ignored `apps/mobile/voice-dev-grant.json`. Its strict
 versioned grammar admits one fixed dev scope, an exact loopback/emulator endpoint,
 a bounded token and at most ten minutes of remaining authority. It is never read
 by Release or by JavaScript. The local harness uses ephemeral signing keys and two

@@ -18,7 +18,7 @@ trước khi sửa code. [AGENTS.md](AGENTS.md) hướng dẫn cách làm việc
 | `tabula-presentation`, `renderer-*` | Chuyển projection thành `RenderList`, xử lý input và render; trạng thái UI nằm ngoài canonical state |
 | `apps/game-client` | Gameplay Macroquad native trên desktop và WASM trên web |
 | `apps/web` | Shell Leptos CSR; discovery/setup và handoff local có phạm vi ADR-0028/0030 |
-| `mobile/` | Một cây Compose Multiplatform cho Android/iOS theo ADR-0032; hiện là foundation, WebView gameplay và voice còn gated |
+| `apps/mobile/` | Một cây Compose Multiplatform cho Android/iOS theo ADR-0032; hiện là foundation, WebView gameplay và voice còn gated |
 | `apps/desktop` | Shell Tauri tùy chọn; gameplay không phụ thuộc Tauri |
 | `services/tabula-server`, `tabula-match`, `tabula-storage` | Kiến trúc multiplayer server-authoritative, Tokio/Axum và PostgreSQL; phần runtime ngoài slice được mở vẫn theo phase gate |
 | `services/tabula-auth` | Skeleton backend auth dùng Kanidm theo [ADR-0034](docs/adr/0034-kanidm-auth-service-skeleton.md); TODO trong Rust, chưa có login/session runtime cho #54 |
@@ -27,7 +27,7 @@ Web shell và gameplay là hai WASM bundle/document riêng (ADR-011).
 Hướng mobile dùng CMP quản lý UI/navigation, rồi nhúng gameplay Rust/WASM qua
 `GameHost`; foundation chưa chứng minh game chạy trong WebView trên thiết bị.
 Xem [ADR-0032](docs/adr/0032-compose-multiplatform-mobile-host.md) và
-[mobile README](mobile/README.md) để biết phạm vi đã mở.
+[mobile README](apps/mobile/README.md) để biết phạm vi đã mở.
 
 Với multiplayer, luồng thiết kế là: client gửi command → platform xác thực và
 sắp thứ tự → game áp dụng `Input` → platform lưu kết quả → `project`/`view_event`
@@ -41,7 +41,7 @@ Luồng online này không được suy ra từ việc demo local chạy đượ
 | [`crates/`](crates/README.md) | Thư viện platform, SDK, presentation và adapters |
 | [`games/`](games/README.md) | Mỗi game một crate; rules/bots/presentation tách bằng features |
 | [`apps/`](apps/README.md) | Game runtime, web/admin và desktop shell |
-| [`mobile/`](mobile/README.md) | `shared/`, `android/`, `ios/` trong một Gradle root |
+| [`apps/mobile/`](apps/mobile/README.md) | `shared/`, `android/`, `ios/` trong một Gradle root |
 | `services/`, `deploy/` | Binary server và cấu hình triển khai theo phase |
 | [`xtask/`](xtask/README.md), [`justfile`](justfile) | Automation và lệnh tiện ích |
 | `tests/` | Replay goldens và harnesses theo phạm vi triển khai |
@@ -74,7 +74,7 @@ trunk serve
 Từ repo root, `just wasm-serve` build/stage gameplay WASM riêng;
 `just web-local-serve` build và serve shell cùng handoff gameplay local opt-in
 (ADR-0030). Đây là local play, không phải tài khoản hoặc multiplayer server.
-Lệnh và prerequisites mobile nằm trong [mobile README](mobile/README.md).
+Lệnh và prerequisites mobile nằm trong [mobile README](apps/mobile/README.md).
 
 ## Kiểm tra trước PR
 

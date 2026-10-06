@@ -5,8 +5,8 @@
  * state, projections, render lists and credentials never cross it (I-5/I-6/I-10).
  *
  * Wire: one JSON object per message, UTF-8 text of at most MAX_BYTES, schema
- * version 1. The Kotlin/Swift decoders in mobile/ implement the same table; the
- * shared vectors in mobile/shared/src/commonTest/.../BridgeVectors.kt and
+ * version 1. The Kotlin/Swift decoders in apps/mobile/ implement the same table; the
+ * shared vectors in apps/mobile/shared/src/commonTest/.../BridgeVectors.kt and
  * tests/host-bridge.test.cjs pin both sides to the same bytes. */
 (function (root) {
   "use strict";

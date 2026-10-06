@@ -71,7 +71,7 @@ class BrandIdentityTest(unittest.TestCase):
             im=Image.frombytes('RGBA',(size,size),data)
             self.assertEqual(im.getpixel((0,0)),(94,75,139,255))
         for density,size in (('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)):
-            directory=ROOT/f'mobile/android/src/main/res/mipmap-{density}'
+            directory=ROOT/f'apps/mobile/android/src/main/res/mipmap-{density}'
             with Image.open(directory/'ic_launcher.png') as im:
                 self.assertEqual(im.size,(size,size))
                 self.assertEqual(im.convert('RGBA').getextrema()[3],(255,255))
@@ -85,7 +85,7 @@ class BrandIdentityTest(unittest.TestCase):
                     for x in range(rgba.width):
                         if rgba.getpixel((x,y))[3] > 16:
                             self.assertLessEqual((x+.5-center)**2+(y+.5-center)**2,safe_radius**2,(density,'adaptive safe circle'))
-        catalog=ROOT/'mobile/ios/TabulaApp/Assets.xcassets/AppIcon.appiconset'
+        catalog=ROOT/'apps/mobile/ios/TabulaApp/Assets.xcassets/AppIcon.appiconset'
         entries=json.loads((catalog/'Contents.json').read_text())['images']
         self.assertEqual(len(entries),18)
         for entry in entries:
@@ -112,7 +112,7 @@ class BrandIdentityTest(unittest.TestCase):
             self.assertEqual(marks,[svg],name)
             self.assertEqual(html.count('aria-label="Tabula"'),2 if name=='index.html' else 1,name)
             self.assertIn('brand/manifest.webmanifest',html)
-        paths=(ROOT/'mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaBrandPaths.kt').read_text()
+        paths=(ROOT/'apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaBrandPaths.kt').read_text()
         self.assertIn(ET.parse(BRAND/'tabula-mark-primary.svg').getroot().find('s:path',NS).attrib['d'],paths)
         self.assertIn('LockupWidth = 705.276f',paths)
         # No logo motion is applied. Existing UI reduced-motion behavior is unchanged.
@@ -130,10 +130,10 @@ class BrandIdentityTest(unittest.TestCase):
         for item in manifest['icons']:
             self.assertEqual(item['purpose'],'any maskable')
         self.assertIn('data-target-path="brand"',(ROOT/'apps/web/index.html').read_text())
-        android=(ROOT/'mobile/android/src/main/AndroidManifest.xml').read_text()
+        android=(ROOT/'apps/mobile/android/src/main/AndroidManifest.xml').read_text()
         self.assertIn('android:icon="@mipmap/ic_launcher"',android)
         self.assertIn('android:roundIcon="@mipmap/ic_launcher"',android)
-        project=(ROOT/'mobile/ios/TabulaApp.xcodeproj/project.pbxproj').read_text()
+        project=(ROOT/'apps/mobile/ios/TabulaApp.xcodeproj/project.pbxproj').read_text()
         self.assertIn('Assets.xcassets',project)
         self.assertEqual(project.count('ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon'),2)
         for name in ('main.rs','bin/werewolf.rs'):

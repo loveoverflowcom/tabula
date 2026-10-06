@@ -22,7 +22,7 @@ contract. A specification or successful local check does not open a phase gate.
 
 Web uses a Leptos shell and a separate Rust/Macroquad WASM gameplay document
 (ADR-011). The bounded opt-in local handoff is ADR-0030. Android/iOS use a
-Compose Multiplatform shell in [`mobile/`](../mobile/README.md); ADR-0032 opens
+Compose Multiplatform shell in [`apps/mobile/`](../apps/mobile/README.md); ADR-0032 opens
 only its foundation. WebView gameplay, voice and native services need their own
 implementation and device evidence. Desktop gameplay remains native, with an
 optional Tauri shell.

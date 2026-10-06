@@ -25,7 +25,7 @@ host loopback. The emulator address is advertised for its NAT path; that route
 still needs real ICE/media acceptance and is not assumed proven by config.
 
 While the harness runs, copy one of its private `client-a.json`/`client-b.json`
-files to ignored `mobile/voice-dev-grant.json`, then build/install a **Debug** app
+files to ignored `apps/mobile/voice-dev-grant.json`, then build/install a **Debug** app
 on the corresponding client. Repeat with the other identity for client B. Do
 not reuse one identity for both clients: LiveKit would replace the old participant.
 The fixture expires within ten minutes of generation; regenerate deliberately

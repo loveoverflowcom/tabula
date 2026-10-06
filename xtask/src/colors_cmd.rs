@@ -2,10 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
-const ROOTS: [&str; 4] = ["apps", "games", "crates/tabula-presentation", "mobile"];
+const ROOTS: [&str; 3] = ["apps", "games", "crates/tabula-presentation"];
 const ALLOWED_GENERATED: [&str; 2] = [
     "apps/web/style/tokens.css",
-    "mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt",
+    "apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt",
 ];
 
 /// Build output, not source. `dist/` holds trunk's content-hashed copy of the

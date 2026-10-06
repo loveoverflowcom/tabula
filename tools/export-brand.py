@@ -76,7 +76,7 @@ internal object TabulaBrandPaths {
     const val Wordmark = "%s"
 }
 ''' % (path("tabula-mark-mono.svg"), path("tabula-mark-micro.svg"), word_path)
-    put("mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaBrandPaths.kt", kt)
+    put("apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaBrandPaths.kt", kt)
     primary = source("tabula-mark-primary.svg")
     app = source("tabula-app-icon.svg")
     foreground = re.sub(r'<rect[^>]*/>', '', app)
@@ -129,11 +129,11 @@ internal object TabulaBrandPaths {
         im = Image.open(BytesIO(render(svg, size))).convert("RGBA")
         put(f"assets/brand/generated/native-icon-{size}.rgba", im.tobytes())
     for density, size in (("mdpi",48),("hdpi",72),("xhdpi",96),("xxhdpi",144),("xxxhdpi",192)):
-        put(f"mobile/android/src/main/res/mipmap-{density}/ic_launcher.png", render(app,size))
+        put(f"apps/mobile/android/src/main/res/mipmap-{density}/ic_launcher.png", render(app,size))
         adaptive_size = size * 108 // 48
-        put(f"mobile/android/src/main/res/mipmap-{density}/ic_launcher_foreground.png", render(foreground, adaptive_size))
-    put("mobile/android/src/main/res/values/brand_colors.xml", f'<?xml version="1.0" encoding="utf-8"?>\n<!-- @generated from assets/brand/palette.json; do not edit. -->\n<resources><color name="tabula_brand_ink">{colors["brandInk"]}</color></resources>\n')
-    catalog = "mobile/ios/TabulaApp/Assets.xcassets"
+        put(f"apps/mobile/android/src/main/res/mipmap-{density}/ic_launcher_foreground.png", render(foreground, adaptive_size))
+    put("apps/mobile/android/src/main/res/values/brand_colors.xml", f'<?xml version="1.0" encoding="utf-8"?>\n<!-- @generated from assets/brand/palette.json; do not edit. -->\n<resources><color name="tabula_brand_ink">{colors["brandInk"]}</color></resources>\n')
+    catalog = "apps/mobile/ios/TabulaApp/Assets.xcassets"
     put(f"{catalog}/Contents.json", json.dumps({"info":{"author":"xcode","version":1}}, indent=2)+"\n")
     specifications = [("iphone","20x20",2),("iphone","20x20",3),("iphone","29x29",2),("iphone","29x29",3),("iphone","40x40",2),("iphone","40x40",3),("iphone","60x60",2),("iphone","60x60",3),("ipad","20x20",1),("ipad","20x20",2),("ipad","29x29",1),("ipad","29x29",2),("ipad","40x40",1),("ipad","40x40",2),("ipad","76x76",1),("ipad","76x76",2),("ipad","83.5x83.5",2),("ios-marketing","1024x1024",1)]
     images=[]

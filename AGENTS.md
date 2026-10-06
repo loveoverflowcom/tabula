@@ -89,10 +89,10 @@ crates/           platform libraries — the real product
 
 games/            one crate per game; feature-split into rules / bots / presentation
 apps/             game-client (Macroquad), web (Leptos), admin, desktop (optional Tauri)
+  mobile/         ONE Compose Multiplatform mobile tree (ADR-0032): shared/ (UI, navigation,
+                  GameHost interface), android/ (app), ios/ (Xcode host); no game logic
 services/         tabula-server — gameplay binary at Stage 0; tabula-auth — Kanidm
                   account/session skeleton (ADR-0034), both runtime-gated
-mobile/           ONE Compose Multiplatform mobile tree (ADR-0032): shared/ (UI, navigation,
-                  GameHost interface), android/ (app), ios/ (Xcode host); no game logic
 xtask/            repo automation (pure Rust, no make)
 deploy/           compose (dev), systemd (Stage 0–1), terraform (Stage 2+)
 tests/            integration (real Postgres), load (Rust generator), replays (golden .tbr)
@@ -118,7 +118,7 @@ permission to implement them early.
 | 3 | `tabula-assets`, `games/caro`, `games/tiles` (Carcassonne-like), `games/werewolf` (rules only) |
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server`, `services/tabula-auth` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin` |
-| 6 | `mobile/shared`, `mobile/android`, `mobile/ios` (foundation slice open, see below) |
+| 6 | `apps/mobile/shared`, `apps/mobile/android`, `apps/mobile/ios` (foundation slice open, see below) |
 | 7 | `games/werewolf` (presentation, social, and online) |
 | 8 | `tabula-voice` |
 | 9+ | SDK stabilisation, scaling, third-party ecosystem |
@@ -208,9 +208,9 @@ cargo deny check
 ```
 
 `just check` (or `cargo xtask check`) is the authoritative portable local core gate.
-A change under `mobile/` additionally runs, from `mobile/`,
+A change under `apps/mobile/` additionally runs, from `apps/mobile/`,
 `./gradlew :shared:testAndroidHostTest :android:assembleDebug`; the iOS framework and Xcode
-project build only on macOS (see `mobile/README.md` for what each environment proves).
+project build only on macOS (see `apps/mobile/README.md` for what each environment proves).
 CI additionally checks the full workspace feature matrix (`cargo check --workspace --no-default-features` and `--all-features`) and target-specific WASM compilation (`wasm32-unknown-unknown`). You can test the feature matrix locally with `just check-all` or `just features`.
 
 A change to a game crate additionally needs its conformance suite green

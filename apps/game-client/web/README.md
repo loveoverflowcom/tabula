@@ -153,7 +153,7 @@ document never has it and behaves exactly as described above. When it is present
 - drops any host message for another generation, after `dispose`, or outside the schema.
 
 The wire grammar is `tests/bridge-vectors.json`, run by `tests/host-bridge.test.cjs` here and by the Kotlin
-`BridgeVectorsTest` in `mobile/`. The loader (`resources.js`) is unchanged: same-origin, SHA-256 and size
+`BridgeVectorsTest` in `apps/mobile/`. The loader (`resources.js`) is unchanged: same-origin, SHA-256 and size
 limits all still apply.
 
 ## Opt-in Werewolf standalone

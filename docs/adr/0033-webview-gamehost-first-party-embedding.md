@@ -139,7 +139,7 @@ Platform runtimes only execute its effects and own the WebView.
 
 ### 5. Desktop CMP target: testing only
 
-`mobile/shared` gains a `desktop` JVM target and `mobile/previewApp` runs and tests the shared shell on a
+`apps/mobile/shared` gains a `desktop` JVM target and `apps/mobile/previewApp` runs and tests the shared shell on a
 laptop (`./gradlew :previewApp:run`, `:previewApp:test`). The game page there is a **labelled
 simulation** speaking the real wire protocol through the real `GameSession`; it draws no game. It is not
 a desktop product, an installer or evidence about any WebView.

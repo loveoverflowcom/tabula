@@ -103,7 +103,7 @@ jobs:
         with: { toolchain: "1.96" }
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask gen-tokens
-      - run: git diff --exit-code -- apps/web/style/tokens.css crates/tabula-design/src/generated.rs docs/ui/tokens.json mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt
+      - run: git diff --exit-code -- apps/web/style/tokens.css crates/tabula-design/src/generated.rs docs/ui/tokens.json apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: python3 -m pip install Pillow==11.3.0
@@ -139,18 +139,18 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
-      - working-directory: mobile
+      - working-directory: apps/mobile
         run: ./gradlew --console=plain -Ptabula.requireGameBundle=true :shared:testAndroidHostTest :previewApp:test :android:assembleDebug
-      - working-directory: mobile
+      - working-directory: apps/mobile
         run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: mobile-shell-doubles-evidence
           path: |
-            mobile/previewApp/build/reports/shell-screenshots
-            mobile/previewApp/build/test-results/test
-            mobile/shared/build/test-results
+            apps/mobile/previewApp/build/reports/shell-screenshots
+            apps/mobile/previewApp/build/test-results/test
+            apps/mobile/shared/build/test-results
           if-no-files-found: warn
 
   # ADR-0037: actual Swift SDK adapter + Kotlin framework compile/link. No simulator
@@ -171,17 +171,17 @@ jobs:
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
       - run: xcodebuild -version && swift --version
-      - working-directory: mobile
+      - working-directory: apps/mobile
         run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
-      - working-directory: mobile/ios
+      - working-directory: apps/mobile/ios
         run: xcodebuild -project TabulaApp.xcodeproj -scheme Tabula -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/tabula-ios" CODE_SIGNING_ALLOWED=NO build
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: mobile-ios-generated-headers
           path: |
-            mobile/shared/build/bin/**/*Framework/TabulaShared.framework/Headers
-            mobile/shared/build/xcode-frameworks/**/TabulaShared.framework/Headers
+            apps/mobile/shared/build/bin/**/*Framework/TabulaShared.framework/Headers
+            apps/mobile/shared/build/xcode-frameworks/**/TabulaShared.framework/Headers
           if-no-files-found: warn
 
   # -------------------------------------------------------------------- tests

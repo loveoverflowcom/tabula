@@ -141,17 +141,17 @@ tabula/
 │   ├── game-client/               # Macroquad binary: native desktop + wasm target (the wasm build is also what the mobile WebView loads)
 │   ├── web/                       # Leptos application shell (CSR)
 │   ├── desktop/                   # OPTIONAL Tauri shell (Phase 5+); not required for gameplay
+│   ├── mobile/                    # ONE mobile tree (ADR-0032): Gradle root + Xcode host
+│   │   ├── shared/                # Compose Multiplatform library: UI, navigation, GameHost interface
+│   │   ├── android/               # Android application module
+│   │   ├── ios/                   # Xcode project hosting the shared framework
+│   │   └── previewApp/            # Desktop preview and shared-shell tests; testing only
 │   └── admin/                     # operator UI (Leptos, reuses design tokens) — Phase 5+
 │
 ├── services/
 │   ├── tabula-server/             # Gameplay: HTTP + WS + match runtime + lobby
 │   │                              # Splits later into gateway / match-worker (doc 06 §7)
 │   └── tabula-auth/               # Kanidm account/session skeleton (ADR-0034), runtime gated
-│
-├── mobile/                        # ONE mobile tree (ADR-0032): Gradle root + Xcode host
-│   ├── shared/                    # Compose Multiplatform library: UI, navigation, GameHost interface
-│   ├── android/                   # Android application module
-│   └── ios/                       # Xcode project hosting the shared framework
 │
 ├── xtask/                         # check-deps, check-no-game-ids, gen-tokens, gen-protocol-vectors
 ├── deploy/
@@ -668,8 +668,8 @@ disallowed-methods = [
 | Linux desktop | `x86_64-unknown-linux-gnu`, `aarch64-…` | `apps/game-client` (feature `native`) | AppImage or tarball via `cargo-dist` |
 | macOS desktop | `aarch64-apple-darwin`, `x86_64-…` | same | Universal binary; notarization needed for distribution |
 | Windows desktop | `x86_64-pc-windows-msvc` | same | Code-signing needed |
-| Android | Gradle (AGP) | `mobile/shared` (CMP) → `mobile/android`; the game is the `wasm32-unknown-unknown` document in a WebView (later change) | ADR-0032. The earlier `cdylib` + `cargo-apk`/`cargo-ndk` plan is superseded for mobile |
-| iOS | Kotlin/Native `iosArm64`, `iosSimulatorArm64` (macOS to link) | `mobile/shared` static framework → `mobile/ios` Xcode host; the game is the same WASM document in a WKWebView (later change) | ADR-0032. The earlier `staticlib` plan is superseded for mobile |
+| Android | Gradle (AGP) | `apps/mobile/shared` (CMP) → `apps/mobile/android`; the game is the `wasm32-unknown-unknown` document in a WebView (later change) | ADR-0032. The earlier `cdylib` + `cargo-apk`/`cargo-ndk` plan is superseded for mobile |
+| iOS | Kotlin/Native `iosArm64`, `iosSimulatorArm64` (macOS to link) | `apps/mobile/shared` static framework → `apps/mobile/ios` Xcode host; the game is the same WASM document in a WKWebView (later change) | ADR-0032. The earlier `staticlib` plan is superseded for mobile |
 | Server | `x86_64-unknown-linux-gnu` (musl optional) | `services/tabula-server` | Container image; also runs natively via systemd at Stage 0–1 |
 
 **WASM constraints that shape the client design** (do not rediscover these in Phase 5):

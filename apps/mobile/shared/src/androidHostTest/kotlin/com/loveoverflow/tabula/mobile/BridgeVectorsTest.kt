@@ -25,8 +25,8 @@ import kotlin.test.assertTrue
  */
 class BridgeVectorsTest {
     private val vectors: Map<String, Json> = run {
-        // Gradle runs host tests with the module directory (mobile/shared) as the working directory.
-        val file = File("../../apps/game-client/web/tests/bridge-vectors.json")
+        // Gradle runs host tests with the module directory (apps/mobile/shared) as the working directory.
+        val file = File("../../../apps/game-client/web/tests/bridge-vectors.json")
         assertTrue(file.isFile, "bridge vectors not found at ${file.absoluteFile}")
         // The fixture nests deeper than a wire message may, so it is read with a raised bound.
         (StrictJson.parse(file.readText(), maxDepth = 16) as Json.Obj).fields

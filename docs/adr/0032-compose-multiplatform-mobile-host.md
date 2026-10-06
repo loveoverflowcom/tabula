@@ -12,8 +12,8 @@ The repository documented one mobile direction: Macroquad gameplay compiled to a
 `cdylib`/`staticlib`, wrapped by a "glue only" Kotlin/Swift host, with the shell
 screens drawn on the game canvas. ADR-019 gave the reason: *gameplay must not depend
 on a WebView*, because WebView input latency and rendering would become the
-gameplay ceiling on the platform where most players are. `mobile/android` and
-`mobile/ios` held only READMEs for that plan, and `apps/game-client` still builds
+gameplay ceiling on the platform where most players are. `apps/mobile/android` and
+`apps/mobile/ios` held only READMEs for that plan, and `apps/game-client` still builds
 `rlib` only.
 
 The repository owner has chosen a different split for mobile:
@@ -48,7 +48,7 @@ Reading this ADR next to the others:
 
 | Layer | Owns | Does not own |
 |---|---|---|
-| **CMP shell** (`mobile/shared`, Kotlin) | App screens, navigation, theming from generated tokens, composition of the game screen | Rules, legality, projection, canonical state, replay, wire decisions |
+| **CMP shell** (`apps/mobile/shared`, Kotlin) | App screens, navigation, theming from generated tokens, composition of the game screen | Rules, legality, projection, canonical state, replay, wire decisions |
 | **GameHost** (platform WebView, later change) | Presenting the Rust/WASM game document inside the game screen; its lifecycle | Any decision about the match |
 | **Mobile host services** (Kotlin/Swift) | Voice capture and session audio, device permissions, secure credential store, push, deep links, OS lifecycle | Game meaning |
 | **Rust** (unchanged) | `apply`/`project`/`view_event`, presentation, `RenderList`, Macroquad renderer, WASM game build | App chrome on mobile |
@@ -69,8 +69,8 @@ language decision of ADR-001 for rules, protocol, server and clients is unchange
 
 ### 3. One mobile tree
 
-`mobile/` is the single mobile root: a Gradle build with `mobile/shared` (the CMP
-library), `mobile/android` (the Android application) and `mobile/ios` (the Xcode
+`apps/mobile/` is the single mobile root: a Gradle build with `apps/mobile/shared` (the CMP
+library), `apps/mobile/android` (the Android application) and `apps/mobile/ios` (the Xcode
 host of the same library). No second mobile application is created. The earlier
 `cargo-apk`/`cargo-ndk` Macroquad-native Phase 6 path is not built and is
 superseded for mobile by this ADR. Desktop and web are unchanged: desktop remains a
@@ -80,10 +80,10 @@ documents. `apps/game-client`'s crate types are not changed by this ADR.
 ### 4. One design authority (extends ADR-0027)
 
 `tokens.toml` stays the one authored contract. `cargo xtask gen-tokens` also emits a
-Kotlin adapter, `mobile/shared/.../design/TabulaTokens.kt`, which `check` verifies is
+Kotlin adapter, `apps/mobile/shared/.../design/TabulaTokens.kt`, which `check` verifies is
 current like the Rust, CSS and JSON adapters. The CMP theme only maps those
 generated values onto Compose; it introduces no colour, size or role.
-`cargo xtask check-no-raw-colors` now also scans `mobile/` Kotlin and rejects
+`cargo xtask check-no-raw-colors` now also scans `apps/mobile/` Kotlin and rejects
 `Color(...)` constructors, palette colours and hex literals outside the generated
 file. The shell follows `docs/ui/screens/foundation.md` (compact layout, 44 dp
 targets, safe areas). The generated adapter carries colours, space, shape, type,

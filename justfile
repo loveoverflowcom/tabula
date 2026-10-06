@@ -76,7 +76,7 @@ colors:
 # Design tokens generation check.
 tokens-check:
     cargo xtask gen-tokens
-    git diff --exit-code -- apps/web/style/tokens.css crates/tabula-design/src/generated.rs docs/ui/tokens.json
+    git diff --exit-code -- apps/web/style/tokens.css crates/tabula-design/src/generated.rs docs/ui/tokens.json apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt
 
 audit:
     cargo deny check

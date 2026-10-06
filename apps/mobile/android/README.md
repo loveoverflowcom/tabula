@@ -1,9 +1,9 @@
 # Android
 
-> **Foundation slice** of [ADR-0032](../../docs/adr/0032-compose-multiplatform-mobile-host.md) with the
-> first-party WebView host of [ADR-0033](../../docs/adr/0033-webview-gamehost-first-party-embedding.md).
+> **Foundation slice** of [ADR-0032](../../../docs/adr/0032-compose-multiplatform-mobile-host.md) with the
+> first-party WebView host of [ADR-0033](../../../docs/adr/0033-webview-gamehost-first-party-embedding.md).
 > Phase 6's gate (the Phase 5 exit) is not met; this module is not a shippable app, and the WebView host
-> **has not been run on an emulator or device** (see the [ledger](../../docs/verification/mobile-game-host/README.md)).
+> **has not been run on an emulator or device** (see the [ledger](../../../docs/verification/mobile-game-host/README.md)).
 
 The Android application module of the one mobile tree (see [`../README.md`](../README.md)).
 `MainActivity` only calls `installTabulaContent()` from `:shared`; screens and navigation are

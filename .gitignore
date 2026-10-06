@@ -42,13 +42,13 @@ perf.data*
 flamegraph.svg
 
 # mobile (Gradle / Kotlin)
-/mobile/.gradle/
-/mobile/.kotlin/
-/mobile/local.properties
-/mobile/**/build/
+/apps/mobile/.gradle/
+/apps/mobile/.kotlin/
+/apps/mobile/local.properties
+/apps/mobile/**/build/
 
 # Ephemeral native voice dev grant fixture: debug-only; never commit credentials.
-/mobile/voice-dev-grant.json
+/apps/mobile/voice-dev-grant.json
 
 # Disposable provider public receipts are CI artifacts, not source
 /verification/kanidm-oidc-artifacts/
