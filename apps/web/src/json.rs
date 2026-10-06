@@ -1,4 +1,4 @@
-//! Shared strict response lexer for the browser DTO boundary (ADR-0043).
+//! Shared strict response lexer for the browser DTO boundary (ADR-0044).
 //!
 //! Each response is an object with unique decoded keys at every depth. DTO
 //! deserialization still owns fields and numeric types; it establishes no

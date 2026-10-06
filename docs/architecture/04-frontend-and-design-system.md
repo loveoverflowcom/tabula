@@ -175,7 +175,7 @@ code from being retained merely by discovery, without weakening validation or
 changing the separate-document boundary. The existing emitted shell-WASM cap
 remains 900,000 bytes; source graph and actual emitted bytes are separate evidence.
 
-[ADR-0043](../adr/0043-isolated-account-registration-social.md) adds a separate,
+[ADR-0044](../adr/0044-isolated-account-registration-social.md) adds a separate,
 non-default `account-social` shell composition for verified enrollment, editable
 profiles and authorized social snapshots. Its combined `online,account-social`
 artifact has an enforced 1,100,000-byte raw WASM ceiling. Default and `online`

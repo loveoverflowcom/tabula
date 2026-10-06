@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rendered account-shell acceptance with explicit synthetic HTTP doubles.
 
-ADR-0036/ADR-0043: this exercises the built Leptos/WASM UI, not provider authentication,
+ADR-0036/ADR-0044: this exercises the built Leptos/WASM UI, not provider authentication,
 PostgreSQL, secure transport, assistive technology, or production authority.
 """
 

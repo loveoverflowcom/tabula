@@ -319,7 +319,7 @@ impl Default for AccountCore {
     }
 }
 impl AccountCore {
-    /// Current document-only control facts for v2 leaf adapters (ADR-0043).
+    /// Current document-only control facts for v2 leaf adapters (ADR-0044).
     /// The caller must also fence route, connectivity and presentation generation.
     #[cfg(feature = "account-social")]
     pub(super) fn current_document_context(&self) -> Option<(String, String)> {

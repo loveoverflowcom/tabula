@@ -31,7 +31,7 @@ wasm-bindgen = { workspace = true }
 default = []
 # Bounded direct-match controls; default shell stays account/local only.
 online = ["dep:tabula-match-http"]
-# ADR-0043 opt-in enrollment/profile/social UI and its one app-owned stream.
+# ADR-0044 opt-in enrollment/profile/social UI and its one app-owned stream.
 # Its measured expanded shell has a separate, explicit loading profile.
 account-social = []
 # Explicit native test harness; no production listener or service activation.

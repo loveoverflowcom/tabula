@@ -1,4 +1,4 @@
-//! SQL-free account enrollment and permitted profile contracts (ADR-0043).
+//! SQL-free account enrollment and permitted profile contracts (ADR-0044).
 use crate::{
     AccountEpoch, BrowserLoginCallback, BrowserLoginStart, CredentialDigest, CredentialOperation,
     HttpSessionAuthority, ProviderIdentityKey, SessionError, SessionPublication, UnixMillis,
@@ -260,7 +260,7 @@ mod tests {
 
 /// Maximum prevalidated isolated socket text frame; never a queued unbounded body.
 pub const MAX_SOCKET_FRAME_BYTES: usize = 512 * 1024;
-/// Owned bounded private candidate, unreleasable until a live handoff (ADR-0043).
+/// Owned bounded private candidate, unreleasable until a live handoff (ADR-0044).
 pub struct BoundedSocketFrame(String);
 impl BoundedSocketFrame {
     pub fn new(text: String) -> Result<Self, SessionError> {

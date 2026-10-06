@@ -1,6 +1,6 @@
 //! Internal auth-session lifecycle policy and durable authority ports.
 //!
-//! ADR-0036 and ADR-0043 open isolated session/account contracts. Both service
+//! ADR-0036 and ADR-0044 open isolated session/account contracts. Both service
 //! bootstraps, production HTTP/WS enforcement and
 //! production deployment remain gated. Isolated HTTP credential operations and
 //! a bounded server-frame publication port are defined here. This library is

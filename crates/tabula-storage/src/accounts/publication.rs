@@ -26,7 +26,7 @@ pub enum AccountsPrincipal {
     Credential(CredentialOperation),
     Binding(SessionBinding),
 }
-/// One-use first-frame guard over caller and every disclosed account (ADR-0043).
+/// One-use first-frame guard over caller and every disclosed account (ADR-0044).
 pub struct AccountsPublication<K = ()> {
     inner: PgSessionPublication,
     data: K,

@@ -1,7 +1,7 @@
 # Issue #54 C — friends, presence and request actions
 
 **Status (2026-10-06):** the owner now authorizes real social/lobby contracts
-in the isolated composition under [ADR-0043](../../adr/0043-isolated-account-registration-social.md).
+in the isolated composition under [ADR-0044](../../adr/0044-isolated-account-registration-social.md).
 The [completion ledger](../../verification/issue-54-account-followup/README.md)
 records actual acceptance. [#100](https://github.com/loveoverflowcom/tabula/issues/100)
 tracks the same work; #54 cannot close merely by transferring it.

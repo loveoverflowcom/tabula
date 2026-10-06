@@ -43,7 +43,7 @@ remain gated.
 
 The [latest #54 completion ledger](../verification/issue-54-account-followup/README.md)
 records work from develop `c6d55a6`. The owner explicitly requests every original
-criterion; [ADR-0043](../adr/0043-isolated-account-registration-social.md) opens
+criterion; [ADR-0044](../adr/0044-isolated-account-registration-social.md) opens
 bounded verified-provider Tabula enrollment, permitted profile read/edit and
 friends/presence authority in the isolated composition. #54 remains open until
 that scope and its acceptance are complete. Production startup, live provider
@@ -56,7 +56,7 @@ PR A, originally reviewed against
 `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc` and now aligned with
 [ADR-0031](../adr/0031-browser-native-session-contract.md).
 Its original next slices were [B auth and self-profile](backlog/issue-54-auth-profile.md)
-and [C friends and presence](backlog/issue-54-friends-presence.md). ADR-0043
+and [C friends and presence](backlog/issue-54-friends-presence.md). ADR-0044
 subsequently authorizes their bounded isolated implementation, including the
 new contracts, without activating the production backlog.
 

@@ -1,4 +1,4 @@
-//! One shell-owned, snapshot-only social stream (ADR-0043, doc 04 §2).
+//! One shell-owned, snapshot-only social stream (ADR-0044, doc 04 §2).
 //! Route tickets fence rendering; the cookie-authenticated server owns permission.
 
 #[cfg(target_arch = "wasm32")]

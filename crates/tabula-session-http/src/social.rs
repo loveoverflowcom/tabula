@@ -1,4 +1,4 @@
-//! Native opt-in friends HTTP and the single shell lobby socket (ADR-0043).
+//! Native opt-in friends HTTP and the single shell lobby socket (ADR-0044).
 //! Current session and peer policy guards survive through each bounded handoff.
 
 use std::{

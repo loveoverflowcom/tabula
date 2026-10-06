@@ -1,4 +1,4 @@
--- ADR-0043: separate opt-in account enrollment/profile schema. Production remains gated.
+-- ADR-0044: separate opt-in account enrollment/profile schema. Production remains gated.
 CREATE TABLE account_enrollment_policy (
  singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK(singleton),
  enabled BOOLEAN NOT NULL DEFAULT FALSE,

@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 GAME_RAW_LIMIT = 1_250_000
 GAME_GZIP_LIMIT = 500_000
 SHELL_RAW_LIMIT = 900_000
-ACCOUNT_SOCIAL_RAW_LIMIT = 1_100_000  # ADR-0043's explicitly opted-in composition.
+ACCOUNT_SOCIAL_RAW_LIMIT = 1_100_000  # ADR-0044's explicitly opted-in composition.
 SHELL_MARKERS = {
     "standard": b"tabula-shell-standard-v1",
     "account-social": b"tabula-shell-account-social-v1",

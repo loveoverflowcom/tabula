@@ -626,7 +626,7 @@ Its database commit-fence receipt is not actual private-output fencing. All
 Phase 2/3/4/5 exits, provider proof and target-specific evidence remain owed;
 login/register/friends stay unavailable where their backend gates are unmet.
 
-[ADR-0043](../adr/0043-isolated-account-registration-social.md) subsequently opens
+[ADR-0044](../adr/0044-isolated-account-registration-social.md) subsequently opens
 the remaining #54 contracts by explicit owner request: verified-provider Tabula
 enrollment, permitted profile read/edit, durable friends/requests and one scoped
 presence stream. This is an isolated code/acceptance exception; provider account

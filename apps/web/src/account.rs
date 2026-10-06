@@ -50,7 +50,7 @@ pub struct AccountController {
 }
 
 /// In-memory v2 completion fence, never a credential or serialized authority.
-/// Its exact route and context generation must remain current (ADR-0043).
+/// Its exact route and context generation must remain current (ADR-0044).
 #[cfg(feature = "account-social")]
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct DocumentAccountTicket {

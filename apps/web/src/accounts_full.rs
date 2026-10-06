@@ -1,4 +1,4 @@
-//! Document-only v2 account request mechanism (ADR-0043).
+//! Document-only v2 account request mechanism (ADR-0044).
 //! Server authority remains at every read, commit and publication boundary.
 
 use leptos::prelude::*;

@@ -210,7 +210,7 @@ impl std::fmt::Debug for SocialSession {
 }
 
 /// Trusted gateway transport observation; storage still rechecks this binding
-/// and current peer disclosure under the shared publication guard (ADR-0043).
+/// and current peer disclosure under the shared publication guard (ADR-0044).
 #[derive(Clone, Copy)]
 #[cfg(all(feature = "authority", not(target_arch = "wasm32")))]
 pub struct SocialPresenceCandidate {

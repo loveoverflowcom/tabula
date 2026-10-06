@@ -1,7 +1,7 @@
 # Isolated account and social implementation
 
 This is the current #54 implementation contract for the explicitly enabled
-[ADR-0043](../../adr/0043-isolated-account-registration-social.md) composition.
+[ADR-0044](../../adr/0044-isolated-account-registration-social.md) composition.
 It extends [the version 1 session slice](account-state-isolated.md). That slice's
 unavailable registration/social behavior still applies to the legacy composition;
 it does not describe the new version 2 routes. Production startup remains closed.

@@ -2,7 +2,7 @@
 //!
 //! The isolated adapter owns authority and cleanup. This view only renders its
 //! structured dispositions; provider sign-in uses only a top-level redirect.
-//! Separate ADR-0043 controls render a confirmed v2 self profile when available
+//! Separate ADR-0044 controls render a confirmed v2 self profile when available
 //! (docs/ui/screens/account-state-isolated.md). Fixed escapes deliberately ignore
 //! return parameters rather than interpreting a URL as authorization.
 

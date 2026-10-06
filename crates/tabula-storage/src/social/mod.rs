@@ -1,4 +1,4 @@
-//! Isolated durable friends authority (ADR-0043; doc 03 §14).
+//! Isolated durable friends authority (ADR-0044; doc 03 §14).
 //! SQL belongs only here. Caller and disclosed-peer exclusions order graph/profile
 //! changes with bounded publication; snapshots never authorize a later mutation.
 
@@ -26,7 +26,7 @@ use crate::{
 };
 
 /// Social output retains every actual Online observation's monotonic deadline,
-/// alongside the viewer/peer SQL exclusions, until frame transfer (ADR-0043).
+/// alongside the viewer/peer SQL exclusions, until frame transfer (ADR-0044).
 pub struct SocialPublication {
     inner: AccountsPublication,
     online_until: Option<std::time::Instant>,

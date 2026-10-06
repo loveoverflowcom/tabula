@@ -1,4 +1,4 @@
-//! Disposable account/social browser acceptance fixture (ADR-0043).
+//! Disposable account/social browser acceptance fixture (ADR-0044).
 //! No production startup, synthetic login, provider provisioning or debug routes.
 #![forbid(unsafe_code)]
 

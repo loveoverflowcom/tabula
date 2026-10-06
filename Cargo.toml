@@ -97,7 +97,7 @@ tiny-skia   = "0.11"
 # `{ workspace = true }`; the matrix says which crates may.
 tokio              = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }
 futures            = "0.3"
-# ADR-0043's native WS uses Axum 0.8's separate RNG generation: Tungstenite's
+# ADR-0044's native WS uses Axum 0.8's separate RNG generation: Tungstenite's
 # rand 0.9 must not enable OS randomness on the frozen kernel rand_core 0.6 (I-1).
 axum               = { version = "=0.8.8", default-features = false, features = ["http1", "tokio"] }
 tower              = "0.5"

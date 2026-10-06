@@ -9,7 +9,7 @@
 //! > implemented anyway, as a recorded decision: see
 //! > `docs/adr/0028-discovery-shell-ahead-of-phase-gate.md`. Every other route
 //! > remains gated except the isolated account-state routes under ADR-0036
-//! > and configured Kanidm continuation under ADR-0038. ADR-0043 adds bounded
+//! > and configured Kanidm continuation under ADR-0038. ADR-0044 adds bounded
 //! > verified enrollment, self-profile editing, permitted other profiles and
 //! > social snapshots when the isolated authority advertises those capabilities.
 //! > Default and production compositions remain closed.

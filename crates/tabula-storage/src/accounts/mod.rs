@@ -1,4 +1,4 @@
-//! Opt-in durable Tabula enrollment/profile authority (ADR-0043).
+//! Opt-in durable Tabula enrollment/profile authority (ADR-0044).
 //! Fixed SQL with hand-mapped checked rows follows doc 01's explicit query fallback;
 //! disposable `PostgreSQL` acceptance validates the separate migrated schema.
 mod publication;

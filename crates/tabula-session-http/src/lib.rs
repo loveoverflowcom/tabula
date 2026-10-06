@@ -1,7 +1,7 @@
 //! ADR-0036 isolated session/context and minimal read-only self-profile HTTP.
 //!
 //! Default/WASM builds expose only these explicitly versioned DTOs. The
-//! non-default native adapters never start a production service. ADR-0043 adds
+//! non-default native adapters never start a production service. ADR-0044 adds
 //! explicitly composed account/social authority; provider verification stays in
 //! the auth service library and gameplay authority remains separate.
 #![forbid(unsafe_code)]
@@ -22,7 +22,7 @@ pub enum SessionDisposition {
     Unavailable,
 }
 
-/// Actual bounded capabilities; ADR-0043 opens registration/social only in its
+/// Actual bounded capabilities; ADR-0044 opens registration/social only in its
 /// explicitly composed isolated authority. Bits never establish permission.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

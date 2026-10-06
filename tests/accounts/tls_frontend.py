@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Disposable HTTPS/WSS edge for ADR-0043 acceptance, without auth shortcuts.
+"""Disposable HTTPS/WSS edge for ADR-0044 acceptance, without auth shortcuts.
 
 Reuse the bounded opaque HTTP/static fixture edge. Only the fixed social socket
 gets a transparent tunnel; the real native adapter owns cookie/Origin/subprotocol

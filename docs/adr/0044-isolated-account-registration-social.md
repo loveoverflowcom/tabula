@@ -1,4 +1,4 @@
-# ADR-0043: isolated account registration, profiles and social authority
+# ADR-0044: isolated account registration, profiles and social authority
 
 - **Status:** accepted bounded implementation; isolated local acceptance passed; production closed
 - **Date:** 2026-10-06

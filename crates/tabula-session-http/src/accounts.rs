@@ -1,4 +1,4 @@
-//! Version 2 account enrollment and permitted profile DTOs (ADR-0043).
+//! Version 2 account enrollment and permitted profile DTOs (ADR-0044).
 //!
 //! These are transport values, never authority. Native adapters revalidate input
 //! and current session/resource policy; browsers fence operation and route scope.
@@ -13,7 +13,7 @@ use crate::{canonical_account_id, canonical_token, InvalidHttpResponse, LoginSta
 /// New isolated account surface; the version 1 session surface stays compatible.
 pub const ACCOUNT_CONTRACT_VERSION: u8 = 2;
 
-/// Visibility of profile details to other signed-in accounts (ADR-0043).
+/// Visibility of profile details to other signed-in accounts (ADR-0044).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProfileVisibility {
@@ -212,7 +212,7 @@ impl OtherAccountProfileResponse {
     }
 }
 
-/// User-approved fields only; handles remain immutable (ADR-0043).
+/// User-approved fields only; handles remain immutable (ADR-0044).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProfileUpdateRequest {

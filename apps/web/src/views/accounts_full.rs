@@ -1,4 +1,4 @@
-//! Native v2 enrollment and permitted profile documents (ADR-0043).
+//! Native v2 enrollment and permitted profile documents (ADR-0044).
 //! Drafts and pending writes are document-local; DTOs never establish authority.
 #![allow(clippy::too_many_lines)] // Leptos expands each native form/list route into one lifecycle-bound function.
 

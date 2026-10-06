@@ -19,7 +19,7 @@ cd ../..
   --receipt /tmp/tabula-account-ui-receipt.json
 ```
 
-`account-social` explicitly opens ADR-0043's isolated frontend composition;
+`account-social` explicitly opens ADR-0044's isolated frontend composition;
 `online` additionally retains the existing direct-match controls. The complete
 account/social selection requires this combined optimized artifact. CI first
 checks the separate default and `online` artifacts against their unchanged
@@ -90,7 +90,7 @@ of transport abortion.
 This is `interaction-tested` evidence within the stated doubled boundary. It does
 not establish real provider/password/autofill behavior, real durable sessions,
 BFCache restoration, assistive-technology output, production authentication or
-broad phase exits (ADR-0036/ADR-0043).
+broad phase exits (ADR-0036/ADR-0044).
 
 The additional160 v2 cases cover provider-proven ready registration fields, self profile details and editing, a permitted other profile, and friends/search/request lists at every width/theme/language combination. Long Unicode names exercise wrapping. Twenty-four v2 interactions cover native accessible names in Chromium’s AX tree, invalid fields, synthetic composition events and keyboard Enter, single-flight registration and writes, accepted-without-session output, CAS conflict/refetch,204 save reconciliation including failed-read GET-only recovery, unknown-write identical retry, the app-owned socket across SPA navigation, serialized late scope rejection, five-second stale presence, offline masking and fresh-context recovery, and retired search responses. Browser AX-tree inspection and dispatched composition events do not establish manual assistive-technology or operating-system IME acceptance.
 

@@ -191,7 +191,7 @@ HTTP2 scope correlation, exact online owner restart and guarded resync.
 Actual fault/browser/PostgreSQL acceptance remains required before merge;
 production, native/mobile, clocks, external effects and broad phase exits remain closed.
 
-[ADR-0043](docs/adr/0043-isolated-account-registration-social.md) authorizes the
+[ADR-0044](docs/adr/0044-isolated-account-registration-social.md) authorizes the
 remaining #54 account/social contracts in an explicit isolated composition:
 Kanidm-verified Tabula enrollment, permitted profile read/edit, durable friend
 requests and one scoped presence stream. It preserves current session and target

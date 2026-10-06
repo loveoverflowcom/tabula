@@ -1,4 +1,4 @@
-"""The ADR-0043 cap cannot silently replace the historical shell cap."""
+"""The ADR-0044 cap cannot silently replace the historical shell cap."""
 
 import importlib.util
 from pathlib import Path
