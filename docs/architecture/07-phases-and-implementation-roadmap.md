@@ -325,7 +325,14 @@ apps/desktop (optional):  Tauri shell evaluation spike — launcher + updater + 
 **Slice delivered ahead of the gate (ADR-0032).** The CMP project (`apps/mobile/shared`, `apps/mobile/android`,
 `apps/mobile/ios`), a minimal shell with navigation, a reserved `GameHost` slot, and the generated
 Kotlin token adapter exist before the Phase 5 exit. That does **not** complete or open Phase 6.
-Everything below except those items stays gated, and the chain's later changes each need their own evidence.
+Everything below except those items and explicitly recorded bounded slices stays gated,
+and the chain's later changes each need their own evidence.
+
+**Bounded discovery parity (ADR-0044, issue #102).** Home, searchable/filterable
+Library, detail and read-only setup review consume a generated public registry
+catalog independently of runtime packaging. This extends #101's shell only.
+Production local start remains unavailable under ADR-0043; native accounts,
+remote catalog, resume, network play and Phase 6 exit remain gated.
 
 **Historical second slice (ADR-0033).** WebView/JavaScript/WASM gameplay was tested
 only in desktop stand-ins and Chrome, never on mobile devices. [ADR-0043](../adr/0043-native-mobile-gamehost.md)

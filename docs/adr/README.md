@@ -91,3 +91,7 @@ are required; reconnect/resync is PR3 and production remains closed.
 [ADR-0043](0043-native-mobile-gamehost.md) supersedes mobile WebView gameplay with
 the native Macroquad direction under #81. Current mobile selection/packaging is
 retired without fallback; native adapters and device acceptance remain blocked.
+
+[ADR-0044](0044-mobile-discovery-parity.md) adds bounded CMP discovery parity:
+public registry metadata, Home/Library/detail and read-only setup review. Catalog
+visibility does not establish native runtime availability or open Phase 6.

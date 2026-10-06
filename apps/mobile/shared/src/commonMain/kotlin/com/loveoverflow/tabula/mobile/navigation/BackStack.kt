@@ -11,10 +11,10 @@ sealed interface Destination {
     /** The shell's landing screen. */
     data object Home : Destination
 
-    /** Discovery of the games packaged with this build; a remote catalog remains unavailable. */
+    /** Public registry discovery; visibility does not establish packaged runtime availability. */
     data object Games : Destination
 
-    /** Display metadata for an opaque packaged-game identifier. */
+    /** Display public catalog metadata for an opaque registry identifier. */
     data class Detail(val gameId: String) : Destination
 
     /** The bounded local launch screen, corresponding to the web detail's `?setup=1` substate. */

@@ -6,7 +6,9 @@ application. It supersedes the gameplay WebView/WKWebView choice and packaging o
 ADR-0032/0033. Web gameplay keeps its Rust/WASM document and verified loader.
 
 **Current build: shell only, gameplay unavailable.** Both production entrypoints
-use the unavailable default host and an empty packaged-game list. No native game
+use the unavailable default host and an empty packaged-game list. The independent
+public discovery catalog is generated from `tabula-registry` under
+[ADR-0044](../../docs/adr/0044-mobile-discovery-parity.md). No native game
 adapter/library/assets pipeline has been delivered; no hidden web fallback is
 selected. The [source spike and evidence ledger](../../docs/verification/mobile-native-host/README.md)
 record the pinned Miniquad embedding blockers and actual check results.
@@ -67,8 +69,9 @@ does not replace issue #81's real-device acceptance.
 `shared/.../design/TabulaTokens.kt`; do not edit it. `TabulaTheme` maps these roles
 to Compose. The adaptive shell follows
 [the compact foundation](../../docs/ui/screens/foundation.md), including 16 dp gutters,
-44 dp minimum targets, wrapping actions and readable error recovery. It is not the
-connected web discovery/catalog. The shell top bar uses the canonical T Portal
+44 dp minimum targets, wrapping actions and readable error recovery. The public
+catalog uses the same registry metadata/translations as web; remote discovery
+remains unavailable. The shell top bar uses the canonical T Portal
 identity from the generated brand paths, with one accessible Tabula heading.
 Android/iOS launcher assets remain exports of the approved brand artwork. No decorative oversized border or second palette is introduced.
 
@@ -76,7 +79,9 @@ Android/iOS launcher assets remain exports of the approved brand artwork. No dec
 
 Issue #101 adds the [adaptive shell foundation](../../docs/ui/screens/mobile-shell.md):
 Home, Library, detail/setup scaffolding, Account and the existing `GameHost` seam.
-Production entrypoints keep an empty catalog and unavailable gameplay under ADR-0043;
+Issue #102 adds registry-backed discovery, metadata filters and detail/setup review.
+Production entrypoints show the generated public catalog and keep an empty runtime
+inventory with unavailable gameplay under ADR-0043;
 the desktop preview supplies explicit catalog and game doubles for navigation tests.
 Home/Library/Account use labeled bottom navigation on phones and a rail from 600 dp.
 Content scrolls within the remaining space, with safe insets owned by the outer shell.

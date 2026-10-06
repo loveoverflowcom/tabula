@@ -27,6 +27,7 @@ class BrandIdentityTest {
                         PhoneViewport(width, 844) {
                             TabulaApp(
                                 games = previewGames,
+                                catalog = previewCatalog,
                                 scheme = scheme,
                                 deviceFacts = DeviceFacts(false, "en"),
                             )

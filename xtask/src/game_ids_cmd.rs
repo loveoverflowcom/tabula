@@ -21,6 +21,7 @@ const SKIP_DIRS: &[&str] = &[
 /// binaries, lock files) is skipped outright.
 const TEXT_EXTENSIONS: &[&str] = &[
     "rs", "toml", "md", "txt", "json", "yml", "yaml", "html", "css", "js", "ts", "mjs", "cjs",
+    "kt", "kts",
 ];
 
 #[derive(Debug, thiserror::Error)]

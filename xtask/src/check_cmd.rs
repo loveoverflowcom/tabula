@@ -77,6 +77,10 @@ pub fn run() -> bool {
             run: || crate::tokens_cmd::check_current().map_err(|e| e.to_string()),
         },
         Step::InProcess {
+            label: "generated mobile discovery catalog is current",
+            run: crate::mobile_catalog_cmd::check_current,
+        },
+        Step::InProcess {
             label: "check-no-raw-colors",
             run: || crate::colors_cmd::run().map_err(|e| e.to_string()),
         },

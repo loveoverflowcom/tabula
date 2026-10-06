@@ -17,6 +17,9 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.loveoverflow.tabula.mobile.TabulaApp
+import com.loveoverflow.tabula.mobile.catalog.DiscoveryCatalogState
+import com.loveoverflow.tabula.mobile.catalog.DiscoveryGame
+import com.loveoverflow.tabula.mobile.catalog.RegistryDiscoveryCatalog
 import com.loveoverflow.tabula.mobile.host.BundledGame
 import com.loveoverflow.tabula.mobile.design.TabulaScheme
 import com.loveoverflow.tabula.mobile.shell.DeviceFacts
@@ -40,6 +43,40 @@ internal val previewGames = listOf(
     ),
 )
 
+/** Explicit display fixtures, separate from the simulated host's packaged launch authority. */
+internal fun previewCatalogGames(games: List<BundledGame>): List<DiscoveryGame> = games.map { game ->
+    DiscoveryGame(
+        id = game.id,
+        names = game.names,
+        taglines = mapOf("en" to "A board game for a thoughtful break", "vi" to "Một trò chơi bàn cho phút nghỉ thảnh thơi"),
+        descriptions = mapOf("en" to "Explicit desktop discovery fixture; gameplay uses a labelled simulated host.",
+            "vi" to "Dữ liệu khám phá mẫu trên máy tính; trang chơi là mô phỏng có nhãn."),
+        categories = listOf("abstract"),
+        categoryNames = mapOf("abstract" to mapOf("en" to "Abstract", "vi" to "Trừu tượng")),
+        players = listOf(2),
+        minMinutes = 15,
+        maxMinutes = 30,
+        complexity = "light",
+        complexityNames = mapOf("en" to "Light", "vi" to "Nhẹ"),
+        rulesVersion = 1,
+    )
+}
+
+internal val previewCatalog: DiscoveryCatalogState get() = DiscoveryCatalogState.Ready(previewCatalogGames(previewGames))
+
+/** Long localized names test real text reflow rather than a truncated thumbnail label. */
+internal fun longPreviewGames(count: Int = 8) = (1..count).map { index ->
+    BundledGame(
+        id = "com.example.long-$index",
+        entry = "/play/local/",
+        query = "locale=vi",
+        names = mapOf(
+            "en" to "A long board game title for an accessible and thoughtful family gathering $index",
+            "vi" to "Trò chơi bàn dành cho gia đình với tên dài để kiểm tra khả năng đọc và xuống dòng $index",
+        ),
+    )
+}
+
 /** `./gradlew :previewApp:run` (testing only; the page is simulated, see SimulatedPage). */
 fun main() {
     val width = System.getProperty("tabula.preview.width", "390").toInt()
@@ -50,6 +87,16 @@ fun main() {
         reducedMotion = System.getProperty("tabula.preview.reducedMotion") == "true",
         languageTag = System.getProperty("tabula.preview.language", "en"),
     )
+    val catalog = when (System.getProperty("tabula.preview.catalog", "registry")) {
+        "zero" -> DiscoveryCatalogState.Ready(emptyList())
+        "one", "simulated" -> previewCatalog
+        "many" -> DiscoveryCatalogState.Ready(previewCatalogGames(longPreviewGames()))
+        "loading" -> DiscoveryCatalogState.Loading
+        "error" -> DiscoveryCatalogState.Error("Explicit desktop catalog fixture")
+        "unavailable" -> DiscoveryCatalogState.Unavailable
+        "registry" -> DiscoveryCatalogState.Ready(RegistryDiscoveryCatalog.games)
+        else -> error("preview.catalog must be registry, zero, one, many, simulated, loading, error or unavailable")
+    }
     System.setProperty("compose.layers.type", "ON_SAME_CANVAS")
     SimulatedGameHost.reset()
     application {
@@ -67,7 +114,7 @@ fun main() {
                 if (System.getProperty("tabula.preview.smokeWindow") == "true") exitApplication()
             }
             PhoneViewport(width, height, fontScale) {
-                TabulaApp(gameHost = SimulatedGameHost(), games = previewGames, scheme = scheme, deviceFacts = facts)
+                TabulaApp(gameHost = SimulatedGameHost(), games = previewGames, catalog = catalog, scheme = scheme, deviceFacts = facts)
             }
         }
     }

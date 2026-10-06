@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import com.loveoverflow.tabula.mobile.TabulaApp
 import com.loveoverflow.tabula.mobile.localization.ShellCopy
@@ -56,8 +57,8 @@ class VoiceShellTest {
     @Test fun productionUnavailableIsVisibleAndHasNoMediaEffect() = runDesktopComposeUiTest(width = 390, height = 844) {
         val media = MediaDouble()
         val voice = VoiceController(media, UnavailableVoiceGrantSource, VoiceClock { 100 })
-        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
-        onNodeWithText("Play Preview game on this device").performClick()
+        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice, catalog = previewCatalog, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
+        startPreviewGame()
         onNodeWithText("Join voice").performClick(); waitForIdle()
         onNodeWithText("Voice unavailable: backend grants are not connected").assertIsDisplayed()
         assertEquals(0, media.connects); assertEquals(0, media.micRequests)
@@ -66,8 +67,8 @@ class VoiceShellTest {
     @Test fun controlsJoinPermissionDenialRetryMicAndVoiceLeaveAreCmpOwned() = runDesktopComposeUiTest(width = 390, height = 844) {
         val media = MediaDouble()
         val voice = VoiceController(media, source(), VoiceClock { 100 })
-        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
-        onNodeWithText("Play Preview game on this device").performClick()
+        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice, catalog = previewCatalog, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
+        startPreviewGame()
         onNodeWithText("Join voice").performClick(); waitForIdle()
         assertEquals(1, media.connects); assertEquals(0, media.micRequests)
         media.connected(); waitForIdle()
@@ -92,8 +93,8 @@ class VoiceShellTest {
     @Test fun gameReloadAndHostRetryPreserveVoiceButConfirmedRouteLeaveCleansUp() = runDesktopComposeUiTest(width = 390, height = 844) {
         val media = MediaDouble()
         val voice = VoiceController(media, source(), VoiceClock { 100 })
-        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
-        onNodeWithText("Play Preview game on this device").performClick(); waitForIdle()
+        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice, catalog = previewCatalog, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
+        startPreviewGame()
         var runtime = SimulatedGameHost.runtimes.last()
         runtime.page.completeBoot(); waitForIdle()
         onNodeWithText("Join voice").performClick(); media.connected(); waitForIdle()
@@ -107,6 +108,6 @@ class VoiceShellTest {
         onNodeWithText(strings[ShellCopy.Back]).performClick(); waitForIdle()
         onNodeWithTag("sim-confirm").performClick(); waitForIdle()
         assertTrue(media.disconnects > before); assertEquals(VoiceConnection.IDLE, voice.state.connection)
-        onNodeWithText("Play Preview game on this device").assertIsDisplayed()
+        onNodeWithTag("shell-start-local").performScrollTo().assertIsDisplayed()
     }
 }

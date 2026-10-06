@@ -27,6 +27,7 @@
 //! | `replay <file>` | Replay a `.tbr` locally; `--diagnose` prints evidence strength | 0 |
 //! | `perft chess [depth]` | Chess move-generation counts | 1 |
 //! | `gen-tokens` | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json` + Kotlin `TabulaTokens.kt` | 2 |
+//! | `gen-mobile-catalog` / `check-mobile-catalog` | Rust discovery registry → lightweight Kotlin catalog, or reject stale generated data | bounded mobile discovery |
 //! | `check-no-raw-colors` | No hex literals or `Color::new(`/Compose `Color(` outside `tabula-design` and its generated adapters | 2 |
 //! | `stage-local-play` | Stage the existing local gameplay document beside an opt-in built discovery shell (ADR-0030) | bounded local slice |
 //! | `stage-mobile-game` | Retired by ADR-0043; exits with an actionable failure, without building a web fallback | native adapter pending |
@@ -74,6 +75,7 @@ mod game_ids_policy;
 mod graph;
 mod manifest_cmd;
 mod manifest_policy;
+mod mobile_catalog_cmd;
 mod pack_assets_cmd;
 mod perft_cmd;
 mod replay_cmd;
@@ -157,6 +159,21 @@ fn main() {
                 std::process::exit(2);
             }
         },
+        Some("gen-mobile-catalog") => match mobile_catalog_cmd::run() {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("gen-mobile-catalog: {err}");
+                std::process::exit(2);
+            }
+        },
+        Some("check-mobile-catalog") => match mobile_catalog_cmd::check_current() {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(1),
+            Err(err) => {
+                eprintln!("check-mobile-catalog: {err}");
+                std::process::exit(2);
+            }
+        },
         Some("check-no-raw-colors") => match colors_cmd::run() {
             Ok(true) => {}
             Ok(false) => std::process::exit(1),
@@ -224,6 +241,7 @@ fn print_usage_and_exit(other: Option<&str>) -> ! {
                    replay-goldens (intentional fixture regeneration)\n\
          phase 1:  perft chess [depth]\n\
          phase 2:  gen-tokens  check-no-raw-colors  stage-wasm-game  stage-local-play\n\
+         mobile:   gen-mobile-catalog  check-mobile-catalog\n\
          retired:  stage-mobile-game (ADR-0043: native mobile adapter pending)\n\
          phase 3:  pack-assets <game>\n\
          phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\

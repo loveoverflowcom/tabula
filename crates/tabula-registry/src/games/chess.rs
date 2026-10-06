@@ -25,7 +25,7 @@ const EN: Messages = &[
     ("game.chess.tagline", "The classic two-player strategy game"),
     (
         "game.chess.description",
-        "Standard chess: every legal move, check, stalemate, the fifty-move rule and threefold repetition, with optional clocks. This build offers two players on one device, unranked. AI, online play and saved replay are unavailable.",
+        "Standard chess: every legal move, check, stalemate, the fifty-move rule and threefold repetition, with optional clocks.",
     ),
     ("chess.field.clock", "Clock"),
     ("chess.field.clock.hint", "How each player's time is kept."),
@@ -54,7 +54,7 @@ const VI: Messages = &[
     ("game.chess.tagline", "Trò chơi chiến thuật hai người kinh điển"),
     (
         "game.chess.description",
-        "Cờ vua tiêu chuẩn: đủ nước đi hợp lệ, chiếu, hết nước đi, luật năm mươi nước và lặp ba lần, có thể bật đồng hồ. Bản dựng này cho hai người chơi trên một máy, không xếp hạng. Chưa hỗ trợ đấu máy, trực tuyến hay phát lại ván đã lưu.",
+        "Cờ vua tiêu chuẩn: đủ nước đi hợp lệ, chiếu, hết nước đi, luật năm mươi nước và lặp ba lần, có thể bật đồng hồ.",
     ),
     ("chess.field.clock", "Đồng hồ"),
     ("chess.field.clock.hint", "Cách tính giờ cho mỗi người chơi."),
