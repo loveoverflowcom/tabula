@@ -296,6 +296,35 @@ mod tests {
         ));
     }
     #[test]
+    fn non_attachment_body_requires_current_session_but_no_match_owner() {
+        let waker = std::task::Waker::noop();
+        let mut cx = Context::from_waker(waker);
+        let (mut body, _, _, _) = fixture();
+        body.owner = None;
+        body.attachment = None;
+        let Poll::Ready(Some(Ok(frame))) = Pin::new(&mut body).poll_frame(&mut cx) else {
+            panic!("current session-only metadata must publish without a match owner");
+        };
+        assert_eq!(
+            frame.into_data().unwrap(),
+            Bytes::from_static(b"private projection")
+        );
+        let (mut body, _, _, live) = fixture();
+        body.owner = None;
+        body.attachment = None;
+        live.store(false, Ordering::SeqCst);
+        assert!(matches!(
+            Pin::new(&mut body).poll_frame(&mut cx),
+            Poll::Ready(Some(Err(SessionError::Unauthenticated)))
+        ));
+        let (mut body, _, _, _) = fixture();
+        body.owner = None;
+        assert!(matches!(
+            Pin::new(&mut body).poll_frame(&mut cx),
+            Poll::Ready(Some(Err(SessionError::Unauthenticated)))
+        ));
+    }
+    #[test]
     fn independent_owner_loss_and_shorter_nested_deadline_release_no_frame() {
         let waker = std::task::Waker::noop();
         let mut cx = Context::from_waker(waker);
