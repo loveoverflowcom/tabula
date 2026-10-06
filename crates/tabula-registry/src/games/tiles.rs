@@ -110,6 +110,12 @@ pub struct TilesSetup; // xtask-allow-game-id: registry-owned game adapter.
 impl GameSetup for TilesSetup {
     type Module = tabula_game_tiles::TilesModule; // xtask-allow-game-id: registry-owned game adapter.
 
+    fn catalog_cover_svg() -> Option<&'static str> {
+        Some(include_str!(
+            "../../../../games/tiles/assets/catalog-cover.svg"
+        ))
+    }
+
     fn form() -> &'static ConfigForm {
         &FORM
     }

@@ -22,7 +22,7 @@ leptos_router   = { workspace = true }
 tabula-session-http = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
-web-sys = { workspace = true, features = ["Window", "MediaQueryList", "EventTarget"] }
+web-sys = { workspace = true, features = ["Window", "MediaQueryList", "EventTarget", "HtmlDialogElement", "HtmlElement", "Element", "NodeList"] }
 wasm-bindgen = { workspace = true }
 
 [features]

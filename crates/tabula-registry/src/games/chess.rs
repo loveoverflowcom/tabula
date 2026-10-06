@@ -156,6 +156,12 @@ pub struct ChessSetup; // xtask-allow-game-id: registry-owned game adapter.
 impl GameSetup for ChessSetup {
     type Module = tabula_game_chess::ChessModule; // xtask-allow-game-id: registry-owned game adapter.
 
+    fn catalog_cover_svg() -> Option<&'static str> {
+        Some(include_str!(
+            "../../../../games/chess/assets/catalog-cover.svg"
+        ))
+    }
+
     fn form() -> &'static ConfigForm {
         &FORM
     }

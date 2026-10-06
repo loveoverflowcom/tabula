@@ -1,10 +1,41 @@
-# 01 — Home and game library
+# 01 — Home and game library: original Design 01
 
 Shared contracts: [discovery data, routes, and availability](discovery.md),
 [foundation components and tokens](foundation.md), and
 [game detail](02-game-detail.md). Web owners are `/` and `/games` in doc 04 §2.1;
 native shell implementation follows its phase. This specification and the editable reference pack
 do not open the Phase-5 gate or establish a working catalog/resume adapter.
+
+## Authoritative visual reference (issue #87)
+
+For this screen, the original 1 October 2026 **Design 01** is the visual oracle.
+The later Design 02 compact/sans/short-cover interpretation is superseded for
+Home/Library only. [Pinned source and provenance](https://github.com/loveoverflowcom/tabula/tree/fe6a6bac1037ea28355bd1f1192acdca6f2ce123/docs/ui/dashboard-original-design-01)
+contains byte-preserved `libraryScreen`, `shell`, `gameArt`, CSS and preview PNGs
+from `tabula-design-html-mjs-png.zip`. The reference's hash routes are prototype
+navigation, not product deep links. Compare actual app and prototype at the same
+CSS viewport, DPR, locale and scheme before assessing coordinates.
+
+Restore the warm paper canvas, Tabula brand mark, 224px desktop sidebar,
+80px context topbar and neutral account area; display-serif page/hero headings,
+lavender split discovery hero, quiet white continue region and three-column
+landscape-artwork catalog. Body, control labels and metadata remain sans. The
+mobile shell has a native modal drawer and fixed bottom navigation with a real
+safe-area/content slot. Widths are nominal at default text size; user font scale
+must reflow the composition instead of clipping it.
+
+The sample Tutor/AI, profile name/initials, opponent, clock, counters and favorites
+are fixtures. Restore their visual hierarchy with supported content, never those
+claims. Profile data remains the #84 contract dependency; both shell and future
+game consumers can use `crates/tabula-design/assets/avatar-neutral.svg` when no
+verified avatar is available. It is a silhouette, not an invented account.
+
+`tokens.toml` owns additive `shell-canvas`, `shell-paper`, `shell-hero`,
+`shell-on-hero`, `shell-note` and `shell-cover-*` / `shell-art-*` semantic roles.
+All four schemes are authored and generated through existing Rust/CSS/JSON/Kotlin
+adapters. Light canvas `#F9F7F4`, paper `#FFFFFF` and primary `#5634BE` retain the
+original identity; gameplay material palettes and interaction semantics remain
+independent. Web typography metrics use root-relative units for font scaling.
 
 ## Task and route distinction
 
@@ -28,17 +59,14 @@ registry identifier or Play action. The source pack's hash navigator is design n
 
 ## Layout at each breakpoint
 
-Source order is toolbar/navigation, task heading, resume, search and filters, result status,
-catalog, then secondary help. The desktop reference places search beside the heading when
-space permits; its reading and keyboard order stays coherent. Artwork is a short cover/icon,
-not a marketing hero. Keep the strongest action emphasis on Resume when present.
+Source order is navigation, task heading, Home discovery hero, continue region, then featured catalog and secondary help. `/games` has a focused heading/search, continue region, labeled filters, result status and full catalog, with no repeated hero. Desktop Library search can sit beside its heading; reading and keyboard order stay coherent. Landscape lightweight artwork above compact metadata is the original card hierarchy. An eligible Resume remains the strongest action in its own region.
 
 | Width | Home and Library layout |
 |---|---|
-| Compact, <600 dp; verify 320/390 | 58 dp toolbar, 16 dp gutters, one column; resume text precedes its full-width action; labeled search and filters wrap/stack; short-cover catalog rows; future bottom navigation is ≥56 dp plus safe-area inset |
-| Medium, 600–904 dp; verify 768 | 64 dp toolbar and rail, 24 dp gutters; two catalog columns when full text/targets fit, otherwise one; filters wrap above results; resume remains above browsing |
-| Expanded, 905–1439 dp | Persistent rail, 24 dp gutters; two or three compact catalog columns according to usable content width; search may sit beside the title; no hidden filter labels |
-| Large, ≥1440 dp | 176 dp rail and centered content capped at 1200 dp; three catalog columns when contents fit; resume is a contained row and browsing stays compact |
+| Compact, <600 dp; verify 320/390 | 64 dp toolbar, 18 dp gutters, one artwork-card column; continue text wraps; labeled search and filters stack; fixed bottom navigation is ≥72 dp plus safe-area inset with matching content padding |
+| Medium, 600–904 dp; verify 768 | 64 dp toolbar and drawer/bottom navigation, 24 dp gutters; two catalog columns when full text/targets fit, otherwise one; filters wrap above results; resume remains above browsing |
+| Expanded, 905–1439 dp | At 992px and above, 224px sidebar and 80px topbar, 40px gutters; three artwork columns when full contents fit, otherwise two; search may sit beside the title; no hidden filter labels |
+| Large, ≥1440 dp | 224px sidebar, 80px topbar and centered content capped at 1200px; three catalog columns when contents fit; resume is a contained row and browsing stays compact |
 
 At 200% text/zoom, reduce the number of columns and let metadata and controls grow. The
 reference's five entries fitting one desktop viewport is a sample composition, not a clipping
@@ -59,8 +87,7 @@ shell destinations; the sample “My games” label does not introduce a new rou
 | Planned information | Explicit Planned/Unavailable label and source-backed reason; no success-colored Play claim, enabled setup action, fake supported modes, or presumed release date |
 | Empty/error region | Plain task explanation with the one useful next action: clear/reset filters, or retry a failed real fetch; preserve search/filter context |
 
-Use tonal containment with `container`/`container-high`, sans titles, `shape.card`, and quiet
-supporting text. Selected connected options use `primary`/`on-primary`; state layers, fixed
+Use the authored Design 01 shell surfaces, display-serif task/hero headings, landscape covers and compact sans card metadata. Keep controls/tokenized states consistent with the foundation. Selected connected options use `primary`/`on-primary`; state layers, fixed
 hit bounds, the exterior focus ring, and disabled reasons follow the foundation. Passive
 badges are not buttons and must not look like actionable chips. Separate the card's detail
 link from any trailing action; never nest a button inside a full-card link. Favorites appear
@@ -123,3 +150,17 @@ keyboard-only, touch, screen-reader result announcements, and fixed ≥44 dp tar
 review and the pinned reference-pack previews are design provenance. Real fetching, resume authority, storage,
 shell navigation, and assistive-technology verification remain implementation work at their
 opened phases under the [shared discovery ledger](discovery.md).
+
+## Current implementation evidence
+
+The catalog is synchronous linked registry data: no async loading/fetch error is
+manufactured. Search/filter results and unavailable launch modes are source-backed.
+There is no saved-match list/resume adapter: the shared continue strip explicitly
+labels unavailable, not empty, and has no bogus Resume button. Existing account
+validation and opt-in online detail/setup controls keep their original owners.
+Game-owned static SVG covers are exposed through the erased discovery accessor;
+there is no shell prefetch of game WASM, atlas, model or role resources.
+
+[Restoration verification ledger](../../verification/dashboard-design01/README.md)
+separates source/unit/compile evidence, actual Chromium artifacts and remaining
+native/CMP/assistive-technology scope. Screenshots alone do not prove gameplay.

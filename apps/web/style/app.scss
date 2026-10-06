@@ -51,55 +51,6 @@ body {
   }
 }
 
-.topbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sys-space-lg);
-  align-items: center;
-  justify-content: space-between;
-  min-height: 58px;
-  padding: var(--sys-space-sm) var(--sys-space-lg);
-  background: var(--sys-color-container);
-}
-
-.topbar__nav {
-  display: flex;
-  gap: var(--sys-space-xxs);
-}
-
-.topbar__link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--sys-density-min-target);
-  padding: 0 var(--sys-space-lg);
-  border-radius: var(--sys-shape-full);
-  color: var(--sys-color-on-surface);
-  text-decoration: none;
-
-  &[aria-current="page"] {
-    background: var(--sys-color-primary);
-    color: var(--sys-color-on-primary);
-  }
-}
-
-.topbar__locale {
-  display: flex;
-  gap: var(--sys-space-sm);
-  align-items: center;
-}
-
-.main {
-  padding: var(--sys-space-lg);
-}
-
-.section {
-  margin: 0 auto;
-  max-width: 1200px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sys-space-lg);
-}
-
 .section > .btn,
 .setup > .btn,
 .banner .btn {
@@ -728,10 +679,6 @@ body {
   text-underline-offset: var(--sys-space-xxs);
 }
 
-.topbar__nav {
-  flex-wrap: wrap;
-}
-
 @media (max-width: 599px) {
   .account .section__title {
     font-size: var(--sys-type-headline-sm-size);
@@ -752,3 +699,6 @@ body {
 }
 
 .online-panel { padding:24px; margin-block:24px; border-radius:var(--sys-shape-lg); background:var(--sys-color-container); color:var(--sys-color-on-surface); .field {margin-block:16px;} .field__control {max-width:16rem;} &__admission {padding-block:16px;} }
+
+@import "shell";
+@import "library";

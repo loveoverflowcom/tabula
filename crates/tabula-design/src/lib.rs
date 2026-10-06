@@ -281,6 +281,24 @@ pub struct ColorTokens {
     pub last_action: Color,
     pub threat: Color,
     pub hidden: Color,
+    /// Warm application canvas and paper from the original Design 01 (issue #87).
+    pub shell_canvas: Color,
+    pub shell_paper: Color,
+    /// Discovery hero containment and its fully contrasted foreground.
+    pub shell_hero: Color,
+    pub shell_on_hero: Color,
+    /// Quiet secondary shell note, separate from gameplay surfaces.
+    pub shell_note: Color,
+    /// Lightweight discovery-cover materials; decorative, never interaction state.
+    pub shell_cover_sage: Color,
+    pub shell_cover_mint: Color,
+    pub shell_art_field_light: Color,
+    pub shell_art_field_dark: Color,
+    pub shell_art_line: Color,
+    pub shell_art_piece_light: Color,
+    pub shell_art_piece_dark: Color,
+    pub shell_art_road: Color,
+    pub shell_art_earth: Color,
     pub team: [Color; 8],
     pub seat_marker: [Color; 8],
 }

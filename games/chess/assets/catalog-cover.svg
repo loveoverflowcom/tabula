@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 364 160" aria-hidden="true" focusable="false">
+<!-- Discovery-only adaptation of Design01 src/boards.mjs gameArt and styles/app.css.
+     Game-owned shape, shared semantic shell-art palette; no runtime resources. -->
+<rect width="364" height="160" fill="var(--sys-color-shell-cover-sage)"/>
+<g transform="translate(66 49) rotate(-18 130 110) skewX(6)" stroke="var(--sys-color-shell-art-line)" stroke-width="6">
+<rect y="6" width="260" height="220" fill="var(--sys-color-shell-art-line)" opacity=".35"/>
+<rect width="260" height="220" fill="var(--sys-color-shell-art-field-light)"/>
+<g stroke="none">
+<rect x="55" y="0" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+<rect x="165" y="0" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+<rect x="0" y="55" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+<rect x="110" y="55" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+<rect x="220" y="55" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+<rect x="55" y="110" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+<rect x="165" y="110" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+<rect x="0" y="165" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+<rect x="110" y="165" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+<rect x="220" y="165" width="55" height="55" fill="var(--sys-color-shell-art-field-dark)"/>
+</g></g>
+<path d="M58 29c0 8-4 12-12 12 8 0 12 4 12 12 0-8 4-12 12-12-8 0-12-4-12-12Z" fill="none" stroke="var(--sys-color-shell-art-line)" stroke-width="1.5"/>
+<g transform="translate(98 25) rotate(-8 45 45) scale(1.5)" stroke="var(--sys-color-shell-art-line)" stroke-width="1">
+<path d="M27 2h6v7h6v5h-6v5h-6v-5h-6V9h6zM18 21h24l-6 15 3 9H21l3-9zM17 48h26v6H17z" transform="translate(2 4)" fill="var(--sys-color-shell-art-piece-dark)" stroke="none" opacity=".18"/>
+<path d="M27 2h6v7h6v5h-6v5h-6v-5h-6V9h6zM18 21h24l-6 15 3 9H21l3-9zM17 48h26v6H17z" fill="var(--sys-color-shell-art-piece-light)"/>
+</g>
+<g transform="translate(212 53) rotate(10 45 45) scale(1.5)" stroke="var(--sys-color-shell-art-line)" stroke-width="1">
+<path d="m19 46 6-12-9-1-4-8L26 8l13-4-1 10 6 8 4 24H19zM15 49h35v5H15z" transform="translate(2 4)" fill="var(--sys-color-shell-art-piece-dark)" stroke="none" opacity=".18"/>
+<path d="m19 46 6-12-9-1-4-8L26 8l13-4-1 10 6 8 4 24H19zM15 49h35v5H15z" fill="var(--sys-color-shell-art-piece-dark)"/>
+<circle cx="29" cy="20" r="2" fill="var(--sys-color-shell-art-piece-light)" stroke="none"/>
+<path d="m17 26 7 1" fill="none" stroke="var(--sys-color-shell-art-piece-light)" stroke-width="2"/>
+</g>
+</svg>

@@ -149,3 +149,7 @@ and real target evidence; PR1's database generation fence is not session/commit/
 private socket delivery authority. Production activation, live migrations,
 provider provisioning, lobby/queue/voice and existing broad phase exits remain
 outside this series unless separately requested and proved.
+
+## Issue #87 — original Design 01 dashboard
+
+[Restore Design 01 discovery](110-restore-design01-discovery.md) is the current bounded web shell/catalog task, from fresh develop `ab0983e`. Existing work ordering and independent phase gates above are preserved.

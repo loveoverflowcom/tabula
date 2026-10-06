@@ -699,6 +699,14 @@ executable verification ledger.
 
 ### 7.4 Typography
 
+Owner-requested issue #87 restores the original Design 01 display-serif page
+and discovery-hero headings on Home/Library, as specified in
+[screen 01](../ui/screens/01-library.md). This bounded shell exception does not
+change game semantics or the sans control/body vocabulary. The web adapter emits
+font size/line height in root-relative units; renderer/CMP logical metrics remain
+unchanged so browser font-scale preferences are respected without shrinking targets.
+
+
 | Role | Use | Notes |
 |---|---|---|
 | `display.lg/md/sm` | Game titles, win/loss, big numbers | Display face, tight tracking |

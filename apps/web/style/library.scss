@@ -1,0 +1,302 @@
+// Design01's light landscape illustrations and compact metadata rhythm.
+// Home and Library share cards; queries change result DOM, never toolbar DOM.
+.catalog {
+  gap: 1.5rem;
+}
+
+.catalog__heading {
+  display: grid;
+  gap: 1rem;
+  align-items: end;
+}
+
+.catalog .section__title {
+  font-family: var(--sys-type-display-md-family);
+  font-size: 2rem;
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: -.035em;
+}
+
+.catalog__search {
+  min-width: 0;
+}
+
+.catalog__search-control {
+  position: relative;
+
+  > svg {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    width: 1rem;
+    height: 1rem;
+    transform: translateY(-50%);
+    color: var(--sys-color-on-surface-variant);
+    pointer-events: none;
+  }
+
+  > input {
+    width: 100%;
+    padding-inline-start: 2.625rem;
+    background: var(--sys-color-shell-paper);
+  }
+}
+
+.catalog__filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .875rem;
+  align-items: end;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+
+  .filters__legend {
+    padding-bottom: .75rem;
+    color: var(--sys-color-on-surface-variant);
+    font-size: .8125rem;
+    font-weight: 500;
+  }
+
+  .field {
+    min-width: 0;
+  }
+
+  .field__label {
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--sys-color-on-surface-variant);
+  }
+
+  .field__control {
+    width: 100%;
+    padding-inline: .75rem;
+    background: var(--sys-color-shell-paper);
+    font-size: .875rem;
+  }
+}
+
+.catalog__reset {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding-inline: .75rem;
+  background: transparent;
+  color: var(--sys-color-primary);
+  font-size: .8125rem;
+  font-weight: 500;
+}
+
+.catalog__errors:empty {
+  display: none;
+}
+
+.catalog__errors {
+  display: grid;
+  gap: .75rem;
+}
+
+.catalog__results-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem 1rem;
+
+  .section__subtitle {
+    font-family: var(--sys-type-display-sm-family);
+    font-size: 1.6875rem;
+    font-weight: 400;
+    line-height: 1.3;
+  }
+
+  .results__count {
+    font-size: .8125rem;
+  }
+}
+
+.catalog__empty {
+  margin: 0;
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  background: var(--sys-color-shell-paper);
+  color: var(--sys-color-on-surface);
+}
+
+// More-specific shared-card selectors override the previous horizontal card
+// rules at every breakpoint without changing detail/setup's passive badges.
+.cards {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.375rem;
+}
+
+.cards > .card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.card > .card__cover {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  text-decoration: none;
+}
+
+.card .card__art {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 91 / 40;
+  border-radius: inherit;
+  background: var(--sys-color-shell-note);
+
+  > svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.card .card__art--neutral {
+  background: var(--sys-color-shell-hero);
+  color: var(--sys-color-shell-on-hero);
+}
+
+.card__category {
+  position: absolute;
+  top: .75rem;
+  left: .75rem;
+  max-width: calc(100% - 1.5rem);
+  padding: .25rem .5rem;
+  border-radius: .375rem;
+  background: var(--sys-color-shell-paper);
+  color: var(--sys-color-on-surface);
+  font-size: .625rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.card > .card__text {
+  display: flex;
+  flex-direction: column;
+  gap: .125rem;
+  padding-top: .1875rem;
+  min-width: 0;
+}
+
+.card .card__title {
+  margin: 0;
+  font-family: var(--sys-type-body-md-family);
+  font-size: .9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.card .card__action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  min-height: var(--sys-density-min-target);
+  min-width: 0;
+  width: 100%;
+  padding: 0 .0625rem;
+  color: var(--sys-color-on-surface);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.card__arrow {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--sys-color-on-surface-variant);
+}
+
+.card__metadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .375rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--sys-color-on-surface-variant);
+  font-size: .6875rem;
+  line-height: 1.5;
+
+  > li {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+  }
+
+  svg {
+    width: .875rem;
+    height: .875rem;
+    flex: none;
+  }
+}
+
+.card__support,
+.card .card__reason {
+  margin: .25rem 0 0;
+  font-size: .6875rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.card__support {
+  color: var(--sys-color-on-surface-variant);
+}
+
+.card .card__reason {
+  color: var(--sys-color-on-surface);
+}
+
+@media (min-width: 600px) {
+  .catalog__heading {
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 19rem);
+  }
+
+  .catalog .section__title {
+    font-size: 2.5rem;
+  }
+
+  .catalog__filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .catalog__reset {
+    grid-column: auto;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1000px) {
+  .catalog__filters {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+    gap: .75rem;
+  }
+
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+// High-contrast surfaces can flatten decorative material, but the target and
+// its keyboard focus remain visible without depending on a cover's hue.
+[data-theme="hc-light"] .card__cover,
+[data-theme="hc-dark"] .card__cover {
+  outline: 1px solid var(--sys-color-on-surface);
+  outline-offset: -1px;
+}

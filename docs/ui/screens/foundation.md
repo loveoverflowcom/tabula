@@ -28,6 +28,14 @@ screen-specific behavior; no catalog, auth, lobby, replay, or game rules are spe
 
 ## Visual hierarchy
 
+Issue #87 supersedes the later compact/sans interpretation for Home/Library only:
+[screen 01](01-library.md) restores original Design 01's warm-paper shell,
+serif page/hero headings and landscape cover hierarchy. The additive semantic
+shell color roles are owned by `tokens.toml` and generated for all four schemes;
+common game/interaction colors are unchanged. Other screens retain this
+foundation unless their own authoritative specification says otherwise.
+
+
 Use color, shape, size, motion, and containment to identify actions and group related work.
 This adapts the [Google Design research](https://design.google/library/expressive-material-design-google-research)
 and the pinned pack's component mapping; no Tabula usability improvement has been measured.
@@ -48,7 +56,7 @@ and the pinned pack's component mapping; no Tabula usability improvement has bee
 
 ## Token inventory and mapping
 
-This stage requires no new roles or values. The preview is a concrete consumer of existing
+The historical Stage A required no new roles or values; issue #87 adds the documented shell roles above. The preview is a concrete consumer of existing
 roles; future runtime components use the same mapping. `[comp]` remains empty. No mock palette,
 native Material library, generator/schema change, or second theme source is needed.
 

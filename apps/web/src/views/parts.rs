@@ -8,14 +8,15 @@ use web_sys::MediaQueryList;
 
 use crate::{i18n::Messages, views::use_locale};
 
+/// Persistent Design 01 chrome. The neutral avatar is a shared decorative fallback,
+/// never a claim that this document has confirmed an account (issue #87 / #84).
 #[component]
 pub fn TopBar() -> impl IntoView {
     let locale = use_locale();
     let scheme = system_scheme();
-    // The document's language follows the shell's, so assistive technology
-    // announces the copy in the language it is written in. The scheme follows
-    // the viewer's own system settings: all four generated schemes are
-    // reachable, and none of them is a choice this screen owns (screen 13).
+    let location = leptos_router::hooks::use_location();
+    let menu = NodeRef::<leptos::html::Dialog>::new();
+    let menu_open = RwSignal::new(false);
     Effect::new(move |_| {
         let messages = Messages::new(locale.get());
         if let Some(root) = document().document_element() {
@@ -23,50 +24,176 @@ pub fn TopBar() -> impl IntoView {
             let _ = root.set_attribute("data-theme", scheme.get());
         }
     });
+    let close_menu = move || {
+        if let Some(dialog) = menu.get() {
+            dialog.close();
+        }
+        menu_open.set(false);
+    };
     view! {
+        <aside class="sidebar" aria-label=move || Messages::new(locale.get()).text("shell.navigation")>
+            <Brand/>
+            <ShellNavigation/>
+            <div class="sidebar__spacer"></div>
+            <div class="sidebar__note">
+                <Icon kind="leaf"/>
+                <p>{move || Messages::new(locale.get()).text("shell.note")}</p>
+                <small>{move || Messages::new(locale.get()).text("shell.note.detail")}</small>
+            </div>
+            <A href="/account" attr:class="sidebar__profile">
+                <NeutralAvatar/>
+                <span>{move || Messages::new(locale.get()).text("nav.account")}</span>
+                <Icon kind="arrow"/>
+            </A>
+        </aside>
         <header class="topbar">
-            <nav class="topbar__nav" aria-label="Tabula">
-                <A href="/" exact=true attr:class="topbar__link">
-                    {move || Messages::new(locale.get()).text("nav.home")}
-                </A>
-                <A href="/games" attr:class="topbar__link">
-                    {move || Messages::new(locale.get()).text("nav.library")}
-                </A>
-                <A href="/account" attr:class="topbar__link">
-                    {move || Messages::new(locale.get()).text("nav.account")}
-                </A>
-            </nav>
-            <div class="topbar__locale">
-                <label class="field__label" for="locale">
-                    {move || Messages::new(locale.get()).text("app.locale")}
-                </label>
-                <select
-                    id="locale"
-                    class="field__control"
-                    on:change=move |event| {
-                        let value = event_target_value(&event);
-                        if let Some(next) = Locale::parse(&value) {
+            <div class="topbar__brand"><Brand/></div>
+            <div class="topbar__context">
+                <Icon kind="grid"/>
+                <span>{move || Messages::new(locale.get()).text("shell.context")}</span>
+                <span aria-hidden="true">"/"</span>
+                <span>{move || {
+                    let path = location.pathname.get();
+                    let key = if path == "/" { "nav.home" }
+                        else if path == "/games" { "nav.library" }
+                        else if path.starts_with("/games/") { "shell.context.game" }
+                        else { "nav.account" };
+                    Messages::new(locale.get()).text(key)
+                }}</span>
+            </div>
+            <div class="topbar__actions">
+                <div class="topbar__locale">
+                    <label class="field__label" for="locale">
+                        {move || Messages::new(locale.get()).text("app.locale")}
+                    </label>
+                    <select id="locale" class="field__control" on:change=move |event| {
+                        if let Some(next) = Locale::parse(&event_target_value(&event)) {
                             locale.set(next);
                         }
-                    }
-                >
-                    {Locale::ALL
-                        .into_iter()
-                        .map(|candidate| {
-                            view! {
-                                <option
-                                    value=candidate.tag()
-                                    selected=move || locale.get() == candidate
-                                >
-                                    {candidate.label()}
-                                </option>
-                            }
-                        })
-                        .collect_view()}
-                </select>
+                    }>
+                        {Locale::ALL.into_iter().map(|candidate| view! {
+                            <option value=candidate.tag() selected=move || locale.get() == candidate>
+                                {candidate.label()}
+                            </option>
+                        }).collect_view()}
+                    </select>
+                </div>
+                <A href="/account" attr:class="topbar__profile" attr:aria-label=move || Messages::new(locale.get()).text("nav.account")>
+                    <NeutralAvatar/>
+                </A>
+                <button id="menu-toggle" type="button" class="icon-button mobile-menu-button"
+                    aria-label=move || Messages::new(locale.get()).text("shell.menu.open")
+                    aria-controls="shell-menu" aria-haspopup="dialog" aria-expanded=move || menu_open.get()
+                    on:click=move |_| {
+                        if let Some(dialog) = menu.get() {
+                            if dialog.show_modal().is_ok() { menu_open.set(true); }
+                        }
+                    }>
+                    <Icon kind="menu"/>
+                </button>
             </div>
         </header>
+        <dialog id="shell-menu" class="shell-menu" node_ref=menu
+            aria-label=move || Messages::new(locale.get()).text("shell.navigation")
+            on:close=move |_| menu_open.set(false)
+            on:cancel=move |_| menu_open.set(false)
+            on:keydown=move |event| {
+                if event.key() != "Tab" { return; }
+                let Some(dialog) = menu.get() else { return; };
+                let Ok(targets) = dialog.query_selector_all("a[href], button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex=\"0\"]") else { return; };
+                let Some(first) = targets.item(0).and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok()) else { return; };
+                let Some(last) = targets.item(targets.length().saturating_sub(1)).and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok()) else { return; };
+                let active = document().active_element();
+                if event.shift_key() && active.as_ref().is_some_and(|active| active.is_same_node(Some(first.as_ref()))) {
+                    event.prevent_default();
+                    let _ = last.focus();
+                } else if !event.shift_key() && active.as_ref().is_some_and(|active| active.is_same_node(Some(last.as_ref()))) {
+                    event.prevent_default();
+                    let _ = first.focus();
+                }
+            }>
+            <div class="shell-menu__header">
+                <Brand/>
+                <button type="button" class="icon-button" autofocus=true
+                    aria-label=move || Messages::new(locale.get()).text("shell.menu.close")
+                    on:click=move |_| close_menu()><Icon kind="close"/></button>
+            </div>
+            <div on:click=move |event| {
+                if event.target().and_then(|target| target.dyn_into::<web_sys::Element>().ok())
+                    .and_then(|element| element.closest("a").ok().flatten()).is_some() { close_menu(); }
+            }><ShellNavigation/></div>
+        </dialog>
+        <nav class="bottom-nav" aria-label=move || Messages::new(locale.get()).text("shell.navigation")>
+            <ShellLinks/>
+        </nav>
     }
+}
+
+#[component]
+fn ShellLinks() -> impl IntoView {
+    let locale = use_locale();
+    view! {
+        <A href="/" exact=true attr:class="shell-link"><Icon kind="home"/><span>{move || Messages::new(locale.get()).text("nav.home")}</span></A>
+        <A href="/games" attr:class="shell-link"><Icon kind="grid"/><span>{move || Messages::new(locale.get()).text("nav.library")}</span></A>
+        <A href="/account" attr:class="shell-link"><Icon kind="user"/><span>{move || Messages::new(locale.get()).text("nav.account")}</span></A>
+    }
+}
+
+#[component]
+fn ShellNavigation() -> impl IntoView {
+    let locale = use_locale();
+    view! {
+        <nav class="sidebar__nav"><ShellLinks/></nav>
+        <p class="sidebar__caption">{move || Messages::new(locale.get()).text("shell.upcoming")}</p>
+        <div class="sidebar__unavailable">
+            <span><Icon kind="history"/>{move || Messages::new(locale.get()).text("shell.history")}</span>
+            <span><Icon kind="users"/>{move || Messages::new(locale.get()).text("shell.rooms")}</span>
+            <small>{move || Messages::new(locale.get()).text("shell.upcoming.reason")}</small>
+        </div>
+    }
+}
+
+#[component]
+fn Brand() -> impl IntoView {
+    view! {
+        <A href="/" attr:class="brand" attr:aria-label="Tabula">
+            <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <rect x="2" y="2" width="36" height="36" rx="12" fill="currentColor"/>
+                <path d="M11 12h18v5h-6v12h-6V17h-6z" fill="var(--sys-color-on-primary)"/>
+                <circle cx="28" cy="27" r="2.5" fill="var(--sys-color-on-primary)"/>
+            </svg><span>"tabula"</span>
+        </A>
+    }
+}
+
+#[component]
+fn NeutralAvatar() -> impl IntoView {
+    view! { <span class="neutral-avatar" aria-hidden="true"
+    inner_html=include_str!("../../../../crates/tabula-design/assets/avatar-neutral.svg")></span> }
+}
+
+/// Original Design 01 vector icons, with no icon font or runtime request.
+#[component]
+pub fn Icon(kind: &'static str) -> impl IntoView {
+    let paths = match kind {
+        "grid" => {
+            r#"<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>"#
+        }
+        "home" => r#"<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>"#,
+        "user" => r#"<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/>"#,
+        "users" => {
+            r#"<circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m3 10v-2a6 6 0 0 0-2-4"/>"#
+        }
+        "history" => r#"<path d="M3 4v5h5M3 9a9 9 0 1 1 0 7m9-9v5l3 2"/>"#,
+        "leaf" => r#"<path d="M20 4c-8-2-15 3-15 9a7 7 0 0 0 7 7c6 0 9-8 8-16ZM4 21 17 8"/>"#,
+        "spark" => {
+            r#"<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5zM21 2v4m-2-2h4"/>"#
+        }
+        "close" => r#"<path d="m6 6 12 12M6 18 18 6"/>"#,
+        "menu" => r#"<path d="M4 6h16M4 12h16M4 18h16"/>"#,
+        _ => r#"<path d="M4 12h16m-6-6 6 6-6 6"/>"#,
+    };
+    view! { <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" inner_html=paths></svg> }
 }
 
 /// A URL no route owns.
