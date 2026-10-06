@@ -1,8 +1,10 @@
 # Issue #54 account, profile and social completion
 
 Original start: `develop` at `c6d55a6fc3b326e14a466b6e9d988f897bb579e5`.
-PR base updated to `8c5e3e8d9df133e14d30b0c61b34c3fae97332a8` to retain the
-mobile workspace move and current read-only review workflow.
+PR base updated to `1147f8f861e0ad59d996a917bf79f0bc670f65b3` to retain the
+mobile workspace move, native host direction, shell parity and current review
+workflow. The upstream native-host ADR-0043 is preserved; this account decision
+uses ADR-0044.
 The owner requests every original criterion in this new implementation PR.
 [ADR-0044](../../adr/0044-isolated-account-registration-social.md) opens the
 bounded account/social contracts alongside the existing ADR-0036/0038 authority.
@@ -22,7 +24,7 @@ Saved unresolved logout never becomes confirmed sign-out from a network hint.
 | Logout intent stays suppressed | Core/controller; reconnect forgets unresolved revocation | Exact target markers and unresolved/storage dispositions in focused tests | PASS |
 | Task routes and fixed recovery | Leptos view; disposed signals panic during SPA navigation | 28 legacy and 24 v2 browser interactions, fresh context/profile and exact route assertions, zero page errors | PASS |
 | Reflow and focus | CSS/view; translated controls overflow or retiring actions lose focus | 192 legacy and 160 v2 render cases: 320/390/768/1440px, four themes, en/vi; focus and touch-target assertions; small-width and high-contrast pixels inspected | PASS |
-| Repository contract | Dependency/token/code boundaries | Full `cargo xtask check`, feature/target checks and strict native account/social clippy | PASS: 1,294 tests, 0 failures; all portable gates passed |
+| Repository contract | Dependency/token/code boundaries | Full `cargo xtask check`, feature/target checks and strict native account/social clippy | PASS: 1,288 tests, 0 failures; all portable gates passed |
 | Bounded frontend resource profiles | Build feature / emitted artifact; new scope silently replaces old cap | Default 716,893 and online 774,855 bytes against 900,000; combined 1,040,870 against the explicit ADR-0044 1,100,000 cap; 3 profile/cap laws and 17 dashboard helper regressions | PASS; the original full artifact failed the old cap, recorded in ADR-0044 |
 | New DTO field/version boundary | Session HTTP transport; hostile fields or stale shape admitted | `cargo test -p tabula-session-http accounts::` (3 tests), `--test dto_contract` (8 tests) | PASS |
 | Registration/profile durable authority | Auth/session/storage; duplicate create, borrowed epoch or disclosure race | Actual pinned Kanidm 1.11.2 and PostgreSQL 18.6 acceptance | PASS: 3 provider cases and 5 account PG laws |
@@ -50,13 +52,14 @@ and must pass on the PR's exact committed tree; a local dirty-tree run is labell
 as working-tree evidence. `SQLX_OFFLINE=true` selects checked-in compile metadata,
 while the adapters and test laws still execute against the real database.
 Final local portable/feature/actual-browser runs use implementation commit
-`07c9e425fb38587b414430b9a53a0263a5e98df1` (tree
-`74fbe8c40441649a6b76f09572ac50332bcbb0fb`). The real-browser runner records a
+`bd09d735912ccf4f57b5a02b487c9b14d8cd04ee` (tree
+`f5b57b59c80a00ee1bc9857b456436a4d6fac9dc`). The real-browser runner records a
 clean checkout at that commit. This ledger's subsequent documentation update
 records those results; the PR's hosted checks bind to its published head.
-The rebase changes only upstream mobile paths and review tooling, preserving the
-account/social implementation previously exercised by the focused PG/provider
-laws. The final full optimized shell SHA-256 is
+The rebase preserves the account/social behavior previously exercised by the
+focused PG/provider laws. Its rebuilt HTML/JS/WASM/CSS resource hashes exactly
+match the complete 352/52 UI-double artifact, and all 21 real-browser cases were
+rerun successfully at the final clean source. The final optimized shell SHA-256 is
 `8f0417cbb59b6d575de91208ac469eb24af27b296ee5c0754945d3a36c7db7e4`;
 its 1,040,870 raw / 407,996 gzip9 bytes are static size evidence only. The real
 browser runner checks that profile/budget before running its 21 cases. The full
@@ -86,7 +89,7 @@ by the runners. The provider script covers original invited login, captured-epoc
 legacy profile completion/preservation, and unmapped enrollment/login/profile
 policy. Healthy publication lease cleanup, lost physical backend expiry and
 permission-narrowing writes have independent database exclusion oracles.
-The complete portable gate passed all 1,294 selected tests across 102 test/doctest
+The complete portable gate passed all 1,288 selected tests across 102 test/doctest
 results; 18 opt-in acceptance tests remain ignored there and their relevant
 nonempty selections run separately above. Workspace no-default/all-features,
 pure HTTP/lobby WASM all-features, strict native account/social all-target clippy,
@@ -94,6 +97,8 @@ web native/WASM clippy, skill validation, 34 skill-helper tests and six
 AI-document tests also passed. The new resource-profile laws pass 3 tests, and
 historical dashboard helper compatibility passes all 17 tests. Hosted Ubuntu24.04/PostgreSQL16 execution is a
 separate required PR check, not inferred from these local PostgreSQL18 results.
+The prior base passed 1,294 portable tests; the final upstream base retired six
+obsolete mobile WebView packaging tests. No account/social acceptance was removed.
 
 The UI-matrix browser harness uses the actual compiled Leptos shell and deliberately
 synthetic context/profile/HTTP responses. Its disposable self-signed HTTPS
