@@ -239,7 +239,8 @@ The canonical invariant:
 same initial state (from the same MatchSeed and MatchConfig)
 + same ordered input sequence
 + same rules version
-============================================byte-identical final state, identical event sequence, identical state hashes
+===================================================
+byte-identical final state, identical event sequence, identical state hashes
 ```
 
 This must hold **across**: process restarts, machines, OS, architecture (x86-64 and aarch64),
@@ -736,7 +737,7 @@ Longer discussion lives in the linked document.
 | **041** | Opt-in authenticated bounded HTTPS direct-match admission/polling, server seats and durable commit/body-publication authority; projection-only renderer and independent browser/PG acceptance. [ADR-0041](../adr/0041-isolated-direct-match-browser-play.md). | ACCEPTED PR2; VERIFICATION PENDING; PRODUCTION CLOSED | Owner requests real join-code browser Chess before separate interruption/recovery acceptance; polling preserves kernel entropy isolation. | Production/live migration, WSS/native, widened audience/clock/private effects, changed scope/wire, reconnect/crash recovery or phase-exit claim. |
 | **042** | Bounded fresh-authority reconnect/full-projection resync, HTTP2 non-authorizing operation-scope hints, exact online owner restart and first-frame owner fencing. [ADR0042](../adr/0042-isolated-match-reconnect-resync.md). | ACCEPTED PR3 SCOPE; ACCEPTANCE PENDING; PRODUCTION CLOSED | Completes the requested isolated interruption slice with explicit uncertain-result semantics and actual fault oracles. | Wider audience/clock/effects, production, native/mobile, distributed placement, relaxed bounds or broad phase exit. |
 | **043** | CMP mobile UI/navigation with native Rust/Macroquad gameplay in the same app; mobile WebView selection/packaging retired without fallback. [ADR-0043](../adr/0043-native-mobile-gamehost.md). | ACCEPTED DIRECTION; NATIVE ADAPTERS BLOCKED | Owner-requested #81 supersedes only ADR-0032/0033 mobile WebView gameplay, preserving Rust ownership, tokens, voice scope and unrelated gates. Current shell has no playable native game. | Before an upstream embedding patch/unsafe-policy change, actual native adapters/assets, preload, device performance or Phase 6 exit claims. |
-| **044** | Isolated Kanidm-verified Tabula enrollment, permitted profile read/edit, durable friend requests and scoped timestamped presence. [ADR-0044](../adr/0044-isolated-account-registration-social.md). | ACCEPTED BOUNDED IMPLEMENTATION; ACCEPTANCE PENDING; PRODUCTION CLOSED | Owner explicitly requests every original #54 criterion, with current session/resource authority and real provider/PG/browser evidence. | Production/live provisioning, new credential/agreement policy, wider bounds, distributed presence, native/mobile social or phase exits. |
+| **044** | Isolated Kanidm-verified Tabula enrollment, permitted profile read/edit, durable friend requests and scoped timestamped presence. [ADR-0044](../adr/0044-isolated-account-registration-social.md). | ACCEPTED BOUNDED IMPLEMENTATION; ISOLATED LOCAL ACCEPTANCE PASSED; PRODUCTION CLOSED | Owner explicitly requests every original #54 criterion, with current session/resource authority and real provider/PG/browser evidence. | Production/live provisioning, new credential/agreement policy, wider bounds, distributed presence, native/mobile social or phase exits. |
 
 ---
 
