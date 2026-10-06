@@ -27,6 +27,18 @@ for alias,entry in files.items():
  payload=(a.bundle/entry['url']).read_bytes();assert len(payload)==entry['bytes'];assert hashlib.sha256(payload).hexdigest()==entry['sha256'];rows.append({'alias':alias,'bytes':len(payload),'sha256':entry['sha256']})
 setup=(a.bundle/'index.html').read_text();assert not re.search(r'<(?:img|link)[^>]+(?:png|wasm)',setup);assert 'glcanvas' not in setup
 pack_rows=[row for row in rows if row['alias'] in pack_paths];assert len(pack_rows)==len(pack_paths)
-assert sum(row['bytes'] for row in pack_rows)<=2*1024*1024
+# #84 approved two village scenes in pack 0.2.0. Compare every emitted image
+# to that independent pixel/byte receipt instead of the retired 14-image cap.
+approved=json.loads((ROOT/'docs/ui/werewolf-approved/budgets.json').read_text())
+source=tomllib.loads((ROOT/'games/werewolf/assets/pack.source.toml').read_text())
+approved_files={entry['file']:entry for entry in approved['assets']}
+source_files={entry['name']:entry['source'] for entry in source['files']}
+assert len(approved_files)==len(pack_rows)
+assert set(source_files.values())==set(approved_files)
+for entry in fixture['files']:
+ expected=approved_files[source_files[entry['name']]]
+ assert files[entry['path']]['bytes']==expected['bytes']
+ assert files[entry['path']]['sha256']==expected['sha256']
+assert sum(row['bytes'] for row in pack_rows)==approved['encoded_bytes']
 result={'evidence':'static emitted selected-game inventory, not real browser request waterfall or runtime performance','wasm':{'bytes':len(b),'gzip9_bytes':len(compressed),'sha256':hashlib.sha256(b).hexdigest(),'selected_normal_graph':'PASS Werewolf only, no Chess/Tiles/Leptos','external_payloads_absent':absent},'runtime_payloads':rows,'encoded_pack_bytes_all_densities':sum(row['bytes'] for row in pack_rows),'setup_game_art_or_wasm_references':0}
 a.receipt.parent.mkdir(parents=True,exist_ok=True);a.receipt.write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result['wasm'],indent=2));print('PASS static Werewolf emitted budgets and complete content hashes')
