@@ -1,24 +1,27 @@
 # Agent workflows
 
-Two canonical skills organize work by workflow. Architecture
+Three canonical skills organize work by workflow. Architecture
 [doc 00](../../docs/architecture/00-architecture-principles.md) and ADRs own the contract;
 skills apply it and never authorize work past a phase gate.
 
 | Workflow group | Entrypoint | Load on demand |
 |---|---|---|
 | Engineering: contract, design, implementation, evidence, handoff | [tabula-engineering](tabula-engineering/SKILL.md) | Design/prevention: types, boundary hardening, functional core, extraction. Verification: examples, properties, replay/differential, mutation, Kani, fuzzing. Documentation: AI contracts/schema/helper. |
+| Existing-change review: PR, range, patch or local tree; read-only findings and assurance gaps | [tabula-code-review](tabula-code-review/SKILL.md), composing engineering and relevant game criteria | [Changed-boundary lenses](tabula-code-review/references/review-boundaries.md), [report template](tabula-code-review/assets/review-report-template.md). |
 | Game review: rules, SDK, security, replay, bots, presentation, readiness | [tabula-game-audit](tabula-game-audit/SKILL.md), composing engineering | SDK, rules oracles, hidden information, replay/versioning, presentation and the selected game's rubric. |
 
 Choose the workflow first, then the smallest relevant reference set. The engineering skill
 owns evidence vocabulary and implementation order; the game audit applies those to separate
-claims. SDK conformance, correct rules, secrecy, deterministic replay and playable UI need
+claims. Code review owns pinned-diff scope, base-relative candidates, severity/confidence and its
+report; it reads existing owners as criteria rather than starting their implementation loops.
+SDK conformance, correct rules, secrecy, deterministic replay and playable UI need
 their own evidence. A local game audit does not certify networking or future-phase features.
 
 ## Discovery and one source
 
 Maintain content only in `.agents/skills`. `.claude/skills` is a relative directory symlink to
 that tree, so both filesystem entrypoints resolve identical skill files, references and scripts.
-Root [AGENTS.md](../../AGENTS.md) routes engineering and game work; [CLAUDE.md](../../CLAUDE.md)
+Root [AGENTS.md](../../AGENTS.md) routes engineering, code-review and game work; [CLAUDE.md](../../CLAUDE.md)
 provides explicit fallback routing for a runtime that does not traverse the symlink.
 
 The Codex session used for this migration discovered the previous nine skills in `.agents`.
@@ -53,7 +56,7 @@ should use `$tabula-engineering` with the named technique. Git history retains e
 | `rust-ai-doc-contracts/SKILL.md` | [ai-doc-contracts.md](tabula-engineering/references/ai-doc-contracts.md) |
 | `rust-ai-doc-contracts/references/schema.md` | [ai-doc-schema.md](tabula-engineering/references/ai-doc-schema.md) |
 | `rust-ai-doc-contracts/scripts/` | [engineering scripts](tabula-engineering/scripts/) |
-| Independent `.claude/skills/rust-functional-core/` and `rust-types-as-proofs/` | Removed after reviewing unique extraction/serde material; useful guidance is folded into canonical design references. `.claude/skills` now shares both workflow skills. |
+| Independent `.claude/skills/rust-functional-core/` and `rust-types-as-proofs/` | Removed after reviewing unique extraction/serde material; useful guidance is folded into canonical design references. `.claude/skills` now shares the canonical workflow skills. |
 
 The AI contract helper retains the `rust-ai-doc-contracts` graph schema identifier for output
 compatibility. That identifier is data, not a discoverable skill or an old invocation path.

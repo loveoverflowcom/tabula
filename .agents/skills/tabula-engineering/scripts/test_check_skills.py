@@ -123,6 +123,20 @@ class SkillDriftTests(unittest.TestCase):
         shutil.rmtree(self.canonical / "tabula-game-audit")
         self.assert_error("missing required entrypoint")
 
+    def test_missing_code_review_entrypoint_is_rejected(self):
+        shutil.rmtree(self.canonical / "tabula-code-review")
+        self.assert_error("tabula-code-review/SKILL.md: missing required entrypoint")
+
+    def test_unregistered_top_level_skill_is_rejected(self):
+        extra = self.canonical / "tabula-extra-review"
+        shutil.copytree(self.canonical / "tabula-code-review", extra)
+        for path in (extra / "SKILL.md", extra / "agents" / "openai.yaml"):
+            path.write_text(
+                path.read_text(encoding="utf-8").replace("tabula-code-review", "tabula-extra-review"),
+                encoding="utf-8",
+            )
+        self.assert_error("tabula-extra-review/SKILL.md: unexpected canonical skill definition")
+
     def test_broken_markdown_reference(self):
         self.append(self.skill, "Read [missing](references/missing.md).\n")
         self.assert_error("missing local resource: references/missing.md")
@@ -209,7 +223,7 @@ class SkillDriftTests(unittest.TestCase):
         command = [sys.executable, str(Path(check_skills.__file__)), "--root", str(self.root)]
         result = subprocess.run(command, capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("2 canonical entrypoints", result.stdout)
+        self.assertIn(f"{len(check_skills.ENTRYPOINTS)} canonical entrypoints", result.stdout)
         self.skill.unlink()
         result = subprocess.run(command, capture_output=True, text=True, check=False)
         self.assertNotEqual(result.returncode, 0)

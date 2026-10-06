@@ -26,8 +26,14 @@ Docs live in [`docs/architecture/`](docs/architecture/README.md) and are numbere
 
 ### Agent workflows
 
+For a read-only review of an existing PR, commit range, patch, or local working tree, load
+[`tabula-code-review`](.agents/skills/tabula-code-review/SKILL.md). It pins scope, traces changed
+claims and boundaries, validates findings against BASE, and reports severity, confidence and
+coverage. It composes the engineering/game criteria below without entering an implementation
+loop or treating a narrow diff review as a full-game audit.
+
 Load [`tabula-engineering`](.agents/skills/tabula-engineering/SKILL.md) for implementation,
-refactoring, reviews, testing, and engineering documentation. It owns the workflow and evidence
+refactoring, testing, and engineering documentation. It owns the shared workflow and evidence
 vocabulary; load only the technique references relevant to the task.
 
 Compose [`tabula-game-audit`](.agents/skills/tabula-game-audit/SKILL.md) when adding, changing,

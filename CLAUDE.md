@@ -1,6 +1,8 @@
 # Tabula agent entrypoint
 
 Read [AGENTS.md](AGENTS.md), then the architecture contract it names, before editing.
+Use [tabula-code-review](.agents/skills/tabula-code-review/SKILL.md) for read-only review of
+an existing PR, range, patch or local change; it composes the criteria below without fixing code.
 Use [tabula-engineering](.agents/skills/tabula-engineering/SKILL.md) for engineering work and
 compose [tabula-game-audit](.agents/skills/tabula-game-audit/SKILL.md) for games and shared
 contracts affecting them. Load references on demand.

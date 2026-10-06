@@ -8,7 +8,7 @@ contract. A specification or successful local check does not open a phase gate.
 |---|---|
 | Architecture, ownership, stack and phase gates | [Architecture index, docs 00–09](architecture/README.md) |
 | Recorded decisions and supersession | [ADR directory](adr/README.md), with the register in doc 00 §10 |
-| Engineering workflow and technique references | [Canonical skills](../.agents/skills/README.md): `tabula-engineering`, composed with `tabula-game-audit` for game work |
+| Engineering workflow, change review and technique references | [Canonical skills](../.agents/skills/README.md): `tabula-engineering`, `tabula-code-review` for existing changes, and `tabula-game-audit` for game criteria |
 | Game rules, variants and information models | [Per-game notes](games/README.md), plus source and conformance fixtures |
 | Shared screen contracts and generated token adapters | [UI index](ui/README.md), [screen index](ui/screens/README.md); authored tokens live in [`tokens.toml`](../tokens.toml) |
 | Upcoming slices and prerequisites | [Work queue](work-plan/README.md); linked GitHub issues own acceptance |
