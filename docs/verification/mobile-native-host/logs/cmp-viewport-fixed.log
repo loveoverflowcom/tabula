@@ -1,0 +1,47 @@
+> Task :previewApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :previewApp:convertXmlValueResourcesForMain NO-SOURCE
+> Task :previewApp:copyNonXmlValueResourcesForMain NO-SOURCE
+> Task :previewApp:prepareComposeResourcesTaskForMain NO-SOURCE
+> Task :previewApp:generateResourceAccessorsForMain SKIPPED
+> Task :previewApp:generateActualResourceCollectorsForMain SKIPPED
+> Task :previewApp:generateComposeResClass SKIPPED
+> Task :shared:checkDesktopMainComposeLibrariesCompatibility
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonMain SKIPPED
+> Task :shared:convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForDesktopMain SKIPPED
+> Task :shared:generateActualResourceCollectorsForDesktopMain SKIPPED
+> Task :shared:generateComposeResClass SKIPPED
+> Task :shared:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :shared:assembleDesktopMainResources UP-TO-DATE
+> Task :shared:desktopProcessResources UP-TO-DATE
+> Task :shared:processDesktopMainResources SKIPPED
+> Task :previewApp:assembleMainResources UP-TO-DATE
+> Task :previewApp:processResources UP-TO-DATE
+> Task :previewApp:convertXmlValueResourcesForTest NO-SOURCE
+> Task :previewApp:copyNonXmlValueResourcesForTest NO-SOURCE
+> Task :previewApp:prepareComposeResourcesTaskForTest NO-SOURCE
+> Task :previewApp:generateResourceAccessorsForTest SKIPPED
+> Task :previewApp:assembleTestResources UP-TO-DATE
+> Task :previewApp:processTestResources UP-TO-DATE
+> Task :shared:compileKotlinDesktop
+> Task :shared:compileDesktopMainJava NO-SOURCE
+> Task :shared:desktopMainClasses
+> Task :shared:desktopJar
+> Task :previewApp:compileKotlin
+> Task :previewApp:compileJava NO-SOURCE
+> Task :previewApp:classes UP-TO-DATE
+> Task :previewApp:jar UP-TO-DATE
+> Task :previewApp:compileTestKotlin
+> Task :previewApp:compileTestJava NO-SOURCE
+> Task :previewApp:testClasses UP-TO-DATE
+> Task :previewApp:test
+
+BUILD SUCCESSFUL in 6s
+14 actionable tasks: 7 executed, 7 up-to-date

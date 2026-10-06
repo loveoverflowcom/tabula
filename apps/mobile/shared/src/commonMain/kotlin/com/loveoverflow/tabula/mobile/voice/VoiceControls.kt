@@ -3,7 +3,7 @@ package com.loveoverflow.tabula.mobile.voice
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,7 +22,7 @@ import com.loveoverflow.tabula.mobile.shell.ShellButton
 
 /** Compact CMP-owned controls using the existing semantic theme; no WebView microphone UI. */
 @Composable
-fun VoiceControls(controller: VoiceController, vietnamese: Boolean) {
+fun VoiceControls(controller: VoiceController, vietnamese: Boolean, modifier: Modifier = Modifier) {
     val state = controller.state
     val colors = LocalTabulaColors.current
     val active = state.connection in setOf(VoiceConnection.CONNECTED, VoiceConnection.RECONNECTING, VoiceConnection.CONNECTING, VoiceConnection.RESOLVING_GRANT)
@@ -37,7 +37,7 @@ fun VoiceControls(controller: VoiceController, vietnamese: Boolean) {
         VoiceConnection.FAILED -> copy("Voice stopped", "Voice đã dừng")
     }
     Column(
-        Modifier.fillMaxWidth().background(colors.container, RoundedCornerShape(TabulaShape.card.dp))
+        modifier.fillMaxWidth().background(colors.container, RoundedCornerShape(TabulaShape.card.dp))
             .padding(TabulaSpace.md.dp),
         verticalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp),
     ) {
@@ -52,7 +52,10 @@ fun VoiceControls(controller: VoiceController, vietnamese: Boolean) {
             else -> null
         }
         if (detail != null) TabulaText(detail, TabulaType.bodyMd, color = colors.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp),
+            verticalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp),
+        ) {
             ShellButton(
                 if (active) copy("Leave voice", "Rời voice") else copy("Join voice", "Tham gia voice"),
                 filled = !active,

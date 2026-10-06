@@ -1,0 +1,234 @@
+{
+  "date": "2026-10-06",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "base_commit": "c6d55a6fc3b326e14a466b6e9d988f897bb579e5",
+  "scope": "ADR0043 native-only retirement and shared CMP viewport acceptance; native adapters NOT_IMPLEMENTED",
+  "desktop_jdk": "Microsoft OpenJDK21.0.7 isolated snapshot; two documented Gradle toolchain adaptations; configured JDK17 gate BLOCKED",
+  "executed": {
+    "core_passed": 1264,
+    "core_ignored": 18,
+    "web_node_passed": 122,
+    "cmp_preview_passed": 20,
+    "cmp_common_desktop_passed": 49,
+    "policy_fixtures_passed": 5,
+    "real_apk_or_app_inspected": 0
+  },
+  "artifacts": [
+    {
+      "path": "README.md",
+      "bytes": 9859,
+      "sha256": "3325c12dbfdd90ab9c888d95e19221359fefe85e715cb1becffe994105a4f240"
+    },
+    {
+      "path": "cmp/cmp-home-320x640-font2-fixture-catalog.png",
+      "bytes": 29939,
+      "sha256": "8a0d6e4359a85c57ec04082ed90078d52aebd5c5aeafd085c013918a3503cbf7"
+    },
+    {
+      "path": "cmp/cmp-home-390x844-font1-fixture-catalog.png",
+      "bytes": 31312,
+      "sha256": "beaa6afecf437743cbeeaaf74c99dc27655fa8df9941c811ef5bb807118290af"
+    },
+    {
+      "path": "cmp/cmp-home-640x320-font2-fixture-catalog.png",
+      "bytes": 22198,
+      "sha256": "4871e100ee53d9136361ea9192d57368cf0ed3ac22bc274c235dbec6006891f9"
+    },
+    {
+      "path": "cmp/cmp-host-failure-320x640-font2-simulated-host.png",
+      "bytes": 34673,
+      "sha256": "fdd0f9a7c16b338a2d71fc2a607cd5b05655ed7a35d055e280fc575a21c1e5c0"
+    },
+    {
+      "path": "cmp/cmp-host-failure-390x844-font2-simulated-host.png",
+      "bytes": 63165,
+      "sha256": "8d0f27d64d08ab6233892d332dfcbcd7454941e3a39e8f69cb62173f0300b756"
+    },
+    {
+      "path": "cmp/cmp-host-failure-640x320-font2-simulated-host.png",
+      "bytes": 25930,
+      "sha256": "a5705da893910c43dc4b48924c7e7ebebc0804e703a42ef92541eb36fe93459b"
+    },
+    {
+      "path": "cmp/cmp-native-unavailable-dark-theme-adapter-390x844.png",
+      "bytes": 9072,
+      "sha256": "4af7fb3378ae214ed2d2dd51aed9f3520d15687bfe00ed97463d51d9d45ef2b9"
+    },
+    {
+      "path": "cmp/cmp-native-unavailable-default-app-320x844.png",
+      "bytes": 8960,
+      "sha256": "0bd90d2e9aeb2ab7f2604697f66176b38b2bb2e27b8f1aaf06d58a44d2937568"
+    },
+    {
+      "path": "cmp/cmp-native-unavailable-default-app-390x844.png",
+      "bytes": 8864,
+      "sha256": "9878ba8a72ef81d6273c849e32a52dc0684268cf98f88302ea20624ac2ab77bf"
+    },
+    {
+      "path": "cmp/cmp-voice-en-320x844-font1-media-double.png",
+      "bytes": 14062,
+      "sha256": "2ef46d79e773ad7689d55911abd12de78a29960fe14b16829f261374e33d1f7f"
+    },
+    {
+      "path": "cmp/cmp-voice-en-320x844-font2-media-double.png",
+      "bytes": 25854,
+      "sha256": "3eacabd26b27b6ce1483342f2e5ee6a918601d01e32fade1d6fb8ca5ba4a3673"
+    },
+    {
+      "path": "cmp/cmp-voice-en-390x844-font1-media-double.png",
+      "bytes": 13961,
+      "sha256": "1561a04a837ae5fcecbf8521947e74a5f55346d5ddf282284b6f643787232838"
+    },
+    {
+      "path": "cmp/cmp-voice-en-390x844-font2-media-double.png",
+      "bytes": 25842,
+      "sha256": "079c1ca626531400b823d02464088c5cc307d41646ae2d1939b57de07cf1125a"
+    },
+    {
+      "path": "cmp/cmp-voice-vi-320x844-font1-media-double.png",
+      "bytes": 13842,
+      "sha256": "3ebb46ff1b33207b25038c3f81e684e9c528aeef435c55ee1123fdfb5b1a2216"
+    },
+    {
+      "path": "cmp/cmp-voice-vi-320x844-font2-media-double.png",
+      "bytes": 25347,
+      "sha256": "56289b4ba8a8b44f1a90fc5fc4787e9d72154dca667aa16525bf7e999b418893"
+    },
+    {
+      "path": "cmp/cmp-voice-vi-390x844-font1-media-double.png",
+      "bytes": 14149,
+      "sha256": "b9f7055d93d211807faf88fb5412a030a794e532e368794481ca977ad726ce03"
+    },
+    {
+      "path": "cmp/cmp-voice-vi-390x844-font2-media-double.png",
+      "bytes": 24720,
+      "sha256": "a9bdb71f6beab4eb478c467d847c4681792e16d6931a25d6330dca710e0396c1"
+    },
+    {
+      "path": "cmp-final-source-manifest.json",
+      "bytes": 28214,
+      "sha256": "ce9493f4d2e4dff57f9dfd612e69d013f17697e2be287dae70707aa55cbfac35"
+    },
+    {
+      "path": "logs/cmp-final-all.log",
+      "bytes": 3978,
+      "sha256": "092478a0c05f63aeb330946129e9b03cf27840970ed30a48c8fed0dc3c5d729a"
+    },
+    {
+      "path": "logs/cmp-viewport-baseline.log",
+      "bytes": 3701,
+      "sha256": "112552adcf380baf565ff9dc78472e21222b9a6a03fbf4bb93b4888452cea09e"
+    },
+    {
+      "path": "logs/cmp-viewport-fixed.log",
+      "bytes": 2426,
+      "sha256": "594b81d8c1234847587b5ab41d2d4a08e32998ce48c0cabc5576a5e148c0da2b"
+    },
+    {
+      "path": "logs/core-gate-final.log.gz",
+      "bytes": 36824,
+      "sha256": "ddf092289f2eda64a798f90a6f2d453806ba520005722df68cf21f909458b43c"
+    },
+    {
+      "path": "logs/mobile-android-jdk21.log",
+      "bytes": 589,
+      "sha256": "191330f6a09adb85f2af8118827ec6f7accd2a2c15a76fb4b3072d4c28778ce0"
+    },
+    {
+      "path": "logs/mobile-configured-final.log",
+      "bytes": 1957,
+      "sha256": "5716e5ef8e3fb6451e11ef4f987938b438d2b0bc312e0add7d3cc7d205913530"
+    },
+    {
+      "path": "logs/native-policy-tests.log",
+      "bytes": 1082,
+      "sha256": "f03045a3aa789bf571dfb0e4084cecc3597602a2211617afc261fd6afcd06835"
+    },
+    {
+      "path": "logs/native-policy.log",
+      "bytes": 119,
+      "sha256": "6d6806c9d854c19f0ba455bf027a890646ecd562afb7f56d9fb9a3159b134360"
+    },
+    {
+      "path": "logs/retired-mobile-stage.log",
+      "bytes": 666,
+      "sha256": "5a8803927da458b51bf1ebed0568452a2b1aa116042b867d067cc379611639ae"
+    },
+    {
+      "path": "logs/wasm-game-check.log",
+      "bytes": 3075,
+      "sha256": "f425bfcb11d1eecae4f2c34d622c9875c45d66a4d737df04eff30db9104661d4"
+    },
+    {
+      "path": "logs/web-regression.log",
+      "bytes": 28229,
+      "sha256": "2b8104eb7121a482feff11c0c7667a96df19f9e320f5a43c249d1bdbca3678ef"
+    },
+    {
+      "path": "logs/xcode-project-syntax.log",
+      "bytes": 51,
+      "sha256": "55d5fe6a104d4e3c9f8b245e6c1a8012f7ddcc970c0d12d9ef11f4f03a41a135"
+    },
+    {
+      "path": "results/cmp-viewport-baseline.xml",
+      "bytes": 58966,
+      "sha256": "6a6392cb023b4858b0e618da4942a94da340e1f1692416ce98626b8d362ebe3e"
+    },
+    {
+      "path": "results/common/TEST-com.loveoverflow.tabula.mobile.BackStackTest.xml",
+      "bytes": 848,
+      "sha256": "cd17ec648fdc7169d1b9fbfb61a2e580809d8add0cefef6c957d06e460973371"
+    },
+    {
+      "path": "results/common/TEST-com.loveoverflow.tabula.mobile.GameBundleTest.xml",
+      "bytes": 1353,
+      "sha256": "f1b81e7b6c4b3972427aee273842899ed19efcbff113b3be11277688390c1419"
+    },
+    {
+      "path": "results/common/TEST-com.loveoverflow.tabula.mobile.GameSessionTest.xml",
+      "bytes": 2801,
+      "sha256": "c369bb320e1977a6607eeaade4c9332b107dd79212bcef77110fd39e192a7936"
+    },
+    {
+      "path": "results/common/TEST-com.loveoverflow.tabula.mobile.StrictJsonTest.xml",
+      "bytes": 703,
+      "sha256": "d1c3e8420ad4fdcd0ab56669d6e1d9c746693c12c5a63692fcfb85ae4c8672ed"
+    },
+    {
+      "path": "results/common/TEST-com.loveoverflow.tabula.mobile.TokenAdapterTest.xml",
+      "bytes": 753,
+      "sha256": "180940027c3727fbf5e51a0eda2fb892f150ff47f06051c50e6df18d4dd4c51a"
+    },
+    {
+      "path": "results/common/TEST-com.loveoverflow.tabula.mobile.VoiceControllerTest.xml",
+      "bytes": 2826,
+      "sha256": "4438f911cf35ccc27b4bf5803a6fd305a7f03e9ac8c92a299237ad3e8ad58ecf"
+    },
+    {
+      "path": "results/preview/TEST-com.loveoverflow.tabula.mobile.preview.BrandIdentityTest.xml",
+      "bytes": 530,
+      "sha256": "688cd39b4547db4f6b809695942bcf80ca55324b17645e4f5f8384d42fed6e44"
+    },
+    {
+      "path": "results/preview/TEST-com.loveoverflow.tabula.mobile.preview.ShellGameHostTest.xml",
+      "bytes": 1953,
+      "sha256": "24659c6510109e1ae66b520d761a6f77f92920ddcf6df03050885491c903d142"
+    },
+    {
+      "path": "results/preview/TEST-com.loveoverflow.tabula.mobile.preview.ShellViewportTest.xml",
+      "bytes": 1366,
+      "sha256": "53deaa5cd756b19a2b62bbba04143ebf94fd2d7534d56567f11ece7e6b77bae6"
+    },
+    {
+      "path": "results/preview/TEST-com.loveoverflow.tabula.mobile.preview.VoiceShellTest.xml",
+      "bytes": 829,
+      "sha256": "eaad3632ce6f813286d50c7cb25b64caea93d5cca35b36f0edd16a1a08d65fc3"
+    },
+    {
+      "path": "upstream-source-review.md",
+      "bytes": 8335,
+      "sha256": "6c87f298ddaf7adc4c95f276ed2eb6c48a218f42a97c8adcec6437492952ee9a"
+    }
+  ],
+  "uncompressed_core_log_sha256": "d32712eb44312e565c5f7f45a2b28c45264f99702f85d2d633eeabfc5dc5ce93"
+}

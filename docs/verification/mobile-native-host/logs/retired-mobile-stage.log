@@ -1,0 +1,7 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 16.04s
+     Running `target/debug/xtask stage-mobile-game`
+stage-mobile-game was retired by ADR-0043: Android/iOS gameplay must use a native Macroquad adapter. That adapter and native packaging are not implemented; no HTML/JS/WASM mobile bundle is produced. Build the CMP shell with `cd mobile && ./gradlew :android:assembleDebug`; use `stage-wasm-game` or `stage-local-play` only for web.

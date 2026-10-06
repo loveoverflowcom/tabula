@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.loveoverflow.tabula.mobile.preview.VoiceShellTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-06T15:14:00.400Z" hostname="Mac-mini-cua-Manh.local" time="0.108">
+  <properties/>
+  <testcase name="productionUnavailableIsVisibleAndHasNoMediaEffect" classname="com.loveoverflow.tabula.mobile.preview.VoiceShellTest" time="0.024"/>
+  <testcase name="controlsJoinPermissionDenialRetryMicAndVoiceLeaveAreCmpOwned" classname="com.loveoverflow.tabula.mobile.preview.VoiceShellTest" time="0.047"/>
+  <testcase name="gameReloadAndHostRetryPreserveVoiceButConfirmedRouteLeaveCleansUp" classname="com.loveoverflow.tabula.mobile.preview.VoiceShellTest" time="0.036"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

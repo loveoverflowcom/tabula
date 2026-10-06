@@ -30,7 +30,7 @@ import com.loveoverflow.tabula.mobile.shell.ShellButton
 import kotlinx.coroutines.delay
 
 /**
- * One simulated runtime. It is the desktop twin of `AndroidGameRuntime`: the same [GameSession]
+ * One simulated runtime. It retains the historical ADR-0033 desktop model: [GameSession]
  * decides everything, and this class only performs the effects it returns. Every instance is
  * recorded in [SimulatedGameHost.runtimes] so tests can prove how many were built and disposed.
  */
@@ -97,7 +97,8 @@ internal class SimulatedRuntime(
 
 /**
  * A [GameHost] for desktop preview and tests. It builds its runtime through the same
- * `rememberGameRuntime` the WebView hosts use, so the tests of that rule apply to them too.
+ * `rememberGameRuntime` binding so the shared composition seam can be exercised. It is not
+ * a native Macroquad adapter and cannot establish Android/iOS surface lifetime or frame evidence.
  */
 internal class SimulatedGameHost(private val autoBootMillis: Long? = 600) : GameHost {
     @Composable

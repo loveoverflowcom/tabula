@@ -151,18 +151,19 @@ asset-delivery services and the remaining phase gates stay closed.
 [ADR-0032](docs/adr/0032-compose-multiplatform-mobile-host.md) opens the Compose
 Multiplatform mobile project, its minimal shell and navigation, the `GameHost` interface,
 and the generated Kotlin token adapter — not Phase 6 itself.
-[ADR-0033](docs/adr/0033-webview-gamehost-first-party-embedding.md) adds a WebView `GameHost` for the
-first-party packaged game with a small typed bridge (lifecycle, launch preferences, `keep-awake`); it is
-not a plugin system, and its Android/iOS WebView execution is still NOT_RUN. Further host services and
-voice, networked mobile play, accounts, push, third-party games and the store gates stay closed until
-their own change and evidence. Kotlin and Swift own mobile UI, navigation and
-device services only; rules, projection and protocol decisions stay in Rust (ADR-001, as
-amended).
+[ADR-0043](docs/adr/0043-native-mobile-gamehost.md) supersedes ADR-0032/0033's mobile
+WebView gameplay: Android/iOS must embed the existing Rust/Macroquad runtime natively in
+that same CMP app. Mobile WebView selection and web-bundle packaging are retired without
+fallback; native adapters/artifacts and actual device acceptance remain blocked. CMP still
+owns UI/navigation and permitted device services; Rust owns rules, projection, presenter and
+renderer. Desktop preview screenshots prove only shared shell layout, never native gameplay.
+Networked mobile play, accounts, push, third-party games, store release and Phase 6 exit
+remain gated. `#![forbid(unsafe_code)]` remains unchanged; no native FFI exception is implied.
 
 The owner-requested Werewolf standalone has a similarly bounded opt-in local exception:
 [ADR-0035](docs/adr/0035-werewolf-local-simulator.md). It permits its complete pure referee
 and isolated-seat local presenter using the existing renderer/resource pipeline. It does not
-open online/social, voice, authenticated seats, CMP WebView embedding or rollout gates.
+open online/social, voice, authenticated seats, CMP native GameHost embedding or rollout gates.
 
 [ADR-0036](docs/adr/0036-isolated-durable-session-validation.md) authorizes the
 bounded #54 isolated session/PostgreSQL → HTTP → account-state UI sequence.

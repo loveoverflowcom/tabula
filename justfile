@@ -173,10 +173,8 @@ web-local-build:
     cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release
     cargo xtask stage-local-play
 
-# The first-party game bundle the Android and iOS apps package (ADR-0033): the same /play/local/
-# document plus a registry-derived game list, in target/tabula-mobile-game.
+# Retired by ADR-0043: the command reports the missing native adapter, without producing a web fallback.
 mobile-game:
-    cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release
     cargo xtask stage-mobile-game
 
 web-local-serve port="8000": web-local-build

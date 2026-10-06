@@ -4,26 +4,16 @@ package com.loveoverflow.tabula.mobile
 
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.compose.runtime.DisposableEffect
-import com.loveoverflow.tabula.mobile.host.BundlePaths
-import com.loveoverflow.tabula.mobile.host.BundledGame
-import com.loveoverflow.tabula.mobile.host.GameBundle
-import com.loveoverflow.tabula.mobile.host.WKWebViewGameHost
 import com.loveoverflow.tabula.mobile.voice.DevVoiceGrantSource
 import com.loveoverflow.tabula.mobile.voice.UnavailableVoiceGrantSource
 import com.loveoverflow.tabula.mobile.voice.VoiceClient
 import com.loveoverflow.tabula.mobile.voice.VoiceClock
 import com.loveoverflow.tabula.mobile.voice.VoiceController
 import kotlinx.cinterop.ExperimentalForeignApi
-import platform.Foundation.NSBundle
-import platform.Foundation.NSData
 import platform.Foundation.NSDate
 import platform.Foundation.timeIntervalSince1970
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
-import platform.Foundation.NSString
-import platform.Foundation.NSUTF8StringEncoding
-import platform.Foundation.dataWithContentsOfFile
-import platform.Foundation.stringWithContentsOfFile
 import platform.UIKit.UIViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIApplicationState
@@ -35,7 +25,6 @@ import platform.UIKit.UIApplicationDidEnterBackgroundNotification
  * no production grant source, SDK object, microphone request or WebView voice route is fabricated.
  */
 fun TabulaViewController(voiceClient: VoiceClient, developmentGrantText: String?): UIViewController {
-    val games = packagedGames()
     val clock = VoiceClock { NSDate().timeIntervalSince1970.toLong() }
     val grants = developmentGrantText?.let { DevVoiceGrantSource.parse(it, clock.epochSeconds()) }
         ?: UnavailableVoiceGrantSource
@@ -61,15 +50,8 @@ fun TabulaViewController(voiceClient: VoiceClient, developmentGrantText: String?
                 voice.close()
             }
         }
-        TabulaApp(gameHost = WKWebViewGameHost(games), games = games, voice = voice, voiceScope = DevVoiceGrantSource.SCOPE)
+        // ADR-0043: no native adapter exists yet. The empty catalog and default unavailable
+        // host keep the shell usable without selecting a web gameplay fallback.
+        TabulaApp(voice = voice, voiceScope = DevVoiceGrantSource.SCOPE)
     }
-}
-
-/** The games the Xcode build copied into the app bundle; none if absent, oversized or invalid. */
-private fun packagedGames(): List<BundledGame> {
-    val path = "${NSBundle.mainBundle.resourcePath}/${BundlePaths.ROOT}/${BundlePaths.MANIFEST}"
-    val data = NSData.dataWithContentsOfFile(path) ?: return emptyList()
-    if (data.length > GameBundle.MANIFEST_LIMIT_BYTES.toULong()) return emptyList()
-    val text = NSString.stringWithContentsOfFile(path, NSUTF8StringEncoding, null) ?: return emptyList()
-    return GameBundle.parse(text) ?: emptyList()
 }

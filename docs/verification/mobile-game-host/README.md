@@ -1,5 +1,8 @@
 # Mobile `GameHost` evidence ledger (ADR-0033)
 
+> Historical ADR-0033 WebView evidence. [ADR-0043](../../adr/0043-native-mobile-gamehost.md) retires this mobile gameplay direction and packaging; the native-only source spike/current checks are in [the new ledger](../mobile-native-host/README.md). None of the results below establish native Android/iOS gameplay.
+
+
 Date: 2026-10-04. Baseline: `develop @ a871e4a` (PR #64, the CMP foundation, merged).
 Scope: a WebView `GameHost` for the **one first-party packaged game** (the ADR-0030 local document), a
 typed bridge for lifecycle, launch preferences and `keep-awake`, and the shared `GameSession`. It is an
