@@ -1,0 +1,26 @@
+{
+  "version": "t-portal-lavender-v2",
+  "reference": "Owner-selected lavender logo board attached on 2026-10-06. The four brand values use its written swatch labels, not the noisy raster pixels.",
+  "brand": {
+    "brandInk": "#5E4B8B",
+    "brandLavender": "#B9A7F3",
+    "brandPrimary": "#7C63ED",
+    "brandSurface": "#EBE6F7"
+  },
+  "supporting": {
+    "surfaceDark": "#473D66",
+    "onDark": "#F7F4FF",
+    "surfaceCard": "#E2DAFA",
+    "surfaceCardHigh": "#F7F4FF",
+    "text": "#473D66"
+  },
+  "roles": {
+    "markOnLight": "brandPrimary",
+    "markOnDark": "brandLavender",
+    "wordmarkOnDark": "onDark",
+    "bodyOnLight": "text",
+    "buttonFill": "brandInk",
+    "buttonLabel": "onDark"
+  },
+  "note": "Supporting dark/card/text values are explicitly regularized presentation neutrals. This is a brand handoff, not a replacement for the application semantic theme pipeline."
+}
