@@ -12,7 +12,7 @@ commands (total 45):
   4: rect [origin=(0.000, -64.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=3.000 color=#b07000ff] layer=overlay(20) z=0
   5: rect [origin=(31.200, -32.800) size=(19.200, 19.200)] radii=uniform(9.600) fill=none border=[width=3.000 color=#007044ff] layer=overlay(20) z=8
   6: text "1" at=(40.800, -31.200) style=LabelSm align=Center max_width=19.200 color=#1e1c21ff layer=overlay(20) z=9
-  7: rect [origin=(0.000, -64.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=3.000 color=#5634beff] layer=overlay(20) z=20
+  7: rect [origin=(0.000, -64.000) size=(64.000, 64.000)] radii=uniform(2.000) fill=none border=[width=3.000 color=#573b83ff] layer=overlay(20) z=20
   8: push-transform matrix=[1.000, 0.000, 0.000, 1.000, -268.000, -288.000] layer=hud(30) z=0
   9: rect [origin=(0.000, 0.000) size=(800.000, 64.000)] radii=uniform(0.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
   10: rect [origin=(600.000, 72.000) size=(192.000, 136.000)] radii=uniform(16.000) fill=solid(#f4edf7ff) border=none layer=hud(30) z=0
@@ -33,7 +33,7 @@ commands (total 45):
   25: text "R" at=(232.000, 541.000) style=TitleLg align=Center max_width=144.000 color=#1e1c21ff layer=hud(30) z=0
   26: text "Rotate" at=(232.000, 571.000) style=LabelMd align=Center max_width=144.000 color=#1e1c21ff layer=hud(30) z=0
   27: pop-opacity layer=hud(30) z=0
-  28: rect [origin=(320.000, 536.000) size=(160.000, 56.000)] radii=uniform(28.000) fill=solid(#5634beff) border=none layer=hud(30) z=0
+  28: rect [origin=(320.000, 536.000) size=(160.000, 56.000)] radii=uniform(28.000) fill=solid(#573b83ff) border=none layer=hud(30) z=0
   29: text "Claim follower" at=(400.000, 554.000) style=LabelLg align=Center max_width=144.000 color=#ffffffff layer=hud(30) z=0
   30: rect [origin=(488.000, 536.000) size=(160.000, 56.000)] radii=uniform(28.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
   31: text "Pass" at=(568.000, 554.000) style=LabelLg align=Center max_width=144.000 color=#1e1c21ff layer=hud(30) z=0

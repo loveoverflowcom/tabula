@@ -108,9 +108,9 @@ commands (total 144):
   100: rect [origin=(335.077, 333.817) size=(8.505, 8.505)] radii=uniform(4.253) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=61
   101: rect [origin=(335.077, 295.157) size=(8.505, 8.505)] radii=uniform(4.253) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=61
   102: rect [origin=(320.000, 357.400) size=(38.660, 38.660)] radii=uniform(0.000) fill=none border=[width=7.000 color=#141217ff] layer=overlay(20) z=99
-  103: rect [origin=(320.000, 357.400) size=(38.660, 38.660)] radii=uniform(0.000) fill=none border=[width=3.000 color=#cfbcffff] layer=overlay(20) z=100
+  103: rect [origin=(320.000, 357.400) size=(38.660, 38.660)] radii=uniform(0.000) fill=none border=[width=3.000 color=#b093ddff] layer=overlay(20) z=100
   104: rect [origin=(320.000, 280.080) size=(38.660, 38.660)] radii=uniform(0.000) fill=none border=[width=7.000 color=#141217ff] layer=overlay(20) z=149
-  105: rect [origin=(320.000, 280.080) size=(38.660, 38.660)] radii=uniform(0.000) fill=none border=[width=3.000 color=#cfbcffff] layer=overlay(20) z=150
+  105: rect [origin=(320.000, 280.080) size=(38.660, 38.660)] radii=uniform(0.000) fill=none border=[width=3.000 color=#b093ddff] layer=overlay(20) z=150
   106: text "Chess" at=(16.000, 16.000) style=DisplaySm align=Start max_width=608.000 color=#f2ebdbff layer=hud(30) z=0
   107: text "a" at=(180.824, 435.720) style=LabelSm align=Start max_width=38.660 color=#f7f1e4ff layer=hud(30) z=0
   108: text "8" at=(151.360, 138.971) style=LabelSm align=Start max_width=18.000 color=#f7f1e4ff layer=hud(30) z=0
