@@ -1,0 +1,629 @@
+{
+  "inspected_at_utc": "2026-10-06T12:18:58.820058+00:00",
+  "original_pngs_unchanged": true,
+  "method": "Original downloaded PNGs decoded with Pillow for integrity/dimensions, then visually inspected with view_image; no crops, flips, resizes or annotations saved",
+  "scope": "12 selected original frames from source-separated actual browser runs, not a general UI or native/mobile acceptance",
+  "run_id": 37460100042,
+  "harness_commit": "ce07c4f7558a0e3081505817e299e3ebd9067754",
+  "candidate_bounded_checks": {
+    "pass": 41,
+    "fail": 0
+  },
+  "before_bounded_checks": {
+    "pass": 20,
+    "fail": 0
+  },
+  "zip_sha256": {
+    "candidate": "b4ae554d261c1a0b9efc071eb1a1e073088f4ffbdc44766a1afd1084748dcfc5",
+    "before": "875c284b2ac7727536d6767ae401818a8a75def0d8c6b8c1c6609306b1337db4"
+  },
+  "pixel_findings": [
+    "The T Portal mark and tabula wordmark are visible and unobstructed in four selected 1440px shell themes, the 390px shell header/menu, the 320px English 200% drawer, the standalone setup header and the selected light/high-contrast-dark genuine loaders",
+    "Before source has its earlier square T brand in the sidebar and no brand lockup in the selected genuine loader",
+    "No visible account data, credentials, blank/error pages or inverted screenshots in the 12 selected originals",
+    "The 320px English 200% image covers logo containment only. Its long navigation labels are visibly tight; no general drawer typography or all-page layout acceptance is claimed"
+  ],
+  "limitations": [
+    "Loader DOM metrics were measured before the screenshot paint; the light loader has early pre-stylesheet geometry/fills in the unmodified provenance. Do not use those values as the PNG geometry/colors. The original rendered PNG visibly has the styled lavender/purple logo; high-contrast-dark has a white logo on black",
+    "An earlier run37458094731 captured some requested loader themes before bootstrap applied them; those frames are not substituted or labeled as the corrected four-theme run. The capture-only read wait was corrected and the unchanged before/candidate sources were rebuilt for run37460100042",
+    "Screenshots were captured in desktop Chromium at CSS-pixel viewports, not physical mobile devices or native OS windows",
+    "No native window-icon/Dock/titlebar, CMP embedding, touch, real accounts, online provider, full gameplay or frame-pacing acceptance was run"
+  ],
+  "selected": [
+    {
+      "snapshot": "before",
+      "source_commit": "5e66202cc6b7bb64ec96dea15d8f10b58f53744f",
+      "source_tree": "32705eb93a814297df5505d12b50bbc6b74ee97e",
+      "file": "before-desktop-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:03:29.705276+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 170338,
+      "sha256": "81752c003881b72daecae7d21f1fdb65e55d89fb482b0056e316b0645a96aabd",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": ".sidebar > .brand .brand-lockup"
+      }
+    },
+    {
+      "snapshot": "before",
+      "source_commit": "5e66202cc6b7bb64ec96dea15d8f10b58f53744f",
+      "source_tree": "32705eb93a814297df5505d12b50bbc6b74ee97e",
+      "file": "before-standalone-hc-dark-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:03:45.661760+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 19365,
+      "sha256": "1cba3d460d7452d41adafa90ad6746c93ff333d74c1c3290d1e2e54966fe4db1",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "#loader .runtime-brand .brand-lockup"
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-desktop-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:40.313644+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 169168,
+      "sha256": "31846f619b22ad13f4d24d0bac35b9aba6affc748f00ec1e284a1dbffc536052",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-desktop-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:46.461376+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 174730,
+      "sha256": "0f4ca1aabcb9f05552bb17d1c05d80ca4a153739b67fede1295aea85d8975563",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-desktop-hc-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:51.707931+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 160906,
+      "sha256": "2751f9b1cf8edbdd70ebf15c66a71b42f35fc3156f796601ecfa31a9e91d62e9",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-desktop-hc-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:56.855363+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 166877,
+      "sha256": "3a37e8a520c80ac9014cb49eba1f23d1d60c1afd6f5c7b56c5e3c19e9c438b48",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-mobile-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:47.377954+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 65948,
+      "sha256": "b0641b2eebf8256b1b583d5ff66f04bfccd45b2ca302297ec5c418c3d81451df",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".topbar__brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 15.5,
+            "width": 88.15625,
+            "height": 32,
+            "right": 106.15625,
+            "bottom": 47.5
+          },
+          "link": {
+            "x": 18,
+            "y": 9.5,
+            "width": 88.15625,
+            "height": 44,
+            "right": 106.15625,
+            "bottom": 53.5
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-mobile-hc-light-drawer.png",
+      "label": "actual opened mobile menu brand",
+      "captured_at_utc": "2026-10-06T12:04:52.744906+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 26809,
+      "sha256": "882fa57d37140c879395bdb381b2b5bf95a1c156a201f98d4d509a2c667104ca",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 26,
+            "width": 110.1875,
+            "height": 39.984375,
+            "right": 128.1875,
+            "bottom": 65.984375
+          },
+          "link": {
+            "x": 18,
+            "y": 24,
+            "width": 110.1875,
+            "height": 44,
+            "right": 128.1875,
+            "bottom": 68
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 844,
+            "right": 320,
+            "bottom": 844
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-320-en-font200-drawer.png",
+      "label": "actual320 EN200% drawer with independently established32px profile",
+      "captured_at_utc": "2026-10-06T12:05:02.345131+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "png_pixels": [
+        320,
+        640
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "en",
+      "bytes": 16244,
+      "sha256": "836445f5157cf8957e11b9f55c2fba08d4a328c2c852c64b2eb52e449969c342",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 36,
+            "y": 58.609375,
+            "width": 184,
+            "height": 66.78125,
+            "right": 220,
+            "bottom": 125.390625
+          },
+          "link": {
+            "x": 36,
+            "y": 48,
+            "width": 184,
+            "height": 88,
+            "right": 220,
+            "bottom": 136
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 256,
+            "height": 640,
+            "right": 256,
+            "bottom": 640
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        },
+        "drawer": {
+          "scroll_width": 256,
+          "client_width": 256,
+          "focus_inside": true,
+          "open": true
+        },
+        "initial_font_px": 32
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-standalone-light-header.png",
+      "label": "actual staged local Chess setup header",
+      "captured_at_utc": "2026-10-06T12:04:42.694802+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 422177,
+      "sha256": "262803987e4b8015bf08db96d0f5afc39f752c5a910e75f58854e0ae353d21dc",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "header.shared-header .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "link": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-standalone-light-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:04:43.164622+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 19510,
+      "sha256": "a2f63a94751708121e2b1a84403e5d8927ac6168c81825c9528a19b72b22f72c",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 8,
+            "y": 162,
+            "width": 705,
+            "height": 256,
+            "right": 713,
+            "bottom": 418
+          },
+          "link": {
+            "x": 8,
+            "y": 162,
+            "width": 1184,
+            "height": 260,
+            "right": 1192,
+            "bottom": 422
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "snapshot": "candidate",
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+      "file": "candidate-standalone-hc-dark-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:05:00.165922+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 20407,
+      "sha256": "282b48131090eaebb675cce6c00f8fb5a3da701c244791cbb3d15eed266d9111",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "link": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    }
+  ]
+}

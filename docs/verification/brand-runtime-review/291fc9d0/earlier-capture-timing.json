@@ -1,0 +1,67 @@
+{
+  "limitation": "Early loader theme timing only; not a production defect or four-theme acceptance. Final selected originals are from corrected run37460100042 on unchanged sources.",
+  "earlier_run": {
+    "before": {
+      "source_commit": "5e66202cc6b7bb64ec96dea15d8f10b58f53744f",
+      "harness_commit": "5cda3b91a6af585ad14dc56f327c60e102fb51cd",
+      "run_id": "37458094731",
+      "loader_frames": [
+        {
+          "file": "before-standalone-light-loader.png",
+          "actual_scheme": "light",
+          "captured_at_utc": "2026-10-06T11:49:31.403670+00:00",
+          "sha256": "300c835b308fc4c2d71001710c3376be64529c0c3120cbfaaeff582d016131e0"
+        },
+        {
+          "file": "before-standalone-dark-loader.png",
+          "actual_scheme": "light",
+          "captured_at_utc": "2026-10-06T11:49:34.608708+00:00",
+          "sha256": "300c835b308fc4c2d71001710c3376be64529c0c3120cbfaaeff582d016131e0"
+        },
+        {
+          "file": "before-standalone-hc-light-loader.png",
+          "actual_scheme": "light",
+          "captured_at_utc": "2026-10-06T11:49:37.875282+00:00",
+          "sha256": "300c835b308fc4c2d71001710c3376be64529c0c3120cbfaaeff582d016131e0"
+        },
+        {
+          "file": "before-standalone-hc-dark-loader.png",
+          "actual_scheme": "light",
+          "captured_at_utc": "2026-10-06T11:49:41.278853+00:00",
+          "sha256": "300c835b308fc4c2d71001710c3376be64529c0c3120cbfaaeff582d016131e0"
+        }
+      ]
+    },
+    "candidate": {
+      "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+      "harness_commit": "5cda3b91a6af585ad14dc56f327c60e102fb51cd",
+      "run_id": "37458094731",
+      "loader_frames": [
+        {
+          "file": "candidate-standalone-light-loader.png",
+          "actual_scheme": "light",
+          "captured_at_utc": "2026-10-06T11:53:01.743703+00:00",
+          "sha256": "a2f63a94751708121e2b1a84403e5d8927ac6168c81825c9528a19b72b22f72c"
+        },
+        {
+          "file": "candidate-standalone-dark-loader.png",
+          "actual_scheme": "light",
+          "captured_at_utc": "2026-10-06T11:53:05.963898+00:00",
+          "sha256": "a2f63a94751708121e2b1a84403e5d8927ac6168c81825c9528a19b72b22f72c"
+        },
+        {
+          "file": "candidate-standalone-hc-light-loader.png",
+          "actual_scheme": "light",
+          "captured_at_utc": "2026-10-06T11:53:11.606445+00:00",
+          "sha256": "8dfb1d1968fcc23ce332867ee844a7e4ae71747e264fd391573a7873d33064e9"
+        },
+        {
+          "file": "candidate-standalone-hc-dark-loader.png",
+          "actual_scheme": "light",
+          "captured_at_utc": "2026-10-06T11:53:15.630404+00:00",
+          "sha256": "a2f63a94751708121e2b1a84403e5d8927ac6168c81825c9528a19b72b22f72c"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,934 @@
+{
+  "snapshot": "before",
+  "source_commit": "5e66202cc6b7bb64ec96dea15d8f10b58f53744f",
+  "source_tree": "32705eb93a814297df5505d12b50bbc6b74ee97e",
+  "harness_commit": "ce07c4f7558a0e3081505817e299e3ebd9067754",
+  "run_id": "37460100042",
+  "started_at_utc": "2026-10-06T12:03:26.984622+00:00",
+  "playwright": "1.62.0",
+  "fixtures": "public anonymous shell and disposable untimed local Chess; no actual accounts or game credentials",
+  "scope": "source-separated actual Leptos and compiled Macroquad/WASM, desktop browser viewports only; native/mobile-device/CMP pixels NOT_RUN",
+  "builds": {
+    "shell": [
+      {
+        "path": "app-732f3c719ae22615.css",
+        "bytes": 31560,
+        "sha256": "9225125367a313a01704720b42df34a05c8fb24484f45c89dc0e2edd8f08e393"
+      },
+      {
+        "path": "index.html",
+        "bytes": 1647,
+        "sha256": "12614f843fd1c348515b4ce4eb66fb42ff0b6402b9a11b825ac645e4f286f6cc"
+      },
+      {
+        "path": "tabula-web-5370facd944d71f8.js",
+        "bytes": 57928,
+        "sha256": "a6782776378ecc9ec44a50e70a9ac75564a5f8beaad5bc4ea8dbcb26f7e4dd87"
+      },
+      {
+        "path": "tabula-web-5370facd944d71f8_bg.wasm",
+        "bytes": 737400,
+        "sha256": "0a1e52ac980307b574afcff0381b6d990ba845cb89170ccd356e9a3cb8e48314"
+      },
+      {
+        "path": "tokens-bc39b86a977675d7.css",
+        "bytes": 53955,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      }
+    ],
+    "chess": [
+      {
+        "path": "assets/LICENSE-OpenSans-Apache-2.0.txt",
+        "bytes": 11358,
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "path": "assets/NotoSerif-Bold.ttf",
+        "bytes": 141544,
+        "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+      },
+      {
+        "path": "assets/OFL-Noto.txt",
+        "bytes": 5208,
+        "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+      },
+      {
+        "path": "assets/OFL-OpenSans.txt",
+        "bytes": 1031,
+        "sha256": "94d4b78643f99d7cfa872145b38da578299f401405ca5cba66a5c95bf13933b0"
+      },
+      {
+        "path": "assets/OpenSans-Regular.ttf",
+        "bytes": 40460,
+        "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+      },
+      {
+        "path": "assets/OpenSans-Semibold.ttf",
+        "bytes": 41628,
+        "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+      },
+      {
+        "path": "assets/chess-cover-provenance.md",
+        "bytes": 3725,
+        "sha256": "3e9ab2a3df36234d14d6bfa68fb885f1722afc85e09e604f0c947c9af2bf4eab"
+      },
+      {
+        "path": "assets/chess-cover-small.png",
+        "bytes": 168293,
+        "sha256": "fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b"
+      },
+      {
+        "path": "assets/chess-cover.png",
+        "bytes": 1958467,
+        "sha256": "054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233"
+      },
+      {
+        "path": "bootstrap.js",
+        "bytes": 32434,
+        "sha256": "b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda"
+      },
+      {
+        "path": "direct-transport.js",
+        "bytes": 19874,
+        "sha256": "d199054680c7d01908793615fab818b508b0c1936aa41ee87ff36ef10b35c5e6"
+      },
+      {
+        "path": "host-bridge.js",
+        "bytes": 9256,
+        "sha256": "f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d"
+      },
+      {
+        "path": "index.html",
+        "bytes": 6930,
+        "sha256": "3caa9222644b32ac1c617d5878032b79e287594168ac1ca0e3547aaf2568ae07"
+      },
+      {
+        "path": "launch-options.js",
+        "bytes": 9817,
+        "sha256": "0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795"
+      },
+      {
+        "path": "mq_js_bundle.js",
+        "bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "play.html",
+        "bytes": 5460,
+        "sha256": "31332ef3e6c8d3e7e4e8300f8ebf11c37f53a1aef7de8ee33c865ba249a397ad"
+      },
+      {
+        "path": "resource-manifest.js",
+        "bytes": 1987,
+        "sha256": "23bc43501f89c1f66148e2158e455a154a085696ebd768d8ee7bec97f9e91f54"
+      },
+      {
+        "path": "resources/054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233.png",
+        "bytes": 1958467,
+        "sha256": "054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233"
+      },
+      {
+        "path": "resources/0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795.js",
+        "bytes": 9817,
+        "sha256": "0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795"
+      },
+      {
+        "path": "resources/091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84.ttf",
+        "bytes": 40460,
+        "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+      },
+      {
+        "path": "resources/1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849.js",
+        "bytes": 6751,
+        "sha256": "1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849"
+      },
+      {
+        "path": "resources/22a8b0248ff93b107e24331356abaa48efa6b89cffb92ca6ae9f1ec78f7ba0d0.css",
+        "bytes": 13863,
+        "sha256": "22a8b0248ff93b107e24331356abaa48efa6b89cffb92ca6ae9f1ec78f7ba0d0"
+      },
+      {
+        "path": "resources/23bc43501f89c1f66148e2158e455a154a085696ebd768d8ee7bec97f9e91f54.js",
+        "bytes": 1987,
+        "sha256": "23bc43501f89c1f66148e2158e455a154a085696ebd768d8ee7bec97f9e91f54"
+      },
+      {
+        "path": "resources/28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e.css",
+        "bytes": 53955,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      },
+      {
+        "path": "resources/2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9.wasm",
+        "bytes": 926379,
+        "sha256": "2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9"
+      },
+      {
+        "path": "resources/48514213be0f88c77ea3025e5994b29c265edd0fbdbf3d900e06b14927c7f8dc.png",
+        "bytes": 44320,
+        "sha256": "48514213be0f88c77ea3025e5994b29c265edd0fbdbf3d900e06b14927c7f8dc"
+      },
+      {
+        "path": "resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js",
+        "bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "resources/82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a.ttf",
+        "bytes": 141544,
+        "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+      },
+      {
+        "path": "resources/b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27.js",
+        "bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "resources/b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda.js",
+        "bytes": 32434,
+        "sha256": "b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda"
+      },
+      {
+        "path": "resources/d199054680c7d01908793615fab818b508b0c1936aa41ee87ff36ef10b35c5e6.js",
+        "bytes": 19874,
+        "sha256": "d199054680c7d01908793615fab818b508b0c1936aa41ee87ff36ef10b35c5e6"
+      },
+      {
+        "path": "resources/d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366.ttf",
+        "bytes": 41628,
+        "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+      },
+      {
+        "path": "resources/e7b5e385f0a040fed4bba33309b706fed5a90969b1c4086678743c5d6379baab.png",
+        "bytes": 21488,
+        "sha256": "e7b5e385f0a040fed4bba33309b706fed5a90969b1c4086678743c5d6379baab"
+      },
+      {
+        "path": "resources/ee76f8c7fd12c27464984279a650af97b7aacdc6113899def8715ac7393f0504.png",
+        "bytes": 46139,
+        "sha256": "ee76f8c7fd12c27464984279a650af97b7aacdc6113899def8715ac7393f0504"
+      },
+      {
+        "path": "resources/f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d.js",
+        "bytes": 9256,
+        "sha256": "f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d"
+      },
+      {
+        "path": "resources/fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b.png",
+        "bytes": 168293,
+        "sha256": "fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b"
+      },
+      {
+        "path": "resources.js",
+        "bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "setup.js",
+        "bytes": 6751,
+        "sha256": "1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849"
+      },
+      {
+        "path": "standalone.css",
+        "bytes": 13739,
+        "sha256": "cf23833140455cbc9bf2cce40fc739495d7075d0fe74da8a593f1ac71f7451bf"
+      },
+      {
+        "path": "tabula-game-client.wasm",
+        "bytes": 926379,
+        "sha256": "2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9"
+      },
+      {
+        "path": "tokens.css",
+        "bytes": 53955,
+        "sha256": "28fc4d68f4f6a88c597a6b4a1ee676ce7d0552f0c15e5338e5e16f3a937c0e0e"
+      }
+    ]
+  },
+  "captures": [
+    {
+      "file": "before-desktop-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:03:29.705276+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 170338,
+      "sha256": "81752c003881b72daecae7d21f1fdb65e55d89fb482b0056e316b0645a96aabd",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": ".sidebar > .brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-mobile-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:03:30.534025+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 66431,
+      "sha256": "f29393c5bdb35fb2d74778c50ffa0b4ec0c35810bfc5ecc13a35a5d798a3d314",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": ".topbar__brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-mobile-light-drawer.png",
+      "label": "actual opened mobile menu brand",
+      "captured_at_utc": "2026-10-06T12:03:30.648208+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 28764,
+      "sha256": "c352427b4cc0484c85ecbd3bd1f34808673777fb049b46d05982628c00106193",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "dialog.shell-menu .brand-lockup"
+      }
+    },
+    {
+      "file": "before-standalone-light-header.png",
+      "label": "actual staged local Chess setup header",
+      "captured_at_utc": "2026-10-06T12:03:31.667841+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 422973,
+      "sha256": "b521dc7661af335ce73bcc9f2f5f5fb3670e12a5b1421ece9e30288954d6cc84",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "header.shared-header .brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-standalone-light-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:03:31.995374+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 18349,
+      "sha256": "300c835b308fc4c2d71001710c3376be64529c0c3120cbfaaeff582d016131e0",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "#loader .runtime-brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-desktop-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:03:33.566702+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 175923,
+      "sha256": "0e27d1f5bd05827c4e89f34a731223f200f5323c226440a3ce2422d962facd1d",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": ".sidebar > .brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-mobile-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:03:34.335030+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 67260,
+      "sha256": "145e4fcc0af97bf8f0072209baa414958f8d58e00270dc3c49504e1d41478c16",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": ".topbar__brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-mobile-dark-drawer.png",
+      "label": "actual opened mobile menu brand",
+      "captured_at_utc": "2026-10-06T12:03:34.405958+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 29091,
+      "sha256": "4bcad86628a4bbdb2b936364008fc4ba7d70362a3a1560fcdf648662b14fe279",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "dialog.shell-menu .brand-lockup"
+      }
+    },
+    {
+      "file": "before-standalone-dark-header.png",
+      "label": "actual staged local Chess setup header",
+      "captured_at_utc": "2026-10-06T12:03:35.340950+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 420013,
+      "sha256": "003de20a95cf97cc23ba6a6a58237c646c271048b2483ade5828974311dda2c4",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "header.shared-header .brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-standalone-dark-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:03:36.559080+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 21061,
+      "sha256": "7f5654d6d0e4fc9c10fdcae3e1803c658b1b77fda72267d70fbd2db431e4c805",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "#loader .runtime-brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-desktop-hc-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:03:38.143587+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 162269,
+      "sha256": "ba17205b4d1076139ef978afa981e6757d8b0490cd0a96f2c4f142c627e15686",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": ".sidebar > .brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-mobile-hc-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:03:38.964010+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 61410,
+      "sha256": "e64e8c3952af1db21ef7f05fec62a25b6fcde4e41cbede2432510b863ed9109f",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": ".topbar__brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-mobile-hc-light-drawer.png",
+      "label": "actual opened mobile menu brand",
+      "captured_at_utc": "2026-10-06T12:03:39.081777+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 27987,
+      "sha256": "9b8f4460f91588785baecf5cf5e0684ca10413964ce50ceff1de90b9e8138dc4",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "dialog.shell-menu .brand-lockup"
+      }
+    },
+    {
+      "file": "before-standalone-hc-light-header.png",
+      "label": "actual staged local Chess setup header",
+      "captured_at_utc": "2026-10-06T12:03:40.060005+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 417765,
+      "sha256": "ae4b7286a7d6e2a0c836c7dd098c0c357a5508adec30409d7c521348eff21ad8",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "header.shared-header .brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-standalone-hc-light-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:03:41.197754+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 18930,
+      "sha256": "052473d967d5d27cedaa7173073f587881de7acb4ab1af5086a99ad358990481",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "#loader .runtime-brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-desktop-hc-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:03:42.787066+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 168163,
+      "sha256": "97d05c1e1f427f3bca5071311b0c5514625ecdf15dc6876c515b4372e6b43687",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": ".sidebar > .brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-mobile-hc-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:03:43.557076+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 62237,
+      "sha256": "0d10bfeaa42629771bf7c58e6d79e57f4a900d0e806aaeef27848b996f5d04d5",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": ".topbar__brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-mobile-hc-dark-drawer.png",
+      "label": "actual opened mobile menu brand",
+      "captured_at_utc": "2026-10-06T12:03:43.637236+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 28327,
+      "sha256": "b8caf0ee6cf843ab871261b575b2b39c89aa0493a4256bd942933b1ee07a5b30",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "dialog.shell-menu .brand-lockup"
+      }
+    },
+    {
+      "file": "before-standalone-hc-dark-header.png",
+      "label": "actual staged local Chess setup header",
+      "captured_at_utc": "2026-10-06T12:03:44.546818+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 415454,
+      "sha256": "8822f4fe83163614c02a945dc38351917334049122c74db24d4608681ae94887",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "header.shared-header .brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-standalone-hc-dark-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:03:45.661760+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 19365,
+      "sha256": "1cba3d460d7452d41adafa90ad6746c93ff333d74c1c3290d1e2e54966fe4db1",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "#loader .runtime-brand .brand-lockup"
+      }
+    },
+    {
+      "file": "before-320-en-font200-drawer.png",
+      "label": "actual320 EN200% drawer with independently established32px profile",
+      "captured_at_utc": "2026-10-06T12:03:47.174794+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "png_pixels": [
+        320,
+        640
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "en",
+      "bytes": 17727,
+      "sha256": "6d83cff7dde56c125798c8cca29e66a22dd44c2418f2c14cb9f085ef35b4a79c",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 0,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "drawer": {
+          "scroll_width": 256,
+          "client_width": 256,
+          "focus_inside": true,
+          "open": true
+        },
+        "initial_font_px": 32
+      }
+    }
+  ],
+  "checks": [
+    {
+      "name": "desktop-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "light",
+        "actual": "light"
+      }
+    },
+    {
+      "name": "mobile-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "light",
+        "actual": "light"
+      }
+    },
+    {
+      "name": "standalone-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "actual": "light"
+      }
+    },
+    {
+      "name": "standalone-light loader actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "light",
+        "actual": "light"
+      }
+    },
+    {
+      "name": "standalone-light actual WASM completed",
+      "status": "PASS",
+      "details": {
+        "game_wasm": {
+          "path": "tabula-game-client.wasm",
+          "bytes": 926379,
+          "sha256": "2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9"
+        }
+      }
+    },
+    {
+      "name": "desktop-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "dark",
+        "actual": "dark"
+      }
+    },
+    {
+      "name": "mobile-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "dark",
+        "actual": "dark"
+      }
+    },
+    {
+      "name": "standalone-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "actual": "dark"
+      }
+    },
+    {
+      "name": "standalone-dark loader actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "dark",
+        "actual": "dark"
+      }
+    },
+    {
+      "name": "standalone-dark actual WASM completed",
+      "status": "PASS",
+      "details": {
+        "game_wasm": {
+          "path": "tabula-game-client.wasm",
+          "bytes": 926379,
+          "sha256": "2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9"
+        }
+      }
+    },
+    {
+      "name": "desktop-hc-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-light",
+        "actual": "hc-light"
+      }
+    },
+    {
+      "name": "mobile-hc-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-light",
+        "actual": "hc-light"
+      }
+    },
+    {
+      "name": "standalone-hc-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "actual": "hc-light"
+      }
+    },
+    {
+      "name": "standalone-hc-light loader actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-light",
+        "actual": "hc-light"
+      }
+    },
+    {
+      "name": "standalone-hc-light actual WASM completed",
+      "status": "PASS",
+      "details": {
+        "game_wasm": {
+          "path": "tabula-game-client.wasm",
+          "bytes": 926379,
+          "sha256": "2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9"
+        }
+      }
+    },
+    {
+      "name": "desktop-hc-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-dark",
+        "actual": "hc-dark"
+      }
+    },
+    {
+      "name": "mobile-hc-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-dark",
+        "actual": "hc-dark"
+      }
+    },
+    {
+      "name": "standalone-hc-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "actual": "hc-dark"
+      }
+    },
+    {
+      "name": "standalone-hc-dark loader actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-dark",
+        "actual": "hc-dark"
+      }
+    },
+    {
+      "name": "standalone-hc-dark actual WASM completed",
+      "status": "PASS",
+      "details": {
+        "game_wasm": {
+          "path": "tabula-game-client.wasm",
+          "bytes": 926379,
+          "sha256": "2972c09e3754875c621371d36a5fa7abb29a9e235d5b9b8e5c021a2c100031c9"
+        }
+      }
+    }
+  ],
+  "loader_timing": "real compiled WASM download temporarily throttled by disposable browser CDP160KiB/s/100ms to observe genuine loader, then restored; no intercepted/replaced replies or UI state injected",
+  "browser_version": "151.0.7922.34",
+  "status": "PASS",
+  "finished_at_utc": "2026-10-06T12:03:47.598244+00:00"
+}

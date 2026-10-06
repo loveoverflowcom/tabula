@@ -1,0 +1,2314 @@
+{
+  "snapshot": "candidate",
+  "source_commit": "291fc9d067999aa44f5425f7ab7a64d9378a55ff",
+  "source_tree": "246b5e27843728bf198da60a5395b7e5a488a66b",
+  "harness_commit": "ce07c4f7558a0e3081505817e299e3ebd9067754",
+  "run_id": "37460100042",
+  "started_at_utc": "2026-10-06T12:04:36.100039+00:00",
+  "playwright": "1.62.0",
+  "fixtures": "public anonymous shell and disposable untimed local Chess; no actual accounts or game credentials",
+  "scope": "source-separated actual Leptos and compiled Macroquad/WASM, desktop browser viewports only; native/mobile-device/CMP pixels NOT_RUN",
+  "builds": {
+    "shell": [
+      {
+        "path": "app-8309649d0a46db2f.css",
+        "bytes": 31522,
+        "sha256": "99a831d47fd2d2846b180f49b4960df51ff2e582d52c49a63cd1d09ad2f58dc6"
+      },
+      {
+        "path": "brand/app-icon-180.png",
+        "bytes": 1624,
+        "sha256": "574a330de8ef50e4792400df3fa0114d85cdc78bce9d59f5107a5717e0ed2518"
+      },
+      {
+        "path": "brand/app-icon-192.png",
+        "bytes": 1737,
+        "sha256": "cfdba5dee2f1bea7648d6b922ce8df2a1d5c6a37b4065a4ef59951b7d85af453"
+      },
+      {
+        "path": "brand/app-icon-512.png",
+        "bytes": 5042,
+        "sha256": "520073cfbb0adbfa3c259e46109f71708d7c6bb0840188c0b9789494876326cb"
+      },
+      {
+        "path": "brand/favicon.ico",
+        "bytes": 1407,
+        "sha256": "c07449bbf03777f7b4b2f10d2ec8e11ebfb9329d41953dbc9c5e792312f32c98"
+      },
+      {
+        "path": "brand/favicon.svg",
+        "bytes": 514,
+        "sha256": "bbdce9aa0c0c58d23bd88817c964451bede5bdc37968236006b4f6ee3796627c"
+      },
+      {
+        "path": "brand/manifest.webmanifest",
+        "bytes": 456,
+        "sha256": "77cd133cbcb55e3ee486ff44d57b05d577f43a0b55bb784e0a083c7955232946"
+      },
+      {
+        "path": "brand/mark-16.png",
+        "bytes": 271,
+        "sha256": "a35159718b5f89a778d67d66070737044c253897f054e22cfc780bbc89a98f6f"
+      },
+      {
+        "path": "brand/mark-24.png",
+        "bytes": 358,
+        "sha256": "0f2b2f32fc371a43a3266e07fe13878f03c18f176180140ae5b1a3d0e1b95f76"
+      },
+      {
+        "path": "brand/mark-32.png",
+        "bytes": 426,
+        "sha256": "9b453e2868c5b8fb1bf5847308ed3993e321af722e4116c270e638ef4c76c7b7"
+      },
+      {
+        "path": "brand/mark-48.png",
+        "bytes": 557,
+        "sha256": "dc674d28458a9141e2a331669981d4e93b5562a55b6be27cef3b431e80b90eeb"
+      },
+      {
+        "path": "brand/mark-64.png",
+        "bytes": 688,
+        "sha256": "fa1b12a04b3cae0e6e590dcc2b4dffdd86b7dd58b3fa007431400641b721fb37"
+      },
+      {
+        "path": "index.html",
+        "bytes": 2007,
+        "sha256": "5ae53623bb32968abbf9991607fb2edcf571aa8c6ee2bf06868ca34b2b654f6d"
+      },
+      {
+        "path": "tabula-web-b2a8dbf8c716307.js",
+        "bytes": 57928,
+        "sha256": "a6782776378ecc9ec44a50e70a9ac75564a5f8beaad5bc4ea8dbcb26f7e4dd87"
+      },
+      {
+        "path": "tabula-web-b2a8dbf8c716307_bg.wasm",
+        "bytes": 739221,
+        "sha256": "65c1bff3fd161ee762982049fb722c771986d29e97ffa61a2240ee7ea346cb95"
+      },
+      {
+        "path": "tokens-edb45c5cdeca1d86.css",
+        "bytes": 54827,
+        "sha256": "09ad0b2ae29367749084f0e7eabae03e96915eb5337832ebd6590d4572872095"
+      }
+    ],
+    "chess": [
+      {
+        "path": "assets/LICENSE-OpenSans-Apache-2.0.txt",
+        "bytes": 11358,
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "path": "assets/NotoSerif-Bold.ttf",
+        "bytes": 141544,
+        "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+      },
+      {
+        "path": "assets/OFL-Noto.txt",
+        "bytes": 5208,
+        "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+      },
+      {
+        "path": "assets/OFL-OpenSans.txt",
+        "bytes": 1031,
+        "sha256": "94d4b78643f99d7cfa872145b38da578299f401405ca5cba66a5c95bf13933b0"
+      },
+      {
+        "path": "assets/OpenSans-Regular.ttf",
+        "bytes": 40460,
+        "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+      },
+      {
+        "path": "assets/OpenSans-Semibold.ttf",
+        "bytes": 41628,
+        "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+      },
+      {
+        "path": "assets/chess-cover-provenance.md",
+        "bytes": 3725,
+        "sha256": "3e9ab2a3df36234d14d6bfa68fb885f1722afc85e09e604f0c947c9af2bf4eab"
+      },
+      {
+        "path": "assets/chess-cover-small.png",
+        "bytes": 168293,
+        "sha256": "fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b"
+      },
+      {
+        "path": "assets/chess-cover.png",
+        "bytes": 1958467,
+        "sha256": "054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233"
+      },
+      {
+        "path": "bootstrap.js",
+        "bytes": 32434,
+        "sha256": "b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda"
+      },
+      {
+        "path": "brand/app-icon-180.png",
+        "bytes": 1624,
+        "sha256": "574a330de8ef50e4792400df3fa0114d85cdc78bce9d59f5107a5717e0ed2518"
+      },
+      {
+        "path": "brand/app-icon-192.png",
+        "bytes": 1737,
+        "sha256": "cfdba5dee2f1bea7648d6b922ce8df2a1d5c6a37b4065a4ef59951b7d85af453"
+      },
+      {
+        "path": "brand/app-icon-512.png",
+        "bytes": 5042,
+        "sha256": "520073cfbb0adbfa3c259e46109f71708d7c6bb0840188c0b9789494876326cb"
+      },
+      {
+        "path": "brand/favicon.ico",
+        "bytes": 1407,
+        "sha256": "c07449bbf03777f7b4b2f10d2ec8e11ebfb9329d41953dbc9c5e792312f32c98"
+      },
+      {
+        "path": "brand/favicon.svg",
+        "bytes": 514,
+        "sha256": "bbdce9aa0c0c58d23bd88817c964451bede5bdc37968236006b4f6ee3796627c"
+      },
+      {
+        "path": "brand/manifest.webmanifest",
+        "bytes": 456,
+        "sha256": "77cd133cbcb55e3ee486ff44d57b05d577f43a0b55bb784e0a083c7955232946"
+      },
+      {
+        "path": "direct-transport.js",
+        "bytes": 19874,
+        "sha256": "d199054680c7d01908793615fab818b508b0c1936aa41ee87ff36ef10b35c5e6"
+      },
+      {
+        "path": "host-bridge.js",
+        "bytes": 9256,
+        "sha256": "f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d"
+      },
+      {
+        "path": "index.html",
+        "bytes": 9744,
+        "sha256": "a4627d3e529930761e1c9e486e33252b0078aeb58f07028b7b15ab5c6f0fb331"
+      },
+      {
+        "path": "launch-options.js",
+        "bytes": 9817,
+        "sha256": "0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795"
+      },
+      {
+        "path": "mq_js_bundle.js",
+        "bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "play.html",
+        "bytes": 8344,
+        "sha256": "a4d3aca33f3d860518ccb19fb4289159e2ffc2e50a1703106a6b836c0559ef67"
+      },
+      {
+        "path": "resource-manifest.js",
+        "bytes": 1987,
+        "sha256": "5d78799a32e402e9f6cb808a07595c2a7f74a37f6d279f830681d0a96f60af8b"
+      },
+      {
+        "path": "resources/054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233.png",
+        "bytes": 1958467,
+        "sha256": "054ce76fd68ff7551970eabcbca04094ed35b9b576dd82476573f0e945f07233"
+      },
+      {
+        "path": "resources/0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795.js",
+        "bytes": 9817,
+        "sha256": "0565887a535bbb4169847185c2dc146fef3df8e441593ce1f8bd98b423aff795"
+      },
+      {
+        "path": "resources/091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84.ttf",
+        "bytes": 40460,
+        "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+      },
+      {
+        "path": "resources/09ad0b2ae29367749084f0e7eabae03e96915eb5337832ebd6590d4572872095.css",
+        "bytes": 54827,
+        "sha256": "09ad0b2ae29367749084f0e7eabae03e96915eb5337832ebd6590d4572872095"
+      },
+      {
+        "path": "resources/1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849.js",
+        "bytes": 6751,
+        "sha256": "1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849"
+      },
+      {
+        "path": "resources/2c69e82806060e63ef7637702a3c4b5a4625a0abc805200de5868cc862d0e4fb.wasm",
+        "bytes": 944010,
+        "sha256": "2c69e82806060e63ef7637702a3c4b5a4625a0abc805200de5868cc862d0e4fb"
+      },
+      {
+        "path": "resources/48514213be0f88c77ea3025e5994b29c265edd0fbdbf3d900e06b14927c7f8dc.png",
+        "bytes": 44320,
+        "sha256": "48514213be0f88c77ea3025e5994b29c265edd0fbdbf3d900e06b14927c7f8dc"
+      },
+      {
+        "path": "resources/527bd27ab905ef0870b43d6917d22d6d676fba273b9f9b0245abc3c3a30e5bb0.css",
+        "bytes": 14038,
+        "sha256": "527bd27ab905ef0870b43d6917d22d6d676fba273b9f9b0245abc3c3a30e5bb0"
+      },
+      {
+        "path": "resources/5d78799a32e402e9f6cb808a07595c2a7f74a37f6d279f830681d0a96f60af8b.js",
+        "bytes": 1987,
+        "sha256": "5d78799a32e402e9f6cb808a07595c2a7f74a37f6d279f830681d0a96f60af8b"
+      },
+      {
+        "path": "resources/735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8.js",
+        "bytes": 37828,
+        "sha256": "735d9f13a20939ab318798ef6697223c054eb6e6cc6124c09bf4fcb2f090f0e8"
+      },
+      {
+        "path": "resources/82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a.ttf",
+        "bytes": 141544,
+        "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+      },
+      {
+        "path": "resources/b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27.js",
+        "bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "resources/b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda.js",
+        "bytes": 32434,
+        "sha256": "b37b1717500c25882f2cfce13049fa3bb62722c629009a04d03b5256bc3d8dda"
+      },
+      {
+        "path": "resources/d199054680c7d01908793615fab818b508b0c1936aa41ee87ff36ef10b35c5e6.js",
+        "bytes": 19874,
+        "sha256": "d199054680c7d01908793615fab818b508b0c1936aa41ee87ff36ef10b35c5e6"
+      },
+      {
+        "path": "resources/d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366.ttf",
+        "bytes": 41628,
+        "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+      },
+      {
+        "path": "resources/e7b5e385f0a040fed4bba33309b706fed5a90969b1c4086678743c5d6379baab.png",
+        "bytes": 21488,
+        "sha256": "e7b5e385f0a040fed4bba33309b706fed5a90969b1c4086678743c5d6379baab"
+      },
+      {
+        "path": "resources/ee76f8c7fd12c27464984279a650af97b7aacdc6113899def8715ac7393f0504.png",
+        "bytes": 46139,
+        "sha256": "ee76f8c7fd12c27464984279a650af97b7aacdc6113899def8715ac7393f0504"
+      },
+      {
+        "path": "resources/f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d.js",
+        "bytes": 9256,
+        "sha256": "f01c8aeafa4f368356c2cef1beeb8434605d9ac94217bfec216d8610d7ef672d"
+      },
+      {
+        "path": "resources/fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b.png",
+        "bytes": 168293,
+        "sha256": "fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b"
+      },
+      {
+        "path": "resources.js",
+        "bytes": 16910,
+        "sha256": "b0a9cf0d4282470a318d040cb638dfec5297c8326cb6256824a1a07134e48d27"
+      },
+      {
+        "path": "setup.js",
+        "bytes": 6751,
+        "sha256": "1d53b01a69e4a4cb77225ac34e65bc39255a5060aca61025b7809b80cf1cf849"
+      },
+      {
+        "path": "standalone.css",
+        "bytes": 13914,
+        "sha256": "52cd166e7eb74a7d01aaf73bb447e0d6197fde816fe9886475e72ea0f0649d20"
+      },
+      {
+        "path": "tabula-game-client.wasm",
+        "bytes": 944010,
+        "sha256": "2c69e82806060e63ef7637702a3c4b5a4625a0abc805200de5868cc862d0e4fb"
+      },
+      {
+        "path": "tokens.css",
+        "bytes": 54827,
+        "sha256": "09ad0b2ae29367749084f0e7eabae03e96915eb5337832ebd6590d4572872095"
+      }
+    ]
+  },
+  "captures": [
+    {
+      "file": "candidate-desktop-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:40.313644+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 169168,
+      "sha256": "31846f619b22ad13f4d24d0bac35b9aba6affc748f00ec1e284a1dbffc536052",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-mobile-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:41.286092+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 65116,
+      "sha256": "78fd456125b03310dbfad401fe887057f67bf64d6d16e3ae341707f32c26ede6",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".topbar__brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 15.5,
+            "width": 88.15625,
+            "height": 32,
+            "right": 106.15625,
+            "bottom": 47.5
+          },
+          "link": {
+            "x": 18,
+            "y": 9.5,
+            "width": 88.15625,
+            "height": 44,
+            "right": 106.15625,
+            "bottom": 53.5
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-mobile-light-drawer.png",
+      "label": "actual opened mobile menu brand",
+      "captured_at_utc": "2026-10-06T12:04:41.441643+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 27562,
+      "sha256": "6e768faeb30919ffca15d324a3dcf8f6a73696c0a0770b661754bde0a08cfa47",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 26,
+            "width": 110.1875,
+            "height": 39.984375,
+            "right": 128.1875,
+            "bottom": 65.984375
+          },
+          "link": {
+            "x": 18,
+            "y": 24,
+            "width": 110.1875,
+            "height": 44,
+            "right": 128.1875,
+            "bottom": 68
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 844,
+            "right": 320,
+            "bottom": 844
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-standalone-light-header.png",
+      "label": "actual staged local Chess setup header",
+      "captured_at_utc": "2026-10-06T12:04:42.694802+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 422177,
+      "sha256": "262803987e4b8015bf08db96d0f5afc39f752c5a910e75f58854e0ae353d21dc",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "header.shared-header .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "link": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-standalone-light-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:04:43.164622+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "vi",
+      "bytes": 19510,
+      "sha256": "a2f63a94751708121e2b1a84403e5d8927ac6168c81825c9528a19b72b22f72c",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 8,
+            "y": 162,
+            "width": 705,
+            "height": 256,
+            "right": 713,
+            "bottom": 418
+          },
+          "link": {
+            "x": 8,
+            "y": 162,
+            "width": 1184,
+            "height": 260,
+            "right": 1192,
+            "bottom": 422
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-desktop-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:46.461376+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 174730,
+      "sha256": "0f4ca1aabcb9f05552bb17d1c05d80ca4a153739b67fede1295aea85d8975563",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-mobile-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:47.377954+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 65948,
+      "sha256": "b0641b2eebf8256b1b583d5ff66f04bfccd45b2ca302297ec5c418c3d81451df",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".topbar__brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 15.5,
+            "width": 88.15625,
+            "height": 32,
+            "right": 106.15625,
+            "bottom": 47.5
+          },
+          "link": {
+            "x": 18,
+            "y": 9.5,
+            "width": 88.15625,
+            "height": 44,
+            "right": 106.15625,
+            "bottom": 53.5
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-mobile-dark-drawer.png",
+      "label": "actual opened mobile menu brand",
+      "captured_at_utc": "2026-10-06T12:04:47.512570+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 27992,
+      "sha256": "b45a4686900c8ab6429b8f60f6ceafcbb750dc050a00a17550af572e492d98ef",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 26,
+            "width": 110.1875,
+            "height": 39.984375,
+            "right": 128.1875,
+            "bottom": 65.984375
+          },
+          "link": {
+            "x": 18,
+            "y": 24,
+            "width": 110.1875,
+            "height": 44,
+            "right": 128.1875,
+            "bottom": 68
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 844,
+            "right": 320,
+            "bottom": 844
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-standalone-dark-header.png",
+      "label": "actual staged local Chess setup header",
+      "captured_at_utc": "2026-10-06T12:04:48.616167+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 419250,
+      "sha256": "0bb0e1e8353f90e0ab20fc7d748dfc1256e1bd77c62516ba0005bbe36e521020",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "header.shared-header .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "link": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-standalone-dark-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:04:49.895954+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "dark",
+      "locale": "vi",
+      "bytes": 22298,
+      "sha256": "42a6f3ee160767e07ad181de9d51d887feb5a5f62a7160f3b3ab8fd1f6122516",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "link": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-desktop-hc-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:51.707931+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 160906,
+      "sha256": "2751f9b1cf8edbdd70ebf15c66a71b42f35fc3156f796601ecfa31a9e91d62e9",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-mobile-hc-light-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:52.593818+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 60155,
+      "sha256": "291eed69588d482cd4289f6e255c9b1583dc4e192d3cc3ff126848dfab2d27dc",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".topbar__brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 15.5,
+            "width": 88.15625,
+            "height": 32,
+            "right": 106.15625,
+            "bottom": 47.5
+          },
+          "link": {
+            "x": 18,
+            "y": 9.5,
+            "width": 88.15625,
+            "height": 44,
+            "right": 106.15625,
+            "bottom": 53.5
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-mobile-hc-light-drawer.png",
+      "label": "actual opened mobile menu brand",
+      "captured_at_utc": "2026-10-06T12:04:52.744906+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 26809,
+      "sha256": "882fa57d37140c879395bdb381b2b5bf95a1c156a201f98d4d509a2c667104ca",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 26,
+            "width": 110.1875,
+            "height": 39.984375,
+            "right": 128.1875,
+            "bottom": 65.984375
+          },
+          "link": {
+            "x": 18,
+            "y": 24,
+            "width": 110.1875,
+            "height": 44,
+            "right": 128.1875,
+            "bottom": 68
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 844,
+            "right": 320,
+            "bottom": 844
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-standalone-hc-light-header.png",
+      "label": "actual staged local Chess setup header",
+      "captured_at_utc": "2026-10-06T12:04:53.784268+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 417158,
+      "sha256": "ba76ec66d609e04165d5aeca186e426878da8f2e02216a934ae4ea08b8821299",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "header.shared-header .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "link": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-standalone-hc-light-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:04:55.046301+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-light",
+      "locale": "vi",
+      "bytes": 19964,
+      "sha256": "40f93a6851a01a466b1a401cc31358a7b0d40320c620e803f5d1a806749af406",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "link": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-desktop-hc-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:56.855363+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 1440,
+        "height": 1000
+      },
+      "png_pixels": [
+        1440,
+        1000
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 166877,
+      "sha256": "3a37e8a520c80ac9014cb49eba1f23d1d60c1afd6f5c7b56c5e3c19e9c438b48",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-mobile-hc-dark-home.png",
+      "label": "actual shell brand in source-owned UI",
+      "captured_at_utc": "2026-10-06T12:04:57.724771+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 60965,
+      "sha256": "24376937aae5bc31cb7d8a173cbf3f52ec92ea5bf837492446df5482a7d0f5fa",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": ".topbar__brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 15.5,
+            "width": 88.15625,
+            "height": 32,
+            "right": 106.15625,
+            "bottom": 47.5
+          },
+          "link": {
+            "x": 18,
+            "y": 9.5,
+            "width": 88.15625,
+            "height": 44,
+            "right": 106.15625,
+            "bottom": 53.5
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-mobile-hc-dark-drawer.png",
+      "label": "actual opened mobile menu brand",
+      "captured_at_utc": "2026-10-06T12:04:57.877132+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 390,
+        "height": 844
+      },
+      "png_pixels": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 27101,
+      "sha256": "d8f1f8307e0248d7b784021976ee1d510c807ac987be1c03e7b53a0854b8e708",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 26,
+            "width": 110.1875,
+            "height": 39.984375,
+            "right": 128.1875,
+            "bottom": 65.984375
+          },
+          "link": {
+            "x": 18,
+            "y": 24,
+            "width": 110.1875,
+            "height": 44,
+            "right": 128.1875,
+            "bottom": 68
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 844,
+            "right": 320,
+            "bottom": 844
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-standalone-hc-dark-header.png",
+      "label": "actual staged local Chess setup header",
+      "captured_at_utc": "2026-10-06T12:04:58.902358+00:00",
+      "route_path": "/index.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 414879,
+      "sha256": "6969a77a6fdbb0177860d1ebd65a86e9a7ace76979e71c75cf22e5909f8ae26d",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "header.shared-header .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "link": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-standalone-hc-dark-loader.png",
+      "label": "actual bootloader during real throttled WASM transfer",
+      "captured_at_utc": "2026-10-06T12:05:00.165922+00:00",
+      "route_path": "/play.html",
+      "viewport_css_pixels": {
+        "width": 1200,
+        "height": 880
+      },
+      "png_pixels": [
+        1200,
+        880
+      ],
+      "dpr": 1,
+      "scheme": "hc-dark",
+      "locale": "vi",
+      "bytes": 20407,
+      "sha256": "282b48131090eaebb675cce6c00f8fb5a3da701c244791cbb3d15eed266d9111",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "link": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "file": "candidate-320-en-font200-drawer.png",
+      "label": "actual320 EN200% drawer with independently established32px profile",
+      "captured_at_utc": "2026-10-06T12:05:02.345131+00:00",
+      "route_path": "/",
+      "viewport_css_pixels": {
+        "width": 320,
+        "height": 640
+      },
+      "png_pixels": [
+        320,
+        640
+      ],
+      "dpr": 1,
+      "scheme": "light",
+      "locale": "en",
+      "bytes": 16244,
+      "sha256": "836445f5157cf8957e11b9f55c2fba08d4a328c2c852c64b2eb52e449969c342",
+      "original_png_unchanged": true,
+      "metrics": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 36,
+            "y": 58.609375,
+            "width": 184,
+            "height": 66.78125,
+            "right": 220,
+            "bottom": 125.390625
+          },
+          "link": {
+            "x": 36,
+            "y": 48,
+            "width": 184,
+            "height": 88,
+            "right": 220,
+            "bottom": 136
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 256,
+            "height": 640,
+            "right": 256,
+            "bottom": 640
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        },
+        "drawer": {
+          "scroll_width": 256,
+          "client_width": 256,
+          "focus_inside": true,
+          "open": true
+        },
+        "initial_font_px": 32
+      }
+    }
+  ],
+  "checks": [
+    {
+      "name": "desktop-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "light",
+        "actual": "light"
+      }
+    },
+    {
+      "name": "desktop-light canonical SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "mobile-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "light",
+        "actual": "light"
+      }
+    },
+    {
+      "name": "mobile-light canonical SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": ".topbar__brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 15.5,
+            "width": 88.15625,
+            "height": 32,
+            "right": 106.15625,
+            "bottom": 47.5
+          },
+          "link": {
+            "x": 18,
+            "y": 9.5,
+            "width": 88.15625,
+            "height": 44,
+            "right": 106.15625,
+            "bottom": 53.5
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "mobile-light drawer SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 26,
+            "width": 110.1875,
+            "height": 39.984375,
+            "right": 128.1875,
+            "bottom": 65.984375
+          },
+          "link": {
+            "x": 18,
+            "y": 24,
+            "width": 110.1875,
+            "height": 44,
+            "right": 128.1875,
+            "bottom": 68
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 844,
+            "right": 320,
+            "bottom": 844
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "actual": "light"
+      }
+    },
+    {
+      "name": "standalone-light header SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "header.shared-header .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "link": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-light loader actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "light",
+        "actual": "light"
+      }
+    },
+    {
+      "name": "standalone-light genuine loader SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 8,
+            "y": 162,
+            "width": 705,
+            "height": 256,
+            "right": 713,
+            "bottom": 418
+          },
+          "link": {
+            "x": 8,
+            "y": 162,
+            "width": 1184,
+            "height": 260,
+            "right": 1192,
+            "bottom": 422
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-light actual WASM completed",
+      "status": "PASS",
+      "details": {
+        "game_wasm": {
+          "path": "tabula-game-client.wasm",
+          "bytes": 944010,
+          "sha256": "2c69e82806060e63ef7637702a3c4b5a4625a0abc805200de5868cc862d0e4fb"
+        }
+      }
+    },
+    {
+      "name": "desktop-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "dark",
+        "actual": "dark"
+      }
+    },
+    {
+      "name": "desktop-dark canonical SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "mobile-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "dark",
+        "actual": "dark"
+      }
+    },
+    {
+      "name": "mobile-dark canonical SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": ".topbar__brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 15.5,
+            "width": 88.15625,
+            "height": 32,
+            "right": 106.15625,
+            "bottom": 47.5
+          },
+          "link": {
+            "x": 18,
+            "y": 9.5,
+            "width": 88.15625,
+            "height": 44,
+            "right": 106.15625,
+            "bottom": 53.5
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "mobile-dark drawer SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 26,
+            "width": 110.1875,
+            "height": 39.984375,
+            "right": 128.1875,
+            "bottom": 65.984375
+          },
+          "link": {
+            "x": 18,
+            "y": 24,
+            "width": 110.1875,
+            "height": 44,
+            "right": 128.1875,
+            "bottom": 68
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 844,
+            "right": 320,
+            "bottom": 844
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "actual": "dark"
+      }
+    },
+    {
+      "name": "standalone-dark header SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "header.shared-header .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "link": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-dark loader actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "dark",
+        "actual": "dark"
+      }
+    },
+    {
+      "name": "standalone-dark genuine loader SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "link": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(185, 167, 243)",
+            "rgb(247, 244, 255)",
+            "rgb(247, 244, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-dark actual WASM completed",
+      "status": "PASS",
+      "details": {
+        "game_wasm": {
+          "path": "tabula-game-client.wasm",
+          "bytes": 944010,
+          "sha256": "2c69e82806060e63ef7637702a3c4b5a4625a0abc805200de5868cc862d0e4fb"
+        }
+      }
+    },
+    {
+      "name": "desktop-hc-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-light",
+        "actual": "hc-light"
+      }
+    },
+    {
+      "name": "desktop-hc-light canonical SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "mobile-hc-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-light",
+        "actual": "hc-light"
+      }
+    },
+    {
+      "name": "mobile-hc-light canonical SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": ".topbar__brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 15.5,
+            "width": 88.15625,
+            "height": 32,
+            "right": 106.15625,
+            "bottom": 47.5
+          },
+          "link": {
+            "x": 18,
+            "y": 9.5,
+            "width": 88.15625,
+            "height": 44,
+            "right": 106.15625,
+            "bottom": 53.5
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "mobile-hc-light drawer SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 26,
+            "width": 110.1875,
+            "height": 39.984375,
+            "right": 128.1875,
+            "bottom": 65.984375
+          },
+          "link": {
+            "x": 18,
+            "y": 24,
+            "width": 110.1875,
+            "height": 44,
+            "right": 128.1875,
+            "bottom": 68
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 844,
+            "right": 320,
+            "bottom": 844
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-hc-light actual scheme",
+      "status": "PASS",
+      "details": {
+        "actual": "hc-light"
+      }
+    },
+    {
+      "name": "standalone-hc-light header SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "header.shared-header .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "link": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-hc-light loader actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-light",
+        "actual": "hc-light"
+      }
+    },
+    {
+      "name": "standalone-hc-light genuine loader SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "link": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)",
+            "rgb(0, 0, 0)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-hc-light actual WASM completed",
+      "status": "PASS",
+      "details": {
+        "game_wasm": {
+          "path": "tabula-game-client.wasm",
+          "bytes": 944010,
+          "sha256": "2c69e82806060e63ef7637702a3c4b5a4625a0abc805200de5868cc862d0e4fb"
+        }
+      }
+    },
+    {
+      "name": "desktop-hc-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-dark",
+        "actual": "hc-dark"
+      }
+    },
+    {
+      "name": "desktop-hc-dark canonical SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": ".sidebar > .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 26,
+            "y": 30,
+            "width": 110.1875,
+            "height": 40,
+            "right": 136.1875,
+            "bottom": 70
+          },
+          "link": {
+            "x": 26,
+            "y": 28,
+            "width": 171,
+            "height": 44,
+            "right": 197,
+            "bottom": 72
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "mobile-hc-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-dark",
+        "actual": "hc-dark"
+      }
+    },
+    {
+      "name": "mobile-hc-dark canonical SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": ".topbar__brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 15.5,
+            "width": 88.15625,
+            "height": 32,
+            "right": 106.15625,
+            "bottom": 47.5
+          },
+          "link": {
+            "x": 18,
+            "y": 9.5,
+            "width": 88.15625,
+            "height": 44,
+            "right": 106.15625,
+            "bottom": 53.5
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "mobile-hc-dark drawer SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 18,
+            "y": 26,
+            "width": 110.1875,
+            "height": 39.984375,
+            "right": 128.1875,
+            "bottom": 65.984375
+          },
+          "link": {
+            "x": 18,
+            "y": 24,
+            "width": 110.1875,
+            "height": 44,
+            "right": 128.1875,
+            "bottom": 68
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 844,
+            "right": 320,
+            "bottom": 844
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-hc-dark actual scheme",
+      "status": "PASS",
+      "details": {
+        "actual": "hc-dark"
+      }
+    },
+    {
+      "name": "standalone-hc-dark header SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "header.shared-header .brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "link": {
+            "x": 60,
+            "y": 12.9375,
+            "width": 138,
+            "height": 50.109375,
+            "right": 198,
+            "bottom": 63.046875
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-hc-dark loader actual scheme",
+      "status": "PASS",
+      "details": {
+        "requested": "hc-dark",
+        "actual": "hc-dark"
+      }
+    },
+    {
+      "name": "standalone-hc-dark genuine loader SVG present",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "#loader .runtime-brand .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "link": {
+            "x": 512,
+            "y": 294.453125,
+            "width": 176,
+            "height": 63.90625,
+            "right": 688,
+            "bottom": 358.359375
+          },
+          "dialog": null,
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)",
+            "rgb(255, 255, 255)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "standalone-hc-dark actual WASM completed",
+      "status": "PASS",
+      "details": {
+        "game_wasm": {
+          "path": "tabula-game-client.wasm",
+          "bytes": 944010,
+          "sha256": "2c69e82806060e63ef7637702a3c4b5a4625a0abc805200de5868cc862d0e4fb"
+        }
+      }
+    },
+    {
+      "name": "candidate320 EN200 drawer canonical SVG stays inside dialog",
+      "status": "PASS",
+      "details": {
+        "canonical_lockup_count": 1,
+        "selector": "dialog.shell-menu .brand-lockup",
+        "measurement": {
+          "rect": {
+            "x": 36,
+            "y": 58.609375,
+            "width": 184,
+            "height": 66.78125,
+            "right": 220,
+            "bottom": 125.390625
+          },
+          "link": {
+            "x": 36,
+            "y": 48,
+            "width": 184,
+            "height": 88,
+            "right": 220,
+            "bottom": 136
+          },
+          "dialog": {
+            "x": 0,
+            "y": 0,
+            "width": 256,
+            "height": 640,
+            "right": 256,
+            "bottom": 640
+          },
+          "viewBox": "0 0 705.276 256",
+          "fills": [
+            "rgb(124, 99, 237)",
+            "rgb(94, 75, 139)",
+            "rgb(94, 75, 139)"
+          ]
+        },
+        "drawer": {
+          "scroll_width": 256,
+          "client_width": 256,
+          "focus_inside": true,
+          "open": true
+        },
+        "initial_font_px": 32
+      }
+    }
+  ],
+  "loader_timing": "real compiled WASM download temporarily throttled by disposable browser CDP160KiB/s/100ms to observe genuine loader, then restored; no intercepted/replaced replies or UI state injected",
+  "browser_version": "151.0.7922.34",
+  "status": "PASS",
+  "finished_at_utc": "2026-10-06T12:05:03.181711+00:00"
+}
