@@ -38,6 +38,15 @@ pub struct SetupRequest {
 pub trait GameSetup: Send + Sync + 'static {
     type Module: GameModule;
 
+    /// Lightweight decorative SVG for the Home/Library catalog-card consumer.
+    ///
+    /// Game-owned, compile-time artwork only: no scripts, external resources,
+    /// runtime loading, rules/config facts or interactive state (I-9; doc 04 §3.2).
+    /// Colors use semantic design roles; absence uses the shell's neutral art.
+    fn catalog_cover_svg() -> Option<&'static str> {
+        None
+    }
+
     /// The setup form this game offers.
     fn form() -> &'static ConfigForm;
 
@@ -100,6 +109,9 @@ pub type ParseResult<S> = Result<
 pub trait ErasedGame: Send + Sync {
     fn metadata(&self) -> &'static GameMetadata;
     fn capabilities(&self) -> &'static GameCapabilities;
+    /// Game-owned lightweight decorative art for Home/Library cards only.
+    /// This is trusted compile-time SVG, never user input or a runtime asset pack.
+    fn catalog_cover_svg(&self) -> Option<&'static str>;
     fn form(&self) -> &'static ConfigForm;
     fn modes(&self) -> &'static [ModeSupport];
     /// Explicit direct browser host declaration, never capability inference.
@@ -247,6 +259,10 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
         S::Module::capabilities()
     }
 
+    fn catalog_cover_svg(&self) -> Option<&'static str> {
+        S::catalog_cover_svg()
+    }
+
     fn form(&self) -> &'static ConfigForm {
         S::form()
     }
@@ -358,5 +374,37 @@ pub const fn bot_level_label_key(level: BotLevel) -> &'static str {
         BotLevel::Easy => "bot.easy",
         BotLevel::Medium => "bot.medium",
         BotLevel::Hard => "bot.hard",
+    }
+}
+
+#[cfg(all(test, any(feature = "game-chess", feature = "game-tiles")))]
+mod catalog_cover_tests {
+    /// Current linked discovery modules ship small self-contained vector art.
+    /// This checks the declarations, not arbitrary untrusted SVG safety.
+    #[test]
+    fn linked_catalog_covers_are_lightweight_static_semantic_art() {
+        let games = crate::registered_games();
+        assert!(
+            !games.is_empty(),
+            "feature-selected cover test must exercise a module"
+        );
+        for game in games {
+            let cover = game
+                .catalog_cover_svg()
+                .expect("linked module has catalog art");
+            assert!(cover.starts_with("<svg "));
+            assert!(cover.len() < 8192, "catalog art must stay lightweight");
+            assert!(cover.contains("var(--sys-color-shell-"));
+            assert!(
+                !cover.contains('#'),
+                "source artwork has no raw color/fragment references"
+            );
+            for external_or_active in ["<script", "<image", "<foreignObject", "href=", "<style"] {
+                assert!(
+                    !cover.contains(external_or_active),
+                    "catalog art is self-contained and inert"
+                );
+            }
+        }
     }
 }

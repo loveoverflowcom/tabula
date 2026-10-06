@@ -3,7 +3,9 @@
 //! Search and filters live in the address so Back restores them. Every card
 //! links to detail and starts nothing (docs/ui/screens/01-library.md).
 
-use leptos::prelude::*;
+use std::rc::Rc;
+
+use leptos::{prelude::*, tachys::html::InertElement};
 use leptos_router::{
     components::A,
     hooks::{use_navigate, use_query_map},
@@ -39,97 +41,107 @@ pub fn current_query(map: &leptos_router::params::ParamsMap) -> ParsedQuery {
 pub fn Library() -> impl IntoView {
     let locale = use_locale();
     let query_map = use_query_map();
+    let parsed = Memo::new(move |_| current_query(&query_map.get()));
 
+    // Locale owns the copy/catalog. URL changes update properties and results
+    // below, never rebuild this toolbar: keyboard focus must survive filtering.
     view! {
-        <section class="section">
+        <section class="section catalog">
             {move || {
                 let (messages, catalog) = shell(locale.get());
-                let parsed = current_query(&query_map.get());
-                library_body(&messages, &catalog, &parsed)
+                library_body(&messages, &catalog, parsed)
             }}
         </section>
     }
 }
 
-fn library_body(messages: &Messages, catalog: &Catalog, parsed: &ParsedQuery) -> AnyView {
-    let messages = messages.clone();
-    let results = catalog.query(&parsed.query, &messages);
-    let total = catalog.entries().len();
-    let count = messages.format(
-        "library.results.count",
-        &[&results.len().to_string(), &total.to_string()],
-    );
+fn library_body(messages: &Messages, catalog: &Catalog, parsed: Memo<ParsedQuery>) -> AnyView {
+    let count_messages = messages.clone();
+    let count_catalog = catalog.clone();
+    let status_messages = messages.clone();
+    let result_messages = messages.clone();
+    let result_catalog = catalog.clone();
 
     view! {
-        <h1 class="section__title">{messages.text("library.heading")}</h1>
-        {toolbar(&messages, catalog, &parsed.query)}
-        {parsed
-            .invalid
-            .iter()
-            .map(|axis| {
-                let axis_label = messages.text(axis);
+        <header class="catalog__heading">
+            <h1 class="section__title">{messages.text("library.heading")}</h1>
+            {search(messages, parsed)}
+        </header>
+        <super::home::ContinueRegion/>
+        {filters(messages, catalog, parsed, navigator())}
+        <div class="catalog__errors">
+            {move || parsed.get().invalid.into_iter().map(|axis| {
+                let axis_label = status_messages.text(axis);
                 view! {
                     <p class="banner banner--error" role="status">
-                        {messages.format("library.filter.invalid", &[&axis_label])}
+                        {status_messages.format("library.filter.invalid", &[&axis_label])}
                     </p>
                 }
-            })
-            .collect_view()}
-        <h2 class="section__subtitle" id="results">
-            {messages.text("library.results.heading")}
-        </h2>
-        <p class="results__count" aria-live="polite">
-            {count}
-        </p>
-        {results_body(&messages, catalog, &results, &parsed.query)}
+            }).collect_view()}
+        </div>
+        <div class="catalog__results-heading">
+            <h2 class="section__subtitle" id="results">
+                {messages.text("library.results.heading")}
+            </h2>
+            <p class="results__count" aria-live="polite" aria-atomic="true">
+                {move || {
+                    let total = count_catalog.entries().len();
+                    let count = count_catalog.query(&parsed.get().query, &count_messages).len();
+                    count_messages.format("library.results.count", &[&count.to_string(), &total.to_string()])
+                }}
+            </p>
+        </div>
+        {move || {
+            let query = parsed.get().query;
+            let results = result_catalog.query(&query, &result_messages);
+            results_body(&result_messages, &result_catalog, &results)
+        }}
     }
     .into_any()
 }
 
-fn results_body(
-    messages: &Messages,
-    catalog: &Catalog,
-    results: &[&CatalogEntry],
-    query: &CatalogQuery,
-) -> AnyView {
+fn results_body(messages: &Messages, catalog: &Catalog, results: &[&CatalogEntry]) -> AnyView {
     let messages = messages.clone();
     if catalog.is_empty() {
         return view! {
-            <p class="banner" role="status">{messages.text("library.empty.catalog")}</p>
+            <div class="catalog__empty" role="status">
+                {messages.text("library.empty.catalog")}
+            </div>
         }
         .into_any();
     }
     if results.is_empty() {
         return view! {
-            <div class="empty">
-                <p class="banner" role="status">{messages.text("library.empty.filtered")}</p>
-                <a class="btn btn--tonal" href="/games">
+            <div class="empty catalog__empty">
+                <p role="status">{messages.text("library.empty.filtered")}</p>
+                <A href="/games" attr:class="btn btn--tonal">
                     {messages.text("library.filter.reset")}
-                </a>
+                </A>
             </div>
         }
         .into_any();
     }
-    let _ = query;
     view! {
         <ul class="cards" aria-labelledby="results">
-            {results
-                .iter()
-                .map(|entry| card(&messages, entry))
-                .collect_view()}
+            {results.iter().map(|entry| card(&messages, entry)).collect_view()}
         </ul>
     }
     .into_any()
 }
 
-/// One catalog entry. The whole card is not a link: the detail link is its own
-/// control, so a trailing action can never be nested inside it.
+/// One compact discovery card, also consumed by Home. Only game-owned,
+/// compile-time cover SVG enters this DOM; no gameplay bundle/assets load here.
+/// Detail controls never contain another interactive control (doc 04 §3.2).
 pub fn card(messages: &Messages, entry: &CatalogEntry) -> AnyView {
     let messages = messages.clone();
     let game = entry.game();
     let metadata = game.metadata();
     let name = messages.text(metadata.name_key().as_str());
-    let seats = seat_label(&messages, game.capabilities());
+    let details = messages.format("card.details", &[&name]);
+    let seats = messages.format(
+        "card.players",
+        &[&seat_label(&messages, game.capabilities())],
+    );
     let duration = messages.format(
         "detail.duration.range",
         &[
@@ -138,41 +150,79 @@ pub fn card(messages: &Messages, entry: &CatalogEntry) -> AnyView {
         ],
     );
     let complexity = messages.text(complexity_label_key(metadata.complexity()));
+    let category = metadata
+        .categories()
+        .first()
+        .map(|category| messages.text(category_label_key(*category)));
     let href = format!("/games/{}", metadata.id().as_str());
-    let startable = entry.startable();
-    let modes: Vec<String> = entry
+    let cover = game.catalog_cover_svg();
+    let modes = entry
         .modes()
         .iter()
         .filter(|support| support.is_available())
         .map(|support| messages.text(support.mode.label_key()))
-        .collect();
+        .collect::<Vec<_>>()
+        .join(" · ");
+    let startable = entry.startable();
 
     view! {
         <li class="card">
-            <div class="card__art" aria-hidden="true"></div>
-            <div class="card__text">
-                <h3 class="card__title">{name.clone()}</h3>
-                <p class="card__tagline">{messages.text(metadata.tagline_key().as_str())}</p>
-                <ul class="badges">
-                    <li class="badge">{messages.text("detail.seats")} ": " {seats}</li>
-                    <li class="badge">{duration}</li>
-                    <li class="badge">{complexity}</li>
-                    {modes
-                        .into_iter()
-                        .map(|label| view! { <li class="badge badge--mode">{label}</li> })
-                        .collect_view()}
-                </ul>
-                {(!startable)
-                    .then(|| {
-                        view! { <p class="reason">{messages.text("card.unavailable")}</p> }
-                    })}
-            </div>
-            <A href=href attr:class="btn btn--tonal card__action">
-                {messages.format("card.details", &[&name])}
+            // The decorative cover shares the title's destination, but adds no
+            // duplicate keyboard/screen-reader stop. It is still touchable.
+            <A href=href.clone() attr:class="card__cover" attr:tabindex="-1" attr:aria-hidden="true">
+                {cover.map_or_else(neutral_cover, |svg| view! { <div class="card__art" inner_html=svg></div> }.into_any())}
+                {category.map(|label| view! { <span class="card__category">{label}</span> })}
             </A>
+            <div class="card__text">
+                <h3 class="card__title">
+                    <A href=href attr:class="card__action" attr:aria-label=details>
+                        {name}
+                        {InertElement::new(r#"<svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <path d="M5 12h14m-5-5 5 5-5 5"/>
+                        </svg>"#)}
+                    </A>
+                </h3>
+                <ul class="card__metadata">
+                    <li title=messages.text("detail.seats")>
+                        {InertElement::new(r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m5 11v-3a6 6 0 0 0-4-5"/>
+                        </svg>"#)}
+                        {seats}
+                    </li>
+                    <li title=messages.text("detail.duration")>
+                        {InertElement::new(r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>
+                        </svg>"#)}
+                        {duration}
+                    </li>
+                </ul>
+                <p class="card__support">
+                    {complexity}
+                    {(!modes.is_empty()).then(|| format!(" · {modes}"))}
+                </p>
+                {(!startable).then(|| view! { <p class="reason card__reason">{messages.text("card.unavailable")}</p> })}
+            </div>
         </li>
     }
     .into_any()
+}
+
+/// Decorative fallback for a linked module that declares no lightweight cover.
+/// It has no fictitious gameplay, title, profile, or availability information.
+fn neutral_cover() -> AnyView {
+    view! {
+        <div class="card__art card__art--neutral">
+            {InertElement::new(r#"<svg viewBox="0 0 364 160" aria-hidden="true" focusable="false">
+                <g fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="120" y="20" width="94" height="120" rx="12" transform="rotate(-16 167 80)"/>
+                    <rect x="154" y="20" width="94" height="120" rx="12" transform="rotate(14 201 80)"/>
+                    <path d="M181 54v52m-26-26h52"/>
+                    <circle cx="74" cy="58" r="10"/><circle cx="285" cy="117" r="14"/>
+                    <path d="M292 33v14m-7-7h14M60 117v10m-5-5h10"/>
+                </g>
+            </svg>"#)}
+        </div>
+    }.into_any()
 }
 
 /// The allowed seat counts, as the module declares them.
@@ -197,39 +247,48 @@ pub fn seat_label(messages: &Messages, capabilities: &tabula_registry::GameCapab
     }
 }
 
-fn toolbar(messages: &Messages, catalog: &Catalog, query: &CatalogQuery) -> AnyView {
-    let messages = messages.clone();
+fn search(messages: &Messages, parsed: Memo<ParsedQuery>) -> AnyView {
     let go = navigator();
-    let search_value = query.text.clone().unwrap_or_default();
-    let on_search = {
-        let query = query.clone();
-        let go = go.clone();
-        move |event: leptos::ev::Event| {
-            let mut next = query.clone();
-            let value = event_target_value(&event);
-            next.text = (!value.trim().is_empty()).then_some(value);
-            go(library_href(&next));
+    let draft = RwSignal::new(parsed.get_untracked().query.text.unwrap_or_default());
+    // Preserve trailing spaces while typing multiword queries. Only a distinct
+    // address (e.g. Back/Forward) replaces the local native input's draft.
+    Effect::new(move |_| {
+        let address = parsed.get().query.text.unwrap_or_default();
+        if let Some(replacement) = search_address_replacement(&draft.get_untracked(), &address) {
+            draft.set(replacement);
         }
+    });
+    let on_search = move |event: leptos::ev::Event| {
+        let value = event_target_value(&event);
+        draft.set(value.clone());
+        let mut next = parsed.get_untracked().query;
+        next.text = (!value.trim().is_empty()).then(|| value.trim().to_owned());
+        go(library_href(&next));
     };
 
     view! {
-        <div class="toolbar" role="search">
-            <div class="field">
-                <label class="field__label" for="search">
-                    {messages.text("library.search.label")}
-                </label>
-                <input
-                    id="search"
-                    class="field__control"
-                    type="search"
-                    value=search_value
-                    on:change=on_search
+        <div class="catalog__search field" role="search">
+            <label class="field__label" for="search">
+                {messages.text("library.search.label")}
+            </label>
+            <div class="catalog__search-control">
+                {InertElement::new(r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>
+                </svg>"#)}
+                <input id="search" class="field__control" type="search"
+                    placeholder=messages.text("library.search.label")
+                    prop:value=move || draft.get()
+                    on:input=on_search
                 />
             </div>
-            {filters(&messages, catalog, query, go)}
         </div>
-    }
-    .into_any()
+    }.into_any()
+}
+
+/// A new address replaces the draft; the address's normalized form of the
+/// same in-progress input does not eat the space before the next search word.
+fn search_address_replacement(draft: &str, address: &str) -> Option<String> {
+    (draft.trim() != address).then(|| address.to_owned())
 }
 
 /// Replace the address with the given href, keeping scroll position: typing
@@ -248,37 +307,27 @@ fn navigator() -> impl Fn(String) + Clone + 'static {
     }
 }
 
-/// One labeled control per independent axis; constraints combine with AND.
+/// One labeled native control per independent axis; constraints combine with
+/// AND. Their DOM identity persists while URL-selected properties change.
 fn filters(
     messages: &Messages,
     catalog: &Catalog,
-    query: &CatalogQuery,
+    parsed: Memo<ParsedQuery>,
     go: impl Fn(String) + Clone + 'static,
 ) -> AnyView {
-    let messages = messages.clone();
     let any = messages.text("library.filter.any");
-    let reset = messages.text("library.filter.reset");
-    let heading = messages.text("library.filter.heading");
-
     let category_options = CATEGORIES
         .iter()
         .map(|category| {
             (
                 category_value(*category).to_owned(),
                 messages.text(category_label_key(*category)),
-                query.category == Some(*category),
             )
         })
         .collect();
     let player_options = player_counts(catalog)
         .into_iter()
-        .map(|count| {
-            (
-                count.to_string(),
-                count.to_string(),
-                query.players == Some(count),
-            )
-        })
+        .map(|count| (count.to_string(), count.to_string()))
         .collect();
     let duration_options = duration_budgets(catalog)
         .into_iter()
@@ -286,7 +335,6 @@ fn filters(
             (
                 minutes.to_string(),
                 messages.format("unit.minutes", &[&minutes.to_string()]),
-                query.max_minutes == Some(minutes),
             )
         })
         .collect();
@@ -296,101 +344,123 @@ fn filters(
             (
                 complexity_value(*complexity).to_owned(),
                 messages.text(complexity_label_key(*complexity)),
-                query.complexity == Some(*complexity),
             )
         })
         .collect();
     let mode_options = available_modes(catalog)
         .into_iter()
-        .map(|mode| {
-            (
-                mode.as_str().to_owned(),
-                messages.text(mode.label_key()),
-                query.mode == Some(mode),
-            )
-        })
+        .map(|mode| (mode.as_str().to_owned(), messages.text(mode.label_key())))
         .collect();
 
-    let on_category = axis(query, go.clone(), |next, value| {
+    let on_category = axis(parsed, go.clone(), |next, value| {
         next.category = CATEGORIES
             .into_iter()
             .find(|candidate| category_value(*candidate) == value);
     });
-    let on_players = axis(query, go.clone(), |next, value| {
+    let on_players = axis(parsed, go.clone(), |next, value| {
         next.players = value.parse().ok();
     });
-    let on_duration = axis(query, go.clone(), |next, value| {
+    let on_duration = axis(parsed, go.clone(), |next, value| {
         next.max_minutes = value.parse().ok();
     });
-    let on_complexity = axis(query, go.clone(), |next, value| {
+    let on_complexity = axis(parsed, go.clone(), |next, value| {
         next.complexity = COMPLEXITIES
             .into_iter()
             .find(|candidate| complexity_value(*candidate) == value);
     });
-    let on_mode = axis(query, go, |next, value| {
+    let on_mode = axis(parsed, go.clone(), |next, value| {
         next.mode = LaunchMode::parse(&value);
     });
+    let reset = move |_| go("/games".to_owned());
 
     view! {
-        <fieldset class="filters">
-            <legend class="filters__legend">{heading}</legend>
-            {select(&messages, "filter-category", "library.filter.category", &any, category_options, on_category)}
-            {select(&messages, "filter-players", "library.filter.players", &any, player_options, on_players)}
-            {select(&messages, "filter-duration", "library.filter.duration", &any, duration_options, on_duration)}
-            {select(&messages, "filter-complexity", "library.filter.complexity", &any, complexity_options, on_complexity)}
-            {select(&messages, "filter-mode", "library.filter.mode", &any, mode_options, on_mode)}
-            <a class="btn btn--tonal" href="/games">{reset}</a>
+        <fieldset class="filters catalog__filters">
+            <legend class="filters__legend">{messages.text("library.filter.heading")}</legend>
+            {select(messages, "filter-category", "library.filter.category", &any, category_options,
+                Memo::new(move |_| parsed.get().query.category.map(category_value).unwrap_or_default().to_owned()), Rc::new(on_category))}
+            {select(messages, "filter-players", "library.filter.players", &any, player_options,
+                Memo::new(move |_| parsed.get().query.players.map(|value| value.to_string()).unwrap_or_default()), Rc::new(on_players))}
+            {select(messages, "filter-duration", "library.filter.duration", &any, duration_options,
+                Memo::new(move |_| parsed.get().query.max_minutes.map(|value| value.to_string()).unwrap_or_default()), Rc::new(on_duration))}
+            {select(messages, "filter-complexity", "library.filter.complexity", &any, complexity_options,
+                Memo::new(move |_| parsed.get().query.complexity.map(complexity_value).unwrap_or_default().to_owned()), Rc::new(on_complexity))}
+            {select(messages, "filter-mode", "library.filter.mode", &any, mode_options,
+                Memo::new(move |_| parsed.get().query.mode.map(|value| value.as_str().to_owned()).unwrap_or_default()), Rc::new(on_mode))}
+            <button type="button" class="btn catalog__reset" on:click=reset>
+                {messages.text("library.filter.reset")}
+            </button>
         </fieldset>
-    }
-    .into_any()
+    }.into_any()
 }
 
-/// Build one axis handler: apply the change to a copy of the current
-/// constraints and navigate to the result.
+/// Read the latest address at interaction time, so rapidly combining filters
+/// never applies one axis to a stale snapshot of another.
 fn axis(
-    query: &CatalogQuery,
+    parsed: Memo<ParsedQuery>,
     go: impl Fn(String) + 'static,
     apply: impl Fn(&mut CatalogQuery, String) + 'static,
 ) -> impl Fn(String) + 'static {
-    let query = query.clone();
     move |value: String| {
-        let mut next = query.clone();
+        let mut next = parsed.get_untracked().query;
         apply(&mut next, value);
         go(library_href(&next));
     }
 }
 
-/// A labeled native select. One axis, one control, always with a visible label.
+/// A visible label and the native select preserve platform keyboard/touch UX.
+/// One concrete signal/callback boundary shares the native control renderer
+/// across all axes instead of specializing its DOM state for each closure.
 fn select(
     messages: &Messages,
     id: &'static str,
     label_key: &'static str,
     any_label: &str,
-    options: Vec<(String, String, bool)>,
-    on_change: impl Fn(String) + 'static,
+    options: Vec<(String, String)>,
+    value: Memo<String>,
+    on_change: Rc<dyn Fn(String)>,
 ) -> AnyView {
     let any_label = any_label.to_owned();
+    let property_value = value;
+    let empty_value = value;
+    let option_value = value;
+    let selected_messages = messages.clone();
+    let known_options = options.clone();
     view! {
         <div class="field">
             <label class="field__label" for=id>{messages.text(label_key)}</label>
-            <select
-                id=id
-                class="field__control"
-                on:change=move |event| on_change(event_target_value(&event))
-            >
-                <option value="" selected=options.iter().all(|(_, _, chosen)| !chosen)>
-                    {any_label}
-                </option>
-                {options
-                    .into_iter()
-                    .map(|(value, label, chosen)| {
-                        view! { <option value=value selected=chosen>{label}</option> }
-                    })
-                    .collect_view()}
+            <select id=id class="field__control" prop:value=move || property_value.get()
+                on:change=move |event| on_change(event_target_value(&event))>
+                <option value="" prop:selected=move || empty_value.get().is_empty()>{any_label}</option>
+                {options.into_iter().map(|(value, label)| {
+                    let selected = option_value;
+                    let selected_value = value.clone();
+                    view! { <option value=value prop:selected=move || selected.get() == selected_value>{label}</option> }
+                }).collect_view()}
+                {move || selected_only_option(&selected_messages, label_key, &value.get(), &known_options)
+                    .map(|(value, label)| view! { <option value=value selected=true>{label}</option> })}
             </select>
         </div>
+    }.into_any()
+}
+
+/// A valid URL constraint may lie outside the catalog's usual menu inventory.
+/// Keep its actual value visible without inventing a supporting game's facts.
+fn selected_only_option(
+    messages: &Messages,
+    label_key: &str,
+    value: &str,
+    options: &[(String, String)],
+) -> Option<(String, String)> {
+    if value.is_empty() || options.iter().any(|(known, _)| known == value) {
+        return None;
     }
-    .into_any()
+    let label = match label_key {
+        "library.filter.duration" => messages.format("unit.minutes", &[value]),
+        "library.filter.mode" => LaunchMode::parse(value)
+            .map_or_else(|| value.to_owned(), |mode| messages.text(mode.label_key())),
+        _ => value.to_owned(),
+    };
+    Some((value.to_owned(), label))
 }
 
 /// Seat counts some linked game actually supports.
@@ -436,4 +506,95 @@ fn available_modes(catalog: &Catalog) -> Vec<LaunchMode> {
             })
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{axis, search_address_replacement, selected_only_option};
+    use crate::{i18n::Messages, query::ParsedQuery};
+    use leptos::prelude::*;
+    use std::{cell::RefCell, rc::Rc};
+    use tabula_registry::{Category, Locale};
+
+    #[test]
+    fn axis_change_combines_with_latest_address_instead_of_mount_snapshot() {
+        Owner::new().with(|| {
+            let source = RwSignal::new(ParsedQuery::default());
+            let parsed = Memo::new(move |_| source.get());
+            let destination = Rc::new(RefCell::new(String::new()));
+            let recorded = destination.clone();
+            let change = axis(
+                parsed,
+                move |href| *recorded.borrow_mut() = href,
+                |next, value| {
+                    next.max_minutes = value.parse().ok();
+                },
+            );
+            source.update(|current| {
+                current.query.text = Some("classic strategy".to_owned());
+                current.query.category = Some(Category::Abstract);
+                current.query.players = Some(2);
+            });
+            change("30".to_owned());
+            assert_eq!(
+                *destination.borrow(),
+                "/games?q=classic%20strategy&category=abstract&players=2&duration=30"
+            );
+            source.update(|current| current.query.players = Some(5));
+            change(String::new());
+            assert_eq!(
+                *destination.borrow(),
+                "/games?q=classic%20strategy&category=abstract&players=5"
+            );
+        });
+    }
+
+    #[test]
+    fn search_normalization_preserves_space_before_next_word_but_back_replaces_draft() {
+        assert_eq!(search_address_replacement("classic ", "classic"), None);
+        assert_eq!(
+            search_address_replacement("classic strategy ", "classic strategy"),
+            None
+        );
+        assert_eq!(search_address_replacement("   ", ""), None);
+        assert_eq!(
+            search_address_replacement("classic strategy", "strategy"),
+            Some("strategy".to_owned())
+        );
+        assert_eq!(
+            search_address_replacement("classic strategy", ""),
+            Some(String::new())
+        );
+    }
+
+    #[test]
+    fn valid_unlisted_url_constraints_keep_their_actual_selected_labels() {
+        let en = Messages::new(Locale::En);
+        let vi = Messages::new(Locale::Vi);
+        let players = vec![("2".to_owned(), "2".to_owned())];
+        assert_eq!(
+            selected_only_option(&en, "library.filter.players", "", &players),
+            None
+        );
+        assert_eq!(
+            selected_only_option(&en, "library.filter.players", "2", &players),
+            None
+        );
+        assert_eq!(
+            selected_only_option(&en, "library.filter.players", "8", &players),
+            Some(("8".to_owned(), "8".to_owned()))
+        );
+        assert_eq!(
+            selected_only_option(&en, "library.filter.duration", "15", &[]),
+            Some(("15".to_owned(), "15 min".to_owned()))
+        );
+        assert_eq!(
+            selected_only_option(&vi, "library.filter.duration", "15", &[]),
+            Some(("15".to_owned(), "15 phút".to_owned()))
+        );
+        assert_eq!(
+            selected_only_option(&en, "library.filter.mode", "bots", &[]),
+            Some(("bots".to_owned(), "Against the game's bot".to_owned()))
+        );
+    }
 }

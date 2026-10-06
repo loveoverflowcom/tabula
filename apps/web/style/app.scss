@@ -15,10 +15,10 @@
 //   - a disabled control must also be EXPLAINED (tooltip / aria), because a
 //     greyed-out button with no reason is a dead end
 //
-// Hierarchy follows the compact Material 3 Expressive foundation
-// (docs/ui/screens/foundation.md): grouping is tonal, not decorative. There is
-// no ornamental border or shadow anywhere below. An outline appears only where
-// it carries meaning — focus, selection, or error.
+// Shared controls retain the Material 3 Expressive foundation. Original Design 01
+// shell/discovery composition lives in shell.scss and library.scss (issue #87).
+// Outlines on controls carry focus, selection or error; ornamental hero material
+// is decorative artwork and never communicates interaction state.
 
 * {
   box-sizing: border-box;
@@ -36,10 +36,10 @@ body {
 // ---------------------------------------------------------------- scaffolding
 
 .skip-link {
-  position: absolute;
+  position: fixed;
   left: var(--sys-space-sm);
   top: calc(var(--sys-space-sm) * -8);
-  z-index: 2;
+  z-index: 100;
   padding: var(--sys-space-md) var(--sys-space-lg);
   border-radius: var(--sys-shape-button);
   background: var(--sys-color-primary);
@@ -49,55 +49,6 @@ body {
   &:focus-visible {
     top: var(--sys-space-sm);
   }
-}
-
-.topbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sys-space-lg);
-  align-items: center;
-  justify-content: space-between;
-  min-height: 58px;
-  padding: var(--sys-space-sm) var(--sys-space-lg);
-  background: var(--sys-color-container);
-}
-
-.topbar__nav {
-  display: flex;
-  gap: var(--sys-space-xxs);
-}
-
-.topbar__link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--sys-density-min-target);
-  padding: 0 var(--sys-space-lg);
-  border-radius: var(--sys-shape-full);
-  color: var(--sys-color-on-surface);
-  text-decoration: none;
-
-  &[aria-current="page"] {
-    background: var(--sys-color-primary);
-    color: var(--sys-color-on-primary);
-  }
-}
-
-.topbar__locale {
-  display: flex;
-  gap: var(--sys-space-sm);
-  align-items: center;
-}
-
-.main {
-  padding: var(--sys-space-lg);
-}
-
-.section {
-  margin: 0 auto;
-  max-width: 1200px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sys-space-lg);
 }
 
 .section > .btn,
@@ -186,15 +137,6 @@ body {
 
 // --------------------------------------------------------------------- toolbar
 
-.toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sys-space-lg);
-  padding: var(--sys-space-lg);
-  border-radius: var(--sys-shape-card);
-  background: var(--sys-color-container);
-}
-
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -217,60 +159,6 @@ body {
 }
 
 // ----------------------------------------------------------------------- cards
-
-.cards {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--sys-space-md);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "art text"
-    "action action";
-  gap: var(--sys-space-md);
-  align-items: start;
-  padding: var(--sys-space-lg);
-  border-radius: var(--sys-shape-card);
-  background: var(--sys-color-container);
-}
-
-.card__art {
-  grid-area: art;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--sys-shape-md);
-  background: var(--sys-color-container-high);
-}
-
-.card__text {
-  grid-area: text;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sys-space-xs);
-}
-
-.card__action {
-  grid-area: action;
-  justify-self: start;
-}
-
-.card__title {
-  margin: 0;
-  font-size: var(--sys-type-title-md-size);
-  line-height: var(--sys-type-title-md-line-height);
-  font-weight: var(--sys-type-title-md-weight);
-}
-
-.card__tagline {
-  margin: 0;
-  color: var(--sys-color-on-surface-variant);
-}
 
 // Passive labels. They carry meaning in text and are deliberately not shaped
 // like the chips that act.
@@ -606,36 +494,8 @@ body {
     padding: var(--sys-space-xxl);
   }
 
-  .card {
-    grid-template-areas: "art text action";
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-  }
-
-  .card__action {
-    justify-self: end;
-  }
-
   .actions {
     flex-wrap: nowrap;
-  }
-}
-
-@media (min-width: 905px) {
-  .cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .toolbar {
-    flex-direction: row;
-    align-items: flex-end;
-    flex-wrap: wrap;
-  }
-}
-
-@media (min-width: 1440px) {
-  .cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -728,10 +588,6 @@ body {
   text-underline-offset: var(--sys-space-xxs);
 }
 
-.topbar__nav {
-  flex-wrap: wrap;
-}
-
 @media (max-width: 599px) {
   .account .section__title {
     font-size: var(--sys-type-headline-sm-size);
@@ -752,3 +608,6 @@ body {
 }
 
 .online-panel { padding:24px; margin-block:24px; border-radius:var(--sys-shape-lg); background:var(--sys-color-container); color:var(--sys-color-on-surface); .field {margin-block:16px;} .field__control {max-width:16rem;} &__admission {padding-block:16px;} }
+
+@import "shell";
+@import "library";
