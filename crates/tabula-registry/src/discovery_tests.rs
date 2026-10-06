@@ -2,10 +2,10 @@
 
 #[cfg(any(feature = "game-chess", feature = "game-tiles"))]
 use crate::{
-    BotLevel, CatalogQuery, ConfigDraft, DiscoveryCatalog, FieldKind, GameId, LaunchMode,
-    SetupRequest,
+    BotLevel, Catalog, CatalogQuery, ConfigDraft, DiscoveryCatalog, FieldKind, GameId, LaunchMode,
+    Locale, RuntimeBinding, SetupRequest,
 };
-use crate::{Catalog, I18nKey, Locale, Localizer, RuntimeBinding};
+use crate::{I18nKey, Localizer};
 use std::collections::BTreeMap;
 
 struct CopyTable(BTreeMap<String, String>);
@@ -26,8 +26,8 @@ fn legacy_bare_catalog_constructors_clone_default_and_function_pointer_remain_va
     let constructor: fn(Vec<std::sync::Arc<dyn ErasedGame>>, &dyn Localizer) -> Catalog =
         Catalog::new;
     assert!(constructor(vec![], &table).is_empty());
-    let _method: fn(&RuntimeBinding, &dyn ErasedGame) -> bool = RuntimeBinding::supports_direct;
-    let _resolve: fn(
+    let _: fn(&RuntimeBinding, &dyn ErasedGame) -> bool = RuntimeBinding::supports_direct;
+    let _: fn(
         RuntimeBinding,
         &dyn ErasedGame,
         &str,
@@ -38,6 +38,18 @@ fn legacy_bare_catalog_constructors_clone_default_and_function_pointer_remain_va
         // Existing wildcard consumers see only the original erased trait.
         let adapter = Adapter::<games::chess::ChessSetup>::new();
         assert!(!adapter.metadata().id().as_str().is_empty());
+        let method: fn(&RuntimeBinding, &dyn ErasedGame) -> bool = RuntimeBinding::supports_direct;
+        assert!(!method(&RuntimeBinding::unbound(), &adapter));
+        let resolve: fn(
+            RuntimeBinding,
+            &dyn ErasedGame,
+            &str,
+            Locale,
+        ) -> Result<LaunchHandoff, UnavailableReason> = crate::launch::resolve_direct;
+        assert_eq!(
+            resolve(RuntimeBinding::unbound(), &adapter, "", Locale::En),
+            Err(UnavailableReason::NoGameplayRuntime)
+        );
     }
 }
 
@@ -75,7 +87,7 @@ fn drafts(form: &crate::ConfigForm) -> Vec<ConfigDraft> {
         cases.push(unknown);
         for field in form.fields {
             let mut values = vec![
-                "".to_owned(),
+                String::new(),
                 "unknown-choice".to_owned(),
                 "-1".to_owned(),
                 "1.5".to_owned(),
@@ -84,7 +96,7 @@ fn drafts(form: &crate::ConfigForm) -> Vec<ConfigDraft> {
             ];
             match field.kind {
                 FieldKind::Choice { options } => {
-                    values.extend(options.iter().map(|option| option.value.to_owned()))
+                    values.extend(options.iter().map(|option| option.value.to_owned()));
                 }
                 FieldKind::Integer { min, max, default } => {
                     values.extend([
@@ -108,6 +120,82 @@ fn drafts(form: &crate::ConfigForm) -> Vec<ConfigDraft> {
 }
 
 #[cfg(any(feature = "game-chess", feature = "game-tiles"))]
+fn assert_matching_descriptors(
+    game: &dyn crate::ErasedGame,
+    facade: &dyn crate::discovery::ErasedDiscoveryGame,
+) {
+    assert!(std::ptr::eq(game.metadata(), facade.metadata()));
+    assert!(std::ptr::eq(game.capabilities(), facade.capabilities()));
+    assert!(std::ptr::eq(game.form(), facade.form()));
+    assert_eq!(game.modes(), facade.modes());
+    assert_eq!(game.catalog_cover_svg(), facade.catalog_cover_svg());
+    assert_eq!(game.bot_levels(), facade.bot_levels());
+    assert_eq!(game.direct_document(), facade.direct_document());
+    assert_eq!(game.direct_host_supported(), facade.direct_host_supported());
+    for locale in Locale::ALL {
+        assert_eq!(game.messages(locale), facade.messages(locale));
+    }
+}
+
+#[cfg(any(feature = "game-chess", feature = "game-tiles"))]
+fn query_cases(
+    ordinary: &Catalog,
+    readonly: &DiscoveryCatalog,
+    table: &CopyTable,
+) -> Vec<CatalogQuery> {
+    let mut queries = vec![CatalogQuery::default()];
+    for players in [0, 1, 2, 3, 4, 5, 16, u8::MAX] {
+        queries.push(CatalogQuery {
+            players: Some(players),
+            ..Default::default()
+        });
+    }
+    for duration in [0, 1, u16::MAX] {
+        queries.push(CatalogQuery {
+            max_minutes: Some(duration),
+            ..Default::default()
+        });
+    }
+    for mode in LaunchMode::ALL {
+        queries.push(CatalogQuery {
+            mode: Some(mode),
+            ..Default::default()
+        });
+    }
+    for entry in ordinary.entries() {
+        let metadata = entry.game().metadata();
+        for category in metadata.categories() {
+            queries.push(CatalogQuery {
+                category: Some(*category),
+                ..Default::default()
+            });
+        }
+        queries.push(CatalogQuery {
+            complexity: Some(metadata.complexity()),
+            ..Default::default()
+        });
+        for key in [metadata.name_key(), metadata.tagline_key()] {
+            let text = table
+                .text(key)
+                .expect("module-owned visible copy must exist")
+                .to_owned();
+            queries.push(CatalogQuery {
+                text: Some(text),
+                ..Default::default()
+            });
+        }
+        queries.push(CatalogQuery {
+            players: Some(entry.game().capabilities().seats().allowed().min()),
+            mode: Some(LaunchMode::LocalHotSeat),
+            complexity: Some(metadata.complexity()),
+            ..Default::default()
+        });
+        assert!(readonly.get(entry.id()).is_some());
+    }
+    queries
+}
+
+#[cfg(any(feature = "game-chess", feature = "game-tiles"))]
 #[test]
 fn discovery_registration_copy_catalog_order_and_filters_match_full_authority_descriptors() {
     let full = crate::registered_games();
@@ -118,17 +206,7 @@ fn discovery_registration_copy_catalog_order_and_filters_match_full_authority_de
     );
     assert_eq!(full.len(), discovery.len());
     for (game, facade) in full.iter().zip(&discovery) {
-        assert!(std::ptr::eq(game.metadata(), facade.metadata()));
-        assert!(std::ptr::eq(game.capabilities(), facade.capabilities()));
-        assert!(std::ptr::eq(game.form(), facade.form()));
-        assert_eq!(game.modes(), facade.modes());
-        assert_eq!(game.catalog_cover_svg(), facade.catalog_cover_svg());
-        assert_eq!(game.bot_levels(), facade.bot_levels());
-        assert_eq!(game.direct_document(), facade.direct_document());
-        assert_eq!(game.direct_host_supported(), facade.direct_host_supported());
-        for locale in Locale::ALL {
-            assert_eq!(game.messages(locale), facade.messages(locale));
-        }
+        assert_matching_descriptors(game.as_ref(), facade.as_ref());
     }
     for locale in Locale::ALL {
         let table = CopyTable(
@@ -156,55 +234,7 @@ fn discovery_registration_copy_catalog_order_and_filters_match_full_authority_de
         );
         assert_eq!(ordinary.messages(locale), readonly.messages(locale));
         assert_eq!(readonly.clone().entries().len(), ordinary.entries().len());
-        let mut queries = vec![CatalogQuery::default()];
-        for players in [0, 1, 2, 3, 4, 5, 16, u8::MAX] {
-            queries.push(CatalogQuery {
-                players: Some(players),
-                ..Default::default()
-            });
-        }
-        for duration in [0, 1, u16::MAX] {
-            queries.push(CatalogQuery {
-                max_minutes: Some(duration),
-                ..Default::default()
-            });
-        }
-        for mode in LaunchMode::ALL {
-            queries.push(CatalogQuery {
-                mode: Some(mode),
-                ..Default::default()
-            });
-        }
-        for entry in ordinary.entries() {
-            let metadata = entry.game().metadata();
-            for category in metadata.categories() {
-                queries.push(CatalogQuery {
-                    category: Some(*category),
-                    ..Default::default()
-                });
-            }
-            queries.push(CatalogQuery {
-                complexity: Some(metadata.complexity()),
-                ..Default::default()
-            });
-            for key in [metadata.name_key(), metadata.tagline_key()] {
-                let text = table
-                    .text(key)
-                    .expect("module-owned visible copy must exist")
-                    .to_owned();
-                queries.push(CatalogQuery {
-                    text: Some(text),
-                    ..Default::default()
-                });
-            }
-            queries.push(CatalogQuery {
-                players: Some(entry.game().capabilities().seats().allowed().min()),
-                mode: Some(LaunchMode::LocalHotSeat),
-                complexity: Some(metadata.complexity()),
-                ..Default::default()
-            });
-            assert!(readonly.get(entry.id()).is_some());
-        }
+        let queries = query_cases(&ordinary, &readonly, &table);
         let absent = GameId::new("org.example.absent").expect("valid absent identifier");
         assert!(ordinary.get(&absent).is_none());
         assert!(readonly.get(&absent).is_none());
@@ -223,6 +253,35 @@ fn discovery_registration_copy_catalog_order_and_filters_match_full_authority_de
                     .collect::<Vec<_>>(),
                 "query {query:?}"
             );
+        }
+    }
+}
+
+#[cfg(any(feature = "game-chess", feature = "game-tiles"))]
+fn assert_matching_direct_handoffs(
+    game: &dyn crate::ErasedGame,
+    facade: &dyn crate::discovery::ErasedDiscoveryGame,
+) {
+    for binding in bindings() {
+        assert_eq!(
+            binding.supports_direct(game),
+            binding.supports_discovery_direct(facade)
+        );
+        for match_id in [
+            "00000000000000000000000000000001",
+            "ffffffffffffffffffffffffffffffff",
+            "00000000000000000000000000000000",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "1",
+            "../private?token=x",
+            "",
+        ] {
+            for locale in Locale::ALL {
+                assert_eq!(
+                    crate::launch::resolve_direct(binding, game, match_id, locale),
+                    crate::launch::resolve_discovery_direct(binding, facade, match_id, locale)
+                );
+            }
         }
     }
 }
@@ -304,33 +363,7 @@ fn discovery_normalization_success_errors_bytes_summaries_and_handoffs_match_ful
             game_successes > 0,
             "must reach valid configuration for each linked game"
         );
-        for binding in bindings() {
-            assert_eq!(
-                binding.supports_direct(game.as_ref()),
-                binding.supports_discovery_direct(facade.as_ref())
-            );
-            for match_id in [
-                "00000000000000000000000000000001",
-                "ffffffffffffffffffffffffffffffff",
-                "00000000000000000000000000000000",
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-                "1",
-                "../private?token=x",
-                "",
-            ] {
-                for locale in Locale::ALL {
-                    assert_eq!(
-                        crate::launch::resolve_direct(binding, game.as_ref(), match_id, locale),
-                        crate::launch::resolve_discovery_direct(
-                            binding,
-                            facade.as_ref(),
-                            match_id,
-                            locale
-                        )
-                    );
-                }
-            }
-        }
+        assert_matching_direct_handoffs(game.as_ref(), facade.as_ref());
     }
     assert!(comparisons > 100 && successes > 0 && rejections > 0);
     #[cfg(feature = "game-chess")]
