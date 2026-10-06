@@ -18,7 +18,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/'verification/current-ui-report-artifacts'
-MASK='input,textarea,[data-secret],[data-private],[name*="csrf" i],[name*="token" i]'
+MASK='input[type="password"],[data-secret],[data-private],[name*="csrf" i],[name*="token" i],[data-testid*="credential" i]'
 
 
 def utc():
@@ -62,7 +62,7 @@ class Evidence:
             'device_pixel_ratio':page.evaluate('window.devicePixelRatio'),'png_pixels':[im.width,im.height],
             'bytes':len(png),'sha256':hashlib.sha256(png).hexdigest(),'browser_version':page.context.browser.version,
             'original_png_unchanged':True,'pixel_inspection':'pending separate post-download review',
-            'privacy':'public shell or anonymous local fixtures; account inputs and secret-marked nodes masked'})
+            'privacy':'public shell or anonymous local fixtures; password/credential/secret-marked nodes masked; ordinary public search and clock controls retained'})
         self.write()
         print('Actual PNG',path.name,flush=True)
         return png
