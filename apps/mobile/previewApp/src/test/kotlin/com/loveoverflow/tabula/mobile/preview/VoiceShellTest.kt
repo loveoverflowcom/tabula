@@ -12,7 +12,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import com.loveoverflow.tabula.mobile.TabulaApp
-import com.loveoverflow.tabula.mobile.shell.ShellText
+import com.loveoverflow.tabula.mobile.localization.ShellCopy
+import com.loveoverflow.tabula.mobile.localization.ShellStrings
+import com.loveoverflow.tabula.mobile.design.TabulaScheme
+import com.loveoverflow.tabula.mobile.shell.DeviceFacts
 import com.loveoverflow.tabula.mobile.voice.*
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -24,6 +27,7 @@ import kotlin.test.assertTrue
 /** Shared CMP interactions against labelled native-media and game-page doubles, not real audio. */
 @OptIn(ExperimentalTestApi::class)
 class VoiceShellTest {
+    private val strings = ShellStrings.forLanguage("en")
     private class MediaDouble : VoiceClient {
         var observer: VoiceClientObserver? = null
         var attempt = 0L
@@ -52,7 +56,7 @@ class VoiceShellTest {
     @Test fun productionUnavailableIsVisibleAndHasNoMediaEffect() = runDesktopComposeUiTest(width = 390, height = 844) {
         val media = MediaDouble()
         val voice = VoiceController(media, UnavailableVoiceGrantSource, VoiceClock { 100 })
-        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice) } }
+        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
         onNodeWithText("Play Preview game on this device").performClick()
         onNodeWithText("Join voice").performClick(); waitForIdle()
         onNodeWithText("Voice unavailable: backend grants are not connected").assertIsDisplayed()
@@ -62,7 +66,7 @@ class VoiceShellTest {
     @Test fun controlsJoinPermissionDenialRetryMicAndVoiceLeaveAreCmpOwned() = runDesktopComposeUiTest(width = 390, height = 844) {
         val media = MediaDouble()
         val voice = VoiceController(media, source(), VoiceClock { 100 })
-        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice) } }
+        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
         onNodeWithText("Play Preview game on this device").performClick()
         onNodeWithText("Join voice").performClick(); waitForIdle()
         assertEquals(1, media.connects); assertEquals(0, media.micRequests)
@@ -88,7 +92,7 @@ class VoiceShellTest {
     @Test fun gameReloadAndHostRetryPreserveVoiceButConfirmedRouteLeaveCleansUp() = runDesktopComposeUiTest(width = 390, height = 844) {
         val media = MediaDouble()
         val voice = VoiceController(media, source(), VoiceClock { 100 })
-        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice) } }
+        setContent { PhoneViewport(390, 844) { TabulaApp(SimulatedGameHost(), previewGames, voice, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
         onNodeWithText("Play Preview game on this device").performClick(); waitForIdle()
         var runtime = SimulatedGameHost.runtimes.last()
         runtime.page.completeBoot(); waitForIdle()
@@ -97,10 +101,10 @@ class VoiceShellTest {
         onNodeWithTag("sim-reload").performClick(); waitForIdle()
         assertEquals(before, media.disconnects); assertEquals(VoiceConnection.CONNECTED, voice.state.connection)
         runtime.failHost("synthetic host failure"); waitForIdle()
-        onNodeWithText(ShellText.Retry).performClick(); waitForIdle()
+        onNodeWithText(strings[ShellCopy.Retry]).performClick(); waitForIdle()
         assertEquals(before, media.disconnects)
         runtime = SimulatedGameHost.runtimes.last(); runtime.page.completeBoot(); waitForIdle()
-        onNodeWithText(ShellText.Back).performClick(); waitForIdle()
+        onNodeWithText(strings[ShellCopy.Back]).performClick(); waitForIdle()
         onNodeWithTag("sim-confirm").performClick(); waitForIdle()
         assertTrue(media.disconnects > before); assertEquals(VoiceConnection.IDLE, voice.state.connection)
         onNodeWithText("Play Preview game on this device").assertIsDisplayed()

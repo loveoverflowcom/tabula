@@ -1,23 +1,17 @@
 package com.loveoverflow.tabula.mobile.shell
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,16 +21,12 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.loveoverflow.tabula.mobile.design.LocalTabulaColors
-import com.loveoverflow.tabula.mobile.design.TabulaAccessibility
-import com.loveoverflow.tabula.mobile.design.TabulaBrand
-import com.loveoverflow.tabula.mobile.design.TabulaShape
 import com.loveoverflow.tabula.mobile.design.TabulaSpace
 import com.loveoverflow.tabula.mobile.design.TabulaText
 import com.loveoverflow.tabula.mobile.design.TabulaType
@@ -46,120 +36,173 @@ import com.loveoverflow.tabula.mobile.host.GameBackPort
 import com.loveoverflow.tabula.mobile.host.GameHost
 import com.loveoverflow.tabula.mobile.host.GameHostEvent
 import com.loveoverflow.tabula.mobile.host.GameLaunch
+import com.loveoverflow.tabula.mobile.localization.ShellCopy
+import com.loveoverflow.tabula.mobile.localization.ShellStrings
 import com.loveoverflow.tabula.mobile.voice.VoiceController
 import com.loveoverflow.tabula.mobile.voice.VoiceControls
 
-/** Visible copy of the shell; kept in one place until a localisation owner exists. */
-object ShellText {
-    const val HomeTitle = "Tabula"
-    const val HomeStatus = "Games packaged with this app play on this device. Online play, accounts and the full catalog are not connected."
-    const val NoGames = "Native gameplay is not available in this build yet."
-    const val Back = "Back"
-    const val Retry = "Try again"
-    const val FailureTitle = "The game could not open"
-    const val FailureNote = "Trying again starts a new game. Local games are not saved."
-
-    fun play(name: String) = "Play $name on this device"
-}
-
-/** Screen shell: page surface, safe-area insets and a compact title (`docs/ui/screens/foundation.md`). */
+/** Home uses Design 01's display hierarchy and warm hero; only packaged local play is actionable. */
 @Composable
-fun ShellPage(
-    title: String,
-    modifier: Modifier = Modifier,
-    titleContent: @Composable () -> Unit = { TabulaText(title, TabulaType.headlineSm) },
-    content: @Composable ColumnScope.() -> Unit,
-) {
+fun HomeScreen(games: List<BundledGame>, strings: ShellStrings, onOpen: (BundledGame) -> Unit, onBrowse: () -> Unit) {
     val colors = LocalTabulaColors.current
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.surface)
-            .safeDrawingPadding()
-            .padding(horizontal = TabulaSpace.lg.dp, vertical = TabulaSpace.md.dp),
-        verticalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp),
-    ) {
-        titleContent()
-        content()
-    }
-}
-
-/** A labelled action at least [TabulaAccessibility.minTarget] dp tall. [filled] marks the principal action. */
-@Composable
-fun ShellButton(label: String, filled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    val colors = LocalTabulaColors.current
-    val container = if (filled) colors.primary else colors.containerHigh
-    val content = if (filled) colors.onPrimary else colors.onSurface
-    Box(
-        modifier = modifier
-            .heightIn(min = TabulaAccessibility.minTarget.dp)
-            .widthIn(min = TabulaAccessibility.minTarget.dp)
-            .clip(RoundedCornerShape(TabulaShape.button.dp))
-            .background(container)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = TabulaSpace.xl.dp, vertical = TabulaSpace.md.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        TabulaText(label, TabulaType.labelLg, color = content)
-    }
-}
-
-@Composable
-fun HomeScreen(games: List<BundledGame>, languageTag: String, onOpen: (BundledGame) -> Unit) {
-    ShellPage(ShellText.HomeTitle, titleContent = { TabulaBrand() }) {
-        Column(
-            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp),
-        ) {
-            TabulaText(
-                if (games.isEmpty()) ShellText.NoGames else ShellText.HomeStatus,
-                TabulaType.bodyMd,
-                color = LocalTabulaColors.current.onSurfaceVariant,
-            )
-            for (game in games) {
-                ShellButton(
-                    ShellText.play(game.displayName(languageTag)),
-                    filled = true,
-                    onClick = { onOpen(game) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+    ShellPage(strings[ShellCopy.HomeHeading], Modifier.testTag("shell-home"), displayTitle = true) {
+        ShellSurface(hero = true) {
+            TabulaText(strings[ShellCopy.HomeIntro], TabulaType.displaySm, Modifier.semantics { heading() }, colors.shellOnHero)
+            if (games.isEmpty()) {
+                TabulaText(strings[ShellCopy.NoGamesTitle], TabulaType.titleMd, Modifier.semantics { heading() }, colors.shellOnHero)
+                TabulaText(strings[ShellCopy.NoGames], TabulaType.bodyMd, color = colors.shellOnHero)
+            } else {
+                TabulaText(strings[ShellCopy.PackagedGames], TabulaType.titleLg, Modifier.semantics { heading() }, colors.shellOnHero)
+                TabulaText(strings[ShellCopy.LocalOnly], TabulaType.bodyMd, color = colors.shellOnHero)
+                for ((index, game) in games.withIndex()) {
+                    ShellButton(
+                        strings.play(game.displayName(strings.languageTag)),
+                        filled = index == 0,
+                        onClick = { onOpen(game) },
+                        modifier = Modifier.fillMaxWidth().testTag("shell-play-${game.id}"),
+                    )
+                }
             }
+        }
+        CatalogUnavailable(strings) {
+            ShellActionButton(
+                strings[ShellCopy.BrowseGames], ShellAction.Text, onBrowse,
+                Modifier.fillMaxWidth().testTag("shell-browse-games"),
+            )
         }
     }
 }
 
+/** Packaged entries can open detail; the full registry catalog remains a clearly labeled gate. */
+@Composable
+fun GamesScreen(games: List<BundledGame>, strings: ShellStrings, onDetail: (BundledGame) -> Unit) {
+    ShellPage(strings[ShellCopy.Games], Modifier.testTag("shell-games"), displayTitle = true) {
+        if (games.isEmpty()) {
+            ShellStatePanel(strings[ShellCopy.NoGamesTitle], strings[ShellCopy.NoGames])
+        } else {
+            TabulaText(strings[ShellCopy.PackagedGames], TabulaType.titleLg, Modifier.semantics { heading() })
+            for (game in games) {
+                ShellSurface {
+                    val name = game.displayName(strings.languageTag)
+                    TabulaText(name, TabulaType.titleLg, Modifier.semantics { heading() })
+                    TabulaText(strings[ShellCopy.LocalOnly], TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
+                    ShellActionButton(
+                        strings.details(name), ShellAction.Tonal, { onDetail(game) },
+                        Modifier.fillMaxWidth().testTag("shell-details-${game.id}"),
+                    )
+                }
+            }
+        }
+        CatalogUnavailable(strings)
+    }
+}
+
+/** Local detail is limited to manifest display data; it invents no rules, seats, art or capabilities. */
+@Composable
+fun DetailScreen(game: BundledGame?, strings: ShellStrings, onSetup: () -> Unit) {
+    ShellPage(game?.displayName(strings.languageTag) ?: strings[ShellCopy.Details], Modifier.testTag("shell-detail")) {
+        if (game == null) {
+            ShellStatePanel(strings[ShellCopy.DetailUnavailableTitle], strings[ShellCopy.DetailUnavailable])
+        } else {
+            ShellSurface {
+                TabulaText(strings[ShellCopy.LocalMode], TabulaType.titleLg, Modifier.semantics { heading() })
+                TabulaText(strings[ShellCopy.LocalOnly], TabulaType.bodyMd)
+                ShellActionButton(strings[ShellCopy.Setup], ShellAction.Filled, onSetup,
+                    Modifier.fillMaxWidth().testTag("shell-setup-action"))
+            }
+            OnlineUnavailable(strings)
+        }
+    }
+}
+
+/** Setup preserves the packaged launch query; this scaffold adds no game configuration or network action. */
+@Composable
+fun SetupScreen(game: BundledGame?, strings: ShellStrings, onPlay: () -> Unit) {
+    ShellPage(game?.let { strings.setup(it.displayName(strings.languageTag)) } ?: strings[ShellCopy.SetupTitle], Modifier.testTag("shell-setup")) {
+        if (game == null) {
+            ShellStatePanel(strings[ShellCopy.DetailUnavailableTitle], strings[ShellCopy.DetailUnavailable])
+        } else {
+            ShellSurface {
+                TabulaText(strings[ShellCopy.LocalMode], TabulaType.titleLg, Modifier.semantics { heading() })
+                TabulaText(strings[ShellCopy.SetupIntro], TabulaType.bodyMd)
+                ShellActionButton(strings[ShellCopy.StartLocalGame], ShellAction.Filled, onPlay,
+                    Modifier.fillMaxWidth().testTag("shell-start-local"))
+            }
+            OnlineUnavailable(strings)
+        }
+    }
+}
+
+/** Anonymous account scaffold uses the shared neutral silhouette until a verified profile adapter exists. */
+@Composable
+fun AccountScreen(strings: ShellStrings) {
+    ShellPage(strings[ShellCopy.AccountTitle], Modifier.testTag("shell-account")) {
+        ShellSurface {
+            Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp), verticalAlignment = Alignment.CenterVertically) {
+                ShellAnonymousAvatar(strings)
+                TabulaText(strings[ShellCopy.Anonymous], TabulaType.titleLg, Modifier.weight(1f))
+            }
+        }
+        ShellStatePanel(
+            strings[ShellCopy.AccountUnavailableTitle], strings[ShellCopy.AccountUnavailable],
+            Modifier.testTag("shell-account-unavailable"),
+        )
+        TabulaText(strings[ShellCopy.PreferencesUnavailable], TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun CatalogUnavailable(strings: ShellStrings, action: (@Composable () -> Unit)? = null) = ShellStatePanel(
+    strings[ShellCopy.CatalogUnavailableTitle], strings[ShellCopy.CatalogUnavailable],
+    Modifier.testTag("shell-catalog-unavailable"), action = action,
+)
+
+@Composable
+private fun OnlineUnavailable(strings: ShellStrings) = ShellStatePanel(
+    strings[ShellCopy.OnlineUnavailable], strings[ShellCopy.HomeStatus], Modifier.testTag("shell-online-unavailable"),
+)
+
 /**
  * Hosts the platform [GameHost] under a toolbar; the shell owns navigation, the host owns the surface.
- *
- * Back goes to the host first, so a live match shows its own leave confirmation; the shell pops
- * only when the host does not consume it. A failure the game could not explain itself replaces
- * the surface with a panel; **Try again** mounts a fresh host, which starts a new game.
+ * Back goes to the host first. Unexplained host failure releases that surface; retry mounts one
+ * fresh host and starts a new game. Recomposition and resize never change runtime identity.
  */
-// The common BackHandler is experimental and deprecated in favour of NavigationEventHandler in
-// Compose Multiplatform 1.12; it is the one API available on both targets without a new dependency.
+// This is the shared Back API available on both targets without a new navigation dependency.
 @OptIn(ExperimentalComposeUiApi::class)
 @Suppress("DEPRECATION")
 @Composable
-fun GameScreen(title: String, launch: GameLaunch, host: GameHost, onLeave: () -> Unit, voice: VoiceController? = null, vietnamese: Boolean = false) {
+fun GameScreen(
+    title: String,
+    launch: GameLaunch,
+    host: GameHost,
+    onLeave: () -> Unit,
+    voice: VoiceController? = null,
+    vietnamese: Boolean = false,
+    strings: ShellStrings = ShellStrings.forLanguage(if (vietnamese) "vi" else "en"),
+) {
     val back = remember { GameBackPort() }
     var failure by remember { mutableStateOf<String?>(null) }
     val leave = { if (!back.requestBack()) onLeave() }
     BackHandler(enabled = true, onBack = leave)
-    ShellPage(title, titleContent = { GameToolbar(title, leave) }) {
+    ShellPage(
+        title,
+        Modifier.background(LocalTabulaColors.current.shellCanvas).safeDrawingPadding(),
+        scrollable = false,
+        titleContent = { GameToolbar(title, strings, leave) },
+    ) {
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             val voiceHeight = maxHeight / 2
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp)) {
                 if (voice != null) {
-                    // Text and permissions may grow at 200% font scale. Scroll the native controls
-                    // without giving them the game surface's entire remaining viewport (I-10).
-                    VoiceControls(voice, vietnamese, Modifier.heightIn(max = voiceHeight).verticalScroll(rememberScrollState()))
+                    // Large text and permissions scroll without consuming the game viewport (I-10).
+                    VoiceControls(voice, strings.vietnamese,
+                        Modifier.heightIn(max = voiceHeight).verticalScroll(rememberScrollState()))
                 }
                 val reason = failure
                 if (reason != null) {
-                    FailurePanel(reason, onRetry = { failure = null }, modifier = Modifier.fillMaxWidth().weight(1f))
+                    FailurePanel(reason, strings, onRetry = { failure = null }, modifier = Modifier.fillMaxWidth().weight(1f))
                 } else {
-                    // The failure panel and this branch are exclusive, so leaving the panel discards the old
-                    // runtime with its composition and Try again mounts a new one. Nothing else restarts it.
+                    // Exclusive branches discard the failed runtime; retry mounts a fresh one.
                     host.Content(
                         launch = launch,
                         onEvent = { event ->
@@ -177,15 +220,16 @@ fun GameScreen(title: String, launch: GameLaunch, host: GameHost, onLeave: () ->
     }
 }
 
-/** Long game names retain their semantic text while the compact toolbar reserves room for Back. */
+/** Long game names keep their semantic text while the compact toolbar reserves room for Back. */
 @Composable
-private fun GameToolbar(title: String, onBack: () -> Unit) {
+private fun GameToolbar(title: String, strings: ShellStrings, onBack: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ShellButton(ShellText.Back, filled = false, onClick = onBack)
+        ShellActionButton(strings[ShellCopy.Back], ShellAction.Tonal, onBack,
+            Modifier.testTag("shell-back"), compact = true)
         BasicText(
             title,
             modifier = Modifier.weight(1f).semantics { heading() },
@@ -197,19 +241,14 @@ private fun GameToolbar(title: String, onBack: () -> Unit) {
 }
 
 @Composable
-private fun FailurePanel(reason: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = LocalTabulaColors.current
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(TabulaShape.card.dp))
-            .background(colors.container, RoundedCornerShape(TabulaShape.card.dp))
-            .padding(TabulaSpace.lg.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp),
-    ) {
-        TabulaText(ShellText.FailureTitle, TabulaType.titleMd)
-        TabulaText(reason, TabulaType.bodyMd, color = colors.onSurfaceVariant)
-        TabulaText(ShellText.FailureNote, TabulaType.bodyMd, color = colors.onSurfaceVariant)
-        ShellButton(ShellText.Retry, filled = true, onClick = onRetry)
+private fun FailurePanel(reason: String, strings: ShellStrings, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.verticalScroll(rememberScrollState())) {
+        ShellStatePanel(
+            strings[ShellCopy.FailureTitle], reason,
+            Modifier.fillMaxWidth().testTag("shell-host-failure"), error = true,
+        ) {
+            TabulaText(strings[ShellCopy.FailureNote], TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
+            ShellActionButton(strings[ShellCopy.Retry], ShellAction.Filled, onRetry, Modifier.testTag("shell-retry"))
+        }
     }
 }

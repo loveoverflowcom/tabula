@@ -3,12 +3,14 @@ package com.loveoverflow.tabula.mobile.preview
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -16,11 +18,16 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.loveoverflow.tabula.mobile.TabulaApp
 import com.loveoverflow.tabula.mobile.host.BundledGame
+import com.loveoverflow.tabula.mobile.design.TabulaScheme
+import com.loveoverflow.tabula.mobile.shell.DeviceFacts
 
 /** A phone-sized content box; the shell's own safe-area handling is the only inset owner. */
 @Composable
-internal fun PhoneViewport(width: Int, height: Int, content: @Composable () -> Unit) {
-    Box(Modifier.requiredSize(width.dp, height.dp).clipToBounds().testTag("phone-viewport")) { content() }
+internal fun PhoneViewport(width: Int, height: Int, fontScale: Float = 1f, content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+        Box(Modifier.requiredSize(width.dp, height.dp).clipToBounds().testTag("phone-viewport")) { content() }
+    }
 }
 
 /** Fixture catalog: the same shape `tabula-games.json` has, with an opaque id and no game logic. */
@@ -37,6 +44,12 @@ internal val previewGames = listOf(
 fun main() {
     val width = System.getProperty("tabula.preview.width", "390").toInt()
     val height = System.getProperty("tabula.preview.height", "844").toInt()
+    val fontScale = System.getProperty("tabula.preview.fontScale", "1").toFloat()
+    val scheme = if (System.getProperty("tabula.preview.dark") == "true") TabulaScheme.Dark else TabulaScheme.Light
+    val facts = DeviceFacts(
+        reducedMotion = System.getProperty("tabula.preview.reducedMotion") == "true",
+        languageTag = System.getProperty("tabula.preview.language", "en"),
+    )
     System.setProperty("compose.layers.type", "ON_SAME_CANVAS")
     SimulatedGameHost.reset()
     application {
@@ -53,7 +66,9 @@ fun main() {
                 println("Tabula preview content: ${actual.width}x${actual.height} (requested ${width}x$height) density=${window.graphicsConfiguration?.defaultTransform?.scaleX}")
                 if (System.getProperty("tabula.preview.smokeWindow") == "true") exitApplication()
             }
-            PhoneViewport(width, height) { TabulaApp(gameHost = SimulatedGameHost(), games = previewGames) }
+            PhoneViewport(width, height, fontScale) {
+                TabulaApp(gameHost = SimulatedGameHost(), games = previewGames, scheme = scheme, deviceFacts = facts)
+            }
         }
     }
 }

@@ -60,7 +60,7 @@ Worth knowing, because they are what most future ADRs will be about:
 1. A projection leak.
 2. Silent determinism rot.
 3. Phase 4 ordering/idempotency bugs under load.
-4. Macroquad's ceiling, or the mobile WebView's latency (ADR-0032), arriving during Phase 6 mobile work.
+4. Macroquad's ceiling or native CMP gameplay embedding and performance (ADR-0043), arriving during Phase 6 mobile work.
 5. Scope drift into building a UI framework or a game engine.
 
 [ADR-0035](0035-werewolf-local-simulator.md) records the opt-in local Werewolf

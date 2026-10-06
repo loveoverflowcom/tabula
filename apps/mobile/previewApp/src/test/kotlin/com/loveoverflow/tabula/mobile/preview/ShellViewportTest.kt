@@ -37,7 +37,9 @@ import com.loveoverflow.tabula.mobile.host.BundledGame
 import com.loveoverflow.tabula.mobile.host.GameLaunch
 import com.loveoverflow.tabula.mobile.shell.GameScreen
 import com.loveoverflow.tabula.mobile.shell.HomeScreen
-import com.loveoverflow.tabula.mobile.shell.ShellText
+import com.loveoverflow.tabula.mobile.localization.ShellCopy
+import com.loveoverflow.tabula.mobile.localization.ShellStrings
+import com.loveoverflow.tabula.mobile.shell.DeviceFacts
 import com.loveoverflow.tabula.mobile.voice.DevVoiceGrantSource
 import com.loveoverflow.tabula.mobile.voice.VoiceClient
 import com.loveoverflow.tabula.mobile.voice.VoiceClientObserver
@@ -58,6 +60,7 @@ import kotlin.test.assertFalse
 /** Rendered CMP viewport checks; the game page and media are labelled doubles, never native execution. */
 @OptIn(ExperimentalTestApi::class)
 class ShellViewportTest {
+    private val strings = ShellStrings.forLanguage("en")
     private class MediaDouble : VoiceClient {
         private var observer: VoiceClientObserver? = null
         var micRequests = 0
@@ -112,10 +115,10 @@ class ShellViewportTest {
     fun defaultAppShowsNativeGameplayUnavailableWithoutAPlayOrReadySurface() {
         for (width in listOf(320, 390)) {
             runDesktopComposeUiTest(width = width, height = 844) {
-                setContent { PhoneViewport(width, 844) { TabulaApp() } }
+                setContent { PhoneViewport(width, 844) { TabulaApp(deviceFacts = DeviceFacts(false, "en")) } }
                 waitForIdle()
-                onNodeWithText(ShellText.NoGames).assertIsDisplayed()
-                assertFalse(ShellText.NoGames.contains("cargo"), "Product copy does not contain a build command")
+                onNodeWithText(strings[ShellCopy.NoGames]).assertIsDisplayed()
+                assertFalse(strings[ShellCopy.NoGames].contains("cargo"), "Product copy does not contain a build command")
                 onAllNodes(hasText("Play ", substring = true)).assertCountEquals(0)
                 onAllNodesWithTag("sim-page").assertCountEquals(0)
                 onAllNodesWithText("Ready", substring = true).assertCountEquals(0)
@@ -129,11 +132,11 @@ class ShellViewportTest {
     fun nativeUnavailableScreenKeepsTheSamePolicyInTheDarkThemeAdapter() = runDesktopComposeUiTest(width = 390, height = 844) {
         setContent {
             PhoneViewport(390, 844) {
-                TabulaTheme(TabulaScheme.Dark) { HomeScreen(emptyList(), "en", onOpen = {}) }
+                TabulaApp(scheme = TabulaScheme.Dark, deviceFacts = DeviceFacts(false, "en"))
             }
         }
         waitForIdle()
-        onNodeWithText(ShellText.NoGames).assertIsDisplayed()
+        onNodeWithText(strings[ShellCopy.NoGames]).assertIsDisplayed()
         onAllNodes(hasText("Play ", substring = true)).assertCountEquals(0)
         screenshot("cmp-native-unavailable-dark-theme-adapter-390x844")
     }
@@ -148,7 +151,7 @@ class ShellViewportTest {
                         val voice = connectedVoice(media)
                         setContent {
                             CompositionLocalProvider(LocalDensity provides Density(1f, fontScale)) {
-                                PhoneViewport(width, 844) {
+                                PhoneViewport(width, 844, fontScale) {
                                     TabulaTheme {
                                         Box(Modifier.fillMaxSize().background(LocalTabulaColors.current.surface).padding(16.dp)) {
                                             VoiceControls(voice, vietnamese)
@@ -189,13 +192,13 @@ class ShellViewportTest {
                 var opened: String? = null
                 setContent {
                     CompositionLocalProvider(LocalDensity provides Density(1f, fontScale)) {
-                        PhoneViewport(width, height) {
-                            TabulaTheme { HomeScreen(games, "en", onOpen = { opened = it.id }) }
+                        PhoneViewport(width, height, fontScale) {
+                            TabulaTheme { HomeScreen(games, strings, onOpen = { opened = it.id }, onBrowse = {}) }
                         }
                     }
                 }
                 waitForIdle()
-                val last = ShellText.play("Board game 6")
+                val last = strings.play("Board game 6")
                 onNodeWithText(last).performScrollTo()
                 waitForIdle()
                 assertWholeAction(last, width, height)
@@ -215,21 +218,21 @@ class ShellViewportTest {
                 SimulatedGameHost.reset()
                 setContent {
                     CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
-                        PhoneViewport(width, height) {
+                        PhoneViewport(width, height, fontScale = 2f) {
                             TabulaTheme { GameScreen(title, launch, SimulatedGameHost(autoBootMillis = null), onLeave = {}) }
                         }
                     }
                 }
                 waitForIdle()
-                assertWholeAction(ShellText.Back, width, height)
+                assertWholeAction(strings[ShellCopy.Back], width, height)
                 SimulatedGameHost.runtimes.last().failHost(reason)
                 waitForIdle()
-                onNodeWithText(ShellText.Retry).performScrollTo()
+                onNodeWithText(strings[ShellCopy.Retry]).performScrollTo()
                 waitForIdle()
-                assertWholeAction(ShellText.Retry, width, height)
-                assertWholeAction(ShellText.Back, width, height)
+                assertWholeAction(strings[ShellCopy.Retry], width, height)
+                assertWholeAction(strings[ShellCopy.Back], width, height)
                 screenshot("cmp-host-failure-${width}x$height-font2-simulated-host")
-                onNodeWithText(ShellText.Retry).performClick()
+                onNodeWithText(strings[ShellCopy.Retry]).performClick()
                 waitForIdle()
                 assertEquals(2, SimulatedGameHost.createdCount, "Retry creates one replacement runtime")
                 assertEquals(1, SimulatedGameHost.disposedCount, "The failed runtime was released")
@@ -242,7 +245,7 @@ class ShellViewportTest {
         val voice = connectedVoice(MediaDouble())
         setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
-                PhoneViewport(640, 320) {
+                PhoneViewport(640, 320, fontScale = 2f) {
                     TabulaTheme(TabulaScheme.Dark) {
                         GameScreen("A long packaged game name with native voice", launch, SimulatedGameHost(autoBootMillis = null), onLeave = {}, voice = voice)
                     }
@@ -250,7 +253,7 @@ class ShellViewportTest {
             }
         }
         waitForIdle()
-        assertWholeAction(ShellText.Back, 640, 320)
+        assertWholeAction(strings[ShellCopy.Back], 640, 320)
         val surface = onNodeWithTag("sim-page").getUnclippedBoundsInRoot()
         assertTrue(surface.bottom - surface.top >= 44.dp,
             "The native voice panel leaves a nonzero, usable surface viewport")

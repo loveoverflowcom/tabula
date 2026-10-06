@@ -55,11 +55,12 @@ never enter GameHost. The mobile WebView gameplay adapter has been retired by AD
   explicit fresh join with mic off. This conservative policy avoids the SDK's asynchronous local-track
   republishing; it is not a claim of uninterrupted microphone recovery.
 
-Source/API review and project/fixture-script validation are **not native compilation or hardware audio
-evidence**. The Swift adapter, Kotlin export conformance, framework linking and device audio flows are
-**NOT_COMPILED / NOT_RUN locally**: this change was authored where Swift/Xcode are absent. The macOS CI
-gate must compile/link the actual application before those build claims can be made; simulator/device
-permission denial, interruptions, headset routing, backgrounding and two-client audio still need execution.
+The original voice change had source/API review and project/fixture-script validation only locally.
+[Issue #101's historical ledger](../../../docs/verification/issue-101-mobile-shell/README.md)
+records a later Xcode build of the old WebView composition, including this unchanged native
+media adapter and Kotlin export boundary. That establishes **compiled** evidence for the
+adapter at that source, not native gameplay or hardware audio. Permission denial, interruptions,
+headset routing, backgrounding and two-client audio still need execution.
 
 ## Next native acceptance
 
