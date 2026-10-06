@@ -8,10 +8,79 @@ from browser_acceptance import admission_response_facts, exception_class, protec
 from unittest import mock
 from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_CONCEALED,
     PageNetwork, Pair, command_identity, pending_record, run, pair_diagnostics, current_context_after_restart, FOCUS_OBSERVER,
-    same_record_rotation_game, focus_only_revoke_game)
+    same_record_rotation_game, focus_only_revoke_game, held_prefix,
+    crash_game, apply_and_committed_refresh_game, restart_between_grant_and_attach_game)
 
 
 class ContinuityHelperTests(unittest.TestCase):
+    def test_held_prefix_uses_only_existing_ephemeral_token_and_known_public_expectation(self):
+        reply={'status':200,'body':{'version':1,'expected_public_transcript_prefix':True}}
+        with mock.patch('continuity_acceptance.wire_probe',return_value=reply) as request:
+            for expected in range(5):
+                held_prefix('synthetic-ca','synthetic-control-token',expected)
+                ca,path,headers,body=request.call_args.args
+                self.assertEqual(ca,'synthetic-ca')
+                self.assertEqual(path,'/__fixture/continuity/held-prefix')
+                self.assertEqual(headers,[('Origin','https://localhost:9443'),
+                                          ('Content-Type','application/json'),
+                                          ('X-Tabula-Fixture-Control','synthetic-control-token')])
+                self.assertEqual(json.loads(body),{'version':1,'expected_inputs':expected})
+            request.reset_mock()
+            for invalid in (-1,5,True,1.0,'1',None):
+                with self.subTest(expected=invalid),self.assertRaises(AcceptanceFailure):
+                    held_prefix('synthetic-ca','synthetic-control-token',invalid)
+            request.assert_not_called()
+
+    def test_held_prefix_rejects_mismatch_errors_and_any_extra_or_non_boolean_output(self):
+        valid={'version':1,'expected_public_transcript_prefix':True}
+        bodies=[None,{},dict(valid,expected_public_transcript_prefix=False),
+                dict(valid,expected_public_transcript_prefix=1),dict(valid,version=True),
+                dict(valid,version=2)]
+        bodies.extend(dict(valid,**{field:'synthetic-private'})
+                      for field in ('state','view','seed','state_hash','input_index','count',
+                                    'match_id','record','binding_id','control_token'))
+        for status,body in [(200,value) for value in bodies]+[(503,valid),(403,valid),(409,valid),(410,valid)]:
+            with self.subTest(status=status,body=body), \
+                 mock.patch('continuity_acceptance.wire_probe',return_value={'status':status,'body':body}), \
+                 self.assertRaises(AcceptanceFailure):
+                held_prefix('synthetic-ca','synthetic-control-token',0)
+
+    def test_held_witness_updates_native_audit_expectation_only_after_success(self):
+        pair=Pair.__new__(Pair);pair.write_audit=mock.Mock()
+        with mock.patch('continuity_acceptance.held_prefix',side_effect=AcceptanceFailure('fixed mismatch')):
+            with self.assertRaises(AcceptanceFailure):pair.held_prefix(None,'synthetic-token',0)
+            pair.write_audit.assert_not_called()
+        with mock.patch('continuity_acceptance.held_prefix') as witness:
+            pair.held_prefix(None,'synthetic-token',1)
+            witness.assert_called_once_with(None,'synthetic-token',1)
+            pair.write_audit.assert_called_once_with(1)
+
+    def test_crash_apply_rotation_and_restart_witness_do_not_authenticate_while_held(self):
+        class AfterHeldWitness(Exception):
+            pass
+        # Stop before injecting any transport/crash fault. These doubles check
+        # harness coordination only, never actual browser or database acceptance.
+        for operation,partition,expected in ((crash_game,False,0),(crash_game,True,1),
+                (apply_and_committed_refresh_game,'before_commit',0),
+                (apply_and_committed_refresh_game,'after_commit',1),
+                (same_record_rotation_game,None,1),(restart_between_grant_and_attach_game,None,1)):
+            pair=mock.Mock(pages=[mock.Mock(),mock.Mock()],attachments=[[{}],[{}]])
+            pair.arm.return_value='synthetic-token'
+            with self.subTest(operation=operation.__name__,partition=partition), \
+                 mock.patch('continuity_acceptance.Pair',return_value=pair), \
+                 mock.patch('continuity_acceptance.held') as confirmed, \
+                 mock.patch('continuity_acceptance.PageNetwork',side_effect=AfterHeldWitness), \
+                 mock.patch('continuity_acceptance.context_facts') as auth, \
+                 mock.patch('continuity_acceptance.api') as api_call:
+                with self.assertRaises(AfterHeldWitness):
+                    if operation is crash_game:operation([],None,'synthetic-ca',mock.Mock(),partition,[])
+                    elif operation is apply_and_committed_refresh_game:operation([],None,'synthetic-ca',partition,[])
+                    elif operation is restart_between_grant_and_attach_game:operation([],None,'synthetic-ca',mock.Mock(),[])
+                    else:operation([],None,'synthetic-ca',[])
+                confirmed.assert_called_once_with('synthetic-ca','synthetic-token')
+                pair.held_prefix.assert_called_once_with('synthetic-ca','synthetic-token',expected)
+                pair.oracle.assert_not_called();auth.assert_not_called();api_call.assert_not_called()
+
     def test_board_matches_exact_game_owned_seat_wording(self):
         # Fixed projected facts are independent examples from Chess status_text.
         # This fake does not manufacture browser, TLS or rendered acceptance.
