@@ -1,6 +1,6 @@
 # ADR-0043: isolated account registration, profiles and social authority
 
-- **Status:** accepted bounded implementation scope; acceptance pending; production closed
+- **Status:** accepted bounded implementation; isolated local acceptance passed; production closed
 - **Date:** 2026-10-06
 - **Amends:** ADR-0036/0038 and Phase 4/5 ordering for the remaining #54 criteria
 - **Invariants touched:** none relaxed; I-1, I-5/I-6, I-9, I-13 and I-15 preserved
@@ -148,6 +148,31 @@ is inferred. Local preferences remain separate from account/session authority;
 no credential, CSRF or private profile/social data persists in browser storage.
 
 ## Evidence and revisit
+
+### Opted-in frontend and emitted resource cost
+
+The new browser composition is explicitly selected with `account-social`,
+independently of `online`. The feature opens the enrollment/editable-profile/
+other-profile/friends routes and single social socket only within this isolated
+slice. Feature-off builds retain the prior account/session views and unavailable
+registration/friends presentation, even if connected to a more capable authority.
+It is not permission to silently activate the composition or omit any #54
+criterion from its acceptance.
+
+The first combined optimized artifact measured 1,096,779 raw WASM bytes, exceeding
+the existing 900,000-byte shell ceiling. Shared guarded reactive readers and
+request/conditional implementations reduced that to 1,040,622 bytes before the
+feature split. That full artifact did **not** pass the existing ceiling. The new
+registration, profile and social state machines have a separately enforced
+1,100,000-byte raw ceiling, with bounded headroom over the measured composition.
+This amends doc 04 §3.2 only for the non-default `account-social` artifact;
+default and `online` keep 900,000 bytes. The larger budget requires its compiled
+profile marker and actual emitted bytes; the standard check rejects that marker
+and preserves markerless historical dashboard comparisons at 900,000 bytes.
+No arbitrary caller-selected size limit is accepted. Both old caps and the new cap are mandatory CI checks. All 352
+render cases, 52 interactions and 21 real-authority cases run on the same final
+optimized `online,account-social` artifact, rather than on a feature-off shell.
+The game remains a separate document with its own unchanged resource budget.
 
 The [working ledger](../verification/issue-54-account-followup/README.md) records
 actual commands, nonempty selections, results and remaining scope. Acceptance

@@ -9,6 +9,9 @@
 use leptos::{html, prelude::*};
 use leptos_router::components::A;
 
+#[cfg(target_arch = "wasm32")]
+use super::GuardedShow as Show;
+
 use crate::{
     account::{use_account, AccountOperation, AccountSnapshot, AccountStatus},
     i18n::Messages,
@@ -99,6 +102,17 @@ fn AccountTask(task: AccountTaskKind) -> impl IntoView {
         }
     });
 
+    #[cfg(feature = "account-social")]
+    let profile_controls = if task == AccountTaskKind::Profile {
+        Some(
+            view! { <super::accounts_full::ProfileControls account=controller verified=full_profile/> },
+        )
+    } else {
+        None
+    };
+    #[cfg(not(feature = "account-social"))]
+    let profile_controls = ();
+
     let page = view! {
         <section class="section account" aria-labelledby="account-title">
             <h1 id="account-title" class="section__title" tabindex="-1" node_ref=heading>
@@ -107,16 +121,16 @@ fn AccountTask(task: AccountTaskKind) -> impl IntoView {
             <p class="section__body">
                 {translated(intro_key)}
             </p>
-            <div class="account__state" aria-busy=move || if snapshot().busy.is_some() { "true" } else { "false" }>
+            <div class="account__state" aria-busy=super::static_text(Signal::derive(move || if snapshot().busy.is_some() { "true" } else { "false" }), "false")>
                 <p class="status" role="status" aria-atomic="true">
-                    {move || Messages::new(locale.get()).text(status_key(&snapshot()))}
+                    {super::text(Signal::derive(move || Messages::new(locale.get()).text(status_key(&snapshot()))), "")}
                 </p>
                 <Show when=move || failure_key(&snapshot()).is_some()>
                     <p class="banner banner--error" role="alert">
-                        {move || {
+                        {super::optional_text(Signal::derive(move || {
                             failure_key(&snapshot())
                                 .map(|key| Messages::new(locale.get()).text(key))
-                        }}
+                        }))}
                     </p>
                 </Show>
             </div>
@@ -134,9 +148,7 @@ fn AccountTask(task: AccountTaskKind) -> impl IntoView {
                     }
                 }}
             />
-            {if task == AccountTaskKind::Profile {
-                Some(view! { <super::accounts_full::ProfileControls account=controller verified=full_profile/> })
-            } else { None }}
+            {profile_controls}
 
             <Show when=move || login_allowed(&snapshot())>
                 <p class="section__body">
@@ -169,10 +181,10 @@ fn AccountTask(task: AccountTaskKind) -> impl IntoView {
                 </Show>
                 <button
                     type="button"
-                    class=move || if full_profile.try_get().unwrap_or(false) || login_allowed(&snapshot())
+                    class=super::static_text(Signal::derive(move || if full_profile.try_get().unwrap_or(false) || login_allowed(&snapshot())
                         || (task == AccountTaskKind::Login && profile_for(&snapshot()).is_some())
-                    { "btn btn--tonal" } else { "btn btn--filled btn--principal" }
-                    disabled=move || snapshot().busy.is_some()
+                    { "btn btn--tonal" } else { "btn btn--filled btn--principal" }), "btn btn--tonal")
+                    disabled=super::boolean(Signal::derive(move || snapshot().busy.is_some()), true)
                     on:click=move |_| {
                         confirming.try_set(false);
                         if let Some(element) = heading.try_get().flatten() {
@@ -203,8 +215,8 @@ fn AccountTask(task: AccountTaskKind) -> impl IntoView {
                         class="btn btn--tonal"
                         data-account-private=""
                         node_ref=logout_invoker
-                        aria-expanded=move || if confirming.try_get().unwrap_or(false) { "true" } else { "false" }
-                        aria-controls=move || confirming.try_get().unwrap_or(false).then_some("logout-confirmation")
+                        aria-expanded=super::static_text(Signal::derive(move || if confirming.try_get().unwrap_or(false) { "true" } else { "false" }), "false")
+                        aria-controls=super::optional_text(Signal::derive(move || confirming.try_get().unwrap_or(false).then(|| "logout-confirmation".to_owned())))
                         on:click=move |_| { confirming.try_set(true); }
                     >
                         {translated("accounts.action.logout")}
@@ -463,15 +475,15 @@ fn UnavailableLinks(controller: crate::account::AccountController) -> impl IntoV
             <ul class="rows">
                 <li class="row">
                     <A href="/register" attr:class="account__feature-link">
-                        {move || Messages::new(locale.get()).text(if controller.enrollment_navigation_ticket().is_some() { "accounts.register.title" } else { "accounts.register.link_unavailable" })}
+                        {super::text(Signal::derive(move || Messages::new(locale.get()).text(if controller.enrollment_available() { "accounts.register.title" } else { "accounts.register.link_unavailable" })), "")}
                     </A>
-                    <p class="row__body">{move || Messages::new(locale.get()).text(if controller.enrollment_navigation_ticket().is_some() { "accounts.full.register_available" } else { "accounts.register.reason" })}</p>
+                    <p class="row__body">{super::text(Signal::derive(move || Messages::new(locale.get()).text(if controller.enrollment_available() { "accounts.full.register_available" } else { "accounts.register.reason" })), "")}</p>
                 </li>
                 <li class="row">
                     <A href="/friends" attr:class="account__feature-link">
-                        {move || Messages::new(locale.get()).text(if controller.social_available() { "accounts.friends.title" } else { "accounts.friends.link_unavailable" })}
+                        {super::text(Signal::derive(move || Messages::new(locale.get()).text(if controller.social_available() { "accounts.friends.title" } else { "accounts.friends.link_unavailable" })), "")}
                     </A>
-                    <p class="row__body">{move || Messages::new(locale.get()).text(if controller.social_available() { "accounts.full.friends_available" } else { "accounts.friends.reason" })}</p>
+                    <p class="row__body">{super::text(Signal::derive(move || Messages::new(locale.get()).text(if controller.social_available() { "accounts.full.friends_available" } else { "accounts.friends.reason" })), "")}</p>
                 </li>
             </ul>
         </nav>

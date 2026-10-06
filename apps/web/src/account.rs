@@ -51,6 +51,7 @@ pub struct AccountController {
 
 /// In-memory v2 completion fence, never a credential or serialized authority.
 /// Its exact route and context generation must remain current (ADR-0043).
+#[cfg(feature = "account-social")]
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct DocumentAccountTicket {
     lease: RouteLease,
@@ -59,6 +60,7 @@ pub(crate) struct DocumentAccountTicket {
     csrf_token: String,
 }
 
+#[cfg(feature = "account-social")]
 impl DocumentAccountTicket {
     pub(crate) fn subject(&self) -> &str {
         &self.subject
@@ -70,6 +72,7 @@ impl DocumentAccountTicket {
 }
 
 /// Signed-out, in-memory continuation control for enrollment; no identity grant.
+#[cfg(feature = "account-social")]
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct EnrollmentNavigationTicket {
     lease: RouteLease,
@@ -77,6 +80,7 @@ pub(crate) struct EnrollmentNavigationTicket {
     csrf_token: String,
 }
 
+#[cfg(feature = "account-social")]
 impl EnrollmentNavigationTicket {
     pub(crate) fn csrf_token(&self) -> &str {
         &self.csrf_token
@@ -135,6 +139,7 @@ pub fn use_account() -> AccountController {
         });
     }
     on_cleanup(move || controller.dispose());
+    #[cfg(feature = "account-social")]
     crate::social_full::bind_account(controller);
     #[cfg(target_arch = "wasm32")]
     controller.recover_document(browser::visible());
@@ -144,6 +149,7 @@ pub fn use_account() -> AccountController {
 }
 impl AccountController {
     /// Read validated document controls only while this exact idle route is live.
+    #[cfg(feature = "account-social")]
     pub(crate) fn document_ticket(self) -> Option<DocumentAccountTicket> {
         let _ = self.state.try_get();
         if !self.current() || !self.visible() || !self.connected() {
@@ -169,10 +175,12 @@ impl AccountController {
     }
 
     /// A late v2 response cannot cross a route, subject, context or lifecycle.
+    #[cfg(feature = "account-social")]
     pub(crate) fn ticket_current(self, ticket: &DocumentAccountTicket) -> bool {
         self.document_ticket().as_ref() == Some(ticket)
     }
 
+    #[cfg(feature = "account-social")]
     pub(crate) fn enrollment_navigation_ticket(self) -> Option<EnrollmentNavigationTicket> {
         if !self.current() || !self.visible() || !self.connected() {
             return None;
@@ -195,10 +203,12 @@ impl AccountController {
     }
 
     #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    #[cfg(feature = "account-social")]
     pub(crate) fn enrollment_navigation_current(self, ticket: &EnrollmentNavigationTicket) -> bool {
         self.enrollment_navigation_ticket().as_ref() == Some(ticket)
     }
 
+    #[cfg(feature = "account-social")]
     pub(crate) fn social_available(self) -> bool {
         self.document_ticket().is_some()
             && self
@@ -213,7 +223,26 @@ impl AccountController {
                 .unwrap_or(false)
     }
 
+    #[cfg_attr(not(feature = "account-social"), allow(clippy::unused_self))] // Same presentation API, compiled slice stays closed.
+    pub(crate) fn enrollment_available(self) -> bool {
+        #[cfg(feature = "account-social")]
+        {
+            self.enrollment_navigation_ticket().is_some()
+        }
+        #[cfg(not(feature = "account-social"))]
+        {
+            false
+        }
+    }
+
+    #[cfg(not(feature = "account-social"))]
+    #[allow(clippy::unused_self)] // Backend bits cannot activate an absent frontend slice.
+    pub(crate) fn social_available(self) -> bool {
+        false
+    }
+
     /// Public enrollment completions still require the same live idle route.
+    #[cfg(feature = "account-social")]
     pub(crate) fn public_generation(self) -> Option<u64> {
         if !self.current() || !self.visible() || !self.connected() {
             return None;
@@ -1159,6 +1188,7 @@ mod tests {
         let app = Owner::new();
         app.with(|| {
             provide_account_session();
+            #[cfg(feature = "account-social")]
             crate::social_full::provide_social();
         });
         let old_owner = app.child();

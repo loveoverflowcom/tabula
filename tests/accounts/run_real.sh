@@ -16,6 +16,8 @@ for tool in openssl certutil python3; do
     command -v "$tool" >/dev/null || { echo "Required account acceptance helper absent: $tool" >&2; exit 1; }
 done
 test -s apps/web/dist/index.html
+python3 tools/tests/check-loading-budgets.py --shell-dist apps/web/dist \
+    --shell-profile account-social --write-receipt "$artifacts/real-browser-shell-budget.json"
 private=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/tabula-accounts.XXXXXXXX")
 native_pid=''
 tls_pid=''

@@ -12,12 +12,19 @@ installed (the acceptance environment uses `/tmp/tabula-brand-venv/bin/python`):
 
 ```bash
 cd apps/web
-trunk build
+trunk build --release --cargo-profile wasm-release --features online,account-social
 cd ../..
 /tmp/tabula-brand-venv/bin/python tests/accounts/browser_acceptance.py \
   --web-dist apps/web/dist \
   --receipt /tmp/tabula-account-ui-receipt.json
 ```
+
+`account-social` explicitly opens ADR-0043's isolated frontend composition;
+`online` additionally retains the existing direct-match controls. The complete
+account/social selection requires this combined optimized artifact. CI first
+checks the separate default and `online` artifacts against their unchanged
+900,000-byte raw WASM caps, then checks the combined artifact against its
+documented 1,100,000-byte cap and uses that artifact for both browser harnesses.
 
 Other environments can install the pinned `requirements.txt`, run
 `python -m playwright install chromium`, and use their Playwright Python.

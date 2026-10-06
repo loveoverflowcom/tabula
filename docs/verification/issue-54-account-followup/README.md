@@ -18,16 +18,16 @@ Saved unresolved logout never becomes confirmed sign-out from a network hint.
 
 | Claim | Owner / plausible failure | Oracle and check | Status |
 |---|---|---|---|
-| Offline retirement, fresh recovery | Account core/controller; old completion restores ID | 53 account tests plus focused Chromium offline/online events with HTTP DTO doubles | PASS before v2 additions |
-| Logout intent stays suppressed | Core/controller; reconnect forgets unresolved revocation | Exact target markers and unresolved/storage dispositions in focused tests | PASS before v2 additions |
+| Offline retirement, fresh recovery | Account core/controller; old completion restores ID | 83 web tests, including account/generation laws, plus Chromium offline/online events with HTTP DTO doubles | PASS |
+| Logout intent stays suppressed | Core/controller; reconnect forgets unresolved revocation | Exact target markers and unresolved/storage dispositions in focused tests | PASS |
 | Task routes and fixed recovery | Leptos view; disposed signals panic during SPA navigation | 28 legacy and 24 v2 browser interactions, fresh context/profile and exact route assertions, zero page errors | PASS |
 | Reflow and focus | CSS/view; translated controls overflow or retiring actions lose focus | 192 legacy and 160 v2 render cases: 320/390/768/1440px, four themes, en/vi; focus and touch-target assertions; small-width and high-contrast pixels inspected | PASS |
-| Repository contract | Dependency/token/code boundaries | `cargo xtask check`, web HTTP suite and WASM clippy | PASS before v2 additions; final changed-tree gate owed |
+| Repository contract | Dependency/token/code boundaries | Full `cargo xtask check`, feature/target checks and strict native account/social clippy | PASS: 1,288 tests, 0 failures; all portable gates passed |
 | New DTO field/version boundary | Session HTTP transport; hostile fields or stale shape admitted | `cargo test -p tabula-session-http accounts::` (3 tests), `--test dto_contract` (8 tests) | PASS |
 | Registration/profile durable authority | Auth/session/storage; duplicate create, borrowed epoch or disclosure race | Actual pinned Kanidm 1.11.2 and PostgreSQL 18.6 acceptance | PASS: 3 provider cases and 5 account PG laws |
 | Friends/presence durable authority | Lobby/storage/HTTP; forbidden mutation, stale Online or late private output | Actual PostgreSQL plus independent clock/transport oracles | PASS: 4 social PG laws and 7 focused rules/transport tests |
-| Existing HTTP compatibility | Native session/match adapters; version or capture-route regression | Axum upgrade regressions and actual loopback browser-controller HTTP suite | PASS: 89 adapter tests and 47 controller HTTP tests |
-| Complete compiled browser journeys | Leptos/WASM, native HTTP/WSS, Kanidm and PG | Two independent trusted Chromium processes with real cookie-bound provider callbacks | PASS: 21 distinct account/profile/social cases; strengthened route/reconnect scope and DOM assertions require a final rerun |
+| Existing HTTP compatibility | Native session/match adapters; version or capture-route regression | Axum upgrade regressions, loopback browser-controller HTTP and separate acceptance workspace | PASS: 89 adapter, 47 controller HTTP and 23 standalone fixture tests; standalone strict clippy passed |
+| Complete compiled browser journeys | Leptos/WASM, native HTTP/WSS, Kanidm and PG | Two independent trusted Chromium processes with real cookie-bound provider callbacks | PASS: 21 distinct cases, including fresh route/reconnect scopes, restored peer DOM and durable logout; zero runtime errors |
 
 ## Original acceptance map
 
@@ -48,6 +48,13 @@ These use the actual disposable PostgreSQL 18.6 instance. CI uses PostgreSQL 16
 and must pass on the PR's exact committed tree; a local dirty-tree run is labelled
 as working-tree evidence. `SQLX_OFFLINE=true` selects checked-in compile metadata,
 while the adapters and test laws still execute against the real database.
+Final local portable/feature/actual-browser runs use clean implementation commit
+`6888be7b6950eb1f9c465bc1bee843b2f35de5d5` (tree
+`ad3ee91023909d3695770535218a3d67cd7bbcab`). This ledger's subsequent documentation
+update records those results; the PR's hosted checks bind to its published head.
+The rebase changes only upstream mobile paths and review tooling, preserving the
+account/social implementation previously exercised by the focused PG/provider
+laws. The release bundle's final accepted-state assertions passed in both locales.
 
 ```bash
 SQLX_OFFLINE=true cargo test -p tabula-storage --features social-postgres accounts::tests -- --ignored --test-threads=1
@@ -55,6 +62,11 @@ SQLX_OFFLINE=true cargo test -p tabula-storage --features social-postgres social
 bash tests/kanidm/run.sh bash tests/accounts/provider_acceptance.sh
 cargo test -p tabula-session -p tabula-auth --features tabula-auth/accounts --lib
 cargo test -p tabula-web --features account-http-acceptance --test account_http
+CARGO_TARGET_DIR=/path/to/shared-target SQLX_OFFLINE=true cargo xtask check
+cargo check --workspace --no-default-features
+cargo check --workspace --all-features
+cargo check -p tabula-session-http -p tabula-lobby --target wasm32-unknown-unknown --all-features
+TABULA_ACCOUNTS_DISPOSABLE=1 TABULA_KANIDM_SOCIAL=1 bash tests/kanidm/run.sh bash tests/accounts/run_real.sh
 ```
 
 Account laws: 5 passed; social laws: 4 passed; provider script: exact 3 selected
@@ -65,6 +77,13 @@ by the runners. The provider script covers original invited login, captured-epoc
 legacy profile completion/preservation, and unmapped enrollment/login/profile
 policy. Healthy publication lease cleanup, lost physical backend expiry and
 permission-narrowing writes have independent database exclusion oracles.
+The complete portable gate passed all 1,288 selected tests across 102 test/doctest
+results; 18 opt-in acceptance tests remain ignored there and their relevant
+nonempty selections run separately above. Workspace no-default/all-features,
+pure HTTP/lobby WASM all-features, strict native account/social all-target clippy,
+web native/WASM clippy, skill validation, 34 skill-helper tests and six
+AI-document tests also passed. Hosted Ubuntu24.04/PostgreSQL16 execution is a
+separate required PR check, not inferred from these local PostgreSQL18 results.
 
 The UI-matrix browser harness uses the actual compiled Leptos shell and deliberately
 synthetic context/profile/HTTP responses. Its disposable self-signed HTTPS

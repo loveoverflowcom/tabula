@@ -112,7 +112,7 @@ fn canonical_account_id(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        && u128::from_str_radix(value, 16).is_ok_and(|id| id != 0)
+        && value.bytes().any(|byte| byte != b'0')
 }
 fn canonical_token(value: &str) -> bool {
     value.len() == 43

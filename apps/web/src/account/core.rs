@@ -3,6 +3,7 @@
 //! The core holds only the current document's CSRF context, never credentials.
 //! HTTP DTO validation is necessary but cannot replace durable server authority.
 
+use serde::{de::IgnoredAny, Deserialize};
 use sha2::{Digest, Sha256};
 use tabula_session_http::{
     ContextResponse, LoginStartResponse, SelfProfileResponse, SessionDisposition,
@@ -17,6 +18,45 @@ pub fn trusted_browser_scheme(protocol: &str) -> bool {
 
 /// Maximum decoded response body accepted by this compact isolated client.
 pub const MAX_RESPONSE_BYTES: usize = 8192;
+
+// Serde structs also accept positional arrays. Keep the HTTP object boundary
+// without retaining a recursive JSON Value tree in the browser. The subsequent
+// DTO decode uses the original bytes and still rejects duplicate known fields.
+fn object_body(body: &[u8]) -> bool {
+    body.iter()
+        .find(|byte| !byte.is_ascii_whitespace())
+        .is_some_and(|byte| *byte == b'{')
+}
+
+#[derive(Deserialize)]
+struct ContextShape {
+    #[serde(rename = "capabilities")]
+    _capabilities: ObjectShape,
+}
+
+struct ObjectShape;
+
+impl<'de> Deserialize<'de> for ObjectShape {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct ObjectVisitor;
+        impl<'de> serde::de::Visitor<'de> for ObjectVisitor {
+            type Value = ObjectShape;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("a JSON object")
+            }
+
+            fn visit_map<M: serde::de::MapAccess<'de>>(
+                self,
+                mut map: M,
+            ) -> Result<Self::Value, M::Error> {
+                while map.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
+                Ok(ObjectShape)
+            }
+        }
+        deserializer.deserialize_map(ObjectVisitor)
+    }
+}
 
 /// What can be presented without exposing unresolved or old-account data.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -281,6 +321,7 @@ impl Default for AccountCore {
 impl AccountCore {
     /// Current document-only control facts for v2 leaf adapters (ADR-0043).
     /// The caller must also fence route, connectivity and presentation generation.
+    #[cfg(feature = "account-social")]
     pub(super) fn current_document_context(&self) -> Option<(String, String)> {
         if self.pending.is_some() || self.logout_suppressed || self.persistence_unavailable {
             return None;
@@ -295,6 +336,7 @@ impl AccountCore {
     }
 
     /// Signed-out preauthentication control for explicit enrollment navigation.
+    #[cfg(feature = "account-social")]
     pub(super) fn current_pre_auth_control(&self) -> Option<String> {
         if self.pending.is_some()
             || self.logout_suppressed
@@ -310,6 +352,7 @@ impl AccountCore {
         self.registration_token.clone()
     }
 
+    #[cfg(feature = "account-social")]
     pub(super) fn social_available(&self) -> bool {
         self.social_access == SocialAccess::Available && self.current_document_context().is_some()
     }
@@ -723,13 +766,9 @@ impl AccountCore {
         if !matches!(response.status, 200 | 503) {
             return self.failed(RequestKind::Context, status_failure(response.status));
         }
-        let shape = serde_json::from_slice::<serde_json::Value>(&response.body).ok();
-        if !shape.as_ref().is_some_and(|value| {
-            value.is_object()
-                && value
-                    .get("capabilities")
-                    .is_some_and(serde_json::Value::is_object)
-        }) {
+        if !object_body(&response.body)
+            || serde_json::from_slice::<ContextShape>(&response.body).is_err()
+        {
             return self.failed(RequestKind::Context, AccountFailure::Protocol);
         }
         // Decode original bytes, retaining Serde duplicate-known-field rejection.
@@ -843,10 +882,7 @@ impl AccountCore {
         }
     }
     fn login_complete(&mut self, response: &HttpResponse) -> Option<AccountRequest> {
-        if response.status != 200
-            || !serde_json::from_slice::<serde_json::Value>(&response.body)
-                .is_ok_and(|value| value.is_object())
-        {
+        if response.status != 200 || !object_body(&response.body) {
             return self.failed(RequestKind::Login, status_failure(response.status));
         }
         let login = serde_json::from_slice::<LoginStartResponse>(&response.body)
@@ -869,9 +905,7 @@ impl AccountCore {
         if response.status != 200 {
             return self.failed(RequestKind::Profile, status_failure(response.status));
         }
-        if !serde_json::from_slice::<serde_json::Value>(&response.body)
-            .is_ok_and(|value| value.is_object())
-        {
+        if !object_body(&response.body) {
             return self.failed(RequestKind::Profile, AccountFailure::Protocol);
         }
         let profile = serde_json::from_slice::<SelfProfileResponse>(&response.body)

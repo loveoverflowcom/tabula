@@ -4,6 +4,9 @@
 
 use leptos::{html, prelude::*};
 use leptos_router::{components::A, hooks::use_params_map};
+
+#[cfg(target_arch = "wasm32")]
+use super::GuardedShow as Show;
 use tabula_session_http::accounts::social::{
     FriendRequestStatus, PresenceObservation, SocialAction, SocialMutation, SocialMutationResponse,
     SocialRelationship, SocialSearchResponse,
@@ -42,9 +45,9 @@ fn focus_heading() {
 fn FullStatus(phase: ReadSignal<ResourcePhase>) -> impl IntoView {
     let locale = use_locale();
     view! {
-        <div class="account__state" aria-busy=move || if phase.try_get().is_some_and(ResourcePhase::busy) { "true" } else { "false" }>
+        <div class="account__state" aria-busy=super::static_text(Signal::derive(move || if phase.try_get().is_some_and(ResourcePhase::busy) { "true" } else { "false" }), "false")>
             <p role="status" class="status" aria-atomic="true">
-                {move || Messages::new(locale.get()).text(phase.try_get().unwrap_or(ResourcePhase::Unavailable).key())}
+                {super::text(Signal::derive(move || Messages::new(locale.get()).text(phase.try_get().unwrap_or(ResourcePhase::Unavailable).key())), "")}
             </p>
             <Show when=move || phase.try_get().is_some_and(|phase| matches!(phase, ResourcePhase::Error | ResourcePhase::Unknown | ResourcePhase::Conflict))>
                 <p class="banner banner--error" role="alert">{translated("accounts.full.safe_error")}</p>
@@ -56,7 +59,7 @@ fn FullStatus(phase: ReadSignal<ResourcePhase>) -> impl IntoView {
 #[component]
 fn Escapes(principal: impl Fn() -> bool + Copy + Send + Sync + 'static) -> impl IntoView {
     view! { <aside class="account__local"><p>{translated("accounts.local.explanation")}</p>
-    <div class="actions account__actions"><A href="/games" attr:class=move || if principal() { "btn btn--filled btn--principal" } else { "btn btn--tonal" }>{translated("accounts.action.library")}</A>
+    <div class="actions account__actions"><A href="/games" attr:class=super::static_text(Signal::derive(move || if principal() { "btn btn--filled btn--principal" } else { "btn btn--tonal" }), "btn btn--tonal")>{translated("accounts.action.library")}</A>
         <A href="/account" attr:class="btn btn--text">{translated("accounts.action.back_account")}</A>
     </div></aside> }
 }
@@ -96,7 +99,7 @@ pub fn RegisterPage() -> impl IntoView {
                     .ok()
                     .filter(|response| matches!(response.status, 200 | 503))
                     .and_then(|response| {
-                        serde_json::from_slice::<EnrollmentContextResponse>(&response.body).ok()
+                        crate::json::decode::<EnrollmentContextResponse>(&response.body).ok()
                     })
                     .filter(|context| context.validate().is_ok());
                 match context {
@@ -213,7 +216,7 @@ pub fn RegisterPage() -> impl IntoView {
                     .ok()
                     .filter(|response| response.status == 200)
                     .and_then(|response| {
-                        serde_json::from_slice::<RegistrationResponse>(&response.body).ok()
+                        crate::json::decode::<RegistrationResponse>(&response.body).ok()
                     })
                     .filter(|response| response.validate().is_ok());
                 if let Some(response) = response {
@@ -250,20 +253,20 @@ pub fn RegisterPage() -> impl IntoView {
                 <Show when=move || invalid.try_get().unwrap_or(false)><p role="alert" class="field__error" id="registration-error">{translated("accounts.full.fields_invalid")}</p></Show>
                 <label class="field" for="register-handle"><span class="field__label">{translated("accounts.full.handle")}</span>
                     <input id="register-handle" name="handle" type="text" required=true autocomplete="username" autocapitalize="none" spellcheck="false" class="field__control"
-                        minlength="3" maxlength="32" aria-describedby="handle-help registration-error" aria-invalid=move || invalid.try_get().unwrap_or(false).then_some("true")
-                        disabled=move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown) prop:value=move || handle.try_get().unwrap_or_default()
+                        minlength="3" maxlength="32" aria-describedby="handle-help registration-error" aria-invalid=super::optional_text(Signal::derive(move || invalid.try_get().unwrap_or(false).then(|| "true".to_owned())))
+                        disabled=super::boolean(Signal::derive(move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown)), true) prop:value=super::text(Signal::derive(move || handle.try_get().unwrap_or_default()), "")
                         on:input=move |event| { handle.try_set(event_target_value(&event)); }/>
                     <span class="field__hint" id="handle-help">{translated("accounts.full.handle_help")}</span>
                 </label>
                 <label class="field" for="register-display-name"><span class="field__label">{translated("accounts.full.display_name")}</span>
                     <input id="register-display-name" name="display_name" type="text" required=true autocomplete="nickname" class="field__control" maxlength="256"
-                        aria-describedby="name-help registration-error" aria-invalid=move || invalid.try_get().unwrap_or(false).then_some("true")
-                        disabled=move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown) prop:value=move || name.try_get().unwrap_or_default()
+                        aria-describedby="name-help registration-error" aria-invalid=super::optional_text(Signal::derive(move || invalid.try_get().unwrap_or(false).then(|| "true".to_owned())))
+                        disabled=super::boolean(Signal::derive(move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown)), true) prop:value=super::text(Signal::derive(move || name.try_get().unwrap_or_default()), "")
                         on:input=move |event| { name.try_set(event_target_value(&event)); }/>
                     <span class="field__hint" id="name-help">{translated("accounts.full.name_help")}</span>
                 </label>
                 <button type="submit" data-testid="register-submit" class="btn btn--filled btn--principal"
-                    disabled=move || phase.try_get().is_some_and(ResourcePhase::busy)>{translated("accounts.register.title")}</button>
+                    disabled=super::boolean(Signal::derive(move || phase.try_get().is_some_and(ResourcePhase::busy)), true)>{translated("accounts.register.title")}</button>
             </form>
         </Show>
         <Show when=move || grant.try_get().flatten().is_none() && !accepted.try_get().unwrap_or(false)
@@ -276,7 +279,7 @@ pub fn RegisterPage() -> impl IntoView {
                 phase.try_set(ResourcePhase::Pending); focus_heading();
                 slot.run(account, RequestScope::Enrollment(generation), "POST", "/api/v2/auth/enrollment/start".into(), Some(ticket.csrf_token().to_owned()), Some("{}".into()), move |result| {
                     let target = result.ok().filter(|response| response.status == 200)
-                        .and_then(|response| serde_json::from_slice::<EnrollmentStartResponse>(&response.body).ok())
+                        .and_then(|response| crate::json::decode::<EnrollmentStartResponse>(&response.body).ok())
                         .filter(|response| response.validate().is_ok());
                     if let Some(target) = target {
                         #[cfg(target_arch = "wasm32")]
@@ -296,7 +299,7 @@ pub fn RegisterPage() -> impl IntoView {
         <Show when=move || phase.try_get() == Some(ResourcePhase::Unknown)>
             <button type="button" class="btn btn--tonal" on:click=move |_| read()>{translated("accounts.full.reconcile")}</button>
         </Show>
-        <A href="/login" attr:class=move || if accepted.try_get().unwrap_or(false) { "btn btn--filled btn--principal" } else { "btn btn--tonal" }>{translated("accounts.action.signin")}</A>
+        <A href="/login" attr:class=super::static_text(Signal::derive(move || if accepted.try_get().unwrap_or(false) { "btn btn--filled btn--principal" } else { "btn btn--tonal" }), "btn btn--tonal")>{translated("accounts.action.signin")}</A>
         <Escapes principal=move || !accepted.try_get().unwrap_or(false) && grant.try_get().flatten().is_none() && account.enrollment_navigation_ticket().is_none()/>
     </section> }
 }
@@ -347,7 +350,7 @@ pub fn ProfileControls(account: AccountController, verified: RwSignal<bool>) -> 
                     .ok()
                     .filter(|response| response.status == 200)
                     .and_then(|response| {
-                        serde_json::from_slice::<SelfAccountProfileResponse>(&response.body).ok()
+                        crate::json::decode::<SelfAccountProfileResponse>(&response.body).ok()
                     })
                     .filter(|response| response.validate().is_ok())
                     .filter(|response| response.account_id == expected);
@@ -465,11 +468,10 @@ pub fn ProfileControls(account: AccountController, verified: RwSignal<bool>) -> 
                     phase.try_set(ResourcePhase::Error);
                 }
                 Ok(response) if response.status == 200 => {
-                    let current =
-                        serde_json::from_slice::<SelfAccountProfileResponse>(&response.body)
-                            .ok()
-                            .filter(|current| current.validate().is_ok())
-                            .filter(|current| current.account_id == expected);
+                    let current = crate::json::decode::<SelfAccountProfileResponse>(&response.body)
+                        .ok()
+                        .filter(|current| current.validate().is_ok())
+                        .filter(|current| current.account_id == expected);
                     if let Some(current) = current {
                         profile.try_set(Some(current));
                         pending.try_set_value(None);
@@ -492,9 +494,9 @@ pub fn ProfileControls(account: AccountController, verified: RwSignal<bool>) -> 
         </Show>
         <Show when=move || profile.try_get().flatten().is_some()>
             <h2 class="section__subtitle">{translated("accounts.full.profile_details")}</h2>
-            <dl class="facts"><dt>{translated("accounts.full.handle")}</dt><dd>{move || profile.try_get().flatten().map(|profile| profile.handle)}</dd>
-                <dt>{translated("accounts.full.display_name")}</dt><dd>{move || profile.try_get().flatten().map(|profile| profile.display_name)}</dd>
-                <dt>{translated("accounts.full.visibility")}</dt><dd>{move || profile.try_get().flatten().map(|profile| Messages::new(locale.get()).text(visibility_key(profile.visibility)))}</dd>
+            <dl class="facts"><dt>{translated("accounts.full.handle")}</dt><dd>{super::optional_text(Signal::derive(move || profile.try_get().flatten().map(|profile| profile.handle)))}</dd>
+                <dt>{translated("accounts.full.display_name")}</dt><dd>{super::optional_text(Signal::derive(move || profile.try_get().flatten().map(|profile| profile.display_name)))}</dd>
+                <dt>{translated("accounts.full.visibility")}</dt><dd>{super::optional_text(Signal::derive(move || profile.try_get().flatten().map(|profile| Messages::new(locale.get()).text(visibility_key(profile.visibility)))))}</dd>
             </dl>
             <Show when=move || !editing.try_get().unwrap_or(false)>
                 <button type="button" data-testid="profile-edit" class="btn btn--filled btn--principal" on:click=move |_| {
@@ -506,23 +508,23 @@ pub fn ProfileControls(account: AccountController, verified: RwSignal<bool>) -> 
                     on:compositionstart=move |_| { composing.try_set(true); } on:compositionend=move |_| { composing.try_set(false); }>
                     <label class="field" for="profile-display-name"><span class="field__label">{translated("accounts.full.display_name")}</span>
                         <input id="profile-display-name" name="display_name" autocomplete="nickname" type="text" required=true class="field__control" maxlength="256"
-                            aria-describedby="profile-name-help profile-name-error" aria-invalid=move || invalid.try_get().unwrap_or(false).then_some("true")
-                            disabled=move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown)
-                            prop:value=move || name.try_get().unwrap_or_default() on:input=move |event| { name.try_set(event_target_value(&event)); }/>
+                            aria-describedby="profile-name-help profile-name-error" aria-invalid=super::optional_text(Signal::derive(move || invalid.try_get().unwrap_or(false).then(|| "true".to_owned())))
+                            disabled=super::boolean(Signal::derive(move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown)), true)
+                            prop:value=super::text(Signal::derive(move || name.try_get().unwrap_or_default()), "") on:input=move |event| { name.try_set(event_target_value(&event)); }/>
                         <span class="field__hint" id="profile-name-help">{translated("accounts.full.name_help")}</span>
                     </label>
                     <Show when=move || invalid.try_get().unwrap_or(false)><p id="profile-name-error" role="alert" class="field__error">{translated("accounts.full.fields_invalid")}</p></Show>
                     <label class="field" for="profile-visibility"><span class="field__label">{translated("accounts.full.visibility")}</span>
-                        <select id="profile-visibility" name="visibility" class="field__control" disabled=move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown)
+                        <select id="profile-visibility" name="visibility" class="field__control" disabled=super::boolean(Signal::derive(move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown)), true)
                             on:change=move |event| { visibility.try_set(match event_target_value(&event).as_str() { "public" => ProfileVisibility::Public, "friends" => ProfileVisibility::Friends, _ => ProfileVisibility::Private }); }>
-                            <option value="private" selected=move || visibility.try_get() == Some(ProfileVisibility::Private)>{translated("accounts.full.visibility.private")}</option>
-                            <option value="friends" selected=move || visibility.try_get() == Some(ProfileVisibility::Friends)>{translated("accounts.full.visibility.friends")}</option>
-                            <option value="public" selected=move || visibility.try_get() == Some(ProfileVisibility::Public)>{translated("accounts.full.visibility.public")}</option>
+                            <option value="private" selected=super::boolean(Signal::derive(move || visibility.try_get() == Some(ProfileVisibility::Private)), false)>{translated("accounts.full.visibility.private")}</option>
+                            <option value="friends" selected=super::boolean(Signal::derive(move || visibility.try_get() == Some(ProfileVisibility::Friends)), false)>{translated("accounts.full.visibility.friends")}</option>
+                            <option value="public" selected=super::boolean(Signal::derive(move || visibility.try_get() == Some(ProfileVisibility::Public)), false)>{translated("accounts.full.visibility.public")}</option>
                         </select>
                     </label>
                     <div class="actions account__actions"><button type="submit" data-testid="profile-save" class="btn btn--filled btn--principal"
-                        disabled=move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Conflict)>{translated("accounts.full.save")}</button>
-                        <button type="button" class="btn btn--text" disabled=move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown)
+                        disabled=super::boolean(Signal::derive(move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Conflict)), true)>{translated("accounts.full.save")}</button>
+                        <button type="button" class="btn btn--text" disabled=super::boolean(Signal::derive(move || phase.try_get().is_some_and(|phase| phase.busy() || phase == ResourcePhase::Unknown)), true)
                             on:click=move |_| { editing.try_set(false); invalid.try_set(false); focus_heading(); }>{translated("accounts.action.cancel")}</button></div>
                 </form>
             </Show>
@@ -646,7 +648,7 @@ pub fn FriendsPage() -> impl IntoView {
                     .ok()
                     .filter(|response| response.status == 200)
                     .and_then(|response| {
-                        serde_json::from_slice::<SocialSearchResponse>(&response.body).ok()
+                        crate::json::decode::<SocialSearchResponse>(&response.body).ok()
                     })
                     .filter(|response| response.validate().is_ok())
                     .filter(|response| {
@@ -716,7 +718,7 @@ pub fn FriendsPage() -> impl IntoView {
                     .ok()
                     .filter(|response| response.status == 200)
                     .and_then(|response| {
-                        serde_json::from_slice::<SocialMutationResponse>(&response.body).ok()
+                        crate::json::decode::<SocialMutationResponse>(&response.body).ok()
                     })
                     .filter(|response| response.validate().is_ok())
                     .filter(|response| {
@@ -745,11 +747,14 @@ pub fn FriendsPage() -> impl IntoView {
             },
         );
     };
-    let disabled = move || {
-        phase
-            .try_get()
-            .is_none_or(|phase| phase.busy() || phase == ResourcePhase::Unknown)
-    };
+    let disabled = super::boolean(
+        Signal::derive(move || {
+            phase
+                .try_get()
+                .is_none_or(|phase| phase.busy() || phase == ResourcePhase::Unknown)
+        }),
+        true,
+    );
     let locale = use_locale();
     view! { <section class="section account" aria-labelledby="account-title">
         <h1 id="account-title" class="section__title" tabindex="-1" node_ref=heading>{translated("accounts.friends.title")}</h1>
@@ -760,8 +765,8 @@ pub fn FriendsPage() -> impl IntoView {
                     on:compositionstart=move |_| { composing.try_set(true); } on:compositionend=move |_| { composing.try_set(false); }>
                     <label class="field" for="friends-query"><span class="field__label">{translated("accounts.full.handle")}</span>
                         <input id="friends-query" name="query" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="32" class="field__control"
-                            aria-describedby="friends-search-help friends-search-error" aria-invalid=move || invalid.try_get().unwrap_or(false).then_some("true")
-                            disabled=disabled prop:value=move || query.try_get().unwrap_or_default() on:input=move |event| { query.try_set(event_target_value(&event)); }/>
+                            aria-describedby="friends-search-help friends-search-error" aria-invalid=super::optional_text(Signal::derive(move || invalid.try_get().unwrap_or(false).then(|| "true".to_owned())))
+                            disabled=disabled prop:value=super::text(Signal::derive(move || query.try_get().unwrap_or_default()), "") on:input=move |event| { query.try_set(event_target_value(&event)); }/>
                         <span id="friends-search-help" class="field__hint">{translated("accounts.full.search_help")}</span>
                     </label>
                     <Show when=move || invalid.try_get().unwrap_or(false)><p id="friends-search-error" class="field__error" role="alert">{translated("accounts.full.search_help")}</p></Show>
@@ -773,10 +778,10 @@ pub fn FriendsPage() -> impl IntoView {
                         key=|id| id.clone() children=move |id| {
                             let id = StoredValue::new(id);
                             let row = move || results.try_get().flatten().and_then(|result| result.results.into_iter().find(|row| id.try_with_value(|id| *id == row.identity.user_id).unwrap_or(false)));
-                            view! { <li class="account__social-row" data-user-id=move || id.try_get_value().unwrap_or_default()>
-                                <A href=move || row().map_or_else(|| "/account".into(), |row| format!("/u/{}", row.identity.handle))>{move || row().map(|row| row.identity.handle)}</A>
-                                <p>{move || row().and_then(|row| row.identity.display_name)}</p>
-                                <p class="status">{move || row().map(|row| Messages::new(locale.get()).text(relationship_key(row.relationship)))}</p>
+                            view! { <li class="account__social-row" data-user-id=super::text(Signal::derive(move || id.try_get_value().unwrap_or_default()), "")>
+                                <A href=super::text(Signal::derive(move || row().map_or_else(|| "/account".into(), |row| format!("/u/{}", row.identity.handle))), "/account")>{super::optional_text(Signal::derive(move || row().map(|row| row.identity.handle)))}</A>
+                                <p>{super::optional_text(Signal::derive(move || row().and_then(|row| row.identity.display_name)))}</p>
+                                <p class="status">{super::optional_text(Signal::derive(move || row().map(|row| Messages::new(locale.get()).text(relationship_key(row.relationship)))))}</p>
                                 <Show when=move || row().is_some_and(|row| matches!(row.relationship, SocialRelationship::None | SocialRelationship::Declined | SocialRelationship::Expired | SocialRelationship::Cancelled))>
                                     <button type="button" data-testid="friend-send" class="btn btn--tonal" disabled=disabled on:click=move |_| {
                                         if let Some(row) = row() { mutate(SocialAction::Send { target_user_id: row.identity.user_id }); }
@@ -793,10 +798,10 @@ pub fn FriendsPage() -> impl IntoView {
                         key=|id| id.clone() children=move |id| {
                             let id = StoredValue::new(id);
                             let friend = move || owner.current(account).and_then(|snapshot| snapshot.friends.into_iter().find(|friend| id.try_with_value(|id| *id == friend.identity.user_id).unwrap_or(false)));
-                            view! { <li class="account__social-row" data-social-stream="" data-user-id=move || id.try_get_value().unwrap_or_default()>
-                                <A href=move || friend().map_or_else(|| "/account".into(), |friend| format!("/u/{}", friend.identity.handle))>{move || friend().map(|friend| friend.identity.handle)}</A>
-                                <p>{move || friend().and_then(|friend| friend.identity.display_name)}</p>
-                                <p class="status">{move || friend().map(|friend| Messages::new(locale.get()).text(presence_key(&friend.presence)))}</p>
+                            view! { <li class="account__social-row" data-social-stream="" data-user-id=super::text(Signal::derive(move || id.try_get_value().unwrap_or_default()), "")>
+                                <A href=super::text(Signal::derive(move || friend().map_or_else(|| "/account".into(), |friend| format!("/u/{}", friend.identity.handle))), "/account")>{super::optional_text(Signal::derive(move || friend().map(|friend| friend.identity.handle)))}</A>
+                                <p>{super::optional_text(Signal::derive(move || friend().and_then(|friend| friend.identity.display_name)))}</p>
+                                <p class="status">{super::optional_text(Signal::derive(move || friend().map(|friend| Messages::new(locale.get()).text(presence_key(&friend.presence)))))}</p>
                                 <PresenceTimes presence=move || friend().map(|friend| friend.presence)/>
                             </li> }
                         }/>
@@ -810,9 +815,9 @@ pub fn FriendsPage() -> impl IntoView {
                             let request = move || owner.current(account).and_then(|snapshot| snapshot.requests.into_iter().find(|request| id.try_with_value(|id| *id == request.request_id).unwrap_or(false)));
                             let incoming = move || request().is_some_and(|request| account.document_ticket().is_some_and(|ticket| request.recipient.user_id == ticket.subject()));
                             let actionable = move || request().is_some_and(|request| request.status == FriendRequestStatus::Pending && owner.current(account).is_some_and(|snapshot| request.expires_at_ms > snapshot.generated_at_ms)) && !owner.stale();
-                            view! { <li class="account__social-row" data-social-stream="" data-request-id=move || id.try_get_value().unwrap_or_default()>
-                                <p>{move || request().map(|request| if incoming() { request.sender.handle } else { request.recipient.handle })}</p>
-                                <p class="status">{move || request().map(|request| Messages::new(locale.get()).text(request_status_key(request.status)))}</p>
+                            view! { <li class="account__social-row" data-social-stream="" data-request-id=super::text(Signal::derive(move || id.try_get_value().unwrap_or_default()), "")>
+                                <p>{super::optional_text(Signal::derive(move || request().map(|request| if incoming() { request.sender.handle } else { request.recipient.handle })))}</p>
+                                <p class="status">{super::optional_text(Signal::derive(move || request().map(|request| Messages::new(locale.get()).text(request_status_key(request.status)))))}</p>
                                 <Show when=move || actionable() && incoming()><div class="actions account__actions">
                                     <button type="button" data-testid="friend-accept" class="btn btn--tonal" disabled=disabled on:click=move |_| { if let Some(request) = request() { mutate(SocialAction::Accept { request_id: request.request_id, expected_revision: request.revision }); } }>{translated("accounts.full.accept")}</button>
                                     <button type="button" data-testid="friend-decline" class="btn btn--text" disabled=disabled on:click=move |_| { if let Some(request) = request() { mutate(SocialAction::Decline { request_id: request.request_id, expected_revision: request.revision }); } }>{translated("accounts.full.decline")}</button>
@@ -824,7 +829,7 @@ pub fn FriendsPage() -> impl IntoView {
                 <Show when=move || phase.try_get() == Some(ResourcePhase::Unknown)><button type="button" class="btn btn--tonal" on:click=move |_| {
                     if let Some(request) = pending.try_with_value(Clone::clone).flatten() { mutate(request.action); }
                 }>{translated("accounts.full.retry_same")}</button></Show>
-                <button type="button" class="btn btn--tonal" disabled=move || phase.try_get().is_some_and(ResourcePhase::busy) on:click=move |_| { account.recheck(); }>{translated("accounts.full.resync")}</button>
+                <button type="button" class="btn btn--tonal" disabled=super::boolean(Signal::derive(move || phase.try_get().is_some_and(ResourcePhase::busy)), true) on:click=move |_| { account.recheck(); }>{translated("accounts.full.resync")}</button>
                 <A href="/me" attr:class="btn btn--text">{translated("accounts.action.profile")}</A>
             </section>
         </Show>
@@ -927,10 +932,10 @@ fn PresenceTimes(
     };
     view! { <div class="field__hint">
         <Show when=move || observed().is_some()><p>{translated("accounts.full.observed_at")} " "
-            <time datetime=move || observed().map(|value| value.0)>{move || observed().map(|value| value.1)}</time>
+            <time datetime=super::optional_text(Signal::derive(move || observed().map(|value| value.0)))>{super::optional_text(Signal::derive(move || observed().map(|value| value.1)))}</time>
         </p></Show>
         <Show when=move || last_seen().is_some()><p>{translated("accounts.full.last_seen")} " "
-            <time datetime=move || last_seen().map(|value| value.0)>{move || last_seen().map(|value| value.1)}</time>
+            <time datetime=super::optional_text(Signal::derive(move || last_seen().map(|value| value.0)))>{super::optional_text(Signal::derive(move || last_seen().map(|value| value.1)))}</time>
         </p></Show>
     </div> }
 }
@@ -983,7 +988,7 @@ pub fn OtherProfilePage() -> impl IntoView {
                     .ok()
                     .filter(|response| response.status == 200)
                     .and_then(|response| {
-                        serde_json::from_slice::<OtherAccountProfileResponse>(&response.body).ok()
+                        crate::json::decode::<OtherAccountProfileResponse>(&response.body).ok()
                     })
                     .filter(|current| current.validate().is_ok())
                     .filter(|current| current.handle == expected);
@@ -999,8 +1004,8 @@ pub fn OtherProfilePage() -> impl IntoView {
     view! { <section class="section account" aria-labelledby="account-title"><h1 id="account-title" class="section__title" tabindex="-1" node_ref=heading>{translated("accounts.profile.title")}</h1>
         <FullStatus phase=phase.read_only()/>
         <Show when=move || profile.try_get().flatten().is_some()><section class="account__profile" data-account-private="">
-            <dl class="facts"><dt>{translated("accounts.full.handle")}</dt><dd>{move || profile.try_get().flatten().map(|profile| profile.handle)}</dd>
-                <dt>{translated("accounts.full.display_name")}</dt><dd>{move || profile.try_get().flatten().map(|profile| profile.display_name)}</dd></dl>
+            <dl class="facts"><dt>{translated("accounts.full.handle")}</dt><dd>{super::optional_text(Signal::derive(move || profile.try_get().flatten().map(|profile| profile.handle)))}</dd>
+                <dt>{translated("accounts.full.display_name")}</dt><dd>{super::optional_text(Signal::derive(move || profile.try_get().flatten().map(|profile| profile.display_name)))}</dd></dl>
         </section></Show><Escapes principal=|| true/>
     </section> }
 }

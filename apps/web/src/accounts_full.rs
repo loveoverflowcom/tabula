@@ -40,18 +40,18 @@ impl JsonResponse {
     #[cfg(target_arch = "wasm32")]
     fn unauthenticated(&self) -> bool {
         self.status == 401
-            && serde_json::from_slice::<tabula_session_http::PublicProblem>(&self.body)
+            && crate::json::decode::<tabula_session_http::PublicProblem>(&self.body)
                 .is_ok_and(|problem| matches!(problem.version, 1 | 2) && problem.status == 401)
     }
     pub(crate) fn rejected(&self) -> bool {
         matches!(self.status, 400 | 401 | 403 | 404 | 409)
-            && serde_json::from_slice::<tabula_session_http::PublicProblem>(&self.body).is_ok_and(
+            && crate::json::decode::<tabula_session_http::PublicProblem>(&self.body).is_ok_and(
                 |problem| matches!(problem.version, 1 | 2) && problem.status == self.status,
             )
     }
     pub(crate) fn conflict(&self) -> bool {
         self.status == 409
-            && serde_json::from_slice::<tabula_session_http::PublicProblem>(&self.body).is_ok_and(
+            && crate::json::decode::<tabula_session_http::PublicProblem>(&self.body).is_ok_and(
                 |problem| {
                     matches!(problem.version, 1 | 2)
                         && problem.status == 409
@@ -98,7 +98,6 @@ impl RequestSlot {
     }
 
     #[allow(clippy::too_many_arguments)] // One bounded HTTP dispatch, not domain policy.
-    #[cfg_attr(not(target_arch = "wasm32"), allow(clippy::needless_pass_by_value))] // WASM moves the fence into its future.
     pub(crate) fn run(
         self,
         account: AccountController,
@@ -108,6 +107,25 @@ impl RequestSlot {
         csrf: Option<String>,
         body: Option<String>,
         complete: impl FnOnce(Result<JsonResponse, RequestFailure>) + 'static,
+    ) {
+        self.dispatch(account, scope, method, path, csrf, body, Box::new(complete));
+    }
+
+    // One asynchronous dispatch implementation serves all DTO completions.
+    // Keeping this boundary out of line avoids cloning the Fetch/fence future
+    // into each registration, profile and social call site under size LTO.
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    #[cfg_attr(not(target_arch = "wasm32"), allow(clippy::needless_pass_by_value))]
+    fn dispatch(
+        self,
+        account: AccountController,
+        scope: RequestScope,
+        method: &'static str,
+        path: String,
+        csrf: Option<String>,
+        body: Option<String>,
+        complete: Box<dyn FnOnce(Result<JsonResponse, RequestFailure>)>,
     ) {
         self.retire();
         if !scope.current(account) {

@@ -190,7 +190,7 @@ fn resolve_direct_impl<G: crate::discovery::ErasedDiscoveryGame + ?Sized>(
         || !match_id
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-        || !u128::from_str_radix(match_id, 16).is_ok_and(|id| id != 0)
+        || !match_id.bytes().any(|byte| byte != b'0')
     {
         return Err(UnavailableReason::NoModeRuntime);
     }

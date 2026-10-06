@@ -385,11 +385,14 @@ impl SocialSnapshot {
         {
             return Err(SocialError::InvalidInput);
         }
-        let mut friends = std::collections::BTreeSet::new();
-        for friend in &self.friends {
+        // These collections are already bounded. A prefix scan keeps duplicate
+        // rejection allocation-free without retaining a browser tree index.
+        for (index, friend) in self.friends.iter().enumerate() {
             friend.identity.validate()?;
             if friend.identity.user_id == self.viewer_id
-                || !friends.insert(&friend.identity.user_id)
+                || self.friends[..index]
+                    .iter()
+                    .any(|previous| previous.identity.user_id == friend.identity.user_id)
             {
                 return Err(SocialError::InvalidInput);
             }
@@ -416,10 +419,11 @@ impl SocialSnapshot {
                 _ => {}
             }
         }
-        let mut requests = std::collections::BTreeSet::new();
-        for request in &self.requests {
+        for (index, request) in self.requests.iter().enumerate() {
             request.validate()?;
-            if !requests.insert(&request.request_id)
+            if self.requests[..index]
+                .iter()
+                .any(|previous| previous.request_id == request.request_id)
                 || (request.sender.user_id != self.viewer_id
                     && request.recipient.user_id != self.viewer_id)
                 || request.updated_at_ms > self.generated_at_ms
@@ -442,10 +446,13 @@ impl SocialSearchResponse {
         {
             return Err(SocialError::InvalidInput);
         }
-        let mut users = std::collections::BTreeSet::new();
-        for row in &self.results {
+        for (index, row) in self.results.iter().enumerate() {
             row.identity.validate()?;
-            if !users.insert(&row.identity.user_id) || row.identity.user_id == self.viewer_id {
+            if self.results[..index]
+                .iter()
+                .any(|previous| previous.identity.user_id == row.identity.user_id)
+                || row.identity.user_id == self.viewer_id
+            {
                 return Err(SocialError::InvalidInput);
             }
             if let Some(request) = &row.request {
@@ -610,6 +617,102 @@ impl FriendRequestRecord {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn identity(id: u128) -> SocialIdentity {
+        SocialIdentity {
+            user_id: format!("{id:032x}"),
+            handle: format!("peer_{id}"),
+            display_name: None,
+        }
+    }
+
+    #[test]
+    fn bounded_snapshot_accepts_unique_ids_and_rejects_duplicates_at_collection_edges() {
+        let viewer = identity(1);
+        let snapshot = SocialSnapshot {
+            version: SOCIAL_CONTRACT_VERSION,
+            viewer_id: viewer.user_id.clone(),
+            scope_id: "00000000000000000000000000000009".into(),
+            revision: 1,
+            generated_at_ms: 2,
+            friends: (2..=201)
+                .map(|id| FriendView {
+                    identity: identity(id),
+                    presence: PresenceObservation::Unknown,
+                    presence_permitted: false,
+                })
+                .collect(),
+            requests: (2..=201)
+                .map(|id| FriendRequestView {
+                    request_id: format!("{:032x}", id + 1000),
+                    sender: viewer.clone(),
+                    recipient: identity(id),
+                    status: FriendRequestStatus::Pending,
+                    revision: 1,
+                    created_at_ms: 1,
+                    expires_at_ms: 10,
+                    updated_at_ms: 1,
+                })
+                .collect(),
+        };
+        assert_eq!(snapshot.friends.len(), MAX_SOCIAL_ROWS);
+        assert_eq!(snapshot.requests.len(), MAX_SOCIAL_ROWS);
+        assert_eq!(snapshot.validate(), Ok(()));
+        for index in [0, 99, 199] {
+            let other = (index + 1) % MAX_SOCIAL_ROWS;
+            let mut duplicate = snapshot.clone();
+            duplicate.friends[index].identity.user_id =
+                duplicate.friends[other].identity.user_id.clone();
+            assert_eq!(duplicate.validate(), Err(SocialError::InvalidInput));
+            let mut duplicate = snapshot.clone();
+            duplicate.requests[index].request_id = duplicate.requests[other].request_id.clone();
+            assert_eq!(duplicate.validate(), Err(SocialError::InvalidInput));
+        }
+        let mut over_bound = snapshot.clone();
+        over_bound.friends.push(FriendView {
+            identity: identity(202),
+            presence: PresenceObservation::Unknown,
+            presence_permitted: false,
+        });
+        assert_eq!(over_bound.validate(), Err(SocialError::InvalidInput));
+        let mut over_bound = snapshot;
+        let mut extra = over_bound.requests[0].clone();
+        extra.request_id = "0000000000000000000000000000ffffff".into();
+        over_bound.requests.push(extra);
+        assert_eq!(over_bound.validate(), Err(SocialError::InvalidInput));
+    }
+
+    #[test]
+    fn bounded_search_accepts_unique_ids_and_rejects_duplicates_at_collection_edges() {
+        let search = SocialSearchResponse {
+            version: SOCIAL_CONTRACT_VERSION,
+            viewer_id: "00000000000000000000000000000001".into(),
+            query: "peer".into(),
+            results: (2..=21)
+                .map(|id| SocialSearchRow {
+                    identity: identity(id),
+                    relationship: SocialRelationship::None,
+                    request: None,
+                })
+                .collect(),
+        };
+        assert_eq!(search.results.len(), MAX_SEARCH_ROWS);
+        assert_eq!(search.validate(), Ok(()));
+        for index in [0, 10, 19] {
+            let other = (index + 1) % MAX_SEARCH_ROWS;
+            let mut duplicate = search.clone();
+            duplicate.results[index].identity.user_id =
+                duplicate.results[other].identity.user_id.clone();
+            assert_eq!(duplicate.validate(), Err(SocialError::InvalidInput));
+        }
+        let mut over_bound = search;
+        over_bound.results.push(SocialSearchRow {
+            identity: identity(22),
+            relationship: SocialRelationship::None,
+            request: None,
+        });
+        assert_eq!(over_bound.validate(), Err(SocialError::InvalidInput));
+    }
 
     #[test]
     fn only_exact_actor_can_commit_each_pending_action() {

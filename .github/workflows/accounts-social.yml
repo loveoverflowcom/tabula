@@ -17,6 +17,8 @@ on:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'deps.toml'
+      - 'tools/tests/check-loading-budgets.py'
+      - 'tools/tests/test_loading_budgets.py'
       - '.sqlx/**'
   workflow_dispatch:
 
@@ -111,7 +113,7 @@ jobs:
 
   independent-browsers:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16
@@ -139,6 +141,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with: { toolchain: '1.96', targets: wasm32-unknown-unknown }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
       - uses: Swatinem/rust-cache@v2
       - name: Install pinned browser/build helpers
         run: |
@@ -147,11 +151,21 @@ jobs:
           pip3 install -r tests/accounts/requirements.txt
           python3 -m playwright install --with-deps chromium
           cargo install trunk --version 0.21.14 --locked
-      - name: Build the actual shell and authority fixture
+      - name: Check the opted-in account frontend and actual authority fixture
         run: |
           cargo build -p tabula-auth --features accounts-acceptance --example account_social_acceptance
-          cd apps/web
-          NO_COLOR=true trunk build --release
+          cargo test -p tabula-web --features online,account-social
+          cargo clippy -p tabula-web --features online,account-social --target wasm32-unknown-unknown -- -D warnings
+      - name: Enforce both existing shell caps and the explicit full account-social cap
+        run: |
+          python3 -m unittest discover -s tools/tests -p 'test_loading_budgets.py' -v
+          mkdir -p verification/account-social-artifacts
+          (cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release)
+          python3 tools/tests/check-loading-budgets.py --shell-dist apps/web/dist --write-receipt verification/account-social-artifacts/default-shell-budget.json
+          (cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
+          python3 tools/tests/check-loading-budgets.py --shell-dist apps/web/dist --write-receipt verification/account-social-artifacts/online-shell-budget.json
+          (cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online,account-social)
+          python3 tools/tests/check-loading-budgets.py --shell-dist apps/web/dist --shell-profile account-social --write-receipt verification/account-social-artifacts/account-social-shell-budget.json
       - name: Render and interact with explicit HTTP doubles
         run: python3 tests/accounts/browser_acceptance.py --web-dist apps/web/dist --receipt verification/account-social-artifacts/ui-double-receipt.json
       - name: Exercise actual HTTPS/WSS, Kanidm and PostgreSQL with independent browsers

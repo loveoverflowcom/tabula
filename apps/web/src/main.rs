@@ -116,12 +116,16 @@
 //! `xtask check-no-game-ids`, which treats this crate as restricted).
 
 mod account;
+#[cfg(feature = "account-social")]
 mod accounts_full;
 mod i18n;
+#[cfg(any(feature = "online", feature = "account-social", test))]
+mod json;
 #[cfg(feature = "online")]
 mod online;
 mod query;
 mod setup;
+#[cfg(feature = "account-social")]
 mod social_full;
 mod views;
 

@@ -472,7 +472,7 @@ mod browser {
                 owner.close();
                 return;
             };
-            match serde_json::from_str::<SocialServerMessage>(&text) {
+            match crate::json::decode::<SocialServerMessage>(text.as_bytes()) {
                 Ok(SocialServerMessage::Snapshot { snapshot }) => owner.receive(snapshot),
                 Err(_) => owner.close(),
             }
