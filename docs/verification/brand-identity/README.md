@@ -1,5 +1,8 @@
 # T Portal integration evidence
 
+Current integration and merge evidence: [2026-10-06 completion](completion-20261006/README.md).
+The original draft record below is retained as historical evidence.
+
 Source baseline: remote develop7716b2ef91c8c2e79e49db6879de19a5742ee76a,
 after PR93 normal merge. Approved asset source:
 ae40d8efda28c141127116b3342d80843aba4185, issue #91. This record concerns the

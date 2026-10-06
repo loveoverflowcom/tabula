@@ -1,0 +1,541 @@
+{
+  "captured_at": "2026-10-06T14:56:01.478950+00:00",
+  "source_commit": "fa7d4adbd6f96d5bd6854d2a96609c991b27207b",
+  "browser": "153.0.8010.36",
+  "runtime": "actual Leptos online-feature release WASM, local loopback public shell",
+  "cases": [
+    {
+      "scheme": "light",
+      "width": 320,
+      "locale": "vi",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "light",
+      "width": 320,
+      "locale": "en",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": [],
+      "screenshot": "web-light-320-en.png"
+    },
+    {
+      "scheme": "light",
+      "width": 390,
+      "locale": "vi",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "light",
+      "width": 390,
+      "locale": "en",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "light",
+      "width": 768,
+      "locale": "vi",
+      "drawer": false,
+      "logo_box": {
+        "x": 24,
+        "y": 22,
+        "width": 88.15625,
+        "height": 32
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "light",
+      "width": 768,
+      "locale": "en",
+      "drawer": false,
+      "logo_box": {
+        "x": 24,
+        "y": 22,
+        "width": 88.15625,
+        "height": 32
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "light",
+      "width": 1440,
+      "locale": "vi",
+      "drawer": false,
+      "logo_box": {
+        "x": 26,
+        "y": 30,
+        "width": 110.1875,
+        "height": 40
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": [],
+      "screenshot": "web-light-1440-vi.png"
+    },
+    {
+      "scheme": "light",
+      "width": 1440,
+      "locale": "en",
+      "drawer": false,
+      "logo_box": {
+        "x": 26,
+        "y": 30,
+        "width": 110.1875,
+        "height": 40
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "dark",
+      "width": 320,
+      "locale": "vi",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "dark",
+      "width": 320,
+      "locale": "en",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "dark",
+      "width": 390,
+      "locale": "vi",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "dark",
+      "width": 390,
+      "locale": "en",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "dark",
+      "width": 768,
+      "locale": "vi",
+      "drawer": false,
+      "logo_box": {
+        "x": 24,
+        "y": 22,
+        "width": 88.15625,
+        "height": 32
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "dark",
+      "width": 768,
+      "locale": "en",
+      "drawer": false,
+      "logo_box": {
+        "x": 24,
+        "y": 22,
+        "width": 88.15625,
+        "height": 32
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "dark",
+      "width": 1440,
+      "locale": "vi",
+      "drawer": false,
+      "logo_box": {
+        "x": 26,
+        "y": 30,
+        "width": 110.1875,
+        "height": 40
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": [],
+      "screenshot": "web-dark-1440-vi.png"
+    },
+    {
+      "scheme": "dark",
+      "width": 1440,
+      "locale": "en",
+      "drawer": false,
+      "logo_box": {
+        "x": 26,
+        "y": 30,
+        "width": 110.1875,
+        "height": 40
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-light",
+      "width": 320,
+      "locale": "vi",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-light",
+      "width": 320,
+      "locale": "en",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-light",
+      "width": 390,
+      "locale": "vi",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-light",
+      "width": 390,
+      "locale": "en",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-light",
+      "width": 768,
+      "locale": "vi",
+      "drawer": false,
+      "logo_box": {
+        "x": 24,
+        "y": 22,
+        "width": 88.15625,
+        "height": 32
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-light",
+      "width": 768,
+      "locale": "en",
+      "drawer": false,
+      "logo_box": {
+        "x": 24,
+        "y": 22,
+        "width": 88.15625,
+        "height": 32
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-light",
+      "width": 1440,
+      "locale": "vi",
+      "drawer": false,
+      "logo_box": {
+        "x": 26,
+        "y": 30,
+        "width": 110.1875,
+        "height": 40
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": [],
+      "screenshot": "web-hc-light-1440-vi.png"
+    },
+    {
+      "scheme": "hc-light",
+      "width": 1440,
+      "locale": "en",
+      "drawer": false,
+      "logo_box": {
+        "x": 26,
+        "y": 30,
+        "width": 110.1875,
+        "height": 40
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-dark",
+      "width": 320,
+      "locale": "vi",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-dark",
+      "width": 320,
+      "locale": "en",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-dark",
+      "width": 390,
+      "locale": "vi",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-dark",
+      "width": 390,
+      "locale": "en",
+      "drawer": true,
+      "logo_box": {
+        "x": 18,
+        "y": 26,
+        "width": 110.1875,
+        "height": 39.984375
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-dark",
+      "width": 768,
+      "locale": "vi",
+      "drawer": false,
+      "logo_box": {
+        "x": 24,
+        "y": 22,
+        "width": 88.15625,
+        "height": 32
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-dark",
+      "width": 768,
+      "locale": "en",
+      "drawer": false,
+      "logo_box": {
+        "x": 24,
+        "y": 22,
+        "width": 88.15625,
+        "height": 32
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    },
+    {
+      "scheme": "hc-dark",
+      "width": 1440,
+      "locale": "vi",
+      "drawer": false,
+      "logo_box": {
+        "x": 26,
+        "y": 30,
+        "width": 110.1875,
+        "height": 40
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": [],
+      "screenshot": "web-hc-dark-1440-vi.png"
+    },
+    {
+      "scheme": "hc-dark",
+      "width": 1440,
+      "locale": "en",
+      "drawer": false,
+      "logo_box": {
+        "x": 26,
+        "y": 30,
+        "width": 110.1875,
+        "height": 40
+      },
+      "reduced_motion": true,
+      "single_accessible_name": true,
+      "keyboard_focus": true,
+      "page_errors": []
+    }
+  ],
+  "wasm_bytes": 739221,
+  "wasm_sha256": "e4bc94b6bc65b6a77c82d432e7c4f175615758c4d379c49ce4402d96956e170d",
+  "screenshots": {
+    "web-hc-dark-1440-vi.png": "109be941b76dd628e31628a975be323fe4100de848cc03244866fcd8c8ad937e",
+    "cmp-light-320.png": "9514ca98b6d04241899782b3e20914d371402949c69a544e997a8ce2b70705ed",
+    "web-hc-light-1440-vi.png": "60717af0c18918d56fdc30caec1736375fd97d30c4268789f8c0ce72261b6b12",
+    "web-dark-1440-vi.png": "fda9a3d2c1b9df447d7e5cd652c7b3b3fc44ee4ce168d0aaafbadb40235679b7",
+    "web-light-1440-vi.png": "eb3c5ed964f39d751b052e6b241c5b4e2ce989f3eb8f2ab338d4d5b1be01b91b",
+    "web-light-320-en.png": "1843ff81d9479e46c7caddc9de3fe3a9537ea87b41d8a1b4c42953b44b2666be",
+    "cmp-dark-390.png": "5fe294b6b9809007f058194c5f32c43b0d94520d730efee031c030fb2e17fd30"
+  },
+  "limits": [
+    "No installed launcher/device or native window pixel execution",
+    "No authenticated online acceptance",
+    "No 200% font case in this run; previous pinned screenshots cover that case"
+  ]
+}
