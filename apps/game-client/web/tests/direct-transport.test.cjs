@@ -227,3 +227,17 @@ test("window focus-only resume conceals old authority before fresh attach and ig
   await f.transport.file(status(fresh.bootstrap.transport_generation));assert.equal(seen,2);
   f.transport.retire();assert.equal(events.has("focus"),false);assert.equal(events.has("blur"),false);
 });
+
+test("retired local attachment409 preserves exact pending intent until fresh same-scope Rust resync",async()=>{
+  const storage=memoryStorage(),key="tabula.pending.v2."+id,paths=[];
+  const command='{"seq":1,"command":{"match_id":340282366920938463463374607431768211450}}';
+  const f=fixture(async(path,init)=>{paths.push(path);return authFetcher(()=>response({code:"reattach_required"},{status:409}))(path,init);},{storage});
+  await f.transport.file("tabula-online-attach.txt");
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-command/"+hex(command)))),{transport:"recovering"});
+  assert.equal(JSON.parse(storage.getItem(key)).command,command);
+  const fresh=JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-recover.txt")));
+  assert.equal(fresh.transport,"resync");assert.equal(fresh.bootstrap.pending.operation_scope,scope);
+  assert.equal(fresh.bootstrap.pending.command,command);
+  assert.equal(paths.filter(path=>path.endsWith("/command")).length,1,"JavaScript must never replay pending intent");
+  f.transport.retire();
+});

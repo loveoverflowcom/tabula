@@ -940,7 +940,17 @@ fn attached(
     );
     live.authority
         .refresh(session, m.scope(), op)
-        .map_err(|_| StatusCode::FORBIDDEN)
+        .map_err(|_| StatusCode::CONFLICT)
+}
+fn attachment_problem(status: StatusCode) -> Response {
+    // Current cookie/membership already passed. A retired local transport is
+    // recoverable; it cannot turn an uncertain same-scope command into failure.
+    let code = if status == StatusCode::CONFLICT {
+        "reattach_required"
+    } else {
+        "request_rejected"
+    };
+    problem(status, code)
 }
 async fn command(
     State(state): State<Arc<GatewayState>>,
@@ -998,7 +1008,7 @@ async fn command_serialized(
     }
     let binding = match attached(&live, body.attachment_id(), &m, op) {
         Ok(b) => b,
-        Err(s) => return problem(s, "match_unavailable"),
+        Err(s) => return attachment_problem(s),
     };
     if let Err(e) = live.output.command_rate(&binding, membership_scope(&m)) {
         return e.response();
@@ -1109,7 +1119,7 @@ async fn poll(
     }
     let binding = match attached(&live, body.attachment_id(), &m, op) {
         Ok(b) => b,
-        Err(s) => return problem(s, "match_unavailable"),
+        Err(s) => return attachment_problem(s),
     };
     let frames = match live.output.drain(&binding) {
         Ok(f) => f,
@@ -1172,6 +1182,19 @@ mod recovery_admission_tests {
             .unwrap();
         drop(permit);
         assert_eq!(permits.available_permits(), 1);
+    }
+    #[tokio::test]
+    async fn stale_local_attachment_is_reattach_required_without_frames() {
+        let response = attachment_problem(StatusCode::CONFLICT);
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(body.as_ref(), b"{\"code\":\"reattach_required\"}");
+        assert_eq!(
+            attachment_problem(StatusCode::BAD_REQUEST).status(),
+            StatusCode::BAD_REQUEST
+        );
     }
     #[test]
     fn operation_scope_hint_binds_authority_not_transport() {
