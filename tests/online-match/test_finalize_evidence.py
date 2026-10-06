@@ -34,6 +34,8 @@ class FinalizeEvidenceTests(unittest.TestCase):
         cases=[]
         for label in CONTINUITY_CASES:
             case={'case':label,'pass':True}
+            if label=='same_auth_record_rotation_preserves_uncertain_original_operation':
+                case.update(credential_rotated=True,reattach_required_observed=True,same_operation_scope=True,exact_original_ack=True)
             if label.endswith('_at_held_actual_delivery'):
                 case.update(native_body_bytes=0,nonempty_projected_capture=True,actual_inner_guard_error=True)
             if label in ('committed-crash','uncommitted-crash'):

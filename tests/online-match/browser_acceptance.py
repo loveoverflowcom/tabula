@@ -97,6 +97,14 @@ def denied(response: dict, allowed: set[int], label: str) -> None:
             "denied request released gameplay frames")
 
 
+def reattach_required(response: dict, label: str) -> None:
+    """A locally stale transport with current membership needs recovery."""
+    denied(response, {409}, label)
+    require(isinstance(response["body"], dict)
+            and response["body"].get("code") == "reattach_required",
+            "stale attachment was confused with lost authority or another conflict")
+
+
 def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -> dict:
     """Real TLS/header-negative probe; values stay opaque and unlogged.
 
@@ -912,13 +920,13 @@ def run(args) -> None:
             second_attach = api(white, f"/api/v1/matches/{other_id}/attach",
                                 {"version": MATCH_VERSION, "binding_id": second_grant["body"]["binding_id"]}, facts[0]["csrf_token"])
             require(second_attach["status"] == 200, "actual second-match actor setup failed")
-            denied(api(white, f"/api/v1/matches/{other_id}/poll",
+            reattach_required(api(white, f"/api/v1/matches/{other_id}/poll",
                        {"version": MATCH_VERSION, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
-                   {403}, "same-account cross-match attachment released output")
+                   "same-account cross-match attachment released output")
             cross_command = json.loads(first)
             cross_command["command"]["command"]["match_id"] = int(other_id, 16)
-            denied(api(white, f"/api/v1/matches/{other_id}/command", json.dumps(cross_command), facts[0]["csrf_token"]),
-                   {403}, "same-account cross-match command was admitted")
+            reattach_required(api(white, f"/api/v1/matches/{other_id}/command", json.dumps(cross_command), facts[0]["csrf_token"]),
+                   "same-account cross-match command was admitted")
             results["cross_match_command_and_output_denied"] = True
 
             results["stage"] = "rebind the same durable scope and fence its old attachment"
@@ -928,11 +936,11 @@ def run(args) -> None:
                              {"version": MATCH_VERSION, "binding_id": grant["body"]["binding_id"]}, facts[0]["csrf_token"])
             require(reattached["status"] == 200 and reattached["body"]["next_seq"] == 3,
                     "same actual session reattachment reset durable command sequence")
-            denied(api(white, f"/api/v1/matches/{match_id}/poll",
+            reattach_required(api(white, f"/api/v1/matches/{match_id}/poll",
                        {"version": MATCH_VERSION, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
-                   {403}, "old attachment released output after same-session rebind")
-            denied(api(white, f"/api/v1/matches/{match_id}/command", first, facts[0]["csrf_token"]),
-                   {403}, "old attachment issued a command after same-session rebind")
+                   "old attachment released output after same-session rebind")
+            reattach_required(api(white, f"/api/v1/matches/{match_id}/command", first, facts[0]["csrf_token"]),
+                   "old attachment issued a command after same-session rebind")
             results["same_session_reattach_retained_next_seq_and_denied_old_attachment"] = True
 
             results["stage"] = "revoke through real authority and deny stale credential replay"

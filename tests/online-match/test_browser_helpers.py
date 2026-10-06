@@ -3,7 +3,7 @@ import unittest
 import http.client
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, require, run, start_native_poll
+from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, reattach_required, require, run, start_native_poll
 
 
 class BrowserHelperTests(unittest.TestCase):
@@ -129,6 +129,13 @@ class BrowserHelperTests(unittest.TestCase):
         self.assertFalse(private_frame_keys({"version": 1, "frames": [
             {"body": {"MatchUpdate": {"revision": 2, "view": [1, 2], "events": []}}},
             {"body": {"Ack": {"seq": 1}}}]}))
+
+    def test_stale_local_attachment_requires_exact_recovery_classification(self):
+        reattach_required({'status':409,'body':{'code':'reattach_required'}},'recovery expected')
+        for response in ({'status':403,'body':{'code':'match_unavailable'}},
+                         {'status':409,'body':{'code':'busy'}},
+                         {'status':409,'body':{'code':'reattach_required','frames':[{'body':'private'}]}}):
+            with self.assertRaises(AcceptanceFailure):reattach_required(response,'recovery expected')
 
     def test_denial_with_frames_never_passes(self):
         with self.assertRaisesRegex(AcceptanceFailure, "released gameplay frames"):

@@ -16,7 +16,7 @@ from playwright.sync_api import sync_playwright
 from browser_acceptance import (AcceptanceFailure, GAME_PATH, MATCH_VERSION, ORIGIN,
     SESSION_COOKIE, TERMINAL_STATUS, api, board_square, context_facts, denied,
     enroll_actual_page, enter_game, exception_class, move, private_frame_keys,
-    rendered_canvas_pixels, require, setup_browser_trust, wire_probe, start_native_poll, publication_control)
+    rendered_canvas_pixels, require, setup_browser_trust, wire_probe, start_native_poll, publication_control, reattach_required)
 from capture_evidence import CaptureEvidence
 from process_supervisor import SupervisorClient
 
@@ -179,8 +179,8 @@ def restored_same_scope(pair:Pair,role:int,old:dict,original:str):
     require(any(command_identity(body)==command_identity(original) for body in pair.commands[role][1:]),
             'recovery did not retry the exact original sequence and payload')
     pair.facts[role]=context_facts(pair.pages[role])
-    denied(api(pair.pages[role],f'/api/v1/matches/{pair.match_id}/poll',{'version':MATCH_VERSION,'attachment_id':old['attachment_id']},pair.facts[role]['csrf_token']),{403,409},'retired attachment restored queued output')
-    denied(api(pair.pages[role],f'/api/v1/matches/{pair.match_id}/command',original,pair.facts[role]['csrf_token']),{403,409},'retired attachment admitted the original command')
+    reattach_required(api(pair.pages[role],f'/api/v1/matches/{pair.match_id}/poll',{'version':MATCH_VERSION,'attachment_id':old['attachment_id']},pair.facts[role]['csrf_token']),'retired attachment restored queued output')
+    reattach_required(api(pair.pages[role],f'/api/v1/matches/{pair.match_id}/command',original,pair.facts[role]['csrf_token']),'retired attachment admitted the original command')
 
 
 def ready_server(page):
@@ -274,6 +274,57 @@ def apply_and_committed_refresh_game(contexts,private,ca,point,results):
     pair.board(0,'Black to move');restored_same_scope(pair,0,old,original)
     pair.full(1)
     results.append({'case':'drop_after_pure_apply_before_append' if point=='before_commit' else 'refresh_committed_before_original_ack','pass':True,'known_gate_partition':True,'exact_original_retry':True,'no_duplicate_move':True,'fresh_authority_before_render':True})
+    network.close();pair.close()
+
+
+def same_record_rotation_game(contexts,private,ca,results):
+    pair=Pair(contexts,private,'same-record-rotation');white,black=pair.pages
+    old=pair.attachments[0][-1];gate=pair.arm(0,'after_commit')
+    original=pair.tap(0,0);held(ca,gate);pair.oracle(1)
+    network=PageNetwork(white);network.offline(True)
+    require(fault_control(ca,'release',gate)['status']==200,'committed rotation-case barrier could not release')
+    white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
+    pending=pending_record(white,pair.match_id)
+    require(pending is not None and pending['operation_scope']==old['operation_scope'],
+            'uncertain original operation was not retained before rotation')
+    pair.board(1,'Black to move')
+    control=contexts[0].new_page();control.goto(ORIGIN+GAME_PATH,wait_until='domcontentloaded')
+    before_cookie=next(cookie['value'] for cookie in contexts[0].cookies() if cookie['name']==SESSION_COOKIE)
+    current=context_facts(control)
+    require(current['account_id']==pair.facts[0]['account_id'],'rotation control page changed the account')
+    refreshed=api(control,'/api/v1/auth/refresh',{'version':1},current['csrf_token'])
+    require(refreshed['status']==204 and refreshed['body'] is None,
+            'existing browser credential rotation did not complete')
+    after_cookie=next(cookie['value'] for cookie in contexts[0].cookies() if cookie['name']==SESSION_COOKIE)
+    require(before_cookie!=after_cookie,'browser refresh did not rotate its HttpOnly credential')
+    current=context_facts(control)
+    require(current['account_id']==pair.facts[0]['account_id'],'credential rotation changed the account')
+    # Black's legal command prepares its real fan-out. White's cached old digest
+    # can no longer authorize that output, so its local attachment is retired.
+    move(black,*MOVES[1],False,pair.match_id);pair.board(1,'White to move');pair.oracle(2)
+    stale=api(control,f'/api/v1/matches/{pair.match_id}/poll',
+              {'version':MATCH_VERSION,'attachment_id':old['attachment_id']},current['csrf_token'])
+    reattach_required(stale,'valid rotated membership received stale-attachment output')
+    observed={'original_ack':False}
+    def original_ack(response):
+        if urlsplit(response.url).path!=f'/api/v1/matches/{pair.match_id}/command' or response.status!=200:return
+        body=response.request.post_data
+        if body is None or command_identity(body)!=command_identity(original):return
+        outer=json.loads(body)
+        if outer['attachment_id']==old['attachment_id']:return
+        frames=response.json()['frames']
+        require(not private_frame_keys(frames),'rotated original receipt leaked canonical facts')
+        observed['original_ack']=any(frame.get('body',{}).get('Ack',{}).get('seq')==command_identity(original)['seq'] for frame in frames)
+    white.on('response',original_ack)
+    try:
+        control.close();network.offline(False)
+        pair.board(0,'White to move');restored_same_scope(pair,0,old,original)
+        require(observed['original_ack'],'same-record rotation did not reproduce the exact original Ack')
+        pair.oracle(2);pair.full(2)
+    finally:white.remove_listener('response',original_ack)
+    results.append({'case':'same_auth_record_rotation_preserves_uncertain_original_operation',
+                    'pass':True,'credential_rotated':True,'reattach_required_observed':True,
+                    'same_operation_scope':True,'exact_original_ack':True,'no_duplicate_move':True})
     network.close();pair.close()
 
 
@@ -545,6 +596,7 @@ def run(args):
             crash_game(contexts,private,ca,supervisor,False,results['cases'])
             crash_game(contexts,private,ca,supervisor,True,results['cases'])
             for point in ('before_commit','after_commit'):apply_and_committed_refresh_game(contexts,private,ca,point,results['cases'])
+            same_record_rotation_game(contexts,private,ca,results['cases'])
             changed_identity_game(contexts,private,ca,True,results['cases'])
             changed_identity_game(contexts,private,ca,False,results['cases'])
             repeated_recovery_and_navigation(contexts,private,results['cases'],results['optional'])
@@ -570,7 +622,7 @@ def run(args):
                 focus_only_revoke_game(focus_contexts,private,results['cases'])
             finally:
                 for context in reversed(focus_contexts):context.close()
-            require(len(results['cases'])==25,'continuity acceptance selection was incomplete')
+            require(len(results['cases'])==26,'continuity acceptance selection was incomplete')
             results['status']='pass'
     except Exception as error:
         results['failure_class']=exception_class(error)

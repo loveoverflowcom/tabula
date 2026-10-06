@@ -268,7 +268,7 @@ inspection must be recorded separately in the ADR-0042 verification ledger.
 The normal fixture carrier is now match HTTP version 2; fixture control DTOs stay
 version 1. The game wire remains projection-only protocol 0.1.
 
-Twenty-five mandatory partitions currently form twenty-two independently audited matches:
+Twenty-six mandatory partitions currently form twenty-three independently audited matches:
 
 - Actual pointer command network abort before send, pending document refresh,
   exact original sequence/payload replay, and retired attachment rejection
@@ -320,7 +320,7 @@ credentials, grants, CSRF, pending command bytes, ephemeral TLS keys and profile
 remain outside public artifacts and are destroyed by the enclosing trap.
 
 `finalize_evidence.py` requires the unchanged complete-game browser/audit success,
-all twenty-five distinct successful fault partitions, and all twenty-two successful
+all twenty-six distinct successful fault partitions, and all twenty-three successful
 independent native prefix audits. Empty, duplicate, missing or failed selections,
 partial protected bytes, missing actual inner errors, absent SIGKILL receipts,
 and wrong audit prefixes remove the PASS receipt. The native owner selection
@@ -349,4 +349,17 @@ visible and receives zero visibilitychange events. Real current-session logout
 commits in that popup, then focus restoration must reject authority before any
 old projection or first input is shown/sent. No synthetic DOM event can satisfy
 this oracle. Missing headed-window/display support fails actual acceptance.
-The other twenty-four fault partitions retain their original headless processes.
+The other twenty-five fault partitions retain their original headless processes.
+
+The same-auth-record rotation partition holds an actual committed White command
+before Ack, disconnects only its page and rotates the real browser cookie with
+the existing authenticated `/api/v1/auth/refresh` operation in another page of
+that same browser. A legal Black move retires White's cached old-digest attachment.
+A current-cookie/current-CSRF poll must return exact `409 reattach_required`
+with no frames. White then reacquires a fresh attachment with the same durable
+operation scope, retries its exact original sequence/payload and receives the
+stored original Ack. Completing the game and its independent native audit proves
+that credential rotation did not make the uncertain move new or duplicate it.
+The two opponents never share credentials, and nothing is persisted in artifacts.
+Genuine authorization loss remains `401`/`403`; a stale local transport alone
+cannot be mistaken for account, epoch or membership revocation.
