@@ -22,6 +22,7 @@ from browser_acceptance import (AcceptanceFailure, GAME_PATH, MATCH_VERSION, ORI
 from capture_evidence import CaptureEvidence
 from actual_response import actual_response_json, install_actual_response_observer
 from process_supervisor import SupervisorClient
+from finalize_evidence import AUDIT_PREFIXES
 
 RECOVERING_CONCEALED = """() => {
  const root=document.documentElement, canvas=document.querySelector('#glcanvas');
@@ -39,6 +40,35 @@ CURRENT_BOARD = """({seat,status,readonly}) => {
   && (readonly ? d.onlineConnection?.startsWith('Read-only') : d.onlineConnection==='Connected · server-authoritative');
 }"""
 MOVES = [('f2','f3'),('e7','e5'),('g2','g4'),('d8','h4')]
+_continuity_progress = None
+PROGRESS_PHASES = frozenset(('launch', 'enroll', 'context', 'create', 'join',
+    'enter_game', 'board', 'ready', 'arm', 'command', 'command_requested',
+    'oracle', 'complete'))
+
+
+def note_progress(scenario, phase, seat=None):
+    """Closed fixture labels only; never URLs, bodies, credentials or exceptions."""
+    require(scenario in AUDIT_PREFIXES or scenario == 'setup', 'unknown continuity scenario')
+    require(phase in PROGRESS_PHASES, 'unknown continuity phase')
+    require(seat is None or type(seat) is int and seat in (0, 1), 'unknown continuity seat')
+    if _continuity_progress is not None:
+        _continuity_progress.update({'scenario': scenario, 'phase': phase, 'seat': seat})
+
+
+def expected_viewer_status(role, status):
+    """Match Chess's game-owned accessibility wording for the assigned viewer."""
+    require(type(role) is int and role in (0, 1), 'unknown Chess viewer seat')
+    turns = {
+        'White to move': (0, 'Your turn / White'),
+        'Black to move': (1, 'Your turn / Black'),
+        'White to move / CHECK': (0, 'Your turn / White / CHECK'),
+        'Black to move / CHECK': (1, 'Your turn / Black / CHECK'),
+    }
+    require(status in turns or status == TERMINAL_STATUS, 'unknown expected Chess verdict')
+    if status == TERMINAL_STATUS:
+        return status
+    turn, own_status = turns[status]
+    return own_status if role == turn else status
 
 
 def fault_control(ca: Path, operation: str, token: str) -> dict:
@@ -95,30 +125,37 @@ class PageNetwork:
 
 class Pair:
     def __init__(self,contexts,private:Path,label:str):
+        note_progress(label, 'enroll')
         self.pages=[context.new_page() for context in contexts]
         self.contexts=contexts;self.private=private;self.label=label
         self.attachments=[[],[]];self.commands=[[],[]]
         self.facts=[];self.match_id=None;self.audit_inputs=0;self.expected_scopes=2
         for role,page in enumerate(self.pages):
+            note_progress(label, 'enroll', role)
             page.on('requestfinished',lambda request,r=role:self.observe_attach_finished(request,r))
             page.on('request',lambda request,r=role:self.observe_command(request,r))
             page.goto(ORIGIN+'/__fixture/enroll',wait_until='domcontentloaded')
             enroll_actual_page(page,('white','black')[role],{'startup':{'enrollment':[]}})
+            note_progress(label, 'context', role)
             self.facts.append(context_facts(page))
         require(self.facts[0]['account_id']!=self.facts[1]['account_id'],'fault opponents share an account')
         white,black=self.pages
+        note_progress(label, 'create', 0)
         with white.expect_response(lambda r:urlsplit(r.url).path=='/api/v1/matches') as created:
             white.get_by_test_id('online-create').click()
         require(created.value.status==200,'fault match creation failed')
         admitted=actual_response_json(created.value);self.match_id=admitted['match_id']
+        note_progress(label, 'join', 1)
         black.get_by_test_id('online-join-code').fill(admitted['join_code'])
         with black.expect_response(lambda r:urlsplit(r.url).path=='/api/v1/matches/join') as joined:
             black.get_by_test_id('online-join').click()
         require(joined.value.status==200 and actual_response_json(joined.value)['seat']==1,'fault opponent admission failed')
         for role,page in enumerate(self.pages):
+            note_progress(label, 'enter_game', role)
             enter_game(page,self.match_id,role)
             self.board(role,'White to move')
         self.write_audit(0)
+        note_progress(label, 'ready')
     def observe_attach_finished(self,request,role):
         if self.match_id:
             response=completed_attachment_response(request,self.match_id)
@@ -135,17 +172,21 @@ class Pair:
             require(request.post_data is not None,'actual interrupted command body missing')
             self.commands[role].append(request.post_data)
     def board(self,role,status,readonly=False,page=None):
+        expected = expected_viewer_status(role, status)
+        note_progress(self.label, 'board', role)
         page=page or self.pages[role]
         page.bring_to_front()
-        page.wait_for_function(CURRENT_BOARD,arg={'seat':role,'status':status,'readonly':readonly},timeout=60_000)
+        page.wait_for_function(CURRENT_BOARD,arg={'seat':role,'status':expected,'readonly':readonly},timeout=60_000)
         rendered_canvas_pixels(page)
     def arm(self,role,point):
+        note_progress(self.label, 'arm', role)
         self.facts[role]=context_facts(self.pages[role])
         reply=api(self.pages[role],'/__fixture/continuity/arm',
                   {'version':1,'match_id':self.match_id,'attachment_id':self.attachments[role][-1]['attachment_id'],'point':point},self.facts[role]['csrf_token'])
         require(reply['status']==200,'actual native command barrier could not be armed')
         return reply['body']['control_token']
     def tap(self,role,index,page=None):
+        note_progress(self.label, 'command', role)
         page=page or self.pages[role];canvas=page.locator('#glcanvas');bounds=canvas.bounding_box()
         require(bounds is not None,'actual fault board has no pointer geometry')
         with page.expect_request(lambda r:urlsplit(r.url).path==f'/api/v1/matches/{self.match_id}/command') as requested:
@@ -153,8 +194,10 @@ class Pair:
                 x,y=board_square(bounds['width'],bounds['height']-56,square,False)
                 canvas.click(position={'x':x,'y':y},delay=70)
         require(requested.value.post_data is not None,'actual pointer command bytes missing')
+        note_progress(self.label, 'command_requested', role)
         return requested.value.post_data
     def oracle(self,expected,role=1):
+        note_progress(self.label, 'oracle', role)
         self.facts[role]=context_facts(self.pages[role])
         reply=api(self.pages[role],'/__fixture/continuity/oracle',{'version':1,'match_id':self.match_id,'expected_inputs':expected},self.facts[role]['csrf_token'])
         require(reply['status']==200 and reply['body']['expected_public_transcript_prefix'] is True,
@@ -746,10 +789,13 @@ def focus_only_revoke_game(contexts,private,results):
 
 
 def run(args):
+    global _continuity_progress
     require(os.environ.get('CI') in ('true','1') and os.environ.get('TABULA_ONLINE_MATCH_DISPOSABLE')=='1','explicit CI-only continuity acceptance opt-in is required')
     private,artifacts,ca=Path(args.private),Path(args.artifacts),Path(args.ca)
     supervisor=SupervisorClient(private/'process-supervisor.sock')
     results={'version':1,'optional':{},'status':'fail','actual_chromium_processes':2,'real_postgres':True,'normal_tls_verification':True,'cases':[]}
+    results['progress']={'scenario':'setup','phase':'launch','seat':None}
+    _continuity_progress=results['progress']
     contexts=[]
     try:
         with sync_playwright() as playwright:
@@ -802,6 +848,7 @@ def run(args):
             finally:
                 for context in reversed(focus_contexts):context.close()
             require(len(results['cases'])==28,'continuity acceptance selection was incomplete')
+            note_progress('setup', 'complete')
             results['status']='pass'
     except Exception as error:
         results['failure_class']=exception_class(error)
@@ -811,6 +858,7 @@ def run(args):
             try:context.close()
             except Exception:pass
         (artifacts/'continuity-result.json').write_text(json.dumps(results,indent=2)+'\n')
+        _continuity_progress=None
 
 
 def main():

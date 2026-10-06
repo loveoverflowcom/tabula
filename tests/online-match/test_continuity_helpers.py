@@ -9,9 +9,46 @@ from unittest import mock
 from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_CONCEALED,
     PageNetwork, Pair, command_identity, pending_record, run, current_context_after_restart, FOCUS_OBSERVER,
     same_record_rotation_game, focus_only_revoke_game)
+from continuity_acceptance import expected_viewer_status, note_progress
 
 
 class ContinuityHelperTests(unittest.TestCase):
+    def test_turn_oracle_matches_game_owned_viewer_wording_and_check(self):
+        for public, white, black in (
+                ('White to move', 'Your turn / White', 'White to move'),
+                ('Black to move', 'Black to move', 'Your turn / Black'),
+                ('White to move / CHECK', 'Your turn / White / CHECK', 'White to move / CHECK'),
+                ('Black to move / CHECK', 'Black to move / CHECK', 'Your turn / Black / CHECK')):
+            self.assertEqual(expected_viewer_status(0, public), white)
+            self.assertEqual(expected_viewer_status(1, public), black)
+        from browser_acceptance import TERMINAL_STATUS
+        for role in (0, 1):
+            self.assertEqual(expected_viewer_status(role, TERMINAL_STATUS), TERMINAL_STATUS)
+        for role in (True, False, -1, 2, '0', None):
+            with self.assertRaises(AcceptanceFailure):expected_viewer_status(role, 'White to move')
+        for status in ('Your turn / White', 'synthetic-secret', None):
+            with self.assertRaises(AcceptanceFailure):expected_viewer_status(0, status)
+
+    def test_board_keeps_exact_authority_seat_connection_and_pixel_oracle(self):
+        pair=Pair.__new__(Pair);pair.label='network-refresh';page=mock.Mock();pair.pages=[page,mock.Mock()]
+        with mock.patch('continuity_acceptance.rendered_canvas_pixels') as pixels:
+            pair.board(0,'White to move',readonly=True)
+        page.bring_to_front.assert_called_once_with()
+        page.wait_for_function.assert_called_once_with(CURRENT_BOARD,
+            arg={'seat':0,'status':'Your turn / White','readonly':True},timeout=60_000)
+        pixels.assert_called_once_with(page)
+
+    def test_progress_rejects_nonfixture_values_without_retaining_private_text(self):
+        state={'scenario':'setup','phase':'launch','seat':None}
+        with mock.patch('continuity_acceptance._continuity_progress',state):
+            note_progress('network-refresh','board',0)
+            self.assertEqual(state,{'scenario':'network-refresh','phase':'board','seat':0})
+            for values in (('synthetic-secret','board',0),('network-refresh','synthetic-secret',0),
+                           ('network-refresh','board',True),('network-refresh','board',2)):
+                before=dict(state)
+                with self.assertRaises(AcceptanceFailure) as caught:note_progress(*values)
+                self.assertEqual(state,before);self.assertNotIn('synthetic-secret',str(caught.exception))
+
     def test_create_join_diagnostics_are_fixed_classes_without_private_routing(self):
         self.assertEqual(protected_endpoint_class('https://localhost:9443/api/v1/matches'),'create')
         self.assertEqual(protected_endpoint_class('https://localhost:9443/api/v1/matches/join'),'join')

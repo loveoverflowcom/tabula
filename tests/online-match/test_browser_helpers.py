@@ -171,6 +171,18 @@ class BrowserHelperTests(unittest.TestCase):
         for wrong in ("Game over / Black wins", "Game over / Black wins / resignation", "token=synthetic-secret"):
             self.assertEqual(game_status_class(wrong), "other_status")
 
+    def test_turn_diagnostics_classify_both_actual_viewer_wordings(self):
+        for status, expected in (("White to move", "white_turn"),
+                                 ("Your turn / White", "white_turn"),
+                                 ("Black to move", "black_turn"),
+                                 ("Your turn / Black", "black_turn"),
+                                 ("White to move / CHECK", "white_in_check"),
+                                 ("Your turn / White / CHECK", "white_in_check"),
+                                 ("Black to move / CHECK", "black_in_check"),
+                                 ("Your turn / Black / CHECK", "black_in_check")):
+            self.assertEqual(game_status_class(status), expected)
+        self.assertEqual(game_status_class("synthetic-secret"), "other_status")
+
     def test_neutral_concealment_requires_positive_error_and_no_projected_pixels_or_status(self):
         for required in ("onlineAvailability === 'unavailable'", "onlineSeat", "onlineRevision", "onlineStatus", "onlineConnection",
                          "!Object.hasOwn", "canvas.width === 0", "canvas.height === 0", "aria-hidden", "visibility === 'hidden'",

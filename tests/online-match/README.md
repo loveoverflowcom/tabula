@@ -439,3 +439,12 @@ requests unchanged, then attempts trusted pointer/keyboard gestures at the forme
 board while revalidation remains unresolved. No command may be emitted. Only
 then are those requests released and real revoked-authority terminal concealment
 required. Eventual zero dimensions alone cannot seal this first-restored proof.
+
+Continuity turn assertions use the game presenter's exact viewer wording:
+the moving seat sees `Your turn / White` or `Your turn / Black`, while its peer
+sees `White to move` or `Black to move`. Check suffixes and the complete terminal
+verdict remain exact. This adjusts the expected text only; current authority,
+server seat, connection, visible native canvas and rendered-pixel assertions
+stay mandatory. Failure receipts retain only the last closed fixture scenario,
+phase and seat, so a timeout identifies setup/board/command/oracle progress
+without exposing URLs, commands, grants, credentials or raw browser errors.

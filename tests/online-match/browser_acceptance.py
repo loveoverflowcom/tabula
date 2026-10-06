@@ -427,7 +427,9 @@ def board_square(width: float, height: float, name: str, flipped: bool) -> tuple
 
 def game_status_class(status: str | None) -> str:
     return {"White to move": "white_turn", "Black to move": "black_turn",
+            "Your turn / White": "white_turn", "Your turn / Black": "black_turn",
             "White to move / CHECK": "white_in_check", "Black to move / CHECK": "black_in_check",
+            "Your turn / White / CHECK": "white_in_check", "Your turn / Black / CHECK": "black_in_check",
             TERMINAL_STATUS: "black_checkmate", None: "not_available"}.get(status, "other_status")
 
 
