@@ -15,13 +15,10 @@ use tabula_match::{
     runtime_ports::{Authority, AuthorityLost, Effects, Output, Purpose},
 };
 use tabula_protocol::{encode_server, Codec, ServerEnvelope};
-use tabula_session::{
-    CredentialOperation, HttpSessionAuthority, SessionPublication, SessionSnapshot,
-};
+use tabula_session::{CredentialOperation, SessionPublication, SessionSnapshot};
 use tabula_storage::{
-    match_postgres::PgMatchJournal,
-    online_match::{PgOnlineMatchStore, PgOnlineOperation},
-    session::{PgSessionPublication, PgSessionStore},
+    match_postgres::{PgMatchJournal, PgMatchPublication},
+    online_match::{PgOnlineMatchStore, PgOnlineOperation, PgOnlinePublication},
 };
 use tokio::sync::{oneshot, Mutex as AsyncMutex};
 
@@ -30,7 +27,8 @@ pub(super) struct LiveMatch {
     pub journal: Arc<NetworkJournal>,
     pub authority: Arc<NetworkAuthority>,
     pub output: Arc<QueueOutput>,
-    pub gate: AsyncMutex<()>,
+    pub gate: Arc<AsyncMutex<()>>,
+    pub owner_task: tokio::task::AbortHandle,
 }
 pub(super) struct NetworkClock {
     start: Instant,
@@ -50,7 +48,9 @@ impl Clock for NetworkClock {
         u64::try_from(self.start.elapsed().as_millis()).unwrap_or(u64::MAX)
     }
 }
-pub(super) struct ClosedEffects;
+pub(super) struct ClosedEffects {
+    pub journal: Arc<NetworkJournal>,
+}
 impl Effects for ClosedEffects {
     async fn execute(
         &self,
@@ -58,14 +58,22 @@ impl Effects for ClosedEffects {
         _index: InputIndex,
         effects: Vec<Effect>,
     ) -> Result<(), RuntimePortError> {
+        if effects.is_empty() {
+            return Ok(());
+        }
         if effects.iter().all(|e| matches!(e, Effect::EndMatch { .. })) {
-            Ok(())
+            let mut owner = self.journal.journal.begin_publication().await?;
+            owner.publish(|| ())
         } else {
             Err(RuntimePortError::Unavailable)
         }
     }
 }
 pub(super) struct NetworkJournal {
+    #[cfg(feature = "acceptance-test-support")]
+    hook: Mutex<Option<Arc<dyn crate::AcceptanceFaultHook>>>,
+    #[cfg(feature = "acceptance-test-support")]
+    command: Mutex<Option<crate::AcceptanceFaultPoint>>,
     pub journal: PgMatchJournal,
     active: Mutex<Option<PgOnlineOperation>>,
     initialized: Mutex<Option<oneshot::Sender<Result<(), RuntimePortError>>>>,
@@ -78,6 +86,10 @@ impl NetworkJournal {
     ) -> Self {
         Self {
             journal,
+            #[cfg(feature = "acceptance-test-support")]
+            hook: Mutex::new(None),
+            #[cfg(feature = "acceptance-test-support")]
+            command: Mutex::new(None),
             active: Mutex::new(Some(guard)),
             initialized: Mutex::new(Some(ready)),
         }
@@ -90,10 +102,57 @@ impl NetworkJournal {
             .ok_or(RuntimePortError::Unavailable)
     }
     pub fn set(&self, guard: Option<PgOnlineOperation>) -> Result<(), RuntimePortError> {
+        #[cfg(feature = "acceptance-test-support")]
+        if guard.is_none() {
+            *self
+                .command
+                .lock()
+                .map_err(|_| RuntimePortError::Unavailable)? = None;
+        }
         *self
             .active
             .lock()
             .map_err(|_| RuntimePortError::Unavailable)? = guard;
+        Ok(())
+    }
+    pub fn recovered(journal: PgMatchJournal) -> Self {
+        Self {
+            journal,
+            active: Mutex::new(None),
+            initialized: Mutex::new(None),
+            #[cfg(feature = "acceptance-test-support")]
+            hook: Mutex::new(None),
+            #[cfg(feature = "acceptance-test-support")]
+            command: Mutex::new(None),
+        }
+    }
+    #[cfg(feature = "acceptance-test-support")]
+    pub fn set_hook(
+        &self,
+        hook: Option<Arc<dyn crate::AcceptanceFaultHook>>,
+    ) -> Result<(), RuntimePortError> {
+        *self
+            .hook
+            .lock()
+            .map_err(|_| RuntimePortError::Unavailable)? = hook;
+        Ok(())
+    }
+    #[cfg(feature = "acceptance-test-support")]
+    pub async fn fault(&self, phase: crate::AcceptanceFaultPhase) -> Result<(), RuntimePortError> {
+        let hook = self
+            .hook
+            .lock()
+            .map_err(|_| RuntimePortError::Unavailable)?
+            .clone();
+        let point = self
+            .command
+            .lock()
+            .map_err(|_| RuntimePortError::Unavailable)?
+            .clone();
+        if let (Some(hook), Some(mut point)) = (hook, point) {
+            point.phase = phase;
+            hook.reach(point).await?;
+        }
         Ok(())
     }
 }
@@ -109,6 +168,15 @@ impl ActiveRequest {
         journal.set(Some(guard))?;
         Ok(Self { journal })
     }
+    #[cfg(feature = "acceptance-test-support")]
+    pub fn command(&self, point: crate::AcceptanceFaultPoint) -> Result<(), RuntimePortError> {
+        *self
+            .journal
+            .command
+            .lock()
+            .map_err(|_| RuntimePortError::Unavailable)? = Some(point);
+        Ok(())
+    }
 }
 impl Drop for ActiveRequest {
     fn drop(&mut self) {
@@ -118,10 +186,17 @@ impl Drop for ActiveRequest {
 impl Journal for NetworkJournal {
     async fn append(&self, record: JournalRecord) -> Result<(), RuntimePortError> {
         let genesis = record.creation.is_some();
+        #[cfg(feature = "acceptance-test-support")]
+        self.fault(crate::AcceptanceFaultPhase::BeforeCommit)
+            .await?;
         let result = self
             .journal
             .append_authenticated(record, &self.active()?)
             .await;
+        #[cfg(feature = "acceptance-test-support")]
+        if result.is_ok() {
+            self.fault(crate::AcceptanceFaultPhase::AfterCommit).await?;
+        }
         if genesis {
             if let Ok(mut ready) = self.initialized.lock() {
                 if let Some(ready) = ready.take() {
@@ -138,9 +213,18 @@ impl Journal for NetworkJournal {
         observed: u64,
         ledger: Vec<ScopeState>,
     ) -> Result<(), RuntimePortError> {
-        self.journal
+        #[cfg(feature = "acceptance-test-support")]
+        self.fault(crate::AcceptanceFaultPhase::BeforeCommit)
+            .await?;
+        let result = self
+            .journal
             .update_ledger_authenticated(id, version, observed, ledger, &self.active()?)
-            .await
+            .await;
+        #[cfg(feature = "acceptance-test-support")]
+        if result.is_ok() {
+            self.fault(crate::AcceptanceFaultPhase::AfterCommit).await?;
+        }
+        result
     }
     async fn load(&self, id: MatchId) -> Result<LoadedMatch, RuntimePortError> {
         self.journal.load(id).await
@@ -155,12 +239,12 @@ pub(super) struct AuthorizedAttachment {
 struct PreparedOutput {
     binding: Binding,
     purpose: Purpose,
-    publication: PgSessionPublication,
+    publication: PgOnlinePublication,
+    owner: PgMatchPublication,
 }
 pub(super) struct NetworkAuthority {
     id: MatchId,
     online: PgOnlineMatchStore,
-    sessions: PgSessionStore,
     journal: Arc<NetworkJournal>,
     output: Arc<QueueOutput>,
     attachments: Mutex<BTreeMap<SessionId, AuthorizedAttachment>>,
@@ -170,14 +254,12 @@ impl NetworkAuthority {
     pub fn new(
         id: MatchId,
         online: PgOnlineMatchStore,
-        sessions: PgSessionStore,
         journal: Arc<NetworkJournal>,
         output: Arc<QueueOutput>,
     ) -> Self {
         Self {
             id,
             online,
-            sessions,
             journal,
             output,
             attachments: Mutex::new(BTreeMap::new()),
@@ -265,18 +347,19 @@ impl Authority for NetworkAuthority {
             if let Ok(active) = self.journal.active() {
                 active.cancel().await.map_err(|_| AuthorityLost)?;
             }
-            let m = self
+            let publication = self
                 .online
-                .resolve(e.credential, self.id)
+                .begin_publication(e.credential, self.id, e.scope)
                 .await
                 .map_err(|_| AuthorityLost)?;
-            if m.scope() != e.scope {
-                return Err(AuthorityLost);
-            }
-            let publication = self
-                .sessions
-                .begin_publication(e.credential)
+            let mut owner = self
+                .journal
+                .journal
+                .begin_publication()
                 .await
+                .map_err(|_| AuthorityLost)?;
+            owner
+                .restrict_deadline(publication.expires_at())
                 .map_err(|_| AuthorityLost)?;
             if !snapshot_matches(publication.snapshot(), b) {
                 return Err(AuthorityLost);
@@ -291,6 +374,7 @@ impl Authority for NetworkAuthority {
                     binding: b.clone(),
                     purpose: p,
                     publication,
+                    owner,
                 },
             );
             Ok(())
@@ -319,7 +403,17 @@ impl Authority for NetworkAuthority {
                     if permit.binding != *b || permit.purpose != p {
                         return Err(AuthorityLost);
                     }
-                    return submit_prepared(&mut permit.publication, &self.output, b, action);
+                    return submit_prepared(&self.output, b, || {
+                        permit
+                            .owner
+                            .publish(|| {
+                                permit
+                                    .publication
+                                    .publish(|_| action())
+                                    .map_err(|_| AuthorityLost)
+                            })
+                            .map_err(|_| AuthorityLost)?
+                    });
                 }
             }
             let guard = self.journal.active().map_err(|_| AuthorityLost)?;
@@ -334,16 +428,14 @@ impl Authority for NetworkAuthority {
         result
     }
 }
-fn submit_prepared<P: SessionPublication, T>(
-    publication: &mut P,
+fn submit_prepared<T>(
     output: &QueueOutput,
     binding: &Binding,
-    action: impl FnOnce() -> T,
+    authorize: impl FnOnce() -> Result<T, AuthorityLost>,
 ) -> Result<T, AuthorityLost> {
     let stage = output.begin_stage(binding).map_err(|_| AuthorityLost)?;
-    let result = publication
-        .publish(|_| action())
-        .map_err(|_| AuthorityLost)?;
+    // Candidate frames stay private until every nested guard's post-check succeeds.
+    let result = authorize()?;
     stage.commit().map_err(|_| AuthorityLost)?;
     Ok(result)
 }
@@ -687,7 +779,9 @@ mod tests {
         .snapshot();
         let mut publication = ExpiringPublication { snapshot };
         assert_eq!(
-            submit_prepared(&mut publication, &output, &b, || output.submit(&b, ack(1))),
+            submit_prepared(&output, &b, || publication
+                .publish(|_| output.submit(&b, ack(1)))
+                .map_err(|_| AuthorityLost)),
             Err(AuthorityLost)
         );
         assert!(output.drain(&b).unwrap().is_empty());

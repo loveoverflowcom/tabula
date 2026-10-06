@@ -20,13 +20,235 @@ use tabula_protocol::GameCommandFrame;
 use tabula_session::{
     AccountEpoch, AccountRecord, AuthSessionId, CredentialOperation, HttpSessionAuthority,
     IssueSession, ProviderIdentityKey, SessionAuthority, SessionChannel, SessionContextBinding,
-    SessionContextId, SessionCredential, SessionError, SessionSnapshot, UnixMillis,
+    SessionContextId, SessionCredential, SessionError, SessionPublication, SessionSnapshot,
+    UnixMillis,
 };
 use uuid::Uuid;
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 const WAIT: Duration = Duration::from_secs(15);
 const MATCH: MatchId = MatchId(101);
+
+#[test]
+fn retired_online_publication_is_one_shot_and_never_invokes_private_frame_callback() {
+    let snapshot = tabula_session::SessionRecord::issue(
+        AuthSessionId::new(501).unwrap(),
+        UserId(42),
+        AccountEpoch::new(0).unwrap(),
+        SessionChannel::BrowserCookie,
+        tabula_session::CredentialDigest::from_bytes([4; 32]),
+        SessionContextId::new(601).unwrap(),
+        UnixMillis::new(1000).unwrap(),
+    )
+    .unwrap()
+    .snapshot();
+    let mut publication = super::PgOnlinePublication {
+        snapshot,
+        operation: None,
+        expires_at: tokio::time::Instant::now(),
+    };
+    for _ in 0..2 {
+        let mut called = false;
+        assert_eq!(
+            publication.publish(|_| called = true),
+            Err(SessionError::Unauthenticated)
+        );
+        assert!(
+            !called,
+            "retired publication cannot construct or release a private frame"
+        );
+    }
+    assert_eq!(
+        format!("{publication:?}"),
+        "PgOnlinePublication([REDACTED])"
+    );
+}
+
+// Genuine membership mutation uses the same account-publication then room
+// ordering as the production authority adapters; raw SQL is not a guard oracle.
+async fn remove_current_membership(pool: &PgPool, request: CredentialOperation) {
+    let mut tx = super::begin(pool).await.unwrap();
+    let mut authority = super::LockedCredential::lock(&mut tx, request)
+        .await
+        .unwrap();
+    let snapshot = authority
+        .observe(&mut tx, tabula_session::ActivityKind::Control)
+        .await
+        .unwrap();
+    super::lock_room(&mut tx, MATCH).await.unwrap();
+    let deleted =
+        sqlx::query("DELETE FROM online_match_admissions WHERE match_id=$1 AND user_id=$2")
+            .bind(Uuid::from_u128(MATCH.0))
+            .bind(Uuid::from_u128(snapshot.user_id().0))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+    assert_eq!(
+        deleted.rows_affected(),
+        1,
+        "real current admission must be removed"
+    );
+    let deleted =
+        sqlx::query("DELETE FROM online_match_memberships WHERE match_id=$1 AND user_id=$2")
+            .bind(Uuid::from_u128(MATCH.0))
+            .bind(Uuid::from_u128(snapshot.user_id().0))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+    assert_eq!(
+        deleted.rows_affected(),
+        1,
+        "real current membership must be removed"
+    );
+    tx.commit().await.unwrap();
+}
+
+#[tokio::test]
+#[ignore = "requires explicit disposable PostgreSQL 16"]
+async fn real_postgres_online_publication_rechecks_removed_membership_and_exact_operation_scope() {
+    let f = Fixture::new().await;
+    let (owner, opponent, _journal) = started(&f).await;
+    let store = PgOnlineMatchStore::new(f.first.clone());
+    let prior = store.resolve(owner.operation, MATCH).await.unwrap();
+    let mut changed = prior.scope();
+    changed.generation += 1;
+    assert!(
+        store
+            .begin_publication(owner.operation, MATCH, changed)
+            .await
+            .is_err(),
+        "a valid session cannot publish using a different server-owned operation scope"
+    );
+    remove_current_membership(&f.second, owner.operation).await;
+    assert!(
+        matches!(
+            store
+                .begin_publication(owner.operation, MATCH, prior.scope())
+                .await,
+            Err(OnlineMatchError::JoinUnavailable)
+        ),
+        "earlier resolve cannot authorize a projection after committed membership removal"
+    );
+    assert!(
+        matches!(
+            store.resolve(owner.operation, MATCH).await,
+            Err(OnlineMatchError::JoinUnavailable)
+        ),
+        "removed creator receives an admission denial rather than an unrelated unavailable error"
+    );
+    assert!(
+        matches!(
+            store.resolve(opponent.operation, MATCH).await,
+            Err(OnlineMatchError::Unavailable)
+        ),
+        "still-present caller cannot bypass the incomplete remaining roster's integrity check"
+    );
+    f.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires explicit disposable PostgreSQL 16"]
+async fn real_postgres_online_publication_holds_current_membership_until_handoff_and_is_one_shot() {
+    let f = Fixture::new().await;
+    let (_, opponent, _journal) = started(&f).await;
+    let store = PgOnlineMatchStore::new(f.first.clone());
+    let scope = store
+        .resolve(opponent.operation, MATCH)
+        .await
+        .unwrap()
+        .scope();
+    let mut publication = store
+        .begin_publication(opponent.operation, MATCH, scope)
+        .await
+        .unwrap();
+    let publication_pid = {
+        let operation = publication.operation.as_ref().unwrap();
+        let pending = operation.state.lock().unwrap();
+        pending.as_ref().unwrap().publication.backend_pid
+    };
+    let second = f.second.clone();
+    let request = opponent.operation;
+    let removal = tokio::spawn(async move { remove_current_membership(&second, request).await });
+    let waiting = blocked(&f.admin, &format!("{}_second", f.schema), publication_pid).await;
+    assert_ne!(waiting, publication_pid);
+    assert!(
+        !removal.is_finished(),
+        "membership removal must wait for the actual publication order"
+    );
+    assert_eq!(
+        publication.publish(SessionSnapshot::user_id).unwrap(),
+        scope.subject
+    );
+    let mut repeated = false;
+    assert_eq!(
+        publication.publish(|_| repeated = true),
+        Err(SessionError::Unauthenticated)
+    );
+    assert!(
+        !repeated,
+        "one-shot publication cannot repeat even with a still-current credential"
+    );
+    tokio::time::timeout(WAIT, removal).await.unwrap().unwrap();
+    assert!(store
+        .begin_publication(opponent.operation, MATCH, scope)
+        .await
+        .is_err());
+    f.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires explicit disposable PostgreSQL 16"]
+async fn real_postgres_online_publication_backend_loss_keeps_membership_excluded_until_old_frame_expires(
+) {
+    let f = Fixture::new().await;
+    let (_, opponent, _journal) = started(&f).await;
+    let store = PgOnlineMatchStore::new(f.first.clone());
+    let scope = store
+        .resolve(opponent.operation, MATCH)
+        .await
+        .unwrap()
+        .scope();
+    let mut publication = store
+        .begin_publication(opponent.operation, MATCH, scope)
+        .await
+        .unwrap();
+    let (publication_pid, transaction_pid) = {
+        let operation = publication.operation.as_ref().unwrap();
+        let pending = operation.state.lock().unwrap();
+        let pending = pending.as_ref().unwrap();
+        (pending.publication.backend_pid, pending.backend_pid)
+    };
+    for pid in [publication_pid, transaction_pid] {
+        let killed: bool = sqlx::query_scalar("SELECT pg_terminate_backend($1)")
+            .bind(pid)
+            .fetch_one(&f.admin)
+            .await
+            .unwrap();
+        assert!(
+            killed,
+            "test must terminate the actual retained authority backends"
+        );
+    }
+    let second = f.second.clone();
+    let request = opponent.operation;
+    let removal = tokio::spawn(async move { remove_current_membership(&second, request).await });
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert!(
+        !removal.is_finished(),
+        "committed exclusion survives loss of both lock backends"
+    );
+    tokio::time::timeout(WAIT, removal).await.unwrap().unwrap();
+    let mut released = false;
+    assert_eq!(
+        publication.publish(|_| released = true),
+        Err(SessionError::Unauthenticated)
+    );
+    assert!(
+        !released,
+        "committed membership removal precedes every late old-frame handoff"
+    );
+    f.close().await;
+}
 fn ddl(schema: &str, create: bool) -> AssertSqlSafe<String> {
     assert!(schema.starts_with("tabula_online_acceptance_") && schema.len() <= 63);
     assert!(schema
@@ -351,7 +573,8 @@ fn online_composition_has_four_exact_strict_versions() {
             202_610_040_001,
             202_610_050_001,
             202_610_050_040,
-            202_610_050_041
+            202_610_050_041,
+            202_610_060_001
         ]
     );
 }

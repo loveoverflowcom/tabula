@@ -25,9 +25,11 @@ from urllib.parse import urlsplit
 from PIL import Image
 from playwright.sync_api import Error as BrowserError, TimeoutError as BrowserTimeout, sync_playwright
 from capture_evidence import CaptureEvidence, CaptureFailure
+from actual_response import ObservationFailure, actual_response_json, install_actual_response_observer
 from startup_diagnostics import http_status, navigation_failure, origin_class, process_diagnostics
 
 ORIGIN = "https://localhost:9443"
+MATCH_VERSION = 2
 SESSION_COOKIE = "__Host-tabula_session"
 GAME_PATH = "/games/com.tabula.chess"
 TERMINAL_STATUS = "Game over / Black wins / checkmate"
@@ -96,6 +98,21 @@ def denied(response: dict, allowed: set[int], label: str) -> None:
             "denied request released gameplay frames")
 
 
+def reattach_required(response: dict, label: str) -> None:
+    """A locally stale transport with current membership needs recovery."""
+    denied(response, {409}, label)
+    require(isinstance(response["body"], dict)
+            and response["body"].get("code") == "reattach_required",
+            "stale attachment was confused with lost authority or another conflict")
+
+
+def fresh_grant_required(response: dict, label: str) -> None:
+    """A current member's rejected grant discloses only its recovery problem."""
+    require(response["status"] == 409, label)
+    require(response["body"] == {"code": "fresh_grant_required"},
+            "rejected signed grant returned a different problem or disclosed extra fields")
+
+
 def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -> dict:
     """Real TLS/header-negative probe; values stay opaque and unlogged.
 
@@ -103,7 +120,7 @@ def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -
     therefore use a separate real, explicitly CA-validated HTTPS client; actual
     create/join/rendered gameplay remains driven by genuine browser UI events.
     """
-    require(path.startswith(("/api/v1/matches/", "/__fixture/publication/")), "invalid hostile probe path")
+    require(path.startswith(("/api/v1/matches/", "/__fixture/publication/", "/__fixture/continuity/")), "invalid hostile probe path")
     connection = http.client.HTTPSConnection("localhost", 9443, timeout=30,
                                             context=ssl.create_default_context(cafile=str(ca)))
     encoded = body.encode("utf-8")
@@ -124,7 +141,7 @@ def wire_probe(ca: Path, path: str, headers: list[tuple[str, str]], body: str) -
 
 
 def hostile_header_probes(ca: Path, match_id: str, cookie: str, csrf: str) -> int:
-    path, body = f"/api/v1/matches/{match_id}/grant", '{"version":1}'
+    path, body = f"/api/v1/matches/{match_id}/grant", '{"version":2}'
     baseline = [("Origin", ORIGIN), ("Cookie", f"{SESSION_COOKIE}={cookie}"),
                 ("Content-Type", "application/json"), ("X-Tabula-CSRF", csrf)]
     cases = [
@@ -163,7 +180,7 @@ def start_native_poll(match_id: str, attachment_id: str, cookie: str, csrf: str)
     done = threading.Event()
     result = {"status": None, "json_content_type": False, "no_store": False,
               "body_bytes": 0, "body_error": False}
-    body = json.dumps({"version": 1, "attachment_id": attachment_id})
+    body = json.dumps({"version": MATCH_VERSION, "attachment_id": attachment_id})
 
     def observe():
         connection = http.client.HTTPConnection("127.0.0.1", 3000, timeout=90)
@@ -197,10 +214,10 @@ def start_native_poll(match_id: str, attachment_id: str, cookie: str, csrf: str)
 
 def prove_held_publication(white, black, match_id: str, white_attachment: dict,
                           original_command: str, facts: list[dict], cookie: str, ca: Path) -> dict:
-    grant = api(black, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[1]["csrf_token"])
+    grant = api(black, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, facts[1]["csrf_token"])
     require(grant["status"] == 200 and grant["body"]["ready"], "passive opponent grant setup failed")
     attachment = api(black, f"/api/v1/matches/{match_id}/attach",
-                     {"version": 1, "binding_id": grant["body"]["binding_id"]}, facts[1]["csrf_token"])
+                     {"version": MATCH_VERSION, "binding_id": grant["body"]["binding_id"]}, facts[1]["csrf_token"])
     require(attachment["status"] == 200, "passive opponent attachment setup failed")
     # This second actor has no browser runtime polling it. Initial snapshots
     # were consumed above, and Black has issued no command or receipt request.
@@ -323,7 +340,7 @@ def capture_live_authority_loss(white, third, csrf: str, evidence: CaptureEviden
     white.get_by_test_id("online-create").wait_for(state="visible", timeout=30_000)
     with white.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches", timeout=30_000) as created_response:
         white.get_by_test_id("online-create").click()
-    created = created_response.value.json()
+    created = actual_response_json(created_response.value)
     progress["create_status"] = http_status(created_response.value.status)
     require(created_response.value.status == 200 and created["seat"] == 0,
             "live concealment actual create setup failed")
@@ -334,7 +351,7 @@ def capture_live_authority_loss(white, third, csrf: str, evidence: CaptureEviden
     third.get_by_test_id("online-join-code").fill(code)
     with third.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches/join", timeout=30_000) as joined_response:
         third.get_by_test_id("online-join").click()
-    joined = joined_response.value.json()
+    joined = actual_response_json(joined_response.value)
     progress["join_status"] = http_status(joined_response.value.status)
     require(joined_response.value.status == 200 and joined["match_id"] == match_id
             and joined["seat"] == 1 and joined["ready"],
@@ -420,7 +437,7 @@ def visible_game_facts(page, role: str) -> dict:
         const data = document.documentElement.dataset;
         return {revision:data.onlineRevision ?? null, seat:data.onlineSeat ?? null,
                 status:data.onlineStatus ?? null, connection:data.onlineConnection ?? null,
-                availability:data.onlineAvailability ?? null};
+                availability:data.onlineAvailability ?? null, focused:document.hasFocus(), visibility:document.visibilityState};
     }""")
     return {"role": role,
             "revision": int(values["revision"]) if values["revision"] in ("0", "1", "2", "3", "4") else "not_observed_in_expected_range",
@@ -429,16 +446,41 @@ def visible_game_facts(page, role: str) -> dict:
             "connection_class": {"Connected · server-authoritative": "ready", "Sending move…": "sending",
                                  "The server rejected that action. Choose another move": "rejected",
                                  "Moves are blocked": "blocked", None: "not_available"}.get(values["connection"], "other_connection"),
-            "availability": values["availability"] if values["availability"] in ("available", "unavailable") else "not_reported"}
+            "availability": values["availability"] if values["availability"] in ("available", "unavailable") else "not_reported",
+            "document_has_focus": values.get("focused") if type(values.get("focused")) is bool else None,
+            "visibility_class": values.get("visibility") if values.get("visibility") in ("visible", "hidden") else "not_reported"}
 
 
 def exception_class(error: Exception) -> str:
+    if isinstance(error, ObservationFailure):
+        return "actual_response_" + error.code
     if isinstance(error, AcceptanceFailure):
         return "required_condition_failed"
     if isinstance(error, BrowserTimeout):
         return "browser_timeout"
     if isinstance(error, BrowserError):
-        return "browser_target_closed" if type(error).__name__ == "TargetClosedError" else "browser_error"
+        if type(error).__name__ == "TargetClosedError":
+            return "browser_target_closed"
+        # Read privately, return only source-owned labels. Never persist the
+        # original Playwright message, call log, URL, header or response body.
+        detail = str(getattr(error, "message", ""))[:16384].casefold()
+        for fragment, label in (
+            ("no resource with given identifier found", "response_body_unavailable"),
+            ("no data found for resource with given identifier", "response_body_unavailable"),
+            ("request content was evicted from inspector cache", "response_body_evicted"),
+            ("target page, context or browser has been closed", "browser_target_closed"),
+            ("execution context was destroyed", "browser_context_destroyed"),
+            ("strict mode violation", "browser_locator_ambiguous"),
+            ("element is not attached to the dom", "browser_element_detached"),
+            ("element is outside of the viewport", "browser_element_outside_viewport"),
+            ("intercepts pointer events", "browser_pointer_intercepted"),
+            ("response.json:", "response_json_failed"),
+            ("response.body:", "response_body_failed"),
+            ("locator.click:", "browser_click_failed"),
+        ):
+            if fragment in detail:
+                return label
+        return "browser_error"
     if isinstance(error, CaptureFailure):
         return "capture_condition_failed"
     for kind, label in ((json.JSONDecodeError, "json_decode_error"), (AttributeError, "python_attribute_error"),
@@ -455,8 +497,30 @@ def protected_endpoint_class(url: str) -> str | None:
         return None
     if parsed.path == "/api/v1/auth/context":
         return "context"
+    if parsed.path == "/api/v1/matches":
+        return "create"
+    if parsed.path == "/api/v1/matches/join":
+        return "join"
     match = re.fullmatch(r"/api/v1/matches/[0-9a-f]{32}/(grant|attach|poll|command)", parsed.path)
     return match.group(1) if match else None
+
+
+def admission_response_facts(response) -> dict:
+    """Bounded response metadata only, never arbitrary header values."""
+    content = (response.header_value("content-type") or "").split(";")[0].strip().lower()
+    length = response.header_value("content-length")
+    if length is None:
+        length_class, bounded_length = "missing", None
+    elif re.fullmatch(r"[0-9]{1,10}", length) is None:
+        length_class, bounded_length = "invalid", None
+    elif int(length) > 2_097_152:
+        length_class, bounded_length = "over_budget", None
+    else:
+        length_class, bounded_length = "bounded", int(length)
+    return {"status": http_status(response.status),
+            "content_type_class": {"application/json":"json", "application/problem+json":"problem_json"}.get(content, "missing" if not content else "other"),
+            "no_store": any(value.strip().lower() == "no-store" for value in (response.header_value("cache-control") or "").split(",")),
+            "body_length_class": length_class, "bounded_body_length": bounded_length}
 
 
 @contextmanager
@@ -499,6 +563,8 @@ def move(page, source: str, target: str, flipped: bool, match_id: str,
                 "http_status": None, "ack_present": False}
     if trace is not None:
         trace.append(observed)
+    page.bring_to_front()
+    page.wait_for_function("() => document.hasFocus() && document.visibilityState === 'visible' && document.documentElement.dataset.onlineAvailability === 'available'", timeout=60_000)
     canvas = page.locator("#glcanvas")
     bounds = canvas.bounding_box()
     require(bounds is not None, "actual canvas has no pointer bounds")
@@ -510,7 +576,7 @@ def move(page, source: str, target: str, flipped: bool, match_id: str,
     response = result.value
     observed.update({"response_observed": True, "http_status": http_status(response.status)})
     require(response.status == 200, "rendered legal move was not accepted by real server")
-    body = response.json()
+    body = actual_response_json(response)
     require(not private_frame_keys(body), "canonical facts leaked in command result")
     observed["ack_present"] = any("Ack" in frame.get("body", {}) for frame in body["frames"])
     require(observed["ack_present"],
@@ -522,36 +588,83 @@ def move(page, source: str, target: str, flipped: bool, match_id: str,
     return command
 
 
+def completed_attachment_response(request, match_id: str):
+    """Select only a completed real attachment, never its earlier response headers.
+
+    Call from requestfinished. Response.finished() also resolves on requestfailed,
+    so it cannot establish successful body delivery by itself.
+    """
+    if (request.method != "POST" or urlsplit(request.url).path != f"/api/v1/matches/{match_id}/attach"
+            or request.failure is not None):
+        return None
+    response = request.response()
+    require(response is not None, "completed attachment response was absent")
+    return response if response.status == 200 else None
+
+
 def enter_game(page, match_id: str, expected_seat: int,
                trace: list[dict] | None = None) -> tuple[dict, str]:
     observed = {"expected_seat": expected_seat, "phase": "navigate_and_request_attach",
                 "response_observed": False, "http_status": None,
                 "typed_seat_matches": False, "native_status_observed": False,
-                "loader_hidden": False, "actual_canvas_visible": False}
+                "loader_hidden": False, "actual_canvas_visible": False,
+                "header_responses": 0, "completed_responses": 0, "failed_requests": 0,
+                "attempts": []}
     if trace is not None:
         trace.append(observed)
+    # A real foreground document is required before attach. PR3 retires an
+    # in-flight response when trusted window focus changes during navigation.
+    page.bring_to_front()
+    page.wait_for_function("() => document.hasFocus() && document.visibilityState === 'visible'", timeout=60_000)
     path = f"/api/v1/matches/{match_id}/attach"
-    def is_attachment(response):
-        return urlsplit(response.url).path == path and response.request.method == "POST"
+    def is_attachment(request):
+        return urlsplit(request.url).path == path and request.method == "POST"
+    def record_attempt(phase, status=None, failure=None, response_facts=None):
+        key = {"headers": "header_responses", "completed": "completed_responses", "failed": "failed_requests"}[phase]
+        observed[key] = min(observed[key] + 1, 255)
+        if len(observed["attempts"]) < 16:
+            attempt = {"phase": phase, "http_status": http_status(status),
+                       "failure_class": navigation_failure(failure) if phase == "failed" else None}
+            if response_facts is not None:
+                attempt["response"] = response_facts
+            observed["attempts"].append(attempt)
     def attachment_response_observed(response):
-        if is_attachment(response):
+        if is_attachment(response.request):
             observed.update({"response_observed": True, "http_status": http_status(response.status)})
-    page.on("response", attachment_response_observed)
+            record_attempt("headers", response.status, response_facts=admission_response_facts(response))
+    def attachment_finished(request):
+        if is_attachment(request):
+            response = request.response()
+            record_attempt("completed", response.status if response is not None else None)
+    def attachment_failed(request):
+        if is_attachment(request):
+            record_attempt("failed", failure=request.failure)
+    listeners = (("response", attachment_response_observed), ("requestfinished", attachment_finished),
+                 ("requestfailed", attachment_failed))
+    for event, listener in listeners:
+        page.on(event, listener)
     try:
-        with page.expect_response(is_attachment, timeout=60_000) as result:
+        # A canceled header-only200 is an attempted attachment, not body evidence.
+        # The actual adapter must recover and finish a fresh200 within this budget.
+        with page.expect_event("requestfinished", predicate=lambda request: completed_attachment_response(request, match_id) is not None,
+                               timeout=60_000) as result:
             page.get_by_test_id("online-enter").click()
     finally:
-        page.remove_listener("response", attachment_response_observed)
-    response = result.value
+        for event, listener in listeners:
+            page.remove_listener(event, listener)
+    response = completed_attachment_response(result.value, match_id)
+    require(response is not None, "actual gameplay attachment failed")
     observed.update({"response_observed": True, "http_status": http_status(response.status),
                      "phase": "validate_existing_attach_contract"})
-    require(response.status == 200, "actual gameplay attachment failed")
-    attachment = response.json()
-    require(attachment["seat"] == expected_seat, "browser entered the wrong opponent seat")
+    # No body error is ignored. Every selected completed200 must satisfy the
+    # existing typed contract before current Rust projection/render assertions.
+    attachment = actual_response_json(response)
+    require(attachment["seat"] == expected_seat and attachment["version"] == MATCH_VERSION,
+            "browser entered an incompatible opponent seat")
     observed["typed_seat_matches"] = True
     require(not private_frame_keys(attachment), "canonical facts leaked on attach")
     observed["phase"] = "wait_native_projection_status"
-    page.wait_for_function("expected => document.documentElement.dataset.onlineSeat === String(expected)",
+    page.wait_for_function("expected => document.documentElement.dataset.onlineAvailability === 'available' && document.documentElement.dataset.onlineSeat === String(expected)",
                            arg=expected_seat, timeout=60_000)
     observed["native_status_observed"] = True
     observed["phase"] = "wait_loader_hidden"
@@ -633,6 +746,7 @@ def run(args) -> None:
                     reduced_motion="reduce", locale="en-US",
                 )
                 browsers.append(browser)
+                install_actual_response_observer(browser)
                 counters = {}
                 results["protected_http"][role] = counters
                 def observe_response(response, counts=counters):
@@ -753,9 +867,43 @@ def run(args) -> None:
                              "Actual online create and join controls visibly available", secrets=redacted_values)
 
             results["stage"] = "create and join a real code through the shell"
+            results["admission"] = {"phase":"before_create_click", "create_response":None,
+                                    "create_body_parsed":False, "join_response":None,
+                                    "join_body_parsed":False}
+            admission_progress = results["admission"]
+            def record_admission_response(response):
+                endpoint = protected_endpoint_class(response.url)
+                if endpoint in ("create", "join"):
+                    try:
+                        admission_progress[endpoint + "_response"] = admission_response_facts(response)
+                    except Exception as diagnostic_error:
+                        admission_progress[endpoint + "_metadata_error"] = exception_class(diagnostic_error)
+            def record_admission_request(request):
+                endpoint = protected_endpoint_class(request.url)
+                if endpoint in ("create", "join"):
+                    admission_progress[endpoint + "_request_observed"] = True
+            def record_admission_failure(request):
+                endpoint = protected_endpoint_class(request.url)
+                if endpoint in ("create", "join"):
+                    admission_progress[endpoint + "_network_failure"] = navigation_failure(request.failure)
+            white.on("response", record_admission_response)
+            black.on("response", record_admission_response)
+            white.on("request", record_admission_request)
+            black.on("request", record_admission_request)
+            white.on("requestfailed", record_admission_failure)
+            black.on("requestfailed", record_admission_failure)
+            admission_progress["create_control_count"] = min(white.get_by_test_id("online-create").count(), 8)
+            admission_progress["create_control_visible"] = white.get_by_test_id("online-create").is_visible()
+            admission_progress["create_control_enabled"] = white.get_by_test_id("online-create").is_enabled()
             with white.expect_response(lambda r: urlsplit(r.url).path == "/api/v1/matches", timeout=30_000) as created_response:
                 white.get_by_test_id("online-create").click()
-            created = created_response.value.json()
+                admission_progress["phase"] = "create_clicked_waiting_response"
+            admission_progress["phase"] = "create_response_observed"
+            admission_progress["create_response"] = admission_response_facts(created_response.value)
+            admission_progress["phase"] = "parse_create_body"
+            created = actual_response_json(created_response.value)
+            admission_progress["create_body_parsed"] = True
+            admission_progress["phase"] = "validate_create_admission"
             require(created_response.value.status == 200 and created["seat"] == 0,
                     "actual shell create action failed")
             match_id, code = created["match_id"], created["join_code"]
@@ -764,18 +912,31 @@ def run(args) -> None:
             redacted_values.append(code)
             evidence.capture(white, "03-created-code-waiting.png", "Created match waiting for opponent; active code redacted", "White browser",
                              "Actual successful create response has rendered its waiting admission", secrets=redacted_values)
-            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, "A" * 43),
+            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, "A" * 43),
                    {401}, "third unauthenticated browser obtained opponent output")
             black.get_by_test_id("online-join-code").fill(code)
+            admission_progress["phase"] = "before_join_click"
             with black.expect_response(lambda r: urlsplit(r.url).path == "/api/v1/matches/join", timeout=30_000) as joined_response:
                 black.get_by_test_id("online-join").click()
-            joined = joined_response.value.json()
+                admission_progress["phase"] = "join_clicked_waiting_response"
+            admission_progress["join_response"] = admission_response_facts(joined_response.value)
+            admission_progress["phase"] = "parse_join_body"
+            joined = actual_response_json(joined_response.value)
+            admission_progress["join_body_parsed"] = True
+            admission_progress["phase"] = "validate_join_admission"
             require(joined_response.value.status == 200 and joined["match_id"] == match_id
                     and joined["seat"] == 1 and joined["ready"], "actual code join failed")
             black.get_by_test_id("online-enter").wait_for(state="visible", timeout=30_000)
+            admission_progress["phase"] = "complete"
+            white.remove_listener("response", record_admission_response)
+            black.remove_listener("response", record_admission_response)
+            white.remove_listener("request", record_admission_request)
+            black.remove_listener("request", record_admission_request)
+            white.remove_listener("requestfailed", record_admission_failure)
+            black.remove_listener("requestfailed", record_admission_failure)
             evidence.capture(black, "04-opponent-joined.png", "Opponent joined the real match; code/input redacted", "Black browser",
                              "Actual successful join rendered the opposite seat and enter control", secrets=redacted_values)
-            duplicate = api(black, "/api/v1/matches/join", {"version": 1, "code": code}, facts[1]["csrf_token"])
+            duplicate = api(black, "/api/v1/matches/join", {"version": MATCH_VERSION, "code": code}, facts[1]["csrf_token"])
             require(duplicate["status"] == 200 and duplicate["body"]["seat"] == 1
                     and duplicate["body"]["match_id"] == match_id,
                     "same-player duplicate join is not idempotent")
@@ -787,7 +948,7 @@ def run(args) -> None:
             third_csrf = third_facts["csrf_token"]
             require(third_facts["account_id"] not in [f["account_id"] for f in facts],
                     "third fixture account is not independent")
-            denied(api(third, "/api/v1/matches/join", {"version": 1, "code": code}, third_csrf),
+            denied(api(third, "/api/v1/matches/join", {"version": MATCH_VERSION, "code": code}, third_csrf),
                    {403, 409}, "third player changed a full live opponent roster")
             results["third_client_full_live_roster_join_denied"] = True
             results["stage"] = "attach and render opposing actual browser seats"
@@ -856,10 +1017,10 @@ def run(args) -> None:
             black.goto(ORIGIN + GAME_PATH, wait_until="domcontentloaded")
 
             results["stage"] = "deny third-client commands and private output"
-            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": 1}, third_csrf),
+            denied(api(third, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, third_csrf),
                    {403}, "third actual account obtained another player's grant")
             denied(api(third, f"/api/v1/matches/{match_id}/poll",
-                       {"version": 1, "attachment_id": white_attachment["attachment_id"]}, third_csrf),
+                       {"version": MATCH_VERSION, "attachment_id": white_attachment["attachment_id"]}, third_csrf),
                    {403, 404}, "third account obtained opponent projection output")
             denied(api(third, f"/api/v1/matches/{match_id}/command", first, third_csrf),
                    {403, 404}, "third account issued an opponent command")
@@ -868,20 +1029,20 @@ def run(args) -> None:
             results["stage"] = "reject real hostile Origin, CSRF, credential and envelope requests"
             results["hostile_header_partitions_denied"] = hostile_header_probes(
                 ca, match_id, cookies[0][0]["value"], facts[0]["csrf_token"])
-            fresh_grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[0]["csrf_token"])
+            fresh_grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, facts[0]["csrf_token"])
             require(fresh_grant["status"] == 200 and fresh_grant["body"]["ready"],
                     "fresh signed grant security partition setup failed")
-            fresh_grant_body = {"version": 1, "binding_id": fresh_grant["body"]["binding_id"]}
-            denied(api(black, f"/api/v1/matches/{match_id}/attach", fresh_grant_body, facts[1]["csrf_token"]),
-                   {401}, "foreign-subject signed grant was accepted")
+            fresh_grant_body = {"version": MATCH_VERSION, "binding_id": fresh_grant["body"]["binding_id"]}
+            fresh_grant_required(api(black, f"/api/v1/matches/{match_id}/attach", fresh_grant_body, facts[1]["csrf_token"]),
+                                 "foreign-subject grant did not return its required denial classification")
             denied(api(white, f"/api/v1/matches/{match_id}/attach",
-                       {"version": 1, "binding_id": "invalid-grant"}, facts[0]["csrf_token"]),
+                       {"version": MATCH_VERSION, "binding_id": "invalid-grant"}, facts[0]["csrf_token"]),
                    {400}, "malformed signed grant was accepted")
             tampered = fresh_grant_body.copy()
             token = tampered["binding_id"]
             tampered["binding_id"] = token[:-2] + ("B" if token[-2] == "A" else "A") + token[-1]
-            denied(api(white, f"/api/v1/matches/{match_id}/attach", tampered, facts[0]["csrf_token"]),
-                   {401}, "invalid HMAC signed grant was accepted")
+            fresh_grant_required(api(white, f"/api/v1/matches/{match_id}/attach", tampered, facts[0]["csrf_token"]),
+                                 "invalid-HMAC grant did not return its required denial classification")
             invented_seat = json.loads(first)
             invented_seat["seat"] = 1
             denied(api(white, f"/api/v1/matches/{match_id}/command", json.dumps(invented_seat), facts[0]["csrf_token"]),
@@ -897,41 +1058,41 @@ def run(args) -> None:
             results["hostile_grant_seat_and_envelope_partitions_denied"] = 6
 
             results["stage"] = "deny cross-match commands and private output"
-            other = api(white, "/api/v1/matches", {"version": 1, "game_id": created["game_id"],
+            other = api(white, "/api/v1/matches", {"version": MATCH_VERSION, "game_id": created["game_id"],
                         "seats": 2, "config": {"clock": "untimed"}}, facts[0]["csrf_token"])
             require(other["status"] == 200, "independent cross-match admission fixture failed")
             other_id = other["body"]["match_id"]
             second_join = api(black, "/api/v1/matches/join",
-                              {"version": 1, "code": other["body"]["join_code"]}, facts[1]["csrf_token"])
+                              {"version": MATCH_VERSION, "code": other["body"]["join_code"]}, facts[1]["csrf_token"])
             require(second_join["status"] == 200 and second_join["body"]["ready"],
                     "actual second-match opponent roster setup failed")
-            second_grant = api(white, f"/api/v1/matches/{other_id}/grant", {"version": 1}, facts[0]["csrf_token"])
+            second_grant = api(white, f"/api/v1/matches/{other_id}/grant", {"version": MATCH_VERSION}, facts[0]["csrf_token"])
             require(second_grant["status"] == 200 and second_grant["body"]["ready"],
                     "actual second-match current grant setup failed")
             second_attach = api(white, f"/api/v1/matches/{other_id}/attach",
-                                {"version": 1, "binding_id": second_grant["body"]["binding_id"]}, facts[0]["csrf_token"])
+                                {"version": MATCH_VERSION, "binding_id": second_grant["body"]["binding_id"]}, facts[0]["csrf_token"])
             require(second_attach["status"] == 200, "actual second-match actor setup failed")
-            denied(api(white, f"/api/v1/matches/{other_id}/poll",
-                       {"version": 1, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
-                   {403}, "same-account cross-match attachment released output")
+            reattach_required(api(white, f"/api/v1/matches/{other_id}/poll",
+                       {"version": MATCH_VERSION, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
+                   "same-account cross-match attachment released output")
             cross_command = json.loads(first)
             cross_command["command"]["command"]["match_id"] = int(other_id, 16)
-            denied(api(white, f"/api/v1/matches/{other_id}/command", json.dumps(cross_command), facts[0]["csrf_token"]),
-                   {403}, "same-account cross-match command was admitted")
+            reattach_required(api(white, f"/api/v1/matches/{other_id}/command", json.dumps(cross_command), facts[0]["csrf_token"]),
+                   "same-account cross-match command was admitted")
             results["cross_match_command_and_output_denied"] = True
 
             results["stage"] = "rebind the same durable scope and fence its old attachment"
-            grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": 1}, facts[0]["csrf_token"])
+            grant = api(white, f"/api/v1/matches/{match_id}/grant", {"version": MATCH_VERSION}, facts[0]["csrf_token"])
             require(grant["status"] == 200 and grant["body"]["ready"], "fresh authorized reattach grant failed")
             reattached = api(white, f"/api/v1/matches/{match_id}/attach",
-                             {"version": 1, "binding_id": grant["body"]["binding_id"]}, facts[0]["csrf_token"])
+                             {"version": MATCH_VERSION, "binding_id": grant["body"]["binding_id"]}, facts[0]["csrf_token"])
             require(reattached["status"] == 200 and reattached["body"]["next_seq"] == 3,
                     "same actual session reattachment reset durable command sequence")
-            denied(api(white, f"/api/v1/matches/{match_id}/poll",
-                       {"version": 1, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
-                   {403}, "old attachment released output after same-session rebind")
-            denied(api(white, f"/api/v1/matches/{match_id}/command", first, facts[0]["csrf_token"]),
-                   {403}, "old attachment issued a command after same-session rebind")
+            reattach_required(api(white, f"/api/v1/matches/{match_id}/poll",
+                       {"version": MATCH_VERSION, "attachment_id": white_attachment["attachment_id"]}, facts[0]["csrf_token"]),
+                   "old attachment released output after same-session rebind")
+            reattach_required(api(white, f"/api/v1/matches/{match_id}/command", first, facts[0]["csrf_token"]),
+                   "old attachment issued a command after same-session rebind")
             results["same_session_reattach_retained_next_seq_and_denied_old_attachment"] = True
 
             results["stage"] = "revoke through real authority and deny stale credential replay"
@@ -944,7 +1105,7 @@ def run(args) -> None:
             # Replay the exact previous runtime credential in the same browser.
             browsers[1].add_cookies([revoked_cookie])
             denied(api(black, f"/api/v1/matches/{match_id}/poll",
-                       {"version": 1, "attachment_id": black_attachment["attachment_id"]}, facts[1]["csrf_token"]),
+                       {"version": MATCH_VERSION, "attachment_id": black_attachment["attachment_id"]}, facts[1]["csrf_token"]),
                    {401}, "revoked session obtained protected gameplay output")
             denied(api(black, f"/api/v1/matches/{match_id}/command", last, facts[1]["csrf_token"]),
                    {401}, "revoked session issued a cached opponent command")

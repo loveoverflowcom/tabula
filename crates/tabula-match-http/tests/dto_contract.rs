@@ -1,4 +1,4 @@
-//! Exact HTTP-v1 vectors and ordinary-serde hostile partitions (I-13).
+//! Exact HTTP-v2 vectors and ordinary-serde hostile partitions (I-13).
 use serde::{de::DeserializeOwned, Serialize};
 use std::{collections::BTreeMap, fmt::Debug};
 use tabula_core::{GameId, GameVersion, MatchId};
@@ -11,7 +11,7 @@ fn vector<T: Serialize + DeserializeOwned + PartialEq + Debug>(value: T, expecte
     assert_eq!(decoded, value);
     assert_eq!(serde_json::to_string(&decoded).unwrap(), expected);
     let mut json: serde_json::Value = serde_json::from_str(expected).unwrap();
-    json["version"] = 2.into();
+    json["version"] = 1.into();
     assert!(serde_json::from_value::<T>(json).is_err());
     let mut json: serde_json::Value = serde_json::from_str(expected).unwrap();
     json["seat_claim"] = 0.into();
@@ -41,25 +41,25 @@ fn every_http_carrier_has_reviewed_exact_json_vector() {
             BTreeMap::from([("clock".into(), "none".into())]),
         )
         .unwrap(),
-        r#"{"version":1,"game_id":"com.example.test","seats":2,"config":{"clock":"none"}}"#,
+        r#"{"version":2,"game_id":"com.example.test","seats":2,"config":{"clock":"none"}}"#,
     );
     vector(
         MatchJoinRequest::new("ABCD2345EFGH".into()).unwrap(),
-        r#"{"version":1,"code":"ABCD2345EFGH"}"#,
+        r#"{"version":2,"code":"ABCD2345EFGH"}"#,
     );
-    vector(MatchGrantRequest::new().unwrap(), r#"{"version":1}"#);
+    vector(MatchGrantRequest::new().unwrap(), r#"{"version":2}"#);
     let grant = "A".repeat(64);
     vector(
         MatchAttachRequest::new(grant.clone()).unwrap(),
-        r#"{"version":1,"binding_id":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}"#,
+        r#"{"version":2,"binding_id":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}"#,
     );
     vector(
         MatchPollRequest::new(id.into()).unwrap(),
-        r#"{"version":1,"attachment_id":"0000000000000000000000000000002a"}"#,
+        r#"{"version":2,"attachment_id":"0000000000000000000000000000002a"}"#,
     );
     vector(
         MatchCommandRequest::new(id.into(), command()).unwrap(),
-        r#"{"version":1,"attachment_id":"0000000000000000000000000000002a","command":{"v":{"major":0,"minor":1},"seq":1,"corr":7,"command":{"match_id":42,"game":"com.example.test","game_version":"1.2.3","payload":[0,1,255]}}}"#,
+        r#"{"version":2,"attachment_id":"0000000000000000000000000000002a","command":{"v":{"major":0,"minor":1},"seq":1,"corr":7,"command":{"match_id":42,"game":"com.example.test","game_version":"1.2.3","payload":[0,1,255]}}}"#,
     );
     vector(
         MatchAdmission::new(
@@ -71,7 +71,7 @@ fn every_http_carrier_has_reviewed_exact_json_vector() {
             false,
         )
         .unwrap(),
-        r#"{"version":1,"match_id":"0000000000000000000000000000002a","game_id":"com.example.test","game_version":"1.2.3","seat":0,"join_code":"ABCD2345EFGH","ready":false}"#,
+        r#"{"version":2,"match_id":"0000000000000000000000000000002a","game_id":"com.example.test","game_version":"1.2.3","seat":0,"join_code":"ABCD2345EFGH","ready":false}"#,
     );
     vector(
         MatchAdmission::new(
@@ -83,11 +83,11 @@ fn every_http_carrier_has_reviewed_exact_json_vector() {
             true,
         )
         .unwrap(),
-        r#"{"version":1,"match_id":"0000000000000000000000000000002a","game_id":"com.example.test","game_version":"1.2.3","seat":1,"join_code":null,"ready":true}"#,
+        r#"{"version":2,"match_id":"0000000000000000000000000000002a","game_id":"com.example.test","game_version":"1.2.3","seat":1,"join_code":null,"ready":true}"#,
     );
     vector(
         MatchGrant::new(false, None, 0, "com.example.test".into(), "1.2.3".into()).unwrap(),
-        r#"{"version":1,"ready":false,"binding_id":null,"seat":0,"game_id":"com.example.test","game_version":"1.2.3"}"#,
+        r#"{"version":2,"ready":false,"binding_id":null,"seat":0,"game_id":"com.example.test","game_version":"1.2.3"}"#,
     );
     vector(
         MatchGrant::new(
@@ -98,7 +98,7 @@ fn every_http_carrier_has_reviewed_exact_json_vector() {
             "1.2.3".into(),
         )
         .unwrap(),
-        r#"{"version":1,"ready":true,"binding_id":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","seat":0,"game_id":"com.example.test","game_version":"1.2.3"}"#,
+        r#"{"version":2,"ready":true,"binding_id":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","seat":0,"game_id":"com.example.test","game_version":"1.2.3"}"#,
     );
     let update = ServerEnvelope::new(
         None,
@@ -111,8 +111,8 @@ fn every_http_carrier_has_reviewed_exact_json_vector() {
     )
     .unwrap();
     vector(
-        MatchAttachment::new(id.into(), 0, 1, vec![update]).unwrap(),
-        r#"{"version":1,"attachment_id":"0000000000000000000000000000002a","seat":0,"next_seq":1,"frames":[{"v":{"major":0,"minor":1},"corr":null,"frame":1,"body":{"MatchUpdate":{"revision":0,"view":[16,17],"events":[]}}}]}"#,
+        MatchAttachment::new(id.into(), 0, 1, "a".repeat(64), vec![update]).unwrap(),
+        r#"{"version":2,"attachment_id":"0000000000000000000000000000002a","seat":0,"next_seq":1,"operation_scope":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","frames":[{"v":{"major":0,"minor":1},"corr":null,"frame":1,"body":{"MatchUpdate":{"revision":0,"view":[16,17],"events":[]}}}]}"#,
     );
     let ack = ServerEnvelope::new(Some(7), 2, ServerMessage::Ack { seq: 1 }).unwrap();
     let reject = ServerEnvelope::new(
@@ -126,11 +126,11 @@ fn every_http_carrier_has_reviewed_exact_json_vector() {
     .unwrap();
     vector(
         MatchFrames::new(vec![ack, reject]).unwrap(),
-        r#"{"version":1,"frames":[{"v":{"major":0,"minor":1},"corr":7,"frame":2,"body":{"Ack":{"seq":1}}},{"v":{"major":0,"minor":1},"corr":8,"frame":3,"body":{"Reject":{"seq":2,"error":"RuleRejected"}}}]}"#,
+        r#"{"version":2,"frames":[{"v":{"major":0,"minor":1},"corr":7,"frame":2,"body":{"Ack":{"seq":1}}},{"v":{"major":0,"minor":1},"corr":8,"frame":3,"body":{"Reject":{"seq":2,"error":"RuleRejected"}}}]}"#,
     );
     vector(
         MatchFrames::new(vec![]).unwrap(),
-        r#"{"version":1,"frames":[]}"#,
+        r#"{"version":2,"frames":[]}"#,
     );
 }
 #[test]
@@ -210,21 +210,21 @@ fn grants_and_context_are_redacted_and_no_canonical_counters_appear() {
 }
 #[test]
 fn ordinary_serde_rejects_duplicate_config_and_incremental_oversize_fields() {
-    assert!(serde_json::from_str::<MatchCreateRequest>(r#"{"version":1,"game_id":"com.example.test","seats":2,"config":{"clock":"none","clock":"other"}}"#).is_err());
+    assert!(serde_json::from_str::<MatchCreateRequest>(r#"{"version":2,"game_id":"com.example.test","seats":2,"config":{"clock":"none","clock":"other"}}"#).is_err());
     let config = (0..17)
         .map(|n| format!("\"key{n}\":\"v\""))
         .collect::<Vec<_>>()
         .join(",");
     let body = format!(
-        "{{\"version\":1,\"game_id\":\"com.example.test\",\"seats\":2,\"config\":{{{config}}}}}"
+        "{{\"version\":2,\"game_id\":\"com.example.test\",\"seats\":2,\"config\":{{{config}}}}}"
     );
     assert!(serde_json::from_str::<MatchCreateRequest>(&body).is_err());
-    let body = format!("{{\"version\":1,\"binding_id\":\"{}\"}}", "A".repeat(2049));
+    let body = format!("{{\"version\":2,\"binding_id\":\"{}\"}}", "A".repeat(2049));
     assert!(serde_json::from_str::<MatchAttachRequest>(&body).is_err());
     let ack = serde_json::to_string(
         &ServerEnvelope::new(None, 1, ServerMessage::Ack { seq: 1 }).unwrap(),
     )
     .unwrap();
-    let body = format!("{{\"version\":1,\"frames\":[{}]}}", vec![ack; 17].join(","));
+    let body = format!("{{\"version\":2,\"frames\":[{}]}}", vec![ack; 17].join(","));
     assert!(serde_json::from_str::<MatchFrames>(&body).is_err());
 }

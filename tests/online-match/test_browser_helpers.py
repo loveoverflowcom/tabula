@@ -1,12 +1,119 @@
 """Offline fixture correctness tests, never actual-browser acceptance evidence."""
 import unittest
 import http.client
+import json
+from playwright.sync_api import TimeoutError as BrowserTimeout
+from actual_response import ObservationFailure
 from types import SimpleNamespace
 from unittest import mock
-from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, require, run, start_native_poll
+from browser_acceptance import AcceptanceFailure, NEUTRAL_UNAVAILABLE, TERMINAL_STATUS, active_browser_diagnostics, api, board_square, denied, exception_class, fresh_grant_required, game_status_class, private_frame_keys, protected_endpoint_class, record_live_poll_denial, reattach_required, require, run, start_native_poll, enter_game, visible_game_facts
 
 
 class BrowserHelperTests(unittest.TestCase):
+    def attachment_page(self, completed_body=None, completed=True):
+        """Event doubles distinguish headers, canceled delivery and finished body."""
+        path = 'https://localhost:9443/api/v1/matches/' + 'a' * 32 + '/attach'
+        failed, delivered = mock.Mock(status=200, url=path), mock.Mock(status=200, url=path)
+        for response in (failed, delivered):
+            response.header_value.side_effect = {"content-type": "application/json", "cache-control": "no-store", "content-length": "100"}.get
+            request = mock.Mock(method='POST', url=path, failure=None, post_data='original-grant-body')
+            request.response.return_value = response
+            response.request = request
+        for response in (failed, delivered):
+            response.json.side_effect = AssertionError('observer must never fall back to CDP JSON')
+            response.body.side_effect = AssertionError('observer must never fall back to CDP body')
+        delivered.observed_body = completed_body or {'version': 2, 'seat': 1, 'frames': []}
+        page = mock.Mock()
+        page.locator.return_value.is_visible.return_value = True
+        listeners, selections = {}, []
+        page.on.side_effect = lambda name, callback: listeners.setdefault(name, []).append(callback)
+        page.remove_listener.side_effect = lambda name, callback: listeners[name].remove(callback)
+
+        class Selection:
+            def __init__(self, event, predicate, timeout):
+                self.event, self.predicate, self.timeout = event, predicate, timeout
+                self.value = None
+                selections.append(self)
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                if not args[0] and self.value is None:
+                    raise BrowserTimeout('completed attachment did not arrive')
+
+        page.expect_event.side_effect = lambda event, predicate, timeout: Selection(event, predicate, timeout)
+        page.expect_response.side_effect = lambda predicate, timeout: Selection('response', predicate, timeout)
+        def emit(event, value):
+            for callback in list(listeners.get(event, [])):
+                callback(value)
+            for selection in selections:
+                if selection.value is None and event == selection.event and selection.predicate(value):
+                    selection.value = value
+        def navigate():
+            emit('response', failed)
+            failed.request.failure = 'net::ERR_ABORTED'
+            emit('requestfailed', failed.request)
+            if completed:
+                emit('response', delivered)
+                emit('requestfinished', delivered.request)
+        page.get_by_test_id.return_value.click.side_effect = navigate
+        return page, failed, delivered, selections
+
+    def test_attach_selection_requires_a_finished_body_after_canceled_200_headers(self):
+        page, failed, delivered, selections = self.attachment_page()
+        trace = []
+        with mock.patch('browser_acceptance.actual_response_json', return_value=delivered.observed_body) as observed:
+            attachment, body = enter_game(page, 'a' * 32, 1, trace)
+        self.assertEqual(attachment, delivered.observed_body)
+        self.assertEqual(body, 'original-grant-body')
+        observed.assert_called_once_with(delivered)
+        for response in (failed, delivered):
+            response.json.assert_not_called()
+            response.body.assert_not_called()
+        self.assertEqual([(item.event, item.timeout) for item in selections], [('requestfinished', 60_000)])
+        self.assertEqual((trace[0]['header_responses'], trace[0]['failed_requests'], trace[0]['completed_responses']), (2, 1, 1))
+        self.assertEqual(trace[0]['attempts'][1]['failure_class'], 'navigation_aborted')
+        self.assertTrue(trace[0]['typed_seat_matches'] and trace[0]['native_status_observed'] and trace[0]['actual_canvas_visible'])
+
+    def test_canceled_attachment_headers_alone_cannot_satisfy_acceptance(self):
+        page, failed, _, _ = self.attachment_page(completed=False)
+        with mock.patch('browser_acceptance.actual_response_json') as observed:
+            with self.assertRaises(BrowserTimeout):
+                enter_game(page, 'a' * 32, 1)
+        observed.assert_not_called()
+        failed.json.assert_not_called()
+        failed.body.assert_not_called()
+
+    def test_completed_attachment_errors_cannot_be_skipped_for_another_attempt(self):
+        for body in ({'version': 2, 'seat': 0}, {'version': 1, 'seat': 1}, {'version': 2, 'seat': 1, 'seed': []}):
+            page, _, delivered, _ = self.attachment_page(body)
+            with self.subTest(body=body), mock.patch('browser_acceptance.actual_response_json', return_value=body) as observed:
+                with self.assertRaises(AcceptanceFailure):
+                    enter_game(page, 'a' * 32, 1)
+                observed.assert_called_once_with(delivered)
+        for code in ('response_json_invalid', 'response_body_read_failed'):
+            page, _, delivered, _ = self.attachment_page()
+            with self.subTest(code=code), mock.patch('browser_acceptance.actual_response_json', side_effect=ObservationFailure(code)) as observed:
+                with self.assertRaises(ObservationFailure) as failure:
+                    enter_game(page, 'a' * 32, 1)
+                self.assertEqual(failure.exception.code, code)
+                observed.assert_called_once_with(delivered)
+                delivered.json.assert_not_called()
+                delivered.body.assert_not_called()
+
+    def test_visible_focus_and_visibility_diagnostics_use_closed_classes(self):
+        page = mock.Mock()
+        values = {'revision': '0', 'seat': '1', 'status': None, 'connection': None,
+                  'availability': 'available', 'focused': True, 'visibility': 'visible'}
+        page.evaluate.return_value = values
+        facts = visible_game_facts(page, 'black')
+        self.assertTrue(facts['document_has_focus'])
+        self.assertEqual(facts['visibility_class'], 'visible')
+        values.update(focused='synthetic-private', visibility='synthetic-private')
+        facts = visible_game_facts(page, 'black')
+        self.assertIsNone(facts['document_has_focus'])
+        self.assertEqual(facts['visibility_class'], 'not_reported')
+        self.assertNotIn('synthetic-private', json.dumps(facts))
+
     def test_protected_http_diagnostics_discard_ids_queries_and_foreign_routes(self):
         self.assertEqual(protected_endpoint_class("https://localhost:9443/api/v1/matches/" + "a" * 32 + "/attach"), "attach")
         self.assertEqual(protected_endpoint_class("https://localhost:9443/api/v1/auth/context"), "context")
@@ -129,6 +236,42 @@ class BrowserHelperTests(unittest.TestCase):
         self.assertFalse(private_frame_keys({"version": 1, "frames": [
             {"body": {"MatchUpdate": {"revision": 2, "view": [1, 2], "events": []}}},
             {"body": {"Ack": {"seq": 1}}}]}))
+
+    def test_stale_local_attachment_requires_exact_recovery_classification(self):
+        reattach_required({'status':409,'body':{'code':'reattach_required'}},'recovery expected')
+        for response in ({'status':403,'body':{'code':'match_unavailable'}},
+                         {'status':409,'body':{'code':'busy'}},
+                         {'status':409,'body':{'code':'reattach_required','frames':[{'body':'private'}]}}):
+            with self.assertRaises(AcceptanceFailure):reattach_required(response,'recovery expected')
+
+    def test_current_member_grant_rejection_requires_the_exact_sole_problem(self):
+        fresh_grant_required({'status':409,'body':{'code':'fresh_grant_required'}},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_every_other_http_status(self):
+        for status in (200,400,401,403,404,429,503):
+            with self.subTest(status=status), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':status,'body':{'code':'fresh_grant_required'}},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_wrong_code_or_non_problem_body(self):
+        for body in (None,[],{},'fresh_grant_required',{'code':'reattach_required'},
+                     {'code':'match_unavailable'},{'code':'unauthenticated'}):
+            with self.subTest(body=body), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':409,'body':body},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_even_empty_or_null_frame_extras(self):
+        for frames in (None,[],[{'body':{'MatchUpdate':{'revision':0,'view':[1]}}}]):
+            with self.subTest(frames=frames), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':409,'body':{'code':'fresh_grant_required','frames':frames}},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_attachment_and_scope_extras(self):
+        for field in ('attachment_id','operation_scope','next_seq','seat'):
+            with self.subTest(field=field), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':409,'body':{'code':'fresh_grant_required',field:None}},'grant rejection expected')
+
+    def test_fresh_grant_denial_rejects_projection_and_arbitrary_extras(self):
+        for field in ('view','events','revision','canonical_state','unexpected'):
+            with self.subTest(field=field), self.assertRaises(AcceptanceFailure):
+                fresh_grant_required({'status':409,'body':{'code':'fresh_grant_required',field:[]}},'grant rejection expected')
 
     def test_denial_with_frames_never_passes(self):
         with self.assertRaisesRegex(AcceptanceFailure, "released gameplay frames"):

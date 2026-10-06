@@ -258,7 +258,10 @@ async fn arm(State(state): State<Arc<FixtureState>>, request: Request) -> Respon
         let Ok(mut slot) = state.flow.lock() else {
             return rejected(StatusCode::SERVICE_UNAVAILABLE);
         };
-        if slot.is_some() {
+        if slot
+            .as_ref()
+            .is_some_and(|flow| matches!(flow.phase, Phase::Armed | Phase::Held | Phase::Released))
+        {
             return rejected(StatusCode::CONFLICT);
         }
         *slot = Some(Flow {

@@ -14,6 +14,7 @@ resolver = "2"
 default = []
 # Fixture control methods never enter ordinary service or browser builds.
 body-publication-test = ["tabula-match-http/acceptance-test-support", "dep:bytes", "dep:http-body"]
+continuity-test = ["body-publication-test", "tabula-storage/online-match-test-support"]
 
 [[bin]]
 name = "online-match-fixture"

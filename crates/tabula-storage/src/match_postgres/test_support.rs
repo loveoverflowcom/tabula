@@ -48,6 +48,56 @@ pub enum Corruption {
 }
 
 impl PgMatchJournal {
+    /// Physical ownership backend oracle for the explicitly disposable fixture.
+    pub fn owner_backend_pid_for_test(&self) -> Result<i32, RuntimePortError> {
+        self.owner
+            .as_ref()
+            .map(|owner| owner.backend_pid)
+            .ok_or(RuntimePortError::Unavailable)
+    }
+
+    /// Kill only this selected disposable journal's ownership backend while
+    /// retaining its actor/queued output, exercising stale-owner exclusion.
+    pub async fn terminate_owner_backend_for_test(&self) -> Result<(), RuntimePortError> {
+        PgMatchStore::new(self.pool.clone())
+            .check_disposable_schema()
+            .await?;
+        let pid = self.owner_backend_pid_for_test()?;
+        let terminated: bool = sqlx::query_scalar("SELECT pg_terminate_backend($1)")
+            .bind(pid)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(unavailable)?;
+        if terminated {
+            Ok(())
+        } else {
+            Err(RuntimePortError::Unavailable)
+        }
+    }
+
+    /// Remove retained receipts while preserving permanent high-watermarks,
+    /// under this writer's actual durable generation/expected-version fence.
+    pub async fn evict_receipts_for_test(&self, record: u128) -> Result<(), RuntimePortError> {
+        use tabula_match_journal::Journal;
+        PgMatchStore::new(self.pool.clone())
+            .check_disposable_schema()
+            .await?;
+        let mut loaded = self.load(self.match_id).await?;
+        let scope = loaded
+            .ledger
+            .iter_mut()
+            .find(|scope| scope.scope.record == record)
+            .ok_or(RuntimePortError::Unavailable)?;
+        scope.recent.clear();
+        self.update_ledger(
+            self.match_id,
+            loaded.version,
+            loaded.observed_ms,
+            loaded.ledger,
+        )
+        .await
+    }
+
     /// Roll back the next staged write, simulating a known pre-commit failure.
     pub fn fail_before_commit(&self) {
         self.controls.next.store(1, Ordering::SeqCst);
@@ -157,10 +207,22 @@ impl PgMatchStore {
 
     async fn check_disposable_schema(&self) -> Result<(), RuntimePortError> {
         let schema = self.test_schema().await?;
-        if !(schema.starts_with("match_test_") || schema.starts_with("tabula_match_acceptance_")) {
-            return Err(RuntimePortError::Unavailable);
+        if schema.starts_with("match_test_") || schema.starts_with("tabula_match_acceptance_") {
+            return Ok(());
         }
-        Ok(())
+        let database: String = sqlx::query_scalar("SELECT current_database()::text")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(unavailable)?;
+        if schema == "public"
+            && database == "tabula_online_acceptance"
+            && std::env::var("CI").as_deref() == Ok("true")
+            && std::env::var("TABULA_ONLINE_MATCH_DISPOSABLE").as_deref() == Ok("1")
+        {
+            Ok(())
+        } else {
+            Err(RuntimePortError::Unavailable)
+        }
     }
 
     /// Install a test-only deferred constraint trigger that rejects non-genesis
