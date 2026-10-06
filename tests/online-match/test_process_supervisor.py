@@ -236,7 +236,7 @@ class ProcessHelperTests(ProcessFixtureTestCase):
         fake.poll.return_value = None
         with mock.patch.object(supervisor.subprocess, "Popen", return_value=fake) as spawn:
             process.start()
-        self.assertEqual(spawn.call_args.args, ([str(self.fixture), "serve"],))
+        self.assertEqual(spawn.call_args.args, ([str(self.fixture.resolve()), "serve"],))
         kwargs = spawn.call_args.kwargs
         self.assertNotIn("env", kwargs)
         self.assertNotIn("shell", kwargs)

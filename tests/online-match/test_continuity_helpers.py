@@ -6,7 +6,8 @@ from playwright.sync_api import Error as BrowserError
 from browser_acceptance import admission_response_facts, exception_class, protected_endpoint_class
 from unittest import mock
 from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_CONCEALED,
-    PageNetwork, Pair, command_identity, pending_record, run, current_context_after_restart, FOCUS_OBSERVER)
+    PageNetwork, Pair, command_identity, pending_record, run, current_context_after_restart, FOCUS_OBSERVER,
+    same_record_rotation_game, focus_only_revoke_game)
 
 
 class ContinuityHelperTests(unittest.TestCase):
@@ -52,6 +53,72 @@ class ContinuityHelperTests(unittest.TestCase):
         with mock.patch.dict('os.environ',{},clear=True),mock.patch('continuity_acceptance.http.client.HTTPSConnection') as connection:
             with self.assertRaises(AcceptanceFailure):current_context_after_restart(None,'synthetic-cookie','synthetic-account')
             connection.assert_not_called()
+
+    def test_cookie_rotation_uses_the_existing_empty_body_no_content_contract(self):
+        class AfterRotation(Exception):
+            pass
+
+        white, black, control = mock.Mock(), mock.Mock(), mock.Mock()
+        context = mock.Mock()
+        context.new_page.return_value = control
+        context.cookies.side_effect = [[{'name': '__Host-tabula_session', 'value': value}]
+                                      for value in ('before', 'after')]
+        pair = mock.Mock(pages=[white, black],
+                         attachments=[[{'operation_scope': 'same-scope'}], []],
+                         facts=[{'account_id': 'same-account'}, {}])
+        pair.tap.return_value = 'original'
+
+        def session_contract(page, path, body, csrf):
+            self.assertIs(page, control)
+            self.assertEqual(path, '/api/v1/auth/refresh')
+            self.assertEqual(body, {})
+            self.assertEqual(csrf, 'current-csrf')
+            return {'status': 204, 'body': None}
+
+        with mock.patch('continuity_acceptance.Pair', return_value=pair), \
+             mock.patch('continuity_acceptance.PageNetwork'), \
+             mock.patch('continuity_acceptance.held'), \
+             mock.patch('continuity_acceptance.fault_control', return_value={'status': 200}), \
+             mock.patch('continuity_acceptance.pending_record', return_value={'operation_scope': 'same-scope'}), \
+             mock.patch('continuity_acceptance.context_facts', side_effect=[
+                 {'account_id': 'same-account', 'csrf_token': 'current-csrf'}, AfterRotation()]), \
+             mock.patch('continuity_acceptance.api', side_effect=session_contract) as request:
+            # Stop after the real harness accepts the successful session response;
+            # mocks establish carrier compatibility, not rendered rotation evidence.
+            with self.assertRaises(AfterRotation):
+                same_record_rotation_game([context, mock.Mock()], None, None, [])
+        request.assert_called_once()
+
+    def test_focus_logout_uses_the_existing_empty_body_no_content_contract(self):
+        class AfterLogout(Exception):
+            pass
+
+        white, black, popup = mock.MagicMock(), mock.Mock(), mock.Mock()
+        white.locator.return_value.bounding_box.return_value = {'width': 1100, 'height': 850, 'x': 0, 'y': 0}
+        white.expect_popup.return_value.__enter__.return_value = SimpleNamespace(value=popup)
+        white.wait_for_function.side_effect = [None, None, None, AfterLogout()]
+        white.evaluate.side_effect = [None, None, None,
+                                     {'trusted': True, 'concealed': True,
+                                      'selection_clear': True, 'framebuffer': 'cleared_pixels'}, True]
+        pair = mock.Mock(pages=[white, black], commands=[[], []],
+                         facts=[{'account_id': 'same-account'}, {}])
+
+        def session_contract(page, path, body, csrf):
+            self.assertIs(page, popup)
+            self.assertEqual(path, '/api/v1/auth/logout')
+            self.assertEqual(body, {})
+            self.assertEqual(csrf, 'current-csrf')
+            return {'status': 204, 'body': None}
+
+        with mock.patch('continuity_acceptance.Pair', return_value=pair), \
+             mock.patch('continuity_acceptance.context_facts', return_value={
+                 'account_id': 'same-account', 'csrf_token': 'current-csrf'}), \
+             mock.patch('continuity_acceptance.api', side_effect=session_contract) as request:
+            # Native gestures and pixels are doubles here. This only guards the
+            # session carrier so actual headed CI can reach its privacy oracle.
+            with self.assertRaises(AfterLogout):
+                focus_only_revoke_game([], None, [])
+        request.assert_called_once()
 
     def test_exact_command_identity_preserves_u128_and_original_sequence(self):
         body='{"version":2,"attachment_id":"'+'a'*32+'","command":{"seq":1,"command":{"match_id":340282366920938463463374607431768211455}}}'

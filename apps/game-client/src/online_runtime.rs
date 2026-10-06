@@ -229,7 +229,7 @@ pub(super) async fn run_online<M, P>(
                             let received = online.receive(response.frames(), &board_frame);
                             if matches!(received, Err("Online authority was denied")) {
                                 online.disconnect();
-                                unavailable().await;
+                                let _ = mq::load_file("tabula-online-denied.txt").await;
                                 return;
                             } else if let Ok(cues) = received {
                                 play_cues(audio, &cues);

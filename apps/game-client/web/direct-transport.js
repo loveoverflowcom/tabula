@@ -67,10 +67,15 @@
       lifecycle?.removeEventListener?.("focus", focus);
       lifecycle?.document?.removeEventListener?.("visibilitychange", visibility);
     }
-    function unavailable() {
+    function unavailable(authorityDenied=false) {
       const unknown = Boolean(pending || pendingUnknown);
       try { if (active()) onUnavailable?.({unknown}); }
-      finally { clearPending(); retire(); }
+      finally {
+        // Runtime/protocol failure cannot settle a possibly committed move.
+        // Keep its exact hint and original expiry for an explicit Retry.
+        if (authorityDenied) clearPending();
+        retire();
+      }
     }
     function conceal() { if (active()) onRecovering?.({state:pending || pendingUnknown ? "unknown-result" : "recovering"}); }
     function interrupt() {
@@ -215,6 +220,7 @@
           try { if (active()) onUnavailable?.({unknown:true}); } finally { retire(); }
           throw new Error("Online move result remains unknown");
         }
+        if (name === "tabula-online-denied.txt") { unavailable(true); throw new AuthorityDenied("Online authority is unavailable"); }
         if (name === "tabula-online-unavailable.txt") { unavailable(); throw new Error("Online document unavailable"); }
         if (name === "tabula-online-conceal.txt") { interrupt(); return encode("ok"); }
         if (name === "tabula-online-settled.txt") { clearPending(); return encode("ok"); }
@@ -253,7 +259,7 @@
         if (!ownsRequest && busy && error.message === "An online request is already active") throw error;
         if (error instanceof Retryable || (!(error instanceof AuthorityDenied) && (pending || pendingUnknown))) {
           try { if (active()) onUnavailable?.({unknown:Boolean(pending || pendingUnknown)}); } finally { retire(); }
-        } else unavailable();
+        } else unavailable(error instanceof AuthorityDenied);
         throw error;
       } finally { if (ownsRequest) busy = false; }
     }

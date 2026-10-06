@@ -156,6 +156,50 @@ test("pending refresh hint has no credential/grant/projection and preserves opaq
   assert.equal(restored.pending.command,command);assert.equal(restored.pending.operation_scope,scope);
   await second.transport.file("tabula-online-settled.txt");assert.equal(storage.getItem(key),null);
 });
+test("Rust runtime unavailability keeps exact or unknown intent across explicit Retry",async()=>{
+  for(const unknown of [false,true]){
+    const storage=memoryStorage(),key="tabula.pending.v2."+id,command='{"seq":1}';
+    let seen;
+    const first=fixture(authFetcher(()=>{throw new Error("lost Ack");}),{storage,onUnavailable:value=>seen=value});
+    await first.transport.file("tabula-online-attach.txt");
+    await first.transport.file("tabula-online-command/"+hex(command));
+    if(unknown)await first.transport.file("tabula-online-unknown.txt");
+    const original=storage.getItem(key);
+    await assert.rejects(first.transport.file("tabula-online-unavailable.txt"));
+    assert.deepEqual(seen,{unknown:true});
+    assert.equal(storage.getItem(key),original,"runtime failure must not erase uncertainty or extend its TTL");
+    const retry=fixture(authFetcher(),{storage});
+    const restored=JSON.parse(new TextDecoder().decode(await retry.transport.file("tabula-online-attach.txt")));
+    assert.equal(restored.pending_unknown,unknown);
+    assert.equal(restored.pending?.command,unknown?undefined:command);
+    retry.transport.retire();
+  }
+});
+test("Rust explicit wire denial forgets exact and unknown pending hints",async()=>{
+  for(const unknown of [false,true]){
+    const storage=memoryStorage(),key="tabula.pending.v2."+id;
+    const first=fixture(authFetcher(()=>{throw new Error("lost Ack");}),{storage});
+    await first.transport.file("tabula-online-attach.txt");
+    await first.transport.file("tabula-online-command/"+hex('{"seq":1}'));
+    if(unknown)await first.transport.file("tabula-online-unknown.txt");
+    await assert.rejects(first.transport.file("tabula-online-denied.txt"));
+    assert.equal(storage.getItem(key),null);
+    await assert.rejects(first.transport.file("tabula-online-recover.txt"),/retired/);
+  }
+});
+test("HTTP authority denial forgets pending intent before an explicit Retry",async()=>{
+  for(const status of [401,403]){
+    const storage=memoryStorage(),key="tabula.pending.v2."+id;
+    const first=fixture(authFetcher(()=>response({}, {status})),{storage});
+    await first.transport.file("tabula-online-attach.txt");
+    await assert.rejects(first.transport.file("tabula-online-command/"+hex('{"seq":1}')));
+    assert.equal(storage.getItem(key),null);
+    const retry=fixture(authFetcher(),{storage});
+    const restored=JSON.parse(new TextDecoder().decode(await retry.transport.file("tabula-online-attach.txt")));
+    assert.equal(restored.pending,null);assert.equal(restored.pending_unknown,false);
+    retry.transport.retire();
+  }
+});
 test("recovery obtains fresh context/grant and never replays a command in JavaScript",async()=>{
   const paths=[];let failures=0;
   const f=fixture(async(path,init)=>{paths.push(path);return authFetcher(()=>{if(failures++===0)throw new Error("drop");return response({version:2,frames:[]});})(path,init);});

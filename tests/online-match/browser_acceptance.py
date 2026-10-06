@@ -558,6 +558,8 @@ def move(page, source: str, target: str, flipped: bool, match_id: str,
                 "http_status": None, "ack_present": False}
     if trace is not None:
         trace.append(observed)
+    page.bring_to_front()
+    page.wait_for_function("() => document.hasFocus() && document.visibilityState === 'visible' && document.documentElement.dataset.onlineAvailability === 'available'", timeout=60_000)
     canvas = page.locator("#glcanvas")
     bounds = canvas.bounding_box()
     require(bounds is not None, "actual canvas has no pointer bounds")
@@ -589,6 +591,10 @@ def enter_game(page, match_id: str, expected_seat: int,
                 "loader_hidden": False, "actual_canvas_visible": False}
     if trace is not None:
         trace.append(observed)
+    # A real foreground document is required before attach. PR3 retires an
+    # in-flight response when trusted window focus changes during navigation.
+    page.bring_to_front()
+    page.wait_for_function("() => document.hasFocus() && document.visibilityState === 'visible'", timeout=60_000)
     path = f"/api/v1/matches/{match_id}/attach"
     def is_attachment(response):
         return urlsplit(response.url).path == path and response.request.method == "POST"
