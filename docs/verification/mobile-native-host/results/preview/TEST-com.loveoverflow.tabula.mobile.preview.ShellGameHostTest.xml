@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-06T15:13:59.481Z" hostname="Mac-mini-cua-Manh.local" time="0.389">
+  <properties/>
+  <testcase name="recompositionResizeAndANewEventLambdaNeverRebuildTheRuntime" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.092"/>
+  <testcase name="openingStartsOneRuntimeWhoseFirstMessageCarriesLaunchCapabilitiesAndPreferences" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.025"/>
+  <testcase name="openCloseAndReopenBuildsAFreshRuntimeEachTimeAndDisposesTheOldOne" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.061"/>
+  <testcase name="aHostSurvivesRecompositionWithChangingParameters" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.022"/>
+  <testcase name="suspendAndResumeReachThePageOnceEachAndStopAfterTheGameIsLeft" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.03"/>
+  <testcase name="lateMessagesFromALeftRuntimeChangeNothing" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.029"/>
+  <testcase name="aPageFailureKeepsTheGamesOwnOverlayAndRetryIsANewGeneration" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.028"/>
+  <testcase name="aHostFailureReplacesTheSurfaceAndTryAgainBuildsExactlyOneNewGame" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.036"/>
+  <testcase name="homeListsThePackagedGameAndSaysWhenNoneIsPackaged" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.042"/>
+  <testcase name="backWhileLoadingLeavesImmediately" classname="com.loveoverflow.tabula.mobile.preview.ShellGameHostTest" time="0.024"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

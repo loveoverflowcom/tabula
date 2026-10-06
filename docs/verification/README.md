@@ -11,6 +11,7 @@ shared evidence/status vocabulary.
 | [Core domain boundaries](core-domain-boundaries.md) | Constructor/decoding boundaries and historical Phase-0 refactor claims |
 | [Standalone Chess](standalone-chess/README.md) | Local vertical slice, rules/presentation/build checks and platform residuals |
 | [Standalone Werewolf](werewolf-standalone/README.md) | ADR-0035 local referee, projection/privacy, replay and presentation evidence; real target limitations |
+| [Native mobile GameHost](mobile-native-host/README.md) | ADR-0043 source spike, mobile native-only policy and CMP viewport evidence; native adapters/device acceptance remain blocked |
 | [Native mobile voice](native-mobile-voice/README.md) | ADR-0037 native builds and controller/CMP doubles; actual device/SFU audio remains deferred |
 | [October 5 PR integration](pr-integration-20261005.md) | Sequential review/merge of #69, #70 and #75, tested source identities and #80's incomplete scope |
 | [Chess integration](chess-integration/README.md) | ADR-0030 opt-in discovery/launch/return and local configuration/HTTP checks |

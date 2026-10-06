@@ -5,7 +5,6 @@ kotlin = "2.4.20"
 compose = "1.12.0"
 agp = "9.3.1"
 activity = "1.13.0"
-webkit = "1.16.0"
 lifecycle = "2.9.6"
 coroutines = "1.11.0"
 livekit = "2.29.0"
@@ -20,7 +19,6 @@ coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-androi
 livekit-android = { module = "io.livekit:livekit-android", version.ref = "livekit" }
 coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
-androidx-webkit = { module = "androidx.webkit:webkit", version.ref = "webkit" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 
 [plugins]

@@ -87,3 +87,7 @@ activation, live migration and broad phase exits remain closed in PR1.
 [ADR-0041](0041-isolated-direct-match-browser-play.md) opens only PR2 direct-match
 browser play. Current commit/output authority and independent browser/PG acceptance
 are required; reconnect/resync is PR3 and production remains closed.
+
+[ADR-0043](0043-native-mobile-gamehost.md) supersedes mobile WebView gameplay with
+the native Macroquad direction under #81. Current mobile selection/packaging is
+retired without fallback; native adapters and device acceptance remain blocked.

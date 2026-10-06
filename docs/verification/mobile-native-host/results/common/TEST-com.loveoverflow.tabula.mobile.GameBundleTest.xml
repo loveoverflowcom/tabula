@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="GameBundleTest[desktop]" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-06T15:13:58.145Z" hostname="Mac-mini-cua-Manh.local" time="0.021">
+  <properties/>
+  <testcase name="contentTypesAndCachingFollowTheFile[desktop]" classname="com.loveoverflow.tabula.mobile.GameBundleTest" time="0.005"/>
+  <testcase name="parsesTheStagedManifestShapeAndAssemblesTheDocumentUrl[desktop]" classname="com.loveoverflow.tabula.mobile.GameBundleTest" time="0.012"/>
+  <testcase name="rejectsAnythingOutsideTheSchema[desktop]" classname="com.loveoverflow.tabula.mobile.GameBundleTest" time="0.001"/>
+  <testcase name="bundledGameDisplayNameFallsBackToTheOpaqueId[desktop]" classname="com.loveoverflow.tabula.mobile.GameBundleTest" time="0.0"/>
+  <testcase name="pathsMapOnlyPlayFilesWithAllowedExtensions[desktop]" classname="com.loveoverflow.tabula.mobile.GameBundleTest" time="0.001"/>
+  <testcase name="documentsCarryAContentSecurityPolicyThatForbidsRemoteOriginsAndInlineScript[desktop]" classname="com.loveoverflow.tabula.mobile.GameBundleTest" time="0.0"/>
+  <testcase name="anEmptyListIsValidAndMeansNoPackagedGame[desktop]" classname="com.loveoverflow.tabula.mobile.GameBundleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

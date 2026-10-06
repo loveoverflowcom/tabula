@@ -181,29 +181,23 @@ remains 900,000 bytes; source graph and actual emitted bytes are separate eviden
 small set of `RenderList`-based UI components from `tabula-presentation`, themed by the same
 tokens. Gameplay never sits in a WebView there (ADR-019).
 
-**Mobile** is split differently, by [ADR-0032](../adr/0032-compose-multiplatform-mobile-host.md):
-a Compose Multiplatform (CMP) app owns the shell screens and navigation on Android and iOS, and
-the existing Rust/WASM game document runs in a WebView `GameHost` embedded in the game screen.
-Voice, device permissions and native services belong to the mobile host. The Rust rules,
-presentation and renderer are unchanged; Kotlin/Swift carry no game logic.
+**Mobile** uses the CMP shell of ADR-0032 with native Rust/Macroquad gameplay in
+that same app, per [ADR-0043](../adr/0043-native-mobile-gamehost.md). Kotlin/Swift own
+UI, navigation and permitted device services. Rust owns rules, projection,
+presentation, `RenderList` and the renderer; canonical state and per-frame drawing
+commands never cross the host bridge (I-5/I-6/I-10).
 
-This is a real divergence between web, desktop and mobile and it is accepted deliberately:
+The WebView/WKWebView mobile gameplay choice of ADR-0032/0033 is superseded. Its
+mobile hosts and packaging are retired. Current Android/iOS builds show gameplay
+unavailable until a real native adapter exists; there is no web fallback.
+Macroquad/Miniquad standalone mobile support alone does not prove CMP embedding.
 
-- Web gets a DOM shell because the web platform's text, forms, accessibility, and deep linking are
-  worth using.
-- Desktop gets a canvas shell so it needs no WebView or second UI toolkit.
-- Mobile gets a CMP shell because platform navigation, text input, accessibility and system
-  integration are worth using, at the cost of a WebView on the gameplay path. **That cost is not
-  yet measured**: ADR-019's input-latency and rendering concern remains open until the embedding
-  change provides executed evidence on the shipping Android WebView and iOS WKWebView.
-- **The consequence to manage:** the lobby/catalog UI is implemented in Leptos, in
-  `tabula-presentation` widgets (desktop) and in Compose (mobile). That is bounded (roughly a
-  dozen screens, mostly lists, cards, and forms) and all consume the same tokens — Compose through
-  the generated Kotlin adapter of `tokens.toml` — and the same protocol types. Screen
-  *specifications* live in `docs/ui/screens/` and are the shared source of truth.
-- **EXPERIMENT** (Phase 6): WebView `GameHost` latency, frame pacing and lifecycle on shipping
-  devices. If native shell screens on desktop become a drag, evaluate a Tauri shell for desktop
-  only.
+Web retains its separate DOM shell and WASM game documents. Desktop retains its
+native Macroquad runtime. Mobile shell screens consume the same generated Kotlin
+tokens and `docs/ui/screens/` specifications. The current mobile foundation is a
+minimal launcher, not the delivered web discovery/catalog. Native surface/input,
+lifecycle, first-frame and performance acceptance must be executed on Android/iOS;
+CMP desktop preview pixels establish only shell layout.
 
 ### 3.4 Handoff: entering and leaving a match
 
@@ -1348,7 +1342,7 @@ Feedback: state layers · focus ring · shake(invalid) · confetti(win, reduced-
 | 3 | Card fan, tile board with camera/zoom/rotation; animation engine + motion tokens; audio cues; asset packs |
 | 4 | `tabula-net-client`; networked play in the native client; reconnect UI; spectator view |
 | 5 | Leptos shell (all routes in §2.1); handoff; a11y `status`+`actions`; settings incl. motion/contrast; admin skeleton |
-| 6 | Mobile layouts, safe areas, touch tuning, orientation handling, Compose shell screens and the WebView `GameHost` (ADR-0032) |
+| 6 | Mobile layouts, safe areas, touch tuning, orientation handling, Compose shell screens and native Macroquad `GameHost` (ADR-0043; adapter blocked) |
 | 7 | Werewolf UI: phase banners, voting, scoped chat overlay, role reveal choreography |
 | 8 | Voice UI |
 | 9 | Board Reader full regions; replay viewer with scrub; delayed spectator UI; theming polish |

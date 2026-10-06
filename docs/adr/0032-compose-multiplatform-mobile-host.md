@@ -1,5 +1,8 @@
 # ADR-0032: Compose Multiplatform mobile host with an embedded Rust/WASM game
 
+> **Superseded scope (2026-10-06):** [ADR-0043](0043-native-mobile-gamehost.md) replaces mobile WebView/WKWebView gameplay and its web-bundle pipeline with the native Macroquad direction. CMP UI/navigation, Rust ownership, token authority and unrelated gates remain. The implementation/evidence below is historical; it is not the current mobile runtime. Native adapters remain blocked.
+
+
 - **Status:** accepted for the foundation scope below; the first-party embedding is delivered by [ADR-0033](0033-webview-gamehost-first-party-embedding.md) (its Android/iOS WebView execution NOT_RUN); voice and native services remain unimplemented and gated
 - **Date:** 2026-10-04
 - **Supersedes:** ADR-019 in part — only its mobile-gameplay prohibition of a WebView. The rest of ADR-019 stands: Tauri stays optional and is never required for gameplay.

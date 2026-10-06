@@ -43,7 +43,6 @@ kotlin {
         }
         androidMain.dependencies {
             api(libs.activity.compose)
-            implementation(libs.androidx.webkit)
             implementation(libs.coroutines.android)
             implementation(libs.livekit.android)
         }

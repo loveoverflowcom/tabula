@@ -18,15 +18,16 @@ trước khi sửa code. [AGENTS.md](AGENTS.md) hướng dẫn cách làm việc
 | `tabula-presentation`, `renderer-*` | Chuyển projection thành `RenderList`, xử lý input và render; trạng thái UI nằm ngoài canonical state |
 | `apps/game-client` | Gameplay Macroquad native trên desktop và WASM trên web |
 | `apps/web` | Shell Leptos CSR; discovery/setup và handoff local có phạm vi ADR-0028/0030 |
-| `apps/mobile/` | Một cây Compose Multiplatform cho Android/iOS theo ADR-0032; hiện là foundation, WebView gameplay và voice còn gated |
+| `apps/mobile/` | Một cây Compose Multiplatform cho Android/iOS theo ADR-0032; foundation; hướng native Macroquad theo ADR-0043, adapter/gameplay chưa có |
 | `apps/desktop` | Shell Tauri tùy chọn; gameplay không phụ thuộc Tauri |
 | `services/tabula-server`, `tabula-match`, `tabula-storage` | Kiến trúc multiplayer server-authoritative, Tokio/Axum và PostgreSQL; phần runtime ngoài slice được mở vẫn theo phase gate |
 | `services/tabula-auth` | Skeleton backend auth dùng Kanidm theo [ADR-0034](docs/adr/0034-kanidm-auth-service-skeleton.md); TODO trong Rust, chưa có login/session runtime cho #54 |
 
 Web shell và gameplay là hai WASM bundle/document riêng (ADR-011).
-Hướng mobile dùng CMP quản lý UI/navigation, rồi nhúng gameplay Rust/WASM qua
-`GameHost`; foundation chưa chứng minh game chạy trong WebView trên thiết bị.
-Xem [ADR-0032](docs/adr/0032-compose-multiplatform-mobile-host.md) và
+Hướng mobile dùng CMP quản lý UI/navigation và Macroquad native trong cùng app qua
+`GameHost`. [ADR-0043](docs/adr/0043-native-mobile-gamehost.md) bỏ đường gameplay WebView;
+adapter native đang blocked, app hiện chỉ có shell và không mở game.
+Xem [ADR-0043](docs/adr/0043-native-mobile-gamehost.md) và
 [mobile README](apps/mobile/README.md) để biết phạm vi đã mở.
 
 Với multiplayer, luồng thiết kế là: client gửi command → platform xác thực và
