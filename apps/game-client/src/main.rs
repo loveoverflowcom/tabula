@@ -72,6 +72,8 @@ fn window_conf() -> mq::Conf {
         window_width: 900,
         window_height: 720,
         high_dpi: true,
+        #[cfg(not(target_arch = "wasm32"))]
+        icon: Some(tabula_game_client::brand_icon()),
         ..mq::Conf::default()
     }
 }
@@ -116,13 +118,16 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
     theme: &tabula_design::Theme,
     mut options: Options,
 ) {
-    let resources = LocalSpriteResources::new(
-        tabula_game_chess::presentation::assets::MANIFEST, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-        tabula_game_chess::ChessModule::metadata().id(), // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-        &ChessPresentation::asset_pack(),
-        tabula_game_chess::presentation::assets::setup_resources(), // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-        tabula_game_chess::presentation::assets::gameplay_resources(), // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
-    );
+    let manifest = tabula_game_chess::presentation::assets::MANIFEST; // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+    let game = tabula_game_chess::ChessModule::metadata().id(); // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+    let pack = ChessPresentation::asset_pack();
+    let setup = tabula_game_chess::presentation::assets::setup_resources(); // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+    let gameplay = tabula_game_chess::presentation::assets::gameplay_resources(); // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+    let resources = if options.skip_setup {
+        LocalSpriteResources::new(manifest, game, &pack, setup, gameplay)
+    } else {
+        tabula_game_client::brand::local_resources(manifest, game, &pack, setup, gameplay)
+    };
     let resources = match resources {
         Ok(resources) => resources,
         Err(error) => {

@@ -159,3 +159,11 @@ skip-link and large-text defects are the bounded
 [dashboard correction](120-repair-dashboard-loading-access.md), from freshly
 fetched develop `59ec8c6`. Unrelated game/theme work and existing phase gates remain
 separate.
+
+## Issue #91 — shared T Portal identity
+
+[Unify current brand consumers](130-unify-t-portal-identity.md) follows PR93's
+normal merge at develop7716b2e. Its boundary is the approved logo/shared brand
+roles and existing consumers; Design01 hierarchy, action-palette PR90, game
+artwork, avatars and phase gates remain independent. The deliverable is a new
+draft PR, with local checks and honest target evidence, not a merge.

@@ -1,0 +1,41 @@
+{
+  "source_commit": "ad2677ae38db7f96ff5c6c0f2c9706604c1d4ce4",
+  "checks": [
+    {
+      "command": "cargo xtask check",
+      "status": "PASS",
+      "log_sha256": "2d5011849141b918e5348cba00ca3900217451a63092538113389b2db3e03374",
+      "log_bytes": 238840
+    },
+    {
+      "command": "./gradlew --console=plain :shared:testAndroidHostTest :previewApp:test :android:assembleDebug",
+      "status": "PASS",
+      "log_sha256": "0b54432c6bf71fd64f253c2931e367cfef60a866e3536e5a0ef2857ec9b76a1e",
+      "log_bytes": 6301
+    },
+    {
+      "command": "node --test apps/game-client/web/tests/*.test.cjs",
+      "status": "PASS",
+      "log_sha256": "7133160f10a771981ea80114275146ca0f4e1073783a5a84ee52eaabeb958d55",
+      "log_bytes": 11999
+    },
+    {
+      "command": "python tools/dashboard-acceptance/test_run.py",
+      "status": "PASS",
+      "log_sha256": "b45cdc1a639291fb5ed5a9855bbc7652459ddd7595d2df36572d5495ffc63735",
+      "log_bytes": 116
+    },
+    {
+      "command": "cargo build/stage Werewolf; python tools/tests/check-werewolf-loading-budgets.py",
+      "status": "PASS",
+      "log_sha256": "8e49a1c5756c1b05f32570921bae91248ad64fd173eb3d26e47e86480059c20e",
+      "log_bytes": 2294
+    }
+  ],
+  "core_tests_passed": 1270,
+  "core_ignored_docs": 18,
+  "mobile_shared_tests": 52,
+  "compose_preview_tests": 14,
+  "host_js_tests": 122,
+  "dashboard_helper_tests": 17
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Static emitted Werewolf inventory, not browser network/performance evidence."""
 import argparse,gzip,hashlib,json,re,tomllib
+from html.parser import HTMLParser
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 p=argparse.ArgumentParser(description=__doc__)
@@ -25,7 +26,17 @@ assert set(files)==pack_paths | {'tabula-game-client.wasm','assets/OpenSans-Regu
 rows=[]
 for alias,entry in files.items():
  payload=(a.bundle/entry['url']).read_bytes();assert len(payload)==entry['bytes'];assert hashlib.sha256(payload).hexdigest()==entry['sha256'];rows.append({'alias':alias,'bytes':len(payload),'sha256':entry['sha256']})
-setup=(a.bundle/'index.html').read_text();assert not re.search(r'<(?:img|link)[^>]+(?:png|wasm)',setup);assert 'glcanvas' not in setup
+setup=(a.bundle/'index.html').read_text();assert 'glcanvas' not in setup
+class SetupResources(HTMLParser):
+ def handle_starttag(self,tag,attributes):
+  attrs=dict(attributes)
+  if tag not in ('img','link'):return
+  url=attrs.get('src' if tag=='img' else 'href','')
+  if re.search(r'\.(?:png|wasm)(?:$|[?#])',url,re.I):
+   # Only the existing shared OS icon is allowed before explicit game launch.
+   # A brand URL alone must not exempt image/preload/prefetch requests.
+   assert tag=='link' and attrs.get('rel')=='apple-touch-icon' and url=='brand/app-icon-180.png',url
+SetupResources().feed(setup)
 pack_rows=[row for row in rows if row['alias'] in pack_paths];assert len(pack_rows)==len(pack_paths)
 # #84 approved two village scenes in pack 0.2.0. Compare every emitted image
 # to that independent pixel/byte receipt instead of the retired 14-image cap.

@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.loveoverflow.tabula.mobile.design.LocalTabulaColors
 import com.loveoverflow.tabula.mobile.design.TabulaAccessibility
+import com.loveoverflow.tabula.mobile.design.TabulaBrand
 import com.loveoverflow.tabula.mobile.design.TabulaShape
 import com.loveoverflow.tabula.mobile.design.TabulaSpace
 import com.loveoverflow.tabula.mobile.design.TabulaText
@@ -54,7 +55,12 @@ object ShellText {
 
 /** Screen shell: page surface, safe-area insets and a compact title (`docs/ui/screens/foundation.md`). */
 @Composable
-fun ShellPage(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun ShellPage(
+    title: String,
+    modifier: Modifier = Modifier,
+    titleContent: @Composable () -> Unit = { TabulaText(title, TabulaType.headlineSm) },
+    content: @Composable ColumnScope.() -> Unit,
+) {
     val colors = LocalTabulaColors.current
     Column(
         modifier = modifier
@@ -64,7 +70,7 @@ fun ShellPage(title: String, modifier: Modifier = Modifier, content: @Composable
             .padding(horizontal = TabulaSpace.lg.dp, vertical = TabulaSpace.md.dp),
         verticalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp),
     ) {
-        TabulaText(title, TabulaType.headlineSm)
+        titleContent()
         content()
     }
 }
@@ -90,7 +96,7 @@ fun ShellButton(label: String, filled: Boolean, onClick: () -> Unit, modifier: M
 
 @Composable
 fun HomeScreen(games: List<BundledGame>, languageTag: String, onOpen: (BundledGame) -> Unit) {
-    ShellPage(ShellText.HomeTitle) {
+    ShellPage(ShellText.HomeTitle, titleContent = { TabulaBrand() }) {
         TabulaText(
             if (games.isEmpty()) ShellText.NoGames else ShellText.HomeStatus,
             TabulaType.bodyMd,

@@ -15,6 +15,12 @@ const HOST_FILES: &[&str] = &[
     "index.html",
     "play.html",
     "standalone.css",
+    "brand/favicon.svg",
+    "brand/favicon.ico",
+    "brand/app-icon-180.png",
+    "brand/app-icon-192.png",
+    "brand/app-icon-512.png",
+    "brand/manifest.webmanifest",
     "launch-options.js",
     "direct-transport.js",
     "host-bridge.js",
@@ -43,6 +49,12 @@ const SIMULATOR_HOST_FILES: &[&str] = &[
     "index.html",
     "play.html",
     "standalone.css",
+    "brand/favicon.svg",
+    "brand/favicon.ico",
+    "brand/app-icon-180.png",
+    "brand/app-icon-192.png",
+    "brand/app-icon-512.png",
+    "brand/manifest.webmanifest",
     "launch-options.js",
     "werewolf-setup.js", // xtask-allow-game-id: ADR-0035 standalone leaf packaging.
     "bootstrap.js",
@@ -1081,8 +1093,8 @@ mod tests {
         );
         assert!(!out_dir.path().join("stale.txt").exists());
         // Top-level entries: the HOST_FILES roots (including the host bridge), the bootstrap,
-        // WASM, tokens, manifest script and the hashed resources directory.
-        assert_eq!(std::fs::read_dir(out_dir.path()).unwrap().count(), 15);
+        // WASM, tokens, manifest script, shared brand directory and hashed resources.
+        assert_eq!(std::fs::read_dir(out_dir.path()).unwrap().count(), 16);
     }
 
     #[test]

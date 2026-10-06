@@ -30,7 +30,9 @@ screen-specific behavior; no catalog, auth, lobby, replay, or game rules are spe
 
 Issue #87 supersedes the later compact/sans interpretation for Home/Library only:
 [screen 01](01-library.md) restores original Design 01's warm-paper shell,
-serif page/hero headings and landscape cover hierarchy. The additive semantic
+serif page/hero headings and landscape cover hierarchy.
+Issue #91 supplies the [shared T Portal identity](../../../assets/brand/README.md)
+through semantic brand roles; it does not change the dashboard hierarchy or game palettes. The additive semantic
 shell color roles are owned by `tokens.toml` and generated for all four schemes;
 common game/interaction colors are unchanged. Other screens retain this
 foundation unless their own authoritative specification says otherwise.

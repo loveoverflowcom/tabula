@@ -18,12 +18,28 @@ neutral-source = "#8E8E99"
 success-source = "#2E9E5B"
 warning-source = "#C88A17"
 danger-source = "#D0453B"
+# T Portal identity provenance; resolved brand roles below remain independent
+# of interaction colors and game accents (issue #91).
+brand-ink = "#5E4B8B"
+brand-lavender = "#B9A7F3"
+brand-purple = "#7C63ED"
+brand-lilac = "#EBE6F7"
+brand-dark = "#473D66"
+brand-light = "#F7F4FF"
+brand-panel = "#E2DAFA"
 
 # Tier 2 — system semantic tokens.
 [sys.color]
 # Scheme-specific values are fully authored below. There is no fallback palette.
 
 [schemes.light]
+# T Portal identity only; actions, selection and focus keep their existing roles.
+brand-mark = "#7C63ED"
+brand-wordmark = "#5E4B8B"
+brand-canvas = "#EBE6F7"
+brand-panel = "#E2DAFA"
+brand-ink = "#5E4B8B"
+brand-on-ink = "#F7F4FF"
 # Original ornamental token lettering; never error/invalid state.
 shell-art-piece-red = "#A44747"
 # Lightweight catalog artwork from Design 01; no gameplay resource ownership.
@@ -66,6 +82,13 @@ team = ["#005F73", "#CA6702", "#6D597A", "#127D66", "#B64664", "#385F91", "#7952
 seat-marker = ["#005F73", "#CA6702", "#6D597A", "#127D66", "#B64664", "#385F91", "#79521E", "#5E587E"]
 
 [schemes.dark]
+# T Portal identity only; actions, selection and focus keep their existing roles.
+brand-mark = "#B9A7F3"
+brand-wordmark = "#F7F4FF"
+brand-canvas = "#473D66"
+brand-panel = "#5E4B8B"
+brand-ink = "#5E4B8B"
+brand-on-ink = "#F7F4FF"
 # Original ornamental token lettering; never error/invalid state.
 shell-art-piece-red = "#A44747"
 # Lightweight catalog artwork from Design 01; no gameplay resource ownership.
@@ -108,6 +131,14 @@ team = ["#66D9EF", "#FFB86C", "#D6A5E8", "#74F8A6", "#FF9DB8", "#8AB4F8", "#E8C4
 seat-marker = ["#66D9EF", "#FFB86C", "#D6A5E8", "#74F8A6", "#FF9DB8", "#8AB4F8", "#E8C48A", "#B8B0FF"]
 
 [schemes.hc-light]
+# T Portal identity only; actions, selection and focus keep their existing roles.
+# High contrast uses monochrome rather than preserving decorative purple.
+brand-mark = "#000000"
+brand-wordmark = "#000000"
+brand-canvas = "#FFFFFF"
+brand-panel = "#FFFFFF"
+brand-ink = "#000000"
+brand-on-ink = "#FFFFFF"
 # Original ornamental token lettering; never error/invalid state.
 shell-art-piece-red = "#000000"
 # Lightweight catalog artwork from Design 01; no gameplay resource ownership.
@@ -150,6 +181,14 @@ team = ["#004B5C", "#984D00", "#4B3158", "#005A20", "#8F153C", "#003D7A", "#5E3E
 seat-marker = ["#004B5C", "#984D00", "#4B3158", "#005A20", "#8F153C", "#003D7A", "#5E3E00", "#42306D"]
 
 [schemes.hc-dark]
+# T Portal identity only; actions, selection and focus keep their existing roles.
+# High contrast uses monochrome rather than preserving decorative purple.
+brand-mark = "#FFFFFF"
+brand-wordmark = "#FFFFFF"
+brand-canvas = "#000000"
+brand-panel = "#1C1C1C"
+brand-ink = "#000000"
+brand-on-ink = "#FFFFFF"
 # Original ornamental token lettering; never error/invalid state.
 shell-art-piece-red = "#000000"
 # Lightweight catalog artwork from Design 01; no gameplay resource ownership.

@@ -33,7 +33,7 @@ const SCHEMES: [Scheme; 4] = [
         kind: "ThemeKind::HighContrastDark",
     },
 ];
-const COLOR_KEYS: [&str; 35] = [
+const COLOR_KEYS: [&str; 41] = [
     "surface",
     "container",
     "container-high",
@@ -54,6 +54,12 @@ const COLOR_KEYS: [&str; 35] = [
     "last-action",
     "threat",
     "hidden",
+    "brand-mark",
+    "brand-wordmark",
+    "brand-canvas",
+    "brand-panel",
+    "brand-ink",
+    "brand-on-ink",
     "shell-canvas",
     "shell-paper",
     "shell-hero",
@@ -274,6 +280,18 @@ struct SchemeSource {
     last_action: String,
     threat: String,
     hidden: String,
+    #[serde(rename = "brand-mark")]
+    brand_mark: String,
+    #[serde(rename = "brand-wordmark")]
+    brand_wordmark: String,
+    #[serde(rename = "brand-canvas")]
+    brand_canvas: String,
+    #[serde(rename = "brand-panel")]
+    brand_panel: String,
+    #[serde(rename = "brand-ink")]
+    brand_ink: String,
+    #[serde(rename = "brand-on-ink")]
+    brand_on_ink: String,
     #[serde(rename = "shell-canvas")]
     shell_canvas: String,
     #[serde(rename = "shell-paper")]
@@ -913,7 +931,7 @@ fn duration(name: DurationName, motion: &MotionSource) -> u16 {
     }
 }
 fn color_tokens(scheme: &SchemeSource) -> String {
-    format!("ColorTokens {{ surface: {}, surface_container: {}, surface_container_high: {}, on_surface: {}, on_surface_variant: {}, outline: {}, primary: {}, on_primary: {}, success: {}, on_success: {}, danger: {}, on_danger: {}, turn_active: {}, turn_waiting: {}, legal_target: {}, illegal_target: {}, selected: {}, last_action: {}, threat: {}, hidden: {}, shell_canvas: {}, shell_paper: {}, shell_hero: {}, shell_on_hero: {}, shell_note: {}, shell_cover_sage: {}, shell_cover_mint: {}, shell_art_field_light: {}, shell_art_field_dark: {}, shell_art_line: {}, shell_art_piece_light: {}, shell_art_piece_dark: {}, shell_art_road: {}, shell_art_earth: {}, shell_art_piece_red: {}, team: [{}], seat_marker: [{}] }}", color_rust(&scheme.surface), color_rust(&scheme.container), color_rust(&scheme.container_high), color_rust(&scheme.on_surface), color_rust(&scheme.on_surface_variant), color_rust(&scheme.outline), color_rust(&scheme.primary), color_rust(&scheme.on_primary), color_rust(&scheme.success), color_rust(&scheme.on_success), color_rust(&scheme.danger), color_rust(&scheme.on_danger), color_rust(&scheme.turn_active), color_rust(&scheme.turn_waiting), color_rust(&scheme.legal_target), color_rust(&scheme.illegal_target), color_rust(&scheme.selected), color_rust(&scheme.last_action), color_rust(&scheme.threat), color_rust(&scheme.hidden), color_rust(&scheme.shell_canvas), color_rust(&scheme.shell_paper), color_rust(&scheme.shell_hero), color_rust(&scheme.shell_on_hero), color_rust(&scheme.shell_note), color_rust(&scheme.shell_cover_sage), color_rust(&scheme.shell_cover_mint), color_rust(&scheme.shell_art_field_light), color_rust(&scheme.shell_art_field_dark), color_rust(&scheme.shell_art_line), color_rust(&scheme.shell_art_piece_light), color_rust(&scheme.shell_art_piece_dark), color_rust(&scheme.shell_art_road), color_rust(&scheme.shell_art_earth), color_rust(&scheme.shell_art_piece_red), scheme.team.iter().map(|value| color_rust(value)).collect::<Vec<_>>().join(", "), scheme.seat_marker.iter().map(|value| color_rust(value)).collect::<Vec<_>>().join(", "))
+    format!("ColorTokens {{ surface: {}, surface_container: {}, surface_container_high: {}, on_surface: {}, on_surface_variant: {}, outline: {}, primary: {}, on_primary: {}, success: {}, on_success: {}, danger: {}, on_danger: {}, turn_active: {}, turn_waiting: {}, legal_target: {}, illegal_target: {}, selected: {}, last_action: {}, threat: {}, hidden: {}, brand_mark: {}, brand_wordmark: {}, brand_canvas: {}, brand_panel: {}, brand_ink: {}, brand_on_ink: {}, shell_canvas: {}, shell_paper: {}, shell_hero: {}, shell_on_hero: {}, shell_note: {}, shell_cover_sage: {}, shell_cover_mint: {}, shell_art_field_light: {}, shell_art_field_dark: {}, shell_art_line: {}, shell_art_piece_light: {}, shell_art_piece_dark: {}, shell_art_road: {}, shell_art_earth: {}, shell_art_piece_red: {}, team: [{}], seat_marker: [{}] }}", color_rust(&scheme.surface), color_rust(&scheme.container), color_rust(&scheme.container_high), color_rust(&scheme.on_surface), color_rust(&scheme.on_surface_variant), color_rust(&scheme.outline), color_rust(&scheme.primary), color_rust(&scheme.on_primary), color_rust(&scheme.success), color_rust(&scheme.on_success), color_rust(&scheme.danger), color_rust(&scheme.on_danger), color_rust(&scheme.turn_active), color_rust(&scheme.turn_waiting), color_rust(&scheme.legal_target), color_rust(&scheme.illegal_target), color_rust(&scheme.selected), color_rust(&scheme.last_action), color_rust(&scheme.threat), color_rust(&scheme.hidden), color_rust(&scheme.brand_mark), color_rust(&scheme.brand_wordmark), color_rust(&scheme.brand_canvas), color_rust(&scheme.brand_panel), color_rust(&scheme.brand_ink), color_rust(&scheme.brand_on_ink), color_rust(&scheme.shell_canvas), color_rust(&scheme.shell_paper), color_rust(&scheme.shell_hero), color_rust(&scheme.shell_on_hero), color_rust(&scheme.shell_note), color_rust(&scheme.shell_cover_sage), color_rust(&scheme.shell_cover_mint), color_rust(&scheme.shell_art_field_light), color_rust(&scheme.shell_art_field_dark), color_rust(&scheme.shell_art_line), color_rust(&scheme.shell_art_piece_light), color_rust(&scheme.shell_art_piece_dark), color_rust(&scheme.shell_art_road), color_rust(&scheme.shell_art_earth), color_rust(&scheme.shell_art_piece_red), scheme.team.iter().map(|value| color_rust(value)).collect::<Vec<_>>().join(", "), scheme.seat_marker.iter().map(|value| color_rust(value)).collect::<Vec<_>>().join(", "))
 }
 
 fn css(source: &TokenSource) -> String {
@@ -1320,7 +1338,7 @@ fn game_art_tokens(art: &ChessArtSource, cards: &WerewolfArtSource) -> String {
     format!("GameArtTokens::generated(ChessArtTokens {{ {fields} }}, WerewolfArtTokens {{ {card_fields} }})")
 }
 
-fn scheme_colors(scheme: &SchemeSource) -> [&str; 35] {
+fn scheme_colors(scheme: &SchemeSource) -> [&str; 41] {
     [
         &scheme.surface,
         &scheme.container,
@@ -1342,6 +1360,12 @@ fn scheme_colors(scheme: &SchemeSource) -> [&str; 35] {
         &scheme.last_action,
         &scheme.threat,
         &scheme.hidden,
+        &scheme.brand_mark,
+        &scheme.brand_wordmark,
+        &scheme.brand_canvas,
+        &scheme.brand_panel,
+        &scheme.brand_ink,
+        &scheme.brand_on_ink,
         &scheme.shell_canvas,
         &scheme.shell_paper,
         &scheme.shell_hero,
@@ -1598,6 +1622,115 @@ mod tests {
         assert_eq!(before["schemes"], after["schemes"]);
         assert_ne!(before["game_art"], after["game_art"]);
     }
+    /// Every independently authored role must reach the correct scheme in all
+    /// four adapters; identity edits must leave actions and every other token intact.
+    #[test]
+    fn brand_roles_have_exact_independent_cross_adapter_mapping() {
+        let before = rendered(source());
+        let before_json = json_output(&before);
+        for scheme in SCHEMES {
+            for key in [
+                "brand-mark",
+                "brand-wordmark",
+                "brand-canvas",
+                "brand-panel",
+                "brand-ink",
+                "brand-on-ink",
+            ] {
+                let mut authored: toml::Value = toml::from_str(source()).unwrap();
+                authored["schemes"][scheme.name][key] = toml::Value::String("#123456".into());
+                let after = rendered(&toml::to_string(&authored).unwrap());
+                let mut expected_json = before_json.clone();
+                expected_json["schemes"][scheme.name][key] = Value::from("#123456");
+                assert_eq!(json_output(&after), expected_json, "{}: {key}", scheme.name);
+
+                let rust = output(&after, "crates/tabula-design/src/generated.rs");
+                let rust_start = format!("pub const {}:", scheme.constant);
+                let rust_scheme = rust
+                    .split(&rust_start)
+                    .nth(1)
+                    .unwrap()
+                    .split("pub const ")
+                    .next()
+                    .unwrap();
+                assert!(
+                    rust_scheme.contains(&format!("{}: Color::rgb(18, 52, 86),", field(key))),
+                    "Rust {}: {key}",
+                    scheme.name
+                );
+                let css = output(&after, "apps/web/style/tokens.css");
+                let selector = if scheme.name == "light" {
+                    ":root {".to_owned()
+                } else {
+                    format!(":root[data-theme=\"{}\"] {{", scheme.name)
+                };
+                let css_scheme = css
+                    .split(&selector)
+                    .nth(1)
+                    .unwrap()
+                    .split('}')
+                    .next()
+                    .unwrap();
+                assert!(
+                    css_scheme.contains(&format!("--sys-color-{key}: #123456;")),
+                    "CSS {}: {key}",
+                    scheme.name
+                );
+                let kotlin = output(&after, KOTLIN_TOKENS_PATH);
+                let kotlin_start = format!("val {} = TabulaColors(", kotlin_camel(scheme.name));
+                let kotlin_scheme = kotlin
+                    .split(&kotlin_start)
+                    .nth(1)
+                    .unwrap()
+                    .split("    )")
+                    .next()
+                    .unwrap();
+                assert!(
+                    kotlin_scheme.contains(&format!("{} = Color(0xFF123456),", kotlin_camel(key))),
+                    "Kotlin {}: {key}",
+                    scheme.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn brand_roles_are_required_and_validate_each_authored_scheme() {
+        for scheme in SCHEMES {
+            for key in [
+                "brand-mark",
+                "brand-wordmark",
+                "brand-canvas",
+                "brand-panel",
+                "brand-ink",
+                "brand-on-ink",
+            ] {
+                let mut authored: toml::Value = toml::from_str(source()).unwrap();
+                authored["schemes"][scheme.name][key] = toml::Value::String("#1234GG".into());
+                assert!(
+                    matches!(
+                        render_source(Path::new("."), &toml::to_string(&authored).unwrap()),
+                        Err(TokenError::Color { scheme: actual, .. }) if actual == scheme.name
+                    ),
+                    "invalid {}: {key}",
+                    scheme.name
+                );
+                authored["schemes"][scheme.name]
+                    .as_table_mut()
+                    .unwrap()
+                    .remove(key);
+                assert!(
+                    matches!(
+                        render_source(Path::new("."), &toml::to_string(&authored).unwrap()),
+                        Err(TokenError::Toml(_))
+                    ),
+                    "missing {}: {key}",
+                    scheme.name
+                );
+            }
+        }
+    }
+
     #[test]
     fn malformed_or_incomplete_game_art_is_rejected() {
         assert!(matches!(

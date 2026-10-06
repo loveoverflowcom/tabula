@@ -59,6 +59,27 @@ palette colours and hex literals under `mobile/` (the generated file is the one 
 `cargo xtask check` fails when the Kotlin adapter is stale. Screens follow
 [`docs/ui/screens/foundation.md`](../docs/ui/screens/foundation.md).
 
+## App identity
+
+The existing Home heading uses `design/TabulaBrand.kt`, which draws the approved T Portal mark
+and outlined wordmark from `assets/brand/` with the generated `brandMark` and `brandWordmark`
+roles. `TabulaBrandPaths.kt` is an export of those SVG paths and lockup coordinates, not a second
+authored logo. It has one accessible heading named Tabula; the mark is decorative. Game titles,
+game artwork, occupant avatars, gameplay and navigation are unchanged. There is no additional
+app loading or About screen in this foundation.
+
+Android's manifest selects `@mipmap/ic_launcher`; legacy square PNGs and the adaptive foreground
+are exported from the canonical square app-icon artwork. Android supplies the adaptive mask.
+The Xcode project's Resources phase includes `TabulaApp/Assets.xcassets` and both build
+configurations select its `AppIcon` set. The iOS icon PNGs are square, opaque and unmasked.
+Regenerate these adapters using the brand export command documented in `assets/brand/README.md`.
+
+`:previewApp:test` includes `BrandIdentityTest` for one accessible name and the rendered identity
+at 320/390 dp in all four authored schemes. Its screenshots are shared-shell preview evidence
+only. Launcher appearance still requires Android/iOS execution; source wiring or exported PNGs
+do not establish a device run. The optional `apps/desktop` product remains a gated no-op skeleton;
+`previewApp` is testing only and does not add a desktop installer or icon target.
+
 ## The GameHost seam
 
 `shared/.../host/GameHost.kt` is the only contract between the shell and a game surface: a launch request
