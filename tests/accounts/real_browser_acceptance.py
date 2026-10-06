@@ -22,7 +22,7 @@ import time
 import traceback
 from urllib.parse import urlsplit
 
-from playwright.async_api import async_playwright, expect
+from playwright.async_api import Error as PlaywrightError, async_playwright, expect
 
 ORIGIN = "https://app.localhost:8444"
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,6 +31,26 @@ SESSION_COOKIE = "__Host-tabula_session"
 
 class CheckFailure(Exception):
     """Fixed public-safe assertion message, unlike raw browser diagnostics."""
+
+
+def browser_failure_kind(error):
+    """Closed diagnostic labels; never publish raw exception text or a URL."""
+    if not isinstance(error, PlaywrightError):
+        return None
+    text = str(error)
+    for fragment, label in (
+        ("No resource with given identifier found", "response_body_unavailable"),
+        ("No data found for resource with given identifier", "response_body_unavailable"),
+        ("Request content was evicted from inspector cache", "response_body_unavailable"),
+        ("Execution context was destroyed", "document_context_retired"),
+        ("strict mode violation", "ambiguous_locator"),
+        ("Element is not attached", "detached_element"),
+        ("Target page, context or browser has been closed", "browser_target_closed"),
+        ("net::", "browser_transport"),
+    ):
+        if fragment in text:
+            return label
+    return "playwright_error"
 
 
 def require(condition, message):
@@ -232,7 +252,11 @@ async def search(page, handle):
         await page.get_by_test_id("friends-search").click()
     response = await waiting.value
     require(response.status == 200, "authorized directory search failed")
-    return (await response.json())["results"]
+    try:
+        return (await response.json())["results"]
+    except PlaywrightError as error:
+        error.tabula_step = "search_response_body"
+        raise
 
 
 async def mutate_button(page, marker):
@@ -242,7 +266,11 @@ async def mutate_button(page, marker):
         await button.click()
     response = await waiting.value
     require(response.status == 200, "authorized friendship mutation failed")
-    return await response.json()
+    try:
+        return await response.json()
+    except PlaywrightError as error:
+        error.tabula_step = "mutation_response_body"
+        raise
 
 
 async def fresh_scope(observation, previous, viewer):
@@ -327,9 +355,12 @@ async def run(args):
             await first.goto(ORIGIN + "/friends")
             await second.goto(ORIGIN + "/friends")
             await second.locator("#locale").select_option("vi")
+            stage = "friends_initial_search"
             require(len(await search(first, "tabula_bob")) == 1, "permitted exact search missing")
+            stage = "friends_send_first_request"
             sent = await mutate_button(first, "friend-send")
             pending = sent["request"]
+            stage = "friends_read_pending_authority"
             durable = await api(first, "/api/v2/social")
             require(durable["status"] == 200 and any(
                 request["request_id"] == pending["request_id"] and request["status"] == "pending"
@@ -337,14 +368,22 @@ async def run(args):
                 "pending request absent from authoritative participant snapshot")
             forbidden = {"operation_id": await operation(first), "action": "accept",
                          "request_id": pending["request_id"], "expected_revision": pending["revision"]}
+            stage = "friends_deny_sender_accept"
             require((await api(first, "/api/v2/social/mutate", "POST", forbidden))["status"] == 403,
                     "sender accepted own request")
+            stage = "friends_cancel_request"
             await mutate_button(first, "friend-cancel")
+            stage = "friends_search_after_cancel"
             await search(first, "tabula_bob")
+            stage = "friends_send_after_cancel"
             await mutate_button(first, "friend-send")
+            stage = "friends_decline_request"
             await mutate_button(second, "friend-decline")
+            stage = "friends_search_after_decline"
             await search(first, "tabula_bob")
+            stage = "friends_send_after_decline"
             await mutate_button(first, "friend-send")
+            stage = "friends_accept_request"
             accepted = await mutate_button(second, "friend-accept")
             require(accepted["request"]["status"] == "accepted", "acceptance stayed local")
             cases.extend(["authorized_directory_search", "sender_cannot_accept_own_request",
@@ -439,6 +478,12 @@ async def run(args):
     except Exception as error:
         receipt = {"status": "fail", "stage": stage, "completed_cases": len(cases),
                    "failure_type": type(error).__name__}
+        kind = browser_failure_kind(error)
+        if kind:
+            receipt["browser_failure_kind"] = kind
+        step = getattr(error, "tabula_step", None)
+        if step in ("search_response_body", "mutation_response_body"):
+            receipt["browser_step"] = step
         if isinstance(error, CheckFailure):
             receipt["reason"] = str(error)
         receipt["sockets"] = [{"frames": len(observation.frames), "maximum_active": observation.maximum,
