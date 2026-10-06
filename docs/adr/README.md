@@ -91,3 +91,8 @@ are required; reconnect/resync is PR3 and production remains closed.
 [ADR-0043](0043-native-mobile-gamehost.md) supersedes mobile WebView gameplay with
 the native Macroquad direction under #81. Current mobile selection/packaging is
 retired without fallback; native adapters and device acceptance remain blocked.
+
+[ADR-0044](0044-isolated-account-registration-social.md) opens the owner's
+bounded #54 registration/profile/social completion, including its explicit
+frontend feature and emitted resource cap. Real provider/PostgreSQL/browser
+acceptance is required; production activation and broad phase exits stay closed.
