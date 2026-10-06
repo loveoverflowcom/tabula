@@ -605,6 +605,18 @@ async fn retire_seat(
     }
     Ok(())
 }
+/// A correlation hint only: current authority and the durable scope still gate every retry.
+fn operation_scope_hint(id: MatchId, scope: tabula_match::durable::OperationScope) -> String {
+    let mut digest = Sha256::new();
+    digest.update(b"tabula-online-operation-scope-v2\0");
+    digest.update(id.0.to_be_bytes());
+    digest.update(scope.record.to_be_bytes());
+    digest.update(scope.subject.0.to_be_bytes());
+    digest.update(scope.epoch.to_be_bytes());
+    digest.update([scope.seat.0]);
+    digest.update(scope.generation.to_be_bytes());
+    digest.finalize().iter().map(|byte| format!("{byte:02x}")).collect()
+}
 async fn attach(
     State(state): State<Arc<GatewayState>>,
     Path(id): Path<String>,
@@ -699,6 +711,7 @@ async fn attach(
         format!("{:032x}", session.0),
         scope.seat.0,
         next_seq,
+        operation_scope_hint(id, scope),
         frames,
     ) else {
         return unavailable();

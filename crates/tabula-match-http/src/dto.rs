@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use tabula_core::MatchId;
 use tabula_protocol::{ClientEnvelope, ServerEnvelope};
 /// Isolated admission HTTP version, independent of wire 0.1 (ADR-0041).
-pub const MATCH_HTTP_VERSION: u16 = 1;
+pub const MATCH_HTTP_VERSION: u16 = 2;
 /// Complete request JSON bound.
 pub const MAX_REQUEST_BYTES: usize = 65_536;
 /// Per-attachment retained frame bound.
@@ -545,6 +545,7 @@ pub struct MatchAttachment {
     attachment_id: String,
     seat: u8,
     next_seq: u64,
+    operation_scope: String,
     frames: Vec<ServerEnvelope>,
 }
 #[derive(Deserialize)]
@@ -555,6 +556,8 @@ struct RawMatchAttachment {
     attachment_id: String,
     seat: u8,
     next_seq: u64,
+    #[serde(deserialize_with = "crate::bounds::short")]
+    operation_scope: String,
     #[serde(deserialize_with = "crate::bounds::frames")]
     frames: Vec<ServerEnvelope>,
 }
@@ -563,10 +566,16 @@ impl MatchAttachment {
         attachment_id: String,
         seat: u8,
         next_seq: u64,
+        operation_scope: String,
         frames: Vec<ServerEnvelope>,
     ) -> Result<Self, InvalidMatchHttp> {
         identifier(&attachment_id)?;
-        if seat > 7 || next_seq == 0 || frames.len() > MAX_BUFFERED_FRAMES {
+        if seat > 7
+            || next_seq == 0
+            || operation_scope.len() != 64
+            || !operation_scope.bytes().all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
+            || frames.len() > MAX_BUFFERED_FRAMES
+        {
             return Err(InvalidMatchHttp);
         }
         Ok(Self {
@@ -574,6 +583,7 @@ impl MatchAttachment {
             attachment_id,
             seat,
             next_seq,
+            operation_scope,
             frames,
         })
     }
@@ -589,6 +599,10 @@ impl MatchAttachment {
     pub fn next_seq(&self) -> u64 {
         self.next_seq
     }
+    /// Non-authorizing stable scope hint; never a grant or transport identity.
+    pub fn operation_scope(&self) -> &str {
+        &self.operation_scope
+    }
     pub fn frames(&self) -> &[ServerEnvelope] {
         &self.frames
     }
@@ -599,7 +613,7 @@ impl TryFrom<RawMatchAttachment> for MatchAttachment {
         if raw.version != MATCH_HTTP_VERSION {
             return Err(InvalidMatchHttp);
         }
-        Self::new(raw.attachment_id, raw.seat, raw.next_seq, raw.frames)
+        Self::new(raw.attachment_id, raw.seat, raw.next_seq, raw.operation_scope, raw.frames)
     }
 }
 impl std::fmt::Debug for MatchAttachment {
@@ -659,7 +673,7 @@ mod tests {
     use super::*;
     #[test]
     fn ordinary_serde_is_checked() {
-        for body in [r#"{"version":2}"#, r#"{"version":1,"seat":0}"#] {
+        for body in [r#"{"version":1}"#, r#"{"version":2,"seat":0}"#] {
             assert!(serde_json::from_str::<MatchGrantRequest>(body).is_err());
         }
         assert!(MatchCreateRequest::new("x".into(), 1, BTreeMap::new()).is_err());
@@ -670,12 +684,12 @@ mod tests {
     fn stable_minimal_vectors() {
         assert_eq!(
             serde_json::to_string(&MatchGrantRequest::new().unwrap()).unwrap(),
-            r#"{"version":1}"#
+            r#"{"version":2}"#
         );
         let v = MatchJoinRequest::new("ABCD2345EFGH".into()).unwrap();
         assert_eq!(
             serde_json::to_string(&v).unwrap(),
-            r#"{"version":1,"code":"ABCD2345EFGH"}"#
+            r#"{"version":2,"code":"ABCD2345EFGH"}"#
         );
     }
 }
