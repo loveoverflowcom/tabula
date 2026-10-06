@@ -25,6 +25,7 @@ from urllib.parse import urlsplit
 from PIL import Image
 from playwright.sync_api import Error as BrowserError, TimeoutError as BrowserTimeout, sync_playwright
 from capture_evidence import CaptureEvidence, CaptureFailure
+from actual_response import ObservationFailure, actual_response_json, install_actual_response_observer
 from startup_diagnostics import http_status, navigation_failure, origin_class, process_diagnostics
 
 ORIGIN = "https://localhost:9443"
@@ -339,7 +340,7 @@ def capture_live_authority_loss(white, third, csrf: str, evidence: CaptureEviden
     white.get_by_test_id("online-create").wait_for(state="visible", timeout=30_000)
     with white.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches", timeout=30_000) as created_response:
         white.get_by_test_id("online-create").click()
-    created = created_response.value.json()
+    created = actual_response_json(created_response.value)
     progress["create_status"] = http_status(created_response.value.status)
     require(created_response.value.status == 200 and created["seat"] == 0,
             "live concealment actual create setup failed")
@@ -350,7 +351,7 @@ def capture_live_authority_loss(white, third, csrf: str, evidence: CaptureEviden
     third.get_by_test_id("online-join-code").fill(code)
     with third.expect_response(lambda response: urlsplit(response.url).path == "/api/v1/matches/join", timeout=30_000) as joined_response:
         third.get_by_test_id("online-join").click()
-    joined = joined_response.value.json()
+    joined = actual_response_json(joined_response.value)
     progress["join_status"] = http_status(joined_response.value.status)
     require(joined_response.value.status == 200 and joined["match_id"] == match_id
             and joined["seat"] == 1 and joined["ready"],
@@ -449,6 +450,8 @@ def visible_game_facts(page, role: str) -> dict:
 
 
 def exception_class(error: Exception) -> str:
+    if isinstance(error, ObservationFailure):
+        return "actual_response_" + error.code
     if isinstance(error, AcceptanceFailure):
         return "required_condition_failed"
     if isinstance(error, BrowserTimeout):
@@ -571,7 +574,7 @@ def move(page, source: str, target: str, flipped: bool, match_id: str,
     response = result.value
     observed.update({"response_observed": True, "http_status": http_status(response.status)})
     require(response.status == 200, "rendered legal move was not accepted by real server")
-    body = response.json()
+    body = actual_response_json(response)
     require(not private_frame_keys(body), "canonical facts leaked in command result")
     observed["ack_present"] = any("Ack" in frame.get("body", {}) for frame in body["frames"])
     require(observed["ack_present"],
@@ -611,7 +614,7 @@ def enter_game(page, match_id: str, expected_seat: int,
     observed.update({"response_observed": True, "http_status": http_status(response.status),
                      "phase": "validate_existing_attach_contract"})
     require(response.status == 200, "actual gameplay attachment failed")
-    attachment = response.json()
+    attachment = actual_response_json(response)
     require(attachment["seat"] == expected_seat, "browser entered the wrong opponent seat")
     observed["typed_seat_matches"] = True
     require(not private_frame_keys(attachment), "canonical facts leaked on attach")
@@ -698,6 +701,7 @@ def run(args) -> None:
                     reduced_motion="reduce", locale="en-US",
                 )
                 browsers.append(browser)
+                install_actual_response_observer(browser)
                 counters = {}
                 results["protected_http"][role] = counters
                 def observe_response(response, counts=counters):
@@ -852,7 +856,7 @@ def run(args) -> None:
             admission_progress["phase"] = "create_response_observed"
             admission_progress["create_response"] = admission_response_facts(created_response.value)
             admission_progress["phase"] = "parse_create_body"
-            created = created_response.value.json()
+            created = actual_response_json(created_response.value)
             admission_progress["create_body_parsed"] = True
             admission_progress["phase"] = "validate_create_admission"
             require(created_response.value.status == 200 and created["seat"] == 0,
@@ -872,7 +876,7 @@ def run(args) -> None:
                 admission_progress["phase"] = "join_clicked_waiting_response"
             admission_progress["join_response"] = admission_response_facts(joined_response.value)
             admission_progress["phase"] = "parse_join_body"
-            joined = joined_response.value.json()
+            joined = actual_response_json(joined_response.value)
             admission_progress["join_body_parsed"] = True
             admission_progress["phase"] = "validate_join_admission"
             require(joined_response.value.status == 200 and joined["match_id"] == match_id

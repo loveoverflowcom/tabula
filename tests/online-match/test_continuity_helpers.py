@@ -153,12 +153,13 @@ class ContinuityHelperTests(unittest.TestCase):
     def test_attachment_observer_rejects_wrong_seat_and_canonical_payload(self):
         pair=Pair.__new__(Pair);pair.match_id='a'*32;pair.attachments=[[],[]]
         response=mock.Mock(status=200,url='https://localhost:9443/api/v1/matches/'+pair.match_id+'/attach')
-        response.json.return_value={'version':2,'seat':1}
-        with self.assertRaises(AcceptanceFailure):pair.observe_attach(response,0)
-        response.json.return_value={'version':2,'seat':0,'seed':[1]}
-        with self.assertRaises(AcceptanceFailure):pair.observe_attach(response,0)
-        self.assertEqual(pair.attachments,[[],[]])
-        response.json.return_value={'version':2,'seat':0,'frames':[]}
-        pair.observe_attach(response,0);self.assertEqual(len(pair.attachments[0]),1)
+        with mock.patch('continuity_acceptance.actual_response_json') as observed:
+            observed.return_value={'version':2,'seat':1}
+            with self.assertRaises(AcceptanceFailure):pair.observe_attach(response,0)
+            observed.return_value={'version':2,'seat':0,'seed':[1]}
+            with self.assertRaises(AcceptanceFailure):pair.observe_attach(response,0)
+            self.assertEqual(pair.attachments,[[],[]])
+            observed.return_value={'version':2,'seat':0,'frames':[]}
+            pair.observe_attach(response,0);self.assertEqual(len(pair.attachments[0]),1)
 
 if __name__=='__main__':unittest.main()

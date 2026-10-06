@@ -20,6 +20,7 @@ from browser_acceptance import (AcceptanceFailure, GAME_PATH, MATCH_VERSION, ORI
     enroll_actual_page, enter_game, exception_class, move, private_frame_keys,
     rendered_canvas_pixels, require, setup_browser_trust, wire_probe, start_native_poll, publication_control, reattach_required)
 from capture_evidence import CaptureEvidence
+from actual_response import actual_response_json, install_actual_response_observer
 from process_supervisor import SupervisorClient
 
 RECOVERING_CONCEALED = """() => {
@@ -109,11 +110,11 @@ class Pair:
         with white.expect_response(lambda r:urlsplit(r.url).path=='/api/v1/matches') as created:
             white.get_by_test_id('online-create').click()
         require(created.value.status==200,'fault match creation failed')
-        admitted=created.value.json();self.match_id=admitted['match_id']
+        admitted=actual_response_json(created.value);self.match_id=admitted['match_id']
         black.get_by_test_id('online-join-code').fill(admitted['join_code'])
         with black.expect_response(lambda r:urlsplit(r.url).path=='/api/v1/matches/join') as joined:
             black.get_by_test_id('online-join').click()
-        require(joined.value.status==200 and joined.value.json()['seat']==1,'fault opponent admission failed')
+        require(joined.value.status==200 and actual_response_json(joined.value)['seat']==1,'fault opponent admission failed')
         for role,page in enumerate(self.pages):
             enter_game(page,self.match_id,role)
             self.board(role,'White to move')
@@ -121,7 +122,7 @@ class Pair:
     def observe_attach(self,response,role):
         path=urlsplit(response.url).path
         if self.match_id and path==f'/api/v1/matches/{self.match_id}/attach' and response.status==200:
-            value=response.json()
+            value=actual_response_json(response)
             require(value['seat']==role and value['version']==MATCH_VERSION,'recovery changed the server-owned seat')
             require(not private_frame_keys(value),'recovery attachment leaked canonical facts')
             self.attachments[role].append(value)
@@ -314,7 +315,7 @@ def same_record_rotation_game(contexts,private,ca,results):
         if body is None or command_identity(body)!=command_identity(original):return
         outer=json.loads(body)
         if outer['attachment_id']==old['attachment_id']:return
-        frames=response.json()['frames']
+        frames=actual_response_json(response)['frames']
         require(not private_frame_keys(frames),'rotated original receipt leaked canonical facts')
         observed['original_ack']=any(frame.get('body',{}).get('Ack',{}).get('seq')==command_identity(original)['seq'] for frame in frames)
     white.on('response',original_ack)
@@ -390,7 +391,7 @@ def restart_between_grant_and_attach_game(contexts,private,ca,supervisor,results
     def observed_attach(response):
         if urlsplit(response.url).path!=f'/api/v1/matches/{pair.match_id}/attach':return
         if response.status==403:
-            value=response.json();denied({'status':403,'body':value},{403},'old CSRF attach released projection frames')
+            value=actual_response_json(response);denied({'status':403,'body':value},{403},'old CSRF attach released projection frames')
             require(value.get('code')=='request_rejected','unchanged restarted attach did not hit the real CSRF boundary')
             observed['old_csrf_403']=True
         elif response.status==200:
@@ -400,7 +401,7 @@ def restart_between_grant_and_attach_game(contexts,private,ca,supervisor,results
         if urlsplit(response.url).path!=f'/api/v1/matches/{pair.match_id}/command' or response.status!=200:return
         body=response.request.post_data
         if body is None or command_identity(body)!=command_identity(original) or json.loads(body)['attachment_id']==old['attachment_id']:return
-        frames=response.json()['frames'];require(not private_frame_keys(frames),'restarted original Ack exposed canonical facts')
+        frames=actual_response_json(response)['frames'];require(not private_frame_keys(frames),'restarted original Ack exposed canonical facts')
         observed['original_ack']=any(frame.get('body',{}).get('Ack',{}).get('seq')==command_identity(original)['seq'] for frame in frames)
     white.route(f'**/api/v1/matches/{pair.match_id}/attach',hold_real_attach,times=1)
     white.on('response',observed_attach);white.on('response',observed_ack)
@@ -751,6 +752,7 @@ def run(args):
             for role in ('continuity-white','continuity-black'):
                 home,profile=setup_browser_trust(private,role,ca);environment=os.environ.copy();environment['HOME']=str(home);environment['XDG_DATA_HOME']=str(home/'.local/share')
                 contexts.append(playwright.chromium.launch_persistent_context(str(profile),headless=True,channel='chromium',chromium_sandbox=True,env=environment,viewport={'width':1100,'height':850},reduced_motion='reduce',locale='en-US'))
+                install_actual_response_observer(contexts[-1])
             pids=[]
             for context in contexts:
                 inspector=context.browser.new_browser_cdp_session()
@@ -785,6 +787,7 @@ def run(args):
                 for role in ('focus-white','focus-black'):
                     home,profile=setup_browser_trust(private,role,ca);environment=os.environ.copy();environment['HOME']=str(home);environment['XDG_DATA_HOME']=str(home/'.local/share')
                     focus_contexts.append(playwright.chromium.launch_persistent_context(str(profile),headless=False,channel='chromium',chromium_sandbox=True,env=environment,viewport={'width':1100,'height':850},reduced_motion='reduce',locale='en-US'))
+                    install_actual_response_observer(focus_contexts[-1])
                 focus_pids=[]
                 for context in focus_contexts:
                     inspector=context.browser.new_browser_cdp_session()

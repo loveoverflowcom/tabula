@@ -70,6 +70,42 @@ The fixture checks real authenticated contexts, distinct actual accounts and
 cookie values, HttpOnly exclusion from document.cookie, and the third browser's
 initial absence of an opponent cookie. Enrollment is not a product login route.
 
+## Authentic response observation
+
+Every tested context installs a test-only init script before application scripts.
+The wrapper calls the original browser `fetch` once, synchronously, with the same
+receiver and argument objects, and returns its original Promise and Response.
+It observes only a clone of the authentic response stream. It does not fulfil
+routes, rewrite requests or replies, issue a replacement API call, or fabricate
+an attachment, Ack or projection. Browser TLS verification is unchanged.
+
+The actual Playwright Request event binds a unique owner to the full URL, method
+and SHA-256 of the original request bytes. Pending and failed competing records
+participate in collision checks. An older identical request is excluded only
+when its earlier unique request-event binding preceded the new fetch invocation.
+Read correlation also requires the originating document UUID, the real request's
+native start time, and exact response status, URL, bounded media/length metadata
+and no-store predicate. An old-document first binding, ambiguity or mismatch
+fails closed. Multiple and reentrant consumers use the same underlying specific
+Playwright Response cache; they cannot select a retry or charge a body twice.
+
+Observations are bounded per document to 64 records, 128 KiB request bytes,
+2 MiB per response, 8 MiB combined retained response bytes and five-second reads.
+Aborted, truncated, unreadable, oversized, timed-out or invalid JSON bodies stay
+failures, with no CDP-body lookup fallback. Response text is retired from page
+memory after its exact test-side transfer; its budget remains charged until
+document disposal. Pagehide/BFCache disposal cancels readers and clears records;
+navigation, page/context close and document checks clear or reject test caches.
+Cookies, arbitrary headers, raw grants and observed bodies never enter diagnostics
+or artifacts. Only fixed source-owned observation error enums may be retained.
+
+Cloning tees a stream and can affect buffering and scheduling. This is instrumented
+observation of authentic bytes, not proof that the application consumed its
+original body. Existing Rust-decoded seat/private-field, real rendered board,
+Ack, native publication-byte, actual SIGKILL/barrier and independent PostgreSQL
+durable-prefix assertions remain mandatory. The Node and Python observer tests
+are helper contracts only; they cannot establish actual browser acceptance.
+
 ## Nonvacuous target scenarios
 
 1. White presses Create in the real shell and sees the returned join code
