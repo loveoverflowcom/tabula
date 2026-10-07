@@ -222,6 +222,18 @@ is checked independently of runtime packaging; setup remains read-only and
 native start unavailable until ADR-0043's adapter/configuration contract is met. See the
 [mobile shell contract](../ui/screens/mobile-shell.md) and its separate execution ledger.
 
+[ADR-0046](../adr/0046-mobile-account-surfaces.md) extends only the CMP shell
+with Account/Login/Register/self-Profile/Friends task screens and a typed
+account-session port. Current read-only identity must be supplied by an adapter;
+production defaults to explicit native-adapter unavailability. The optional
+managed image is bound to the exact current identity instance and otherwise
+uses neutral. No native provider/secure-store/social integration, profile edit,
+private persistence or native GameHost change is opened. The
+[screen contract](../ui/screens/mobile-account.md) and
+[evidence ledger](../verification/issue-103-mobile-account/README.md) distinguish
+this UI draft from the separate ADR-0038/0044 isolated web implementation and
+from unexecuted native/device acceptance.
+
 ### 3.4 Handoff: entering and leaving a match
 
 The networked flow below remains a future-phase contract. The implemented opt-in

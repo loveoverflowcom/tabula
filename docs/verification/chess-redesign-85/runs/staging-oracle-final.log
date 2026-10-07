@@ -1,0 +1,21 @@
+   Compiling xtask v0.1.0 (/workspace/scratch/429f9ca90843/tabula-chess-design85-20261007/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.83s
+     Running unittests src/main.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/xtask-82dc563f67882bf0)
+
+running 1 test
+test wasm_stage_cmd::tests::staging_pins_every_runtime_payload_and_static_host_reference ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 114 filtered out; finished in 0.01s
+
+     Running tests/pack_assets_cli.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/pack_assets_cli-e81bae2bb609e230)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/wasm_stage_cli.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/wasm_stage_cli-2349fbf0ad7f7d42)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+

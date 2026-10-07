@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "git_head_after": "78ed2213c6cb29e6f1868e48889c0943f6220bd9",
+  "source_digest": "ff0075e65306d24864071fb536e6cb4f4cc8dad0e4591d53301e50c835d167f7",
+  "files_checked": 713,
+  "changed_files_after_gate": [],
+  "passing_test_executions": 1311,
+  "failed_test_executions": 0,
+  "ignored_test_executions": 18,
+  "gate_stages": [
+    "cargo fmt --all -- --check",
+    "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "cargo test --workspace",
+    "check-deps",
+    "check-no-game-ids",
+    "check-manifests",
+    "generated design tokens are current",
+    "generated mobile discovery catalog is current",
+    "check-no-raw-colors",
+    "cargo deny check"
+  ],
+  "notes": "Documentation receipts may have been added; original frozen file hashes were individually rechecked."
+}

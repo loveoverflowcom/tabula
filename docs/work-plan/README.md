@@ -32,12 +32,6 @@ The [implementation ledger](../verification/standalone-chess/README.md) separate
 executed rules/presentation/build checks from unavailable real runtime pixels.
 Observed coordinate history does not close the gated #52 replay slice.
 
-The [#85 runtime redesign ledger](../verification/chess-redesign-85/README.md)
-records its bounded board/HUD/accepted-motion implementation. Remaining
-[exact-source target acceptance](backlog/chess-85-runtime-acceptance.md) is
-separate from source/headless checks and retains the issue's open pixel,
-device, accessibility and performance gates.
-
 The requested fresh-session Chess integration is implemented locally under
 [ADR-0030](../adr/0030-local-discovery-gameplay-handoff.md), reusing the standalone
 runtime in an opt-in separate document. Its
@@ -183,3 +177,14 @@ normal merge at develop7716b2e. Its boundary is the approved logo/shared brand
 roles and existing consumers; Design01 hierarchy, action-palette PR90, game
 artwork, avatars and phase gates remain independent. The deliverable is a new
 draft PR, with local checks and honest target evidence, not a merge.
+
+## Issue #103 — bounded mobile account UI draft
+
+[ADR-0046](../adr/0046-mobile-account-surfaces.md) adds CMP account task screens
+and a typed current-state/session port, with production native provider/social
+unavailable. [Current acceptance and the later native boundary](backlog/mobile-account-native-acceptance.md)
+remain a scoped backlog item: execute the pinned UI/build/device checks first,
+then separately review and prove real native provider/secure-store/callback and
+social integration when authorized. [The ledger](../verification/issue-103-mobile-account/README.md)
+keeps qualified focused JVM tests distinct from blocked/unexecuted target checks.
+Issue #103 stays open; unrelated queue ordering and native GameHost work are unchanged.

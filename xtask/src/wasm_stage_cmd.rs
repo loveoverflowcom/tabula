@@ -1337,6 +1337,21 @@ mod tests {
         }
     }
 
+    fn standard_runtime_payload_paths() -> [&'static str; 10] {
+        [
+            "tabula-game-client.wasm",
+            "assets/OpenSans-Regular.ttf",
+            "assets/OpenSans-Semibold.ttf",
+            "assets/NotoSerif-Bold.ttf",
+            "chess/0.2.0/cover@1x.b3-8cc678cb546c246e3b64c1c280b654d5316b08e41454a52daecc4a477241a5fd.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.2.0/cover@2x.b3-c6bb188094f6aa8364d5769833a7c60734063dc818eb136d07066efe0e1fff41.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.2.0/grain@1x.b3-5aadb473741576d04408bde4d6712afd1ce5286285dc9b12825d23b0336611bd.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.2.0/grain@2x.b3-af70f79ae71baa39dd630f4852e67b0c4e4f22bb17ce40fe0c2bc5a3ea70e46e.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.2.0/pieces@1x.b3-143639222e2604f324068497ed1538f23528af661ce87404449f2078ef0eb3bb.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.2.0/pieces@2x.b3-3d0bfafcdb1c6a5b4a932e036b2d3f5827e201f7646550216dfabd5fe2df5ac1.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+        ]
+    }
+
     #[test]
     fn staging_pins_every_runtime_payload_and_static_host_reference() {
         let directory = tempdir().unwrap();
@@ -1357,7 +1372,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             stage_versioned_resources(directory.path(), BundleKind::Standard).unwrap(),
-            8
+            10
         );
         let text = std::fs::read_to_string(directory.path().join("resource-manifest.js")).unwrap();
         let value: serde_json::Value = serde_json::from_str(
@@ -1367,7 +1382,15 @@ mod tests {
         .unwrap();
         assert_eq!(value["schema"], 1);
         let files = value["files"].as_object().unwrap();
-        assert_eq!(files.len(), 8);
+        let expected_paths: std::collections::BTreeSet<_> =
+            standard_runtime_payload_paths().into_iter().collect();
+        assert_eq!(
+            files
+                .keys()
+                .map(String::as_str)
+                .collect::<std::collections::BTreeSet<_>>(),
+            expected_paths
+        );
         for entry in files.values() {
             let bytes =
                 std::fs::read(directory.path().join(entry["url"].as_str().unwrap())).unwrap();

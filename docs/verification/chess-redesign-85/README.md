@@ -3,7 +3,10 @@
 This draft implements the board material, compact HUD and accepted-move slice
 of [issue #85](https://github.com/loveoverflowcom/tabula/issues/85), using the
 original [PR #86 design handoff](https://github.com/loveoverflowcom/tabula/pull/86).
-The fresh implementation base is `develop@a3865246ae1ee513b440541f1eb523d4258b0261`.
+The initial fresh implementation base is
+`develop@a3865246ae1ee513b440541f1eb523d4258b0261`. The branch then cleanly
+integrates current `develop@face8a3e058e42fc846efa32082a9b76efaef3c2`; upstream
+mobile-account changes and their documentation are preserved.
 Read [the design acceptance checklist](../../ui/issue-82-game-feel/chess/IMPLEMENTATION.md)
 alongside this narrower source/evidence ledger. The issue remains open.
 
@@ -36,16 +39,18 @@ alongside this narrower source/evidence ledger. The issue remains open.
 The pinned official Rust 1.96.1 toolchain, native/WASM targets and cargo-deny
 0.20.2 were installed into a scratch validation workspace. The source uses
 the repository's existing Cargo/xtask/host test workflows. Final command
-receipts and source identities are retained under `runs/` when available.
+receipts and source identities are retained under `runs/`.
 
 | Claim | Oracle | Status / remaining scope |
 |---|---|---|
 | Accepted choreography | Real legal move transitions; both-color en passant, four castles, all promotion choices/orientations, absolute sparse/dense sampling and interruption | PASS: eight motion tests in the [final Chess suite](runs/chess-final-tests.log) |
-| Projection context/rejection | Generic local/online host dispatch, exact prior/current public Views, receipt rejection and authority loss | PASS: [60 host library tests](runs/host-final-tests.log); live online fault acceptance remains its existing separate gate |
+| Projection context/rejection | Generic local/online host dispatch, exact prior/current public Views, receipt rejection and authority loss | PASS: [60 host library tests](runs/host-final-tests.log), plus [60 isolated web/online library and 15 local integration tests](runs/isolated-web-online-host.log); live online fault acceptance remains its existing separate gate |
 | HUD geometry/input | 320/390 portrait, short landscape, >=44dp controls, target-inward promotion, keyboard/repeat/cancel and popup shielding | PASS: twenty HUD tests plus layout/chooser cases in [113 Chess library tests](runs/chess-final-tests.log); actual glyph/physical-touch pixels remain unverified |
 | Per-game material/assets | Exact six-file `chess@0.2.0` metadata/hash, density selection, cold/retry/warm cache, unchanged Staunton exports | PASS: [reproducibility](runs/assets-reproducibility.log), [host cache tests](runs/host-final-tests.log), [metadata](runs/metadata-pack-tests.log), [12 contrast tests](runs/design-contrast-tests.log); actual GPU/device measurement remains unverified |
 | Rules/replay/conformance | Existing affected Chess/testkit targets and committed replay identities | PASS: [194 affected test executions](runs/chess-final-tests.log), including eleven conformance and seven replay tests; one ignored depth-five perft excluded |
-| Portable repository gate | Repository-owned `cargo xtask check` order | In progress; focused tests are not a substitute for this final aggregate gate |
+| Portable repository gate | Repository-owned `cargo xtask check` order | Historical pre-integration PASS: [full log](runs/core-before-integration-pass.log.gz), exit 0, [1,311 passing executions, 0 failed and 18 ignored](runs/core-before-integration-receipt.json). Integrated run completed fmt/Clippy/workspace/policy stages but its terminal result read was cancelled: [BLOCKED/PENDING receipt](runs/core-integrated-pending.json); no final integrated gate PASS claim |
+| Standalone WASM build/staging | Existing isolated `web` feature, production stager and emitted immutable payloads | PASS: [optimized build](runs/wasm-final-build.log), [staging](runs/wasm-final-stage.log) and [all ten payload size/SHA-256 checks](runs/wasm-final-stage-integrity.json); compilation/staging does not establish browser execution |
+| Standalone loading budget | Actual emitted WASM, external artwork/font exclusion and selected-game normal dependency graph | PASS: [budget receipt](runs/wasm-final-loading-budget.json), 960,573 encoded bytes / 384,415 gzip9 bytes; no DOM runtime or unrelated game in the [normal graph](runs/wasm-final-game-tree.txt); no runtime-performance claim |
 | Runtime pixels | Actual Rust presenter → Macroquad runtime on named target/source | Local launch BLOCKED: Chromium AF_UNIX singleton socket is denied; source/headless tests are not visual proof |
 
 Intentional RenderList golden updates cover frame/grain, shadows, new compact
@@ -57,11 +62,52 @@ bots,presentation,testkit`; the host command was `cargo test -p
 tabula-game-client --features online --lib`. The [122 browser-host source
 tests](runs/web-host-tests.log), [three local-server tests](runs/local-server-tests.log)
 and [five native-host policy tests](runs/native-host-policy-tests.log) also
-passed. They do not imply live browser or native mobile gameplay.
-The [source manifest](runs/source-manifest.json) binds the frozen runtime,
-assets, generated contracts and goldens to their content hashes while Git
-HEAD still names the fresh base. [Golden review hashes](runs/golden-review.json)
-record the seven intentionally changed command snapshots.
+passed. The isolated host command was `cargo test --locked -p
+tabula-game-client --no-default-features --features web,online --lib --test
+local_match`. These checks do not imply live browser or native mobile gameplay.
+The [integrated source manifest](runs/source-manifest.json) binds 731 source
+and artifact files, including current develop, to their content hashes. It is
+source binding, not an integrated terminal gate receipt. The separately retained
+[pre-integration manifest](runs/source-manifest-before-integration.json) binds
+713 files with digest
+`ff0075e65306d24864071fb536e6cb4f4cc8dad0e4591d53301e50c835d167f7`; its
+[complete receipt](runs/core-before-integration-receipt.json) confirms every
+recorded file hash stayed unchanged after that gate. Git HEAD metadata names
+the local validation checkpoint; the published equivalent is verified by tree
+identity. The latest merge changes no Rust/Cargo/Chess assets or goldens.
+[Golden review hashes](runs/golden-review.json) record the seven intentionally
+changed command snapshots.
+
+The [first aggregate attempt](runs/core-initial-staging-failed.log.gz) passed
+formatting and all-feature Clippy, then stopped at
+`staging_pins_every_runtime_payload_and_static_host_reference`: its old
+eight-payload oracle omitted the two newly declared grain densities. The
+[initial source manifest](runs/source-manifest-initial.json) is retained. The
+test-only repair checks the exact ten resource paths, including both
+hash-pinned grain densities, cover/piece densities, three fonts and WASM;
+the existing byte/SHA-256 and host-reference checks remain intact. Its
+[one selected test](runs/staging-oracle-final.log) and the pre-integration
+aggregate gate pass. Production staging, runtime source and goldens were unchanged by
+this repair. Aggregate counts are executions, not unique tests; GitHub CI
+was not inspected.
+
+Large logs are retained losslessly as deterministic gzip files, with
+[uncompressed sizes/hashes and round-trip checks](runs/compressed-logs.json).
+The [integrated partial log](runs/core-integrated-pending.log.gz) records the
+completed stages before the cancelled result read; its terminal outcome is
+not inferred. The earlier full pass remains explicitly qualified. A pending
+or cancelled result read does not become a full-gate PASS.
+
+The supported standalone build command was `cargo build --locked -p
+tabula-game-client --no-default-features --features web --target
+wasm32-unknown-unknown --profile wasm-release`, followed by
+`cargo xtask stage-wasm-game`. The [built artifact](runs/wasm-final-artifact.json)
+is 960,573 bytes with SHA-256
+`a882d57739a9b64e156c1c28785cae658d5f4246c22d96d54f09034dd7caa189`.
+Staging produces 24 required host resources plus canonical tokens and ten
+immutable runtime payloads totaling 1,468,772 encoded bytes. Each actual
+staged payload passes an independent size/SHA-256 recheck. These are build,
+graph and integrity results; no runtime pixels or browser input were exercised.
 
 Independent source review found and resolved compact-popup input fall-through
 to covered seat bars, narrow check-title wrapping into detail, and stale asset

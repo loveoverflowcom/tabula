@@ -1,0 +1,32 @@
+{
+  "compression": "gzip9, mtime0",
+  "logs": [
+    {
+      "file": "core-before-integration-pass.log.gz",
+      "scope": "Historical full gate PASS before current-develop integration",
+      "uncompressed_bytes": 237617,
+      "uncompressed_sha256": "335dc6932892e5e9acabb73fcb219621e6469aa1ff1f21ef355893ae1e11ea75",
+      "gzip_bytes": 38113,
+      "gzip_sha256": "6dcdd41de0f1d96ef1c3c9d1e3b52ea105b25038ce293d072024b1d9b91a9d80",
+      "lossless_roundtrip": "PASS"
+    },
+    {
+      "file": "core-initial-staging-failed.log.gz",
+      "scope": "Preserved first staging oracle failure; test-only repair follows",
+      "uncompressed_bytes": 148172,
+      "uncompressed_sha256": "9603dd5fa8a0249fc53c971fbabdd5c9e944cf2f1ce6aab70a3d9909cd0dff09",
+      "gzip_bytes": 33736,
+      "gzip_sha256": "2b4a45dc6012c44809182dd7ab155dcc9f73fb265102ecccc8040bea809cb879",
+      "lossless_roundtrip": "PASS"
+    },
+    {
+      "file": "core-integrated-pending.log.gz",
+      "scope": "Integrated run: completed stages only; terminal result read cancelled, no PASS claim",
+      "uncompressed_bytes": 131604,
+      "uncompressed_sha256": "81d70ae2df3aa1fdd06ae6e62dcf6fa456b3103fe7a71c66b5763e2c36268692",
+      "gzip_bytes": 30504,
+      "gzip_sha256": "f4d55e75596087f6763350e3ef45e52d788fc5b14c6ee66951cb21b170616b7d",
+      "lossless_roundtrip": "PASS"
+    }
+  ]
+}

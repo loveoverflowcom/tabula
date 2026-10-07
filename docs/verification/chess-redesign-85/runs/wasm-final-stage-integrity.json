@@ -1,0 +1,59 @@
+{
+  "status": "PASS",
+  "scope": "Actual staged public runtime payload size/SHA-256 checks; no browser pixels or interaction claim",
+  "schema": 1,
+  "files": [
+    {
+      "name": "assets/NotoSerif-Bold.ttf",
+      "bytes": 141544,
+      "sha256": "82fd30a024b925fbb3a60d1653d9079f9a72b7e1f0e0de991f77504d3673e88a"
+    },
+    {
+      "name": "assets/OpenSans-Regular.ttf",
+      "bytes": 40460,
+      "sha256": "091300dd1e1c75e85ece3bdb9b1bf17e8490a6b0b5c7b2a18d2109c56c692d84"
+    },
+    {
+      "name": "assets/OpenSans-Semibold.ttf",
+      "bytes": 41628,
+      "sha256": "d2fa996d55a502e25e3747f14d3e594ad3bcb003baa2195ceb810e00940fc366"
+    },
+    {
+      "name": "chess/0.2.0/cover@1x.b3-8cc678cb546c246e3b64c1c280b654d5316b08e41454a52daecc4a477241a5fd.png",
+      "bytes": 44320,
+      "sha256": "48514213be0f88c77ea3025e5994b29c265edd0fbdbf3d900e06b14927c7f8dc"
+    },
+    {
+      "name": "chess/0.2.0/cover@2x.b3-c6bb188094f6aa8364d5769833a7c60734063dc818eb136d07066efe0e1fff41.png",
+      "bytes": 168293,
+      "sha256": "fab45d22c18ac3e2f59964835977ed4a6ea2004178bacc5ce2fab757171b211b"
+    },
+    {
+      "name": "chess/0.2.0/grain@1x.b3-5aadb473741576d04408bde4d6712afd1ce5286285dc9b12825d23b0336611bd.png",
+      "bytes": 1009,
+      "sha256": "0e72a761f54ac9c4a3d1d7a19bd83c3f2642d4be0b07f1f631462c689eecb674"
+    },
+    {
+      "name": "chess/0.2.0/grain@2x.b3-af70f79ae71baa39dd630f4852e67b0c4e4f22bb17ce40fe0c2bc5a3ea70e46e.png",
+      "bytes": 3318,
+      "sha256": "776f648cf59bc92bff1bd2ab1bafed97604c56dfb2e94065bd698f572e46e566"
+    },
+    {
+      "name": "chess/0.2.0/pieces@1x.b3-143639222e2604f324068497ed1538f23528af661ce87404449f2078ef0eb3bb.png",
+      "bytes": 21488,
+      "sha256": "e7b5e385f0a040fed4bba33309b706fed5a90969b1c4086678743c5d6379baab"
+    },
+    {
+      "name": "chess/0.2.0/pieces@2x.b3-3d0bfafcdb1c6a5b4a932e036b2d3f5827e201f7646550216dfabd5fe2df5ac1.png",
+      "bytes": 46139,
+      "sha256": "ee76f8c7fd12c27464984279a650af97b7aacdc6113899def8715ac7393f0504"
+    },
+    {
+      "name": "tabula-game-client.wasm",
+      "bytes": 960573,
+      "sha256": "a882d57739a9b64e156c1c28785cae658d5f4246c22d96d54f09034dd7caa189"
+    }
+  ],
+  "payload_count": 10,
+  "total_encoded_payload_bytes": 1468772
+}

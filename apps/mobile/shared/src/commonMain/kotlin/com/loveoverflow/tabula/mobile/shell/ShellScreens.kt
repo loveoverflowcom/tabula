@@ -40,24 +40,6 @@ import com.loveoverflow.tabula.mobile.localization.ShellStrings
 import com.loveoverflow.tabula.mobile.voice.VoiceController
 import com.loveoverflow.tabula.mobile.voice.VoiceControls
 
-/** Anonymous account scaffold uses the shared neutral silhouette until a verified profile adapter exists. */
-@Composable
-fun AccountScreen(strings: ShellStrings) {
-    ShellPage(strings[ShellCopy.AccountTitle], Modifier.testTag("shell-account")) {
-        ShellSurface {
-            Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp), verticalAlignment = Alignment.CenterVertically) {
-                ShellAnonymousAvatar(strings)
-                TabulaText(strings[ShellCopy.Anonymous], TabulaType.titleLg, Modifier.weight(1f))
-            }
-        }
-        ShellStatePanel(
-            strings[ShellCopy.AccountUnavailableTitle], strings[ShellCopy.AccountUnavailable],
-            Modifier.testTag("shell-account-unavailable"),
-        )
-        TabulaText(strings[ShellCopy.PreferencesUnavailable], TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
-    }
-}
-
 /**
  * Hosts the platform [GameHost] under a toolbar; the shell owns navigation, the host owns the surface.
  * Back goes to the host first. Unexplained host failure releases that surface; retry mounts one
