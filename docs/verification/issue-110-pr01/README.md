@@ -18,7 +18,7 @@ HEAD/tree from actual binary/bundle and working-diff hashes.
 | Shutdown owns upgraded social tasks | Actual WebSocket upgrade with pending Hello, SIGTERM, Close 4411 and process exit | integration-tested PASS within the configured deadline | Delivery/receipt after transport handoff is not claimed |
 | Shutdown preserves uncertain owned journal work | Existing actor behind append barrier; cancellation/quiescence/deadline partitions | example-tested PASS: gateway 24 unit tests and 4 DTO tests | No blind abort or timeout-as-failed-commit inference |
 | Social cancellation drops the same hub attachment and reports failures honestly | Shutdown before/during work, callback cancellation, ticker failure, deadline | example-tested PASS: seven focused tests | Presence metadata is not a device-activity claim |
-| Real provider/browser service journey | New `tests/local-dev/run.py` and `local-dev-backend` workflow | Local provider HTTPS/bootstrap PASS; local browser BLOCKED by existing user NSS. CI at b53b1e2 passed the process test/builds/provider setup, then browser acceptance FAILed before a useful stage was retained | Rerun has closed stage diagnostics, partial cases, verified TLS readiness and normal full Chromium; required service browser PASS remains pending |
+| Real provider/browser service journey | Actual service binaries, Kanidm, PostgreSQL and two independent HTTPS browsers | integration-tested and pixels-inspected PASS at 2f6d7d1: real enrollment/login, create/join, complete checkmate, accepted-move restart and terminal restart; all six board PNGs inspected | Local browser prerequisite remains blocked by existing user NSS; CI uses a job-private trust database and normal sandboxed Chromium |
 | Recorded canvas/board timeout on current baseline | Independent normal Chromium, HTTPS, real PG and unchanged assertions at base d707756 | Main complete-game browser PASS; continuity FAIL reproduced. The corrected uncommitted crash partition PASSes; committed restart exposed an actual supported session-problem/transport marker mismatch | Full final-head suite remains pending; no backend rule defect inferred from timeout |
 
 The real service process command is:
@@ -51,7 +51,7 @@ dependency/game-id/manifest checks, generated tokens/raw-color checks and
 `cargo deny`. Workspace compilation passed with both `--no-default-features`
 and `--all-features`; both services also compiled with `--all-features` for
 `wasm32-unknown-unknown`, preserving their native-only runtime boundaries.
-The shared online Python helper suite passed 169 tests. The current gameplay
+The shared online Python helper suite passed 170 tests, with zero skipped. The current gameplay
 web JavaScript suite passed 123 tests, including 27 direct-transport tests,
 with `node --test --test-isolation=none apps/game-client/web/tests/*.test.cjs`.
 An ignored PostgreSQL test in the default suite is not a PASS.
@@ -69,7 +69,22 @@ an unavailable White board. A focused trace confirmed six network retries
 exhausted during a 24.5-second test-created outage. The rotation control page
 is now prepared before loss; actual rotation, the second durable command and
 stale-attachment denial still precede restoration, which now precedes unrelated
-pixel sampling. The helper regression checks those barriers; actual rerun is pending.
+pixel sampling. A focused rerun at `eb5b388` still exhausted six retries during
+23.2 seconds of required control work, including an 11.2-second real legal
+pointer command and Ack. The revised journey will exercise the existing visible
+Retry action after observing exhaustion and neutral concealment; it will retain
+the original identity, exact pending command, seat, durable and rendered-board
+assertions. That continuity acceptance remains pending.
+
+The required actual-service browser journey passed in
+[Actions run 37638408599](https://github.com/loveoverflowcom/tabula/actions/runs/37638408599).
+Its clean virtual-merge source `2313421acfea02052be645a64e39e44310a1da96`
+has tree `225eba7f0ab3d56444b90bb47114b252aba0e083`, identical to PR head
+`2f6d7d1ea670d7666313597543619d1aa61e24d4`. The public receipt retains
+the service binary and served web/gameplay hashes and six named passing cases.
+Both initial boards, both checkmate boards and both fresh post-restart terminal
+boards were visually inspected. This service journey does not establish the
+remaining full fault-continuity suite.
 
 An actual committed-crash probe then confirmed a separate transport defect:
 the session adapter's supported `PublicProblem` rejection has `version`,

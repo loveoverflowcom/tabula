@@ -10,13 +10,13 @@ from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_
     PageNetwork, Pair, command_identity, pending_record, run, pair_diagnostics, current_context_after_restart, FOCUS_OBSERVER,
     same_record_rotation_game, focus_only_revoke_game, held_prefix,
     crash_game, apply_and_committed_refresh_game, restart_between_grant_and_attach_game,
-    restart_with_fresh_attachment, network_refresh_game)
+    restart_with_fresh_attachment, network_refresh_game, exhausted_uncertain_move, EXHAUSTED_UNCERTAIN_CONCEALED)
 
 
 class ContinuityHelperTests(unittest.TestCase):
     def test_rotation_prepares_control_before_outage_and_restores_after_current_authority_witnesses(self):
         # Coordination only: no mock response supplies actual browser evidence.
-        events=[];white,black,control=mock.Mock(),mock.Mock(),mock.Mock()
+        events=[];white,black,control=mock.MagicMock(),mock.Mock(),mock.Mock()
         context=mock.Mock();context.new_page.return_value=control
         context.cookies.side_effect=[[{'name':'__Host-tabula_session','value':'old'}],
                                      [{'name':'__Host-tabula_session','value':'new'}]]
@@ -24,6 +24,7 @@ class ContinuityHelperTests(unittest.TestCase):
         scope='b'*64;match_id='a'*32;command={'seq':1}
         pair=mock.Mock(pages=[white,black],match_id=match_id,
             facts=[{'account_id':'white'},{'account_id':'black'}],
+            failed_contexts=[0,0],
             attachments=[[{'operation_scope':scope,'attachment_id':'old'}],[{}]])
         pair.tap.side_effect=lambda *args:(events.append(('pointer_command',)) or
             json.dumps({'version':2,'command':command}))
@@ -35,11 +36,16 @@ class ContinuityHelperTests(unittest.TestCase):
         network=mock.Mock()
         def offline(value):
             events.append(('offline',value))
-            if not value:
-                response=mock.Mock(url=f'https://localhost:9443/api/v1/matches/{match_id}/command',status=200)
-                response.request.post_data=json.dumps({'version':2,'command':command,'attachment_id':'fresh'})
-                callbacks['response'](response)
+            if value:pair.failed_contexts[0]=6
         network.offline.side_effect=offline
+        white.evaluate.return_value=6
+        white.wait_for_function.side_effect=lambda predicate,**kwargs:events.append(('exhaustion_concealed',)) if predicate==EXHAUSTED_UNCERTAIN_CONCEALED else None
+        def retry(**kwargs):
+            events.append(('visible_retry',))
+            response=mock.Mock(url=f'https://localhost:9443/api/v1/matches/{match_id}/command',status=200)
+            response.request.post_data=json.dumps({'version':2,'command':command,'attachment_id':'fresh'})
+            callbacks['response'](response)
+        white.locator.return_value.dblclick.side_effect=retry
         def api_call(page,path,*args):
             if path=='/api/v1/auth/refresh':
                 events.append(('credential_rotation',));return {'status':204,'body':None}
@@ -49,7 +55,7 @@ class ContinuityHelperTests(unittest.TestCase):
         with mock.patch('continuity_acceptance.Pair',return_value=pair), \
              mock.patch('continuity_acceptance.PageNetwork',return_value=network), \
              mock.patch('continuity_acceptance.held'), \
-             mock.patch('continuity_acceptance.pending_record',return_value={'operation_scope':scope}), \
+             mock.patch('continuity_acceptance.pending_record',return_value={'operation_scope':scope,'command':'retained-original'}), \
              mock.patch('continuity_acceptance.fault_control',return_value={'status':200}), \
              mock.patch('continuity_acceptance.context_facts',side_effect=facts), \
              mock.patch('continuity_acceptance.api',side_effect=api_call), \
@@ -64,10 +70,33 @@ class ContinuityHelperTests(unittest.TestCase):
         for witness in (('credential_rotation',),('oracle',2,1),('stale_rejected',)):
             self.assertLess(events.index(witness),restored)
         self.assertLess(restored,events.index(('pixels',1,'White to move')))
+        self.assertLess(events.index(('exhaustion_concealed',)),restored)
+        self.assertLess(restored,events.index(('visible_retry',)))
         self.assertEqual([event[1:] for event in events if event[0]=='pixels'],[
             (0,'White to move'),(1,'Black to move'),(1,'White to move'),(0,'White to move')])
         self.assertEqual(len(cases),1);pair.full.assert_called_once_with(2)
+        self.assertTrue(cases[0]['bounded_recovery_exhausted'])
+        self.assertTrue(cases[0]['visible_user_retry_before_resync'])
         white.remove_listener.assert_called_once_with('response',callbacks['response'])
+
+    def test_exhausted_retry_requires_actual_attempt_bound_and_retained_scope_hint(self):
+        page=mock.Mock();page.evaluate.return_value=6
+        pair=mock.Mock(pages=[page,mock.Mock()],match_id='a'*32,failed_contexts=[6,0])
+        old={'operation_scope':'original-scope'}
+        valid={'operation_scope':'original-scope','command':'original-opaque-command'}
+        with mock.patch('continuity_acceptance.pending_record',return_value=valid):
+            exhausted_uncertain_move(pair,0,old,0)
+        page.wait_for_function.assert_called_once_with(EXHAUSTED_UNCERTAIN_CONCEALED,timeout=60_000)
+        for failures in (0,5,7):
+            pair.failed_contexts[0]=failures
+            with self.subTest(failures=failures),self.assertRaises(AcceptanceFailure):
+                exhausted_uncertain_move(pair,0,old,0)
+        pair.failed_contexts[0]=6
+        for pending in (None,{'operation_scope':'different','command':'original'},
+                        {'operation_scope':'original-scope','command':None}):
+            with self.subTest(pending=pending), \
+                 mock.patch('continuity_acceptance.pending_record',return_value=pending), \
+                 self.assertRaises(AcceptanceFailure):exhausted_uncertain_move(pair,0,old,0)
 
     def test_network_restore_follows_durable_confirmation_before_other_browser_pixels(self):
         # Coordination doubles only: actual pixels, commits and retransmission
@@ -209,6 +238,7 @@ class ContinuityHelperTests(unittest.TestCase):
                 (apply_and_committed_refresh_game,'after_commit',1),
                 (same_record_rotation_game,None,1),(restart_between_grant_and_attach_game,None,1)):
             pair=mock.Mock(pages=[mock.Mock(),mock.Mock()],attachments=[[{}],[{}]],
+                           failed_contexts=[0,0],
                            facts=[{'account_id':'white'},{'account_id':'black'}])
             pair.arm.return_value='synthetic-token'
             gate_held=[]
@@ -374,6 +404,7 @@ class ContinuityHelperTests(unittest.TestCase):
         context.cookies.side_effect = [[{'name': '__Host-tabula_session', 'value': value}]
                                       for value in ('before', 'after')]
         pair = mock.Mock(pages=[white, black],
+                         failed_contexts=[0,0],
                          attachments=[[{'operation_scope': 'same-scope'}], []],
                          facts=[{'account_id': 'same-account'}, {}])
         pair.tap.return_value = 'original'

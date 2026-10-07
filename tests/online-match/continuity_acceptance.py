@@ -40,6 +40,17 @@ CURRENT_BOARD = """({seat,status,readonly}) => {
   && d.onlineStatus===status && c && !c.hidden && !c.hasAttribute('aria-hidden') && getComputedStyle(c).visibility==='visible' && c.getBoundingClientRect().width>0
   && (readonly ? d.onlineConnection?.startsWith('Read-only') : d.onlineConnection==='Connected · server-authoritative');
 }"""
+EXHAUSTED_UNCERTAIN_CONCEALED = """() => {
+ const root=document.documentElement, canvas=document.querySelector('#glcanvas');
+ const error=document.querySelector('#runtime-error'), detail=document.querySelector('#error-detail');
+ return root.dataset.onlineAvailability==='unavailable'
+  && ['onlineSeat','onlineRevision','onlineStatus','onlineConnection'].every(key=>!Object.hasOwn(root.dataset,key))
+  && canvas && canvas.hidden && canvas.width===0 && canvas.height===0
+  && canvas.getAttribute('aria-hidden')==='true' && getComputedStyle(canvas).visibility==='hidden'
+  && Array.from(document.querySelectorAll('#online-status-container span')).every(node=>node.textContent.trim()==='')
+  && error && error.getBoundingClientRect().width>0 && error.getBoundingClientRect().height>0
+  && detail?.textContent.trim()==='The move result is unknown. Moves are blocked. Retry to check the saved server result, or return to Tabula.';
+}"""
 MOVES = [('f2','f3'),('e7','e5'),('g2','g4'),('d8','h4')]
 _PAIR_RESULTS = ContextVar('continuity_pair_results', default=None)
 
@@ -144,10 +155,12 @@ class Pair:
         self.pages=[context.new_page() for context in contexts]
         self.contexts=contexts;self.private=private;self.label=label
         self.attachments=[[],[]];self.commands=[[],[]]
+        self.failed_contexts=[0,0]
         self.facts=[];self.match_id=None;self.audit_inputs=0;self.expected_scopes=2
         for role,page in enumerate(self.pages):
             self.stage('enroll',role)
             page.on('requestfinished',lambda request,r=role:self.observe_attach_finished(request,r))
+            page.on('requestfailed',lambda request,r=role:self.observe_context_failed(request,r))
             page.on('request',lambda request,r=role:self.observe_command(request,r))
             page.goto(ORIGIN+'/__fixture/enroll',wait_until='domcontentloaded')
             enroll_actual_page(page,('white','black')[role],{'startup':{'enrollment':[]}})
@@ -192,6 +205,10 @@ class Pair:
         if self.match_id and urlsplit(request.url).path==f'/api/v1/matches/{self.match_id}/command':
             require(request.post_data is not None,'actual interrupted command body missing')
             self.commands[role].append(request.post_data)
+    def observe_context_failed(self,request,role):
+        if request.method=='GET' and urlsplit(request.url).path=='/api/v1/auth/context':
+            require(self.failed_contexts[role]<64,'failed context observations exceeded their bound')
+            self.failed_contexts[role]+=1
     def current_status(self,role,status,readonly=False,page=None):
         """Wait for current native presenter facts and geometry, without a pixel claim."""
         status=seat_status(role,status)
@@ -404,6 +421,7 @@ def same_record_rotation_game(contexts,private,ca,results):
     require(current['account_id']==pair.facts[0]['account_id'],'rotation control page changed the account')
     old=pair.attachments[0][-1];gate=pair.arm(0,'after_commit')
     original=pair.tap(0,0);held(ca,gate);pair.held_prefix(ca,gate,1)
+    failed_before=pair.failed_contexts[0]
     network=PageNetwork(white);network.offline(True)
     require(fault_control(ca,'release',gate)['status']==200,'committed rotation-case barrier could not release')
     white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
@@ -424,6 +442,10 @@ def same_record_rotation_game(contexts,private,ca,results):
     stale=api(control,f'/api/v1/matches/{pair.match_id}/poll',
               {'version':MATCH_VERSION,'attachment_id':old['attachment_id']},current['csrf_token'])
     reattach_required(stale,'valid rotated membership received stale-attachment output')
+    # This control journey intentionally outlasts bounded automatic recovery.
+    # Prove its exhausted neutral surface and exact retained hint before the
+    # source-owned visible Retry starts a genuinely fresh document.
+    exhausted_uncertain_move(pair,0,old,failed_before)
     observed={'original_ack':False}
     def original_ack(response):
         if urlsplit(response.url).path!=f'/api/v1/matches/{pair.match_id}/command' or response.status!=200:return
@@ -437,6 +459,8 @@ def same_record_rotation_game(contexts,private,ca,results):
     white.on('response',original_ack)
     try:
         network.offline(False);control.close()
+        with white.expect_navigation(wait_until='domcontentloaded'):
+            white.locator('#retry').dblclick(delay=10)
         pair.board(1,'White to move')
         pair.board(0,'White to move');restored_same_scope(pair,0,old,original)
         require(observed['original_ack'],'same-record rotation did not reproduce the exact original Ack')
@@ -445,7 +469,22 @@ def same_record_rotation_game(contexts,private,ca,results):
     results.append({'case':'same_auth_record_rotation_preserves_uncertain_original_operation',
                     'pass':True,'credential_rotated':True,'reattach_required_observed':True,
                     'same_operation_scope':True,'exact_original_ack':True,'no_duplicate_move':True})
+    results[-1].update({'bounded_recovery_exhausted':True,'visible_user_retry_before_resync':True})
     network.close();pair.close()
+
+
+def exhausted_uncertain_move(pair,role,old,failed_before):
+    """Prove genuine bounded outage exhaustion before an explicit Retry gesture."""
+    page=pair.pages[role]
+    page.wait_for_function(EXHAUSTED_UNCERTAIN_CONCEALED,timeout=60_000)
+    attempts=page.evaluate('window.TabulaDirectTransport.MAX_ATTEMPTS')
+    require(type(attempts) is int and 1<=attempts<=16
+            and pair.failed_contexts[role]-failed_before==attempts,
+            'actual context failures did not match the runtime recovery bound')
+    pending=pending_record(page,pair.match_id)
+    require(pending is not None and pending.get('operation_scope')==old['operation_scope']
+            and isinstance(pending.get('command'),str),
+            'exhausted recovery lost the exact uncertain operation hint')
 
 
 def current_context_after_restart(ca:Path,cookie:str,account:str)->dict:
@@ -635,6 +674,7 @@ def retired_receipt_game(contexts,private,ca,supervisor,mode,results):
     supervisor.kill();supervisor.restart(mode)
     ready=contexts[0].new_page();ready_server(ready);ready.close()
     pair=Pair(contexts,private,mode+'-receipt');white,black=pair.pages
+    old=pair.attachments[0][-1];failed_before=pair.failed_contexts[0]
     gate=pair.arm(0,'after_commit');original=pair.tap(0,0);held(ca,gate)
     network=PageNetwork(white);network.offline(True)
     require(fault_control(ca,'release',gate)['status']==200,'receipt fault gate could not release')
@@ -649,7 +689,11 @@ def retired_receipt_game(contexts,private,ca,supervisor,mode,results):
     # credential/storage state is copied between opponent browser processes.
     pair.full(1,white=replacement)
     if mode=='expired':time.sleep(1.25)
-    network.offline(False);pair.board(0,TERMINAL_STATUS,readonly=True)
+    exhausted_uncertain_move(pair,0,old,failed_before)
+    network.offline(False);white.bring_to_front()
+    with white.expect_navigation(wait_until='domcontentloaded'):
+        white.locator('#retry').dblclick(delay=10)
+    pair.board(0,TERMINAL_STATUS,readonly=True)
     unknown=pending_record(white,pair.match_id)
     require(unknown is not None and unknown.get('unknown') is True and unknown.get('command') is None,
             'retired original receipt was mistaken for a failed command')
@@ -661,7 +705,8 @@ def retired_receipt_game(contexts,private,ca,supervisor,mode,results):
     white.wait_for_timeout(350)
     require(len(pair.commands[0])==before,'unknown-result board issued a new or repeated move')
     pair.oracle(4)
-    results.append({'case':mode+'_original_receipt_unknown_full_resync','pass':True,'unknown_never_failed':True,'read_only':True,'no_duplicate_move':True,'exact_retry_checked':True})
+    results.append({'case':mode+'_original_receipt_unknown_full_resync','pass':True,'unknown_never_failed':True,'read_only':True,'no_duplicate_move':True,'exact_retry_checked':True,
+                    'bounded_recovery_exhausted':True,'visible_user_retry_before_resync':True})
     network.close();pair.close()
 
 
