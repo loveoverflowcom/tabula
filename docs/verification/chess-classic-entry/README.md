@@ -37,7 +37,8 @@ draft contains only implementation inputs and scoped implementation evidence.
 | Input, session and public-safe denial semantics survive | online entry and existing HTTP boundary | focused shell/core tests, source review | PASS |
 | Authoritative portable local core gate | `cargo xtask check` in its maintained order | frozen-source final aggregate invocation | PASS |
 | Actual local-canvas piece quality | actual desktop-browser WASM; small silhouettes/orientation/promotion | 18 captured and inspected source 8ea board frames | PASS |
-| Actual entry reflow/history | actual native fields and measured text-scale layout | anonymous input checks passed; facts correction/history qualification await affected-source recheck | BLOCKED |
+| Actual entry reflow | actual native fields and measured text-scale layout | all ten source 49da narrow checks and seven inspected originals | PASS |
+| Actual entry history | routed owner retirement and retained old DOM | source 49da native Back exposed a trap; focused lifecycle correction awaits exact-source browser recheck | BLOCKED |
 | Real two-browser authenticated create/join | existing isolated HTTPS/PostgreSQL composition | maintained real-authority fixture | NOT_RUN |
 
 Commands, nonzero execution counts, toolchain/source identity and changed
@@ -129,9 +130,10 @@ No merge ordering or approval is implied.
 
 ## Remaining acceptance
 
-Actual 320×640/390×844/desktop/landscape layouts, four schemes, DPR 1/2, 200%
-text, both orientations, all small silhouettes and promotion/check/focus need
-named pixel inspection. Physical touch, screen-reader completion, native/mobile
+The source-pinned browser reviews below cover the captured 320/390/desktop,
+four-scheme, DPR 1/2, orientation, promotion/check/focus and native 200% text
+partitions. Landscape and complete ready-form keyboard/history acceptance remain
+separate checks. Physical touch, screen-reader completion, native/mobile
 embedding and performance are separate target evidence. Quick matchmaking stays
 unavailable until #55 has an approved real queue contract and server authority.
 Untimed/unranked direct play creates no clock, rating, bot or online-count claim.
@@ -157,15 +159,53 @@ document scrollWidth was 470px. The scoped facts correction retains localized
 dt/dd order and shared tokens/fonts, adds a detail-only style hook, uses zero
 minimum tracks/wrapping and stacks compact term/value pairs. Source guard
 fails against original CSS; 102 web tests and native/WASM lint/check pass.
-Actual after-correction bounds/pixels remain pending.
+The [source 49da affected-entry run](https://github.com/loveoverflowcom/tabula/actions/runs/37609958188)
+and [original artifact](https://github.com/loveoverflowcom/tabula/actions/runs/37609958188/artifacts/11477991569)
+pass all ten narrow checks: document widths are exactly 320/320/390 at native
+320/16px, 320/32px and 390/32px preferences, with every facts child and entry
+control inside the viewport. All seven originals were inspected; all five pairs
+are retained, with natural vertical scrolling. The emitted shell is 814,167
+bytes, within the unchanged 900,000-byte limit.
 
 The old entry driver returned to `/games` and then the correct game URL, but
 its 400ms pre-Forward pause did not await actual Library content. A subsequent
 entry selector timed out without recorded browser exception. This remains a
 qualified harness/route-restoration observation, not an attributed router
 regression; the affected-source recheck awaits a semantic Library marker.
+That newer run semantically awaited Library for ten seconds after native Back.
+The URL reached `/games`, but Library did not mount, old entry controls remained
+and the browser emitted `unreachable`. Forward was not attempted. This confirms
+a rendering trap; the message alone did not identify its source.
 Generated originals, JSON and logs stay in Actions artifacts, outside Git.
 
 Independent source review of the two-file correction found no actionable
 production defect. The frozen portable `cargo xtask check` passed; no
 rendered-after acceptance is inferred from that result.
+
+## Retained-entry lifecycle correction
+
+The actual nested router cleans the old route owner before returning its new
+view. The framework's `Suspend::rebuild` then yields one executor tick before
+replacing the retained old DOM. Newly added online render reads used infallible
+access to the retired account/entry arena during this gap. A native probe using
+the real executor and actual Suspend boundary reproduces the disposed-signal
+panic; the historical develop panel control reaches replacement.
+
+The entry-only correction uses live-owner and fallible snapshot reads, disables
+retired admission controls, hides retired admission/account actions and makes
+retained code-edit callbacks inert. Current-account tickets, uncertain dispatched
+POST suppression and same-document input caching remain the authority contracts.
+No router, account security, backend, rules, assets or style change is involved.
+
+The consumed native regression requires old retained reads to run conservatively
+before replacement, eventual replacement and typed-code recovery. Restoring only
+the original `can_submit` read compiles, selects that one test and fails with
+`already been disposed`. The corrected online and expanded web suites each pass
+103 tests. These are reactive-lifecycle checks, not browser history acceptance;
+the final exact-source history capture remains pending.
+
+Final frozen-source formatting, native/WASM clippy and WASM compilation pass.
+The portable aggregate passes all maintained stages with 1,299 test executions,
+18 ignored tests and 60 nonempty targets. Its default workspace test selection
+does not enable `online`; the explicitly enabled 103-test suites above execute
+the new lifecycle regression. No zero-test or ignored target closes a boundary.

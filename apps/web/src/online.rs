@@ -1,6 +1,8 @@
 //! Opt-in direct-match task hierarchy. Registry owns eligibility/configuration;
 //! durable server admission owns match identity and seat (ADR-0041 / I-9).
 mod core;
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod lifecycle_tests;
 #[cfg(any(target_arch = "wasm32", test))]
 mod suppression;
 use crate::{
@@ -76,31 +78,26 @@ fn panel_with_binding(id: String, binding: RuntimeBinding) -> AnyView {
         return view! { <DirectUnavailable/> }.into_any();
     }
     let controller = use_controller(id);
-    let Controller {
-        state,
-        account,
-        session,
-        ..
-    } = controller;
+    let account = controller.account;
     view! {
         <div class="play-entry">
-            <section class="online-panel" aria-labelledby="online-heading" aria-busy=move || state.get().busy()>
+            <section class="online-panel" aria-labelledby="online-heading" aria-busy=move || controller.snapshot().is_some_and(|state| state.busy())>
                 <h2 id="online-heading" class="section__subtitle">{move || Messages::new(locale.get()).text("online.heading")}</h2>
                 <p class="section__body online-panel__scope">{move || Messages::new(locale.get()).text("online.scope")}</p>
                 <button type="button" class="btn btn--filled btn--principal online-panel__create" data-testid="online-create" aria-describedby="online-status" disabled=move || !controller.can_submit(Action::Create) on:click=move |_| controller.submit(Action::Create)>
-                    {move || Messages::new(locale.get()).text(if state.get().phase == Phase::Pending(Action::Create) { "online.creating" } else { "online.create" })}
+                    {move || Messages::new(locale.get()).text(if controller.snapshot().is_some_and(|state| state.phase == Phase::Pending(Action::Create)) { "online.creating" } else { "online.create" })}
                 </button>
-                <form class="online-panel__join field" data-state=move || if state.get().phase == Phase::Error("online.invalid_code") { "invalid" } else { "enabled" } on:submit=move |event| { event.prevent_default(); controller.submit(Action::Join); }>
+                <form class="online-panel__join field" data-state=move || if controller.snapshot().is_some_and(|state| state.phase == Phase::Error("online.invalid_code")) { "invalid" } else { "enabled" } on:submit=move |event| { event.prevent_default(); controller.submit(Action::Join); }>
                     <label for="online-join-code" class="field__label">{move || Messages::new(locale.get()).text("online.code.label")}</label>
                     <div class="online-panel__join-controls">
-                        <input id="online-join-code" data-testid="online-join-code" class="field__control" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="online-status" aria-invalid=move || state.get().phase == Phase::Error("online.invalid_code") placeholder=move || Messages::new(locale.get()).text("online.code.placeholder") prop:value=move || state.get().code readonly=move || state.get().busy() on:input=move |event| controller.edit_code(&event_target_value(&event))/>
+                        <input id="online-join-code" data-testid="online-join-code" class="field__control" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="online-status" aria-invalid=move || controller.snapshot().is_some_and(|state| state.phase == Phase::Error("online.invalid_code")) placeholder=move || Messages::new(locale.get()).text("online.code.placeholder") prop:value=move || controller.snapshot().map(|state| state.code).unwrap_or_default() readonly=move || controller.snapshot().is_none_or(|state| state.busy()) on:input=move |event| controller.edit_code(&event_target_value(&event))/>
                         <button type="submit" class="btn btn--tonal" data-testid="online-join" aria-describedby="online-status" disabled=move || !controller.can_submit(Action::Join)>
-                            {move || Messages::new(locale.get()).text(if state.get().phase == Phase::Pending(Action::Join) { "online.joining" } else { "online.join" })}
+                            {move || Messages::new(locale.get()).text(if controller.snapshot().is_some_and(|state| state.phase == Phase::Pending(Action::Join)) { "online.joining" } else { "online.join" })}
                         </button>
                     </div>
                 </form>
                 <p id="online-status" class="status online-panel__status" tabindex="-1" role="status" aria-live="polite" aria-atomic="true" data-testid="online-status">{move || Messages::new(locale.get()).text(controller.status_key())}</p>
-                {move || state.get().cleanup_failed.then(|| view! {
+                {move || controller.snapshot().is_some_and(|state| state.cleanup_failed).then(|| view! {
                     <p class="field__error" role="status" data-testid="online-safety-cleanup-failed">{Messages::new(locale.get()).text("online.safety_cleanup_failed")}</p>
                 })}
                 {move || controller.visible_admission().map(|admission| {
@@ -114,15 +111,14 @@ fn panel_with_binding(id: String, binding: RuntimeBinding) -> AnyView {
                         </div>
                     }
                 })}
-                {move || if matches!(account.state.get().status, AccountStatus::SignedOut | AccountStatus::Expired) {
-                    let snapshot = account.state.get();
+                {move || if let Some(snapshot) = controller.account_snapshot().filter(|snapshot| matches!(snapshot.status, AccountStatus::SignedOut | AccountStatus::Expired)) {
                     view! {
                         <div class="online-panel__session-action">
                             <A href=if snapshot.login_available { "/login" } else { "/account" } attr:class="btn btn--tonal" attr:data-testid="online-signin">{Messages::new(locale.get()).text(if snapshot.login_available { "online.account" } else { "online.check_account" })}</A>
                             {snapshot.login_available.then(|| view! { <p class="meta">{Messages::new(locale.get()).text("online.signin_hint")}</p> })}
                         </div>
                     }.into_any()
-                } else if !state.get().busy() && !session.blocked.get() && controller.visible_admission().is_none() {
+                } else if controller.snapshot().is_some_and(|state| !state.busy()) && !controller.blocked() && controller.visible_admission().is_none() {
                     view! { <button type="button" class="btn btn--text" data-testid="online-recheck" on:click=move |_| account.recheck()>{Messages::new(locale.get()).text("online.recheck")}</button> }.into_any()
                 } else { ().into_any() }}
             </section>
@@ -174,8 +170,9 @@ fn use_controller(id: String) -> Controller {
         session,
     };
     Effect::new(move |_| {
-        let snapshot = account.state.get();
-        controller.context_changed(&snapshot.status);
+        if let Some(snapshot) = controller.account_snapshot() {
+            controller.context_changed(&snapshot.status);
+        }
     });
     on_cleanup(move || controller.dispose());
     controller
@@ -208,22 +205,44 @@ fn QuickMatchUnavailable() -> impl IntoView {
     }
 }
 impl Controller {
+    // Routes cleans up the old owner before Suspend replaces its retained DOM
+    // on the next executor tick. Queued render reads must tolerate retirement.
+    fn alive(self) -> bool {
+        self.runtime
+            .try_with_value(|runtime| runtime.alive)
+            .unwrap_or(false)
+    }
+    fn snapshot(self) -> Option<EntryState> {
+        self.alive().then(|| self.state.try_get()).flatten()
+    }
+    fn account_snapshot(self) -> Option<crate::account::AccountSnapshot> {
+        self.alive().then(|| self.account.state.try_get()).flatten()
+    }
+    fn blocked(self) -> bool {
+        self.session.blocked.try_get().unwrap_or(true)
+    }
     fn can_submit(self, action: Action) -> bool {
-        let _ = self.account.state.get();
-        self.session.safety_ready
-            && self.state.get().can_submit(
-                action,
-                self.account.document_ticket().is_some(),
-                self.session.blocked.get(),
-            )
+        self.snapshot().is_some_and(|state| {
+            self.account_snapshot().is_some()
+                && self.session.safety_ready
+                && state.can_submit(
+                    action,
+                    self.account.document_ticket().is_some(),
+                    self.blocked(),
+                )
+        })
     }
     fn status_key(self) -> &'static str {
-        let state = self.state.get();
-        let account = self.account.state.get();
+        let Some(state) = self.snapshot() else {
+            return "online.context_changed";
+        };
+        let Some(account) = self.account_snapshot() else {
+            return "online.session_unavailable";
+        };
         if !self.session.safety_ready {
             return "online.safety_unavailable";
         }
-        if self.session.blocked.get() && !state.busy() && !state.cleanup_failed {
+        if self.blocked() && !state.busy() && !state.cleanup_failed {
             return "online.unknown";
         }
         if state.busy() {
@@ -239,14 +258,15 @@ impl Controller {
             }
             AccountStatus::Resolving => "online.session_pending",
             AccountStatus::Authenticated { .. } => {
-                state.result_key(self.session.blocked.get(), state.cleanup_failed)
+                state.result_key(self.blocked(), state.cleanup_failed)
             }
             AccountStatus::Disconnected => "online.disconnected",
             _ => "online.session_unavailable",
         }
     }
     fn visible_admission(self) -> Option<tabula_match_http::MatchAdmission> {
-        let _ = self.account.state.get();
+        let state = self.snapshot()?;
+        self.account_snapshot()?;
         let current = self.account.document_ticket()?;
         let matches = self
             .runtime
@@ -255,10 +275,12 @@ impl Controller {
             })
             .unwrap_or(false);
         matches
-            .then(|| self.state.get().admission)
+            .then_some(state.admission)
             .flatten()
             .filter(|admission| {
-                let id = self.runtime.with_value(|runtime| runtime.id.clone());
+                let Some(id) = self.runtime.try_with_value(|runtime| runtime.id.clone()) else {
+                    return false;
+                };
                 admission_handoff(
                     &id,
                     admission,
@@ -348,7 +370,10 @@ impl Controller {
         });
     }
     fn edit_code(self, raw: &str) {
-        self.state.update(|state| state.edit_code(raw));
+        if !self.alive() {
+            return;
+        }
+        self.state.try_update(|state| state.edit_code(raw));
         // A routed replacement can mount before old owner cleanup; cache safe
         // input synchronously rather than relying on a later reactive effect.
         self.remember();
@@ -376,7 +401,9 @@ impl Controller {
         let Some(admission) = self.visible_admission() else {
             return;
         };
-        let id = self.runtime.with_value(|runtime| runtime.id.clone());
+        let Some(id) = self.runtime.try_with_value(|runtime| runtime.id.clone()) else {
+            return;
+        };
         let target = admission_handoff(&id, &admission, runtime_binding(), locale);
         if target.is_some_and(|url| navigate(&url)) {
             return;

@@ -47,3 +47,24 @@ inspected. They are artwork evidence, not live renderer screenshots.
 Provider full-document sign-in's loss of typed code/chosen-game continuation is
 disclosed. No new queue/backend, canonical rules/protocol, game-ID platform
 branch or production activation was found. PR112 remains independent.
+
+## Retained-entry lifecycle follow-up
+
+An independent review against `49da8c29d805303255b1d7ea2d3cc5563c9c7787`
+found no actionable defect in the two-file retired-read correction. All online
+render/effect reads tolerate the nested router's old-owner-cleanup / retained-DOM
+tick. Conservative defaults disable admission, hide retired admission data and
+make the input readonly. Retained events remain inert through entry lifetime
+and existing current-account tickets.
+
+Dispatched-POST uncertainty, retirement-before-abort, cache ownership and late
+completion fences are unchanged. No account, router, backend, board or styling
+change was introduced. The reviewer independently ran the actual Controller /
+RenderEffect / Suspend regression (one selected, PASS), then its compiled
+negative control restoring only the original `can_submit` method (one selected,
+expected disposed-signal runtime failure).
+
+That native regression does not mount a complete browser DOM or establish native
+history, Fetch cancellation or real POST outcomes. Exact-source after-fix history
+acceptance remains pending the bounded browser capture; no merge approval is
+implied.
