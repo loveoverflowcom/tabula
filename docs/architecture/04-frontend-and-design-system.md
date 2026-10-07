@@ -242,7 +242,8 @@ local discovery handoff is bounded by [ADR-0030](../adr/0030-local-discovery-gam
 two-human configuration and a trusted return to detail/setup. Local return/reload
 starts over; it is neither a server identity nor saved resume or `/matches/:id`.
 The local shell never prefetches gameplay. Explicit launch loads the selected
-WASM, fonts and one nearest-density critical piece atlas; cover textures and
+WASM, fonts, one nearest-density critical piece atlas and the small managed
+nearest-density grain texture; cover textures and
 other games are not required for its first board. Its bounded public-file cache
 is described in §12.2 and the [loading ledger](../verification/game-loading/README.md).
 
@@ -891,6 +892,20 @@ Concretely:
 - If two events arrive faster than their animations, animations **compress or drop**; they never
   queue unboundedly. Rule: an animation whose start is already >600 ms stale snaps to its end state.
 
+The renderer-neutral `GamePresentation::on_view_event_with_projection` default hook
+adds the previous and current **authorized `View`**, never canonical `State`, to
+accepted event dispatch. Local and isolated online hosts supply those endpoints;
+Chess uses them to pin one bounded composition and locate captures (including en
+passant) at the actual prior square. Existing event-only presenters retain their
+behavior through the default hook. `on_command_rejected` discards local previews
+or motion after a definitive rule rejection without changing the current view.
+Recovery/resync/disconnect replace `Local` rather than replaying historical motion.
+The current hosts have no event-origin presentation timestamp: their event-only
+fallback starts at observation time, and resync snapshots contain no events. A
+presenter with an explicit original timestamp applies the shared strict `>600 ms`
+late-arrival boundary; elapsed sampling of an already-started move still resolves
+to its terminal state and does not restart it.
+
 ### 9.2 Semantic motion tokens
 
 Each maps to a spring/duration and a choreography, so the same action feels the same in every game.
@@ -908,7 +923,7 @@ Each maps to a spring/duration and a choreography, so the same action feels the 
 | `motion.vote` | vote cast/retracted | `dur_short` marker fly to target + counter tick |
 | `motion.score-update` | score/clock changes | number roll with `ease_decelerate`, `dur_medium`; clocks never animate digits |
 | `motion.win` / `motion.lose` | outcome | `dur_xlong` choreographed sequence, always skippable by tap |
-| `motion.invalid` | rejected command | 120 ms 3-cycle shake, `danger` state layer flash, short dry sound — **never a modal** |
+| `motion.invalid` | rejected command | 80 ms authored profile, `danger` state layer flash, short dry sound — **never a modal** |
 | `motion.enter` / `motion.exit` | overlays, sheets, toasts | `spring_standard` slide+fade, exit 0.7× duration of enter |
 | `motion.drag-lift` / `motion.drag-drop` | picking up / releasing | elevation change + shadow growth + 1.04 scale |
 

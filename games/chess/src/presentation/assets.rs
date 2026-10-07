@@ -24,6 +24,12 @@ pub const COVER_1X: &[u8] = include_bytes!("../../assets/cover@1x.png");
 /// Bounded 480×320 editorial entry artwork at density 2.
 #[cfg(not(target_arch = "wasm32"))]
 pub const COVER_2X: &[u8] = include_bytes!("../../assets/cover@2x.png");
+/// Subtle transparent 128×128 wood grain, containing no gameplay or labels.
+#[cfg(not(target_arch = "wasm32"))]
+pub const GRAIN_1X: &[u8] = include_bytes!("../../assets/grain@1x.png");
+/// The same restrained decorative grain at explicitly declared density 2.
+#[cfg(not(target_arch = "wasm32"))]
+pub const GRAIN_2X: &[u8] = include_bytes!("../../assets/grain@2x.png");
 /// Exact manifest-local file names and bytes for the host's named preload adapter.
 ///
 /// Density alone is insufficient because pieces and cover share 1x/2x densities.
@@ -33,6 +39,8 @@ pub const ALL_IMAGES: &[(&str, &[u8])] = &[
     ("pieces@2x.atlas", ATLAS_2X),
     ("cover@1x.atlas", COVER_1X),
     ("cover@2x.atlas", COVER_2X),
+    ("grain@1x.atlas", GRAIN_1X),
+    ("grain@2x.atlas", GRAIN_2X),
 ];
 
 /// Logical resources needed by any local board, including later promotions.
@@ -42,7 +50,7 @@ pub const ALL_IMAGES: &[(&str, &[u8])] = &[
 /// atlas at the density selected by the pack's ordinary resolution contract.
 #[must_use]
 pub fn gameplay_resources() -> Vec<AssetRef> {
-    [Color::White, Color::Black]
+    let mut resources: Vec<_> = [Color::White, Color::Black]
         .into_iter()
         .flat_map(|color| {
             [
@@ -56,7 +64,9 @@ pub fn gameplay_resources() -> Vec<AssetRef> {
             .into_iter()
             .map(move |kind| piece_asset(Piece { color, kind }))
         })
-        .collect()
+        .collect();
+    resources.push(grain_asset());
+    resources
 }
 
 /// Entry-only artwork, unnecessary when the host skips standalone setup.
@@ -68,7 +78,7 @@ pub fn setup_resources() -> Vec<AssetRef> {
 /// Exact game-version-pinned artwork identity, independent of file resolution.
 #[must_use]
 pub fn asset_pack() -> AssetPackRef {
-    AssetPackRef::from_static("chess", "0.1.0")
+    AssetPackRef::from_static("chess", "0.2.0")
 }
 
 /// Logical piece identity only; physical regions and density remain in the pack.
@@ -94,6 +104,12 @@ pub fn piece_asset(piece: Piece) -> AssetRef {
 #[must_use]
 pub fn cover_asset() -> AssetRef {
     AssetRef::new("catalog/cover").expect("the fixed cover resource is canonical")
+}
+
+/// Decorative square material; geometry and semantic state stay presenter-owned.
+#[must_use]
+pub fn grain_asset() -> AssetRef {
+    AssetRef::new("board/grain").expect("the fixed grain resource is canonical")
 }
 
 #[cfg(test)]
@@ -132,7 +148,7 @@ mod tests {
         let game = GameId::new("com.tabula.chess").unwrap();
         let pack = asset_pack();
         let bound = manifest.validate_binding(&pack, &game).unwrap();
-        assert_eq!(manifest.resources().len(), 13);
+        assert_eq!(manifest.resources().len(), 14);
         for color in [Color::White, Color::Black] {
             for kind in [
                 PieceKind::King,
@@ -161,6 +177,9 @@ mod tests {
             let selected = bound.resolve(&cover_asset(), density).unwrap();
             assert_eq!(selected.file().density(), Some(density));
             assert!(selected.region().is_none());
+            let grain = bound.resolve(&grain_asset(), density).unwrap();
+            assert_eq!(grain.file().density(), Some(density));
+            assert!(grain.region().is_none());
         }
     }
 }

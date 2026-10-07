@@ -14,6 +14,7 @@ from contextlib import contextmanager
 import http.client
 import io
 import json
+import math
 import os
 import re
 from pathlib import Path
@@ -395,30 +396,41 @@ def capture_live_authority_loss(white, third, csrf: str, evidence: CaptureEviden
         control.close()
 
 
-def board_square(width: float, height: float, name: str, flipped: bool) -> tuple[float, float]:
+def board_square(board_width: float, board_height: float, name: str, flipped: bool) -> tuple[float, float]:
     """Pointer geometry from maintained Chess BoardLayout, never a board oracle.
 
-    Actual page canvas bounds determine the viewport. Real UI events still pass
-    through Rust presentation and real server legality; the durable oracle checks
-    the exact commands that landed independently of this coordinate calculation.
+    Dimensions describe the GAME BOARD viewport in logical canvas units. Online
+    callers reserve Rust's 56px status dock from the canvas height; standalone
+    callers use the full playing canvas. This helper subtracts no host footer.
+    Mirrors games/chess/src/presentation/mod.rs::BoardLayout::oriented, pinned by
+    the shared geometry fixture and a Rust test of the actual BoardLayout.
+    Real UI events still pass through Rust presentation and server legality; the
+    durable oracle independently checks the exact commands that landed.
     """
     require(len(name) == 2 and name[0] in "abcdefgh" and name[1] in "12345678",
             "invalid scripted square")
-    margin = min(width * .035, height * .025, 24)
-    gap = min(height * .008, 8)
-    title = min(height * .06, 40)
-    player = min(max(height * .07, 44 if height >= 450 else 24), 56)
-    rail = (width >= 760 and height >= 420) or (width >= 600 and height < 420)
-    rail_width = min(width * .28, 360) if rail else 0
-    game_width = max(width - margin * 2 - rail_width - (gap * 2 if rail else 0), 0)
-    columns = max(int((game_width + 4) // 76), 1)
-    controls = ((6 + columns - 1) // columns) * 48 - 4
-    coordinate = min(game_width * .03, 12 if height < 420 else 16)
-    status = 0 if rail else min(height * .1, 64)
-    remaining = max(height - margin * 2 - title - player * 2 - controls
-                    - status - gap * 6 - coordinate * 2, 0)
-    side = min(max(game_width - coordinate * 2, 0), remaining, 680)
-    left = margin + (game_width - side) * .5
+    margin = min(board_width * .02, board_height * .025, 16)
+    gap = min(board_height * .01, 8)
+    title = min(board_height * .05, 32)
+    player = 44 if board_height >= 450 else 24 if board_height >= 160 else min(board_height * .075, 24)
+    rail = ((board_width >= 760 and board_height >= 420)
+            or (board_width >= 600 and board_height < 420))
+    rail_width = min(board_width * .3, 240) if rail else 0
+    game_width = max(board_width - margin * 2 - rail_width - (gap * 2 if rail else 0), 0)
+    coordinate = min(game_width * .025, 12)
+    status = 0 if rail else min(board_height * .08, 64 if board_height >= 700 else 48)
+    rail_toolbar = rail and board_height < 450
+    usable_controls = board_height >= 200 and board_width >= 280
+    controls = 44 if usable_controls and not rail_toolbar else 0
+    fixed_height = margin * 2 + title + player * 2 + status + gap * 6 + coordinate * 2
+    side = min(max(game_width - coordinate * 2, 0), max(board_height - fixed_height - controls, 0), 640)
+    compact_actions = not rail_toolbar and (board_width < 760 or side < 464)
+    if usable_controls and not rail_toolbar and not compact_actions:
+        columns = max(math.floor((side + 4) / 76), 1)
+        controls = math.ceil(6 / columns) * 48 - 4
+        side = min(max(game_width - coordinate * 2, 0), max(board_height - fixed_height - controls, 0), 640)
+    content_width = side + coordinate * 2 + (rail_width + gap * 2 if rail else 0)
+    left = (board_width - content_width) * .5 + coordinate
     top = margin + title + gap + player + gap + coordinate
     file, rank = ord(name[0]) - ord("a"), int(name[1]) - 1
     column, row = (7 - file, rank) if flipped else (file, 7 - rank)

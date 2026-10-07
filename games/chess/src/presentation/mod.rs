@@ -10,17 +10,20 @@
 pub mod assets;
 
 mod hud;
+mod material;
+mod motion;
+
+pub use motion::ChessMoveAnimation;
 
 use glam::Vec2;
 use tabula_design::{Color as SemanticTint, Theme};
 use tabula_game_api::{A11yAction, A11yDescription, A11yItem, A11yRegion, ActionId, GameRules};
 use tabula_presentation::{
-    handle_navigation, lerp_vec2, ActionButton, Align, AssetPackRef, AudioCue, AudioCues, Border,
+    handle_navigation, ActionButton, Align, AssetPackRef, AudioCue, AudioCues, Border,
     ButtonInteraction, ButtonShape, ButtonTone, Camera2D, Corners, FocusGraph, FocusId,
     FocusModality, FocusNode, FocusState, FrameCtx, GamePresentation, InputEvent, Intent, Key,
-    Layer, MotionMode, MotionTimeline, NavigationAction, Paint, PointerButton, PointerPhase,
-    PointerPosition, Rect, RenderCmd, RenderList, RenderListBuilder, RenderListError,
-    TextStyleToken, Viewport,
+    Layer, NavigationAction, Paint, PointerButton, PointerPhase, PointerPosition, Rect, RenderCmd,
+    RenderList, RenderListBuilder, RenderListError, TextStyleToken, Viewport,
 };
 
 use crate::{
@@ -128,11 +131,11 @@ fn chess_board_focus_graph(layout: BoardLayout) -> FocusGraph {
 }
 
 /// Constructs the focus graph for the 4 horizontal promotion choices.
-fn chess_promotion_focus_graph(layout: BoardLayout) -> FocusGraph {
+fn chess_promotion_focus_graph(layout: BoardLayout, target: Square) -> FocusGraph {
     let mut nodes = Vec::with_capacity(4);
     for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
         let id = promotion_choice_focus_id(choice);
-        let Some(rect) = promotion_choice_rect(layout, index) else {
+        let Some(rect) = promotion_choice_rect(layout, target, index) else {
             continue;
         };
         let left = (index > 0).then(|| promotion_choice_focus_id(PROMOTION_CHOICES[index - 1]));
@@ -140,7 +143,7 @@ fn chess_promotion_focus_graph(layout: BoardLayout) -> FocusGraph {
             .then(|| promotion_choice_focus_id(PROMOTION_CHOICES[index + 1]));
         nodes.push(FocusNode::with_neighbors(id, rect, None, None, left, right));
     }
-    if let Some(rect) = promotion_cancel_rect(layout) {
+    if let Some(rect) = promotion_cancel_rect(layout, target) {
         nodes.push(FocusNode::new(PROMOTION_CANCEL_FOCUS_ID, rect));
     }
     FocusGraph::new(nodes).expect("promotion focus graph topology is valid")
@@ -149,8 +152,8 @@ fn chess_promotion_focus_graph(layout: BoardLayout) -> FocusGraph {
 /// The validated, responsive geometry shared by board rendering and hit testing.
 ///
 /// The board uses the smaller remaining content axis, so its rectangle is always
-/// square between two player bars, beside a compact status rail on wide or short
-/// landscape layouts and above a wrapped HUD on compact portrait layouts. A `Square` is converted to a
+/// square between two board-aligned player bars, beside a bounded status rail on
+/// wide or short landscape layouts and above compact status/actions on portrait layouts. A `Square` is converted to a
 /// rectangle only through this type, which keeps rendering and pointer mapping
 /// on the same coordinate calculation.
 ///
@@ -174,6 +177,7 @@ pub struct BoardLayout {
     controls: Rect,
     title: Rect,
     table: Rect,
+    compact_controls: bool,
 }
 
 impl BoardLayout {
@@ -186,48 +190,59 @@ impl BoardLayout {
 
     /// Reverses board geometry only; square identities and command ownership stay fixed.
     #[must_use]
-    #[allow(clippy::float_arithmetic, clippy::similar_names)]
+    #[allow(
+        clippy::float_arithmetic,
+        clippy::similar_names,
+        clippy::too_many_lines
+    )]
     pub fn oriented(viewport: Viewport, flipped: bool) -> Self {
         let size = viewport.size();
-        let margin = (size.x * 0.035).min(size.y * 0.025).min(24.0);
-        let gap = (size.y * 0.008).min(8.0);
-        let title_h = (size.y * 0.06).min(40.0);
-        let player_h = if size.y >= 160.0 {
-            (size.y * 0.07).clamp(if size.y >= 450.0 { 44.0 } else { 24.0 }, 56.0)
+        let margin = (size.x * 0.02).min(size.y * 0.025).min(16.0);
+        let gap = (size.y * 0.01).min(8.0);
+        let title_h = (size.y * 0.05).min(32.0);
+        let player_h = if size.y >= 450.0 {
+            44.0
+        } else if size.y >= 160.0 {
+            24.0
         } else {
-            size.y * 0.08
+            (size.y * 0.075).min(24.0)
         };
         let rail = (size.x >= 760.0 && size.y >= 420.0) || (size.x >= 600.0 && size.y < 420.0);
-        let status_h = if rail { 0.0 } else { (size.y * 0.1).min(64.0) };
-        let rail_w = if rail {
-            (size.x * 0.28).min(360.0)
-        } else {
-            0.0
-        };
+        let rail_w = if rail { (size.x * 0.3).min(240.0) } else { 0.0 };
         let game_w = (size.x - margin * 2.0 - rail_w - if rail { gap * 2.0 } else { 0.0 }).max(0.0);
+        let coordinate = (game_w * 0.025).min(12.0);
+        let status_h = if rail {
+            0.0
+        } else {
+            (size.y * 0.08).min(if size.y >= 700.0 { 64.0 } else { 48.0 })
+        };
         let rail_toolbar = rail && size.y < 450.0;
-        let columns = ((game_w + 4.0) / 76.0).floor().max(1.0);
-        let controls_h = if size.y >= 200.0 && size.x >= 280.0 && !rail_toolbar {
-            (6.0 / columns).ceil() * 48.0 - 4.0
+        let usable_controls = size.y >= 200.0 && size.x >= 280.0;
+        let mut controls_h = if usable_controls && !rail_toolbar {
+            44.0
         } else {
             0.0
         };
-        let coordinate = (game_w * 0.03).min(if size.y < 420.0 { 12.0 } else { 16.0 });
-        let remaining_h = (size.y
-            - margin * 2.0
-            - title_h
-            - player_h * 2.0
-            - controls_h
-            - status_h
-            - gap * 6.0
-            - coordinate * 2.0)
-            .max(0.0);
-        let side = (game_w - coordinate * 2.0)
+        let fixed_height =
+            margin * 2.0 + title_h + player_h * 2.0 + status_h + gap * 6.0 + coordinate * 2.0;
+        let mut side = (game_w - coordinate * 2.0)
             .max(0.0)
-            .min(remaining_h)
-            .min(680.0);
-        let left = margin + (game_w - side) * 0.5;
-        let title = Rect::new(Vec2::new(margin, margin), Vec2::new(game_w, title_h))
+            .min((size.y - fixed_height - controls_h).max(0.0))
+            .min(640.0);
+        let compact_actions = !rail_toolbar && (size.x < 760.0 || side < 464.0);
+        // Reserve the maximum projected action combination, rather than resizing
+        // the board when draw eligibility or the controlled seat changes.
+        if usable_controls && !rail_toolbar && !compact_actions {
+            let columns = ((side + 4.0) / 76.0).floor().max(1.0);
+            controls_h = (6.0 / columns).ceil() * 48.0 - 4.0;
+            side = (game_w - coordinate * 2.0)
+                .max(0.0)
+                .min((size.y - fixed_height - controls_h).max(0.0))
+                .min(640.0);
+        }
+        let content_w = side + coordinate * 2.0 + if rail { rail_w + gap * 2.0 } else { 0.0 };
+        let left = (size.x - content_w) * 0.5 + coordinate;
+        let title = Rect::new(Vec2::new(left, margin), Vec2::new(side, title_h))
             .expect("validated viewport gives finite title geometry");
         let top_player = Rect::new(
             Vec2::new(left, margin + title_h + gap),
@@ -242,34 +257,41 @@ impl BoardLayout {
             Vec2::new(side, player_h),
         )
         .expect("validated viewport gives finite player geometry");
-        let controls_y = bottom_player.origin().y + player_h + gap;
+        let status_y = bottom_player.origin().y + player_h + gap;
         let status = if rail {
             Rect::new(
-                Vec2::new(margin + game_w + gap * 2.0, top_player.origin().y),
-                Vec2::new(rail_w, (size.y - margin - top_player.origin().y).max(0.0)),
+                Vec2::new(left + side + coordinate + gap * 2.0, top_player.origin().y),
+                Vec2::new(
+                    rail_w,
+                    (size.y - margin - top_player.origin().y).clamp(0.0, 360.0),
+                ),
             )
         } else {
-            Rect::new(
-                Vec2::new(margin, controls_y + controls_h + gap),
-                Vec2::new(game_w, status_h),
-            )
+            Rect::new(Vec2::new(left, status_y), Vec2::new(side, status_h))
         }
         .expect("validated viewport gives finite status geometry");
         let controls = if rail_toolbar {
             Rect::new(
-                status.origin() + Vec2::new(0.0, 28.0),
-                Vec2::new(status.size().x, (status.size().y - 28.0).max(0.0)),
+                status.origin() + Vec2::new(0.0, 32.0),
+                Vec2::new(status.size().x, (status.size().y - 32.0).max(0.0)),
             )
         } else {
-            Rect::new(Vec2::new(margin, controls_y), Vec2::new(game_w, controls_h))
+            Rect::new(
+                Vec2::new(
+                    left,
+                    if rail {
+                        status_y
+                    } else {
+                        status_y + status_h + gap
+                    },
+                ),
+                Vec2::new(side, controls_h),
+            )
         }
         .expect("validated viewport gives finite controls geometry");
         let table = Rect::new(
-            Vec2::new(left - coordinate, top_player.origin().y - gap * 0.5),
-            Vec2::new(
-                side + coordinate * 2.0,
-                bottom_player.origin().y + player_h - top_player.origin().y + gap,
-            ),
+            board.origin() - Vec2::splat(coordinate),
+            board.size() + Vec2::splat(coordinate * 2.0),
         )
         .expect("validated viewport gives finite table geometry");
         Self {
@@ -283,6 +305,7 @@ impl BoardLayout {
             controls,
             title,
             table,
+            compact_controls: compact_actions,
         }
     }
 
@@ -430,20 +453,6 @@ pub enum Interaction {
     },
 }
 
-/// Ephemeral animation description for a piece in transit following a [`crate::ViewEvent::Moved`].
-///
-/// This state is presentation-only: it does not affect rules, authority, or command formation.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ChessMoveAnimation {
-    pub from: Square,
-    pub to: Square,
-    /// The mover's color is needed to preserve pawn identity during promotion playback.
-    pub color: ChessColor,
-    /// The canonical promotion choice, if this focal move promotes a pawn.
-    pub promotion: Option<PieceKind>,
-    pub timeline: MotionTimeline,
-}
-
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 struct ActivationKeys {
     enter_held: bool,
@@ -475,6 +484,7 @@ pub struct ChessLocal {
     move_history: Vec<hud::ObservedMove>,
     activation_keys: ActivationKeys,
     reduced_motion: bool,
+    hud_menu: hud::ActionMenu,
 }
 
 impl Default for ChessLocal {
@@ -496,6 +506,7 @@ impl Default for ChessLocal {
             move_history: Vec::new(),
             activation_keys: ActivationKeys::default(),
             reduced_motion: false,
+            hud_menu: hud::ActionMenu::Closed,
         }
     }
 }
@@ -581,6 +592,7 @@ impl ChessLocal {
     }
 
     pub fn clear_interaction(&mut self) {
+        self.hud_menu = hud::ActionMenu::Closed;
         self.interaction = Interaction::Idle;
         self.promotion_buttons = ButtonInteraction::default();
         self.promotion_observed = None;
@@ -625,32 +637,23 @@ impl GamePresentation for ChessPresentation {
             } => {
                 local.last_move = Some((*from, *to));
                 if let Some(color) = ChessColor::from_seat(*seat) {
-                    hud::record_move(local, color, *from, *to, *promotion, captured.is_some());
+                    hud::record_move(local, color, *from, *to, *promotion, *captured);
                 }
                 local.control_color = None;
                 local.confirmation = None;
                 local.clear_interaction();
-                let timeline = MotionTimeline::from_profile(
-                    frame.now_ms(),
-                    frame.theme().motion.piece_move,
-                    &frame.theme(),
-                    if local.reduced_motion {
-                        MotionMode::Reduced
-                    } else {
-                        MotionMode::Full
-                    },
-                );
-                if let Some(color) = ChessColor::from_seat(*seat) {
-                    local.move_animation = Some(ChessMoveAnimation {
-                        from: *from,
-                        to: *to,
+                local.move_animation = ChessColor::from_seat(*seat).and_then(|color| {
+                    ChessMoveAnimation::start(
+                        *from,
+                        *to,
                         color,
-                        promotion: *promotion,
-                        timeline,
-                    });
-                } else {
-                    local.move_animation = None;
-                }
+                        *promotion,
+                        *captured,
+                        frame.now_ms(),
+                        local,
+                        frame,
+                    )
+                });
                 one_cue(if captured.is_some() {
                     "capture"
                 } else {
@@ -668,6 +671,28 @@ impl GamePresentation for ChessPresentation {
         }
     }
 
+    fn on_view_event_with_projection(
+        event: &crate::ViewEvent,
+        previous: Option<&View>,
+        current: &View,
+        local: &mut ChessLocal,
+        frame: &FrameCtx,
+    ) -> AudioCues {
+        let cues = Self::on_view_event(event, local, frame);
+        if matches!(event, crate::ViewEvent::Moved { .. }) {
+            local.move_animation = local.move_animation.and_then(|animation| {
+                previous.and_then(|prior| animation.with_projection(prior, current))
+            });
+        }
+        cues
+    }
+
+    fn on_command_rejected(local: &mut ChessLocal) {
+        local.move_animation = None;
+        local.clear_interaction();
+        local.confirmation = None;
+    }
+
     #[allow(clippy::too_many_lines)]
     fn on_input(
         input: &InputEvent,
@@ -675,7 +700,20 @@ impl GamePresentation for ChessPresentation {
         local: &mut ChessLocal,
     ) -> Option<Intent<Command>> {
         let layout = BoardLayout::oriented(local.viewport, local.flipped);
+        if matches!(
+            input,
+            InputEvent::Key { pressed: true, .. }
+                | InputEvent::Pointer {
+                    phase: PointerPhase::Down | PointerPhase::Cancel,
+                    ..
+                }
+                | InputEvent::Focus(false)
+        ) {
+            // New input uses the current projection immediately, even mid-composition.
+            local.move_animation = None;
+        }
         if matches!(input, InputEvent::Focus(false)) {
+            local.hud_menu = hud::ActionMenu::Closed;
             if let Interaction::Pressed { from, .. } | Interaction::Dragging { from, .. } =
                 local.interaction
             {
@@ -716,7 +754,7 @@ impl GamePresentation for ChessPresentation {
             return result;
         }
         if let Interaction::Promotion { from, to, selected } = local.interaction {
-            let graph = chess_promotion_focus_graph(layout);
+            let graph = chess_promotion_focus_graph(layout, to);
             if !local.focus.current().is_some_and(|id| graph.contains(id)) {
                 local
                     .focus
@@ -1052,7 +1090,8 @@ fn has_promotion_command(view: &View, from: Square, to: Square) -> bool {
 }
 
 /// Fixed hit geometry shared by promotion input, focus, and drawing.
-/// Modal layout uses the viewport, so a short board cannot hide its controls.
+/// The chooser opens inward from its destination, stays upright in both board
+/// orientations, and retains a viewport inset on short/compact screens.
 struct PromotionLayout {
     panel: Rect,
     choices: [Rect; 4],
@@ -1061,14 +1100,14 @@ struct PromotionLayout {
 
 impl PromotionLayout {
     #[allow(clippy::float_arithmetic)]
-    fn new(layout: BoardLayout) -> Option<Self> {
+    fn new(layout: BoardLayout, target: Square) -> Option<Self> {
         // Spatial tokens are common to all schemes. Input geometry is independent
         // of scheme color, while retaining the authored accessibility metrics.
         let metrics = Theme::by_kind(tabula_design::ThemeKind::Light);
         let padding = f32::from(metrics.space.md);
         let gap = f32::from(metrics.space.xxs);
         let section_gap = f32::from(metrics.space.sm);
-        let minimum = metrics.density.min_target.get();
+        let minimum = metrics.density.min_target.get().max(44.0);
         let viewport = layout.viewport.size();
         let heading_height = metrics
             .text_style(TextStyleToken::TitleMd)
@@ -1076,8 +1115,8 @@ impl PromotionLayout {
             .get();
         let button_size = (layout.square_size() * 0.9)
             .max(minimum + f32::from(metrics.space.lg))
-            .min((viewport.x - padding * 2.0 - gap * 3.0) / 4.0)
-            .min(viewport.y - padding * 2.0 - heading_height - section_gap * 2.0 - minimum);
+            .min((viewport.x - padding * 4.0 - gap * 3.0) / 4.0)
+            .min(viewport.y - padding * 4.0 - heading_height - section_gap * 2.0 - minimum);
         if button_size < minimum {
             return None;
         }
@@ -1086,11 +1125,16 @@ impl PromotionLayout {
             group_width + padding * 2.0,
             padding * 2.0 + heading_height + section_gap * 2.0 + button_size + minimum,
         );
-        let origin = if viewport.x < 600.0 {
-            Vec2::new((viewport.x - panel_size.x) * 0.5, viewport.y - panel_size.y)
+        let target = layout.square_rect(target)?;
+        let center = target.origin() + target.size() * 0.5;
+        let y = if center.y < layout.board.origin().y + layout.board.size().y * 0.5 {
+            target.origin().y + target.size().y + section_gap
         } else {
-            (viewport - panel_size) * 0.5
+            target.origin().y - panel_size.y - section_gap
         };
+        let origin = Vec2::new(center.x - panel_size.x * 0.5, y)
+            .max(Vec2::splat(padding))
+            .min(viewport - panel_size - Vec2::splat(padding));
         let panel = Rect::new(origin, panel_size).ok()?;
         let first = panel.origin() + Vec2::new(padding, padding + heading_height + section_gap);
         let choice = |x| {
@@ -1114,16 +1158,19 @@ impl PromotionLayout {
     }
 }
 
-fn promotion_choice_rect(layout: BoardLayout, index: usize) -> Option<Rect> {
-    PromotionLayout::new(layout)?.choices.get(index).copied()
+fn promotion_choice_rect(layout: BoardLayout, target: Square, index: usize) -> Option<Rect> {
+    PromotionLayout::new(layout, target)?
+        .choices
+        .get(index)
+        .copied()
 }
 
-fn promotion_panel_rect(layout: BoardLayout) -> Option<Rect> {
-    Some(PromotionLayout::new(layout)?.panel)
+fn promotion_panel_rect(layout: BoardLayout, target: Square) -> Option<Rect> {
+    Some(PromotionLayout::new(layout, target)?.panel)
 }
 
-fn promotion_cancel_rect(layout: BoardLayout) -> Option<Rect> {
-    Some(PromotionLayout::new(layout)?.cancel)
+fn promotion_cancel_rect(layout: BoardLayout, target: Square) -> Option<Rect> {
+    Some(PromotionLayout::new(layout, target)?.cancel)
 }
 
 fn promotion_choice_enabled(
@@ -1158,7 +1205,7 @@ fn promotion_buttons(
         .copied()
         .enumerate()
         .filter_map(|(index, choice)| {
-            let rect = promotion_choice_rect(layout, index)?;
+            let rect = promotion_choice_rect(layout, to, index)?;
             let enabled = promotion_choice_enabled(view, local, from, to, choice);
             Some(
                 ActionButton::new(
@@ -1182,7 +1229,7 @@ fn promotion_buttons(
             )
         })
         .collect();
-    if let Some(rect) = promotion_cancel_rect(layout) {
+    if let Some(rect) = promotion_cancel_rect(layout, to) {
         if let Ok(button) = ActionButton::new(
             PROMOTION_CANCEL_FOCUS_ID,
             rect,
@@ -1215,6 +1262,7 @@ fn build_render_list(
     let layout = BoardLayout::oriented(frame.viewport(), local.flipped);
     let mut builder = RenderListBuilder::new(Camera2D::default());
     hud::draw_material(&mut builder, frame, layout)?;
+    material::draw_frame(&mut builder, frame, layout)?;
 
     for row in 0..8_u8 {
         for file in 0..8_u8 {
@@ -1238,6 +1286,8 @@ fn build_render_list(
             })?;
         }
     }
+
+    material::draw_grain(&mut builder, frame, layout)?;
 
     let is_promotion = matches!(local.interaction, Interaction::Promotion { .. });
 
@@ -1390,97 +1440,11 @@ fn build_render_list(
         }
     }
 
-    let move_sample = local
-        .move_animation
-        .as_ref()
-        .map(|anim| (anim, anim.timeline.sample(frame.now_ms())));
-
-    let in_transit_dest = move_sample.and_then(
-        |(anim, sample)| {
-            if sample.done {
-                None
-            } else {
-                Some(anim.to)
-            }
-        },
-    );
-
-    let dragged_from = match local.interaction {
-        Interaction::Dragging { from, .. } => Some(from),
-        _ => None,
-    };
-
-    for (index, piece) in view.board.iter().enumerate() {
-        let Some(piece) = piece else {
-            continue;
-        };
-        let square =
-            Square::new(u8::try_from(index).map_err(|_| RenderListError::InvalidGeometry)?)
-                .ok_or(RenderListError::InvalidGeometry)?;
-        if in_transit_dest == Some(square) || dragged_from == Some(square) {
-            // Avoid double-drawing destination piece while animation is in flight,
-            // or source piece while dragging is active.
-            continue;
-        }
-        let rect = layout
-            .square_rect(square)
-            .ok_or(RenderListError::InvalidGeometry)?;
-        builder.push(piece_sprite(
-            *piece,
-            rect,
-            &theme,
-            Layer::PIECES,
-            i16::try_from(index).map_err(|_| RenderListError::InvalidGeometry)?,
-        )?)?;
-    }
-
-    if let Some((anim, sample)) = move_sample {
-        if !sample.done {
-            let piece = anim
-                .promotion
-                .map(|_| Piece {
-                    color: anim.color,
-                    kind: PieceKind::Pawn,
-                })
-                .or_else(|| view.board.get(usize::from(anim.to.0)).copied().flatten());
-            if let Some(piece) = piece {
-                let from_rect = layout
-                    .square_rect(anim.from)
-                    .ok_or(RenderListError::InvalidGeometry)?;
-                let to_rect = layout
-                    .square_rect(anim.to)
-                    .ok_or(RenderListError::InvalidGeometry)?;
-                let current_origin = lerp_vec2(from_rect.origin(), to_rect.origin(), sample.factor);
-                let current_rect = Rect::new(current_origin, from_rect.size())?;
-                builder.push(piece_sprite(
-                    piece,
-                    current_rect,
-                    &theme,
-                    Layer::PIECES,
-                    IN_TRANSIT_PIECE_Z,
-                )?)?;
-            }
-        }
-    }
-
-    if let Interaction::Dragging { from, pointer, .. } = local.interaction {
-        if let Some(Some(piece)) = view.board.get(usize::from(from.0)) {
-            let rect = Rect::new(
-                pointer.get() - Vec2::splat(layout.square_size() * 0.5),
-                Vec2::splat(layout.square_size()),
-            )?;
-            let mut sprite =
-                piece_sprite(*piece, rect, &theme, Layer::PIECES, IN_TRANSIT_PIECE_Z + 10)?;
-            if let RenderCmd::Sprite { pivot, .. } = &mut sprite {
-                *pivot = pointer.get();
-            }
-            builder.push(sprite)?;
-        }
-    }
+    motion::draw_pieces(&mut builder, view, local, frame, layout)?;
 
     hud::draw(&mut builder, view, local, frame, layout)?;
 
-    if is_promotion {
+    if let Interaction::Promotion { to, .. } = local.interaction {
         builder.push(RenderCmd::PushOpacity {
             opacity: tabula_presentation::Opacity::try_from(0.38)
                 .map_err(|_| RenderListError::InvalidGeometry)?,
@@ -1500,7 +1464,7 @@ fn build_render_list(
             z: -1,
         })?;
         let buttons = promotion_buttons(view, local, layout);
-        if let Some(panel) = promotion_panel_rect(layout) {
+        if let Some(panel) = promotion_panel_rect(layout, to) {
             builder.push(RenderCmd::Rect {
                 rect: panel,
                 radii: Corners::uniform(theme.shape.sheet.get())?,
@@ -1886,6 +1850,9 @@ fn square_name(square: Square) -> String {
 }
 
 #[cfg(test)]
+mod layout_pointer_fixture_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use tabula_core::{
@@ -2015,6 +1982,30 @@ mod tests {
 
     fn cue_ids(cues: &AudioCues) -> Vec<&str> {
         cues.iter().map(AudioCue::id).collect()
+    }
+
+    #[test]
+    fn promotion_chooser_anchors_inward_from_the_target_in_both_orientations() {
+        for flipped in [false, true] {
+            let layout = BoardLayout::oriented(viewport(1100.0, 850.0), flipped);
+            for target in [Square(0), Square(7), Square(56), Square(63)] {
+                let chooser = PromotionLayout::new(layout, target).unwrap();
+                let cell = layout.square_rect(target).unwrap();
+                let center = cell.origin().y + cell.size().y * 0.5;
+                if center < layout.board.origin().y + layout.board.size().y * 0.5 {
+                    assert!(chooser.panel.origin().y >= cell.origin().y + cell.size().y);
+                } else {
+                    assert!(chooser.panel.origin().y + chooser.panel.size().y <= cell.origin().y);
+                }
+                for rect in chooser.choices.into_iter().chain([chooser.cancel]) {
+                    assert!(rect.size().cmpge(Vec2::splat(44.0)).all());
+                    assert!(rect.origin().cmpge(chooser.panel.origin()).all());
+                    assert!((rect.origin() + rect.size())
+                        .cmple(chooser.panel.origin() + chooser.panel.size())
+                        .all());
+                }
+            }
+        }
     }
 
     #[test]
@@ -2430,6 +2421,7 @@ mod tests {
         let local = ChessLocal::default();
         let first = ChessPresentation::present(&view, &local, &frame(800.0, 500.0));
         let second = ChessPresentation::present(&view, &local, &frame(800.0, 500.0));
+        let layout = BoardLayout::from_viewport(viewport(800.0, 500.0));
         assert_eq!(first, second);
         assert_eq!(
             first
@@ -2438,14 +2430,28 @@ mod tests {
                 .filter(|command| matches!(
                     command,
                     RenderCmd::Rect {
+                        rect,
                         layer: Layer::BOARD,
                         z,
                         ..
-                    } if *z >= 0
+                    } if *z >= 0 && rect.size() == Vec2::splat(layout.square_size())
                 ))
                 .count(),
             64
         );
+        for index in 0..64_u8 {
+            let square = Square(index);
+            let expected = layout.square_rect(square).unwrap();
+            let color = if (square.file() + square.rank()) % 2 == 1 {
+                frame(800.0, 500.0).theme().game_art.chess.board_light
+            } else {
+                frame(800.0, 500.0).theme().game_art.chess.board_dark
+            };
+            assert_eq!(first.commands().iter().filter(|command| matches!(command,
+                RenderCmd::Rect { rect, fill: Some(Paint::Solid(actual)), layer: Layer::BOARD,
+                    border: None, z, .. } if *rect == expected && *actual == color && *z == i16::from(index)
+            )).count(), 1, "one correctly colored cell per square identity");
+        }
         assert_eq!(
             first
                 .commands()
@@ -2529,7 +2535,7 @@ mod tests {
                 selected: PromotionChoice::Queen,
             }
         );
-        let choice = promotion_choice_rect(layout, 0).unwrap();
+        let choice = promotion_choice_rect(layout, Square(60), 0).unwrap();
         let event = InputEvent::Pointer {
             position: clicked_center(choice),
             button: PointerButton::Primary,
@@ -2657,17 +2663,17 @@ mod tests {
         ] {
             let layout = BoardLayout::from_viewport(viewport(width, height));
             for index in 0..PROMOTION_CHOICES.len() {
-                let rect = promotion_choice_rect(layout, index).unwrap();
+                let rect = promotion_choice_rect(layout, Square(60), index).unwrap();
                 assert!(rect.size().x >= 44.0 && rect.size().y >= 44.0);
                 assert!(rect.origin().x >= 0.0 && rect.origin().y >= 0.0);
                 assert!(rect.origin().x + rect.size().x <= width);
                 assert!(rect.origin().y + rect.size().y <= height);
             }
-            let panel = promotion_panel_rect(layout).unwrap();
+            let panel = promotion_panel_rect(layout, Square(60)).unwrap();
             assert!(panel.origin().x >= 0.0 && panel.origin().y >= 0.0);
             assert!(panel.origin().x + panel.size().x <= width);
             assert!(panel.origin().y + panel.size().y <= height);
-            let cancel = promotion_cancel_rect(layout).unwrap();
+            let cancel = promotion_cancel_rect(layout, Square(60)).unwrap();
             assert!(cancel.size().x >= 44.0 && cancel.size().y >= 44.0);
         }
     }
@@ -2676,7 +2682,7 @@ mod tests {
     fn promotion_release_without_a_press_never_activates_a_choice() {
         let (view, layout, mut local) = promotion_fixture();
         let event = InputEvent::Pointer {
-            position: clicked_center(promotion_choice_rect(layout, 0).unwrap()),
+            position: clicked_center(promotion_choice_rect(layout, Square(60), 0).unwrap()),
             button: PointerButton::Primary,
             phase: PointerPhase::Up,
         };
@@ -2698,7 +2704,7 @@ mod tests {
     fn promotion_pointer_cancellation_and_outside_release_preserve_the_modal() {
         for phase in [PointerPhase::Cancel, PointerPhase::Up] {
             let (view, layout, mut local) = promotion_fixture();
-            let position = clicked_center(promotion_choice_rect(layout, 0).unwrap());
+            let position = clicked_center(promotion_choice_rect(layout, Square(60), 0).unwrap());
             press_promotion_choice(&view, &mut local, position);
             let event = InputEvent::Pointer {
                 position: PointerPosition::new(Vec2::ZERO).unwrap(),
@@ -2715,7 +2721,7 @@ mod tests {
     #[test]
     fn promotion_choices_disable_when_the_projection_no_longer_permits_them() {
         let (mut view, layout, mut local) = promotion_fixture();
-        let position = clicked_center(promotion_choice_rect(layout, 0).unwrap());
+        let position = clicked_center(promotion_choice_rect(layout, Square(60), 0).unwrap());
         press_promotion_choice(&view, &mut local, position);
         view.legal_moves.clear();
         let release = InputEvent::Pointer {
@@ -2779,7 +2785,7 @@ mod tests {
                 assert_eq!(local.focus.current(), Some(PROMOTION_CANCEL_FOCUS_ID));
                 assert!(ChessPresentation::on_input(&key(Key::Space), &view, &mut local).is_none());
             } else {
-                let position = clicked_center(promotion_cancel_rect(layout).unwrap());
+                let position = clicked_center(promotion_cancel_rect(layout, Square(60)).unwrap());
                 press_promotion_choice(&view, &mut local, position);
                 assert!(ChessPresentation::on_input(
                     &InputEvent::Pointer {
@@ -2824,7 +2830,7 @@ mod tests {
             }
             assert!(list.commands().iter().any(|command| matches!(command,
                 RenderCmd::Rect { rect, fill: Some(Paint::Solid(color)), border: None, layer: Layer::MODAL, .. }
-                    if *rect == promotion_choice_rect(layout, 0).unwrap() && *color == theme.color.primary)));
+                    if *rect == promotion_choice_rect(layout, Square(60), 0).unwrap() && *color == theme.color.primary)));
             theme.motion.reduced.duration_scale = tabula_design::Percent::new(0).unwrap();
             assert_eq!(
                 list,
@@ -2843,7 +2849,7 @@ mod tests {
         for (index, choice) in PROMOTION_CHOICES.iter().copied().enumerate() {
             let (view, layout, mut local) = promotion_fixture();
             let event = InputEvent::Pointer {
-                position: clicked_center(promotion_choice_rect(layout, index).unwrap()),
+                position: clicked_center(promotion_choice_rect(layout, Square(60), index).unwrap()),
                 button: PointerButton::Primary,
                 phase: PointerPhase::Up,
             };
@@ -2851,7 +2857,7 @@ mod tests {
             press_promotion_choice(
                 &view,
                 &mut local,
-                clicked_center(promotion_choice_rect(layout, index).unwrap()),
+                clicked_center(promotion_choice_rect(layout, Square(60), index).unwrap()),
             );
             assert_eq!(
                 ChessPresentation::on_input(&event, &view, &mut local)
@@ -2932,7 +2938,7 @@ mod tests {
     fn pointer_and_keyboard_promotion_selection_share_command_construction() {
         let (view, layout, mut pointer_local) = promotion_fixture();
         let pointer_event = InputEvent::Pointer {
-            position: clicked_center(promotion_choice_rect(layout, 2).unwrap()),
+            position: clicked_center(promotion_choice_rect(layout, Square(60), 2).unwrap()),
             button: PointerButton::Primary,
             phase: PointerPhase::Up,
         };
@@ -2940,7 +2946,7 @@ mod tests {
         press_promotion_choice(
             &view,
             &mut pointer_local,
-            clicked_center(promotion_choice_rect(layout, 2).unwrap()),
+            clicked_center(promotion_choice_rect(layout, Square(60), 2).unwrap()),
         );
         let pointer_command =
             ChessPresentation::on_input(&pointer_event, &view, &mut pointer_local)
@@ -3464,7 +3470,7 @@ mod tests {
                 was_selected: false,
             }
         );
-        assert!(local.move_animation().is_some());
+        assert!(local.move_animation().is_none());
 
         // 2. Pointer Move beyond threshold
         let move_step_intent = ChessPresentation::on_input(
@@ -3526,7 +3532,7 @@ mod tests {
             }
         );
         assert_eq!(local.interaction(), Interaction::Idle);
-        assert!(local.move_animation().is_some());
+        assert!(local.move_animation().is_none());
     }
 
     #[test]
@@ -3699,7 +3705,10 @@ mod tests {
                 text,
                 layer: Layer::HUD,
                 ..
-            } if text.starts_with("Game over")
+            } if text == "Black wins"
+        )));
+        assert!(rendered.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, layer: Layer::HUD, .. } if text == "checkmate"
         )));
 
         let mut local = ChessLocal::default();
@@ -4581,7 +4590,8 @@ mod tests {
                 &mut choice_local,
             );
 
-            let choice_pos = clicked_center(promotion_choice_rect(layout, index).unwrap());
+            let choice_pos =
+                clicked_center(promotion_choice_rect(layout, Square(60), index).unwrap());
             press_promotion_choice(&view, &mut choice_local, choice_pos);
             let intent = ChessPresentation::on_input(
                 &InputEvent::Pointer {
@@ -4921,9 +4931,9 @@ mod tests {
     #[test]
     fn chess_declares_typed_asset_pack_matching_metadata() {
         let pack = ChessPresentation::asset_pack();
-        assert_eq!(pack, AssetPackRef::from_static("chess", "0.1.0"));
-        assert_eq!(pack.to_string(), "chess@0.1.0");
+        assert_eq!(pack, AssetPackRef::from_static("chess", "0.2.0"));
+        assert_eq!(pack.to_string(), "chess@0.2.0");
         assert_eq!(pack.pack().as_str(), "chess");
-        assert_eq!(pack.version().as_str(), "0.1.0");
+        assert_eq!(pack.version().as_str(), "0.2.0");
     }
 }

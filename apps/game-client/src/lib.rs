@@ -460,8 +460,13 @@ where
             rng: &mut rng,
             budget: Budget::default(),
         };
-        let outcome =
-            R::apply(&mut self.state, input, &mut ctx).map_err(LocalMatchError::Rejected)?;
+        let outcome = match R::apply(&mut self.state, input, &mut ctx) {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                P::on_command_rejected(&mut self.local);
+                return Err(LocalMatchError::Rejected(error));
+            }
+        };
 
         // Accepted. Commit replay evidence now — see the doc comment above.
         self.replay.record(AcceptedReplayInput::new(
@@ -472,13 +477,20 @@ where
         ));
 
         let mut cues = AudioCues::new();
+        let current = R::project(&self.state, self.viewer);
         for event in &outcome.events {
             if let Some(event) = R::view_event(&self.state, event, self.viewer) {
-                cues.extend(P::on_view_event(&event, &mut self.local, frame));
+                cues.extend(P::on_view_event_with_projection(
+                    &event,
+                    Some(&self.view),
+                    &current,
+                    &mut self.local,
+                    frame,
+                ));
             }
         }
         self.interpret_effects(&outcome.effects)?;
-        self.rebuild_view();
+        self.view = current;
         Ok(cues)
     }
 
@@ -1526,7 +1538,7 @@ mod tests {
             256 * 1024,
             2 * 1024 * 1024,
             4 * 1024 * 1024,
-            4,
+            6,
         )
         .unwrap();
         let mut cache = SpriteAssetCache::new(CpuUploader, limits);
@@ -1905,5 +1917,111 @@ mod tests {
             "renumbering the recorded InputIndex must shift the RNG-domain stream and fail \
              replay at the checkpoint, but it silently reproduced the same hash"
         );
+    }
+    struct ProjectionContextRules;
+    impl GameRules for ProjectionContextRules {
+        type State = u8;
+        type Command = u8;
+        type Event = u8;
+        type View = u16;
+        type ViewEvent = u8;
+        type Config = ();
+        const RULES_VERSION: RulesVersion = RulesVersion(1);
+        fn create((): &(), _: &SeatRoster, _: &mut Ctx<'_>) -> Result<Init<Self>, InitError> {
+            Ok(Init {
+                state: 0,
+                events: std::iter::empty().collect(),
+                effects: std::iter::empty().collect(),
+            })
+        }
+        fn apply(
+            state: &mut u8,
+            input: Input<u8>,
+            _: &mut Ctx<'_>,
+        ) -> Result<Outcome<Self>, RuleError> {
+            let Input::Player { command: 1, .. } = input else {
+                return Err(RuleError::code(tabula_core::RuleErrorCode::IllegalMove));
+            };
+            *state = state.saturating_add(1);
+            let mut outcome = Outcome::empty();
+            outcome.events.push(*state);
+            Ok(outcome)
+        }
+        fn project(state: &u8, _: Viewer) -> u16 {
+            u16::from(*state) + 100
+        }
+        fn view_event(_: &u8, event: &u8, _: Viewer) -> Option<u8> {
+            Some(*event)
+        }
+    }
+
+    #[derive(Default)]
+    struct ProjectionContextLocal {
+        transitions: Vec<(Option<u16>, u16)>,
+        rejections: u8,
+    }
+    struct ProjectionContextPresentation;
+    impl GamePresentation for ProjectionContextPresentation {
+        type Rules = ProjectionContextRules;
+        type Local = ProjectionContextLocal;
+        fn asset_pack() -> AssetPackRef {
+            AssetPackRef::from_static("projection-context", "0.0.0")
+        }
+        fn present(_: &u16, _: &Self::Local, _: &FrameCtx) -> RenderList {
+            RenderListBuilder::new(Camera2D::default())
+                .finish()
+                .unwrap()
+        }
+        fn on_view_event(_: &u8, _: &mut Self::Local, _: &FrameCtx) -> AudioCues {
+            panic!("the host must dispatch with authorized projection context")
+        }
+        fn on_view_event_with_projection(
+            _: &u8,
+            previous: Option<&u16>,
+            current: &u16,
+            local: &mut Self::Local,
+            _: &FrameCtx,
+        ) -> AudioCues {
+            local.transitions.push((previous.copied(), *current));
+            AudioCues::new()
+        }
+        fn on_command_rejected(local: &mut Self::Local) {
+            local.rejections += 1;
+        }
+        fn on_input(_: &InputEvent, _: &u16, _: &mut Self::Local) -> Option<Intent<u8>> {
+            None
+        }
+        fn a11y(_: &u16, _: &Self::Local) -> A11yDescription {
+            A11yDescription::default()
+        }
+    }
+
+    #[test]
+    fn accepted_local_dispatch_uses_public_projection_endpoints_and_rejection_cleans_local_only() {
+        let mut match_ = LocalMatch::<ProjectionContextRules, ProjectionContextPresentation>::new(
+            &(),
+            &roster(),
+            MatchSeed::from_bytes([0; 32]),
+            Viewer::Seat(SeatId(0)),
+        )
+        .unwrap();
+        for _ in 0..2 {
+            match_.submit_bot_move(SeatId(0), 1, &frame(0)).unwrap();
+        }
+        assert_eq!(
+            match_.local.transitions,
+            [(Some(100), 101), (Some(101), 102)]
+        );
+        assert_eq!(match_.replay.accepted_inputs().len(), 2);
+        assert!(matches!(
+            match_.submit_bot_move(SeatId(0), 0, &frame(0)),
+            Err(LocalMatchError::Rejected(_))
+        ));
+        assert_eq!(match_.view, 102);
+        assert_eq!(match_.state, 2);
+        assert_eq!(match_.local.rejections, 1);
+        assert_eq!(match_.local.transitions.len(), 2);
+        assert_eq!(match_.replay.accepted_inputs().len(), 2);
+        assert_eq!(match_.recorded_inputs.len(), 3);
     }
 }

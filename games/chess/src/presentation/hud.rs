@@ -11,10 +11,10 @@
 use super::{
     clock_remaining, color_name, format_clock, outline, piece_name, piece_sprite, result_title,
     square_name, status_text, A11yAction, A11yDescription, ActionButton, ActionId, Align,
-    BoardLayout, ButtonInteraction, ButtonShape, ButtonTone, ChessColor, ChessLocal, Command,
-    Corners, FocusGraph, FocusId, FocusNode, FrameCtx, InputEvent, Intent, Interaction, Key, Layer,
-    NavigationAction, Paint, Piece, PieceKind, Rect, RenderCmd, RenderListBuilder, RenderListError,
-    SemanticTint, Square, Status, TextStyleToken, Theme, Vec2, View,
+    BoardLayout, Border, ButtonInteraction, ButtonShape, ButtonTone, ChessColor, ChessLocal,
+    Command, Corners, FocusGraph, FocusId, FocusNode, FrameCtx, InputEvent, Intent, Interaction,
+    Key, Layer, NavigationAction, Paint, Piece, PieceKind, Rect, RenderCmd, RenderListBuilder,
+    RenderListError, SemanticTint, Square, Status, TextStyleToken, Theme, Vec2, View,
 };
 
 const FLIP: FocusId = FocusId::new(200);
@@ -28,6 +28,27 @@ const CONTROL_BOTTOM: FocusId = FocusId::new(207);
 const CANCEL: FocusId = FocusId::new(300);
 const CONFIRM: FocusId = FocusId::new(301);
 const MAX_OBSERVED_MOVES: usize = 256;
+const MENU: FocusId = FocusId::new(208);
+
+/// Presentation-only secondary action disclosure, independent of legality.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum ActionMenu {
+    #[default]
+    Closed,
+    Open,
+}
+impl ActionMenu {
+    const fn is_open(self) -> bool {
+        matches!(self, Self::Open)
+    }
+    const fn from_open(open: bool) -> Self {
+        if open {
+            Self::Open
+        } else {
+            Self::Closed
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct VisiblePosition {
@@ -70,7 +91,7 @@ pub(super) struct ObservedMove {
     from: Square,
     to: Square,
     promotion: Option<PieceKind>,
-    captured: bool,
+    captured: Option<Piece>,
 }
 
 pub(super) fn record_move(
@@ -79,7 +100,7 @@ pub(super) fn record_move(
     from: Square,
     to: Square,
     promotion: Option<PieceKind>,
-    captured: bool,
+    captured: Option<Piece>,
 ) {
     if local.move_history.len() == MAX_OBSERVED_MOVES {
         local.move_history.remove(0);
@@ -101,9 +122,16 @@ fn player_colors(layout: BoardLayout) -> [ChessColor; 2] {
     }
 }
 
-fn controls(view: &View, local: &ChessLocal, layout: BoardLayout) -> Vec<ActionButton<'static>> {
-    let metrics = Theme::by_kind(tabula_design::ThemeKind::Light);
-    let mut specs = vec![(FLIP, "Flip", true)];
+fn compact_actions(layout: BoardLayout) -> bool {
+    layout.compact_controls
+}
+
+fn action_specs(
+    view: &View,
+    local: &ChessLocal,
+    layout: BoardLayout,
+) -> Vec<(FocusId, &'static str, bool)> {
+    let mut specs = Vec::new();
     if view.actions.contains(&Command::AcceptDraw) {
         specs.push((DRAW, "Accept", true));
         specs.push((DECLINE, "Decline", true));
@@ -117,54 +145,92 @@ fn controls(view: &View, local: &ChessLocal, layout: BoardLayout) -> Vec<ActionB
     if local.control_color.is_some() {
         specs.push((FOLLOW, "Follow", true));
     }
-    let short_players = layout.top_player.size().y < 44.0;
-    if short_players && local.hot_seat_controls && matches!(view.status, Status::Playing) {
+    if layout.top_player.size().y < 44.0
+        && local.hot_seat_controls
+        && matches!(view.status, Status::Playing)
+    {
         let colors = player_colors(layout);
+        specs.push((CONTROL_TOP, color_name(colors[0]), true));
+        specs.push((CONTROL_BOTTOM, color_name(colors[1]), true));
+    }
+    specs
+}
+
+fn menu_panel(layout: BoardLayout, count: usize) -> Option<Rect> {
+    let columns = ((layout.controls.size().x - 12.0) / 100.0).floor().max(1.0);
+    let count = f32::from(u16::try_from(count).ok()?);
+    let height = (count / columns).ceil() * 48.0 + 12.0;
+    let origin = Vec2::new(
+        layout.controls.origin().x,
+        (layout.controls.origin().y - height - 8.0).max(8.0),
+    );
+    Rect::new(origin, Vec2::new(layout.controls.size().x, height)).ok()
+}
+
+fn controls(view: &View, local: &ChessLocal, layout: BoardLayout) -> Vec<ActionButton<'static>> {
+    let metrics = Theme::by_kind(tabula_design::ThemeKind::Light);
+    let compact = compact_actions(layout);
+    let mut specs = vec![(FLIP, "Flip", true)];
+    if compact {
         specs.push((
-            CONTROL_TOP,
-            if colors[0] == ChessColor::White {
-                "White"
+            MENU,
+            if local.hud_menu.is_open() {
+                "Close"
             } else {
-                "Black"
+                "Actions"
             },
             true,
         ));
-        specs.push((
-            CONTROL_BOTTOM,
-            if colors[1] == ChessColor::White {
-                "White"
-            } else {
-                "Black"
-            },
-            true,
-        ));
+    } else {
+        specs.extend(action_specs(view, local, layout));
     }
     let gap = 4.0;
-    let count = u16::try_from(specs.len()).unwrap_or(8);
-    let columns = (((layout.controls.size().x + gap) / 76.0).floor() as u16)
-        .max(1)
-        .min(count);
-    let width = (layout.controls.size().x - gap * f32::from(columns.saturating_sub(1)))
-        / f32::from(columns);
     let mut buttons = Vec::new();
-    for (index, (id, label, enabled)) in specs.into_iter().enumerate() {
-        let index = u16::try_from(index).unwrap_or(0);
-        let column = f32::from(index % columns);
-        let row = f32::from(index / columns);
-        if let Ok(rect) = Rect::new(
-            layout.controls.origin() + Vec2::new(column * (width + gap), row * 48.0),
-            Vec2::new(width, 44.0),
-        ) {
-            if rect.origin().y + rect.size().y
-                <= layout.controls.origin().y + layout.controls.size().y
-            {
-                if let Ok(button) = ActionButton::new(id, rect, label, metrics.density.min_target) {
-                    buttons.push(button.enabled(enabled).shape(ButtonShape::Square));
+    let add_group = |buttons: &mut Vec<ActionButton<'static>>,
+                     specs: Vec<(FocusId, &'static str, bool)>,
+                     area: Rect,
+                     min_width: f32| {
+        let count = u16::try_from(specs.len()).unwrap_or(8);
+        let columns = (((area.size().x + gap) / min_width).floor() as u16)
+            .max(1)
+            .min(count);
+        let width =
+            (area.size().x - gap * f32::from(columns.saturating_sub(1))) / f32::from(columns);
+        for (index, (id, label, enabled)) in specs.into_iter().enumerate() {
+            let index = u16::try_from(index).unwrap_or(0);
+            let origin = area.origin()
+                + Vec2::new(
+                    f32::from(index % columns) * (width + gap),
+                    f32::from(index / columns) * 48.0,
+                );
+            if let Ok(rect) = Rect::new(origin, Vec2::new(width, 44.0)) {
+                if rect.origin().y + rect.size().y <= area.origin().y + area.size().y {
+                    if let Ok(button) =
+                        ActionButton::new(id, rect, label, metrics.density.min_target)
+                    {
+                        buttons.push(button.enabled(enabled).shape(ButtonShape::Square));
+                    }
                 }
             }
         }
+    };
+    add_group(&mut buttons, specs, layout.controls, 76.0);
+    if compact && local.hud_menu.is_open() {
+        let specs = action_specs(view, local, layout);
+        if let Some(panel) = menu_panel(layout, specs.len()) {
+            if let Ok(area) = Rect::new(
+                panel.origin() + Vec2::splat(8.0),
+                panel.size() - Vec2::splat(16.0),
+            ) {
+                add_group(&mut buttons, specs, area, 100.0);
+            }
+        }
     }
-    if !short_players && local.hot_seat_controls && matches!(view.status, Status::Playing) {
+    if layout.top_player.size().y >= 44.0
+        && local.hot_seat_controls
+        && matches!(view.status, Status::Playing)
+        && !(compact && local.hud_menu.is_open())
+    {
         for (id, rect, color) in [
             (CONTROL_TOP, layout.top_player, player_colors(layout)[0]),
             (
@@ -297,6 +363,8 @@ pub(super) fn on_input(
         match action {
             NavigationAction::Activate(CANCEL) | NavigationAction::Cancel => {
                 local.hud_buttons = ButtonInteraction::default();
+                local.hud_menu =
+                    ActionMenu::from_open(compact_actions(layout) && modal.return_focus != FLIP);
                 local.focus.set_current(Some(modal.return_focus));
             }
             NavigationAction::Activate(CONFIRM)
@@ -304,6 +372,8 @@ pub(super) fn on_input(
                     && view.actions.contains(&modal.command) =>
             {
                 local.hud_buttons = ButtonInteraction::default();
+                local.hud_menu =
+                    ActionMenu::from_open(compact_actions(layout) && modal.return_focus != FLIP);
                 local.focus.set_current(Some(modal.return_focus));
                 if let InputEvent::Key {
                     key: Key::Enter,
@@ -338,9 +408,38 @@ pub(super) fn on_input(
     }
     let buttons = controls(view, local, layout);
     let graph = graph(&buttons);
+    let popup = if local.hud_menu.is_open() && compact_actions(layout) {
+        menu_panel(layout, action_specs(view, local, layout).len())
+    } else {
+        None
+    };
+    if popup.is_some() {
+        if !local.focus.current().is_some_and(|id| graph.contains(id)) {
+            local.focus.set_current(Some(MENU));
+        }
+        let cancel = matches!(
+            input,
+            InputEvent::Key {
+                key: Key::Escape,
+                pressed: true
+            }
+        );
+        let outside = matches!(input, InputEvent::Pointer { position, phase: super::PointerPhase::Down, .. }
+            if !popup.is_some_and(|panel| panel.contains(position.get()))
+                && !buttons.iter().any(|button| button.rect().contains(position.get())));
+        if cancel || outside {
+            local.hud_menu = ActionMenu::Closed;
+            local.hud_buttons = ButtonInteraction::default();
+            local.focus.set_current(Some(MENU));
+            if outside {
+                local.activation_keys.pointer_cancelled = true;
+            }
+            return HudInput::Handled(None);
+        }
+    }
     // Completion owns Tab in the shell, so keep a board-to-HUD route on the
     // existing directional keys. It changes local focus only, never ownership.
-    if matches!(view.status, Status::Ended { .. }) {
+    if popup.is_none() && matches!(view.status, Status::Ended { .. }) {
         if matches!(
             input,
             InputEvent::Key {
@@ -392,15 +491,23 @@ pub(super) fn on_input(
             && graph.nodes().last().map(FocusNode::id).is_some()
         {
             local.hud_buttons = ButtonInteraction::default();
-            local.focus.set_keyboard_focus(Some(FocusId::new(0)));
+            local.focus.set_keyboard_focus(if popup.is_some() {
+                graph.first_id()
+            } else {
+                Some(FocusId::new(0))
+            });
             return HudInput::Handled(None);
         }
     }
     let owns = match input {
         InputEvent::Pointer { position, .. } => {
-            buttons
-                .iter()
-                .any(|button| button.rect().contains(position.get()))
+            // The popup surface shields covered board/player controls even in
+            // its padding and disabled targets. Only the disclosed action set
+            // enters ButtonInteraction or its keyboard graph.
+            popup.is_some_and(|panel| panel.contains(position.get()))
+                || buttons
+                    .iter()
+                    .any(|button| button.rect().contains(position.get()))
                 || local.hud_buttons.pressed().is_some()
         }
         InputEvent::Key { .. } => local.focus.current().is_some_and(|id| graph.contains(id)),
@@ -415,6 +522,17 @@ pub(super) fn on_input(
     let NavigationAction::Activate(id) = action else {
         return HudInput::Handled(None);
     };
+    if id == MENU {
+        let open = !local.hud_menu.is_open();
+        local.clear_interaction();
+        local.hud_menu = ActionMenu::from_open(open);
+        local.hud_buttons = ButtonInteraction::default();
+        local.focus.set_current(Some(MENU));
+        if let InputEvent::Key { key, pressed: true } = input {
+            local.hud_buttons.suppress_activation_until_release(*key);
+        }
+        return HudInput::Handled(None);
+    }
     if id == FLIP {
         local.flipped = !local.flipped;
         local.clear_interaction();
@@ -587,11 +705,23 @@ pub(super) fn draw(
         }
         let active = matches!(view.status, Status::Playing) && view.turn == color;
         let fill = if active { art.surface } else { art.soft };
+        let reserve = remaining.map_or(0.0, |_| 88.0_f32.min(rect.size().x * 0.38));
         builder.push(RenderCmd::Rect {
             rect,
             radii: Corners::uniform(theme.shape.button.get().min(rect.size().y * 0.4))?,
             fill: Some(Paint::Solid(fill)),
-            border: None,
+            border: if active {
+                Some(Border::new(
+                    1.0,
+                    if view.in_check {
+                        theme.color.danger
+                    } else {
+                        theme.color.primary
+                    },
+                )?)
+            } else {
+                None
+            },
             layer: Layer::HUD,
             z: 0,
         })?;
@@ -607,35 +737,49 @@ pub(super) fn draw(
             1,
         )?)?;
         let label_x = icon_size + 16.0;
+        let label_width = (rect.size().x - label_x - reserve - 18.0).max(0.0);
         text(
             builder,
             format!(
                 "{}{}",
                 color_name(color),
-                if active { " / turn" } else { "" }
+                if active && rect.size().y >= 44.0 {
+                    " / turn"
+                } else {
+                    ""
+                }
             ),
-            rect.origin() + Vec2::new(label_x, 4.0),
-            TextStyleToken::LabelSm,
+            rect.origin() + Vec2::new(label_x, 1.0),
+            TextStyleToken::LabelLg,
             art.ink,
-            (rect.size().x - label_x - 88.0).max(60.0),
+            label_width,
             Layer::HUD,
             1,
         )?;
         if rect.size().y >= 44.0 {
-            let label = if local.control_color == Some(color) {
+            let label = if local.hot_seat_controls && !matches!(view.status, Status::Playing) {
+                "Finished"
+            } else if local.control_color == Some(color) {
                 "Controlling"
             } else if local.hot_seat_controls {
                 "Tap to control"
             } else {
-                "Local player"
+                match view.you {
+                    Some(you) if you == color => "Your seat",
+                    // Leave a little advance margin for the 14px loaded face
+                    // beside projected clocks; wide bars keep the full label.
+                    Some(_) if label_width < 104.0 => "Opponent",
+                    Some(_) => "Opponent seat",
+                    None => "Spectating",
+                }
             };
             text(
                 builder,
                 label,
-                rect.origin() + Vec2::new(label_x, 25.0),
-                TextStyleToken::LabelSm,
-                art.muted,
-                (rect.size().x - label_x - 88.0).max(60.0),
+                rect.origin() + Vec2::new(label_x, 22.0),
+                TextStyleToken::BodyMd,
+                art.ink,
+                label_width,
                 Layer::HUD,
                 1,
             )?;
@@ -694,129 +838,35 @@ pub(super) fn draw(
             )?)?;
         }
     }
-    let status = layout.status;
-    if status.size().x >= 120.0 && status.size().y >= 24.0 {
+    draw_status(builder, view, local, frame, layout)?;
+    let popup = if compact_actions(layout) && local.hud_menu.is_open() {
+        menu_panel(layout, action_specs(view, local, layout).len())
+    } else {
+        None
+    };
+    if let Some(panel) = popup {
         builder.push(RenderCmd::Rect {
-            rect: status,
+            rect: panel,
             radii: Corners::uniform(theme.shape.card.get())?,
-            fill: Some(Paint::Solid(art.surface)),
-            border: None,
-            layer: Layer::HUD,
-            z: 0,
+            fill: Some(Paint::Solid(theme.color.surface_container)),
+            border: Some(Border::new(1.0, theme.color.outline)?),
+            layer: Layer::MODAL,
+            z: -1,
         })?;
-        let rail_toolbar = layout.controls.origin().x >= status.origin().x
-            && layout.controls.origin().y >= status.origin().y;
-        let padding = if rail_toolbar { 6.0 } else { 12.0 };
-        let rail = status.size().y > 160.0 && !rail_toolbar;
-        let terminal_title = if rail { result_title(view) } else { None };
-        text(
-            builder,
-            terminal_title.clone().unwrap_or_else(|| status_text(view)),
-            status.origin() + Vec2::splat(padding),
-            if terminal_title.is_some() {
-                TextStyleToken::DisplaySm
-            } else if rail_toolbar {
-                TextStyleToken::LabelSm
-            } else {
-                TextStyleToken::TitleSm
-            },
-            if view.in_check {
-                theme.color.danger
-            } else {
-                art.ink
-            },
-            status.size().x - padding * 2.0,
-            Layer::HUD,
-            1,
-        )?;
-        let detail = if let Status::Ended { outcome } = &view.status {
-            outcome.summary().to_owned()
-        } else if let Some(offer) = view.draw_offer {
-            format!("{} offered a draw", color_name(offer))
-        } else if view.in_check {
-            format!("CHECK / {} king is threatened", color_name(view.turn))
-        } else if local.control_color.is_some_and(|color| color != view.turn) {
-            "Other seat controlled / Follow to move".into()
-        } else if !view.actions.contains(&Command::OfferDraw)
-            && matches!(view.status, Status::Playing)
-        {
-            "Draw offer: choose the last mover".into()
-        } else {
-            "Select a piece, then a legal destination".into()
-        };
-        if status.size().y >= 64.0 && !rail_toolbar {
-            text(
-                builder,
-                detail,
-                status.origin()
-                    + Vec2::new(padding, if terminal_title.is_some() { 64.0 } else { 40.0 }),
-                TextStyleToken::BodySm,
-                art.muted,
-                status.size().x - padding * 2.0,
-                Layer::HUD,
-                1,
-            )?;
-        }
-        if rail {
-            text(
-                builder,
-                "Observed moves",
-                status.origin() + Vec2::new(padding, 96.0),
-                TextStyleToken::TitleMd,
-                art.ink,
-                status.size().x - padding * 2.0,
-                Layer::HUD,
-                1,
-            )?;
-            text(
-                builder,
-                "Coordinates / this session only",
-                status.origin() + Vec2::new(padding, 124.0),
-                TextStyleToken::LabelSm,
-                art.muted,
-                status.size().x - padding * 2.0,
-                Layer::HUD,
-                1,
-            )?;
-            let room = ((status.size().y - 160.0) / 30.0).floor();
-            let visible = local.move_history.len().min(room.max(0.0) as usize);
-            let first = local.move_history.len().saturating_sub(visible);
-            for (row, movement) in local.move_history.iter().skip(first).enumerate() {
-                let row = u16::try_from(row).unwrap_or(0);
-                let suffix = movement
-                    .promotion
-                    .map_or(String::new(), |piece| format!(" = {}", piece_name(piece)));
-                text(
-                    builder,
-                    format!(
-                        "{}  {} {} {}{}",
-                        color_name(movement.color),
-                        square_name(movement.from),
-                        if movement.captured { "x" } else { "->" },
-                        square_name(movement.to),
-                        suffix
-                    ),
-                    status.origin() + Vec2::new(padding, 156.0 + f32::from(row) * 30.0),
-                    TextStyleToken::BodyMd,
-                    art.ink,
-                    status.size().x - padding * 2.0,
-                    Layer::HUD,
-                    1,
-                )?;
-            }
-        }
     }
     for button in controls(view, local, layout).into_iter().filter(|button| {
         button.id().get() < CONTROL_TOP.get()
+            || button.id() == MENU
             || (button.rect() != layout.top_player && button.rect() != layout.bottom_player)
     }) {
-        button.draw(
-            builder,
-            &theme,
-            &local.hud_buttons,
-            &local.focus,
-            Layer::HUD,
-        )?;
+        let layer = if popup.is_some_and(|panel| {
+            panel.contains(button.rect().origin() + button.rect().size() * 0.5)
+        }) {
+            Layer::MODAL
+        } else {
+            Layer::HUD
+        };
+        button.draw(builder, &theme, &local.hud_buttons, &local.focus, layer)?;
     }
     if let Some(modal) = &local.confirmation {
         if let Some((panel, _, _)) = confirmation_geometry(layout) {
@@ -887,6 +937,250 @@ pub(super) fn draw(
             )?;
             for button in confirmation_buttons(view, modal, layout) {
                 button.draw(builder, &theme, &modal.buttons, &local.focus, Layer::MODAL)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn movement_label(movement: &ObservedMove) -> String {
+    let promotion = movement
+        .promotion
+        .map_or(String::new(), |piece| format!(" = {}", piece_name(piece)));
+    format!(
+        "{} {} {}{}",
+        square_name(movement.from),
+        if movement.captured.is_some() {
+            "x"
+        } else {
+            "→"
+        },
+        square_name(movement.to),
+        promotion
+    )
+}
+
+/// Single-row portrait summary. Full piece names remain in the rail;
+/// the standard promotion letters keep a 14px session label inside its slot.
+fn compact_movement_label(movement: &ObservedMove) -> String {
+    let promotion = movement.promotion.map_or(String::new(), |piece| {
+        let letter = match piece {
+            PieceKind::Pawn => 'P',
+            PieceKind::Knight => 'N',
+            PieceKind::Bishop => 'B',
+            PieceKind::Rook => 'R',
+            PieceKind::Queen => 'Q',
+            PieceKind::King => 'K',
+        };
+        format!("={letter}")
+    });
+    format!(
+        "{}{}{}{promotion}",
+        square_name(movement.from),
+        if movement.captured.is_some() {
+            "x"
+        } else {
+            "→"
+        },
+        square_name(movement.to),
+    )
+}
+
+#[allow(clippy::too_many_lines)]
+fn draw_status(
+    builder: &mut RenderListBuilder,
+    view: &View,
+    local: &ChessLocal,
+    frame: &FrameCtx,
+    layout: BoardLayout,
+) -> Result<(), RenderListError> {
+    let status = layout.status;
+    if status.size().x < 120.0 || status.size().y < 24.0 {
+        return Ok(());
+    }
+    let theme = frame.theme();
+    let art = theme.game_art.chess;
+    let toolbar = layout.controls.origin().x >= status.origin().x
+        && layout.controls.origin().y >= status.origin().y
+        && layout.controls.origin().y < status.origin().y + status.size().y;
+    let rail = status.size().y > 160.0 && !toolbar;
+    let padding = if toolbar { 6.0 } else { 8.0 };
+    let width = status.size().x - padding * 2.0;
+    builder.push(RenderCmd::Rect {
+        rect: status,
+        radii: Corners::uniform(theme.shape.card.get())?,
+        fill: Some(Paint::Solid(art.surface)),
+        border: None,
+        layer: Layer::HUD,
+        z: 0,
+    })?;
+    let title = result_title(view).unwrap_or_else(|| {
+        // A short portrait surface cannot fit the second detail line. Keep an
+        // accepted draw offer visible in its title, including simultaneous check.
+        if !toolbar && status.size().y < 48.0 {
+            if let Some(offer) = view.draw_offer {
+                return if view.in_check {
+                    format!("CHECK / {} draw offer", color_name(offer))
+                } else {
+                    format!("Draw offer / {}", color_name(offer))
+                };
+            }
+        }
+        if rail || toolbar {
+            format!(
+                "{}{}",
+                color_name(view.turn),
+                if view.in_check {
+                    " / CHECK"
+                } else {
+                    " to move"
+                }
+            )
+        } else {
+            status_text(view)
+        }
+    });
+    text(
+        builder,
+        title,
+        status.origin() + Vec2::splat(padding),
+        if rail {
+            TextStyleToken::TitleLg
+        } else {
+            TextStyleToken::LabelLg
+        },
+        if view.in_check && matches!(view.status, Status::Playing) {
+            theme.color.danger
+        } else {
+            art.ink
+        },
+        width,
+        Layer::HUD,
+        1,
+    )?;
+    if toolbar {
+        return Ok(());
+    }
+    let captures = local
+        .move_history
+        .iter()
+        .filter_map(|movement| movement.captured)
+        .count();
+    let last = local.move_history.last().map(compact_movement_label);
+    let detail = if let Status::Ended { outcome } = &view.status {
+        outcome.summary().to_owned()
+    } else if let Some(offer) = view.draw_offer {
+        format!("{} offered a draw", color_name(offer))
+    } else if view.in_check {
+        format!("CHECK / {} king is threatened", color_name(view.turn))
+    } else if rail {
+        if view.you == Some(view.turn) {
+            "Select a piece\nthen a legal destination".into()
+        } else {
+            "Waiting for the side to move".into()
+        }
+    } else {
+        last.map_or_else(
+            || "Observed this session only".into(),
+            |movement| format!("Session: {movement} / {captures} captured"),
+        )
+    };
+    // Two 20px text rows must stay inside the compact status surface. The rail
+    // has its own helper slot, with room for a second wrapped instruction line.
+    if status.size().y >= 48.0 {
+        text(
+            builder,
+            detail,
+            status.origin() + Vec2::new(padding, if rail { 44.0 } else { 28.0 }),
+            TextStyleToken::BodyMd,
+            art.ink,
+            width,
+            Layer::HUD,
+            1,
+        )?;
+    }
+    if rail {
+        text(
+            builder,
+            "Recent coordinates",
+            status.origin() + Vec2::new(padding, 96.0),
+            TextStyleToken::TitleSm,
+            art.ink,
+            width,
+            Layer::HUD,
+            1,
+        )?;
+        text(
+            builder,
+            "Observed this session only",
+            status.origin() + Vec2::new(padding, 122.0),
+            TextStyleToken::LabelLg,
+            art.ink,
+            width,
+            Layer::HUD,
+            1,
+        )?;
+        for (row, movement) in local.move_history.iter().rev().take(4).rev().enumerate() {
+            let row = f32::from(u16::try_from(row).unwrap_or(0));
+            text(
+                builder,
+                format!(
+                    "{}  {}",
+                    color_name(movement.color),
+                    movement_label(movement)
+                ),
+                status.origin() + Vec2::new(padding, 148.0 + row * 26.0),
+                TextStyleToken::BodyMd,
+                art.ink,
+                width,
+                Layer::HUD,
+                1,
+            )?;
+        }
+        let capture_y = 264.0;
+        if status.size().y >= capture_y + 64.0 {
+            text(
+                builder,
+                "Captured this session",
+                status.origin() + Vec2::new(padding, capture_y),
+                TextStyleToken::LabelLg,
+                art.ink,
+                width,
+                Layer::HUD,
+                1,
+            )?;
+            let taken_pieces: Vec<_> = local
+                .move_history
+                .iter()
+                .filter_map(|movement| movement.captured)
+                .rev()
+                .take(8)
+                .collect();
+            if taken_pieces.is_empty() {
+                text(
+                    builder,
+                    "None observed",
+                    status.origin() + Vec2::new(padding, capture_y + 24.0),
+                    TextStyleToken::BodyMd,
+                    art.ink,
+                    width,
+                    Layer::HUD,
+                    1,
+                )?;
+            } else {
+                for (index, piece) in taken_pieces.into_iter().rev().enumerate() {
+                    let x = f32::from(u16::try_from(index).unwrap_or(0)) * 24.0;
+                    builder.push(piece_sprite(
+                        piece,
+                        Rect::new(
+                            status.origin() + Vec2::new(padding + x, capture_y + 24.0),
+                            Vec2::splat(24.0),
+                        )?,
+                        &theme,
+                        Layer::HUD,
+                        1,
+                    )?)?;
+                }
             }
         }
     }
@@ -964,6 +1258,7 @@ mod tests {
     fn new_local() -> ChessLocal {
         let mut local = ChessLocal::default();
         local.set_viewport(viewport());
+        local.hud_menu = ActionMenu::Open;
         local
     }
     fn pointer(rect: Rect, phase: PointerPhase) -> InputEvent {
@@ -1052,6 +1347,7 @@ mod tests {
                 .any(|button| button.id() == CONTROL_TOP)
         );
         local.set_hot_seat_controls(true);
+        local.hud_menu = ActionMenu::Closed;
         let rect = button(&view, &local, CONTROL_TOP);
         assert!(click(&view, &mut local, rect).is_none());
         assert_eq!(local.viewer_override(), Some(Viewer::Seat(SeatId(1))));
@@ -1257,6 +1553,7 @@ mod tests {
         let before = canonical_encode(&state).unwrap();
         for flipped in [false, true] {
             let mut local = new_local();
+            local.hud_menu = ActionMenu::Closed;
             local.flipped = flipped;
             local
                 .focus
@@ -1355,6 +1652,7 @@ mod tests {
         let state = crate::State::initial();
         let view = projected(&state, ChessColor::White);
         let mut local = new_local();
+        local.hud_menu = ActionMenu::Closed;
         let layout = BoardLayout::from_viewport(viewport());
         let from = layout.square_rect(Square(12)).unwrap();
         let to = layout.square_rect(Square(28)).unwrap();
@@ -1414,8 +1712,13 @@ mod responsive_regressions {
             local.set_viewport(viewport);
             local.set_hot_seat_controls(true);
             local.control_color = Some(ChessColor::White);
+            local.hud_menu = ActionMenu::Open;
             let buttons = controls(&view, &local, layout);
             let focus_graph = graph(&buttons);
+            let mut closed = local.clone();
+            closed.hud_menu = ActionMenu::Closed;
+            let bars = controls(&view, &closed, layout);
+            let all_buttons: Vec<_> = buttons.iter().chain(bars.iter()).collect();
             for id in [
                 FLIP,
                 DRAW,
@@ -1426,18 +1729,23 @@ mod responsive_regressions {
                 CONTROL_TOP,
                 CONTROL_BOTTOM,
             ] {
-                let button = buttons
+                let button = all_buttons
                     .iter()
                     .find(|button| button.id() == id)
                     .unwrap_or_else(|| panic!("missing {id} at {width}x{height}"));
                 assert!(button.is_enabled());
-                assert!(focus_graph.contains(id));
+                assert!(if id == CONTROL_TOP || id == CONTROL_BOTTOM {
+                    graph(&bars).contains(id)
+                } else {
+                    focus_graph.contains(id)
+                });
                 assert!(button.rect().size().cmpge(Vec2::splat(44.0)).all());
                 assert!(button.rect().origin().cmpge(Vec2::ZERO).all());
                 assert!((button.rect().origin() + button.rect().size())
                     .cmple(Vec2::new(width, height))
                     .all());
             }
+            local.hud_menu = ActionMenu::Closed;
             local.focus.set_keyboard_focus(Some(FocusId::new(63)));
             ChessPresentation::on_input(
                 &InputEvent::Key {
@@ -1529,5 +1837,546 @@ mod responsive_regressions {
             &mut local
         )
         .is_none());
+    }
+}
+
+#[cfg(test)]
+mod compact_design_regressions {
+    use super::super::{ChessPresentation, PointerButton, PointerPhase, PointerPosition, Viewport};
+    use super::*;
+    use crate::ChessRules;
+    use tabula_core::{SeatId, Viewer};
+    use tabula_game_api::GameRules;
+    use tabula_presentation::{Dpi, GamePresentation};
+
+    fn setup(width: f32, height: f32) -> (View, ChessLocal, BoardLayout, FrameCtx) {
+        let view = ChessRules::project(&crate::State::initial(), Viewer::Seat(SeatId(0)));
+        let viewport = Viewport::new(Vec2::new(width, height)).unwrap();
+        let mut local = ChessLocal::default();
+        local.set_viewport(viewport);
+        let layout = BoardLayout::from_viewport(viewport);
+        let frame = FrameCtx::new(
+            viewport,
+            Dpi::new(1.0).unwrap(),
+            0,
+            Theme::by_kind(tabula_design::ThemeKind::Light),
+        );
+        (view, local, layout, frame)
+    }
+    fn key(key: Key, pressed: bool) -> InputEvent {
+        InputEvent::Key { key, pressed }
+    }
+
+    fn claim_position(offered_draw: bool) -> View {
+        projected_position("4k3/8/8/8/8/8/8/R3K2R w - - 100 60", offered_draw)
+    }
+
+    fn projected_position(fen: &str, offered_draw: bool) -> View {
+        let mut state = crate::State::from_fen(fen).unwrap();
+        if offered_draw {
+            let mut rng = tabula_core::DetRng::for_input(
+                &tabula_core::MatchSeed::from_bytes([0; 32]),
+                tabula_core::InputIndex(0),
+            );
+            let mut ctx = tabula_game_api::Ctx {
+                now: tabula_core::LogicalTime::ZERO,
+                index: tabula_core::InputIndex(0),
+                rng: &mut rng,
+                budget: tabula_game_api::Budget::default(),
+            };
+            ChessRules::apply(
+                &mut state,
+                tabula_game_api::Input::Player {
+                    seat: ChessColor::Black.seat(),
+                    command: Command::OfferDraw,
+                },
+                &mut ctx,
+            )
+            .unwrap();
+        }
+        ChessRules::project(&state, Viewer::Seat(SeatId(0)))
+    }
+
+    #[test]
+    fn popup_padding_and_disabled_controls_shield_underlying_hotseat_bars() {
+        for offered_draw in [false, true] {
+            for flipped in [false, true] {
+                let view = claim_position(offered_draw);
+                let (_, mut local, _, _) = setup(390.0, 844.0);
+                local.set_hot_seat_controls(true);
+                local.control_color = Some(ChessColor::White);
+                local.flipped = flipped;
+                local.hud_menu = ActionMenu::Open;
+                let layout = BoardLayout::oriented(local.viewport, flipped);
+                let buttons = controls(&view, &local, layout);
+                let panel = menu_panel(layout, action_specs(&view, &local, layout).len()).unwrap();
+                let point = if offered_draw {
+                    panel.origin() + Vec2::new(panel.size().x * 0.5, 4.0)
+                } else {
+                    let disabled = buttons.iter().find(|button| button.id() == DRAW).unwrap();
+                    assert!(!disabled.is_enabled());
+                    disabled.rect().origin() + Vec2::new(disabled.rect().size().x * 0.5, 4.0)
+                };
+                assert!(
+                    layout.bottom_player.contains(point),
+                    "test reaches covered bar"
+                );
+                let position = PointerPosition::new(point).unwrap();
+                for phase in [PointerPhase::Down, PointerPhase::Up] {
+                    assert!(ChessPresentation::on_input(
+                        &InputEvent::Pointer {
+                            position,
+                            phase,
+                            button: PointerButton::Primary,
+                        },
+                        &view,
+                        &mut local
+                    )
+                    .is_none());
+                }
+                assert!(local.hud_menu.is_open());
+                assert_eq!(local.control_color, Some(ChessColor::White));
+                assert!(local.confirmation.is_none());
+                assert_eq!(local.interaction, Interaction::Idle);
+            }
+        }
+    }
+
+    #[test]
+    fn popup_focus_excludes_covered_seats_and_tabs_remain_in_disclosed_actions() {
+        let view = claim_position(true);
+        let (_, mut local, layout, _) = setup(390.0, 844.0);
+        local.set_hot_seat_controls(true);
+        local.control_color = Some(ChessColor::White);
+        local.hud_menu = ActionMenu::Open;
+        let buttons = controls(&view, &local, layout);
+        let focus_graph = graph(&buttons);
+        assert!(!focus_graph.contains(CONTROL_TOP));
+        assert!(!focus_graph.contains(CONTROL_BOTTOM));
+        local
+            .focus
+            .set_keyboard_focus(focus_graph.nodes().last().map(FocusNode::id));
+        assert!(ChessPresentation::on_input(&key(Key::Tab, true), &view, &mut local).is_none());
+        assert_eq!(local.focus.current(), Some(FLIP));
+        assert!(local.hud_menu.is_open());
+        // Padding can clear pointer focus. A subsequent key still belongs to
+        // the open action surface rather than normalizing onto a board square.
+        local.focus.set_pointer_focus(None);
+        assert!(
+            ChessPresentation::on_input(&key(Key::ArrowRight, true), &view, &mut local).is_none()
+        );
+        assert_eq!(local.focus.current(), Some(DRAW));
+        assert_eq!(local.control_color, Some(ChessColor::White));
+        assert_eq!(local.interaction, Interaction::Idle);
+    }
+
+    #[test]
+    fn narrow_rail_and_landscape_check_titles_are_bounded_one_line_labels() {
+        let state = crate::State::from_fen("4k3/8/8/8/8/8/4r3/4K3 w - - 0 1").unwrap();
+        let view = ChessRules::project(&state, Viewer::Seat(SeatId(0)));
+        assert!(view.in_check);
+        for (width, height) in [(1100.0, 850.0), (844.0, 390.0)] {
+            let (_, local, _, frame) = setup(width, height);
+            let list = ChessPresentation::present(&view, &local, &frame);
+            assert!(list.commands().iter().any(|command| matches!(command,
+                RenderCmd::Text { text, .. } if text == "White / CHECK")));
+            assert!(!list.commands().iter().any(|command| matches!(command,
+                RenderCmd::Text { text, .. } if text == "Your turn / White / CHECK")));
+        }
+    }
+
+    #[test]
+    fn informational_hud_uses_readable_roles_inside_existing_line_slots() {
+        for kind in [
+            tabula_design::ThemeKind::Light,
+            tabula_design::ThemeKind::Dark,
+            tabula_design::ThemeKind::HighContrastLight,
+            tabula_design::ThemeKind::HighContrastDark,
+        ] {
+            for (width, height) in [
+                (1100.0, 850.0),
+                (1440.0, 960.0),
+                (390.0, 844.0),
+                (320.0, 640.0),
+                (844.0, 390.0),
+                (320.0, 580.0),
+            ] {
+                let (view, mut local, layout, _) = setup(width, height);
+                local.set_hot_seat_controls(true);
+                for _ in 0..4 {
+                    record_move(
+                        &mut local,
+                        ChessColor::White,
+                        Square(54),
+                        Square(63),
+                        Some(PieceKind::Knight),
+                        Some(Piece {
+                            color: ChessColor::Black,
+                            kind: PieceKind::Rook,
+                        }),
+                    );
+                }
+                let theme = Theme::by_kind(kind);
+                let frame = FrameCtx::new(local.viewport, Dpi::new(1.0).unwrap(), 0, theme);
+                let list = ChessPresentation::present(&view, &local, &frame);
+                let mut checked = 0;
+                for command in list.commands() {
+                    let RenderCmd::Text {
+                        text,
+                        at,
+                        style,
+                        color,
+                        layer,
+                        ..
+                    } = command
+                    else {
+                        continue;
+                    };
+                    if *layer != Layer::HUD {
+                        continue;
+                    }
+                    let surface = [layout.top_player, layout.bottom_player, layout.status]
+                        .into_iter()
+                        .find(|rect| rect.contains(*at));
+                    let Some(surface) = surface else {
+                        continue;
+                    };
+                    checked += 1;
+                    let metrics = frame.theme().text_style(*style);
+                    assert!(metrics.size().get() >= 14.0, "{text}: {style:?}");
+                    assert!(
+                        at.y + metrics.line_height().get()
+                            <= surface.origin().y + surface.size().y + 0.001,
+                        "{text}: first line escapes its existing surface"
+                    );
+                    if matches!(
+                        text.as_str(),
+                        "Tap to control"
+                            | "Observed this session only"
+                            | "Captured this session"
+                            | "None observed"
+                            | "Select a piece\nthen a legal destination"
+                    ) {
+                        assert_eq!(*color, frame.theme().game_art.chess.ink);
+                    }
+                }
+                assert!(checked >= 3, "the HUD text selection must be nonempty");
+            }
+        }
+    }
+
+    #[test]
+    fn compact_observed_promotions_keep_standard_letters_and_session_qualification() {
+        let (view, mut local, _, frame) = setup(320.0, 640.0);
+        for (kind, letter) in [
+            (PieceKind::Queen, 'Q'),
+            (PieceKind::Rook, 'R'),
+            (PieceKind::Bishop, 'B'),
+            (PieceKind::Knight, 'N'),
+        ] {
+            local.move_history.clear();
+            record_move(
+                &mut local,
+                ChessColor::White,
+                Square(54),
+                Square(63),
+                Some(kind),
+                Some(Piece {
+                    color: ChessColor::Black,
+                    kind: PieceKind::Rook,
+                }),
+            );
+            let list = ChessPresentation::present(&view, &local, &frame);
+            let expected = format!("Session: g7xh8={letter} / 1 captured");
+            assert!(list.commands().iter().any(|command| matches!(command,
+                RenderCmd::Text { text, style: TextStyleToken::BodyMd, .. }
+                    if text == &expected)));
+            assert!(movement_label(local.move_history.last().unwrap()).contains(piece_name(kind)));
+        }
+    }
+
+    #[test]
+    fn rail_guidance_keeps_complete_words_in_two_reserved_lines() {
+        for (width, height) in [(1100.0, 850.0), (1200.0, 824.0), (1440.0, 960.0)] {
+            let (view, local, layout, frame) = setup(width, height);
+            let list = ChessPresentation::present(&view, &local, &frame);
+            let guidance = list.commands().iter().find_map(|command| match command {
+                RenderCmd::Text {
+                    text,
+                    at,
+                    style: TextStyleToken::BodyMd,
+                    ..
+                } if text.starts_with("Select a piece") => Some((text, at)),
+                _ => None,
+            });
+            let (text, at) = guidance.expect("active seat has visible rail guidance");
+            assert_eq!(
+                text.lines().collect::<Vec<_>>(),
+                ["Select a piece", "then a legal destination"]
+            );
+            assert!((at.y - layout.status.origin().y - 44.0).abs() < 0.001);
+            let line_height = frame
+                .theme()
+                .text_style(TextStyleToken::BodyMd)
+                .line_height()
+                .get();
+            assert!(at.y + line_height * 2.0 < layout.status.origin().y + 96.0);
+        }
+    }
+
+    #[test]
+    fn short_compact_status_preserves_accepted_draw_offer_and_check_cues() {
+        let (_, local, layout, frame) = setup(320.0, 580.0);
+        assert!((44.0..48.0).contains(&layout.status.size().y));
+        for (fen, expected, in_check) in [
+            (
+                "4k3/8/8/8/8/8/8/R3K2R w - - 100 60",
+                "Draw offer / Black",
+                false,
+            ),
+            (
+                "4k3/8/8/8/8/8/4r3/4K3 w - - 0 2",
+                "CHECK / Black draw offer",
+                true,
+            ),
+        ] {
+            let view = projected_position(fen, true);
+            assert_eq!(view.draw_offer, Some(ChessColor::Black));
+            assert_eq!(view.in_check, in_check);
+            assert!(view.actions.contains(&Command::AcceptDraw));
+            let list = ChessPresentation::present(&view, &local, &frame);
+            assert!(list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, style: TextStyleToken::LabelLg, color, .. }
+                if text == expected && *color == if in_check {
+                    frame.theme().color.danger
+                } else {
+                    frame.theme().game_art.chess.ink
+                })));
+        }
+    }
+
+    #[test]
+    fn accepted_terminal_position_does_not_advertise_disabled_hotseat_controls() {
+        let mut state = crate::State::initial();
+        state.clock = Some(crate::ClockState {
+            remaining: [tabula_core::Millis(300_000); 2],
+            last_move_at: tabula_core::LogicalTime::ZERO,
+            control: crate::ClockControl::Fischer {
+                increment: tabula_core::Millis::ZERO,
+            },
+        });
+        let mut rng = tabula_core::DetRng::for_input(
+            &tabula_core::MatchSeed::from_bytes([0; 32]),
+            tabula_core::InputIndex(0),
+        );
+        let mut ctx = tabula_game_api::Ctx {
+            now: tabula_core::LogicalTime::ZERO,
+            index: tabula_core::InputIndex(0),
+            rng: &mut rng,
+            budget: tabula_game_api::Budget::default(),
+        };
+        ChessRules::apply(
+            &mut state,
+            tabula_game_api::Input::Player {
+                seat: ChessColor::White.seat(),
+                command: Command::Resign,
+            },
+            &mut ctx,
+        )
+        .unwrap();
+        let view = ChessRules::project(&state, Viewer::Seat(SeatId(0)));
+        assert!(matches!(view.status, Status::Ended { .. }));
+        assert!(view.actions.is_empty());
+        for control in [None, Some(ChessColor::White), Some(ChessColor::Black)] {
+            let (_, mut local, layout, frame) = setup(768.0, 480.0);
+            local.set_hot_seat_controls(true);
+            local.control_color = control;
+            let focus = graph(&controls(&view, &local, layout));
+            assert!(!focus.contains(CONTROL_TOP));
+            assert!(!focus.contains(CONTROL_BOTTOM));
+            let list = ChessPresentation::present(&view, &local, &frame);
+            let captions: Vec<_> = list
+                .commands()
+                .iter()
+                .filter_map(|command| match command {
+                    RenderCmd::Text { text, .. } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(
+                captions.iter().filter(|text| **text == "Finished").count(),
+                2
+            );
+            assert!(!captions.contains(&"Tap to control"));
+            assert!(!captions.contains(&"Controlling"));
+        }
+    }
+
+    #[test]
+    fn clocked_narrow_player_hint_preserves_ownership_without_widening_the_slot() {
+        let mut state = crate::State::initial();
+        state.clock = Some(crate::ClockState {
+            remaining: [tabula_core::Millis(300_000); 2],
+            last_move_at: tabula_core::LogicalTime::ZERO,
+            control: crate::ClockControl::Fischer {
+                increment: tabula_core::Millis::ZERO,
+            },
+        });
+        let view = ChessRules::project(&state, Viewer::Seat(SeatId(0)));
+        let (_, local, layout, frame) = setup(768.0, 480.0);
+        let list = ChessPresentation::present(&view, &local, &frame);
+        assert!(list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, at, style: TextStyleToken::BodyMd, max_width: Some(width), .. }
+                if text == "Opponent"
+                    && (at.y - layout.top_player.origin().y - 22.0).abs() < 0.001
+                    && (width.get() - 93.2).abs() < 0.001)));
+        assert!(list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, .. } if text == "Your seat")));
+        assert!(!list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, .. } if text == "Opponent seat")));
+        assert_eq!(
+            list.commands()
+                .iter()
+                .filter(|command| matches!(command,
+                RenderCmd::Text { text, style: TextStyleToken::MonoMd, .. } if text == "5:00"))
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn player_board_status_actions_stay_aligned_and_bounded_without_turn_resize() {
+        for (width, height) in [
+            (1100.0, 850.0),
+            (1440.0, 960.0),
+            (390.0, 844.0),
+            (320.0, 640.0),
+            (768.0, 500.0),
+            (844.0, 390.0),
+            (320.0, 320.0),
+        ] {
+            let (mut view, mut local, layout, _) = setup(width, height);
+            for rect in [
+                layout.board,
+                layout.top_player,
+                layout.bottom_player,
+                layout.status,
+                layout.controls,
+                layout.table,
+            ] {
+                assert!(rect.origin().cmpge(Vec2::ZERO).all());
+                assert!((rect.origin() + rect.size())
+                    .cmple(Vec2::new(width, height) + Vec2::splat(0.001))
+                    .all());
+            }
+            for rect in [layout.top_player, layout.bottom_player] {
+                assert!((rect.origin().x - layout.board.origin().x).abs() < 0.001);
+                assert!((rect.size().x - layout.board.size().x).abs() < 0.001);
+            }
+            if width < 600.0 {
+                assert!(
+                    layout.status.origin().y
+                        >= layout.bottom_player.origin().y + layout.bottom_player.size().y
+                );
+                assert!(
+                    layout.controls.origin().y >= layout.status.origin().y + layout.status.size().y
+                );
+            }
+            assert!(layout.status.size().y <= 360.0);
+            if (width - 390.0).abs() < 0.001 {
+                assert!(layout.square_size() >= 44.0);
+            }
+            view.actions = vec![
+                Command::AcceptDraw,
+                Command::DeclineDraw,
+                Command::ClaimDraw,
+                Command::Resign,
+            ];
+            local.control_color = Some(ChessColor::White);
+            local.hud_menu = ActionMenu::Open;
+            assert_eq!(BoardLayout::oriented(local.viewport, false), layout);
+            assert!(controls(&view, &local, layout).iter().all(|button| button
+                .rect()
+                .size()
+                .cmpge(Vec2::splat(44.0))
+                .all()));
+        }
+    }
+
+    #[test]
+    fn compact_actions_are_keyboard_reachable_and_held_opening_keys_cannot_confirm() {
+        let (view, mut local, layout, _) = setup(390.0, 844.0);
+        assert!(!controls(&view, &local, layout)
+            .iter()
+            .any(|button| button.id() == RESIGN));
+        local.focus.set_keyboard_focus(Some(MENU));
+        assert!(ChessPresentation::on_input(&key(Key::Enter, true), &view, &mut local).is_none());
+        assert!(local.hud_menu.is_open());
+        for _ in 0..4 {
+            assert!(
+                ChessPresentation::on_input(&key(Key::Enter, true), &view, &mut local).is_none()
+            );
+            assert!(local.hud_menu.is_open());
+            assert!(local.confirmation.is_none());
+        }
+        ChessPresentation::on_input(&key(Key::Enter, false), &view, &mut local);
+        ChessPresentation::on_input(&key(Key::ArrowRight, true), &view, &mut local);
+        assert_eq!(local.focus.current(), Some(RESIGN));
+        assert!(ChessPresentation::on_input(&key(Key::Enter, true), &view, &mut local).is_none());
+        assert!(local.confirmation.is_some());
+        assert!(ChessPresentation::on_input(&key(Key::Enter, true), &view, &mut local).is_none());
+        ChessPresentation::on_input(&key(Key::Escape, true), &view, &mut local);
+        assert!(local.confirmation.is_none());
+        assert!(local.hud_menu.is_open());
+        assert_eq!(local.focus.current(), Some(RESIGN));
+        ChessPresentation::on_input(&key(Key::Escape, true), &view, &mut local);
+        assert!(!local.hud_menu.is_open());
+        assert_eq!(local.focus.current(), Some(MENU));
+    }
+
+    #[test]
+    fn dismissing_actions_does_not_reuse_the_same_pointer_release_on_the_board() {
+        let (view, mut local, layout, _) = setup(320.0, 640.0);
+        local.hud_menu = ActionMenu::Open;
+        let rect = layout.square_rect(Square(12)).unwrap();
+        let position = PointerPosition::new(rect.origin() + rect.size() * 0.5).unwrap();
+        for phase in [PointerPhase::Down, PointerPhase::Up] {
+            assert!(ChessPresentation::on_input(
+                &InputEvent::Pointer {
+                    position,
+                    phase,
+                    button: PointerButton::Primary,
+                },
+                &view,
+                &mut local
+            )
+            .is_none());
+        }
+        assert!(!local.hud_menu.is_open());
+        assert_eq!(local.interaction, Interaction::Idle);
+    }
+
+    #[test]
+    fn seat_labels_and_absent_clocks_are_derived_from_projection_only() {
+        let (mut view, local, _, frame) = setup(390.0, 844.0);
+        let list = ChessPresentation::present(&view, &local, &frame);
+        for label in ["Your seat", "Opponent seat"] {
+            assert!(list
+                .commands()
+                .iter()
+                .any(|command| matches!(command, RenderCmd::Text { text, .. } if text == label)));
+        }
+        assert!(!list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, style, .. } if text == "Local player" || *style == TextStyleToken::MonoMd)));
+        view.you = None;
+        let list = ChessPresentation::present(&view, &local, &frame);
+        assert_eq!(
+            list.commands()
+                .iter()
+                .filter(|command| matches!(command,
+            RenderCmd::Text { text, .. } if text == "Spectating"))
+                .count(),
+            2
+        );
     }
 }

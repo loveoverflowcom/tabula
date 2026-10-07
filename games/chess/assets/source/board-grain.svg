@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>Tabula Chess quiet wood grain</title>
+  <desc>Original transparent decorative grain adapted from the issue-85 reference. No squares, labels, pieces or gameplay data.</desc>
+  <defs>
+    <pattern id="grain" patternUnits="userSpaceOnUse" width="26" height="26">
+      <path d="M-5 26L5 0M10 26L20 0M25 26L35 0" fill="none" stroke="#32243b" stroke-opacity=".035" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="128" height="128" fill="url(#grain)"/>
+  <path d="M0 .5H128M.5 0V128" fill="none" stroke="#ffffff" stroke-opacity=".025"/>
+</svg>

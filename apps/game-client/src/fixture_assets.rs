@@ -400,16 +400,21 @@ mod tests {
     #[test]
     fn gameplay_and_setup_select_only_their_actual_density_file() {
         let resources = resources();
-        for (target, pieces, cover) in [
-            (1, "pieces@1x.atlas", "cover@1x.atlas"),
-            (2, "pieces@2x.atlas", "cover@2x.atlas"),
-            (3, "pieces@2x.atlas", "cover@2x.atlas"),
+        for (target, pieces, grain, cover) in [
+            (1, "pieces@1x.atlas", "grain@1x.atlas", "cover@1x.atlas"),
+            (2, "pieces@2x.atlas", "grain@2x.atlas", "cover@2x.atlas"),
+            (3, "pieces@2x.atlas", "grain@2x.atlas", "cover@2x.atlas"),
         ] {
             let gameplay = resources
                 .selected_files(LocalAssetScene::Gameplay, density(target))
                 .unwrap();
-            assert_eq!(gameplay.len(), 1, "twelve resources share one atlas");
+            assert_eq!(
+                gameplay.len(),
+                2,
+                "twelve pieces share one atlas; decorative grain is separate"
+            );
             assert_eq!(gameplay[0].name().as_str(), pieces);
+            assert_eq!(gameplay[1].name().as_str(), grain);
             let setup = resources
                 .selected_files(LocalAssetScene::Setup, density(target))
                 .unwrap();
@@ -431,16 +436,16 @@ mod tests {
             &source,
         ))
         .unwrap();
-        let expected = resources
+        let expected: Vec<_> = resources
             .selected_files(LocalAssetScene::Gameplay, density(1))
-            .unwrap()[0];
-        assert_eq!(
-            source.requests.borrow().as_slice(),
-            &[expected.path().clone()]
-        );
-        assert_eq!(cache.stats().decodes, 1);
-        assert_eq!(cache.stats().uploads, 1);
-        assert_eq!(cache.stats().resident_textures, 1);
+            .unwrap()
+            .into_iter()
+            .map(|file| file.path().clone())
+            .collect();
+        assert_eq!(source.requests.borrow().as_slice(), expected.as_slice());
+        assert_eq!(cache.stats().decodes, 2);
+        assert_eq!(cache.stats().uploads, 2);
+        assert_eq!(cache.stats().resident_textures, 2);
     }
 
     #[test]
@@ -457,10 +462,10 @@ mod tests {
             ))
             .unwrap();
         }
-        assert_eq!(source.requests.borrow().len(), 2);
-        assert_eq!(cache.stats().decodes, 2);
-        assert_eq!(cache.stats().uploads, 2);
-        assert_eq!(cache.stats().resident_textures, 2);
+        assert_eq!(source.requests.borrow().len(), 4);
+        assert_eq!(cache.stats().decodes, 4);
+        assert_eq!(cache.stats().uploads, 4);
+        assert_eq!(cache.stats().resident_textures, 4);
     }
 
     #[test]
@@ -483,12 +488,17 @@ mod tests {
             cache.state(resource, density(1)).unwrap(),
             AssetLoadState::Missing
         );
-        let file = resources
+        for file in resources
             .selected_files(LocalAssetScene::Gameplay, density(1))
-            .unwrap()[0];
-        source
-            .memory
-            .insert(file.path().clone(), assets::ATLAS_1X.to_vec());
+            .unwrap()
+        {
+            let bytes = assets::ALL_IMAGES
+                .iter()
+                .find(|(name, _)| *name == file.name().as_str())
+                .unwrap()
+                .1;
+            source.memory.insert(file.path().clone(), bytes.to_vec());
+        }
         ready(resources.prepare_with_source(
             &mut cache,
             LocalAssetScene::Gameplay,
@@ -500,8 +510,8 @@ mod tests {
             cache.state(resource, density(1)).unwrap(),
             AssetLoadState::Ready
         );
-        assert_eq!(source.requests.borrow().len(), 2);
-        assert_eq!(cache.stats().uploads, 1);
+        assert_eq!(source.requests.borrow().len(), 3);
+        assert_eq!(cache.stats().uploads, 2);
     }
 
     #[test]
@@ -549,7 +559,7 @@ mod tests {
         for (game, pack, gameplay, diagnostic) in [
             (
                 &game,
-                AssetPackRef::from_static("chess", "0.2.0"), // xtask-allow-game-id: local Phase 2 fixture boundary regression only.
+                AssetPackRef::from_static("chess", "0.3.0"), // xtask-allow-game-id: local Phase 2 fixture boundary regression only.
                 assets::gameplay_resources(),
                 "local art binding",
             ),

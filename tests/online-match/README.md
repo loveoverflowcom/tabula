@@ -335,6 +335,30 @@ Twenty-eight mandatory partitions currently form twenty-four independently audit
   bytes, including any partial bytes observed before a transport exception
 - New fenced owner recovery precedes release of held old-owner output
 
+The crash partitions wait for an authenticated Black attachment request that
+started after the old process was SIGKILLed and reaped, and whose genuine body
+completed after restart. Native request timing excludes queued pre-crash events;
+canceled responses and headers alone cannot satisfy the witness. The fresh
+attachment must preserve Black's seat and operation scope and replace its old
+transport identity before the existing board, pixel and durable-prefix checks.
+An unchanged pre-crash White-turn board is therefore insufficient resync evidence.
+Network-loss partitions restore transport after the required committed-prefix
+witness and before sampling the other browser's pixels, so screenshot work does
+not consume the intentionally bounded recovery budget. Every original rendered
+board, exact retry, seat, scope and durable-stream assertion still runs.
+The same-record rotation control document and its current authentication facts
+are prepared before injecting its outage. Actual credential rotation, the second
+durable move and stale-attachment
+rejection still precede restoration; subsequent Black pixels are sampled after
+transport is restored, before further game input.
+The rotation control journey and receipt-retention games deliberately outlast
+automatic recovery. They observe the actual runtime's full failed-context attempt
+bound, neutral zero-sized canvas, cleared projected status and retained uncertain
+command, then perform the visible Retry gesture. Receipts explicitly record
+`bounded_recovery_exhausted` and `visible_user_retry_before_resync`. Original
+scope, seat, exact command/Ack, rendered board and independent durable assertions
+still run after this fresh document starts.
+
 The one-shot gates exist only in the explicitly selected `continuity-test`
 standalone fixture and `acceptance-test-support` native gateway. Hooks match
 trusted match, auth record and attachment. They never manufacture command
@@ -418,7 +442,8 @@ the existing authenticated `/api/v1/auth/refresh` operation in another page of
 that same browser. A legal Black move retires White's cached old-digest attachment.
 A current-cookie/current-CSRF poll must return exact `409 reattach_required`
 with no frames. White then reacquires a fresh attachment with the same durable
-operation scope, retries its exact original sequence/payload and receives the
+operation scope after actual bounded exhaustion and a visible user Retry, retries
+its exact original sequence/payload and receives the
 stored original Ack. Completing the game and its independent native audit proves
 that credential rotation did not make the uncertain move new or duplicate it.
 The two opponents never share credentials, and nothing is persisted in artifacts.
