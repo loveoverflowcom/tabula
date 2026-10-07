@@ -128,6 +128,14 @@ this shell with `:previewApp:run -Ppreview.width=320 -Ppreview.language=vi
 -Ppreview.dark=true -Ppreview.fontScale=2` (simulated game page).
 `ResponsiveShellTest` also exercises synthetic long Account/Profile data at
 320×844, 390×844 and 844×390, across all four schemes, vi/en and 100%/200% text.
+
+The [2026-10-07 prototype adaptation](../../docs/research/main-recovery-20261007/README.md)
+adds a packaged decorative Home image, directly accessible registry categories, and Account
+menu links to Rooms, History and Settings. Rooms/History expose native-adapter unavailability;
+they supply no sample matches, rooms, replay or ratings. Settings changes local appearance,
+language and reduced motion, restored only through bounded public shell saved state. Resolved
+preferences reach a supplied GameHost on fresh launch. Rust rules and the native gameplay
+availability boundary remain owned by ADR-0043.
 Its captures distinguish font scale, viewport and scroll position; desktop pixels
 establish shared layout rather than native device rendering.
 

@@ -14,6 +14,8 @@ kotlin {
         namespace = "com.loveoverflow.tabula.mobile.shared"
         compileSdk = 37
         minSdk = 24
+        // Required by the Android KMP plugin for Compose resources to reach the AAR/APK.
+        androidResources.enable = true
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
@@ -38,6 +40,7 @@ kotlin {
             implementation(libs.coroutines.core)
             api(libs.compose.runtime)
             api(libs.compose.foundation)
+            implementation(libs.compose.resources)
             api(libs.compose.ui.backhandler)
             api(libs.lifecycle.runtime.compose)
         }
@@ -50,4 +53,8 @@ kotlin {
             implementation(kotlin("test"))
         }
     }
+}
+
+compose.resources {
+    packageOfResClass = "com.loveoverflow.tabula.mobile.resources"
 }

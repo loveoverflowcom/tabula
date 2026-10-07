@@ -56,3 +56,11 @@ flamegraph.svg
 # Disposable actual-browser receipts are CI artifacts, never source or secrets.
 /verification/online-match-artifacts/
 /verification/account-social-artifacts/
+
+# Local Gradle diagnostics, signing fixtures and staged build output.
+.gradle/
+*.hprof
+debug.keystore
+debug.keystore.base64
+app/build/
+.build-outputs/

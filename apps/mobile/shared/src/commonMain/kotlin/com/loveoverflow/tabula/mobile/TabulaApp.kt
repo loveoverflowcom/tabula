@@ -49,6 +49,10 @@ import com.loveoverflow.tabula.mobile.shell.LoginScreen
 import com.loveoverflow.tabula.mobile.shell.RegisterScreen
 import com.loveoverflow.tabula.mobile.shell.ProfileScreen
 import com.loveoverflow.tabula.mobile.shell.FriendsScreen
+import com.loveoverflow.tabula.mobile.shell.RoomsScreen
+import com.loveoverflow.tabula.mobile.shell.HistoryScreen
+import com.loveoverflow.tabula.mobile.shell.SettingsScreen
+import com.loveoverflow.tabula.mobile.shell.ShellPreferences
 import com.loveoverflow.tabula.mobile.shell.accountStatusCopy
 import com.loveoverflow.tabula.mobile.shell.DetailScreen
 import com.loveoverflow.tabula.mobile.shell.DeviceFacts
@@ -128,11 +132,13 @@ fun TabulaApp(
     // A recreated host returns to a shell location; an active local game is never resumed.
     var history by rememberSaveable(stateSaver = BackStackSaver) { mutableStateOf(BackStack.Root) }
     var query by rememberSaveable(stateSaver = DiscoveryQuerySaver) { mutableStateOf(DiscoveryQuery()) }
+    var preferences by rememberSaveable(stateSaver = ShellPreferencesSaver) { mutableStateOf(ShellPreferences()) }
     val screenState = rememberSaveableStateHolder()
     val uriHandler = LocalUriHandler.current
-    val selectedScheme = scheme ?: if (isSystemInDarkTheme()) TabulaScheme.Dark else TabulaScheme.Light
+    val hostScheme = scheme ?: if (isSystemInDarkTheme()) TabulaScheme.Dark else TabulaScheme.Light
+    val selectedScheme = preferences.resolveScheme(hostScheme)
     val dark = selectedScheme == TabulaScheme.Dark || selectedScheme == TabulaScheme.HcDark
-    val device = deviceFacts ?: rememberDeviceFacts()
+    val device = preferences.resolveDevice(deviceFacts ?: rememberDeviceFacts())
     val strings = ShellStrings.forLanguage(device.languageTag)
     val accountBack = remember { AccountTaskBackPort() }
     val navigateShell: (Destination) -> Unit = { target ->
@@ -245,6 +251,9 @@ fun TabulaApp(
                         Destination.Register -> RegisterScreen(accountState, strings, accountActions)
                         Destination.Profile -> ProfileScreen(accountState, strings, accountActions, accountAvatar)
                         Destination.Friends -> FriendsScreen(accountState, strings, accountActions)
+                        Destination.Rooms -> RoomsScreen(strings) { navigateShell(Destination.Games) }
+                        Destination.History -> HistoryScreen(strings) { navigateShell(Destination.Games) }
+                        Destination.Settings -> SettingsScreen(preferences, strings) { preferences = it }
                         is Destination.Game -> Unit
                     }
                 }
@@ -252,6 +261,12 @@ fun TabulaApp(
         }
     }
 }
+
+/** Fixed-size local presentation choices only; account facts and game authority are excluded. */
+private val ShellPreferencesSaver = listSaver<ShellPreferences, String>(
+    save = { it.saveCodes() },
+    restore = { ShellPreferences.restoreCodes(it) },
+)
 
 /** Saves only public discovery preferences; these values grant no launch or match authority. */
 private val DiscoveryQuerySaver = listSaver<DiscoveryQuery, String>(
