@@ -31,7 +31,8 @@ are design references, not runtime screenshots. The issue remains open.
   informational HUD roles use existing 14px/20px tokens and important text uses
   `game-art.chess.ink`. Two player lines stay inside 44px bars; compact session
   detail appears only in a 48px-or-taller slot and uses Q/R/B/N promotion notation.
-  Shorter compact titles keep accepted draw offers and simultaneous CHECK visible.
+  Shorter compact titles keep accepted draw offers and simultaneous CHECK visible. The desktop helper
+  uses two complete explicit lines inside its reserved slot.
   Tiny board coordinates, font loading, renderer and theme tokens are unchanged
 
 ## Verification summary
@@ -46,13 +47,13 @@ incomplete run nor source tests are used as visual acceptance.
 | Accepted motion | Legal transitions, both-color en passant, all four castles, all promotion choices/orientations, sparse/dense sampling and interruption | PASS: eight focused motion tests; no remote origin-age claim |
 | Host projection/rejection | 60 host library tests; 60 isolated web/online library plus 15 local integration tests | PASS on the published runtime baseline; live online fault acceptance remains separate |
 | HUD input/layout | Popup shielding, repeat/cancel, keyboard, inward promotion and bounded 320/390 portrait/short-landscape controls | PASS: renderer-neutral tests; physical touch/assistive technology remains NOT_RUN |
-| Readability role regression | Four themes × six viewport bounds, existing line slots, important ink roles, compact promotions/session qualifier and short-status accepted draw/CHECK cues | PASS: three focused tests; old 11/12px roles fail the new minimum-size assertion. Actual after-change pixels remain pending |
+| Readability role regression | Four themes × six viewport bounds, existing line slots, important ink roles, compact promotions/session qualifier and short-status accepted draw/CHECK cues | PASS: four focused tests; old 11/12px roles fail the new minimum-size assertion. 14px after-change pixels are inspected; final explicit-line helper recheck pending |
 | Pointer capture oracle | Five independent fixed board-bound rows; 640 White/Black square centers in Python and actual Rust; exactly one online Rust status-dock 56px reservation | PASS: 52 focused Python checks and one Rust fixture. The old helper mismatches all 640 centers; this is not a live online browser result |
-| Rules/replay/conformance | Existing Chess/testkit targets, eleven conformance and seven replay tests | PASS: 198 affected executions, 0 failed, one ignored depth-five perft excluded; rules source/replay identities unchanged |
-| Portable repository gate | Repository-owned `cargo xtask check` order | PASS: 1,315 executions, 0 failed, 18 ignored; fmt, all-feature Clippy, policy and cargo-deny passed. The final gate follows clean develop integration; 391 frozen source hashes are checked unchanged |
+| Rules/replay/conformance | Existing Chess/testkit targets, eleven conformance and seven replay tests | PASS: 199 affected executions, 0 failed, one ignored depth-five perft excluded; rules source/replay identities unchanged |
+| Portable repository gate | Repository-owned `cargo xtask check` order | PASS: 1,316 executions, 0 failed, 18 ignored; fmt, all-feature Clippy, policy and cargo-deny passed. The final gate follows clean develop integration; 391 frozen source hashes are checked unchanged |
 | Original assets/managed pack | Exact six-file `chess@0.2.0` metadata/hash, density/cache behavior and reproducible exports | PASS on the published baseline; no new assets in the readability follow-up |
 | WASM/staging/loading | Existing isolated web feature, production stager, immutable byte/SHA checks | PASS: final local WASM 961,136 bytes / gzip9 384,507; all ten immutable payload size/SHA checks. Build/staging is not browser proof |
-| Actual browser pixels | Exact-source Rust presenter → Macroquad WASM, source-separated dedicated capture | PARTIAL on `c61dbc62`: 27 original PNGs, 42 raw assertions PASS / 2 small-text OCR FAIL; after-change capture pending |
+| Actual browser pixels | Exact-source Rust presenter → Macroquad WASM, source-separated dedicated capture | PARTIAL on `c61dbc62`: 27 PNGs, 42 PASS / 2 OCR FAIL. `94dc7df5` after-source: seven PNGs, 11 PASS / 2 unchanged OCR FAIL; final guidance recheck pending |
 | Native/device/performance | Native mobile adapter, physical device, frame pacing/memory/input latency | NOT_RUN; no device, native gameplay or 60FPS claim |
 
 The affected commands are `cargo test -p tabula-game-chess --features
@@ -68,7 +69,7 @@ wasm-release`, followed by `cargo xtask stage-wasm-game`. Official Rust 1.96.1,
 native/WASM targets and cargo-deny 0.20.2 are installed in scratch. Baseline
 staging independently verified 24 host resources and ten immutable runtime
 payloads. The final local WASM SHA-256 is
-`93e148d98638d5a0f0de25c243d1f6862cbb38b0c31dab0e9f82b95287d55a67`. The local and Actions WASM builds retain separate provenance; their
+`614c64f1f3ac2aee357bfd29504d1cab8308bdd1daed16c2fb95bff4853e8bd9`. The local and Actions WASM builds retain separate provenance; their
 binary hashes are not asserted equal. Unrelated GitHub CI was not polled.
 
 ## Actual browser receipt and follow-up
@@ -84,7 +85,8 @@ were observed. The raw 42-PASS/2-OCR-FAIL result remains PARTIAL.
 
 Independent final source review found no remaining actionable HUD defect; the
 short-status draw-offer regression discovered during review was repaired before
-publication. Actual after-change clarity/wrapping still needs the new capture.
+publication. The after-source actual pixels show stronger text; final explicit-line guidance
+wrapping still needs its affected-state recheck.
 
 Light 11/12px helper/history/result-detail text visibly appeared thin/pale.
 Authored muted/surface contrast is 6.17:1, so this is not evidence of a token
@@ -93,6 +95,28 @@ this follow-up changes only Chess text roles/ink and requires new exact-source
 pixel inspection. The initially alleged title clipping was rechecked against
 original-resolution pixels and retracted: title ink/bounds match across initial,
 castles and full/reduced-motion frames. No title/renderer fix follows that claim.
+
+The [after-source report](https://github.com/loveoverflowcom/tabula/pull/112#issuecomment-6034448779)
+links [run 37595499517](https://github.com/loveoverflowcom/tabula/actions/runs/37595499517)
+and its [seven-image artifact](https://github.com/loveoverflowcom/tabula/actions/runs/37595499517/artifacts/11470817114).
+Source `94dc7df5012640e7d6909d1ab5c02eb273d1dc37` / tree `7a2f8d0d`
+shows visibly stronger 14px seat/guidance/session/result text and bounded 390/320
+initial/after-e2e4 layouts. The raw 11-PASS/2-OCR-FAIL receipt remains PARTIAL:
+original PNGs visibly show d5/f6/checkmate, while the unchanged Tesseract checks
+misrecognize them. Actual Tesseract is 4.1.1/PSM11; the old hand-written version-5
+label was corrected in the report. No defect is inferred from OCR alone.
+
+Desktop helper pixels still split “destination” inside the word. The final
+one-string follow-up uses `Select a piece\nthen a legal destination` with two
+complete lines at +44/+64 before the next heading at +96. Its source/slot
+regression passes; a new exact-source affected-state screenshot is pending.
+
+The bounded existing-context probe recorded alpha/premultipliedAlpha enabled and
+RGB/alpha source factors 770/771. Its sampled foreground/background alpha was
+255, with no pure-white candidates in that region. It is inconclusive for a
+per-glyph blend diagnosis; renderer/vendor settings remain unchanged. These
+Actions artifacts currently expire on 2026-10-21, rather than providing permanent
+repo image storage; no raw images/receipts are copied back into docs.
 
 Local Chromium launch remains BLOCKED by denied AF_UNIX singleton sockets and
 there is no native display. The dedicated, separately authorized Actions route

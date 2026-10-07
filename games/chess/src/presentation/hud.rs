@@ -1069,7 +1069,7 @@ fn draw_status(
         format!("CHECK / {} king is threatened", color_name(view.turn))
     } else if rail {
         if view.you == Some(view.turn) {
-            "Select a piece, then a legal destination".into()
+            "Select a piece\nthen a legal destination".into()
         } else {
             "Waiting for the side to move".into()
         }
@@ -2049,7 +2049,7 @@ mod compact_design_regressions {
                             | "Observed this session only"
                             | "Captured this session"
                             | "None observed"
-                            | "Select a piece, then a legal destination"
+                            | "Select a piece\nthen a legal destination"
                     ) {
                         assert_eq!(*color, frame.theme().game_art.chess.ink);
                     }
@@ -2086,6 +2086,35 @@ mod compact_design_regressions {
                 RenderCmd::Text { text, style: TextStyleToken::BodyMd, .. }
                     if text == &expected)));
             assert!(movement_label(local.move_history.last().unwrap()).contains(piece_name(kind)));
+        }
+    }
+
+    #[test]
+    fn rail_guidance_keeps_complete_words_in_two_reserved_lines() {
+        for (width, height) in [(1100.0, 850.0), (1200.0, 824.0), (1440.0, 960.0)] {
+            let (view, local, layout, frame) = setup(width, height);
+            let list = ChessPresentation::present(&view, &local, &frame);
+            let guidance = list.commands().iter().find_map(|command| match command {
+                RenderCmd::Text {
+                    text,
+                    at,
+                    style: TextStyleToken::BodyMd,
+                    ..
+                } if text.starts_with("Select a piece") => Some((text, at)),
+                _ => None,
+            });
+            let (text, at) = guidance.expect("active seat has visible rail guidance");
+            assert_eq!(
+                text.lines().collect::<Vec<_>>(),
+                ["Select a piece", "then a legal destination"]
+            );
+            assert!((at.y - layout.status.origin().y - 44.0).abs() < 0.001);
+            let line_height = frame
+                .theme()
+                .text_style(TextStyleToken::BodyMd)
+                .line_height()
+                .get();
+            assert!(at.y + line_height * 2.0 < layout.status.origin().y + 96.0);
         }
     }
 
