@@ -13,7 +13,6 @@ import json
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent
-DOCS = ROOT.parents[2] / 'docs/ui/werewolf-approved'
 ROLES = ['villager', 'werewolf', 'seer', 'doctor', 'hunter', 'witch']
 SOURCE_HASH = '83455e8181f4e211feb9d13772e841cce2d3e169c7a7ed763e9bbdd222fae757'
 
@@ -84,7 +83,7 @@ def main():
     parser.add_argument('--check',action='store_true')
     args = parser.parse_args()
     for name,data in exports().items():
-        destination = DOCS / name if name == 'budgets.json' else ROOT / name
+        destination = ROOT / name
         if args.check:
             if not destination.is_file() or destination.read_bytes()!=data:
                 raise SystemExit(f'stale Werewolf artwork: {name}')

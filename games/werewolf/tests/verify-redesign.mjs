@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.TABULA_PLAYWRIGHT ?? 'playwright');
 const { PNG } = require(process.env.TABULA_PNGJS ?? 'pngjs');
-const [origin = 'http://127.0.0.1:8085', output = 'docs/verification/werewolf-redesign-84'] = process.argv.slice(2);
+const [origin = 'http://127.0.0.1:8085', output = 'verification/werewolf-redesign-84'] = process.argv.slice(2);
 const screenshotDir = path.resolve(output, 'screenshots');
 const runDir = path.resolve(output, 'runs');
 await fs.mkdir(screenshotDir, { recursive: true });

@@ -1,5 +1,11 @@
 # Native GameHost adapter contract prototype
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-native-host).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 Date: 2026-10-07 UTC. Fresh base: `develop@f9e31cfad11f77f9a017c67726bc8f9fcf74c7c9`.
 Refs [#81](https://github.com/loveoverflowcom/tabula/issues/81). This draft delivers an
 executable control/lifecycle seam and Android surface callback source. **It does not

@@ -1,5 +1,11 @@
 # First authentic Design 01 browser evidence
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/dashboard-design01).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 ## Verdict and exact source
 
 This is an intermediate, **failed** acceptance run. It does not mark the PR ready.

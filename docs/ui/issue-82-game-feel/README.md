@@ -1,32 +1,26 @@
 # Tabula — Ma sói và Cờ vua redesign
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 Thiết kế ngày 06/10/2026, tuần tự Ma sói trước Cờ vua. Giữ Rust/Macroquad và primary tím. Lượt này tạo design/source/issue, chưa sửa runtime hoặc luật game.
 
 1. [Ma sói #84](https://github.com/loveoverflowcom/tabula/issues/84): cảnh làng đêm/bình minh, avatar tài khoản đồng bộ dashboard, mobile responsive, bài riêng drawer và phiếu/chuyển pha.
 2. [Cờ vua #85](https://github.com/loveoverflowcom/tabula/issues/85): bàn có chiều sâu, Staunton upright, move/capture/promotion và góc nhìn quân đen.
 
-Mỗi folder có index.html, style.css, preview.mjs, IMPLEMENTATION.md, ISSUE.md, exporter và SVG/PNG/JPG tham chiếu. PNG/JPG là ảnh xuất từ source SVG với dữ liệu mẫu, không phải screenshot Macroquad hoặc browser. Ma sói bổ sung avatar dùng chung dashboard/header/game, mobile390×844, compact320×640 và landscape844×390; màn tham chiếu ưu tiên ghế + CTA, bài riêng mở drawer. Chess giữ bản trước với ảnh full-page390×1050.
+## Historical design archive
 
-## Xem preview có animation
-
-Giải nén ZIP, mở terminal tại folder này rồi chạy:
-
-```sh
-python3 -m http.server 8000
-```
-
-Mở http://localhost:8000/werewolf/ và http://localhost:8000/chess/. Dùng các nút/công cụ mẫu để thử mở bài, đổi pha, bỏ phiếu, di chuyển quân, capture, đảo bàn và phong cấp. Các demo dùng fixture, không có network/game rules/authority; không dùng để nghiệm thu luật hoặc quyền.
-
-## Xuất lại ảnh tĩnh
-
-Cần Python3, Pillow và Inkscape:
-
-```sh
-python3 werewolf/export_preview.py
-python3 chess/export_preview.py
-```
-
-Các SVG xuất ra tự chứa; exporter dùng chung artwork/model/portrait dữ liệu với prototype. Một số hiệu ứng bóng browser dùng ellipse thay thế trong static export để Inkscape hiển thị ổn định.
+The lightweight Markdown requirements, prompts, attribution and implementation handoffs
+remain here. HTML/CSS/MJS, exporter scripts, sample JSON/avatar assets, static preview
+images and the ZIP design export are available in the pinned
+[pre-cleanup design archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel).
+Those are sample-data designs, not Macroquad runtime screenshots or gameplay acceptance.
+To reproduce the historical design, use that exact archived tree outside the current
+checkout; keep exported images/bundles outside Git. Runtime game assets remain in
+`games/<game>/assets/`, independently of the archived design copies.
 
 ## Evidence và artwork
 

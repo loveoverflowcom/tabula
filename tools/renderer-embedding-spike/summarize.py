@@ -225,7 +225,7 @@ def markdown(data):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--evidence", type=Path, default=Path(__file__).resolve().parents[2] / "docs/verification/issue-60")
+    parser.add_argument("--evidence", type=Path, default=Path(__file__).resolve().parents[2] / "verification/issue-60")
     args = parser.parse_args()
     root = args.evidence.resolve()
     rows = [summarize(root / "runs" / f"chromium-{kind}-{run}.json", kind, run)

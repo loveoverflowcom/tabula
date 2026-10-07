@@ -1,5 +1,11 @@
 # Optional video export attempt
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 This is a manually recorded attempt receipt from the supported browser tool
 observations, not a recovered console export or a controlled measurement row.
 

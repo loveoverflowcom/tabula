@@ -4,7 +4,7 @@ The approved six-role folk-fantasy portraits are cropped from the supplied
 original generated artwork. The #84 village-night and village-dawn scenes come
 from the owner's `tabula-redesign 3` reference. No publisher artwork, logos or
 fonts are imported.
-See `source/PROVENANCE.md` and [the unchanged design provenance JSON](../../../docs/ui/werewolf-approved/design-provenance.json) for the
+See `source/PROVENANCE.md` and [the retained original design provenance JSON](source/design-provenance.json) for the
 creation prompt, input hash and visual-reference boundary. The unavailable
 unpublished Mac implementation was not read; this gameplay implementation is
 recreated from inspected design references and the maintained rules contract.
@@ -30,7 +30,7 @@ avatar images or profile information.
 | Both exports | 18 | 3,203,783 | 18,186,240 | 3,686,400 |
 
 These are static byte/dimension budgets, not measured GPU/decode latency claims.
-[`budgets.json`](../../../docs/ui/werewolf-approved/budgets.json) pins every export's bytes, SHA-256 and decoded estimate; the pack
+[`budgets.json`](budgets.json) pins every export's bytes, SHA-256 and decoded estimate; the pack
 manifest additionally pins full BLAKE3 hashes. Native host fixture bytes pass
 through the same verified LocalSpriteResources path as browser-fetched files.
 

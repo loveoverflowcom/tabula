@@ -2,7 +2,7 @@
 
 Source supplied in the approved design review on 2026-10-04. The six portrait
 panels are original built-in image generation, not third-party publisher pixels.
-[`design-provenance.json`](../../../../docs/ui/werewolf-approved/design-provenance.json) retains the exact creation prompt, panel ordering, source
+[`design-provenance.json`](design-provenance.json) retains the exact creation prompt, panel ordering, source
 hash references and commercially referenced *visual conventions*. The retained
 WebP has SHA-256 `83455e8181f4e211feb9d13772e841cce2d3e169c7a7ed763e9bbdd222fae757`.
 The original PNG was not in the materialized handoff; the WebP is the exact

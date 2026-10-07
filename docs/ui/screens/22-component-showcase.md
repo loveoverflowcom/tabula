@@ -1,12 +1,19 @@
 # 22 — Foundation component showcase
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/screens); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 This is a design/development surface, not a product route or preference controller.
 Use [the foundation contract](foundation.md) for all token and interaction rules, and
 [screen 13](13-settings.md) for actual settings ownership.
 
 ## Layout and review controls
 
-Open [the editable preview](foundation-preview.html#showcase). Review controls select one of
+Open [Historical the editable preview](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/screens/foundation-preview.html#showcase). Review controls select one of
 the four generated schemes, normal/compact density, and reduced motion. They affect preview
 data only. At desktop widths, use two columns of tonal component groups; on mobile stack them
 in source order. At 320 dp every action/label remains visible; connected selectors wrap/stack.

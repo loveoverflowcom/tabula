@@ -1,5 +1,12 @@
 # 13 — User settings
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/screens); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 Shared foundation: [layout, tokens, component states](foundation.md).
 Product location: `/settings` in the Phase-5 Leptos shell. Native shell implementation follows
 its own phase. Screen 22 is [a component showcase](22-component-showcase.md), not this route.
@@ -88,4 +95,4 @@ Runtime acceptance requires all four schemes, normal/compact, OS change and over
 effective reduced motion, load/write failure and stale completion, 320/390/600/905/1440 dp,
 200% zoom/text, keyboard-only navigation, touch hit regions, deep-link/back behavior, and
 overlay focus restoration. Real adapter and platform checks are deferred to Stage C after
-the gate; the [editable preview](foundation-preview.html#settings) supplies design variants.
+the gate; the [Historical editable preview](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/screens/foundation-preview.html#settings) supplies design variants.

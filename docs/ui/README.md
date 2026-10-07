@@ -23,8 +23,9 @@ success), the keyboard path, and the a11y announcements.
 
 The [foundation and screen index](screens/README.md) defines the compact Material 3
 Expressive contract for issue #49: screen 13 owns user settings, while screen 22 is
-the component showcase. Its editable preview consumes the generated CSS tokens and
-contains sample data only; runtime work still follows the phase gates.
+the component showcase. Its [historical editable preview](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/screens/foundation-preview.html)
+consumes generated CSS tokens and sample data only. The preview export is archived;
+the Markdown contract remains maintained and runtime work still follows the phase gates.
 
 Issue #50's [discovery/setup contract](screens/discovery.md) specifies screen 01
 (resume-first home and Library), 02 (game detail), and 03 (new match setup).
@@ -94,3 +95,10 @@ implement issue #91. [Verification](../verification/brand-identity/README.md)
 records source/build/pixel evidence separately from browser/device runtime.
 The original Design01 dashboard hierarchy is retained; game art and avatars
 are independent of the platform logo.
+
+## Source retention
+
+Keep screen specifications, requirements, provenance summaries and the generated token
+contract here. Design bundles, previews and ZIP exports are historical review artifacts;
+use pinned commit/issue links or Actions Artifacts. See the
+[repository retention policy](../repository-hygiene.md).

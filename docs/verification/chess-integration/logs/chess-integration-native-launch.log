@@ -1,4 +1,0 @@
-
-thread 'main' (2360) panicked at /workspace/scratch/429f9ca90843/toolchain/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/miniquad-0.4.11/src/native/linux_x11.rs:659:13:
-XOpenDisplay() failed!
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

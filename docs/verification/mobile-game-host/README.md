@@ -1,5 +1,12 @@
 # Mobile `GameHost` evidence ledger (ADR-0033)
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 > Historical ADR-0033 WebView evidence. [ADR-0043](../../adr/0043-native-mobile-gamehost.md) retires this mobile gameplay direction and packaging; the native-only source spike/current checks are in [the new ledger](../mobile-native-host/README.md). None of the results below establish native Android/iOS gameplay.
 
 
@@ -47,7 +54,7 @@ software GL, phone viewport 412×800 CSS px at DPR 2 and 860×412 landscape). No
 | Desktop window opens at the requested size | `interaction-tested` | `./gradlew :previewApp:run -Ppreview.smokeWindow=true` | PASS: `content=390x844 (requested 390x844)` |
 | APK assembles with the bundle; build fails without it | `compiled` | `./gradlew :android:assembleDebug -Ptabula.requireGameBundle=true`, and the same with the bundle moved away | PASS / correct FAIL; 18 bundle files, 1,792,311 bytes in the APK |
 | iOS Kotlin compiles | `compiled` (not executed) | `./gradlew :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64` | PASS |
-| The **real** staged game, served by the host's path/CSP policy, in a phone-sized Chrome | `interaction-tested`, `screenshot-inspected` | `cargo xtask stage-mobile-game && node tools/mobile-host-check/run.mjs` | PASS 20/20, three consecutive runs ([receipt](desktop/desktop-receipt.json), [runs](desktop/runs.json)) |
+| The **real** staged game, served by the host's path/CSP policy, in a phone-sized Chrome | `interaction-tested`, `screenshot-inspected` | `cargo xtask stage-mobile-game && node tools/mobile-host-check/run.mjs` | PASS 20/20, three consecutive runs ([Historical receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/desktop/desktop-receipt.json), [Historical runs](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/desktop/runs.json)) |
 
 The desktop-Chrome receipt asserts, against the real WASM game: hello→init→ready with generation 1 and a
 granted `keep-awake`; host preferences applied (dark theme, English); no CSP violation, console error or
@@ -60,12 +67,12 @@ runtime; a missing WASM and a WASM with a flipped byte (SHA-256 mismatch) each s
 overlay and reporting `failed`; a silent host failing closed after 5 s with no game fetch; and Try again
 re-handshaking and starting.
 
-Screenshots (actual renders, inspected): [portrait ready](desktop/screenshots/01-ready-portrait.png),
-[after e2-e4](desktop/screenshots/02-after-e2-e4.png), [landscape](desktop/screenshots/03-landscape.png),
-[leave confirmation](desktop/screenshots/04-leave-dialog.png), [fresh reopen](desktop/screenshots/05-reopened-fresh.png),
-[missing WASM](desktop/screenshots/06-failure-missing-wasm.png); shell with the **simulated** page:
-[Home](cmp-desktop/01-home.png), [ready](cmp-desktop/02-game-ready.png),
-[Back → leave confirmation](cmp-desktop/03-back-leave-confirmation.png), [host failure](cmp-desktop/04-host-failure-panel.png).
+Screenshots (actual renders, inspected): [Historical portrait ready](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/desktop/screenshots/01-ready-portrait.png),
+[Historical after e2-e4](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/desktop/screenshots/02-after-e2-e4.png), [Historical landscape](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/desktop/screenshots/03-landscape.png),
+[Historical leave confirmation](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/desktop/screenshots/04-leave-dialog.png), [Historical fresh reopen](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/desktop/screenshots/05-reopened-fresh.png),
+[Historical missing WASM](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/desktop/screenshots/06-failure-missing-wasm.png); shell with the **simulated** page:
+[Historical Home](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/cmp-desktop/01-home.png), [Historical ready](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/cmp-desktop/02-game-ready.png),
+[Historical Back → leave confirmation](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/cmp-desktop/03-back-leave-confirmation.png), [Historical host failure](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-game-host/cmp-desktop/04-host-failure-panel.png).
 
 ### Mutation sensitivity
 

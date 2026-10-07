@@ -1,5 +1,11 @@
 # Native Macroquad embedding: pinned source review
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-native-host).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 Reviewed for issue #81 against `develop@c6d55a6`. Evidence kind: **source-read**.
 No native game was compiled, linked, rendered or benchmarked by this review. The shipping
 Android/iOS adapter is **NOT_IMPLEMENTED**; native embedding acceptance is **BLOCKED** by
