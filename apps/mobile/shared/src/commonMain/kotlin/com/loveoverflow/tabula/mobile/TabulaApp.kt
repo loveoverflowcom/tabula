@@ -11,8 +11,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.platform.LocalUriHandler
+import com.loveoverflow.tabula.mobile.catalog.DiscoveryCatalogState
+import com.loveoverflow.tabula.mobile.catalog.DiscoveryQuery
+import com.loveoverflow.tabula.mobile.catalog.RegistryDiscoveryCatalog
 import com.loveoverflow.tabula.mobile.bridge.HostCapability
 import com.loveoverflow.tabula.mobile.design.TabulaScheme
 import com.loveoverflow.tabula.mobile.design.TabulaTheme
@@ -45,7 +51,8 @@ internal val FirstPartyCapabilities: Set<HostCapability> = setOf(HostCapability.
  * The Compose Multiplatform app root shared by Android and iOS (ADR-0032, ADR-0043).
  *
  * It owns screens and navigation only. [gameHost] is where the platform presents a game surface and
- * [games] is the list of games packaged with this build; with neither, the shell says so.
+ * [games] is the exact runtime inventory supplied by that host. [catalog] contains independent
+ * public registry discovery facts and cannot establish native launch availability (ADR-0045).
  * [scheme] and [deviceFacts] allow the same shell to be exercised with explicit presentation
  * settings in previews. Production callers omit them to read the host's settings.
  */
@@ -59,6 +66,8 @@ fun TabulaApp(
     voiceScope: String = DevVoiceGrantSource.SCOPE,
     scheme: TabulaScheme? = null,
     deviceFacts: DeviceFacts? = null,
+    catalog: DiscoveryCatalogState = DiscoveryCatalogState.Ready(RegistryDiscoveryCatalog.games),
+    onRetryCatalog: (() -> Unit)? = null,
 ) {
     // Voice lifetime belongs to the app/session owner, not the replaceable game runtime.
     DisposableEffect(voice) { onDispose { voice?.close() } }
@@ -70,6 +79,9 @@ fun TabulaApp(
     }
     // A recreated host returns to a shell location; an active local game is never resumed.
     var history by rememberSaveable(stateSaver = BackStackSaver) { mutableStateOf(BackStack.Root) }
+    var query by rememberSaveable(stateSaver = DiscoveryQuerySaver) { mutableStateOf(DiscoveryQuery()) }
+    val screenState = rememberSaveableStateHolder()
+    val uriHandler = LocalUriHandler.current
     val selectedScheme = scheme ?: if (isSystemInDarkTheme()) TabulaScheme.Dark else TabulaScheme.Light
     val dark = selectedScheme == TabulaScheme.Dark || selectedScheme == TabulaScheme.HcDark
     val device = deviceFacts ?: rememberDeviceFacts()
@@ -102,32 +114,64 @@ fun TabulaApp(
                 onNavigate = { history = history.navigate(it) },
                 onBack = { history = history.pop() },
             ) {
-                when (destination) {
-                    Destination.Home -> HomeScreen(
-                        games = games,
-                        strings = strings,
-                        onOpen = openLocalGame,
-                        onBrowse = { history = history.navigate(Destination.Games) },
-                    )
-                    Destination.Games -> GamesScreen(
-                        games = games,
-                        strings = strings,
-                        onDetail = { history = history.push(Destination.Detail(it.id)) },
-                    )
-                    is Destination.Detail -> DetailScreen(
-                        game = games.firstOrNull { it.id == destination.gameId },
-                        strings = strings,
-                        onSetup = { history = history.push(Destination.Setup(destination.gameId)) },
-                    )
-                    is Destination.Setup -> SetupScreen(
-                        game = games.firstOrNull { it.id == destination.gameId },
-                        strings = strings,
-                        onPlay = { games.firstOrNull { it.id == destination.gameId }?.let(openLocalGame) },
-                    )
-                    Destination.Account -> AccountScreen(strings = strings)
-                    is Destination.Game -> Unit
+                screenState.SaveableStateProvider(destination.routePath()) {
+                    val discoveryGames = (catalog as? DiscoveryCatalogState.Ready)?.games.orEmpty()
+                    when (destination) {
+                        Destination.Home -> HomeScreen(
+                            catalog = catalog,
+                            strings = strings,
+                            onBrowse = { history = history.navigate(Destination.Games) },
+                            onDetail = { history = history.push(Destination.Detail(it.id)) },
+                            onRetry = onRetryCatalog,
+                        )
+                        Destination.Games -> GamesScreen(
+                            catalog = catalog,
+                            query = query,
+                            strings = strings,
+                            onQueryChange = { query = it },
+                            onDetail = { history = history.push(Destination.Detail(it.id)) },
+                            onRetry = onRetryCatalog,
+                        )
+                        is Destination.Detail -> DetailScreen(
+                            game = discoveryGames.firstOrNull { it.id == destination.gameId },
+                            catalog = catalog,
+                            strings = strings,
+                            canLaunch = gameHost !== PlaceholderGameHost && games.any { it.id == destination.gameId },
+                            onSetup = { history = history.push(Destination.Setup(destination.gameId)) },
+                            onOpenRules = { uri -> uriHandler.openUri(uri) },
+                            onRetry = onRetryCatalog,
+                        )
+                        is Destination.Setup -> SetupScreen(
+                            game = discoveryGames.firstOrNull { it.id == destination.gameId },
+                            catalog = catalog,
+                            strings = strings,
+                            canLaunch = gameHost !== PlaceholderGameHost && games.any { it.id == destination.gameId },
+                            onPlay = {
+                                if (gameHost !== PlaceholderGameHost && discoveryGames.any { it.id == destination.gameId }) {
+                                    games.firstOrNull { it.id == destination.gameId }?.let(openLocalGame)
+                                }
+                            },
+                            onRetry = onRetryCatalog,
+                        )
+                        Destination.Account -> AccountScreen(strings = strings)
+                        is Destination.Game -> Unit
+                    }
                 }
             }
         }
     }
 }
+
+/** Saves only public discovery preferences; these values grant no launch or match authority. */
+private val DiscoveryQuerySaver = listSaver<DiscoveryQuery, String>(
+    save = { listOf(it.text, it.category.orEmpty(), it.players?.toString().orEmpty(), it.maxMinutes?.toString().orEmpty(), it.complexity.orEmpty()) },
+    restore = { values ->
+        if (values.size != 5) DiscoveryQuery() else DiscoveryQuery(
+            text = values[0],
+            category = values[1].ifEmpty { null },
+            players = values[2].toIntOrNull()?.takeIf { it > 0 },
+            maxMinutes = values[3].toIntOrNull()?.takeIf { it > 0 },
+            complexity = values[4].ifEmpty { null },
+        )
+    },
+)

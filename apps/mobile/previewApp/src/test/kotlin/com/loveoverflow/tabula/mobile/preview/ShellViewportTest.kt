@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.loveoverflow.tabula.mobile.bridge.MotionPreference
 import com.loveoverflow.tabula.mobile.TabulaApp
+import com.loveoverflow.tabula.mobile.catalog.DiscoveryCatalogState
+import com.loveoverflow.tabula.mobile.catalog.RegistryDiscoveryCatalog
 import com.loveoverflow.tabula.mobile.bridge.ThemePreference
 import com.loveoverflow.tabula.mobile.bridge.GamePreferences
 import com.loveoverflow.tabula.mobile.bridge.LocalePreference
@@ -112,18 +114,18 @@ class ShellViewportTest {
     }
 
     @Test
-    fun defaultAppShowsNativeGameplayUnavailableWithoutAPlayOrReadySurface() {
+    fun defaultAppShowsDiscoveryWithoutCreatingANativeGameplaySurface() {
         for (width in listOf(320, 390)) {
             runDesktopComposeUiTest(width = width, height = 844) {
                 setContent { PhoneViewport(width, 844) { TabulaApp(deviceFacts = DeviceFacts(false, "en")) } }
                 waitForIdle()
-                onNodeWithText(strings[ShellCopy.NoGames]).assertIsDisplayed()
-                assertFalse(strings[ShellCopy.NoGames].contains("cargo"), "Product copy does not contain a build command")
+                onNodeWithTag("shell-details-${RegistryDiscoveryCatalog.games.first().id}").performScrollTo().assertIsDisplayed()
+                onAllNodesWithTag("shell-start-local").assertCountEquals(0)
                 onAllNodes(hasText("Play ", substring = true)).assertCountEquals(0)
                 onAllNodesWithTag("sim-page").assertCountEquals(0)
                 onAllNodesWithText("Ready", substring = true).assertCountEquals(0)
                 assertEquals(0, SimulatedGameHost.createdCount)
-                screenshot("cmp-native-unavailable-default-app-${width}x844")
+                screenshot("discovery-registry-default-app-${width}x844")
             }
         }
     }
@@ -136,9 +138,10 @@ class ShellViewportTest {
             }
         }
         waitForIdle()
-        onNodeWithText(strings[ShellCopy.NoGames]).assertIsDisplayed()
+        onNodeWithTag("shell-details-${RegistryDiscoveryCatalog.games.first().id}").performScrollTo().assertIsDisplayed()
+        onAllNodesWithTag("shell-start-local").assertCountEquals(0)
         onAllNodes(hasText("Play ", substring = true)).assertCountEquals(0)
-        screenshot("cmp-native-unavailable-dark-theme-adapter-390x844")
+        screenshot("discovery-registry-dark-theme-adapter-390x844")
     }
 
     @Test
@@ -193,17 +196,20 @@ class ShellViewportTest {
                 setContent {
                     CompositionLocalProvider(LocalDensity provides Density(1f, fontScale)) {
                         PhoneViewport(width, height, fontScale) {
-                            TabulaTheme { HomeScreen(games, strings, onOpen = { opened = it.id }, onBrowse = {}) }
+                            TabulaTheme { HomeScreen(DiscoveryCatalogState.Ready(previewCatalogGames(games)), strings,
+                                onDetail = { opened = it.id }, onBrowse = {}) }
                         }
                     }
                 }
                 waitForIdle()
-                val last = strings.play("Board game 6")
-                onNodeWithText(last).performScrollTo()
+                val last = "shell-details-${games.last().id}"
+                onNodeWithTag(last).performScrollTo()
                 waitForIdle()
-                assertWholeAction(last, width, height)
+                val bounds = onNodeWithTag(last).getUnclippedBoundsInRoot()
+                assertTrue(bounds.right - bounds.left >= 44.dp && bounds.bottom - bounds.top >= 44.dp, "discovery card retains a complete target")
+                onNodeWithText("Board game 6").assertIsDisplayed()
                 screenshot("cmp-home-${width}x$height-font${fontScale.toInt()}-fixture-catalog")
-                onNodeWithText(last).performClick()
+                onNodeWithTag(last).performClick()
                 assertEquals("com.example.viewport6", opened)
             }
         }

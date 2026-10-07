@@ -163,6 +163,7 @@ class ShellNavigationTest {
                         TabulaApp(
                             gameHost = SimulatedGameHost(autoBootMillis = null),
                             games = previewGames,
+                            catalog = previewCatalog,
                             scheme = case.scheme,
                             deviceFacts = DeviceFacts(false, case.language),
                         )
@@ -177,7 +178,7 @@ class ShellNavigationTest {
                 onNodeWithTag("shell-nav-games").performClick(); waitForIdle()
                 onNodeWithTag("shell-games").assertIsDisplayed()
                 assertSelected("games")
-                onNodeWithTag("shell-catalog-unavailable").assertIsDisplayed()
+                onNodeWithTag("discovery-results-count").performScrollTo().assertIsDisplayed()
                 assertEquals(0, SimulatedGameHost.createdCount, "browsing does not mount gameplay")
                 assertShellTextFitsHorizontally()
                 captureShell("parity-${case.name}-games")
@@ -241,6 +242,7 @@ class ShellNavigationTest {
             fun shellValueCanBeSaved(value: Any?): Boolean = when (value) {
                 null, is String, is Int, is Long, is Float, is Double, is Boolean -> true
                 is List<*> -> value.all(::shellValueCanBeSaved)
+                is Map<*, *> -> value.all { (key, item) -> shellValueCanBeSaved(key) && shellValueCanBeSaved(item) }
                 is MutableState<*> -> shellValueCanBeSaved(value.value)
                 else -> false
             }
@@ -261,6 +263,7 @@ class ShellNavigationTest {
                         TabulaApp(
                             gameHost = SimulatedGameHost(autoBootMillis = null),
                             games = previewGames,
+                            catalog = previewCatalog,
                             scheme = TabulaScheme.Light,
                             deviceFacts = DeviceFacts(false, "en"),
                         )
@@ -295,23 +298,14 @@ class ShellNavigationTest {
     fun largeVietnameseTextAndLongCatalogNamesWrapAndRemainReachableByVerticalScrolling() {
         currentWidth = 320
         val strings = ShellStrings.forLanguage("vi")
-        val games = (1..8).map { index ->
-            BundledGame(
-                id = "com.example.long-$index",
-                entry = "/play/local/",
-                query = "locale=vi",
-                names = mapOf(
-                    "en" to "A long packaged game title for an accessible family board game $index",
-                    "vi" to "Trò chơi bàn dành cho gia đình với tên dài để kiểm tra khả năng đọc và xuống dòng $index",
-                ),
-            )
-        }
+        val games = longPreviewGames()
         runDesktopComposeUiTest(width = 320, height = 844) {
             setContent {
                 PhoneViewport(320, 844, fontScale = 2f) {
                     TabulaApp(
                         gameHost = SimulatedGameHost(autoBootMillis = null),
                         games = games,
+                        catalog = com.loveoverflow.tabula.mobile.catalog.DiscoveryCatalogState.Ready(previewCatalogGames(games)),
                         scheme = TabulaScheme.Dark,
                         deviceFacts = DeviceFacts(true, "vi"),
                     )
@@ -321,9 +315,9 @@ class ShellNavigationTest {
             assertSelected("home")
             assertShellTextFitsHorizontally()
             captureShell("parity-320-dark-vi-font200-home")
-            val lastPlay = onNodeWithTag("shell-play-${games.last().id}")
+            val lastPlay = onNodeWithTag("shell-details-${games.last().id}")
             lastPlay.performScrollTo().assertIsDisplayed()
-            onNodeWithText(strings.play(games.last().displayName("vi"))).assertIsDisplayed()
+            onNodeWithText(games.last().displayName("vi")).assertIsDisplayed()
             assertShellTextFitsHorizontally()
             val scroll = onNodeWithTag("shell-content-scroll").fetchSemanticsNode()
                 .config[SemanticsProperties.VerticalScrollAxisRange]

@@ -96,3 +96,7 @@ retired without fallback; native adapters and device acceptance remain blocked.
 bounded #54 registration/profile/social completion, including its explicit
 frontend feature and emitted resource cap. Real provider/PostgreSQL/browser
 acceptance is required; production activation and broad phase exits stay closed.
+
+[ADR-0045](0045-mobile-discovery-parity.md) adds bounded CMP discovery parity:
+public registry metadata, Home/Library/detail and read-only setup review. Catalog
+visibility does not establish native runtime availability or open Phase 6.

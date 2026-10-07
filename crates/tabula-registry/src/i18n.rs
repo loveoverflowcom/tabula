@@ -47,15 +47,26 @@ impl Locale {
 pub type Messages = &'static [(&'static str, &'static str)];
 
 const PLATFORM_EN: Messages = &[
+    ("rating.everyone", "Everyone"),
+    ("rating.teen", "Teen"),
+    ("rating.mature", "Mature"),
+    ("category.abstract", "Abstract"),
+    ("category.cards", "Cards"),
+    ("category.social_deduction", "Social deduction"),
+    ("category.tile_placement", "Tile placement"),
+    ("category.party", "Party"),
+    ("complexity.light", "Light"),
+    ("complexity.medium", "Medium"),
+    ("complexity.heavy", "Heavy"),
     ("mode.local.label", "Two players, one device"),
     (
         "mode.local.consequence",
-        "Everyone plays here, taking turns on this screen.",
+        "Players share one device, taking turns on the same screen.",
     ),
     ("mode.bots.label", "Against the game's bot"),
     (
         "mode.bots.consequence",
-        "You take the first seat; the game plays the others.",
+        "A human takes the first seat; bots take the other seats.",
     ),
     ("mode.network.label", "Over the network"),
     (
@@ -134,15 +145,26 @@ const PLATFORM_EN: Messages = &[
 ];
 
 const PLATFORM_VI: Messages = &[
+    ("rating.everyone", "Mọi lứa tuổi"),
+    ("rating.teen", "Thiếu niên"),
+    ("rating.mature", "Người lớn"),
+    ("category.abstract", "Trừu tượng"),
+    ("category.cards", "Bài"),
+    ("category.social_deduction", "Suy luận xã hội"),
+    ("category.tile_placement", "Xếp mảnh"),
+    ("category.party", "Vui nhộn"),
+    ("complexity.light", "Nhẹ"),
+    ("complexity.medium", "Vừa"),
+    ("complexity.heavy", "Nặng"),
     ("mode.local.label", "Hai người, một máy"),
     (
         "mode.local.consequence",
-        "Mọi người chơi ngay tại đây, lần lượt trên màn hình này.",
+        "Mọi người dùng chung một thiết bị, lần lượt chơi trên cùng màn hình.",
     ),
     ("mode.bots.label", "Đấu với máy của trò chơi"),
     (
         "mode.bots.consequence",
-        "Bạn giữ ghế đầu tiên; trò chơi điều khiển các ghế còn lại.",
+        "Người chơi giữ ghế đầu tiên; máy giữ các ghế còn lại.",
     ),
     ("mode.network.label", "Qua mạng"),
     (

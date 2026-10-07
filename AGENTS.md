@@ -160,6 +160,11 @@ renderer. Desktop preview screenshots prove only shared shell layout, never nati
 Networked mobile play, accounts, push, third-party games, store release and Phase 6 exit
 remain gated. `#![forbid(unsafe_code)]` remains unchanged; no native FFI exception is implied.
 
+[ADR-0045](docs/adr/0045-mobile-discovery-parity.md) extends that shell with #102's
+bounded Home/Library/detail/setup review from a generated public registry catalog.
+Catalog visibility is separate from packaged native runtime availability. It opens no
+remote discovery, native launch/configuration, accounts, resume or Phase 6 exit.
+
 The owner-requested Werewolf standalone has a similarly bounded opt-in local exception:
 [ADR-0035](docs/adr/0035-werewolf-local-simulator.md). It permits its complete pure referee
 and isolated-seat local presenter using the existing renderer/resource pipeline. It does not

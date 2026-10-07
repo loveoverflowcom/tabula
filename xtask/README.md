@@ -27,7 +27,7 @@ xtask = "run --package xtask --"
 
 | Command | What it does |
 |---|---|
-| `check` | Runs `fmt`, `clippy`, `test`, `check-deps`, `check-no-game-ids`, `check-manifests`, token freshness check, `check-no-raw-colors`, then `cargo deny check`, in that order, stopping at the first failure. The authoritative portable local core gate (CI additionally verifies the feature matrix and WASM targets); see AGENTS.md §5. |
+| `check` | Runs `fmt`, `clippy`, `test`, `check-deps`, `check-no-game-ids`, `check-manifests`, token freshness, mobile catalog freshness, `check-no-raw-colors`, then `cargo deny check`, in that order, stopping at the first failure. The authoritative portable local core gate (CI additionally verifies the feature matrix and WASM targets); see AGENTS.md §5. |
 | `check-deps` | Walks the **resolved** cargo metadata graph per crate and asserts the `deps.toml` matrix: direct dependencies come from the crate's allow-list, banned/forbidden-category crates cannot be reached transitively (with the path printed), and dependency direction respects the tier ordering. Enforces I-1 and I-15. |
 | `check-no-game-ids` | Scans the tree for a game id appearing as a whole word (case-insensitive, `_`/`-` count as separators) outside its own game package, `tabula-registry`, `xtask`, test fixtures, manifests, or docs/comments. Enforces I-9. |
 | `check-manifests` | Validates every workspace `Cargo.toml` (workspace-field inheritance, no wildcard registry versions, internal crates referenced via `{ workspace = true }`, the `rules`/`presentation`/`bots`/`testkit` feature shape for game crates) and, for games that have one, `game.toml`'s schema (required fields, the `com.tabula.<id>` convention, enum-valued capabilities). Does **not** yet cross-check against the compiled `GameMetadata`/`GameCapabilities` statics — that needs the `metadata_from_manifest!` proc macro (doc 02 §10.2), which does not exist yet. |
@@ -42,6 +42,7 @@ xtask = "run --package xtask --"
 |---|---|---|
 | `perft chess [depth]` | 1 | Chess move-generation node counts, against published positions |
 | `gen-tokens` | 2 | `tokens.toml` → `tokens.css` + `generated.rs` + `tokens.json`. Outputs are committed; CI fails if stale. |
+| `gen-mobile-catalog` / `check-mobile-catalog` | bounded mobile discovery | Registry public copy, metadata, setup descriptors and inert cover SVG → Kotlin `RegistryDiscoveryCatalog.kt`; the check rejects drift. No native launch or runtime/assets preload is generated. |
 | `check-no-raw-colors` | 2 | No hex literals or `Color::rgb`/`Color::rgba`/`Color::new` constructors outside `tabula-design` |
 | `stage-mobile-game` | retired (ADR-0043) | Explicit error: mobile web gameplay is retired; native adapter/artifact packaging remains blocked. Web staging commands remain available. |
 | `stage-wasm-game` | 2 | Stages the checked-in HTML host, pinned JS bootstrap, and wasm-release binary into `target/tabula-web-game/` |

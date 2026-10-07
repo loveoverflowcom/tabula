@@ -31,7 +31,6 @@ import com.loveoverflow.tabula.mobile.design.TabulaSpace
 import com.loveoverflow.tabula.mobile.design.TabulaText
 import com.loveoverflow.tabula.mobile.design.TabulaType
 import com.loveoverflow.tabula.mobile.design.toTextStyle
-import com.loveoverflow.tabula.mobile.host.BundledGame
 import com.loveoverflow.tabula.mobile.host.GameBackPort
 import com.loveoverflow.tabula.mobile.host.GameHost
 import com.loveoverflow.tabula.mobile.host.GameHostEvent
@@ -40,98 +39,6 @@ import com.loveoverflow.tabula.mobile.localization.ShellCopy
 import com.loveoverflow.tabula.mobile.localization.ShellStrings
 import com.loveoverflow.tabula.mobile.voice.VoiceController
 import com.loveoverflow.tabula.mobile.voice.VoiceControls
-
-/** Home uses Design 01's display hierarchy and warm hero; only packaged local play is actionable. */
-@Composable
-fun HomeScreen(games: List<BundledGame>, strings: ShellStrings, onOpen: (BundledGame) -> Unit, onBrowse: () -> Unit) {
-    val colors = LocalTabulaColors.current
-    ShellPage(strings[ShellCopy.HomeHeading], Modifier.testTag("shell-home"), displayTitle = true) {
-        ShellSurface(hero = true) {
-            TabulaText(strings[ShellCopy.HomeIntro], TabulaType.displaySm, Modifier.semantics { heading() }, colors.shellOnHero)
-            if (games.isEmpty()) {
-                TabulaText(strings[ShellCopy.NoGamesTitle], TabulaType.titleMd, Modifier.semantics { heading() }, colors.shellOnHero)
-                TabulaText(strings[ShellCopy.NoGames], TabulaType.bodyMd, color = colors.shellOnHero)
-            } else {
-                TabulaText(strings[ShellCopy.PackagedGames], TabulaType.titleLg, Modifier.semantics { heading() }, colors.shellOnHero)
-                TabulaText(strings[ShellCopy.LocalOnly], TabulaType.bodyMd, color = colors.shellOnHero)
-                for ((index, game) in games.withIndex()) {
-                    ShellButton(
-                        strings.play(game.displayName(strings.languageTag)),
-                        filled = index == 0,
-                        onClick = { onOpen(game) },
-                        modifier = Modifier.fillMaxWidth().testTag("shell-play-${game.id}"),
-                    )
-                }
-            }
-        }
-        CatalogUnavailable(strings) {
-            ShellActionButton(
-                strings[ShellCopy.BrowseGames], ShellAction.Text, onBrowse,
-                Modifier.fillMaxWidth().testTag("shell-browse-games"),
-            )
-        }
-    }
-}
-
-/** Packaged entries can open detail; the full registry catalog remains a clearly labeled gate. */
-@Composable
-fun GamesScreen(games: List<BundledGame>, strings: ShellStrings, onDetail: (BundledGame) -> Unit) {
-    ShellPage(strings[ShellCopy.Games], Modifier.testTag("shell-games"), displayTitle = true) {
-        if (games.isEmpty()) {
-            ShellStatePanel(strings[ShellCopy.NoGamesTitle], strings[ShellCopy.NoGames])
-        } else {
-            TabulaText(strings[ShellCopy.PackagedGames], TabulaType.titleLg, Modifier.semantics { heading() })
-            for (game in games) {
-                ShellSurface {
-                    val name = game.displayName(strings.languageTag)
-                    TabulaText(name, TabulaType.titleLg, Modifier.semantics { heading() })
-                    TabulaText(strings[ShellCopy.LocalOnly], TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
-                    ShellActionButton(
-                        strings.details(name), ShellAction.Tonal, { onDetail(game) },
-                        Modifier.fillMaxWidth().testTag("shell-details-${game.id}"),
-                    )
-                }
-            }
-        }
-        CatalogUnavailable(strings)
-    }
-}
-
-/** Local detail is limited to manifest display data; it invents no rules, seats, art or capabilities. */
-@Composable
-fun DetailScreen(game: BundledGame?, strings: ShellStrings, onSetup: () -> Unit) {
-    ShellPage(game?.displayName(strings.languageTag) ?: strings[ShellCopy.Details], Modifier.testTag("shell-detail")) {
-        if (game == null) {
-            ShellStatePanel(strings[ShellCopy.DetailUnavailableTitle], strings[ShellCopy.DetailUnavailable])
-        } else {
-            ShellSurface {
-                TabulaText(strings[ShellCopy.LocalMode], TabulaType.titleLg, Modifier.semantics { heading() })
-                TabulaText(strings[ShellCopy.LocalOnly], TabulaType.bodyMd)
-                ShellActionButton(strings[ShellCopy.Setup], ShellAction.Filled, onSetup,
-                    Modifier.fillMaxWidth().testTag("shell-setup-action"))
-            }
-            OnlineUnavailable(strings)
-        }
-    }
-}
-
-/** Setup preserves the packaged launch query; this scaffold adds no game configuration or network action. */
-@Composable
-fun SetupScreen(game: BundledGame?, strings: ShellStrings, onPlay: () -> Unit) {
-    ShellPage(game?.let { strings.setup(it.displayName(strings.languageTag)) } ?: strings[ShellCopy.SetupTitle], Modifier.testTag("shell-setup")) {
-        if (game == null) {
-            ShellStatePanel(strings[ShellCopy.DetailUnavailableTitle], strings[ShellCopy.DetailUnavailable])
-        } else {
-            ShellSurface {
-                TabulaText(strings[ShellCopy.LocalMode], TabulaType.titleLg, Modifier.semantics { heading() })
-                TabulaText(strings[ShellCopy.SetupIntro], TabulaType.bodyMd)
-                ShellActionButton(strings[ShellCopy.StartLocalGame], ShellAction.Filled, onPlay,
-                    Modifier.fillMaxWidth().testTag("shell-start-local"))
-            }
-            OnlineUnavailable(strings)
-        }
-    }
-}
 
 /** Anonymous account scaffold uses the shared neutral silhouette until a verified profile adapter exists. */
 @Composable
@@ -150,17 +57,6 @@ fun AccountScreen(strings: ShellStrings) {
         TabulaText(strings[ShellCopy.PreferencesUnavailable], TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
     }
 }
-
-@Composable
-private fun CatalogUnavailable(strings: ShellStrings, action: (@Composable () -> Unit)? = null) = ShellStatePanel(
-    strings[ShellCopy.CatalogUnavailableTitle], strings[ShellCopy.CatalogUnavailable],
-    Modifier.testTag("shell-catalog-unavailable"), action = action,
-)
-
-@Composable
-private fun OnlineUnavailable(strings: ShellStrings) = ShellStatePanel(
-    strings[ShellCopy.OnlineUnavailable], strings[ShellCopy.HomeStatus], Modifier.testTag("shell-online-unavailable"),
-)
 
 /**
  * Hosts the platform [GameHost] under a toolbar; the shell owns navigation, the host owns the surface.

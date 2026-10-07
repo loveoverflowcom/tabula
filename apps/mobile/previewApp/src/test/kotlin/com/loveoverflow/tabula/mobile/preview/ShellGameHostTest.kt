@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import androidx.lifecycle.Lifecycle
@@ -60,7 +61,6 @@ class ShellGameHostTest {
     @AfterTest fun clean() = SimulatedGameHost.reset()
 
     private val strings = ShellStrings.forLanguage("en")
-    private val play = strings.play("Preview game")
 
     private fun runShell(
         games: List<BundledGame> = previewGames,
@@ -72,7 +72,7 @@ class ShellGameHostTest {
         val width = mutableStateOf(390)
         setContent {
             CompositionLocalProvider(LocalLifecycleOwner provides owner) {
-                PhoneViewport(width.value, 844) { TabulaApp(gameHost = host, games = games, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) }
+                PhoneViewport(width.value, 844) { TabulaApp(gameHost = host, games = games, catalog = com.loveoverflow.tabula.mobile.catalog.DiscoveryCatalogState.Ready(previewCatalogGames(games)), scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) }
             }
         }
         waitForIdle()
@@ -88,17 +88,17 @@ class ShellGameHostTest {
     private val runtime get() = SimulatedGameHost.runtimes.last()
 
     @Test
-    fun homeListsThePackagedGameAndSaysWhenNoneIsPackaged() {
-        runShell { onNodeWithText(play).assertIsDisplayed(); shot("01-home", this) }
+    fun homeShowsExplicitDiscoveryFixturesWithoutMountingThePackagedHost() {
+        runShell { onNodeWithTag("shell-details-${previewGames.single().id}").performScrollTo().assertIsDisplayed(); assertEquals(0, SimulatedGameHost.createdCount); shot("01-home", this) }
         runShell(games = emptyList()) {
-            onNodeWithText(strings[ShellCopy.NoGames]).assertIsDisplayed()
+            onNodeWithTag("discovery-empty").performScrollTo().assertIsDisplayed()
             assertEquals(0, SimulatedGameHost.createdCount)
         }
     }
 
     @Test
     fun openingStartsOneRuntimeWhoseFirstMessageCarriesLaunchCapabilitiesAndPreferences() = runShell {
-        onNodeWithText(play).performClick(); waitForIdle()
+        startPreviewGame()
         assertEquals(1, SimulatedGameHost.createdCount)
         val init = runtime.page.received.first() as HostMessage.Init
         assertEquals(1, init.generation)
@@ -109,7 +109,7 @@ class ShellGameHostTest {
 
     @Test
     fun openCloseAndReopenBuildsAFreshRuntimeEachTimeAndDisposesTheOldOne() = runShell {
-        onNodeWithText(play).performClick(); waitForIdle()
+        startPreviewGame()
         val first = runtime
         runtime.page.completeBoot(); waitForIdle()
         assertTrue(first.keepAwake, "the granted keep-awake request switched the screen setting on")
@@ -120,11 +120,11 @@ class ShellGameHostTest {
         shot("03-back-leave-confirmation", this)
         assertEquals(0, SimulatedGameHost.disposedCount)
         onNodeWithTag("sim-confirm").performClick(); waitForIdle()
-        onNodeWithText(play).assertIsDisplayed()
+        onNodeWithTag("shell-start-local").performScrollTo().assertIsDisplayed()
         assertEquals(1, SimulatedGameHost.disposedCount)
         assertFalse(first.keepAwake, "leaving releases the keep-awake setting")
 
-        onNodeWithText(play).performClick(); waitForIdle()
+        onNodeWithTag("shell-start-local").performScrollTo().performClick(); waitForIdle()
         assertEquals(2, SimulatedGameHost.createdCount)
         assertNotSame(first, runtime)
         assertEquals(1, runtime.session.generation, "a reopened game is a new session, not a continuation")
@@ -133,15 +133,15 @@ class ShellGameHostTest {
 
     @Test
     fun backWhileLoadingLeavesImmediately() = runShell {
-        onNodeWithText(play).performClick(); waitForIdle()
+        startPreviewGame()
         onNodeWithText(strings[ShellCopy.Back]).performClick(); waitForIdle()
-        onNodeWithText(play).assertIsDisplayed()
+        onNodeWithTag("shell-start-local").performScrollTo().assertIsDisplayed()
         assertEquals(1, SimulatedGameHost.disposedCount)
     }
 
     @Test
     fun recompositionResizeAndANewEventLambdaNeverRebuildTheRuntime() = runShell { width ->
-        onNodeWithText(play).performClick(); waitForIdle()
+        startPreviewGame()
         runtime.page.completeBoot(); waitForIdle()
         val before = runtime
         for (size in listOf(360, 412, 320, 390)) { width.value = size; waitForIdle() }
@@ -183,7 +183,7 @@ class ShellGameHostTest {
         val owner = TestOwner().also { it.event(Lifecycle.Event.ON_RESUME) }
         runShell(owner = owner) {
             val baseline = owner.observers
-            onNodeWithText(play).performClick(); waitForIdle()
+            startPreviewGame()
             runtime.page.completeBoot(); waitForIdle()
             val game = runtime
             assertEquals(baseline + 1, owner.observers, "one lifecycle observer while the game is on screen")
@@ -205,7 +205,7 @@ class ShellGameHostTest {
 
     @Test
     fun aHostFailureReplacesTheSurfaceAndTryAgainBuildsExactlyOneNewGame() = runShell {
-        onNodeWithText(play).performClick(); waitForIdle()
+        startPreviewGame()
         runtime.page.completeBoot(); waitForIdle()
         val failed = runtime
         failed.failHost("renderer-killed"); waitForIdle()
@@ -221,7 +221,7 @@ class ShellGameHostTest {
 
     @Test
     fun aPageFailureKeepsTheGamesOwnOverlayAndRetryIsANewGeneration() = runShell {
-        onNodeWithText(play).performClick(); waitForIdle()
+        startPreviewGame()
         runtime.page.completeBoot(); waitForIdle()
         onNodeWithTag("sim-fail").performClick(); waitForIdle()
         onNodeWithTag("sim-page").assertIsDisplayed()
@@ -234,17 +234,17 @@ class ShellGameHostTest {
 
     @Test
     fun lateMessagesFromALeftRuntimeChangeNothing() = runShell {
-        onNodeWithText(play).performClick(); waitForIdle()
+        startPreviewGame()
         runtime.page.completeBoot(); waitForIdle()
         val old = runtime
         onNodeWithText(strings[ShellCopy.Back]).performClick(); waitForIdle()
         onNodeWithTag("sim-confirm").performClick(); waitForIdle()
-        onNodeWithText(play).assertIsDisplayed()
+        onNodeWithTag("shell-start-local").performScrollTo().assertIsDisplayed()
         old.injectLatePageText("""{"v":1,"type":"ready","gen":1,"bootMs":1}""")
         old.injectLatePageText("""{"v":1,"type":"exit","gen":1}""")
         old.failHost("late-renderer-event")
         waitForIdle()
-        onNodeWithText(play).assertIsDisplayed()
+        onNodeWithTag("shell-start-local").performScrollTo().assertIsDisplayed()
         assertEquals(1, SimulatedGameHost.createdCount)
         assertEquals(1, SimulatedGameHost.disposedCount)
         assertTrue(old.session.phase == com.loveoverflow.tabula.mobile.session.GameSession.Phase.Closed)
