@@ -52,7 +52,7 @@ internal val FirstPartyCapabilities: Set<HostCapability> = setOf(HostCapability.
  *
  * It owns screens and navigation only. [gameHost] is where the platform presents a game surface and
  * [games] is the exact runtime inventory supplied by that host. [catalog] contains independent
- * public registry discovery facts and cannot establish native launch availability (ADR-0044).
+ * public registry discovery facts and cannot establish native launch availability (ADR-0045).
  * [scheme] and [deviceFacts] allow the same shell to be exercised with explicit presentation
  * settings in previews. Production callers omit them to read the host's settings.
  */

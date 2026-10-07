@@ -2,7 +2,7 @@
 
 The mobile shell adapts [the foundation](foundation.md), [Home/Library Design 01](01-library.md)
 and the current web chrome in `apps/web/src/views/parts.rs`. Architecture doc 00, doc 04 §3.3,
-ADR-0032, ADR-0043 and ADR-0044 govern ownership. Issue #102 extends the original
+ADR-0032, ADR-0043 and ADR-0045 govern ownership. Issue #102 extends the original
 application chrome and route scaffolding with registry-backed discovery. Account
 content remains unavailable. No phase exit is claimed.
 

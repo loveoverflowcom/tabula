@@ -149,6 +149,10 @@ struct HttpState<A> {
     authority: A,
     origin: String,
     csrf_key: String,
+    enrollment_enabled: bool,
+    social_enabled: bool,
+    #[cfg(feature = "accounts")]
+    account_readiness: Option<account_routes::AccountReadiness>,
     preauth: Mutex<PreauthState>,
 }
 struct PreauthState {
@@ -194,6 +198,10 @@ impl<A: HttpSessionAuthority + 'static> IsolatedSessionHttp<A> {
                 authority,
                 origin: trusted_origin.to_owned(),
                 csrf_key: SessionCredential::generate()?.expose_encoded(),
+                enrollment_enabled: false,
+                social_enabled: false,
+                #[cfg(feature = "accounts")]
+                account_readiness: None,
                 preauth: Mutex::new(PreauthState {
                     entries: BTreeMap::new(),
                     window: Instant::now(),
@@ -204,6 +212,45 @@ impl<A: HttpSessionAuthority + 'static> IsolatedSessionHttp<A> {
         })
     }
 
+    /// Exact read transport plus current credential observation. Returned facts
+    /// are snapshots; every effect/private output requires another durable fence.
+    pub async fn authenticate_read(
+        &self,
+        request: Request,
+    ) -> Result<(CredentialOperation, SessionSnapshot), Response> {
+        if request.uri().query().is_some() {
+            return Err(problem(StatusCode::BAD_REQUEST, "request_rejected"));
+        }
+        let input =
+            transport(&self.state, request.headers(), false).map_err(Rejection::response)?;
+        let operation = operation(&input).map_err(Rejection::response)?;
+        let snapshot = self
+            .state
+            .authority
+            .read_session(operation)
+            .await
+            .map_err(session_problem)?;
+        Ok((operation, snapshot))
+    }
+    /// Configured canonical origin; never derived from request headers.
+    pub fn trusted_origin(&self) -> &str {
+        &self.state.origin
+    }
+    /// Injected durable authority for isolated extensions.
+    pub fn authority(&self) -> &A {
+        &self.state.authority
+    }
+    /// Enables only explicitly composed isolated account/social capabilities.
+    pub fn with_account_capabilities(
+        mut self,
+        enrollment: bool,
+        social: bool,
+    ) -> Result<Self, SessionError> {
+        let state = Arc::get_mut(&mut self.state).ok_or(SessionError::Conflict)?;
+        state.enrollment_enabled = enrollment;
+        state.social_enabled = social;
+        Ok(self)
+    }
     /// Reuse exact Origin/channel/CSRF checks for a bounded authenticated JSON
     /// extension (ADR-0041). Observation grants no later effect/output authority.
     pub async fn authenticate_json<T: serde::de::DeserializeOwned>(
@@ -556,13 +603,26 @@ async fn context<A: HttpSessionAuthority + 'static>(
     match state.authority.begin_publication(operation).await {
         Ok(guard) => {
             let snapshot = guard.snapshot();
+            #[cfg(feature = "accounts")]
+            let profile_ready = match &state.account_readiness {
+                Some(readiness) => match readiness.ready(snapshot).await {
+                    Ok(ready) => ready,
+                    Err(_) => return session_problem(SessionError::Unavailable),
+                },
+                None => true,
+            };
+            #[cfg(not(feature = "accounts"))]
+            let profile_ready = true;
             let value = ContextResponse {
                 version: HTTP_CONTRACT_VERSION,
                 disposition: SessionDisposition::Authenticated,
                 account_id: Some(format!("{:032x}", snapshot.user_id().0)),
                 csrf_token: (snapshot.channel() == SessionChannel::BrowserCookie)
                     .then(|| csrf(&state, snapshot)),
-                capabilities: capabilities(true),
+                capabilities: AccountCapabilities {
+                    friends: state.social_enabled && profile_ready,
+                    ..capabilities(true)
+                },
             };
             guarded_json(guard, &value)
         }
@@ -637,6 +697,7 @@ fn signed_out_context<A>(
     mac.update(cookie.as_bytes());
     let mut value = public_context(SessionDisposition::SignedOut);
     value.capabilities.login = login_enabled;
+    value.capabilities.register = state.enrollment_enabled;
     value.csrf_token = Some(URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes()));
     let mut response = json(StatusCode::OK, &value, "application/json");
     if fresh {
@@ -888,8 +949,15 @@ fn random_id() -> Result<u128, SessionError> {
 async fn callback<A: HttpSessionAuthority + 'static>(
     State(state): State<Arc<HttpState<A>>>,
     Extension(provider): Extension<LoginProvider>,
+    #[cfg(feature = "accounts")] enrollment: Option<Extension<account_routes::EnrollmentProvider>>,
     request: Request,
 ) -> Response {
+    #[cfg(feature = "accounts")]
+    if let Some(Extension(enrollment)) =
+        enrollment.filter(|Extension(provider)| account_routes::owns_callback(provider, &request))
+    {
+        return account_routes::try_callback(state, enrollment, request).await;
+    }
     let (input, callback) = match callback_input(&request) {
         Ok(values) => values,
         Err(error) => return error.response(),
@@ -1284,7 +1352,7 @@ impl<P: SessionPublication> HttpBody for GuardedBody<P> {
         SizeHint::default()
     }
 }
-fn guarded_json<P: SessionPublication + 'static>(
+pub(crate) fn guarded_json<P: SessionPublication + 'static>(
     publication: P,
     value: &impl serde::Serialize,
 ) -> Response {
@@ -1397,3 +1465,6 @@ mod login_expiry_tests {
         }
     }
 }
+
+#[cfg(feature = "accounts")]
+mod account_routes;

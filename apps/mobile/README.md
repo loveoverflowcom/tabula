@@ -8,7 +8,7 @@ ADR-0032/0033. Web gameplay keeps its Rust/WASM document and verified loader.
 **Current build: shell only, gameplay unavailable.** Both production entrypoints
 use the unavailable default host and an empty packaged-game list. The independent
 public discovery catalog is generated from `tabula-registry` under
-[ADR-0044](../../docs/adr/0044-mobile-discovery-parity.md). No native game
+[ADR-0045](../../docs/adr/0045-mobile-discovery-parity.md). No native game
 adapter/library/assets pipeline has been delivered; no hidden web fallback is
 selected. The [source spike and evidence ledger](../../docs/verification/mobile-native-host/README.md)
 record the pinned Miniquad embedding blockers and actual check results.

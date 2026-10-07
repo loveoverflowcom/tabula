@@ -160,7 +160,7 @@ renderer. Desktop preview screenshots prove only shared shell layout, never nati
 Networked mobile play, accounts, push, third-party games, store release and Phase 6 exit
 remain gated. `#![forbid(unsafe_code)]` remains unchanged; no native FFI exception is implied.
 
-[ADR-0044](docs/adr/0044-mobile-discovery-parity.md) extends that shell with #102's
+[ADR-0045](docs/adr/0045-mobile-discovery-parity.md) extends that shell with #102's
 bounded Home/Library/detail/setup review from a generated public registry catalog.
 Catalog visibility is separate from packaged native runtime availability. It opens no
 remote discovery, native launch/configuration, accounts, resume or Phase 6 exit.
@@ -195,6 +195,14 @@ explicit isolated direct-match slice with bounded fresh-authority reconnect,
 HTTP2 scope correlation, exact online owner restart and guarded resync.
 Actual fault/browser/PostgreSQL acceptance remains required before merge;
 production, native/mobile, clocks, external effects and broad phase exits remain closed.
+
+[ADR-0044](docs/adr/0044-isolated-account-registration-social.md) authorizes the
+remaining #54 account/social contracts in an explicit isolated composition:
+Kanidm-verified Tabula enrollment, permitted profile read/edit, durable friend
+requests and one scoped presence stream. It preserves current session and target
+disclosure fences. Production startup, live provider provisioning, new credential
+policy, native/mobile social and broad phase exits remain closed; real provider,
+PostgreSQL and browser acceptance are required for completion.
 
 ---
 

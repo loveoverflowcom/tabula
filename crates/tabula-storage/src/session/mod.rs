@@ -40,7 +40,7 @@ use std::sync::{
 /// WebSocket enforcement, CSRF handling or private outbound delivery.
 #[derive(Clone)]
 pub struct PgSessionStore {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
     #[cfg(test)]
     controls: Option<Arc<TestControls>>,
 }
@@ -53,19 +53,20 @@ impl fmt::Debug for PgSessionStore {
     }
 }
 
-#[cfg(feature = "online-match-postgres")]
+#[cfg(any(feature = "online-match-postgres", feature = "accounts-postgres"))]
 use tabula_session::ActivityKind;
 
 /// Locked authority shared only with composed storage adapters.
-#[cfg(feature = "online-match-postgres")]
+#[cfg(any(feature = "online-match-postgres", feature = "accounts-postgres"))]
 pub(crate) struct LockedCredential {
     account: AccountRecord,
     session: SessionRecord,
     request: CredentialOperation,
 }
 
-#[cfg(feature = "online-match-postgres")]
+#[cfg(any(feature = "online-match-postgres", feature = "accounts-postgres"))]
 impl LockedCredential {
+    #[cfg(feature = "online-match-postgres")]
     pub(crate) async fn lock(
         tx: &mut Transaction<'_, Postgres>,
         request: CredentialOperation,
@@ -80,6 +81,7 @@ impl LockedCredential {
             request,
         })
     }
+    #[cfg(feature = "online-match-postgres")]
     pub(crate) async fn lock_published(
         tx: &mut Transaction<'_, Postgres>,
         request: CredentialOperation,
@@ -124,9 +126,42 @@ impl LockedCredential {
             request,
         })
     }
+    #[cfg(feature = "accounts-postgres")]
+    pub(crate) async fn lock_accounts(
+        tx: &mut Transaction<'_, Postgres>,
+        peers: &[UserId],
+        request: CredentialOperation,
+    ) -> Result<Self, SessionError> {
+        if request.channel == SessionChannel::BrowserCookie && request.context.is_none() {
+            return Err(SessionError::InvalidInput);
+        }
+        let row = sqlx::query_file!(
+            "src/session/sql/locate_digest.sql",
+            request.digest.as_bytes().as_slice()
+        )
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(unavailable)?
+        .ok_or(SessionError::Unauthenticated)?;
+        let mut ids = peers.to_vec();
+        ids.push(UserId(row.user_id.as_u128()));
+        let accounts = PgSessionStore::lock_accounts(tx, &ids).await?;
+        let account = accounts
+            .into_iter()
+            .find(|a| a.user_id().0 == row.user_id.as_u128())
+            .ok_or(SessionError::Unavailable)?;
+        let session = PgSessionStore::lock_session(tx, row.id, row.user_id).await?;
+        Ok(Self {
+            account,
+            session,
+            request,
+        })
+    }
+    #[cfg(feature = "online-match-postgres")]
     pub(crate) fn snapshot(&self) -> SessionSnapshot {
         self.session.snapshot()
     }
+    #[cfg(feature = "online-match-postgres")]
     pub(crate) fn request(&self) -> CredentialOperation {
         self.request
     }
@@ -166,9 +201,9 @@ struct AccountRow {
 }
 
 #[derive(Clone, Copy)]
-struct PublicationLease {
-    started_at: UnixMillis,
-    until: UnixMillis,
+pub(crate) struct PublicationLease {
+    pub(crate) started_at: UnixMillis,
+    pub(crate) until: UnixMillis,
 }
 
 impl PublicationLease {
@@ -339,13 +374,15 @@ impl PgSessionStore {
         self.commit(tx).await
     }
 
-    async fn begin(&self) -> Result<Transaction<'_, Postgres>, SessionError> {
+    pub(crate) async fn begin(&self) -> Result<Transaction<'_, Postgres>, SessionError> {
         let mut tx = self.pool.begin().await.map_err(unavailable)?;
         Self::configure_transaction(&mut tx).await?;
         Ok(tx)
     }
 
-    async fn configure_transaction(tx: &mut Transaction<'_, Postgres>) -> Result<(), SessionError> {
+    pub(crate) async fn configure_transaction(
+        tx: &mut Transaction<'_, Postgres>,
+    ) -> Result<(), SessionError> {
         sqlx::query_file!("src/session/sql/isolation.sql")
             .execute(&mut **tx)
             .await
@@ -357,7 +394,7 @@ impl PgSessionStore {
         Ok(())
     }
 
-    async fn commit(&self, tx: Transaction<'_, Postgres>) -> Result<(), SessionError> {
+    pub(crate) async fn commit(&self, tx: Transaction<'_, Postgres>) -> Result<(), SessionError> {
         #[cfg(test)]
         let fault = self
             .controls
@@ -403,7 +440,7 @@ impl PgSessionStore {
         Self::database_clock(tx).await
     }
 
-    async fn database_clock(
+    pub(crate) async fn database_clock(
         tx: &mut Transaction<'_, Postgres>,
     ) -> Result<UnixMillis, SessionError> {
         let row = sqlx::query_file!("src/session/sql/clock.sql")
@@ -413,7 +450,47 @@ impl PgSessionStore {
         UnixMillis::new(unsigned(row.now_ms)?).map_err(unavailable)
     }
 
-    async fn lock_account(
+    #[cfg(feature = "social-postgres")]
+    pub(crate) async fn observe_binding_published<K>(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        binding: SessionBinding,
+        publication: &crate::accounts::AccountsPublication<K>,
+    ) -> Result<SessionSnapshot, SessionError> {
+        if !publication.includes(binding.user_id()) {
+            return Err(SessionError::InvalidInput);
+        }
+        publication.with_current(|_| ())?;
+        let row = sqlx::query_file_as!(
+            AccountRow,
+            "src/session/sql/account_for_update.sql",
+            Uuid::from_u128(binding.user_id().0)
+        )
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(unavailable)?
+        .ok_or(SessionError::Unauthenticated)?;
+        let mut account = AccountRecord::try_from(row)?;
+        let mut session = Self::lock_session(
+            tx,
+            Uuid::from_u128(binding.id().get()),
+            Uuid::from_u128(binding.user_id().0),
+        )
+        .await?;
+        let now = Self::database_clock(tx).await?;
+        account.observe(now)?;
+        let observed = session.observe(&account, now);
+        let result = if observed.is_ok() && !session.matches_binding(binding) {
+            Err(SessionError::Unauthenticated)
+        } else {
+            observed
+        };
+        Self::save_account(tx, &account).await?;
+        Self::save_session(tx, &session).await?;
+        publication.with_current(|_| ())?;
+        result
+    }
+    pub(crate) async fn lock_account(
         tx: &mut Transaction<'_, Postgres>,
         user_id: Uuid,
     ) -> Result<AccountRecord, SessionError> {
@@ -452,7 +529,27 @@ impl PgSessionStore {
         Ok(account)
     }
 
-    async fn save_publication_lease(
+    #[cfg(feature = "accounts-postgres")]
+    pub(crate) async fn clear_owned_publication_leases(
+        connection: &mut sqlx::PgConnection,
+        accounts: &[Uuid],
+        lease: PublicationLease,
+    ) {
+        // The SAME still-held physical advisory-lock backend performs cleanup.
+        // Guard liveness is already retired and any owned socket transfer ended.
+        // A failed/lost backend leaves its committed bounded exclusion intact.
+        let Ok(started) = signed(lease.started_at.get()) else {
+            return;
+        };
+        let Ok(until) = signed(lease.until.get()) else {
+            return;
+        };
+        let cleanup=sqlx::query("UPDATE session_accounts SET publication_lease_started_at_ms=NULL,publication_lease_until_ms=NULL WHERE user_id=ANY($1) AND publication_lease_started_at_ms=$2 AND publication_lease_until_ms=$3")
+            .bind(accounts).bind(started).bind(until).execute(connection);
+        let _ = tokio::time::timeout(Duration::from_millis(100), cleanup).await;
+    }
+
+    pub(crate) async fn save_publication_lease(
         tx: &mut Transaction<'_, Postgres>,
         user_id: Uuid,
         lease: Option<PublicationLease>,
@@ -476,7 +573,7 @@ impl PgSessionStore {
         Ok(())
     }
 
-    async fn lock_account_publication_order(
+    pub(crate) async fn lock_account_publication_order(
         tx: &mut Transaction<'_, Postgres>,
         user_id: Uuid,
     ) -> Result<(), SessionError> {
@@ -492,7 +589,7 @@ impl PgSessionStore {
         Ok(())
     }
 
-    async fn lock_session(
+    pub(crate) async fn lock_session(
         tx: &mut Transaction<'_, Postgres>,
         id: Uuid,
         user_id: Uuid,
@@ -529,7 +626,7 @@ impl PgSessionStore {
         Ok((account, session))
     }
 
-    async fn save_account(
+    pub(crate) async fn save_account(
         tx: &mut Transaction<'_, Postgres>,
         account: &AccountRecord,
     ) -> Result<(), SessionError> {
@@ -593,7 +690,7 @@ impl PgSessionStore {
         Ok(())
     }
 
-    async fn save_session(
+    pub(crate) async fn save_session(
         tx: &mut Transaction<'_, Postgres>,
         session: &SessionRecord,
     ) -> Result<(), SessionError> {
@@ -827,12 +924,12 @@ impl SessionAuthority for PgSessionStore {
 
 /// Maximum isolated first-frame authority lease. This is not a session lifetime.
 /// The earlier idle/absolute deadline also bounds every publication guard.
-const PUBLICATION_LEASE_MS: u64 = 2_000;
+pub(crate) const PUBLICATION_LEASE_MS: u64 = 2_000;
 // clock_timestamp is floored to integer milliseconds. A local monotonic lease
 // must end at least one millisecond before its persisted exclusion/deadline.
 const PUBLICATION_QUANTIZATION_MARGIN_MS: u64 = 1;
 
-fn local_publication_budget(lease_ms: u64) -> Result<Duration, SessionError> {
+pub(crate) fn local_publication_budget(lease_ms: u64) -> Result<Duration, SessionError> {
     if lease_ms > PUBLICATION_LEASE_MS {
         return Err(SessionError::Unavailable);
     }
@@ -841,6 +938,34 @@ fn local_publication_budget(lease_ms: u64) -> Result<Duration, SessionError> {
         .filter(|remaining| *remaining > 0)
         .map(Duration::from_millis)
         .ok_or(SessionError::Unauthenticated)
+}
+
+#[cfg(feature = "accounts-postgres")]
+#[derive(Default)]
+pub(crate) struct SocketTransferFence {
+    in_flight: AtomicBool,
+    complete: tokio::sync::Notify,
+}
+#[cfg(feature = "accounts-postgres")]
+impl SocketTransferFence {
+    pub(crate) async fn wait(&self) {
+        loop {
+            let notified = self.complete.notified();
+            if !self.in_flight.load(Ordering::Acquire) {
+                break;
+            }
+            notified.await;
+        }
+    }
+}
+#[cfg(feature = "accounts-postgres")]
+struct SocketTransfer(Arc<SocketTransferFence>);
+#[cfg(feature = "accounts-postgres")]
+impl Drop for SocketTransfer {
+    fn drop(&mut self) {
+        self.0.in_flight.store(false, Ordering::Release);
+        self.0.complete.notify_one();
+    }
 }
 
 /// Owned isolated server-frame guard, never a transferable credential (ADR-0036).
@@ -854,12 +979,17 @@ fn local_publication_budget(lease_ms: u64) -> Result<Duration, SessionError> {
 /// same trusted database-clock assumption as ADR-0036: an unobserved forward
 /// clock correction is not solved by a monotonic local timer.
 pub struct PgSessionPublication {
-    snapshot: SessionSnapshot,
-    active: Arc<AtomicBool>,
-    published: bool,
-    expires_at: Instant,
-    release: Option<oneshot::Sender<()>>,
-    #[cfg(all(test, feature = "online-match-postgres"))]
+    pub(crate) snapshot: SessionSnapshot,
+    pub(crate) active: Arc<AtomicBool>,
+    pub(crate) published: bool,
+    pub(crate) expires_at: Instant,
+    pub(crate) release: Option<oneshot::Sender<()>>,
+    #[cfg(feature = "accounts-postgres")]
+    pub(crate) transfer_fence: Arc<SocketTransferFence>,
+    #[cfg(all(
+        test,
+        any(feature = "online-match-postgres", feature = "accounts-postgres")
+    ))]
     pub(crate) backend_pid: i32,
 }
 
@@ -869,8 +999,9 @@ impl fmt::Debug for PgSessionPublication {
     }
 }
 
-#[cfg(feature = "online-match-postgres")]
+#[cfg(any(feature = "online-match-postgres", feature = "accounts-postgres"))]
 impl PgSessionPublication {
+    #[cfg(feature = "online-match-postgres")]
     pub(crate) fn expires_at(&self) -> Instant {
         self.expires_at
     }
@@ -920,6 +1051,33 @@ impl SessionPublication for PgSessionPublication {
             return Err(SessionError::Unauthenticated);
         }
         Ok(frame)
+    }
+}
+
+#[cfg(feature = "accounts-postgres")]
+impl tabula_session::SocketFramePublication for PgSessionPublication {
+    fn handoff<R>(
+        &mut self,
+        frame: tabula_session::BoundedSocketFrame,
+        transport: impl FnOnce(tabula_session::BoundedSocketFrame) -> R,
+    ) -> Result<R, SessionError> {
+        if self
+            .transfer_fence
+            .in_flight
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return Err(SessionError::Unavailable);
+        }
+        let _transfer = SocketTransfer(Arc::clone(&self.transfer_fence));
+        if !self.active.load(Ordering::Acquire)
+            || self.published
+            || Instant::now() >= self.expires_at
+        {
+            return Err(SessionError::Unauthenticated);
+        }
+        self.published = true;
+        Ok(transport(frame))
     }
 }
 
@@ -1009,6 +1167,7 @@ impl HttpSessionAuthority for PgSessionStore {
         result
     }
 
+    #[allow(clippy::too_many_lines)] // Keep one ordered authority/lease transaction auditable.
     async fn begin_publication(
         &self,
         request: CredentialOperation,
@@ -1017,7 +1176,10 @@ impl HttpSessionAuthority for PgSessionStore {
         // SQLx closes rather than returning this physical connection on every
         // error/cancellation path, including a failed/indeterminate COMMIT.
         connection.close_on_drop();
-        #[cfg(all(test, feature = "online-match-postgres"))]
+        #[cfg(all(
+            test,
+            any(feature = "online-match-postgres", feature = "accounts-postgres")
+        ))]
         let backend_pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
             .fetch_one(&mut *connection)
             .await
@@ -1049,6 +1211,8 @@ impl HttpSessionAuthority for PgSessionStore {
         } else {
             0
         };
+        #[cfg(feature = "accounts-postgres")]
+        let mut owned_lease = None;
         if lease_ms > 0 {
             // Use the actual database clock for durable publication exclusion,
             // including acceptance with independently injected policy clocks.
@@ -1061,6 +1225,13 @@ impl HttpSessionAuthority for PgSessionStore {
                 .checked_add(lease_ms)
                 .and_then(|until| UnixMillis::new(until).ok())
                 .ok_or(SessionError::Unavailable)?;
+            #[cfg(feature = "accounts-postgres")]
+            {
+                owned_lease = Some(PublicationLease {
+                    started_at: database_now,
+                    until,
+                });
+            }
             Self::save_publication_lease(
                 &mut tx,
                 user_id,
@@ -1081,6 +1252,10 @@ impl HttpSessionAuthority for PgSessionStore {
         }
         let active = Arc::new(AtomicBool::new(true));
         let cleanup_active = active.clone();
+        #[cfg(feature = "accounts-postgres")]
+        let transfer_fence = Arc::new(SocketTransferFence::default());
+        #[cfg(feature = "accounts-postgres")]
+        let cleanup_transfer = Arc::clone(&transfer_fence);
         let (release, cancelled) = oneshot::channel();
         tokio::spawn(async move {
             tokio::select! {
@@ -1092,6 +1267,13 @@ impl HttpSessionAuthority for PgSessionStore {
             // even while a callback is paused. Its post-construction check will
             // suppress that result; the committed lease survives backend loss.
             cleanup_active.store(false, Ordering::Release);
+            #[cfg(feature = "accounts-postgres")]
+            cleanup_transfer.wait().await;
+            #[cfg(feature = "accounts-postgres")]
+            if let Some(lease) = owned_lease {
+                Self::clear_owned_publication_leases(&mut connection, &[user_id], lease).await;
+            }
+
             let _ = connection.close().await;
         });
         Ok(PgSessionPublication {
@@ -1100,7 +1282,12 @@ impl HttpSessionAuthority for PgSessionStore {
             published: false,
             expires_at,
             release: Some(release),
-            #[cfg(all(test, feature = "online-match-postgres"))]
+            #[cfg(feature = "accounts-postgres")]
+            transfer_fence,
+            #[cfg(all(
+                test,
+                any(feature = "online-match-postgres", feature = "accounts-postgres")
+            ))]
             backend_pid,
         })
     }

@@ -328,7 +328,7 @@ Kotlin token adapter exist before the Phase 5 exit. That does **not** complete o
 Everything below except those items and explicitly recorded bounded slices stays gated,
 and the chain's later changes each need their own evidence.
 
-**Bounded discovery parity (ADR-0044, issue #102).** Home, searchable/filterable
+**Bounded discovery parity (ADR-0045, issue #102).** Home, searchable/filterable
 Library, detail and read-only setup review consume a generated public registry
 catalog independently of runtime packaging. This extends #101's shell only.
 Production local start remains unavailable under ADR-0043; native accounts,
@@ -632,3 +632,10 @@ The first slice does not implement game networking or activate either service.
 Its database commit-fence receipt is not actual private-output fencing. All
 Phase 2/3/4/5 exits, provider proof and target-specific evidence remain owed;
 login/register/friends stay unavailable where their backend gates are unmet.
+
+[ADR-0044](../adr/0044-isolated-account-registration-social.md) subsequently opens
+the remaining #54 contracts by explicit owner request: verified-provider Tabula
+enrollment, permitted profile read/edit, durable friends/requests and one scoped
+presence stream. This is an isolated code/acceptance exception; provider account
+provisioning, production startup, live migrations, native/mobile social and broad
+phase exits remain gated. Missing authority never becomes a mock UI capability.

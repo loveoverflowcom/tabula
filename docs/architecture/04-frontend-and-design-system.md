@@ -175,6 +175,16 @@ code from being retained merely by discovery, without weakening validation or
 changing the separate-document boundary. The existing emitted shell-WASM cap
 remains 900,000 bytes; source graph and actual emitted bytes are separate evidence.
 
+[ADR-0044](../adr/0044-isolated-account-registration-social.md) adds a separate,
+non-default `account-social` shell composition for verified enrollment, editable
+profiles and authorized social snapshots. Its combined `online,account-social`
+artifact has an enforced 1,100,000-byte raw WASM ceiling. Default and `online`
+without that feature retain the 900,000-byte ceiling. CI measures all three
+optimized emitted artifacts, then runs the complete account/social acceptance
+on the combined artifact. This bounded additional account UI does not load game
+presenters/assets or authorize production startup; emitted size establishes no
+browser timing or phase-exit claim.
+
 ### 3.3 Native desktop and mobile
 
 **Desktop** is one binary. The shell screens are drawn by the **same** Macroquad runtime using a
@@ -194,7 +204,7 @@ Macroquad/Miniquad standalone mobile support alone does not prove CMP embedding.
 
 Web retains its separate DOM shell and WASM game documents. Desktop retains its
 native Macroquad runtime. Mobile shell screens consume the same generated Kotlin
-tokens and `docs/ui/screens/` specifications. ADR-0044 adds a generated public
+tokens and `docs/ui/screens/` specifications. ADR-0045 adds a generated public
 registry catalog and CMP Home/Library/detail/setup review; discovery availability
 does not establish native gameplay readiness. Native surface/input,
 lifecycle, first-frame and performance acceptance must be executed on Android/iOS;
@@ -206,7 +216,7 @@ Account. The simulated local preview enters through `GameHost`; production gamep
 unavailable under ADR-0043, as do native catalog/account services. Saved navigation restores
 shell locations, never an active local match. This supplies the navigation seam for subsequent mobile parity work without opening
 native accounts, remote discovery, OS deep links or a phase exit. Issue #102's
-[bounded discovery parity](../adr/0044-mobile-discovery-parity.md) extends that
+[bounded discovery parity](../adr/0045-mobile-discovery-parity.md) extends that
 seam with actual public registry metadata, search and filters. Catalog generation
 is checked independently of runtime packaging; setup remains read-only and
 native start unavailable until ADR-0043's adapter/configuration contract is met. See the

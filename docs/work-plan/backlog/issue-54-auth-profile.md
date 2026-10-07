@@ -1,6 +1,17 @@
 # Issue #54 B — sign in, register and read self-profile
 
-**Status:** deferred by phase and authority prerequisites; PR A specification delivered.
+**Status (2026-10-06):** ADR-0036/0038 delivered invited login and immutable
+self-ID. The owner now explicitly authorizes every remaining #54 criterion in
+[ADR-0044](../../adr/0044-isolated-account-registration-social.md), including
+verified-provider Tabula enrollment and permitted profile read/edit. The
+[completion ledger](../../verification/issue-54-account-followup/README.md)
+records current implementation and acceptance; [#99](https://github.com/loveoverflowcom/tabula/issues/99)
+tracks the same work rather than replacing #54.
+
+## Original production proposal (historical)
+
+The original dependencies and proposed separation below remain the production
+boundary; ADR-0044 is the bounded isolated exception.
 
 **Outcome:** a real identity/session service supports the short Login/Register
 flows and a permitted self-profile read, while Library and supported local

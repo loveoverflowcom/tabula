@@ -2,10 +2,33 @@
 
 Date: 2026-10-07 (Asia/Ho_Chi_Minh). Baseline:
 `origin/develop @ 1147f8f861e0ad59d996a917bf79f0bc670f65b3`.
-The [mobile source manifest](mobile-source-manifest.json) pins the final checked Kotlin,
-fixtures, tests and build configuration by SHA-256. ADR-0044 opens public mobile
+The [mobile source manifest](mobile-source-manifest.json) pins the originally checked Kotlin,
+fixtures, tests and build configuration by SHA-256. ADR-0045 opens public mobile
 discovery; ADR-0043 still keeps native gameplay unavailable. Discovery metadata
 never establishes a packaged runtime, match authority or game state (I-5/I-9/I-10).
+
+## Develop conflict integration
+
+The execution evidence below belongs to the original discovery snapshot
+`04925476fcace9bb1cb7cae03e472f4421f98489`; it is not a rerun on the merged tree.
+The integration incorporates `develop @ 1b6b823f3a84b8fcf410dbbf6471f875243668a1`.
+Its account/social decision retains ADR-0044; this discovery decision moves to
+ADR-0045. Mobile runtime source differs from the original discovery snapshot only
+in the corresponding `TabulaApp.kt` documentation comment. The retained source
+manifest therefore continues to identify the original tested snapshot.
+
+Local merge-resolution checks:
+
+- **PASS:** `git diff --cached --check`, native-only source/configuration policy,
+  all five `test_mobile_native_policy.py` tests, and the three-entrypoint skill
+  structural check. No packaged APK/app was inspected.
+- **BLOCKED:** `cargo xtask check`, because Cargo/Rust are not installed.
+- **BLOCKED:** `./gradlew :shared:testAndroidHostTest :previewApp:test
+  :android:assembleDebug`, before configuration, because the pinned Gradle
+  distribution download has no network route. JDK 17 and SDK 37 are also absent.
+- **NOT_RUN:** iOS/Xcode/device execution and full Rust feature/target builds.
+  This Linux environment cannot establish native-device acceptance. GitHub CI
+  was neither queried nor awaited for this conflict resolution.
 
 ## Executed checks
 

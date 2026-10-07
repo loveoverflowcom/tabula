@@ -48,12 +48,51 @@ pub struct AccountController {
     pub state: ReadSignal<AccountSnapshot>,
     inner: StoredValue<Runtime, LocalStorage>,
 }
+
+/// In-memory v2 completion fence, never a credential or serialized authority.
+/// Its exact route and context generation must remain current (ADR-0044).
+#[cfg(feature = "account-social")]
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct DocumentAccountTicket {
+    lease: RouteLease,
+    generation: u64,
+    subject: String,
+    csrf_token: String,
+}
+
+#[cfg(feature = "account-social")]
+impl DocumentAccountTicket {
+    pub(crate) fn subject(&self) -> &str {
+        &self.subject
+    }
+
+    pub(crate) fn csrf_token(&self) -> &str {
+        &self.csrf_token
+    }
+}
+
+/// Signed-out, in-memory continuation control for enrollment; no identity grant.
+#[cfg(feature = "account-social")]
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct EnrollmentNavigationTicket {
+    lease: RouteLease,
+    generation: u64,
+    csrf_token: String,
+}
+
+#[cfg(feature = "account-social")]
+impl EnrollmentNavigationTicket {
+    pub(crate) fn csrf_token(&self) -> &str {
+        &self.csrf_token
+    }
+}
 struct Runtime {
     session: AccountSession,
     lease: RouteLease,
     state: RwSignal<AccountSnapshot>,
     alive: bool,
     visible: bool,
+    connected: bool,
     in_flight: Option<core::AccountRequest>,
     #[cfg(target_arch = "wasm32")]
     abort: Option<web_sys::AbortController>,
@@ -79,6 +118,7 @@ pub fn use_account() -> AccountController {
             state,
             alive: true,
             visible: true,
+            connected: true,
             in_flight: None,
             #[cfg(target_arch = "wasm32")]
             abort: None,
@@ -99,6 +139,8 @@ pub fn use_account() -> AccountController {
         });
     }
     on_cleanup(move || controller.dispose());
+    #[cfg(feature = "account-social")]
+    crate::social_full::bind_account(controller);
     #[cfg(target_arch = "wasm32")]
     controller.recover_document(browser::visible());
     #[cfg(not(target_arch = "wasm32"))]
@@ -106,7 +148,114 @@ pub fn use_account() -> AccountController {
     controller
 }
 impl AccountController {
-    fn current(self) -> bool {
+    /// Read validated document controls only while this exact idle route is live.
+    #[cfg(feature = "account-social")]
+    pub(crate) fn document_ticket(self) -> Option<DocumentAccountTicket> {
+        let _ = self.state.try_get();
+        if !self.current() || !self.visible() || !self.connected() {
+            return None;
+        }
+        self.inner
+            .try_with_value(|runtime| {
+                runtime
+                    .session
+                    .core
+                    .try_with_value(|core| {
+                        let (subject, csrf_token) = core.current_document_context()?;
+                        Some(DocumentAccountTicket {
+                            lease: runtime.lease,
+                            generation: core.snapshot().presentation_generation,
+                            subject,
+                            csrf_token,
+                        })
+                    })
+                    .flatten()
+            })
+            .flatten()
+    }
+
+    /// A late v2 response cannot cross a route, subject, context or lifecycle.
+    #[cfg(feature = "account-social")]
+    pub(crate) fn ticket_current(self, ticket: &DocumentAccountTicket) -> bool {
+        self.document_ticket().as_ref() == Some(ticket)
+    }
+
+    #[cfg(feature = "account-social")]
+    pub(crate) fn enrollment_navigation_ticket(self) -> Option<EnrollmentNavigationTicket> {
+        if !self.current() || !self.visible() || !self.connected() {
+            return None;
+        }
+        self.inner
+            .try_with_value(|runtime| {
+                runtime
+                    .session
+                    .core
+                    .try_with_value(|core| {
+                        Some(EnrollmentNavigationTicket {
+                            lease: runtime.lease,
+                            generation: core.snapshot().presentation_generation,
+                            csrf_token: core.current_pre_auth_control()?,
+                        })
+                    })
+                    .flatten()
+            })
+            .flatten()
+    }
+
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    #[cfg(feature = "account-social")]
+    pub(crate) fn enrollment_navigation_current(self, ticket: &EnrollmentNavigationTicket) -> bool {
+        self.enrollment_navigation_ticket().as_ref() == Some(ticket)
+    }
+
+    #[cfg(feature = "account-social")]
+    pub(crate) fn social_available(self) -> bool {
+        self.document_ticket().is_some()
+            && self
+                .inner
+                .try_with_value(|runtime| {
+                    runtime
+                        .session
+                        .core
+                        .try_with_value(core::AccountCore::social_available)
+                        .unwrap_or(false)
+                })
+                .unwrap_or(false)
+    }
+
+    #[cfg_attr(not(feature = "account-social"), allow(clippy::unused_self))] // Same presentation API, compiled slice stays closed.
+    pub(crate) fn enrollment_available(self) -> bool {
+        #[cfg(feature = "account-social")]
+        {
+            self.enrollment_navigation_ticket().is_some()
+        }
+        #[cfg(not(feature = "account-social"))]
+        {
+            false
+        }
+    }
+
+    #[cfg(not(feature = "account-social"))]
+    #[allow(clippy::unused_self)] // Backend bits cannot activate an absent frontend slice.
+    pub(crate) fn social_available(self) -> bool {
+        false
+    }
+
+    /// Public enrollment completions still require the same live idle route.
+    #[cfg(feature = "account-social")]
+    pub(crate) fn public_generation(self) -> Option<u64> {
+        if !self.current() || !self.visible() || !self.connected() {
+            return None;
+        }
+        let snapshot = self.state.try_get()?;
+        (snapshot.busy.is_none()
+            && matches!(
+                snapshot.status,
+                AccountStatus::SignedOut | AccountStatus::Expired
+            ))
+        .then_some(snapshot.presentation_generation)
+    }
+    pub(crate) fn current(self) -> bool {
         self.inner
             .try_with_value(|runtime| {
                 runtime.alive
@@ -129,8 +278,46 @@ impl AccountController {
                 .try_with_value(|runtime| runtime.alive && runtime.visible)
                 .unwrap_or(false)
     }
+    fn connected(self) -> bool {
+        #[cfg(target_arch = "wasm32")]
+        if !browser::online() {
+            return false;
+        }
+        self.current()
+            && self
+                .inner
+                .try_with_value(|runtime| runtime.connected)
+                .unwrap_or(false)
+    }
+    fn resample_connectivity(self) -> bool {
+        #[cfg(target_arch = "wasm32")]
+        let connected = browser::online();
+        #[cfg(not(target_arch = "wasm32"))]
+        let connected = self
+            .inner
+            .try_with_value(|runtime| runtime.connected)
+            .unwrap_or(false);
+        self.inner
+            .try_update_value(|runtime| runtime.connected = connected);
+        connected
+    }
     fn recover_document(self, visible: bool) {
         if !self.current() {
+            return;
+        }
+        // A frozen document can miss the online event. Focus/pageshow/manual
+        // recovery therefore samples the browser again before fresh authority.
+        let connected = self.resample_connectivity();
+        self.recover_document_from_hint(visible, connected);
+    }
+    fn recover_document_from_hint(self, visible: bool, connected: bool) {
+        if !self.current() {
+            return;
+        }
+        self.inner
+            .try_update_value(|runtime| runtime.connected = connected);
+        if !connected {
+            self.disconnect();
             return;
         }
         self.clear(true);
@@ -145,6 +332,7 @@ impl AccountController {
             self.clear(true);
             return;
         }
+        let connected = self.resample_connectivity();
         let mut request = None;
         self.inner.try_update_value(|runtime| {
             if runtime.alive {
@@ -170,7 +358,16 @@ impl AccountController {
                     browser::hint(self);
                 }
             }
+            // A confirmed logout records and saves its exact target above even
+            // when connectivity disappeared before the offline event. Reject
+            // transport only after preserving that unconfirmed user intent.
+            if !connected {
+                self.disconnect();
+                return;
+            }
             self.dispatch(request);
+        } else if !connected {
+            self.disconnect();
         }
     }
     /// Refetch authority; unresolved logout intent never restores private output.
@@ -233,6 +430,43 @@ impl AccountController {
     /// Clear private data and invalidate all later completions, without a mutation.
     pub fn cancel(self) {
         self.clear(false);
+    }
+
+    /// Retire known-disconnected work synchronously; connectivity is not a
+    /// signed-out disposition or permission to reuse a previous profile.
+    fn disconnect(self) {
+        if !self.current() {
+            self.dispose();
+            return;
+        }
+        #[cfg(target_arch = "wasm32")]
+        browser::mask_private();
+        self.inner.try_update_value(|runtime| {
+            runtime.connected = false;
+            runtime.in_flight = None;
+            #[cfg(target_arch = "wasm32")]
+            if let Some(abort) = runtime.abort.take() {
+                abort.abort();
+            }
+            runtime.session.core.update_value(|core| {
+                core.disconnect();
+                runtime.state.try_set(core.snapshot());
+            });
+        });
+    }
+
+    /// An online hint starts a fresh authority check, never restores private data.
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))] // Browser hint/native lifecycle tests.
+    fn reconnect(self) {
+        if !self.current() {
+            return;
+        }
+        self.inner
+            .try_update_value(|runtime| runtime.connected = true);
+        #[cfg(target_arch = "wasm32")]
+        self.recover_document(browser::visible());
+        #[cfg(not(target_arch = "wasm32"))]
+        self.recover_document(true);
     }
 
     fn clear(self, suspended: bool) {
@@ -313,6 +547,10 @@ impl AccountController {
         request: &core::AccountRequest,
         result: Result<core::HttpResponse, core::AccountFailure>,
     ) {
+        if !self.connected() {
+            self.disconnect();
+            return;
+        }
         if !self.visible() {
             self.clear(true);
             return;
@@ -387,6 +625,10 @@ impl AccountController {
         }
     }
     fn dispatch(self, request: core::AccountRequest) {
+        if !self.connected() {
+            self.disconnect();
+            return;
+        }
         if !self.visible() {
             self.clear(true);
             return;
@@ -587,6 +829,11 @@ mod browser {
             .and_then(|window| window.document())
             .is_some_and(|document| document.visibility_state() == VisibilityState::Visible)
     }
+    pub(super) fn online() -> bool {
+        // This browser hint can suppress account output. A true value never
+        // establishes server reachability, session validity or account authority.
+        web_sys::window().is_some_and(|window| window.navigator().on_line())
+    }
     pub(super) fn listen(controller: AccountController) -> bool {
         let Some(window) = web_sys::window() else {
             return false;
@@ -624,10 +871,16 @@ mod browser {
                 controller.recover_document(visible());
             }
         });
+        let offline = add_listener(controller, window.clone().into(), "offline", move |_| {
+            controller.disconnect();
+        });
+        let online = add_listener(controller, window.clone().into(), "online", move |_| {
+            controller.reconnect();
+        });
         let focus = add_listener(controller, window.into(), "focus", move |_| {
             controller.recover_document(visible());
         });
-        if !(hide && show && visibility && focus && storage) {
+        if !(hide && show && visibility && focus && storage && offline && online) {
             // Missing cleanup/recovery registration must not retain private output.
             controller.cancel();
             return false;
@@ -661,6 +914,20 @@ mod browser {
         let Some(document) = web_sys::window().and_then(|window| window.document()) else {
             return;
         };
+        // Retire focus only when its current control is about to become hidden.
+        // Public navigation, locale and recovery controls keep the user's focus.
+        let focused_private = document
+            .active_element()
+            .and_then(|element| element.closest("[data-account-private]").ok().flatten())
+            .is_some();
+        if focused_private {
+            if let Some(heading) = document
+                .get_element_by_id("account-title")
+                .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok())
+            {
+                let _ = heading.focus();
+            }
+        }
         let Ok(nodes) = document.query_selector_all("[data-account-private]") else {
             return;
         };
@@ -893,6 +1160,7 @@ mod tests {
                 state,
                 alive: true,
                 visible: true,
+                connected: true,
                 in_flight: None,
             }),
         };
@@ -918,7 +1186,11 @@ mod tests {
     #[test]
     fn replacement_route_bootstraps_before_old_owner_cleanup_and_completes_current_profile() {
         let app = Owner::new();
-        app.with(provide_account_session);
+        app.with(|| {
+            provide_account_session();
+            #[cfg(feature = "account-social")]
+            crate::social_full::provide_social();
+        });
         let old_owner = app.child();
         let old = old_owner.with(use_account);
         let old_request = old_owner.with(|| pending(old));
@@ -1047,6 +1319,110 @@ mod tests {
                 controller.state.get_untracked().status,
                 AccountStatus::Unavailable
             );
+        });
+    }
+    #[test]
+    fn offline_hint_retires_work_and_reconnect_cannot_restore_a_cached_profile() {
+        Owner::new().with(|| {
+            let controller = controller();
+            let context_request = pending(controller);
+            let mut profile_request = None;
+            controller.inner.update_value(|runtime| {
+                runtime.session.core.update_value(|core| {
+                    profile_request = core.complete(&context_request, Ok(HttpResponse {
+                        status: 200,
+                        body: br#"{"version":1,"disposition":"authenticated","account_id":"00000000000000000000000000000001","csrf_token":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","capabilities":{"login":false,"register":false,"friends":false,"read_self_profile":true}}"#.to_vec(),
+                    }));
+                    runtime.state.set(core.snapshot());
+                });
+                runtime.in_flight.clone_from(&profile_request);
+            });
+            let profile_request = profile_request.unwrap();
+            let generation = controller.state.get_untracked().presentation_generation;
+            controller.disconnect();
+            assert_eq!(controller.state.get_untracked().status, AccountStatus::Disconnected);
+            assert!(controller.state.get_untracked().presentation_generation > generation);
+            assert!(controller.inner.with_value(|runtime| {
+                !runtime.connected && runtime.in_flight.is_none()
+            }));
+            controller.complete(&profile_request, Ok(HttpResponse {
+                status: 200,
+                body: br#"{"version":1,"account_id":"00000000000000000000000000000001"}"#.to_vec(),
+            }));
+            controller.recover_document(true);
+            controller.recheck();
+            assert_eq!(controller.state.get_untracked().status, AccountStatus::Disconnected);
+            assert!(controller.inner.with_value(|runtime| runtime.in_flight.is_none()));
+            controller.reconnect();
+            // Native dispatch has no authority transport. An online hint must
+            // therefore end unavailable, never resurrect the earlier subject.
+            assert!(controller.inner.with_value(|runtime| runtime.connected));
+            assert_eq!(controller.state.get_untracked().status, AccountStatus::Unavailable);
+            controller.complete(&profile_request, Ok(HttpResponse {
+                status: 200,
+                body: br#"{"version":1,"account_id":"00000000000000000000000000000001"}"#.to_vec(),
+            }));
+            assert_eq!(controller.state.get_untracked().status, AccountStatus::Unavailable);
+        });
+    }
+    #[test]
+    fn recovery_resamples_connectivity_after_a_missed_online_event() {
+        Owner::new().with(|| {
+            let controller = controller();
+            let old = pending(controller);
+            controller.disconnect();
+            assert_eq!(
+                controller.state.get_untracked().status,
+                AccountStatus::Disconnected
+            );
+            assert!(controller.inner.with_value(|runtime| !runtime.connected));
+            // This is the current browser hint sampled by pageshow/focus; no
+            // online event reached the previously disconnected route owner.
+            controller.recover_document_from_hint(true, true);
+            assert!(controller.inner.with_value(|runtime| runtime.connected));
+            assert_eq!(
+                controller.state.get_untracked().status,
+                AccountStatus::Unavailable
+            );
+            controller.complete(&old, signed_out());
+            assert_eq!(
+                controller.state.get_untracked().status,
+                AccountStatus::Unavailable
+            );
+        });
+    }
+    #[test]
+    fn confirmed_logout_before_offline_event_keeps_target_without_dispatch() {
+        Owner::new().with(|| {
+            let controller = controller();
+            let context_request = pending(controller);
+            let mut profile_request = None;
+            controller.inner.update_value(|runtime| {
+                runtime.session.core.update_value(|core| {
+                    profile_request = core.complete(&context_request, Ok(HttpResponse {
+                        status: 200,
+                        body: br#"{"version":1,"disposition":"authenticated","account_id":"00000000000000000000000000000001","csrf_token":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","capabilities":{"login":false,"register":false,"friends":false,"read_self_profile":true}}"#.to_vec(),
+                    }));
+                    runtime.state.set(core.snapshot());
+                });
+                runtime.in_flight.clone_from(&profile_request);
+            });
+            controller.complete(&profile_request.unwrap(), Ok(HttpResponse {
+                status: 200,
+                body: br#"{"version":1,"account_id":"00000000000000000000000000000001"}"#.to_vec(),
+            }));
+            assert!(matches!(controller.state.get_untracked().status, AccountStatus::Authenticated { .. }));
+            // Connectivity disappeared while the confirmation was still visible;
+            // its offline cleanup event has not retired the current target yet.
+            controller.inner.update_value(|runtime| runtime.connected = false);
+            controller.logout();
+            assert_eq!(controller.state.get_untracked().status, AccountStatus::LogoutPending);
+            assert!(controller.inner.with_value(|runtime| runtime.in_flight.is_none()));
+            let intents = controller.inner.with_value(|runtime| runtime.session.core.with_value(AccountCore::logout_intents));
+            assert_eq!(intents.len(), 1);
+            controller.recover_document_from_hint(true, true);
+            assert_eq!(controller.state.get_untracked().status, AccountStatus::LogoutPending);
+            assert_eq!(controller.inner.with_value(|runtime| runtime.session.core.with_value(AccountCore::logout_intents)), intents);
         });
     }
     #[test]

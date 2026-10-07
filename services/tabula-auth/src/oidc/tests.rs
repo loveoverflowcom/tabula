@@ -55,6 +55,7 @@ fn flow(now: u64) -> Pending {
         started_seconds: now,
         expires: Instant::now() + FLOW_LIFETIME,
         epochs: [(c.admitted[0].clone(), AccountEpoch::new(3).unwrap())].into(),
+        enrollment_epoch: None,
         cancelled: Arc::new(AtomicBool::new(false)),
     }
 }

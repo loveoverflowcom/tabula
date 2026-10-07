@@ -55,3 +55,4 @@ flamegraph.svg
 
 # Disposable actual-browser receipts are CI artifacts, never source or secrets.
 /verification/online-match-artifacts/
+/verification/account-social-artifacts/

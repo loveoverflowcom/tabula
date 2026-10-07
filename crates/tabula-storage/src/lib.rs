@@ -120,3 +120,9 @@ pub mod match_postgres;
 #[cfg(all(feature = "online-match-postgres", not(target_arch = "wasm32")))]
 #[clippy::msrv = "1.94"]
 pub mod online_match;
+
+#[cfg(all(feature = "accounts-postgres", not(target_arch = "wasm32")))]
+pub mod accounts;
+
+#[cfg(all(feature = "social-postgres", not(target_arch = "wasm32")))]
+pub mod social;

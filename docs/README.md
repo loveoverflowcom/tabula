@@ -25,7 +25,7 @@ Web uses a Leptos shell and a separate Rust/Macroquad WASM gameplay document
 Compose Multiplatform shell in [`apps/mobile/`](../apps/mobile/README.md); ADR-0032 opens
 only its foundation. ADR-0043 retires mobile WebView gameplay and requires native
 Macroquad in the same app; native adapters and device acceptance remain blocked.
-ADR-0044 adds a generated public registry catalog and discovery screens to that
+ADR-0045 adds a generated public registry catalog and discovery screens to that
 shell; its native start, accounts, remote catalog and resume remain unavailable.
 Voice and other native services retain their separate scope/evidence requirements. Desktop gameplay remains native, with an
 optional Tauri shell.

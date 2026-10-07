@@ -1,0 +1,193 @@
+# ADR-0044 disposable authority/browser acceptance; no production activation.
+name: accounts-social
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'crates/tabula-session/**'
+      - 'crates/tabula-session-http/**'
+      - 'crates/tabula-lobby/**'
+      - 'crates/tabula-storage/**'
+      - 'services/tabula-auth/**'
+      - 'tests/accounts/**'
+      - 'tests/kanidm/**'
+      - 'tests/online-match/tls_frontend.py'
+      - '.github/workflows/accounts-social.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'deps.toml'
+      - 'tools/tests/check-loading-budgets.py'
+      - 'tools/tests/test_loading_budgets.py'
+      - '.sqlx/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accounts-social-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  durable-social:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tabula_social_acceptance
+          POSTGRES_USER: tabula_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+          PGUSER: tabula_test
+          PGDATABASE: tabula_social_acceptance
+        ports: ['127.0.0.1:5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_social_acceptance
+      SQLX_OFFLINE: 'true'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: '1.96' }
+      - uses: Swatinem/rust-cache@v2
+      - name: Check nonempty real durable acceptance selection
+        run: |
+          cargo test -p tabula-storage --features social-postgres accounts::tests -- --list --ignored > selected-account-tests.txt
+          cargo test -p tabula-storage --features social-postgres social::tests -- --list --ignored > selected-social-tests.txt
+          python3 -c 'from pathlib import Path; assert all(any(line.endswith(": test") for line in Path(name).read_text().splitlines()) for name in ("selected-account-tests.txt", "selected-social-tests.txt"))'
+      - name: Exercise current permissions, receipts, expiry and disclosure fences
+        run: |
+          cargo test -p tabula-storage --features social-postgres accounts::tests -- --ignored --test-threads=1
+          cargo test -p tabula-storage --features social-postgres social::tests -- --ignored --test-threads=1
+
+  enrollment-provider:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tabula_oidc_acceptance
+          POSTGRES_USER: tabula_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+          PGUSER: tabula_test
+          PGDATABASE: tabula_oidc_acceptance
+        ports: ['127.0.0.1:5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_oidc_acceptance
+      SQLX_OFFLINE: 'true'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: '1.96' }
+      - uses: Swatinem/rust-cache@v2
+      - name: Compile actual enrollment acceptance
+        run: cargo test -p tabula-auth --features accounts-acceptance --test kanidm_provider --no-run
+      - name: Exercise unmapped enrollment and subsequent real-provider login
+        run: bash tests/kanidm/run.sh bash tests/accounts/provider_acceptance.sh
+      - name: Preserve public provider provenance and bounded verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-enrollment-provider-evidence
+          path: verification/kanidm-oidc-artifacts/*
+          if-no-files-found: error
+          retention-days: 7
+
+  independent-browsers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tabula_accounts_browser_acceptance
+          POSTGRES_USER: tabula_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+          PGUSER: tabula_test
+          PGDATABASE: tabula_accounts_browser_acceptance
+        ports: ['127.0.0.1:5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_accounts_browser_acceptance
+      SQLX_OFFLINE: 'true'
+      TABULA_ACCOUNTS_DISPOSABLE: '1'
+      TABULA_KANIDM_SOCIAL: '1'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: '1.96', targets: wasm32-unknown-unknown }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # Public compiler/build inputs only; provider keys/browser profiles
+          # remain task-local outside this cache. All gates still execute.
+          cache-on-failure: true
+      - name: Install pinned browser/build helpers
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libnss3-tools
+          pip3 install -r tests/accounts/requirements.txt
+          python3 -m playwright install --with-deps chromium
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import os
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as playwright:
+              executable = playwright.chromium.executable_path
+              assert Path(executable).is_file() and os.access(executable, os.X_OK)
+              print(f"TABULA_ACCOUNTS_CHROME={executable}")
+          PY
+          cargo install trunk --version 0.21.14 --locked
+      - name: Check the opted-in account frontend and actual authority fixture
+        run: |
+          cargo build -p tabula-auth --features accounts-acceptance --example account_social_acceptance
+          cargo test -p tabula-web --features online,account-social
+          cargo clippy -p tabula-web --features online,account-social --target wasm32-unknown-unknown -- -D warnings
+      - name: Enforce both existing shell caps and the explicit full account-social cap
+        run: |
+          python3 -m unittest discover -s tools/tests -p 'test_loading_budgets.py' -v
+          mkdir -p verification/account-social-artifacts
+          (cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release)
+          python3 tools/tests/check-loading-budgets.py --shell-dist apps/web/dist --write-receipt verification/account-social-artifacts/default-shell-budget.json
+          (cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
+          python3 tools/tests/check-loading-budgets.py --shell-dist apps/web/dist --write-receipt verification/account-social-artifacts/online-shell-budget.json
+          (cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online,account-social)
+          python3 tools/tests/check-loading-budgets.py --shell-dist apps/web/dist --shell-profile account-social --write-receipt verification/account-social-artifacts/account-social-shell-budget.json
+      - name: Exercise actual HTTPS/WSS, Kanidm and PostgreSQL with independent browsers
+        run: bash tests/kanidm/run.sh bash tests/accounts/run_real.sh
+      - name: Render and interact with explicit HTTP doubles
+        run: python3 tests/accounts/browser_acceptance.py --chrome "$TABULA_ACCOUNTS_CHROME" --web-dist apps/web/dist --receipt verification/account-social-artifacts/ui-double-receipt.json
+      - name: Preserve only sanitized public account/social receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-social-browser-evidence
+          path: verification/account-social-artifacts/*
+          if-no-files-found: error
+          retention-days: 7

@@ -223,10 +223,10 @@ impl IsolatedMatchHttp {
         Router::new()
             .route("/api/v1/matches", post(create))
             .route("/api/v1/matches/join", post(join))
-            .route("/api/v1/matches/:id/grant", post(grant))
-            .route("/api/v1/matches/:id/attach", post(attach))
-            .route("/api/v1/matches/:id/command", post(command))
-            .route("/api/v1/matches/:id/poll", post(poll))
+            .route("/api/v1/matches/{id}/grant", post(grant))
+            .route("/api/v1/matches/{id}/attach", post(attach))
+            .route("/api/v1/matches/{id}/command", post(command))
+            .route("/api/v1/matches/{id}/poll", post(poll))
             .layer(middleware::from_fn_with_state(
                 self.state.clone(),
                 bound_requests,

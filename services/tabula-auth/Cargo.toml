@@ -14,11 +14,15 @@ publish.workspace      = true
 [features]
 default = []
 web-oidc = ["dep:tabula-session", "dep:tabula-session-http", "dep:tokio", "dep:reqwest", "dep:serde", "dep:serde_json", "dep:url", "dep:sha2", "dep:base64", "dep:jsonwebtoken", "dep:axum"]
+accounts = ["web-oidc", "tabula-session-http/accounts"]
+accounts-social = ["accounts", "tabula-session-http/social", "dep:tabula-lobby"]
+accounts-acceptance = ["accounts-social", "postgres-acceptance", "tabula-session-http/social", "tabula-storage/social-postgres"]
 postgres-acceptance = ["web-oidc", "dep:tabula-storage", "dep:sqlx"]
 
 # Provider/runtime dependencies never enter the default skeleton or a WASM graph.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tabula-session = { workspace = true, optional = true }
+tabula-lobby = { workspace = true, optional = true, features = ["authority"] }
 tabula-session-http = { workspace = true, features = ["isolated"], optional = true }
 tokio = { workspace = true, optional = true }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"], optional = true }
@@ -29,7 +33,7 @@ sha2 = { workspace = true, optional = true }
 base64 = { workspace = true, optional = true }
 jsonwebtoken = { workspace = true, optional = true }
 axum = { workspace = true, optional = true }
-tabula-storage = { workspace = true, features = ["session-postgres"], optional = true }
+tabula-storage = { workspace = true, features = ["accounts-postgres"], optional = true }
 sqlx = { workspace = true, optional = true }
 
 [dev-dependencies]
@@ -50,3 +54,7 @@ postgres-acceptance = "1.94"
 
 [lints]
 workspace = true
+
+[[example]]
+name = "account_social_acceptance"
+required-features = ["accounts-acceptance"]

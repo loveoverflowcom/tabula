@@ -203,7 +203,7 @@ mod browser {
     ) -> Result<tabula_match_http::MatchAdmission, &'static str> {
         let context = fetch("/api/v1/auth/context", None, None, abort).await?;
         let context: tabula_session_http::ContextResponse =
-            serde_json::from_slice(&context).map_err(|_| "online.unavailable")?;
+            crate::json::decode(&context).map_err(|_| "online.unavailable")?;
         context
             .validate_for_browser()
             .map_err(|_| "online.unavailable")?;
@@ -250,7 +250,7 @@ mod browser {
                 )
             }
         };
-        serde_json::from_slice(&fetch(path, Some(&body), Some(&csrf), abort).await?)
+        crate::json::decode(&fetch(path, Some(&body), Some(&csrf), abort).await?)
             .map_err(|_| "online.unavailable")
     }
     struct Timeout {

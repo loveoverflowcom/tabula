@@ -1,4 +1,4 @@
-# ADR-0044: Registry-backed discovery in the CMP shell
+# ADR-0045: Registry-backed discovery in the CMP shell
 
 - **Status:** accepted bounded implementation requested by [issue #102](https://github.com/loveoverflowcom/tabula/issues/102).
 - **Date:** 2026-10-07

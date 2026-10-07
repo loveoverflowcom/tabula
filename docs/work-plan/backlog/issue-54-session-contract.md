@@ -1,8 +1,12 @@
 # Issue #54 — implement the accepted session contract after gates
 
-**Status:** policy reconciled in [ADR-0031](../../adr/0031-browser-native-session-contract.md);
-runtime deferred. [PR #62](https://github.com/loveoverflowcom/tabula/pull/62)
-is separate specification A and remains independently reviewable.
+**Status (2026-10-06):** policy reconciled in [ADR-0031](../../adr/0031-browser-native-session-contract.md);
+isolated durable session/HTTP/self-ID/UI and invited Kanidm runtime subsequently
+delivered under ADR-0036/0038. [PR #62](https://github.com/loveoverflowcom/tabula/pull/62)
+is the historical specification A. Production/native/private-output acceptance
+remains tracked by [#74](https://github.com/loveoverflowcom/tabula/issues/74);
+the [current account follow-up](../../verification/issue-54-account-followup/README.md)
+does not silently complete the full future series below.
 
 **Outcome:** real, revocable browser/native sessions support sign-in and
 read-only self-profile with trustworthy transport/lifecycle, then viewer-scoped
