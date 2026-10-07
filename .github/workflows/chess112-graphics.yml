@@ -1,0 +1,57 @@
+name: bounded-chess112-graphics
+on:
+  push:
+    branches: ['evidence/chess112-runtime-capture-20261007']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bounded-chess112-graphics-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  actual-chess-graphics:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      TABULA_CHESS_GRAPHICS_QA: '1'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+        with: {path: harness}
+      - uses: actions/checkout@v4
+        with:
+          ref: c61dbc62271cd4a5554dd62bc139a06bab58fb44
+          path: actual-src
+      - uses: dtolnay/rust-toolchain@master
+        with: {toolchain: '1.96', targets: wasm32-unknown-unknown}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: actual-src -> target
+          cache-on-failure: true
+      - name: Official browser and bounded public-pixel OCR tooling
+        run: |
+          python3 -m pip install -r actual-src/tests/online-match/requirements.txt
+          python3 -m playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+      - name: Actual source-owned Chess WASM and staged resources
+        working-directory: actual-src
+        run: |
+          cargo clean --locked
+          cargo build --locked -p tabula-game-client --no-default-features --features web --bin tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
+          cargo xtask stage-wasm-game
+      - name: Actual setup, materials, actions, special moves and motion screenshots
+        run: python3 harness/tools/chess112-review/capture.py --source-root actual-src --output verification/chess112
+      - name: Preserve original screenshots and exact-source receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actual-chess112-runtime
+          path: verification/chess112
+          if-no-files-found: error
+          retention-days: 14
