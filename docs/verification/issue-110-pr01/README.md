@@ -18,7 +18,7 @@ HEAD/tree from actual binary/bundle and working-diff hashes.
 | Shutdown owns upgraded social tasks | Actual WebSocket upgrade with pending Hello, SIGTERM, Close 4411 and process exit | integration-tested PASS within the configured deadline | Delivery/receipt after transport handoff is not claimed |
 | Shutdown preserves uncertain owned journal work | Existing actor behind append barrier; cancellation/quiescence/deadline partitions | example-tested PASS: gateway 24 unit tests and 4 DTO tests | No blind abort or timeout-as-failed-commit inference |
 | Social cancellation drops the same hub attachment and reports failures honestly | Shutdown before/during work, callback cancellation, ticker failure, deadline | example-tested PASS: seven focused tests | Presence metadata is not a device-activity claim |
-| Real provider/browser service journey | New `tests/local-dev/run.py` and `local-dev-backend` workflow | Local provider HTTPS/bootstrap PASS; local browser BLOCKED by existing user NSS and unavailable process-only mount | Required two-browser service acceptance remains pending; no browser PASS inferred |
+| Real provider/browser service journey | New `tests/local-dev/run.py` and `local-dev-backend` workflow | Local provider HTTPS/bootstrap PASS; local browser BLOCKED by existing user NSS. CI at b53b1e2 passed the process test/builds/provider setup, then browser acceptance FAILed before a useful stage was retained | Rerun has closed stage diagnostics, partial cases, verified TLS readiness and normal full Chromium; required service browser PASS remains pending |
 | Recorded canvas/board timeout on current baseline | Independent normal Chromium, HTTPS, real PG and unchanged assertions at base d707756 | Main complete-game browser PASS; continuity FAIL reproduced. The corrected uncommitted crash partition PASSes; committed restart exposed an actual supported session-problem/transport marker mismatch | Full final-head suite remains pending; no backend rule defect inferred from timeout |
 
 The real service process command is:
@@ -51,18 +51,25 @@ dependency/game-id/manifest checks, generated tokens/raw-color checks and
 `cargo deny`. Workspace compilation passed with both `--no-default-features`
 and `--all-features`; both services also compiled with `--all-features` for
 `wasm32-unknown-unknown`, preserving their native-only runtime boundaries.
-The shared online Python helper suite passed 168 tests. The current gameplay
+The shared online Python helper suite passed 169 tests. The current gameplay
 web JavaScript suite passed 123 tests, including 27 direct-transport tests,
 with `node --test --test-isolation=none apps/game-client/web/tests/*.test.cjs`.
 An ignored PostgreSQL test in the default suite is not a PASS.
 
-The continuity investigation found two separate harness sequencing defects:
+The continuity investigation found separate harness sequencing defects:
 an old White-turn board could satisfy the post-kill Black predicate before a
 fresh attach, and screenshot work could consume the other browser's bounded
 offline recovery budget. The harness now requires a completed post-kill attach
 with the same operation scope and new attachment, and restores transport only
 after the independent durable oracle confirms the required partition, before
 sampling unrelated pixels. All original board/pixel and durable assertions remain.
+The full run at clean `b53b1e2` passed seven cases including both actual crash
+partitions, then failed same-record rotation with a durable prefix of two and
+an unavailable White board. A focused trace confirmed six network retries
+exhausted during a 24.5-second test-created outage. The rotation control page
+is now prepared before loss; actual rotation, the second durable command and
+stale-attachment denial still precede restoration, which now precedes unrelated
+pixel sampling. The helper regression checks those barriers; actual rerun is pending.
 
 An actual committed-crash probe then confirmed a separate transport defect:
 the session adapter's supported `PublicProblem` rejection has `version`,

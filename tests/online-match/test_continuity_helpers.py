@@ -14,6 +14,58 @@ from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_
 
 
 class ContinuityHelperTests(unittest.TestCase):
+    def test_rotation_prepares_control_before_outage_and_restores_after_current_authority_witnesses(self):
+        # Coordination only: no mock response supplies actual browser evidence.
+        events=[];white,black,control=mock.Mock(),mock.Mock(),mock.Mock()
+        context=mock.Mock();context.new_page.return_value=control
+        context.cookies.side_effect=[[{'name':'__Host-tabula_session','value':'old'}],
+                                     [{'name':'__Host-tabula_session','value':'new'}]]
+        control.goto.side_effect=lambda *args,**kwargs:events.append(('control_ready',))
+        scope='b'*64;match_id='a'*32;command={'seq':1}
+        pair=mock.Mock(pages=[white,black],match_id=match_id,
+            facts=[{'account_id':'white'},{'account_id':'black'}],
+            attachments=[[{'operation_scope':scope,'attachment_id':'old'}],[{}]])
+        pair.tap.side_effect=lambda *args:(events.append(('pointer_command',)) or
+            json.dumps({'version':2,'command':command}))
+        pair.current_status.side_effect=lambda role,status:events.append(('status',role,status))
+        pair.board.side_effect=lambda role,status:events.append(('pixels',role,status))
+        pair.oracle.side_effect=lambda expected,role=1:events.append(('oracle',expected,role))
+        callbacks={}
+        white.on.side_effect=lambda name,callback:callbacks.update({name:callback})
+        network=mock.Mock()
+        def offline(value):
+            events.append(('offline',value))
+            if not value:
+                response=mock.Mock(url=f'https://localhost:9443/api/v1/matches/{match_id}/command',status=200)
+                response.request.post_data=json.dumps({'version':2,'command':command,'attachment_id':'fresh'})
+                callbacks['response'](response)
+        network.offline.side_effect=offline
+        def api_call(page,path,*args):
+            if path=='/api/v1/auth/refresh':
+                events.append(('credential_rotation',));return {'status':204,'body':None}
+            events.append(('stale_probe',));return {'status':409,'body':{'code':'reattach_required'}}
+        with mock.patch('continuity_acceptance.Pair',return_value=pair), \
+             mock.patch('continuity_acceptance.PageNetwork',return_value=network), \
+             mock.patch('continuity_acceptance.held'), \
+             mock.patch('continuity_acceptance.pending_record',return_value={'operation_scope':scope}), \
+             mock.patch('continuity_acceptance.fault_control',return_value={'status':200}), \
+             mock.patch('continuity_acceptance.context_facts',return_value={'account_id':'white','csrf_token':'A'*43}), \
+             mock.patch('continuity_acceptance.api',side_effect=api_call), \
+             mock.patch('continuity_acceptance.move'), \
+             mock.patch('continuity_acceptance.reattach_required',side_effect=lambda *args:events.append(('stale_rejected',))), \
+             mock.patch('continuity_acceptance.restored_same_scope'), \
+             mock.patch('continuity_acceptance.actual_response_json',return_value={'frames':[{'body':{'Ack':{'seq':1}}}]}):
+            cases=[];same_record_rotation_game([context,mock.Mock()],mock.Mock(),mock.Mock(),cases)
+        self.assertLess(events.index(('control_ready',)),events.index(('pointer_command',)))
+        restored=events.index(('offline',False))
+        for witness in (('credential_rotation',),('oracle',2,1),('stale_rejected',)):
+            self.assertLess(events.index(witness),restored)
+        self.assertLess(restored,events.index(('pixels',1,'White to move')))
+        self.assertEqual([event[1:] for event in events if event[0]=='pixels'],[
+            (0,'White to move'),(1,'Black to move'),(1,'White to move'),(0,'White to move')])
+        self.assertEqual(len(cases),1);pair.full.assert_called_once_with(2)
+        white.remove_listener.assert_called_once_with('response',callbacks['response'])
+
     def test_network_restore_follows_durable_confirmation_before_other_browser_pixels(self):
         # Coordination doubles only: actual pixels, commits and retransmission
         # remain assertions in the real browser/PostgreSQL acceptance target.
@@ -162,10 +214,11 @@ class ContinuityHelperTests(unittest.TestCase):
                  mock.patch('continuity_acceptance.context_facts') as auth, \
                  mock.patch('continuity_acceptance.api') as api_call:
                 with self.assertRaises(AfterHeldWitness):
-                    if operation is crash_game:operation([],None,'synthetic-ca',mock.Mock(),partition,[])
-                    elif operation is apply_and_committed_refresh_game:operation([],None,'synthetic-ca',partition,[])
-                    elif operation is restart_between_grant_and_attach_game:operation([],None,'synthetic-ca',mock.Mock(),[])
-                    else:operation([],None,'synthetic-ca',[])
+                    contexts=[mock.Mock(),mock.Mock()]
+                    if operation is crash_game:operation(contexts,None,'synthetic-ca',mock.Mock(),partition,[])
+                    elif operation is apply_and_committed_refresh_game:operation(contexts,None,'synthetic-ca',partition,[])
+                    elif operation is restart_between_grant_and_attach_game:operation(contexts,None,'synthetic-ca',mock.Mock(),[])
+                    else:operation(contexts,None,'synthetic-ca',[])
                 confirmed.assert_called_once_with('synthetic-ca','synthetic-token')
                 pair.held_prefix.assert_called_once_with('synthetic-ca','synthetic-token',expected)
                 pair.oracle.assert_not_called();auth.assert_not_called();api_call.assert_not_called()

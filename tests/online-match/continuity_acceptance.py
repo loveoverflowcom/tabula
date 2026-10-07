@@ -395,6 +395,10 @@ def apply_and_committed_refresh_game(contexts,private,ca,point,results):
 
 def same_record_rotation_game(contexts,private,ca,results):
     pair=Pair(contexts,private,'same-record-rotation');white,black=pair.pages
+    # Prepare the real control document before the deliberate outage. Startup
+    # and unrelated pixels must not consume the bounded recovery budget.
+    control=contexts[0].new_page();control.goto(ORIGIN+GAME_PATH,wait_until='domcontentloaded')
+    pair.board(0,'White to move')
     old=pair.attachments[0][-1];gate=pair.arm(0,'after_commit')
     original=pair.tap(0,0);held(ca,gate);pair.held_prefix(ca,gate,1)
     network=PageNetwork(white);network.offline(True)
@@ -404,7 +408,6 @@ def same_record_rotation_game(contexts,private,ca,results):
     require(pending is not None and pending['operation_scope']==old['operation_scope'],
             'uncertain original operation was not retained before rotation')
     pair.board(1,'Black to move')
-    control=contexts[0].new_page();control.goto(ORIGIN+GAME_PATH,wait_until='domcontentloaded')
     before_cookie=next(cookie['value'] for cookie in contexts[0].cookies() if cookie['name']==SESSION_COOKIE)
     current=context_facts(control)
     require(current['account_id']==pair.facts[0]['account_id'],'rotation control page changed the account')
@@ -417,7 +420,7 @@ def same_record_rotation_game(contexts,private,ca,results):
     require(current['account_id']==pair.facts[0]['account_id'],'credential rotation changed the account')
     # Black's legal command prepares its real fan-out. White's cached old digest
     # can no longer authorize that output, so its local attachment is retired.
-    move(black,*MOVES[1],False,pair.match_id);pair.board(1,'White to move');pair.oracle(2)
+    move(black,*MOVES[1],False,pair.match_id);pair.current_status(1,'White to move');pair.oracle(2)
     stale=api(control,f'/api/v1/matches/{pair.match_id}/poll',
               {'version':MATCH_VERSION,'attachment_id':old['attachment_id']},current['csrf_token'])
     reattach_required(stale,'valid rotated membership received stale-attachment output')
@@ -433,7 +436,8 @@ def same_record_rotation_game(contexts,private,ca,results):
         observed['original_ack']=any(frame.get('body',{}).get('Ack',{}).get('seq')==command_identity(original)['seq'] for frame in frames)
     white.on('response',original_ack)
     try:
-        control.close();network.offline(False)
+        network.offline(False);control.close()
+        pair.board(1,'White to move')
         pair.board(0,'White to move');restored_same_scope(pair,0,old,original)
         require(observed['original_ack'],'same-record rotation did not reproduce the exact original Ack')
         pair.oracle(2);pair.full(2)
