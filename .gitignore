@@ -56,3 +56,17 @@ flamegraph.svg
 # Disposable actual-browser receipts are CI artifacts, never source or secrets.
 /verification/online-match-artifacts/
 /verification/account-social-artifacts/
+
+# Evidence is local/Actions output. Preserve the maintained verification guide.
+/verification/**
+!/verification/README.md
+
+# Documentation retains lightweight records, screen specs and the CI token adapter.
+# Runtime/authoring game assets, brand icons, native resources and fixtures stay unrestricted.
+/docs/verification/**
+!/docs/verification/**/
+!/docs/verification/**/*.md
+/docs/ui/**
+!/docs/ui/**/
+!/docs/ui/**/*.md
+!/docs/ui/tokens.json

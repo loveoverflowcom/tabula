@@ -1,5 +1,11 @@
 # Core-domain-boundary verification ledger
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 This ledger records the named claims for the Phase-0 core-domain-boundary
 refactor. It is deliberately claim-first: every production change below has a
 corresponding constructor, decoding, or state-machine test.

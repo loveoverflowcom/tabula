@@ -31,8 +31,11 @@ shared evidence/status vocabulary.
 UI-specific ledgers remain beside their contracts in
 [`docs/ui/screens/`](../ui/screens/README.md). Optional tool installation and
 bounded proof/mutation guidance live in [`verification/`](../../verification/README.md).
-Retain raw logs, manifests and images referenced by a ledger as one evidence set;
-documentation cleanup must not silently turn unavailable evidence into PASS.
+Keep only lightweight Markdown summaries, commands, acceptance criteria and limits here.
+Raw screenshots, logs, coverage, generated JSON/XML and compressed exports belong in
+ignored `verification/` output or GitHub Actions Artifacts, named for the exact source commit.
+Historical artifact links are pinned to the pre-cleanup commit; their original recorded
+results never become current PASS results. See the [retention policy](../repository-hygiene.md).
 
 ## Source-path history
 

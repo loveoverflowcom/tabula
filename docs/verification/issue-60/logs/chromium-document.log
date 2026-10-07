@@ -1,9 +1,0 @@
-file:///Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/browser-runtime.mjs:19
-function assert(condition, message) { if (!condition) throw new Error(message); }
-                                                            ^
-
-Error: Unexpected browser warnings/errors: [{"type":"error","message":"Failed to load resource: the server responded with a status of 404 (File not found)"}]
-    at assert (file:///Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/browser-runtime.mjs:19:61)
-    at file:///Users/manhblue/Documents/Codex/2026-10-03/task-7/tabula/tools/renderer-embedding-spike/browser-runtime.mjs:99:7
-
-Node.js v22.15.0

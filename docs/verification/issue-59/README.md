@@ -1,5 +1,12 @@
 # Issue 59 — verified assets, Sprite backend and Tiles slice
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 Date: 2026-10-03. Baseline was re-pinned locally and remotely at
 `7ffda7d00f17cc085f2c5169d68c05da13c23dab`. Only #59 is implemented here.
 This ledger records executed scope and residual evidence; #59 remains open
@@ -45,11 +52,11 @@ engine, production asset delivery policy or `/play` navigation was changed.
 |---|---|---|
 | Integrity before decode/upload; asset backend | Real PNG decoding plus negative tests for wrong size/hash/binding, missing, corrupt/unsupported, huge/zero dimensions, atlas bounds and allocation budgets: PASS | PNG only; production I/O adapters remain future work |
 | Cache ownership and bounded residency; renderer | Version/hash/density/reuse, failed insertion/retry, leased retirement/budget and queued failure tests: PASS; measured frames add zero decodes/uploads | Runtime driver/context-loss recovery not certified |
-| Sprite contract; renderer | Geometry/UV/tint/opacity/order tests and [actual browser probe](sprite-probe.jpg): PASS within Chromium/DPI1 | Native pixels and device DPI2 runtime NOT_RUN |
+| Sprite contract; renderer | Geometry/UV/tint/opacity/order tests and [Historical actual browser probe](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/sprite-probe.jpg): PASS within Chromium/DPI1 | Native pixels and device DPI2 runtime NOT_RUN |
 | Motion/command authority; Tiles Local + LocalMatch | Focused presentation, conformance, replay, rejection and interruption tests: PASS; actual script accepts all 20 steps and records matching checkpoints across preferences | Scripted timings are coverage only (nonzero host events); native input/audio runtime NOT_RUN |
 | Theme/readability | Actual light/dark/high-contrast captures; token raster mapping tests in all four themes | Accessibility certification and new font delivery are outside scope |
-| Historical visual difference | [Before](tiles-before.jpg) and [after](tiles-after.jpg) share the reachable view/checkpoint, seed, roster, viewport and motion | Historical renderer had no Sprite; this is not a same-asset performance comparison |
-| Runtime performance | [Raw controlled runs](runs/) and [measurement table](measurements.md), with actual browser/backend/cache provenance | Total process CPU/RSS, GPU completion and other platforms NOT_RUN |
+| Historical visual difference | [Historical Before](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/tiles-before.jpg) and [Historical after](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/tiles-after.jpg) share the reachable view/checkpoint, seed, roster, viewport and motion | Historical renderer had no Sprite; this is not a same-asset performance comparison |
+| Runtime performance | [Historical Raw controlled runs](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/runs) and [measurement table](measurements.md), with actual browser/backend/cache provenance | Total process CPU/RSS, GPU completion and other platforms NOT_RUN |
 
 ## Exact checks
 
@@ -69,7 +76,7 @@ never runtime. Zero-test suites and ignored tests are not counted as executed.
 | `cargo xtask replay tests/replays/{chess-golden,chess-clock-golden,tiles-golden}.tbr --verify --diagnose` (three separate calls) | PASS: 4 + 2 + 102 exact checkpoints; outcome verified, diagnosis NONE |
 | Existing Python environment: `check_skills.py`, `test_check_skills.py`, `test_ai_doc_contracts.py` | PASS: validation, 32 executed skill tests and 6 contract tests |
 | `ai_doc_contracts.py check` on renderer/presentation/Tiles/client/example sources | PASS: 17 annotated items, no errors/warnings; repaired inherited LocalMatch evidence links |
-| Nine isolated WASM baseline variants | PASS, compiled; exact environment/options/hash/size in [build receipts](build-receipts.json) |
+| Nine isolated WASM baseline variants | PASS, compiled; exact environment/options/hash/size in [Historical build receipts](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/build-receipts.json) |
 | `cargo xtask pack-assets tiles` + `cmp` generated/fixture metadata | PASS: rebuilt pack exactly matches the checked-in fixture manifest |
 
 The first sandboxed aggregate attempt reached the advisory database gate but
@@ -127,28 +134,28 @@ bypass or deployment is requested. The checked-in workflow triggers PRs and
 than attributing the prior 11 checks to this change. Publication receipt and
 issue comment link are returned in the task handoff.
 
-Scripted/theme coverage receipts are in [coverage](coverage/); their nonzero
+Scripted/theme coverage receipts are in [Historical coverage](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/coverage); their nonzero
 uncontrolled host-event counts prevent using them as controlled timing comparisons.
-The screenshots show [light](tiles-light-script.jpg), [dark](tiles-script-dark.jpg),
-[high-contrast light](tiles-script-hc-light.jpg),
-[high-contrast dark](tiles-script-hc-dark.jpg) and
-[reduced motion](tiles-script-reduced.jpg) after the same accepted script.
+The screenshots show [Historical light](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/tiles-light-script.jpg), [Historical dark](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/tiles-script-dark.jpg),
+[Historical high-contrast light](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/tiles-script-hc-light.jpg),
+[Historical high-contrast dark](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/tiles-script-hc-dark.jpg) and
+[Historical reduced motion](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/tiles-script-reduced.jpg) after the same accepted script.
 
 Interactive browser input was also exercised separately from timing rows.
-[Rotation/selection](interactive-preview-after.jpg) displays R180 and a legal
-cursor; [invalid placement](interactive-invalid.jpg) displays an explicit Invalid
-label while the board stays unchanged. [Accepted placement](interactive-placement.jpg)
-enters the claim phase with visible settle motion; [claim/pan/zoom](interactive-claim-camera.jpg)
+[Historical Rotation/selection](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/interactive-preview-after.jpg) displays R180 and a legal
+cursor; [Historical invalid placement](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/interactive-invalid.jpg) displays an explicit Invalid
+label while the board stays unchanged. [Historical Accepted placement](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/interactive-placement.jpg)
+enters the claim phase with visible settle motion; [Historical claim/pan/zoom](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/interactive-claim-camera.jpg)
 advances to seat1, 57 tiles left and a follower on the accepted tile. These are
-actual keyboard/pointer paths. The [settled resize](interactive-resize.jpg) and
-[resource observation](interactive-resize-environment.json) confirm both canvas
+actual keyboard/pointer paths. The [Historical settled resize](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/interactive-resize.jpg) and
+[Historical resource observation](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/interactive-resize-environment.json) confirm both canvas
 and viewport at 600×500, DPI1, with no captured WebGL errors. The interactive console measurement preceded
 later smoke actions, so it is not offered as the final canonical hash of those
 actions; canonical no-op/accepted replay claims are covered by the executed tests.
 
 For #60, re-pin the published remote SHA and use
 [the reproducible protocol](../../perf/tiles-renderer-baseline.md),
-[source fingerprint](source-manifest.json), exact pack hashes and accepted
+[Historical source fingerprint](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-59/source-manifest.json), exact pack hashes and accepted
 checkpoints above. Keep renderer cost separate from embedding cost. Native,
 WebKit, higher-DPI, process and video limitations remain explicit. #60's RFC
 and gate decisions belong to its separate chat; nothing here approves an engine

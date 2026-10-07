@@ -1,5 +1,11 @@
 # October 5, 2026 PR integration review
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 The owner requested review, tests and sequential merges into `develop`, with
 follow-up fixes allowed directly on that branch. PRs #69, #70 and #75 were
 normally merged in that order after conflict reconciliation and successful

@@ -1,5 +1,12 @@
 # Shared screen specifications
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/screens); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 These specifications are the shared DOM/canvas contract from doc 04 §3.3.
 They describe intended behavior; implementation and platform evidence are recorded separately.
 
@@ -36,8 +43,8 @@ They describe intended behavior; implementation and platform evidence are record
 | 21 — friends | [Friends](21-friends.md) | Proposed `/friends`; C requires real typed social, presence, request and server-permission contracts |
 | 22 — component showcase | [Showcase](22-component-showcase.md) | Design/development documentation; no product route |
 
-Open [the editable foundation preview](foundation-preview.html) from a repository-root
-HTTP server to review desktop/mobile, four schemes, density, and component states. It imports
+Restore [the historical editable foundation preview](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/screens/foundation-preview.html) and its generated CSS adapter from the pinned archive into a separate checkout.
+Use that checkout's repository-root HTTP server to review desktop/mobile, four schemes, density, and component states. It imports
 the generated CSS adapter directly. Its controls change preview data only; it neither persists
 preferences nor implements the Phase-5 application shell.
 
@@ -77,6 +84,8 @@ This specification does not mount account routes or infer permissions from local
 ADR-0028/0030 preserve only discovery and bounded local play.
 The subsequent ADR-0036 isolated slice adds the account-state documents above;
 its runtime and target receipts are separate from the historical specification.
+
+Run only from the restored historical tree, not the current docs-only checkout:
 
 ```sh
 python3 -m http.server 8000 --directory .

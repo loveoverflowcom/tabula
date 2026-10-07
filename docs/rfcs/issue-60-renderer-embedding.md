@@ -1,5 +1,12 @@
 # RFC: renderer and embedding experiments for issue #60
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/rfcs); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 - **Date:** 2026-10-03
 - **Scope:** authorized, isolated local tooling prototype and evidence
 - **Baseline:** `develop @ 2de46d27efafd078ba2d27b027a54de565e2fbe5`
@@ -294,13 +301,13 @@ requirements above. They preserve the original #59 receipts as historical data.
 
 | Target / control | Executed result | Scope of that result |
 |---|---|---|
-| Macroquad separate document, Chrome 154.0.8037.97 | Three static runs PASS; [first receipt](../verification/issue-60/runs/chromium-document-1.json), [runtime capture](../verification/issue-60/screenshots/chromium-document-1.png) | Actual WASM rendering, 900×720 logical viewport, DPR1, light/full motion, 300 samples after 3-second warm-up; initial/final checkpoint matches the 24-command #59 fixture |
-| The same Macroquad artifact in a Leptos-owned iframe | Three static runs PASS; [first receipt](../verification/issue-60/runs/chromium-iframe-1.json), [shell capture](../verification/issue-60/screenshots/chromium-iframe-shell-1.png) | Matching fixture/assets/viewport/DPR/motion and zero uncontrolled baseline input; actual isolated Leptos shell and same-origin bridge, rather than a shell mock |
-| PixiJS 8.22.0 canvas in the isolated Leptos shell | Three static runs PASS; [first receipt](../verification/issue-60/runs/chromium-pixi-1.json), [shell capture](../verification/issue-60/screenshots/chromium-pixi-shell-1.png) | The same initial checkpoint/assets/900×720/DPR1; actual direct-canvas rendering of Rust-derived data; local native authority shim, not deployed WASM interop |
-| Native Macroquad window | Three static runs PASS; [first receipt](../verification/issue-60/runs/native-static-1.json) | Separate executed native control with renderer receipts and process observations; no DOM embedding inference |
-| Native Rust fixture authority | [Stdin smoke](../verification/issue-60/runs/native-authority-smoke.json) PASS, 12 requests | Actual local Rust process, identity/revision checks and typed input through the existing presenter/authority; no browser WASM or production networking claim |
-| Fixture asset verification | [Actual verifier smoke](../verification/issue-60/runs/asset-verifier-smoke.json) PASS | Existing BLAKE3 pack binding accepted exact fixture bytes and rejected a same-size corrupted atlas; browser SHA-256 pins are additional digests of those verified bytes |
-| Safari 18.6 / alternate WebKit | [Capability probe](../verification/issue-60/safari-probe.json) BLOCKED / NOT_INSTALLED | Safari WebDriver session creation requires the disabled remote-automation setting; that setting was unchanged. The Playwright WebKit runtime is absent; no WebKit rendering result is claimed |
+| Macroquad separate document, Chrome 154.0.8037.97 | Three static runs PASS; [Historical first receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-document-1.json), [Historical runtime capture](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/chromium-document-1.png) | Actual WASM rendering, 900×720 logical viewport, DPR1, light/full motion, 300 samples after 3-second warm-up; initial/final checkpoint matches the 24-command #59 fixture |
+| The same Macroquad artifact in a Leptos-owned iframe | Three static runs PASS; [Historical first receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-iframe-1.json), [Historical shell capture](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/chromium-iframe-shell-1.png) | Matching fixture/assets/viewport/DPR/motion and zero uncontrolled baseline input; actual isolated Leptos shell and same-origin bridge, rather than a shell mock |
+| PixiJS 8.22.0 canvas in the isolated Leptos shell | Three static runs PASS; [Historical first receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-pixi-1.json), [Historical shell capture](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/chromium-pixi-shell-1.png) | The same initial checkpoint/assets/900×720/DPR1; actual direct-canvas rendering of Rust-derived data; local native authority shim, not deployed WASM interop |
+| Native Macroquad window | Three static runs PASS; [Historical first receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/native-static-1.json) | Separate executed native control with renderer receipts and process observations; no DOM embedding inference |
+| Native Rust fixture authority | [Historical Stdin smoke](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/native-authority-smoke.json) PASS, 12 requests | Actual local Rust process, identity/revision checks and typed input through the existing presenter/authority; no browser WASM or production networking claim |
+| Fixture asset verification | [Historical Actual verifier smoke](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/asset-verifier-smoke.json) PASS | Existing BLAKE3 pack binding accepted exact fixture bytes and rejected a same-size corrupted atlas; browser SHA-256 pins are additional digests of those verified bytes |
+| Safari 18.6 / alternate WebKit | [Historical Capability probe](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/safari-probe.json) BLOCKED / NOT_INSTALLED | Safari WebDriver session creation requires the disabled remote-automation setting; that setting was unchanged. The Playwright WebKit runtime is absent; no WebKit rendering result is claimed |
 
 Browser and native process observations exist here; their semantics still differ
 from unique resident memory or GPU timing. Browser process-tree RSS sums can
@@ -320,7 +327,7 @@ startup and a warm browser/context are not a cold network/device launch.
 
 Additional lifecycle, input, theme, motion, integrity and regression coverage is
 listed separately in the ledger with its actual tests/runs. The final
-[Chromium interaction receipt](../verification/issue-60/runs/chromium-interactions.json)
+[Historical Chromium interaction receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-interactions.json)
 is PARTIAL: 11 checks PASS and one BLOCKED. Actual automatic visibility suspension
 could not be reached: Chrome stayed `visible` after tab switches and window
 minimization across bounded retries. Explicit suspend/resume did cancel and
@@ -337,8 +344,8 @@ This repairs the earlier unguarded queue policy. It is a bounded local-fixture
 check, not a production state-version/intent protocol or exhaustive concurrency
 proof; production adoption still requires an appropriate typed guard and tests.
 
-[Pixi's 50 cycles](../verification/issue-60/runs/chromium-pixi-cycles.json) and
-[the iframe's 50 cycles](../verification/issue-60/runs/chromium-iframe-cycles.json)
+[Historical Pixi's 50 cycles](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-pixi-cycles.json) and
+[Historical the iframe's 50 cycles](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-iframe-cycles.json)
 both PASS after rendering and disposal. Per-mount listeners/observers/timers,
 canvases/iframes, bridge listeners and reported Pixi RAF/font/texture-source handles
 reach zero. The two permanent harness document handlers remain constant. The
@@ -353,7 +360,7 @@ the tested modal/focus paths do not establish them. Script checks step the Rust
 timeline and do not establish a paired realtime motion/input benchmark. A labelled
 stress benchmark, physical higher-DPI device execution, mobile/WebView and full
 Board Reader action play still need their own evidence. The final
-[source/build manifest](../verification/issue-60/source-manifest.json) binds the
+[Historical source/build manifest](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/source-manifest.json) binds the
 refreshed static controls to their measured inputs; numerical tables stay in the ledger.
 
 These limitations support ADR-0029's defer of production engine and containment

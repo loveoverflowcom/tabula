@@ -1,5 +1,11 @@
 # T Portal integration evidence
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/brand-identity).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 Current integration and merge evidence: [2026-10-06 completion](completion-20261006/README.md).
 The original draft record below is retained as historical evidence.
 

@@ -4,6 +4,20 @@ This directory documents development-only verification tools. Kani proof harness
 the real implementation under `#[cfg(kani)]`; no Kani runtime or dependency enters a normal
 Tabula build, and no standalone synthetic proof package is maintained.
 
+## Local and CI output
+
+This directory is ignored except for this guide. Store raw captures, logs, coverage,
+JSON/XML receipts and compressed exports here (for example `verification/issue-60/`)
+or in an existing ignored build target. CI workflows upload the scoped directories
+with `actions/upload-artifact@v4`; keep exact source/build identity and limitations
+with the artifact. Do not add artifacts back under `docs/verification/` or `docs/ui/`.
+Retain a lightweight Markdown summary there with a source-pinned historical link or
+a verified workflow-run/artifact link. Artifact retention can expire; never imply an
+expired artifact establishes current acceptance.
+
+See the [repository retention policy](../docs/repository-hygiene.md) and
+[reusable verification helpers](../tools/verification/README.md).
+
 ## Evidence kinds
 
 | Evidence | What it means | What it does not mean |

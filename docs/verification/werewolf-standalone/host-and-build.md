@@ -1,5 +1,11 @@
 # Local host and target evidence
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/werewolf-standalone).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 The separately compiled `tabula-werewolf-client` is an explicitly labelled isolated-seat
 simulator. The operator may select each seat or a public outsider view on the same device.
 It is not authenticated hot-seat privacy, online multiplayer or a substitution-bot table.

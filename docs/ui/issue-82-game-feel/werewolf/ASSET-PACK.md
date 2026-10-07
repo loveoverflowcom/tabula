@@ -1,5 +1,11 @@
 # Gói tải assets Ma sói
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 `../werewolf-assets.zip` chứa asset tối ưu và source preview cho #84:
 
 - 12 SVG avatar tài khoản mẫu không mặt nạ; `avatar-fixtures.json`, resolver dùng chung dashboard/header/game và adapter tương thích.

@@ -1,5 +1,12 @@
 # Issue #103 — bounded CMP account UI draft
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-103-mobile-account); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 - Start: fresh `origin/develop @ a3865246ae1ee513b440541f1eb523d4258b0261`
   on 2026-10-07, including merged PR #108
 - Scope: [ADR-0046](../../adr/0046-mobile-account-surfaces.md) and
@@ -132,7 +139,7 @@ draft does not claim they already exist or are covered by screenshots.
 14 actual BackStack/Destination and 5 synthetic-preview-fixture tests. The
 explicit seven JUnit classes selected and
 passed all 57 tests; no tests were ignored. Compiler and JUnit exits were 0.
-The [actual combined output](account-contract-tests.log) records Kotlin 2.4.20,
+The [Historical actual combined output](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-103-mobile-account/account-contract-tests.log) records Kotlin 2.4.20,
 JRE 21.0.12.1, `-Werror`, JVM bytecode target 17 and `OK (57 tests)`.
 JUnit is 4.13.2 and Hamcrest Core is 1.3. The public BackStack/Destination
 source is now independent of Compose; unchanged `BackStackSaver` behavior is
@@ -164,7 +171,7 @@ The final five account source/test files were compiled with Kotlin 2.4.20,
 `-jvm-target 17 -Werror`, on JRE 21.0.12.1. JUnit 4.13.2 selected
 `AccountStateTest` (6 tests) and `AccountSessionControllerTest` (24 tests).
 Compiler exit was 0 with no warnings; JUnit exit was 0 with `OK (30 tests)`.
-The [output](state-tests.log) and [source hashes](state-source-sha256.txt) bind
+The [Historical output](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-103-mobile-account/state-tests.log) and [Historical source hashes](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-103-mobile-account/state-source-sha256.txt) bind
 that final focused selection, including fresh identity snapshot replacement and
 both synchronous collector-reentry regressions. Each presentation identity uses
 reference equality: a real StateFlow collector must observe a fresh equal-value
@@ -175,7 +182,7 @@ For sensitivity, an external temporary source copy restored the previous
 identity value equality. Its 24 controller tests intentionally failed the fresh
 identity law and `sameValueSynchronousRefreshIsObservableWhenSlowCollectorMissesLoading`
 (expected 2 authenticated emissions, observed 1). The
-[old-behavior output](value-equality-regression.log) records those two failures;
+[Historical old-behavior output](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-103-mobile-account/value-equality-regression.log) records those two failures;
 the actual repository was not mutated by this control. This is one bounded
 regression control, not general mutation coverage.
 
@@ -218,7 +225,7 @@ GRADLE_USER_HOME=/workspace/scratch/429f9ca90843/gradle-account-validation \
 Exit 1 occurred during wrapper bootstrap while fetching
 `https://services.gradle.org/distributions/gradle-9.7.0-bin.zip`:
 `java.net.SocketException: Network is unreachable`. The
-[actual bootstrap log](mobile-aggregate-gate.log) precedes Gradle task discovery;
+[Historical actual bootstrap log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-103-mobile-account/mobile-aggregate-gate.log) precedes Gradle task discovery;
 no selected shared/Compose test, Android compile/build or screenshot task ran.
 No CMP screenshot was captured. The 19 implemented Account UI test methods,
 including Stop waiting on a dispatched sign-out, remain NOT_RUN/BLOCKED.
@@ -245,13 +252,13 @@ cargo xtask check
 ```
 
 - Native-only policy: PASS, source/config only with **0 packaged artifacts**
-  inspected; [output](native-policy.log)
+  inspected; [Historical output](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-103-mobile-account/native-policy.log)
 - Native-policy helper unit selection: PASS, 5 tests (both invocation forms
-  above were executed); [output](native-policy-tests.log)
+  above were executed); [Historical output](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-103-mobile-account/native-policy-tests.log)
 - Working-tree whitespace and focused-script syntax: PASS; neither is a
   compilation/runtime/permission test
 - `cargo xtask check`: BLOCKED before the gate started, shell exit 127 because
-  `cargo` is absent; [output](core-gate.log). No Rust fmt/clippy/test/dependency/
+  `cargo` is absent; [Historical output](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-103-mobile-account/core-gate.log). No Rust fmt/clippy/test/dependency/
   generated-token/raw-color gate is reported passed from this attempt
 - Exact published-tree hosted CI: NOT_RUN by this local evidence set
 

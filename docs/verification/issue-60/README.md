@@ -1,5 +1,12 @@
 # Issue 60 — isolated renderer / embedding evidence
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 Scoped delivery for [issue 60](https://github.com/loveoverflowcom/tabula/issues/60),
 based on verified `develop @ 2de46d27efafd078ba2d27b027a54de565e2fbe5`.
 The [RFC](../../rfcs/issue-60-renderer-embedding.md) separates renderer choice
@@ -47,8 +54,8 @@ production wire protocol.
 
 ## Executed runtime and captures
 
-[Environment](environment.json), [final source/build manifest](source-manifest.json),
-[raw runs](runs/), and [measurement tables](measurements.md) retain provenance.
+[Historical Environment](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/environment.json), [Historical final source/build manifest](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/source-manifest.json),
+[Historical raw runs](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs), and [measurement tables](measurements.md) retain provenance.
 Each static target has three runs with 300 samples after 3,000 ms warm-up,
 900×720 logical surface, DPR1, light theme/full motion and the same checkpoint.
 Run 1 has a fresh browser process; runs 2–3 use the same context and new runtime.
@@ -60,28 +67,28 @@ Disk/OS/driver caches were not purged. Native is a separately launched control.
 | Macroquad iframe in isolated Leptos, Chrome 154 | 3 PASS | Same engine/workload; 100 postMessage round trips/run |
 | Pixi direct canvas in isolated Leptos, Chrome 154 | 3 PASS | Actual WebGL drawing of Rust-permitted commands, zero host inputs in static comparison |
 | Native Macroquad | 3 PASS | Actual native window and measurement receipts; pixels NOT_CAPTURED |
-| Safari 18.6 | BLOCKED | [WebDriver probe](safari-probe.json): remote automation disabled; setting unchanged |
+| Safari 18.6 | BLOCKED | [Historical WebDriver probe](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/safari-probe.json): remote automation disabled; setting unchanged |
 | Alternate Playwright WebKit | NOT_INSTALLED | No runtime or browser equivalence claim |
 | Chrome DPR2 | PASS | Emulated DPR2, 1800×1440 framebuffer; physical high-DPI display NOT_RUN |
 | Mobile / Tauri / other WebViews | NOT_RUN | No target introduced or certified |
 
-Actual captures are [Macroquad document](screenshots/chromium-document-3.png),
-[Macroquad in Leptos](screenshots/chromium-iframe-shell-3.png),
-[Pixi in Leptos](screenshots/chromium-pixi-shell-3.png),
-[accepted placement](screenshots/pixi-accepted-placement.png),
-[resized camera](screenshots/pixi-interactive-resize.png), and
-[DPR2](screenshots/pixi-dpr2.png). Scripted captures include
-[light](screenshots/pixi-script-light.png), [dark](screenshots/pixi-script-dark.png),
-[high contrast light](screenshots/pixi-script-hc-light.png),
-[high contrast dark](screenshots/pixi-script-hc-dark.png), and
-[reduced motion](screenshots/pixi-script-light-reduced.png).
+Actual captures are [Historical Macroquad document](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/chromium-document-3.png),
+[Historical Macroquad in Leptos](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/chromium-iframe-shell-3.png),
+[Historical Pixi in Leptos](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/chromium-pixi-shell-3.png),
+[Historical accepted placement](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/pixi-accepted-placement.png),
+[Historical resized camera](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/pixi-interactive-resize.png), and
+[Historical DPR2](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/pixi-dpr2.png). Scripted captures include
+[Historical light](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/pixi-script-light.png), [Historical dark](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/pixi-script-dark.png),
+[Historical high contrast light](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/pixi-script-hc-light.png),
+[Historical high contrast dark](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/pixi-script-hc-dark.png), and
+[Historical reduced motion](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/screenshots/pixi-script-light-reduced.png).
 The board geometry, source assets, tints and checkpoint correspond. Font
 rasterization/legibility and disabled-button appearance differ; full pixel or
 backend equivalence is not established. No video export is claimed.
 
 ## Lifecycle, input and integrity
 
-[Chromium interaction receipt](runs/chromium-interactions.json) is **PARTIAL:
+[Historical Chromium interaction receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-interactions.json) is **PARTIAL:
 11 passed, 1 blocked**, with zero uncaught browser exceptions. Passed checks
 exercise four themes/reduced motion with the exact 44-command Rust checkpoint;
 actual keyboard, pointer drag/capture and resize; a Rust-accepted placement and
@@ -107,8 +114,8 @@ the visibility callback and manual runtime suspension cancels/resumes RAF.
 Authoritative online turn/network timers do not exist in this local fixture and
 are not certified by the suspension check.
 
-[Pixi 50 cycles](runs/chromium-pixi-cycles.json) and
-[iframe 50 cycles](runs/chromium-iframe-cycles.json) both PASS. Every mount waits
+[Historical Pixi 50 cycles](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-pixi-cycles.json) and
+[Historical iframe 50 cycles](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-iframe-cycles.json) both PASS. Every mount waits
 for a rendered-frame callback/child RAF receipt, then disposes and flushes Rust
 cleanup. Owned canvases/iframes, per-mount host listeners/observers/timers,
 Pixi RAF/font/texture-source handles and bridge listeners are zero afterward.
@@ -117,8 +124,8 @@ bound, not an exact Macroquad frame count. Observed process RSS rises during
 these short runs; exact heap/process/GPU reclamation or absence of all memory
 leaks is **unproven**. No forced GC is used, and diagnostic history is bounded.
 
-The native authority [12-request smoke](runs/native-authority-smoke.json),
-[asset verification/tamper smoke](runs/asset-verifier-smoke.json) and meaningful
+The native authority [Historical 12-request smoke](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/native-authority-smoke.json),
+[Historical asset verification/tamper smoke](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/asset-verifier-smoke.json) and meaningful
 Rust/JS/Python negatives cover stale generations/revisions, duplicated init,
 disposed capability, malformed/extra/oversized fields, bounded geometry,
 unknown/prototype message kinds, origin/source identity, late initialization,
@@ -135,14 +142,14 @@ counted as executed verification.
 
 | Check | Result and exact command source |
 |---|---|
-| Core gate | PASS, 923 executed / 21 ignored; [receipt](runs/core-check.json), [log](logs/core-check.log) |
-| Rust focused / feature / WASM | [Exact commands and results](runs/rust-target-checks.json); PASS: 349 focused + 8 fixture tests / no ignored; feature/WASM builds reported separately |
-| JavaScript / dependency policy | PASS, 18 tests / no skips; 16 module syntax checks; 12 pinned packages allowed; npm audit 0 vulnerabilities; [receipt](runs/js-python-checks.json) |
+| Core gate | PASS, 923 executed / 21 ignored; [Historical receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/core-check.json), [Historical log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/logs/core-check.log) |
+| Rust focused / feature / WASM | [Historical Exact commands and results](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/rust-target-checks.json); PASS: 349 focused + 8 fixture tests / no ignored; feature/WASM builds reported separately |
+| JavaScript / dependency policy | PASS, 18 tests / no skips; 16 module syntax checks; 12 pinned packages allowed; npm audit 0 vulnerabilities; [Historical receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/js-python-checks.json) |
 | Python native-backed stage / live HTTP | PASS, 2 staging + 9 HTTP checks; same receipt contains exact commands and actual binding/authority scope |
-| Existing Leptos example / baseline builds | PASS compiled; [build commands and source hashes](runs/wrapper-build-checks.json), [native](logs/baseline-native-build.log), [WASM](logs/baseline-wasm-build.log) |
+| Existing Leptos example / baseline builds | PASS compiled; [Historical build commands and source hashes](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/wrapper-build-checks.json), [Historical native](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/logs/baseline-native-build.log), [Historical WASM](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/logs/baseline-wasm-build.log) |
 | Fixture / source binding freshness | PASS, fresh export byte-identical and independently verified tooling/presenter BLAKE3; JS/Python receipt |
-| Existing skill metadata / helper checks | PASS: metadata/link checks + 32 failure-fixture tests + 6 document-contract tests; [exact commands](runs/skills-checks.json); PyYAML 6.0.3 used from a temporary directory |
-| Actual runtime | [Exact driver commands](runs/runtime-checks.json) and raw named-target receipts above; distinct from compile/mock/Node evidence |
+| Existing skill metadata / helper checks | PASS: metadata/link checks + 32 failure-fixture tests + 6 document-contract tests; [Historical exact commands](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/skills-checks.json); PyYAML 6.0.3 used from a temporary directory |
+| Actual runtime | [Historical Exact driver commands](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/runtime-checks.json) and raw named-target receipts above; distinct from compile/mock/Node evidence |
 
 Historical unsuccessful attempts remain in the logs: the skill-helper setup
 initially lacked PyYAML and then passed using the CI-pinned temporary dependency; initial workspace manifest

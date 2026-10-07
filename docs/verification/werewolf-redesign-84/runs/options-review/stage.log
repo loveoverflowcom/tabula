@@ -1,9 +1,0 @@
-    Blocking waiting for file lock on build directory
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.58s
-     Running `target/debug/xtask stage-wasm-game --game werewolf`
-stage-wasm-game: staged browser host into /Users/manh.pd1/Projects/Mine/tabula/target/tabula-web-werewolf
-  - index.html (3245 bytes)
-  - mq_js_bundle.js (37828 bytes)
-  - tabula-game-client.wasm (1001301 bytes)
-  - 13 required host resources + canonical tokens.css
-  - 22 manifest-listed, immutable runtime resources (loaded on demand)
