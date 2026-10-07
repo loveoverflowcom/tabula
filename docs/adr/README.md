@@ -100,3 +100,9 @@ acceptance is required; production activation and broad phase exits stay closed.
 [ADR-0045](0045-mobile-discovery-parity.md) adds bounded CMP discovery parity:
 public registry metadata, Home/Library/detail and read-only setup review. Catalog
 visibility does not establish native runtime availability or open Phase 6.
+
+[ADR-0046](0046-mobile-account-surfaces.md) adds the owner's bounded #103 CMP
+account UI draft and typed session port. Read-only identity requires a current
+adapter; production native provider/social remain unavailable. Preview/test
+doubles and shared layout evidence cannot establish native authentication,
+secure storage or phase completion. Native GameHost work remains separate.

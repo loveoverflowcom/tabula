@@ -87,6 +87,17 @@ fun main() {
         reducedMotion = System.getProperty("tabula.preview.reducedMotion") == "true",
         languageTag = System.getProperty("tabula.preview.language", "en"),
     )
+    val accountScenario = SyntheticPreviewAccountScenario.parse(System.getProperty("tabula.preview.account", "unavailable"))
+    val accountFixture = SyntheticPreviewAccountFixture(
+        scenario = accountScenario,
+        longFields = System.getProperty("tabula.preview.accountLongFields") == "true",
+        vietnamese = facts.languageTag.lowercase().startsWith("vi"),
+    )
+    val accountAvatar = when (System.getProperty("tabula.preview.accountAvatar", "neutral")) {
+        "neutral" -> null
+        "managed" -> syntheticManagedAvatar(accountFixture.identity, scheme)
+        else -> error("preview.accountAvatar must be neutral or managed")
+    }
     val catalog = when (System.getProperty("tabula.preview.catalog", "registry")) {
         "zero" -> DiscoveryCatalogState.Ready(emptyList())
         "one", "simulated" -> previewCatalog
@@ -102,7 +113,7 @@ fun main() {
     application {
         Window(
             onCloseRequest = ::exitApplication,
-            title = "Tabula shell — desktop preview (simulated game page) — $width×$height dp",
+            title = "Tabula shell — synthetic account: ${accountScenario.option} — simulated game — $width×$height dp",
             state = rememberWindowState(width = Dp.Unspecified, height = Dp.Unspecified),
             resizable = false,
         ) {
@@ -114,8 +125,12 @@ fun main() {
                 if (System.getProperty("tabula.preview.smokeWindow") == "true") exitApplication()
             }
             PhoneViewport(width, height, fontScale) {
-                TabulaApp(gameHost = SimulatedGameHost(), games = previewGames, catalog = catalog, scheme = scheme, deviceFacts = facts)
+                TabulaApp(
+                    gameHost = SimulatedGameHost(), games = previewGames, catalog = catalog,
+                    scheme = scheme, deviceFacts = facts, account = accountFixture.port, accountAvatar = accountAvatar,
+                )
             }
         }
     }
+    accountFixture.close()
 }

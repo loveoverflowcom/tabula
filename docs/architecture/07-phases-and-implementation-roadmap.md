@@ -334,6 +334,13 @@ catalog independently of runtime packaging. This extends #101's shell only.
 Production local start remains unavailable under ADR-0043; native accounts,
 remote catalog, resume, network play and Phase 6 exit remain gated.
 
+**Bounded account UI draft (ADR-0046, issue #103).** CMP account task screens and
+a typed session port may display current read-only adapter identity. Production
+uses explicit native-adapter unavailability; provider login/enrollment, secure
+storage, native social/profile mutations and private persistence remain gated.
+This presentation slice changes neither native GameHost nor Phase 6 exit and
+cannot substitute doubles or desktop layout for actual native integration.
+
 **Historical second slice (ADR-0033).** WebView/JavaScript/WASM gameplay was tested
 only in desktop stand-ins and Chrome, never on mobile devices. [ADR-0043](../adr/0043-native-mobile-gamehost.md)
 supersedes that choice under #81 and retires mobile selection/packaging. Native

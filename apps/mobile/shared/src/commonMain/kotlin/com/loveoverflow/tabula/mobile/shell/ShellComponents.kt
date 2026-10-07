@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -57,9 +58,11 @@ import com.loveoverflow.tabula.mobile.design.TabulaSpace
 import com.loveoverflow.tabula.mobile.design.TabulaState
 import com.loveoverflow.tabula.mobile.design.TabulaText
 import com.loveoverflow.tabula.mobile.design.TabulaType
+import com.loveoverflow.tabula.mobile.account.AccountIdentity
 import com.loveoverflow.tabula.mobile.localization.ShellCopy
 import com.loveoverflow.tabula.mobile.localization.ShellStrings
 import com.loveoverflow.tabula.mobile.navigation.Destination
+import com.loveoverflow.tabula.mobile.navigation.isAccountTask
 
 /** Action emphasis from the shared foundation contract; labels and hit geometry never disappear. */
 enum class ShellAction { Filled, Tonal, Text }
@@ -248,6 +251,9 @@ fun ShellChrome(
     strings: ShellStrings,
     onNavigate: (Destination) -> Unit,
     onBack: () -> Unit,
+    accountIdentity: AccountIdentity? = null,
+    accountAvatar: AccountAvatarImage? = null,
+    accountDescription: String = strings[ShellCopy.Anonymous],
     content: @Composable () -> Unit,
 ) {
     val colors = LocalTabulaColors.current
@@ -262,8 +268,8 @@ fun ShellChrome(
                 ) { ShellNavigation(destination, strings, onNavigate, vertical = true) }
             }
             Column(Modifier.weight(1f).fillMaxHeight()) {
-                ShellTopbar(destination, strings, onNavigate, onBack)
-                Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+                ShellTopbar(destination, strings, onNavigate, onBack, accountIdentity, accountAvatar, accountDescription)
+                Box(Modifier.weight(1f).fillMaxWidth().imePadding()) { content() }
                 if (!wide) {
                     Row(
                         Modifier.fillMaxWidth().background(colors.shellCanvas)
@@ -277,7 +283,15 @@ fun ShellChrome(
 }
 
 @Composable
-private fun ShellTopbar(destination: Destination, strings: ShellStrings, onNavigate: (Destination) -> Unit, onBack: () -> Unit) {
+private fun ShellTopbar(
+    destination: Destination,
+    strings: ShellStrings,
+    onNavigate: (Destination) -> Unit,
+    onBack: () -> Unit,
+    accountIdentity: AccountIdentity?,
+    accountAvatar: AccountAvatarImage?,
+    accountDescription: String,
+) {
     val colors = LocalTabulaColors.current
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val backLimit = maxWidth / 3
@@ -286,7 +300,8 @@ private fun ShellTopbar(destination: Destination, strings: ShellStrings, onNavig
             horizontalArrangement = Arrangement.spacedBy(TabulaSpace.xxs.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (destination is Destination.Detail || destination is Destination.Setup) {
+            if (destination is Destination.Detail || destination is Destination.Setup ||
+                (destination.isAccountTask && destination != Destination.Account)) {
                 ShellActionButton(strings[ShellCopy.Back], ShellAction.Text, onBack,
                     Modifier.widthIn(max = backLimit).testTag("shell-back"), compact = true)
             }
@@ -295,9 +310,9 @@ private fun ShellTopbar(destination: Destination, strings: ShellStrings, onNavig
                 colors.shellPaper.copy(alpha = 0f), colors.primary,
                 onClick = { onNavigate(Destination.Account) },
                 modifier = Modifier.testTag("shell-account-entry").semantics {
-                    contentDescription = "${strings[ShellCopy.Account]}, ${strings[ShellCopy.Anonymous]}"
+                    contentDescription = "${strings[ShellCopy.Account]}, $accountDescription"
                 },
-            ) { color -> NeutralAvatar(color, Modifier.size(TabulaSpace.xxxl.dp)) }
+            ) { _ -> ShellIdentityAvatar(accountIdentity, accountAvatar, strings, size = TabulaSpace.xxxl.dp, decorative = true) }
         }
     }
 }
@@ -334,7 +349,7 @@ private fun ShellNavigationItem(
     val selected = when (target) {
         Destination.Home -> destination == Destination.Home
         Destination.Games -> destination == Destination.Games || destination is Destination.Detail || destination is Destination.Setup
-        Destination.Account -> destination == Destination.Account
+        Destination.Account -> destination.isAccountTask
         else -> false
     }
     val colors = LocalTabulaColors.current
@@ -357,24 +372,7 @@ private fun ShellNavigationItem(
 /** Same neutral human silhouette as the web fallback; it carries no inferred name or profile. */
 @Composable
 fun ShellAnonymousAvatar(strings: ShellStrings, modifier: Modifier = Modifier) {
-    NeutralAvatar(LocalTabulaColors.current.primary, modifier.size(TabulaSpace.xxxxxl.dp).testTag("shell-anonymous-avatar")
-        .semantics { contentDescription = strings[ShellCopy.Anonymous] })
-}
-
-@Composable
-private fun NeutralAvatar(color: Color, modifier: Modifier) {
-    Canvas(modifier) {
-        val scale = minOf(size.width, size.height) / 40f
-        val stroke = Stroke(2f * scale)
-        drawCircle(color, 6f * scale, Offset(20f * scale, 14f * scale), style = stroke)
-        val shoulders = Path().apply {
-            moveTo(8f * scale, 33f * scale)
-            lineTo(8f * scale, 31f * scale)
-            cubicTo(8f * scale, 15f * scale, 32f * scale, 15f * scale, 32f * scale, 31f * scale)
-            lineTo(32f * scale, 33f * scale)
-        }
-        drawPath(shoulders, color, style = stroke)
-    }
+    ShellIdentityAvatar(null, null, strings, modifier.testTag("shell-anonymous-avatar"))
 }
 
 @Composable

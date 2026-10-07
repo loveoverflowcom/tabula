@@ -177,3 +177,14 @@ normal merge at develop7716b2e. Its boundary is the approved logo/shared brand
 roles and existing consumers; Design01 hierarchy, action-palette PR90, game
 artwork, avatars and phase gates remain independent. The deliverable is a new
 draft PR, with local checks and honest target evidence, not a merge.
+
+## Issue #103 — bounded mobile account UI draft
+
+[ADR-0046](../adr/0046-mobile-account-surfaces.md) adds CMP account task screens
+and a typed current-state/session port, with production native provider/social
+unavailable. [Current acceptance and the later native boundary](backlog/mobile-account-native-acceptance.md)
+remain a scoped backlog item: execute the pinned UI/build/device checks first,
+then separately review and prove real native provider/secure-store/callback and
+social integration when authorized. [The ledger](../verification/issue-103-mobile-account/README.md)
+keeps qualified focused JVM tests distinct from blocked/unexecuted target checks.
+Issue #103 stays open; unrelated queue ordering and native GameHost work are unchanged.

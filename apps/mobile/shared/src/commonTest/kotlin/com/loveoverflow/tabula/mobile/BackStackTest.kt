@@ -3,6 +3,7 @@ package com.loveoverflow.tabula.mobile
 import com.loveoverflow.tabula.mobile.host.GameLaunch
 import com.loveoverflow.tabula.mobile.navigation.BackStack
 import com.loveoverflow.tabula.mobile.navigation.Destination
+import com.loveoverflow.tabula.mobile.navigation.isAccountTask
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -52,6 +53,10 @@ class BackStackTest {
             Destination.Detail("com.example.packaged") to "/games/com.example.packaged",
             Destination.Setup("com.example.packaged") to "/games/com.example.packaged?setup=1",
             Destination.Account to "/account",
+            Destination.Login to "/login",
+            Destination.Register to "/register",
+            Destination.Profile to "/me",
+            Destination.Friends to "/friends",
         )
         for ((destination, path) in routes) {
             assertEquals(path, destination.routePath())
@@ -109,7 +114,7 @@ class BackStackTest {
         val malformed = listOf(
             emptyList(),
             listOf("/account"),
-            listOf("/", "/friends"),
+            listOf("/", "/u/private-handle"),
             listOf("/", "/games", "/play/local/"),
             List(33) { "/" },
             listOf("/", "/games/${"a".repeat(256)}"),
@@ -123,7 +128,8 @@ class BackStackTest {
             "https://example.test/games/opaque-id", "/games/", "/games/.", "/games/..",
             "/games/one/two", "/games/%2e%2e", "/games/opaque-id#secret", "/games/opaque-id?setup=2",
             "/games/opaque-id?setup=1&token=secret", "/games/opaque-id?token=secret", "/games/opaque-id\\other",
-            "/login", "/me", "/friends", "/games/việt",
+            "/login?return=/me", "/register?code=private", "/me?account=private", "/friends?token=private",
+            "/u/private-handle", "/games/việt",
         )
         for (path in rejected) assertNull(Destination.fromRoutePath(path), path)
     }
@@ -137,5 +143,35 @@ class BackStackTest {
         assertEquals(Destination.Detail("opaque-99"), stack.current)
         repeat(31) { stack = stack.pop() }
         assertEquals(BackStack.Root, stack)
+    }
+
+    @Test
+    fun accountTasksReturnToTheirCallerAndSelectOneAccountTab() {
+        val tasks = listOf(Destination.Login, Destination.Register, Destination.Profile, Destination.Friends)
+        val account = BackStack.Root.navigate(Destination.Account)
+        assertTrue(Destination.Account.isAccountTask)
+        assertFalse(Destination.Home.isAccountTask)
+        assertFalse(Destination.Games.isAccountTask)
+        for (task in tasks) {
+            assertTrue(task.isAccountTask)
+            val nested = account.push(task)
+            assertEquals(task, nested.current)
+            assertEquals(account, nested.pop())
+            assertEquals(nested, BackStack.restoreRoutes(nested.saveRoutes()))
+            assertSame(nested, nested.push(task), "repeated task activation must not add history")
+            assertEquals(BackStack.Root.navigate(Destination.Games), nested.navigate(Destination.Games))
+        }
+    }
+
+    @Test
+    fun accountRouteRestorationContainsOnlyPublicTaskLocations() {
+        val nested = BackStack.Root.navigate(Destination.Account).push(Destination.Login).push(Destination.Register)
+        assertEquals(listOf("/", "/account", "/login", "/register"), nested.saveRoutes())
+        assertEquals(Destination.Login, BackStack.restoreRoutes(nested.saveRoutes()).pop().current)
+        for (route in listOf("/account", "/login", "/register", "/me", "/friends")) {
+            assertNull(Destination.fromRoutePath("$route?credential=private"))
+            assertNull(Destination.fromRoutePath("$route#private"))
+            assertNull(Destination.fromRoutePath("https://example.test$route"))
+        }
     }
 }

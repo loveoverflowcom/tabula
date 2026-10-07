@@ -14,6 +14,7 @@ shared evidence/status vocabulary.
 | [Native mobile GameHost](mobile-native-host/README.md) | ADR-0043 source spike, mobile native-only policy and CMP viewport evidence; native adapters/device acceptance remain blocked |
 | [Native mobile voice](native-mobile-voice/README.md) | ADR-0037 native builds and controller/CMP doubles; actual device/SFU audio remains deferred |
 | [CMP shell parity](issue-101-mobile-shell/README.md) | Issue #101 adaptive chrome, navigation/restoration, vi/en and large-text previews; local toolchain and device residuals |
+| [CMP account UI draft](issue-103-mobile-account/README.md) | ADR-0046 typed account/current-identity draft; qualified focused JVM evidence, blocked pinned builds and unexecuted Compose/native/provider acceptance |
 | [October 5 PR integration](pr-integration-20261005.md) | Sequential review/merge of #69, #70 and #75, tested source identities and #80's incomplete scope |
 | [Chess integration](chess-integration/README.md) | ADR-0030 opt-in discovery/launch/return and local configuration/HTTP checks |
 | [Game loading](game-loading/README.md) | Bundle loading, cache/resource budgets and wiring evidence |

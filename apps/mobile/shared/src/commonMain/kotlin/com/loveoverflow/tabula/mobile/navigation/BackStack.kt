@@ -1,6 +1,5 @@
 package com.loveoverflow.tabula.mobile.navigation
 
-import androidx.compose.runtime.saveable.listSaver
 import com.loveoverflow.tabula.mobile.host.GameLaunch
 
 /**
@@ -23,6 +22,18 @@ sealed interface Destination {
     /** The account entry point; it carries no native account session. */
     data object Account : Destination
 
+    /** Native sign-in capability surface; no credential or return URL is a route parameter. */
+    data object Login : Destination
+
+    /** Verified enrollment capability surface, without a local registration form. */
+    data object Register : Destination
+
+    /** Read-only self task. Current adapter state, never a route, establishes the identity. */
+    data object Profile : Destination
+
+    /** Native social capability surface; it contains no saved friend/request/profile target. */
+    data object Friends : Destination
+
     /** A game surface, presented through the platform's [com.loveoverflow.tabula.mobile.host.GameHost]. */
     data class Game(val launch: GameLaunch) : Destination
 
@@ -36,6 +47,10 @@ sealed interface Destination {
         is Detail -> "/games/$gameId"
         is Setup -> "/games/$gameId?setup=1"
         Account -> "/account"
+        Login -> "/login"
+        Register -> "/register"
+        Profile -> "/me"
+        Friends -> "/friends"
         is Game -> "/play/local/"
     }
 
@@ -50,6 +65,10 @@ sealed interface Destination {
                 "/" -> Home
                 "/games" -> Games
                 "/account" -> Account
+                "/login" -> Login
+                "/register" -> Register
+                "/me" -> Profile
+                "/friends" -> Friends
                 else -> {
                     if (!path.startsWith("/games/")) return null
                     val setup = path.endsWith("?setup=1")
@@ -65,6 +84,11 @@ sealed interface Destination {
         }
     }
 }
+
+/** All nested account tasks select the Account tab without carrying account authority. */
+val Destination.isAccountTask: Boolean
+    get() = this == Destination.Account || this == Destination.Login || this == Destination.Register ||
+        this == Destination.Profile || this == Destination.Friends
 
 private const val MaxRouteLength = 256
 private const val MaxHistoryEntries = 32
@@ -124,12 +148,6 @@ class BackStack private constructor(private val entries: List<Destination>) {
         }
     }
 }
-
-/** Compose's saved-state adapter persists only [BackStack.saveRoutes], never a local match. */
-val BackStackSaver = listSaver<BackStack, String>(
-    save = { it.saveRoutes() },
-    restore = { BackStack.restoreRoutes(it) },
-)
 
 private fun List<String>.distinctConsecutive(): List<String> = fold(emptyList()) { paths, path ->
     if (paths.lastOrNull() == path) paths else paths + path

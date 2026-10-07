@@ -94,6 +94,18 @@ Content scrolls within the remaining space, with safe insets owned by the outer 
 The Account entry uses a neutral human silhouette; native account and full catalog
 services have visible unavailable states.
 
+Issue #103 adds the [bounded account task slice](../../docs/ui/screens/mobile-account.md):
+Account, Sign in, Create account, read-only self Profile and Friends. The account port has explicit
+unknown/loading/signed-out/authenticated/expired/unavailable/error outcomes. Its production
+default remains unavailable; isolated web provider/enrollment/social capabilities do not enable
+native auth. No passwords, sign-in codes, local accounts, profile edits or fabricated friend data
+are collected. A supplied current read-only identity may show only its returned fields, and an
+already-loaded managed avatar must match that exact identity snapshot. Background/expiry,
+cancelled requests and unconfirmed sign-out mask private facts; toolbar/system Back first dismiss
+a local sign-out confirmation. Account facts and operations are never saved with shell routes.
+See the [issue #103 evidence ledger](../../docs/verification/issue-103-mobile-account/README.md)
+for executed focused checks and unexecuted Gradle/Compose/device acceptance.
+
 `navigation/BackStack.kt` owns bounded public routes and saved-state restoration.
 Nested navigation returns to its caller; the simulated game receives Back first.
 An interrupted local preview restores to setup and requires a fresh explicit launch.
@@ -110,6 +122,18 @@ and error recovery. [Issue #101's ledger](../../docs/verification/issue-101-mobi
 retains its historical checks separately from native device acceptance. Inspect
 this shell with `:previewApp:run -Ppreview.width=320 -Ppreview.language=vi
 -Ppreview.dark=true -Ppreview.fontScale=2` (simulated game page).
+
+Account preview data is explicitly synthetic and restricted to `previewApp`. Run
+`:previewApp:run -Ppreview.account=authenticated -Ppreview.accountLongFields=true
+-Ppreview.accountAvatar=managed -Ppreview.width=320 -Ppreview.language=vi -Ppreview.fontScale=2`
+and select Account. Other account cases are `unknown`, `signed-out`, `loading`, `expired`,
+`unavailable` (default) and `error`; `accountAvatar=neutral` is the default. A preview uses the real
+presentation coordinator over a labelled test adapter, never a provider or native session.
+
+For focused JVM account/fixture/copy/Back tests without Gradle, use
+`tools/test-mobile-account-contract.sh` from the repository root, setting `KOTLIN_HOME`,
+`COROUTINES_JAR`, `JUNIT_JAR` and `HAMCREST_JAR` to official local tooling. Record their versions.
+This check does not compile Compose, run Android/iOS, or replace the configured mobile gate.
 
 ## Voice and gates
 
