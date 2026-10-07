@@ -6,23 +6,65 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 4. Everything above this crate is testable with in-memory fakes, which
 # keeps the test suite fast and the design honest.
 # FORBIDDEN: axum, game crates, renderers, tabula-registry.
+[features]
+default = []
+# ADR-0036: isolated durable session validation only. Neither service opts in.
+accounts-postgres = ["session-postgres"]
+social-postgres = ["accounts-postgres", "dep:tabula-lobby", "dep:serde"]
+session-postgres = ["dep:tabula-session", "dep:sqlx", "dep:uuid", "dep:tokio"]
+# ADR-0040: isolated atomic match journal; SQL-free contract has no registry.
+match-postgres = ["dep:tabula-match-journal", "dep:sqlx", "dep:uuid", "dep:tokio", "dep:serde", "dep:blake3"]
+
+match-postgres-test-support = ["match-postgres"]
+# Isolated join-code composition only; production startup remains closed.
+online-match-postgres = ["session-postgres", "match-postgres"]
+# Disposable PR3 controls, never selected by an application or production service.
+online-match-test-support = ["online-match-postgres", "match-postgres-test-support"]
+
+# Optional native infrastructure has its own documented MSRV; default/storage
+# and the deterministic SDK retain the workspace declaration (ADR-0036).
+[package.metadata.tabula-msrv]
+accounts-postgres = "1.94"
+social-postgres = "1.94"
+session-postgres = "1.94"
+match-postgres = "1.94"
+match-postgres-test-support = "1.94"
+online-match-postgres = "1.94"
+online-match-test-support = "1.94"
+
 [dependencies]
 tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
 tabula-protocol = { workspace = true }
 thiserror       = { workspace = true }
+serde = { workspace = true, optional = true }
+blake3 = { workspace = true, optional = true }
 
-# Phase 4 — sqlx with COMPILE-TIME-CHECKED queries and a committed .sqlx/ so the
-# workspace builds without a live database (doc 01 §1.2).
+# General Phase 4 storage stays gated. The separate optional session slice uses
+# compile-time-checked SQL and committed PostgreSQL-generated .sqlx/ metadata
+# so native workspace builds need no live database (doc 01 §1.2, ADR-0036).
 # sqlx    = { workspace = true }
 # tokio   = { workspace = true }
 # tracing = { workspace = true }
 # uuid    = { workspace = true }
 # bytes   = { workspace = true }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tabula-session = { workspace = true, optional = true }
+tabula-lobby = { workspace = true, optional = true, features = ["authority"] }
+tabula-match-journal = { workspace = true, optional = true }
+sqlx = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tokio = { workspace = true }
+
 [lints]
 workspace = true
+

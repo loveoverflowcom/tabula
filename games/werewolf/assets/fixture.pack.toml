@@ -1,0 +1,228 @@
+pack = "werewolf"
+version = "0.2.0"
+game = "com.tabula.werewolf"
+
+[[files]]
+name = "back@1x.image"
+path = "werewolf/0.2.0/back@1x.b3-76ea903033b1618950ebeac4c3d23d8d376924919c4199a2cb20cb6d79e3d8c9.png"
+hash = "76ea903033b1618950ebeac4c3d23d8d376924919c4199a2cb20cb6d79e3d8c9"
+bytes = 12454
+priority = "critical"
+density = 1
+
+[[files]]
+name = "back@2x.image"
+path = "werewolf/0.2.0/back@2x.b3-546e3afa1ff0fc634d003420f793a331a2f05ffca5b6484de6d68b33ed49dc29.png"
+hash = "546e3afa1ff0fc634d003420f793a331a2f05ffca5b6484de6d68b33ed49dc29"
+bytes = 30196
+priority = "critical"
+density = 2
+
+[[files]]
+name = "doctor@1x.image"
+path = "werewolf/0.2.0/doctor@1x.b3-01ff0325f05a96117fcd8dc3df63305f6445af75d957f0257817fe42b6d7d826.png"
+hash = "01ff0325f05a96117fcd8dc3df63305f6445af75d957f0257817fe42b6d7d826"
+bytes = 58256
+priority = "critical"
+density = 1
+
+[[files]]
+name = "doctor@2x.image"
+path = "werewolf/0.2.0/doctor@2x.b3-dee3b73dff02ac9583ec8af02aedabed7e519e69367cfe93dac3e73952385061.png"
+hash = "dee3b73dff02ac9583ec8af02aedabed7e519e69367cfe93dac3e73952385061"
+bytes = 206431
+priority = "critical"
+density = 2
+
+[[files]]
+name = "hunter@1x.image"
+path = "werewolf/0.2.0/hunter@1x.b3-74460f12a9c2a8526fda5293e10436a4e70e63b64509251a1948c8bf7ce37864.png"
+hash = "74460f12a9c2a8526fda5293e10436a4e70e63b64509251a1948c8bf7ce37864"
+bytes = 57444
+priority = "critical"
+density = 1
+
+[[files]]
+name = "hunter@2x.image"
+path = "werewolf/0.2.0/hunter@2x.b3-99b01356c8189555407c8b84f8746f70d32e28213027aaef35465a735774c8b4.png"
+hash = "99b01356c8189555407c8b84f8746f70d32e28213027aaef35465a735774c8b4"
+bytes = 205503
+priority = "critical"
+density = 2
+
+[[files]]
+name = "seer@1x.image"
+path = "werewolf/0.2.0/seer@1x.b3-49e84bb3f970843508d506e47822a495cebfc45a93e607fd536a20a62691ff81.png"
+hash = "49e84bb3f970843508d506e47822a495cebfc45a93e607fd536a20a62691ff81"
+bytes = 57062
+priority = "critical"
+density = 1
+
+[[files]]
+name = "seer@2x.image"
+path = "werewolf/0.2.0/seer@2x.b3-f4476d3ac44eaea9eee267dde04182a6c13f9bf1227f9d2f62d437a4a03e910f.png"
+hash = "f4476d3ac44eaea9eee267dde04182a6c13f9bf1227f9d2f62d437a4a03e910f"
+bytes = 198303
+priority = "critical"
+density = 2
+
+[[files]]
+name = "village-dawn@1x.image"
+path = "werewolf/0.2.0/village-dawn@1x.b3-b996712e8428e0f2f9df78ee6a563f137201a861d9b740321beea940e1f98b1a.png"
+hash = "b996712e8428e0f2f9df78ee6a563f137201a861d9b740321beea940e1f98b1a"
+bytes = 182287
+priority = "critical"
+density = 1
+
+[[files]]
+name = "village-dawn@2x.image"
+path = "werewolf/0.2.0/village-dawn@2x.b3-bf8a0f06cbc6cd37e8a54273fec88bd16b67b9b74664b1f0efa4e385371f4599.png"
+hash = "bf8a0f06cbc6cd37e8a54273fec88bd16b67b9b74664b1f0efa4e385371f4599"
+bytes = 628304
+priority = "critical"
+density = 2
+
+[[files]]
+name = "village-night@1x.image"
+path = "werewolf/0.2.0/village-night@1x.b3-f07a7a7a8a093ea18172edf6f06a64e89ca01d016cd88c37069e990315338219.png"
+hash = "f07a7a7a8a093ea18172edf6f06a64e89ca01d016cd88c37069e990315338219"
+bytes = 177280
+priority = "critical"
+density = 1
+
+[[files]]
+name = "village-night@2x.image"
+path = "werewolf/0.2.0/village-night@2x.b3-fddd8cc0f397b4df289656b711c11ac18a1b77d0e9dca9e29397dbf095ff74dc.png"
+hash = "fddd8cc0f397b4df289656b711c11ac18a1b77d0e9dca9e29397dbf095ff74dc"
+bytes = 618093
+priority = "critical"
+density = 2
+
+[[files]]
+name = "villager@1x.image"
+path = "werewolf/0.2.0/villager@1x.b3-179e754f666a973a17862de7ba642e165ed8288849b61287220b66fa1df5b782.png"
+hash = "179e754f666a973a17862de7ba642e165ed8288849b61287220b66fa1df5b782"
+bytes = 57729
+priority = "critical"
+density = 1
+
+[[files]]
+name = "villager@2x.image"
+path = "werewolf/0.2.0/villager@2x.b3-fe5fee73182e0f73a78bff67776a3bceb7bac2d87afa72bb8ffe1b2e165f6944.png"
+hash = "fe5fee73182e0f73a78bff67776a3bceb7bac2d87afa72bb8ffe1b2e165f6944"
+bytes = 204750
+priority = "critical"
+density = 2
+
+[[files]]
+name = "werewolf@1x.image"
+path = "werewolf/0.2.0/werewolf@1x.b3-c808b8b8509d60bc44f2eae76ec8b420ba090eb94a4df3c6d970d34f8ad71891.png"
+hash = "c808b8b8509d60bc44f2eae76ec8b420ba090eb94a4df3c6d970d34f8ad71891"
+bytes = 58319
+priority = "critical"
+density = 1
+
+[[files]]
+name = "werewolf@2x.image"
+path = "werewolf/0.2.0/werewolf@2x.b3-f97d940a4a5ec4707c9f68079759d934eda7f10b01d7391b95c67bab09ac8ad5.png"
+hash = "f97d940a4a5ec4707c9f68079759d934eda7f10b01d7391b95c67bab09ac8ad5"
+bytes = 206221
+priority = "critical"
+density = 2
+
+[[files]]
+name = "witch@1x.image"
+path = "werewolf/0.2.0/witch@1x.b3-5602253f65dee222a18682afbdd6a3ab66be84f7820320b1a64b8e07be2e0723.png"
+hash = "5602253f65dee222a18682afbdd6a3ab66be84f7820320b1a64b8e07be2e0723"
+bytes = 55301
+priority = "critical"
+density = 1
+
+[[files]]
+name = "witch@2x.image"
+path = "werewolf/0.2.0/witch@2x.b3-d9cd75c608cfc188617b1090ba1b6d56c547f2fc1ba311cd3a96439b194a5b75.png"
+hash = "d9cd75c608cfc188617b1090ba1b6d56c547f2fc1ba311cd3a96439b194a5b75"
+bytes = 189850
+priority = "critical"
+density = 2
+
+[[resources]]
+id = "cards/back"
+
+[[resources.variants]]
+file = "back@1x.image"
+
+[[resources.variants]]
+file = "back@2x.image"
+
+[[resources]]
+id = "cards/doctor"
+
+[[resources.variants]]
+file = "doctor@1x.image"
+
+[[resources.variants]]
+file = "doctor@2x.image"
+
+[[resources]]
+id = "cards/hunter"
+
+[[resources.variants]]
+file = "hunter@1x.image"
+
+[[resources.variants]]
+file = "hunter@2x.image"
+
+[[resources]]
+id = "cards/seer"
+
+[[resources.variants]]
+file = "seer@1x.image"
+
+[[resources.variants]]
+file = "seer@2x.image"
+
+[[resources]]
+id = "cards/villager"
+
+[[resources.variants]]
+file = "villager@1x.image"
+
+[[resources.variants]]
+file = "villager@2x.image"
+
+[[resources]]
+id = "cards/werewolf"
+
+[[resources.variants]]
+file = "werewolf@1x.image"
+
+[[resources.variants]]
+file = "werewolf@2x.image"
+
+[[resources]]
+id = "cards/witch"
+
+[[resources.variants]]
+file = "witch@1x.image"
+
+[[resources.variants]]
+file = "witch@2x.image"
+
+[[resources]]
+id = "scenes/village-dawn"
+
+[[resources.variants]]
+file = "village-dawn@1x.image"
+
+[[resources.variants]]
+file = "village-dawn@2x.image"
+
+[[resources]]
+id = "scenes/village-night"
+
+[[resources.variants]]
+file = "village-night@1x.image"
+
+[[resources.variants]]
+file = "village-night@2x.image"

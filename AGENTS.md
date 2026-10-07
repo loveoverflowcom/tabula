@@ -24,6 +24,29 @@ wins and the other is a bug.
 
 Docs live in [`docs/architecture/`](docs/architecture/README.md) and are numbered 00–09.
 
+### Agent workflows
+
+For a read-only review of an existing PR, commit range, patch, or local working tree, load
+[`tabula-code-review`](.agents/skills/tabula-code-review/SKILL.md). It pins scope, traces changed
+claims and boundaries, validates findings against BASE, and reports severity, confidence and
+coverage. It composes the engineering/game criteria below without entering an implementation
+loop or treating a narrow diff review as a full-game audit.
+
+Load [`tabula-engineering`](.agents/skills/tabula-engineering/SKILL.md) for implementation,
+refactoring, testing, and engineering documentation. It owns the shared workflow and evidence
+vocabulary; load only the technique references relevant to the task.
+
+Compose [`tabula-game-audit`](.agents/skills/tabula-game-audit/SKILL.md) when adding, changing,
+or reviewing a game, auditing a named game or the portfolio, or changing a shared contract that
+affects games. Select checks by the changed behavior and affected consumers. A presentation edit
+uses its presentation reference; a shared rules change considers every consuming game.
+
+Skills are maintained only in `.agents/skills`; `.claude/skills` is a bridge to that same tree.
+[`The skill map`](.agents/skills/README.md) records workflow groups, migrated paths, and validation.
+Draft skill essays have been retired; Git history retains their research. Architecture doc 00
+and ADRs retain authority over skills and phase gates. Use [the documentation index](docs/README.md)
+to distinguish maintained contracts from historical reports and scoped evidence.
+
 ---
 
 ## 2. The five rules that matter most
@@ -60,6 +83,7 @@ crates/           platform libraries — the real product
   tabula-registry      the catalog: the ONLY crate that names games; type erasure
   tabula-match         authoritative match runtime: actor, pipeline, ports
   tabula-lobby         rooms, matchmaking, presence
+  tabula-session-http  isolated native context/self-profile HTTP (ADR-0036)
   tabula-storage       the ONLY crate that knows SQL exists
   tabula-presentation  View -> RenderList, input model, animation (renderer-independent)
   tabula-design        semantic design tokens, generated into CSS + a Theme struct
@@ -67,12 +91,14 @@ crates/           platform libraries — the real product
   tabula-net-client    client session: connect, resume, sequence, idempotency
   tabula-voice         VoiceService trait + provider adapters
   tabula-testkit       the conformance suite every game must pass
-  renderer-macroquad   the first Renderer backend — deliberately replaceable
+  tabula-render-macroquad   the first Renderer backend — deliberately replaceable
 
 games/            one crate per game; feature-split into rules / bots / presentation
 apps/             game-client (Macroquad), web (Leptos), admin, desktop (optional Tauri)
-services/         tabula-server — THE binary at Stage 0
-mobile/           gradle + Xcode wrappers around the game-client library
+  mobile/         ONE Compose Multiplatform mobile tree (ADR-0032): shared/ (UI, navigation,
+                  GameHost interface), android/ (app), ios/ (Xcode host); no game logic
+services/         tabula-server — gameplay binary at Stage 0; tabula-auth — Kanidm
+                  account/session skeleton (ADR-0034), both runtime-gated
 xtask/            repo automation (pure Rust, no make)
 deploy/           compose (dev), systemd (Stage 0–1), terraform (Stage 2+)
 tests/            integration (real Postgres), load (Rust generator), replays (golden .tbr)
@@ -92,14 +118,14 @@ permission to implement them early.
 
 | Phase | Crates that become real |
 |---|---|
-| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `games/tictactoe`, `xtask` |
+| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `xtask` |
 | 1 | `games/chess` |
-| 2 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `renderer-headless`, `apps/game-client` |
-| 3 | `tabula-assets`, `games/cards`, `games/tiles`, `games/werewolf` (rules only) |
-| 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` |
+| 2 | `tabula-design`, `tabula-presentation`, `tabula-render-macroquad`, `tabula-render-headless`, `apps/game-client` |
+| 3 | `tabula-assets`, `games/caro`, `games/tiles` (Carcassonne-like), `games/werewolf` (rules only) |
+| 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server`, `services/tabula-auth` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin` |
-| 6 | `mobile/android`, `mobile/ios` |
-| 7 | werewolf + social |
+| 6 | `apps/mobile/shared`, `apps/mobile/android`, `apps/mobile/ios` (foundation slice open, see below) |
+| 7 | `games/werewolf` (presentation, social, and online) |
 | 8 | `tabula-voice` |
 | 9+ | SDK stabilisation, scaling, third-party ecosystem |
 
@@ -109,12 +135,92 @@ games have not yet validated is a contract that can no longer move.
 
 If you believe a phase gate is wrong, write an ADR — do not quietly cross it.
 
+**One gate has been crossed, on purpose and on the record.** The discovery/setup
+slice of `tabula-registry` (Phase 4) and `apps/web` (Phase 5) is implemented
+ahead of the Phase 3 exit: [ADR-0028](docs/adr/0028-discovery-shell-ahead-of-phase-gate.md)
+states exactly what it contains and what both phases still hold back. Treat the
+rest of those crates as gated as before, and do not read the slice as evidence
+that Phase 3, 4 or 5 is complete.
+
+The opt-in local discovery-to-gameplay integration extends that bounded slice:
+[ADR-0030](docs/adr/0030-local-discovery-gameplay-handoff.md). It reuses the existing
+standalone local authority and separate document. Network/resume, native catalog,
+asset-delivery services and the remaining phase gates stay closed.
+
+**A bounded Phase 6 foundation is open on the same terms.**
+[ADR-0032](docs/adr/0032-compose-multiplatform-mobile-host.md) opens the Compose
+Multiplatform mobile project, its minimal shell and navigation, the `GameHost` interface,
+and the generated Kotlin token adapter — not Phase 6 itself.
+[ADR-0043](docs/adr/0043-native-mobile-gamehost.md) supersedes ADR-0032/0033's mobile
+WebView gameplay: Android/iOS must embed the existing Rust/Macroquad runtime natively in
+that same CMP app. Mobile WebView selection and web-bundle packaging are retired without
+fallback; native adapters/artifacts and actual device acceptance remain blocked. CMP still
+owns UI/navigation and permitted device services; Rust owns rules, projection, presenter and
+renderer. Desktop preview screenshots prove only shared shell layout, never native gameplay.
+Networked mobile play, accounts, push, third-party games, store release and Phase 6 exit
+remain gated. `#![forbid(unsafe_code)]` remains unchanged; no native FFI exception is implied.
+
+[ADR-0045](docs/adr/0045-mobile-discovery-parity.md) extends that shell with #102's
+bounded Home/Library/detail/setup review from a generated public registry catalog.
+Catalog visibility is separate from packaged native runtime availability. It opens no
+remote discovery, native launch/configuration, accounts, resume or Phase 6 exit.
+
+[ADR-0046](docs/adr/0046-mobile-account-surfaces.md) opens #103's bounded CMP
+Account/Login/Register/self-Profile/Friends UI draft and typed account-session
+port. Only a current adapter supplies read-only identity; production defaults
+to explicit native-adapter unavailability. Provider login/enrollment, native
+social, profile mutations, credentials/persistence and phase exits remain gated.
+Named preview/test ports are doubles, not fake authentication or production fallback.
+The optional managed avatar is bound to the exact current identity instance.
+This scope does not change the separate native GameHost contract or its evidence.
+
+The owner-requested Werewolf standalone has a similarly bounded opt-in local exception:
+[ADR-0035](docs/adr/0035-werewolf-local-simulator.md). It permits its complete pure referee
+and isolated-seat local presenter using the existing renderer/resource pipeline. It does not
+open online/social, voice, authenticated seats, CMP native GameHost embedding or rollout gates.
+
+[ADR-0036](docs/adr/0036-isolated-durable-session-validation.md) authorizes the
+bounded #54 isolated session/PostgreSQL → HTTP → account-state UI sequence.
+It keeps both production service entrypoints closed and does not prove phase
+exits, provider login or actual private-output fencing. Other phase gates stand.
+
+[ADR-0040](docs/adr/0040-isolated-durable-match-postgres.md) extends ADR-0039's
+offline actor only with SQL-free journal contracts, native opt-in PostgreSQL
+consistent commits, durable receipt watermarks/owner fencing and exact bounded
+recovery. It is PR1 of the owner's new three-PR sequence; join-code browser play
+and online reconnect/resync/fault acceptance follow in separate later chats.
+No production listener, live migration, durable online session/commit/output
+fence or broad phase exit is authorized by this storage slice.
+
+[ADR-0041](docs/adr/0041-isolated-direct-match-browser-play.md) opens only PR2's
+non-default authenticated HTTPS direct-match/code slice and shared projection-only
+browser gameplay. The historical recovery integration contains partial,
+gated source. PR80 restores the complete explicitly opted-in composition; real
+independent browser/PG acceptance remains required before its merge. Production remains closed; robust reconnect/resync/refresh/network-drop/server-crash
+acceptance is PR3 in a separate chat. No social/lobby/ranked/phase exit is implied.
+
+[ADR-0042](docs/adr/0042-isolated-match-reconnect-resync.md) extends only the
+explicit isolated direct-match slice with bounded fresh-authority reconnect,
+HTTP2 scope correlation, exact online owner restart and guarded resync.
+Actual fault/browser/PostgreSQL acceptance remains required before merge;
+production, native/mobile, clocks, external effects and broad phase exits remain closed.
+
+[ADR-0044](docs/adr/0044-isolated-account-registration-social.md) authorizes the
+remaining #54 account/social contracts in an explicit isolated composition:
+Kanidm-verified Tabula enrollment, permitted profile read/edit, durable friend
+requests and one scoped presence stream. It preserves current session and target
+disclosure fences. Production startup, live provider provisioning, new credential
+policy, native/mobile social and broad phase exits remain closed; real provider,
+PostgreSQL and browser acceptance are required for completion.
+
 ---
 
 ## 5. Before you open a pull request
 
 ```bash
-just check          # fmt + clippy + deps + no-game-ids + nextest, in that order
+just check          # cargo xtask check: fmt, clippy, test, check-deps, check-no-game-ids,
+                    # check-manifests, generated design tokens current, check-no-raw-colors,
+                    # cargo deny check — in that order, stops at the first failure
 ```
 
 Or individually:
@@ -124,14 +230,21 @@ cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask check-deps            # the deps.toml matrix (I-1, I-15)
 cargo xtask check-no-game-ids     # I-9
-cargo xtask check-manifests       # game.toml == compiled metadata
+cargo xtask check-manifests       # game.toml/Cargo.toml schema and feature-shape validation
+cargo xtask check-no-raw-colors   # doc 04 §8.1 semantic design tokens (Rust, CSS and mobile Kotlin)
 cargo nextest run --workspace
 cargo deny check
 ```
 
+`just check` (or `cargo xtask check`) is the authoritative portable local core gate.
+A change under `apps/mobile/` additionally runs, from `apps/mobile/`,
+`./gradlew :shared:testAndroidHostTest :android:assembleDebug`; the iOS framework and Xcode
+project build only on macOS (see `apps/mobile/README.md` for what each environment proves).
+CI additionally checks the full workspace feature matrix (`cargo check --workspace --no-default-features` and `--all-features`) and target-specific WASM compilation (`wasm32-unknown-unknown`). You can test the feature matrix locally with `just check-all` or `just features`.
+
 A change to a game crate additionally needs its conformance suite green
-(`tabula_testkit::conformance!(YourModule)` — doc 02 §11.1) and, if the game has hidden
-information, a `SecretModel` with the projection scan passing.
+(`tabula_testkit::conformance!(YourFixture)` against a `GameTestFixture` impl — doc 02 §11.1)
+and, if the game has hidden information, a `SecretModel` with the projection scan passing.
 
 ---
 
@@ -157,9 +270,10 @@ Full anti-pattern table for game authors: doc 02 §13.
 
 ## 7. Adding a game
 
-```bash
-cargo xtask new-game <slug> --seats 2 --category abstract
-```
+`cargo xtask new-game <slug> --seats 2 --category abstract` is **not implemented**: the current
+dispatch exits with an intentional error. Until the scaffold lands, use the existing game
+crate layout and doc 02 §14 to add a crate manually within the current phase; update the
+workspace and `deps.toml` as doc 01 requires.
 
 Then work the checklist in doc 02 §14. The target is a playable, networked, spectatable,
 replayable game in **one crate, under 300 lines**, with **zero platform changes**. If adding

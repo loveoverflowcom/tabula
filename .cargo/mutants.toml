@@ -1,0 +1,6 @@
+# Development-only mutation-testing policy.
+#
+# cargo-mutants is intentionally not part of `cargo xtask check`: mutation runs
+# are expensive and should answer a named verification question for one package.
+# The repository already standardizes ordinary test execution on cargo-nextest.
+test_tool = "nextest"

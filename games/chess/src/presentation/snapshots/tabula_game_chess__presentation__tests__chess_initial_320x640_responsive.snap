@@ -1,0 +1,401 @@
+---
+source: games/chess/src/presentation/mod.rs
+expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
+---
+camera origin=(0.000, 0.000) zoom=1.000
+commands (total 395):
+  0: rect [origin=(0.000, 0.000) size=(320.000, 640.000)] radii=uniform(0.000) fill=solid(#f5f0e6ff) border=none layer=board(0) z=-10
+  1: rect [origin=(6.400, 95.200) size=(307.200, 307.200)] radii=uniform(16.000) fill=solid(#302a33ff) border=none layer=board(0) z=-10
+  2: push-opacity opacity=0.320 layer=board(0) z=-9
+  3: rect [origin=(6.400, 95.200) size=(307.200, 307.200)] radii=uniform(4.992) fill=solid(#4c4e58ff) border=none layer=board(0) z=0
+  4: pop-opacity layer=board(0) z=-9
+  5: rect [origin=(6.400, 98.426) size=(307.200, 303.974)] radii=uniform(4.992) fill=solid(#302a33ff) border=none layer=board(0) z=-8
+  6: rect [origin=(6.400, 95.200) size=(307.200, 303.974)] radii=uniform(4.992) fill=gradient(from=(6.400, 95.200) to=(313.600, 399.174) stops=[#665368ff@0.000, #302a33ff@0.450, #665368ff@1.000]) border=[width=1.000 color=#cfad77ff] layer=board(0) z=-7
+  7: push-opacity opacity=0.320 layer=board(0) z=-6
+  8: rect [origin=(9.088, 97.888) size=(301.824, 298.598)] radii=uniform(2.304) fill=none border=[width=1.000 color=#cfad77ff] layer=board(0) z=0
+  9: pop-opacity layer=board(0) z=-6
+  10: rect [origin=(14.080, 102.880) size=(291.840, 291.840)] radii=uniform(0.000) fill=none border=[width=2.000 color=#302a33ff] layer=board(0) z=-5
+  11: rect [origin=(14.080, 358.240) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=0
+  12: rect [origin=(50.560, 358.240) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=1
+  13: rect [origin=(87.040, 358.240) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=2
+  14: rect [origin=(123.520, 358.240) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=3
+  15: rect [origin=(160.000, 358.240) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=4
+  16: rect [origin=(196.480, 358.240) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=5
+  17: rect [origin=(232.960, 358.240) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=6
+  18: rect [origin=(269.440, 358.240) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=7
+  19: rect [origin=(14.080, 321.760) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=8
+  20: rect [origin=(50.560, 321.760) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=9
+  21: rect [origin=(87.040, 321.760) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=10
+  22: rect [origin=(123.520, 321.760) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=11
+  23: rect [origin=(160.000, 321.760) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=12
+  24: rect [origin=(196.480, 321.760) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=13
+  25: rect [origin=(232.960, 321.760) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=14
+  26: rect [origin=(269.440, 321.760) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=15
+  27: rect [origin=(14.080, 285.280) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=16
+  28: rect [origin=(50.560, 285.280) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=17
+  29: rect [origin=(87.040, 285.280) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=18
+  30: rect [origin=(123.520, 285.280) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=19
+  31: rect [origin=(160.000, 285.280) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=20
+  32: rect [origin=(196.480, 285.280) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=21
+  33: rect [origin=(232.960, 285.280) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=22
+  34: rect [origin=(269.440, 285.280) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=23
+  35: rect [origin=(14.080, 248.800) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=24
+  36: rect [origin=(50.560, 248.800) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=25
+  37: rect [origin=(87.040, 248.800) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=26
+  38: rect [origin=(123.520, 248.800) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=27
+  39: rect [origin=(160.000, 248.800) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=28
+  40: rect [origin=(196.480, 248.800) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=29
+  41: rect [origin=(232.960, 248.800) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=30
+  42: rect [origin=(269.440, 248.800) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=31
+  43: rect [origin=(14.080, 212.320) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=32
+  44: rect [origin=(50.560, 212.320) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=33
+  45: rect [origin=(87.040, 212.320) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=34
+  46: rect [origin=(123.520, 212.320) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=35
+  47: rect [origin=(160.000, 212.320) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=36
+  48: rect [origin=(196.480, 212.320) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=37
+  49: rect [origin=(232.960, 212.320) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=38
+  50: rect [origin=(269.440, 212.320) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=39
+  51: rect [origin=(14.080, 175.840) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=40
+  52: rect [origin=(50.560, 175.840) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=41
+  53: rect [origin=(87.040, 175.840) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=42
+  54: rect [origin=(123.520, 175.840) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=43
+  55: rect [origin=(160.000, 175.840) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=44
+  56: rect [origin=(196.480, 175.840) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=45
+  57: rect [origin=(232.960, 175.840) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=46
+  58: rect [origin=(269.440, 175.840) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=47
+  59: rect [origin=(14.080, 139.360) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=48
+  60: rect [origin=(50.560, 139.360) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=49
+  61: rect [origin=(87.040, 139.360) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=50
+  62: rect [origin=(123.520, 139.360) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=51
+  63: rect [origin=(160.000, 139.360) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=52
+  64: rect [origin=(196.480, 139.360) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=53
+  65: rect [origin=(232.960, 139.360) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=54
+  66: rect [origin=(269.440, 139.360) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=55
+  67: rect [origin=(14.080, 102.880) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=56
+  68: rect [origin=(50.560, 102.880) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=57
+  69: rect [origin=(87.040, 102.880) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=58
+  70: rect [origin=(123.520, 102.880) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=59
+  71: rect [origin=(160.000, 102.880) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=60
+  72: rect [origin=(196.480, 102.880) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=61
+  73: rect [origin=(232.960, 102.880) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#d0bdadff) border=none layer=board(0) z=62
+  74: rect [origin=(269.440, 102.880) size=(36.480, 36.480)] radii=uniform(0.000) fill=solid(#665368ff) border=none layer=board(0) z=63
+  75: sprite asset="board/grain" rect=[origin=(14.080, 358.240) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(32.320, 376.480) layer=board(0) z=64
+  76: sprite asset="board/grain" rect=[origin=(50.560, 358.240) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(68.800, 376.480) layer=board(0) z=65
+  77: sprite asset="board/grain" rect=[origin=(87.040, 358.240) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(105.280, 376.480) layer=board(0) z=66
+  78: sprite asset="board/grain" rect=[origin=(123.520, 358.240) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(141.760, 376.480) layer=board(0) z=67
+  79: sprite asset="board/grain" rect=[origin=(160.000, 358.240) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(178.240, 376.480) layer=board(0) z=68
+  80: sprite asset="board/grain" rect=[origin=(196.480, 358.240) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(214.720, 376.480) layer=board(0) z=69
+  81: sprite asset="board/grain" rect=[origin=(232.960, 358.240) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(251.200, 376.480) layer=board(0) z=70
+  82: sprite asset="board/grain" rect=[origin=(269.440, 358.240) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(287.680, 376.480) layer=board(0) z=71
+  83: sprite asset="board/grain" rect=[origin=(14.080, 321.760) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(32.320, 340.000) layer=board(0) z=72
+  84: sprite asset="board/grain" rect=[origin=(50.560, 321.760) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(68.800, 340.000) layer=board(0) z=73
+  85: sprite asset="board/grain" rect=[origin=(87.040, 321.760) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(105.280, 340.000) layer=board(0) z=74
+  86: sprite asset="board/grain" rect=[origin=(123.520, 321.760) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(141.760, 340.000) layer=board(0) z=75
+  87: sprite asset="board/grain" rect=[origin=(160.000, 321.760) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(178.240, 340.000) layer=board(0) z=76
+  88: sprite asset="board/grain" rect=[origin=(196.480, 321.760) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(214.720, 340.000) layer=board(0) z=77
+  89: sprite asset="board/grain" rect=[origin=(232.960, 321.760) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(251.200, 340.000) layer=board(0) z=78
+  90: sprite asset="board/grain" rect=[origin=(269.440, 321.760) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(287.680, 340.000) layer=board(0) z=79
+  91: sprite asset="board/grain" rect=[origin=(14.080, 285.280) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(32.320, 303.520) layer=board(0) z=80
+  92: sprite asset="board/grain" rect=[origin=(50.560, 285.280) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(68.800, 303.520) layer=board(0) z=81
+  93: sprite asset="board/grain" rect=[origin=(87.040, 285.280) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(105.280, 303.520) layer=board(0) z=82
+  94: sprite asset="board/grain" rect=[origin=(123.520, 285.280) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(141.760, 303.520) layer=board(0) z=83
+  95: sprite asset="board/grain" rect=[origin=(160.000, 285.280) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(178.240, 303.520) layer=board(0) z=84
+  96: sprite asset="board/grain" rect=[origin=(196.480, 285.280) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(214.720, 303.520) layer=board(0) z=85
+  97: sprite asset="board/grain" rect=[origin=(232.960, 285.280) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(251.200, 303.520) layer=board(0) z=86
+  98: sprite asset="board/grain" rect=[origin=(269.440, 285.280) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(287.680, 303.520) layer=board(0) z=87
+  99: sprite asset="board/grain" rect=[origin=(14.080, 248.800) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(32.320, 267.040) layer=board(0) z=88
+  100: sprite asset="board/grain" rect=[origin=(50.560, 248.800) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(68.800, 267.040) layer=board(0) z=89
+  101: sprite asset="board/grain" rect=[origin=(87.040, 248.800) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(105.280, 267.040) layer=board(0) z=90
+  102: sprite asset="board/grain" rect=[origin=(123.520, 248.800) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(141.760, 267.040) layer=board(0) z=91
+  103: sprite asset="board/grain" rect=[origin=(160.000, 248.800) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(178.240, 267.040) layer=board(0) z=92
+  104: sprite asset="board/grain" rect=[origin=(196.480, 248.800) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(214.720, 267.040) layer=board(0) z=93
+  105: sprite asset="board/grain" rect=[origin=(232.960, 248.800) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(251.200, 267.040) layer=board(0) z=94
+  106: sprite asset="board/grain" rect=[origin=(269.440, 248.800) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(287.680, 267.040) layer=board(0) z=95
+  107: sprite asset="board/grain" rect=[origin=(14.080, 212.320) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(32.320, 230.560) layer=board(0) z=96
+  108: sprite asset="board/grain" rect=[origin=(50.560, 212.320) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(68.800, 230.560) layer=board(0) z=97
+  109: sprite asset="board/grain" rect=[origin=(87.040, 212.320) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(105.280, 230.560) layer=board(0) z=98
+  110: sprite asset="board/grain" rect=[origin=(123.520, 212.320) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(141.760, 230.560) layer=board(0) z=99
+  111: sprite asset="board/grain" rect=[origin=(160.000, 212.320) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(178.240, 230.560) layer=board(0) z=100
+  112: sprite asset="board/grain" rect=[origin=(196.480, 212.320) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(214.720, 230.560) layer=board(0) z=101
+  113: sprite asset="board/grain" rect=[origin=(232.960, 212.320) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(251.200, 230.560) layer=board(0) z=102
+  114: sprite asset="board/grain" rect=[origin=(269.440, 212.320) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(287.680, 230.560) layer=board(0) z=103
+  115: sprite asset="board/grain" rect=[origin=(14.080, 175.840) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(32.320, 194.080) layer=board(0) z=104
+  116: sprite asset="board/grain" rect=[origin=(50.560, 175.840) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(68.800, 194.080) layer=board(0) z=105
+  117: sprite asset="board/grain" rect=[origin=(87.040, 175.840) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(105.280, 194.080) layer=board(0) z=106
+  118: sprite asset="board/grain" rect=[origin=(123.520, 175.840) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(141.760, 194.080) layer=board(0) z=107
+  119: sprite asset="board/grain" rect=[origin=(160.000, 175.840) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(178.240, 194.080) layer=board(0) z=108
+  120: sprite asset="board/grain" rect=[origin=(196.480, 175.840) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(214.720, 194.080) layer=board(0) z=109
+  121: sprite asset="board/grain" rect=[origin=(232.960, 175.840) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(251.200, 194.080) layer=board(0) z=110
+  122: sprite asset="board/grain" rect=[origin=(269.440, 175.840) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(287.680, 194.080) layer=board(0) z=111
+  123: sprite asset="board/grain" rect=[origin=(14.080, 139.360) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(32.320, 157.600) layer=board(0) z=112
+  124: sprite asset="board/grain" rect=[origin=(50.560, 139.360) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(68.800, 157.600) layer=board(0) z=113
+  125: sprite asset="board/grain" rect=[origin=(87.040, 139.360) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(105.280, 157.600) layer=board(0) z=114
+  126: sprite asset="board/grain" rect=[origin=(123.520, 139.360) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(141.760, 157.600) layer=board(0) z=115
+  127: sprite asset="board/grain" rect=[origin=(160.000, 139.360) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(178.240, 157.600) layer=board(0) z=116
+  128: sprite asset="board/grain" rect=[origin=(196.480, 139.360) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(214.720, 157.600) layer=board(0) z=117
+  129: sprite asset="board/grain" rect=[origin=(232.960, 139.360) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(251.200, 157.600) layer=board(0) z=118
+  130: sprite asset="board/grain" rect=[origin=(269.440, 139.360) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(287.680, 157.600) layer=board(0) z=119
+  131: sprite asset="board/grain" rect=[origin=(14.080, 102.880) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(32.320, 121.120) layer=board(0) z=120
+  132: sprite asset="board/grain" rect=[origin=(50.560, 102.880) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(68.800, 121.120) layer=board(0) z=121
+  133: sprite asset="board/grain" rect=[origin=(87.040, 102.880) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(105.280, 121.120) layer=board(0) z=122
+  134: sprite asset="board/grain" rect=[origin=(123.520, 102.880) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(141.760, 121.120) layer=board(0) z=123
+  135: sprite asset="board/grain" rect=[origin=(160.000, 102.880) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(178.240, 121.120) layer=board(0) z=124
+  136: sprite asset="board/grain" rect=[origin=(196.480, 102.880) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(214.720, 121.120) layer=board(0) z=125
+  137: sprite asset="board/grain" rect=[origin=(232.960, 102.880) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(251.200, 121.120) layer=board(0) z=126
+  138: sprite asset="board/grain" rect=[origin=(269.440, 102.880) size=(36.480, 36.480)] tint=#ffffffff rotation=0.000 pivot=(287.680, 121.120) layer=board(0) z=127
+  139: push-opacity opacity=0.070 layer=pieces(10) z=0
+  140: rect [origin=(20.179, 388.154) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=0
+  141: pop-opacity layer=pieces(10) z=0
+  142: push-opacity opacity=0.120 layer=pieces(10) z=0
+  143: rect [origin=(22.835, 388.154) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=0
+  144: pop-opacity layer=pieces(10) z=0
+  145: sprite asset="pieces/white-rook" rect=[origin=(14.627, 358.787) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(32.320, 376.480) layer=pieces(10) z=0
+  146: push-opacity opacity=0.070 layer=pieces(10) z=1
+  147: rect [origin=(56.659, 388.154) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=1
+  148: pop-opacity layer=pieces(10) z=1
+  149: push-opacity opacity=0.120 layer=pieces(10) z=1
+  150: rect [origin=(59.315, 388.154) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=1
+  151: pop-opacity layer=pieces(10) z=1
+  152: sprite asset="pieces/white-knight" rect=[origin=(51.107, 358.787) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(68.800, 376.480) layer=pieces(10) z=1
+  153: push-opacity opacity=0.070 layer=pieces(10) z=2
+  154: rect [origin=(93.139, 388.154) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=2
+  155: pop-opacity layer=pieces(10) z=2
+  156: push-opacity opacity=0.120 layer=pieces(10) z=2
+  157: rect [origin=(95.795, 388.154) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=2
+  158: pop-opacity layer=pieces(10) z=2
+  159: sprite asset="pieces/white-bishop" rect=[origin=(87.587, 358.787) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(105.280, 376.480) layer=pieces(10) z=2
+  160: push-opacity opacity=0.070 layer=pieces(10) z=3
+  161: rect [origin=(129.619, 388.154) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=3
+  162: pop-opacity layer=pieces(10) z=3
+  163: push-opacity opacity=0.120 layer=pieces(10) z=3
+  164: rect [origin=(132.275, 388.154) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=3
+  165: pop-opacity layer=pieces(10) z=3
+  166: sprite asset="pieces/white-queen" rect=[origin=(124.067, 358.787) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(141.760, 376.480) layer=pieces(10) z=3
+  167: push-opacity opacity=0.070 layer=pieces(10) z=4
+  168: rect [origin=(166.099, 388.154) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=4
+  169: pop-opacity layer=pieces(10) z=4
+  170: push-opacity opacity=0.120 layer=pieces(10) z=4
+  171: rect [origin=(168.755, 388.154) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=4
+  172: pop-opacity layer=pieces(10) z=4
+  173: sprite asset="pieces/white-king" rect=[origin=(160.547, 358.787) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(178.240, 376.480) layer=pieces(10) z=4
+  174: push-opacity opacity=0.070 layer=pieces(10) z=5
+  175: rect [origin=(202.579, 388.154) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=5
+  176: pop-opacity layer=pieces(10) z=5
+  177: push-opacity opacity=0.120 layer=pieces(10) z=5
+  178: rect [origin=(205.235, 388.154) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=5
+  179: pop-opacity layer=pieces(10) z=5
+  180: sprite asset="pieces/white-bishop" rect=[origin=(197.027, 358.787) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(214.720, 376.480) layer=pieces(10) z=5
+  181: push-opacity opacity=0.070 layer=pieces(10) z=6
+  182: rect [origin=(239.059, 388.154) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=6
+  183: pop-opacity layer=pieces(10) z=6
+  184: push-opacity opacity=0.120 layer=pieces(10) z=6
+  185: rect [origin=(241.715, 388.154) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=6
+  186: pop-opacity layer=pieces(10) z=6
+  187: sprite asset="pieces/white-knight" rect=[origin=(233.507, 358.787) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(251.200, 376.480) layer=pieces(10) z=6
+  188: push-opacity opacity=0.070 layer=pieces(10) z=7
+  189: rect [origin=(275.539, 388.154) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=7
+  190: pop-opacity layer=pieces(10) z=7
+  191: push-opacity opacity=0.120 layer=pieces(10) z=7
+  192: rect [origin=(278.195, 388.154) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=7
+  193: pop-opacity layer=pieces(10) z=7
+  194: sprite asset="pieces/white-rook" rect=[origin=(269.987, 358.787) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(287.680, 376.480) layer=pieces(10) z=7
+  195: push-opacity opacity=0.070 layer=pieces(10) z=8
+  196: rect [origin=(20.179, 351.674) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=8
+  197: pop-opacity layer=pieces(10) z=8
+  198: push-opacity opacity=0.120 layer=pieces(10) z=8
+  199: rect [origin=(22.835, 351.674) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=8
+  200: pop-opacity layer=pieces(10) z=8
+  201: sprite asset="pieces/white-pawn" rect=[origin=(14.627, 322.307) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(32.320, 340.000) layer=pieces(10) z=8
+  202: push-opacity opacity=0.070 layer=pieces(10) z=9
+  203: rect [origin=(56.659, 351.674) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=9
+  204: pop-opacity layer=pieces(10) z=9
+  205: push-opacity opacity=0.120 layer=pieces(10) z=9
+  206: rect [origin=(59.315, 351.674) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=9
+  207: pop-opacity layer=pieces(10) z=9
+  208: sprite asset="pieces/white-pawn" rect=[origin=(51.107, 322.307) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(68.800, 340.000) layer=pieces(10) z=9
+  209: push-opacity opacity=0.070 layer=pieces(10) z=10
+  210: rect [origin=(93.139, 351.674) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=10
+  211: pop-opacity layer=pieces(10) z=10
+  212: push-opacity opacity=0.120 layer=pieces(10) z=10
+  213: rect [origin=(95.795, 351.674) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=10
+  214: pop-opacity layer=pieces(10) z=10
+  215: sprite asset="pieces/white-pawn" rect=[origin=(87.587, 322.307) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(105.280, 340.000) layer=pieces(10) z=10
+  216: push-opacity opacity=0.070 layer=pieces(10) z=11
+  217: rect [origin=(129.619, 351.674) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=11
+  218: pop-opacity layer=pieces(10) z=11
+  219: push-opacity opacity=0.120 layer=pieces(10) z=11
+  220: rect [origin=(132.275, 351.674) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=11
+  221: pop-opacity layer=pieces(10) z=11
+  222: sprite asset="pieces/white-pawn" rect=[origin=(124.067, 322.307) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(141.760, 340.000) layer=pieces(10) z=11
+  223: push-opacity opacity=0.070 layer=pieces(10) z=12
+  224: rect [origin=(166.099, 351.674) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=12
+  225: pop-opacity layer=pieces(10) z=12
+  226: push-opacity opacity=0.120 layer=pieces(10) z=12
+  227: rect [origin=(168.755, 351.674) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=12
+  228: pop-opacity layer=pieces(10) z=12
+  229: sprite asset="pieces/white-pawn" rect=[origin=(160.547, 322.307) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(178.240, 340.000) layer=pieces(10) z=12
+  230: push-opacity opacity=0.070 layer=pieces(10) z=13
+  231: rect [origin=(202.579, 351.674) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=13
+  232: pop-opacity layer=pieces(10) z=13
+  233: push-opacity opacity=0.120 layer=pieces(10) z=13
+  234: rect [origin=(205.235, 351.674) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=13
+  235: pop-opacity layer=pieces(10) z=13
+  236: sprite asset="pieces/white-pawn" rect=[origin=(197.027, 322.307) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(214.720, 340.000) layer=pieces(10) z=13
+  237: push-opacity opacity=0.070 layer=pieces(10) z=14
+  238: rect [origin=(239.059, 351.674) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=14
+  239: pop-opacity layer=pieces(10) z=14
+  240: push-opacity opacity=0.120 layer=pieces(10) z=14
+  241: rect [origin=(241.715, 351.674) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=14
+  242: pop-opacity layer=pieces(10) z=14
+  243: sprite asset="pieces/white-pawn" rect=[origin=(233.507, 322.307) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(251.200, 340.000) layer=pieces(10) z=14
+  244: push-opacity opacity=0.070 layer=pieces(10) z=15
+  245: rect [origin=(275.539, 351.674) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=15
+  246: pop-opacity layer=pieces(10) z=15
+  247: push-opacity opacity=0.120 layer=pieces(10) z=15
+  248: rect [origin=(278.195, 351.674) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=15
+  249: pop-opacity layer=pieces(10) z=15
+  250: sprite asset="pieces/white-pawn" rect=[origin=(269.987, 322.307) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(287.680, 340.000) layer=pieces(10) z=15
+  251: push-opacity opacity=0.070 layer=pieces(10) z=48
+  252: rect [origin=(20.179, 169.274) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=48
+  253: pop-opacity layer=pieces(10) z=48
+  254: push-opacity opacity=0.120 layer=pieces(10) z=48
+  255: rect [origin=(22.835, 169.274) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=48
+  256: pop-opacity layer=pieces(10) z=48
+  257: sprite asset="pieces/black-pawn" rect=[origin=(14.627, 139.907) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(32.320, 157.600) layer=pieces(10) z=48
+  258: push-opacity opacity=0.070 layer=pieces(10) z=49
+  259: rect [origin=(56.659, 169.274) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=49
+  260: pop-opacity layer=pieces(10) z=49
+  261: push-opacity opacity=0.120 layer=pieces(10) z=49
+  262: rect [origin=(59.315, 169.274) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=49
+  263: pop-opacity layer=pieces(10) z=49
+  264: sprite asset="pieces/black-pawn" rect=[origin=(51.107, 139.907) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(68.800, 157.600) layer=pieces(10) z=49
+  265: push-opacity opacity=0.070 layer=pieces(10) z=50
+  266: rect [origin=(93.139, 169.274) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=50
+  267: pop-opacity layer=pieces(10) z=50
+  268: push-opacity opacity=0.120 layer=pieces(10) z=50
+  269: rect [origin=(95.795, 169.274) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=50
+  270: pop-opacity layer=pieces(10) z=50
+  271: sprite asset="pieces/black-pawn" rect=[origin=(87.587, 139.907) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(105.280, 157.600) layer=pieces(10) z=50
+  272: push-opacity opacity=0.070 layer=pieces(10) z=51
+  273: rect [origin=(129.619, 169.274) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=51
+  274: pop-opacity layer=pieces(10) z=51
+  275: push-opacity opacity=0.120 layer=pieces(10) z=51
+  276: rect [origin=(132.275, 169.274) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=51
+  277: pop-opacity layer=pieces(10) z=51
+  278: sprite asset="pieces/black-pawn" rect=[origin=(124.067, 139.907) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(141.760, 157.600) layer=pieces(10) z=51
+  279: push-opacity opacity=0.070 layer=pieces(10) z=52
+  280: rect [origin=(166.099, 169.274) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=52
+  281: pop-opacity layer=pieces(10) z=52
+  282: push-opacity opacity=0.120 layer=pieces(10) z=52
+  283: rect [origin=(168.755, 169.274) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=52
+  284: pop-opacity layer=pieces(10) z=52
+  285: sprite asset="pieces/black-pawn" rect=[origin=(160.547, 139.907) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(178.240, 157.600) layer=pieces(10) z=52
+  286: push-opacity opacity=0.070 layer=pieces(10) z=53
+  287: rect [origin=(202.579, 169.274) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=53
+  288: pop-opacity layer=pieces(10) z=53
+  289: push-opacity opacity=0.120 layer=pieces(10) z=53
+  290: rect [origin=(205.235, 169.274) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=53
+  291: pop-opacity layer=pieces(10) z=53
+  292: sprite asset="pieces/black-pawn" rect=[origin=(197.027, 139.907) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(214.720, 157.600) layer=pieces(10) z=53
+  293: push-opacity opacity=0.070 layer=pieces(10) z=54
+  294: rect [origin=(239.059, 169.274) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=54
+  295: pop-opacity layer=pieces(10) z=54
+  296: push-opacity opacity=0.120 layer=pieces(10) z=54
+  297: rect [origin=(241.715, 169.274) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=54
+  298: pop-opacity layer=pieces(10) z=54
+  299: sprite asset="pieces/black-pawn" rect=[origin=(233.507, 139.907) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(251.200, 157.600) layer=pieces(10) z=54
+  300: push-opacity opacity=0.070 layer=pieces(10) z=55
+  301: rect [origin=(275.539, 169.274) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=55
+  302: pop-opacity layer=pieces(10) z=55
+  303: push-opacity opacity=0.120 layer=pieces(10) z=55
+  304: rect [origin=(278.195, 169.274) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=55
+  305: pop-opacity layer=pieces(10) z=55
+  306: sprite asset="pieces/black-pawn" rect=[origin=(269.987, 139.907) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(287.680, 157.600) layer=pieces(10) z=55
+  307: push-opacity opacity=0.070 layer=pieces(10) z=56
+  308: rect [origin=(20.179, 132.794) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=56
+  309: pop-opacity layer=pieces(10) z=56
+  310: push-opacity opacity=0.120 layer=pieces(10) z=56
+  311: rect [origin=(22.835, 132.794) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=56
+  312: pop-opacity layer=pieces(10) z=56
+  313: sprite asset="pieces/black-rook" rect=[origin=(14.627, 103.427) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(32.320, 121.120) layer=pieces(10) z=56
+  314: push-opacity opacity=0.070 layer=pieces(10) z=57
+  315: rect [origin=(56.659, 132.794) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=57
+  316: pop-opacity layer=pieces(10) z=57
+  317: push-opacity opacity=0.120 layer=pieces(10) z=57
+  318: rect [origin=(59.315, 132.794) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=57
+  319: pop-opacity layer=pieces(10) z=57
+  320: sprite asset="pieces/black-knight" rect=[origin=(51.107, 103.427) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(68.800, 121.120) layer=pieces(10) z=57
+  321: push-opacity opacity=0.070 layer=pieces(10) z=58
+  322: rect [origin=(93.139, 132.794) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=58
+  323: pop-opacity layer=pieces(10) z=58
+  324: push-opacity opacity=0.120 layer=pieces(10) z=58
+  325: rect [origin=(95.795, 132.794) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=58
+  326: pop-opacity layer=pieces(10) z=58
+  327: sprite asset="pieces/black-bishop" rect=[origin=(87.587, 103.427) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(105.280, 121.120) layer=pieces(10) z=58
+  328: push-opacity opacity=0.070 layer=pieces(10) z=59
+  329: rect [origin=(129.619, 132.794) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=59
+  330: pop-opacity layer=pieces(10) z=59
+  331: push-opacity opacity=0.120 layer=pieces(10) z=59
+  332: rect [origin=(132.275, 132.794) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=59
+  333: pop-opacity layer=pieces(10) z=59
+  334: sprite asset="pieces/black-queen" rect=[origin=(124.067, 103.427) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(141.760, 121.120) layer=pieces(10) z=59
+  335: push-opacity opacity=0.070 layer=pieces(10) z=60
+  336: rect [origin=(166.099, 132.794) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=60
+  337: pop-opacity layer=pieces(10) z=60
+  338: push-opacity opacity=0.120 layer=pieces(10) z=60
+  339: rect [origin=(168.755, 132.794) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=60
+  340: pop-opacity layer=pieces(10) z=60
+  341: sprite asset="pieces/black-king" rect=[origin=(160.547, 103.427) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(178.240, 121.120) layer=pieces(10) z=60
+  342: push-opacity opacity=0.070 layer=pieces(10) z=61
+  343: rect [origin=(202.579, 132.794) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=61
+  344: pop-opacity layer=pieces(10) z=61
+  345: push-opacity opacity=0.120 layer=pieces(10) z=61
+  346: rect [origin=(205.235, 132.794) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=61
+  347: pop-opacity layer=pieces(10) z=61
+  348: sprite asset="pieces/black-bishop" rect=[origin=(197.027, 103.427) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(214.720, 121.120) layer=pieces(10) z=61
+  349: push-opacity opacity=0.070 layer=pieces(10) z=62
+  350: rect [origin=(239.059, 132.794) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=62
+  351: pop-opacity layer=pieces(10) z=62
+  352: push-opacity opacity=0.120 layer=pieces(10) z=62
+  353: rect [origin=(241.715, 132.794) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=62
+  354: pop-opacity layer=pieces(10) z=62
+  355: sprite asset="pieces/black-knight" rect=[origin=(233.507, 103.427) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(251.200, 121.120) layer=pieces(10) z=62
+  356: push-opacity opacity=0.070 layer=pieces(10) z=63
+  357: rect [origin=(275.539, 132.794) size=(24.281, 3.269)] radii=uniform(1.634) fill=solid(#302a33ff) border=none layer=pieces(10) z=63
+  358: pop-opacity layer=pieces(10) z=63
+  359: push-opacity opacity=0.120 layer=pieces(10) z=63
+  360: rect [origin=(278.195, 132.794) size=(18.970, 2.554)] radii=uniform(1.277) fill=solid(#302a33ff) border=none layer=pieces(10) z=63
+  361: pop-opacity layer=pieces(10) z=63
+  362: sprite asset="pieces/black-rook" rect=[origin=(269.987, 103.427) size=(35.386, 35.386)] tint=#ffffffff rotation=0.000 pivot=(287.680, 121.120) layer=pieces(10) z=63
+  363: text "Chess" at=(14.080, 6.400) style=TitleLg align=Start max_width=291.840 color=#352146ff layer=hud(30) z=0
+  364: text "a" at=(28.672, 395.720) style=LabelSm align=Start max_width=36.480 color=#f1eaf7ff layer=hud(30) z=0
+  365: text "8" at=(8.400, 115.648) style=LabelSm align=Start max_width=18.000 color=#f1eaf7ff layer=hud(30) z=0
+  366: text "b" at=(65.152, 395.720) style=LabelSm align=Start max_width=36.480 color=#f1eaf7ff layer=hud(30) z=0
+  367: text "7" at=(8.400, 152.128) style=LabelSm align=Start max_width=18.000 color=#f1eaf7ff layer=hud(30) z=0
+  368: text "c" at=(101.632, 395.720) style=LabelSm align=Start max_width=36.480 color=#f1eaf7ff layer=hud(30) z=0
+  369: text "6" at=(8.400, 188.608) style=LabelSm align=Start max_width=18.000 color=#f1eaf7ff layer=hud(30) z=0
+  370: text "d" at=(138.112, 395.720) style=LabelSm align=Start max_width=36.480 color=#f1eaf7ff layer=hud(30) z=0
+  371: text "5" at=(8.400, 225.088) style=LabelSm align=Start max_width=18.000 color=#f1eaf7ff layer=hud(30) z=0
+  372: text "e" at=(174.592, 395.720) style=LabelSm align=Start max_width=36.480 color=#f1eaf7ff layer=hud(30) z=0
+  373: text "4" at=(8.400, 261.568) style=LabelSm align=Start max_width=18.000 color=#f1eaf7ff layer=hud(30) z=0
+  374: text "f" at=(211.072, 395.720) style=LabelSm align=Start max_width=36.480 color=#f1eaf7ff layer=hud(30) z=0
+  375: text "3" at=(8.400, 298.048) style=LabelSm align=Start max_width=18.000 color=#f1eaf7ff layer=hud(30) z=0
+  376: text "g" at=(247.552, 395.720) style=LabelSm align=Start max_width=36.480 color=#f1eaf7ff layer=hud(30) z=0
+  377: text "2" at=(8.400, 334.528) style=LabelSm align=Start max_width=18.000 color=#f1eaf7ff layer=hud(30) z=0
+  378: text "h" at=(284.032, 395.720) style=LabelSm align=Start max_width=36.480 color=#f1eaf7ff layer=hud(30) z=0
+  379: text "1" at=(8.400, 371.008) style=LabelSm align=Start max_width=18.000 color=#f1eaf7ff layer=hud(30) z=0
+  380: rect [origin=(14.080, 44.800) size=(291.840, 44.000)] radii=uniform(14.000) fill=solid(#e5dbe7ff) border=none layer=hud(30) z=0
+  381: rect [origin=(14.080, 408.800) size=(291.840, 44.000)] radii=uniform(14.000) fill=solid(#fefbf4ff) border=[width=1.000 color=#573b83ff] layer=hud(30) z=0
+  382: rect [origin=(14.080, 459.200) size=(291.840, 48.000)] radii=uniform(16.000) fill=solid(#fefbf4ff) border=none layer=hud(30) z=0
+  383: rect [origin=(14.080, 513.600) size=(143.920, 44.000)] radii=uniform(14.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
+  384: text "Flip" at=(86.040, 525.600) style=LabelLg align=Center max_width=127.920 color=#1e1c21ff layer=hud(30) z=0
+  385: rect [origin=(162.000, 513.600) size=(143.920, 44.000)] radii=uniform(14.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
+  386: text "Actions" at=(233.960, 525.600) style=LabelLg align=Center max_width=127.920 color=#1e1c21ff layer=hud(30) z=0
+  387: sprite asset="pieces/black-king" rect=[origin=(20.560, 51.280) size=(31.040, 31.040)] tint=#ffffffff rotation=0.000 pivot=(36.080, 66.800) layer=hud(30) z=1
+  388: text "Black" at=(62.080, 45.800) style=LabelLg align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
+  389: text "Opponent seat" at=(62.080, 66.800) style=BodyMd align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
+  390: sprite asset="pieces/white-king" rect=[origin=(20.560, 415.280) size=(31.040, 31.040)] tint=#ffffffff rotation=0.000 pivot=(36.080, 430.800) layer=hud(30) z=1
+  391: text "White / turn" at=(62.080, 409.800) style=LabelLg align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
+  392: text "Your seat" at=(62.080, 430.800) style=BodyMd align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
+  393: text "Your turn / White" at=(22.080, 467.200) style=LabelLg align=Start max_width=275.840 color=#352146ff layer=hud(30) z=1
+  394: text "Observed this session only" at=(22.080, 487.200) style=BodyMd align=Start max_width=275.840 color=#352146ff layer=hud(30) z=1

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabula Code Review"
+  short_description: "Read-only, evidence-backed review of Tabula changes"
+  default_prompt: "Use $tabula-code-review to review this change read-only, report actionable findings, and state evidence and coverage limits."

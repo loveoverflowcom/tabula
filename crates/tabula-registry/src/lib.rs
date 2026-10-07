@@ -1,6 +1,23 @@
 //! # `tabula-registry` — the catalog and the only bridge to games
 //!
-//! > ## PHASE 4 — DO NOT IMPLEMENT BEFORE PHASE 3 EXITS
+//! > ## PHASE 4 — partially implemented ahead of the Phase 3 exit
+//! >
+//! > The discovery/setup slice below (catalog, erased setup dispatch, config
+//! > forms, availability) was implemented for issue #50 before Phase 3 exited.
+//! > That gate crossing was an explicit, recorded owner decision, not an
+//! > oversight: see `docs/ui/screens/discovery-verification.md`. Everything the
+//! > phase gate protects that is **not** listed here remains gated. ADR-0039
+//! > additionally opens an isolated canonical match-creation/runtime bridge:
+//! > `ErasedMatch`, typed canonical decode, projected reads and ordered apply.
+//! > ADR-0040 adds the bounded server-only durable bridge: canonical snapshots,
+//! > exact-identity decoding and recorded-input replay (I-5/I-16).
+//! > ADR-0041 recovers candidate direct configuration helpers; the online
+//! > document/gateway is absent, so direct handoff stays unavailable.
+//! > Network codecs, migration, rollout tables, multi-version resolution
+//! > and `register!` still wait for their gates.
+//! > ADR-0030 additionally permits the opt-in separate-document handoff to the
+//! > existing local hot-seat runtime. It adds no match authority, network,
+//! > persisted session or replay service.
 //!
 //! This is the **only** crate that knows the set of games exists. That
 //! containment is what makes I-9 mechanically checkable: every platform crate
@@ -75,10 +92,9 @@
 //! ```rust,ignore
 //! tabula_registry::register! {
 //!     tabula_game_chess::ChessModule,
-//!     tabula_game_cards::CardsModule,
+//!     tabula_game_caro::CaroModule,
 //!     tabula_game_werewolf::WerewolfModule,
 //!     tabula_game_tiles::TilesModule,
-//!     tabula_game_tictactoe::TicTacToeModule,
 //! }
 //! ```
 //!
@@ -126,5 +142,96 @@
 //! src/rollout.rs   enable/disable, audience filtering
 //! src/macros.rs    register!
 //! ```
+//!
+//! ## What exists today
+//!
+//! ```text
+//! src/erased.rs        ErasedGame + the one blanket Adapter<S> impl
+//! src/runtime.rs       ADR-0039 typed match factory and projected authority
+//! src/catalog.rs       Catalog, CatalogQuery, the localized search policy
+//! src/config.rs        ConfigForm/ConfigDraft/NormalizedConfig descriptors
+//! src/parse.rs         strict draft parsing shared by adapters
+//! src/availability.rs  LaunchMode and evidence-backed mode support
+//! src/launch.rs        ADR-011 handoff resolution
+//! src/games/           the ONLY place a game is named
+//! ```
 
 #![forbid(unsafe_code)]
+
+pub mod availability;
+pub mod catalog;
+pub mod config;
+pub mod discovery;
+#[cfg(test)]
+mod discovery_tests;
+pub mod erased;
+pub mod games;
+pub mod i18n;
+pub mod launch;
+mod parse;
+pub mod runtime;
+
+#[cfg(all(test, feature = "game-chess", feature = "game-tiles"))]
+mod tests;
+
+use std::sync::Arc;
+
+pub use availability::{LaunchMode, ModeState, ModeSupport, UnavailableReason};
+pub use catalog::{Catalog, CatalogEntry, CatalogQuery, Localizer};
+pub use discovery::{DiscoveryCatalog, DiscoveryCatalogEntry};
+// Re-exported so a shell can name the catalog's own vocabulary without
+// depending on `tabula-game-api` directly: the game contract is below the
+// catalog boundary, and only the catalog may carry it upward (deps.toml).
+pub use config::{
+    ChoiceSpec, ConfigDraft, ConfigForm, ConfigRejection, FieldKind, FieldSpec, NormalizedConfig,
+    RejectionReason, SummaryLine, SummaryValue, TimeControlKind,
+};
+pub use erased::{bot_level_label_key, Adapter, ErasedGame, GameSetup, SetupRequest};
+pub use i18n::{platform_messages, Locale, Messages};
+pub use launch::{
+    resolve as resolve_launch, resolve_with_locale as resolve_launch_with_locale, LaunchHandoff,
+    RuntimeBinding,
+};
+pub use runtime::{
+    ClientViewer, CreatedMatch, CreatedMatchParts, ErasedInput, ErasedMatch, ErasedTransition,
+    RuntimeError, RuntimeIdentity, TypedMatch,
+};
+pub use tabula_core::{BotLevel, GameId};
+pub use tabula_game_api::{
+    metadata::{Category, Complexity, ContentRating, DurationRange, I18nKey},
+    GameCapabilities, GameMetadata,
+};
+
+/// Every game this build links, in registration order.
+///
+/// Each game is behind its own cargo feature so a small bundle can link a
+/// subset (doc 02 §8.1); a build with no game features has an empty catalog and
+/// the Library says so rather than inventing an entry.
+#[must_use]
+pub fn registered_games() -> Vec<Arc<dyn ErasedGame>> {
+    vec![
+        #[cfg(feature = "game-chess")]
+        Arc::new(Adapter::<games::chess::ChessSetup>::new()),
+        #[cfg(feature = "game-tiles")]
+        Arc::new(Adapter::<games::tiles::TilesSetup>::new()),
+    ]
+}
+
+/// Every linked game through its read-only discovery/setup interface.
+/// Game factories/default registration remain unchanged for authority owners.
+/// The DOM shell consumes this path to avoid materializing runtime vtables.
+#[must_use]
+pub fn registered_discovery_games() -> Vec<Arc<dyn discovery::ErasedDiscoveryGame>> {
+    vec![
+        #[cfg(feature = "game-chess")]
+        Arc::new(Adapter::<games::chess::ChessSetup>::new()),
+        #[cfg(feature = "game-tiles")]
+        Arc::new(Adapter::<games::tiles::TilesSetup>::new()),
+    ]
+}
+
+/// The catalog for this build, ordered for the supplied locale.
+#[must_use]
+pub fn catalog(localizer: &dyn Localizer) -> Catalog {
+    Catalog::new(registered_games(), localizer)
+}

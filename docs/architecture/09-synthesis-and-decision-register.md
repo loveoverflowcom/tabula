@@ -72,7 +72,7 @@ Ordered by how likely the replacement is.
 | **Database deployment model** (host, replicas, pooling, partitioning) | `tabula-storage` ports | Medium | One crate |
 | **Redis** (once introduced) | directory/presence/pubsub ports | Medium | Ports already exist as the in-process implementation |
 | **Web UI framework** (Leptos) | `tabula-protocol` types + tokens.css | Low–Medium | The shell only; protocol and design survive |
-| **Desktop/mobile shell** (Tauri or native) | gameplay never depends on it | Low | Shell only |
+| **Desktop shell** (Tauri or native) and **mobile shell** (Compose Multiplatform, ADR-0032) | desktop gameplay never depends on it; mobile gameplay requires a native `GameHost` (ADR-0043; currently blocked) | Low (desktop) / Medium (native mobile embedding) | Shell only; native game adapters/artifacts are not yet delivered |
 | **Audio backend** (Macroquad → kira) | `AudioSink` | Medium | One crate |
 | **Wire codec** (Postcard → other) | `Codec` enum + golden vectors | Low | Protocol crate + a client rollout |
 | **Matchmaking algorithm** | it reads only capabilities + queue entries | Medium | One module |
@@ -106,18 +106,31 @@ update in the same PR (doc 00 §7.1).
 | Dual codec (Postcard prod / JSON debug) | 009 | golden vectors, subprotocol negotiation | Debuggability of a binary protocol is a productivity multiplier |
 | One Tokio task per match, single writer | 006 | I-14, ownership leases | Ordering correctness with minimal machinery |
 | Compile-time game registry (Phase A) | 007 | registry crate structure | Type safety now; Phase B/C doors kept open at near-zero cost |
-| PostgreSQL as the only Stage-0 datastore; event log + snapshots | 013 | doc 03 §9 | One store, transactional, replay-friendly |
-| Modular monolith, one repo, one workspace | 015 | doc 01 §2, doc 06 §7 | A small team cannot afford distribution |
+| PostgreSQL as the only Tabula Stage-0 datastore; event log + snapshots; external credentials are Kanidm-owned | 013 + 034 | doc 03 §9, ADR-0034 | One Tabula store, transactional, replay-friendly |
+| Modular monolith, one repo, one workspace; account-auth boundary reserved separately | 015 + 034 | doc 01 §2, doc 06 §7 | Gameplay stays together; skeleton does not open runtime |
+| Kanidm account adapter/session lifecycle in tabula-auth; session/resource enforcement and match grants in tabula-server | [034](../adr/0034-kanidm-auth-service-skeleton.md) | std-only frame, deps.toml; runtime evidence still owed | Owner-selected preparation for #54 preserving ADR-0031 |
+| Isolated #54 session/PostgreSQL, HTTP and UI sequence; production stays closed | [036](../adr/0036-isolated-durable-session-validation.md) | opt-in storage feature, real PostgreSQL receipts, unchanged startup failures | Owner-authorized bounded exception; provider/output/phase evidence remain owed |
+| Invited Kanidm web login in a native opt-in service library; actual disposable provider evidence required | [038](../adr/0038-isolated-invited-kanidm-web-auth.md) | pinned issuer/client/ES256/PKCE, captured epochs, single-use preauth and dedicated Kanidm/PostgreSQL CI | Owner-requested narrow implementation; production, live provisioning, signup and phase exits remain closed |
+| Isolated verified-provider Tabula enrollment, permitted profile editing and durable social/presence contracts | [044](../adr/0044-isolated-account-registration-social.md) | current session/target publication fences, scoped receipts, real Kanidm/PG/browser acceptance; [ledger](../verification/issue-54-account-followup/README.md) | Owner requests every #54 criterion; production/provider provisioning, native/mobile social and broad phase exits stay closed |
+| Isolated bounded match actor/wire 0.1; canonical counters remain internal | [039](../adr/0039-isolated-match-actor-runtime.md) | single-owner guarded apply/output, scoped receipts, generic registry bridge and offline evidence | Separately delivered authority/privacy slice; SQL/recovery extended only by ADR0040 |
+| SQL-free journal and opt-in PostgreSQL atomic canonical/snapshot/whole-ledger commits, durable monotonic watermarks/owner fence and exact bounded reopen | [040](../adr/0040-isolated-durable-match-postgres.md) | real PostgreSQL/process law evidence and exact-tree CI required; [ledger](../verification/durable-match-postgres/README.md) records actual status | PR1 of three new sequential slices; production, live migrations, network output/authority and phase exits remain closed |
+| Bounded authenticated direct-match HTTPS admission/polling and projection-only two-browser play | [041](../adr/0041-isolated-direct-match-browser-play.md) | durable commit/publication fences and actual independent Chromium/PG; [ledger](../verification/join-code-browser-chess/README.md) owns status | PR2 only; reconnect/resync is PR3, production/phase exits remain closed |
 | Voice on a separate plane behind a trait | 016 | `tabula-voice` | Media must never share the game socket's semantics |
 | Per-game versioned, hashed asset packs | 017 | `tabula-assets`, manifest | Otherwise app size grows with the catalog |
-| Design tokens defined once in Rust, adapted to CSS and Theme | 018 | `xtask gen-tokens`, no-raw-colors lint | One product feel across DOM and canvas |
-| Tauri never required for gameplay | 019 | I-15, dependency matrix | Gameplay must not sit in a WebView |
-| No k8s/Kafka/NATS/mesh/microservices before a measured need | 020 | doc 06 §1.1 triggers | Operational tax paid daily, benefit received rarely |
+| One semantic design-token authority: authored `tokens.toml`, generated Rust runtime, CSS and JSON adapters | 018 → 027 | `xtask gen-tokens`, freshness gate, no-raw-colors lint | One product feel across DOM and canvas without ambiguous or hand-edited sources |
+| Tauri never required for gameplay | 019 | I-15, dependency matrix | Desktop gameplay must not sit in a WebView; ADR-0043 retires the superseding mobile WebView path |
+| Historical CMP mobile shell with a WebView `GameHost` (gameplay superseded by ADR-0043); Kotlin/Swift own UI, navigation and device services, never rules | [032](../adr/0032-compose-multiplatform-mobile-host.md) | `xtask gen-tokens` (Kotlin adapter), `check-no-raw-colors` (Kotlin), CI Android build | One mobile UI codebase on platform navigation; the same Rust/WASM game as the web |
+| Historical first-party WebView `GameHost` (retired by ADR-0043): the packaged document served on a virtual origin, a typed bounded capability-gated bridge (lifecycle, launch preferences, `keep-awake`), one shared `GameSession` lifecycle | [033](../adr/0033-webview-gamehost-first-party-embedding.md) | `BundlePaths`/codec/session tests, `stage-mobile-game` packaging tests, shared wire vectors, desktop UI tests, `tools/mobile-host-check` (desktop Chrome); Android/iOS WebView execution NOT_RUN | The same Rust/WASM game and verified loader on web and mobile, without a mobile-only renderer or a second rules/credential path |
+| Native Rust/Macroquad `GameHost` in the CMP app; mobile web gameplay retired without fallback | [043](../adr/0043-native-mobile-gamehost.md) | Mobile source/packaging guard and CMP viewport tests; native adapters and device acceptance blocked | Reuses Rust ownership and renderer; no speed/frame-rate claim from compilation |
+| Public registry discovery in CMP Home/Library/detail/setup review, independent of native runtime inventory | [045](../adr/0045-mobile-discovery-parity.md) | Generated catalog freshness, query tests and shared CMP interaction/screenshots; device/native checks scoped separately | Same catalog authority and semantic design language as web without gameplay preload or inferred native availability |
+| Bounded CMP account task screens and typed session port; current read-only identity only, default native adapter unavailable | [046](../adr/0046-mobile-account-surfaces.md) | Current request/lifecycle fencing, identity-bound managed avatar, explicit unavailable native actions; [ledger](../verification/issue-103-mobile-account/README.md) distinguishes source/tests/native evidence | #103 UI draft does not infer native provider/social delivery from isolated web capability, alter GameHost or open phase exits |
+| No k8s/Kafka/NATS/mesh/microservices before a measured need; ADR-0034 records the account-auth skeleton exception | 020 + 034 | doc 06 §1.1 triggers | Operational tax paid daily, benefit received rarely |
 | `#![forbid(unsafe_code)]` in rules; canonical hashing | 021 | workspace lints | Determinism and audit integrity |
 | Chat transport platform / chat scoping game-driven | 022 | `ChatScopes` enforcement tests | Serves both chess and werewolf with one mechanism |
 | Matchmaking reads only capabilities | 023 | dependency matrix | Keeps matchmaking generic |
 | Ratings computed by the platform from `MatchOutcome` | 024 | rating job | Ladder integrity uniform across games |
 | `tabula-testkit` conformance mandatory per game | 025 | `register!` requires it | Determinism cannot be maintained by review |
+| Browser/native session channel and lifecycle contract | [031](../adr/0031-browser-native-session-contract.md) | [Required session acceptance](../verification/session-contract/README.md); enforcement NOT_IMPLEMENTED until Phase 4 | Removes contradictory credential/Hello sketches; no phase crossing or executable wire change |
 
 ### 3.2 EXPERIMENT
 
@@ -128,13 +141,14 @@ Direction chosen, details unproven. Build behind the seam; let measurement decid
 | Macroquad's practical ceiling (text, render targets, mobile input) | Phase 2 / 6 | Build chess and tiles UI; log every workaround | `renderer-miniquad` |
 | Macroquad UI widgets vs our own `RenderList` widgets | Phase 2 | Implement ~20 widgets ourselves; measure effort | Use Macroquad's UI for internal tools only |
 | Postcard vs alternatives for the game payload | Phase 4 | Measure size and CPU under load L1/L2 | Protobuf for the payload only |
-| Leptos ↔ Macroquad handoff UX | Phase 5 | Time-to-first-frame at `/play/:id`; user testing | Single-bundle integration spike, or a lighter shell |
+| Leptos ↔ Macroquad handoff UX | Bounded local slice (ADR-030); network flow Phase 5 | [Local integration ledger](../verification/chess-integration/README.md); time-to-first-frame and real target user testing remain explicit evidence | Keep separate documents; no saved local resume or phase-exit inference |
+| Renderer vs containment for DOM-heavy gameplay | Isolated tooling now (ADR-029); production remains gated | [Issue-60 RFC](../rfcs/issue-60-renderer-embedding.md): identical Macroquad document/iframe control, minimal PixiJS adapter, lifecycle/interop and target-specific runtime evidence | Keep Macroquad and ADR-011 separate-document handoff; production choice deferred |
 | Tauri desktop value (launcher/updater/notifications) | Phase 5 | Spike; compare with `cargo-dist` alone | Ship without Tauri |
-| Tauri mobile for shell screens | post-Phase 6 | Only if native shell screens prove painful | Keep native shell |
+| Tauri mobile for shell screens | post-Phase 6 | Not pursued: the mobile shell is Compose Multiplatform (ADR-0032) | Keep the CMP shell |
+| Native Macroquad `GameHost` embedding, frame pacing and lifecycle in CMP Android/iOS | Phase 6 (ADR-0043 adapter changes) | Executed per-platform in-app/device evidence against #81; current adapters blocked | Bounded reviewed upstream API/patch; no mobile WebView fallback |
 | Voice provider (self-hosted LiveKit vs managed) | Phase 8 | Cost per participant-minute, quality, ops burden | Swap adapters |
 | Snapshot cadence and log compaction policy | Phase 4→10 | Measure rehydration time and storage growth | Tune per `StateSizeClass` |
 | Sharded executor vs task-per-match | Phase 10 | Benchmark at 30k+ matches/process | Stay with task-per-match; add processes |
-| Deck commitment scheme for provable shuffles | Phase 3 | Does anyone care? Is verification usable? | Drop it; projection remains the guarantee |
 | Generated config forms from `Config` schema | Phase 5 | Try it for four games | Hand-written form per game |
 | Board Reader depth (status/actions vs full regions) | Phase 5 / 9 | Screen-reader user testing | Ship status+actions only |
 | Audio backend (Macroquad vs kira) | Phase 3 | Do we need buses/ducking for voice? | Adopt kira in the backend |
@@ -214,8 +228,8 @@ refinements, each with a reason.
 | `GameCommand` as the input to the runtime | **A single `Input` enum** covering player commands, timers, seat lifecycle, and admin actions | Makes replay total, timers deterministic, and resolves every "who owns AFK/disconnect/pause" question by construction (doc 00 §3.1) |
 | `services/{gateway, game-server, matchmaking, ...}` from day one | **One `tabula-server` binary** composed of crates with the right seams; the gateway/worker split is Stage 2 with a written trigger | Three binaries triple the operational cost at Stage 0 for zero benefit; the split we will actually want is gateway↔worker, not per-feature (doc 01 §2.3) |
 | Games as one crate each | **One crate per game with a feature split** (`rules` / `presentation` / `bots`) | The server must compile a game without a renderer; this is I-1 in practice (doc 02 §1) |
-| Presentation abstraction justified by future renderer replacement | Also justified **immediately** by `renderer-headless`, which enables `RenderList` and golden-image tests in CI with no GPU | An abstraction whose only justification is a hypothetical future gets skipped or done badly (doc 04 §6.1) |
-| Poker/generic card game as reference Game B | **Tiến Lên** | Same architectural coverage (hidden hands, shuffle, projections) without building a betting economy; also fits the first market |
+| Presentation abstraction justified by future renderer replacement | Also justified **immediately** by `tabula-render-headless`, which enables `RenderList` and golden-image tests in CI with no GPU | An abstraction whose only justification is a hypothetical future gets skipped or done badly (doc 04 §6.1) |
+| Poker/generic card game as reference Game B | **Caro** (simple product game / SDK-friction), with hidden-information coverage moved to **Werewolf** | A hidden-hand card game (originally Tiến Lên) was superseded in the reference portfolio: Werewolf already owns hidden information, event non-existence, and phased/many-seat validation more thoroughly than a card game would, and a second product game that is *not* hidden-information (Caro) is a more honest test of "is a second game cheap to add" than a game that reuses Werewolf's own dimension |
 | "Redis optional initially" | Redis deferred with **two explicit conditions**, and a Postgres placement table as the intermediate step | "Optional" tends to become "added anyway"; a numeric trigger plus a cheaper intermediate keeps it honest (doc 06 §4.3, §4.4) |
 | Accessibility as a design-system concern | Accessibility is **part of the game contract** (`describe()`), because a canvas is otherwise unreadable to assistive technology | Retrofitting a11y onto a canvas game is not possible; a per-game function is the only mechanism that works (doc 04 §10.4) |
 | Snapshot/event-log strategy | Store **both inputs and events**, with a stated 2× cost and three concrete reasons | Events are read far more often than replays run, and storing both is what makes production determinism drift *detectable* (doc 03 §9.5) |
@@ -231,7 +245,8 @@ Named so they can be watched.
 
 1. **A projection leak in a hidden-information game.** The highest-severity, hardest-to-detect
    failure. Mitigations: `SecretModel` scans on every PR, socket-level assertions in werewolf tests,
-   `View` types that cannot represent absent secrets, a second-engineer review of every
+   bag-order assertions in Tiles tests, `View` types that cannot represent absent secrets, a
+   second-engineer review of every
    `project`/`view_event`, and a leak bounty in the closed beta.
 2. **Silent determinism rot.** A `HashMap`, a float, an unordered iteration, or a behavior change
    without a `rules_version` bump. Mitigations: lints, `rules_hash`, state hashes in the log, and the
@@ -239,9 +254,10 @@ Named so they can be watched.
 3. **Phase 4 ordering/idempotency bugs under load.** Correct in tests, wrong at 5k CCU. Mitigations:
    load scenarios L1/L2/L4/L7 from the start of the phase, not the end; fencing tokens before any
    multi-process work; the "must always be 0" counters.
-4. **Macroquad's ceiling arriving at the worst moment** (during mobile work, Phase 6). Mitigations:
-   the `Renderer` seam, a Phase 2 spike that documents every workaround, and an early "hello
-   triangle" on iOS to de-risk the toolchain separately from the renderer.
+4. **Macroquad's ceiling and native mobile embedding arriving at the worst moment** (during mobile work, Phase 6). Mitigations:
+   the `Renderer` seam, a Phase 2 spike that documents every workaround, an early "hello
+   triangle" on iOS to de-risk the toolchain separately from the renderer, and the executed
+   per-platform native in-app/device evidence ADR-0043 requires before the embedding ships.
 5. **Scope drift into building a UI framework or an engine.** The classic failure of exactly this
    kind of project. Mitigations: the capped `RenderCmd` set with a written admission rule, the "no
    phase is only refactoring" constraint, and the fact that every phase must end in a demo a
@@ -257,15 +273,16 @@ For the first agent or developer to pick this up:
 1. Read 00-architecture-principles.md fully. It is the contract.
 2. Read 07 §"Phase 0" and 01 §2–§6.
 3. Create the workspace exactly as in doc 01 §2.2, but ONLY the Phase-0 crates
-   (tabula-core, tabula-game-api, tabula-testkit, games/tictactoe, xtask).
+   (tabula-core, tabula-game-api, tabula-testkit, xtask).
 4. Write the enforcement FIRST: deps.toml + xtask check-deps + clippy.toml + CI.
    Then deliberately add a forbidden dependency and confirm CI fails. Remove it.
 5. Implement tabula-core exactly as sketched in doc 02 §2. Pin DetRng's algorithm and
    shuffle implementation; write the test that proves shuffle output is stable.
 6. Implement tabula-game-api exactly as sketched in doc 02 §3–§4.
-7. Implement games/tictactoe from doc 02 §10 (the code is nearly complete there).
+7. Implement initial game verification against the conformance suite (historical Phase 0
+   prototype lessons preserved in docs/legacy/tictactoe.md).
 8. Implement tabula-testkit's conformance! suite from doc 02 §11.1.
-9. Run `xtask selfplay tictactoe --matches 10000`. It must pass.
+9. Run `xtask selfplay chess --matches 10000`. It must pass.
 10. Only then proceed to Phase 1.
 ```
 
@@ -313,7 +330,7 @@ architecture (doc 04 §1), asset pipeline (doc 04 §12.1), chat flow (doc 03 §1
 | Macroquad first, Miniquad escape hatch, wgpu later | ADR-010, doc 04 §6.3 |
 | Leptos shell + Macroquad gameplay, separate runtimes | ADR-011, doc 04 §3 |
 | Optional Tauri, never required for gameplay | ADR-019, doc 04 §3.3 |
-| Mobile native Macroquad first | doc 01 §7, doc 07 Phase 6 |
+| Mobile: CMP shell, native Rust/Macroquad in the same app; WebView gameplay retired, adapters blocked | ADR-0043, doc 01 §7, doc 07 Phase 6 |
 | Axum + Tokio + Postgres + SQLx backend, Redis optional | doc 01 §1.2, doc 03, ADR-014 |
 | Flexible per-game networking semantics | doc 02 §12, doc 00 §6.3 |
 | Platform vs game ownership fully resolved | doc 00 §6 (including the contested list) |

@@ -1,0 +1,502 @@
+pack = "tiles"
+version = "0.1.0"
+game = "com.tabula.tiles"
+
+[[files]]
+name = "tiles@1x.atlas"
+path = "tiles/0.1.0/tiles@1x.b3-7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac.png"
+hash = "7311ce09ed4007eae56a9cba3433cf1d9de0b268ce78ca558dbe16c0e82cc7ac"
+bytes = 4587
+priority = "critical"
+density = 1
+
+[[files]]
+name = "tiles@2x.atlas"
+path = "tiles/0.1.0/tiles@2x.b3-b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b.png"
+hash = "b10751c9fe63fc872aff31c9082fcc0c0881ea6a1046d0b6831c89daec63d70b"
+bytes = 12943
+priority = "critical"
+density = 2
+
+[[resources]]
+id = "tiles/city-cap"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 76
+y = 76
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 152
+y = 152
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-cap-crossroad"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 148
+y = 76
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 296
+y = 152
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-cap-road"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 4
+y = 4
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 8
+y = 8
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-cap-road-left"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 292
+y = 220
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 584
+y = 440
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-cap-road-right"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 220
+y = 220
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 440
+y = 440
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-corner"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 292
+y = 76
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 584
+y = 152
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-corner-pennant"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 364
+y = 76
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 728
+y = 152
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-corner-road"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 4
+y = 148
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 8
+y = 296
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-corner-road-pennant"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 76
+y = 148
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 152
+y = 296
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-full"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 4
+y = 220
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 8
+y = 440
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-three"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 148
+y = 148
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 296
+y = 296
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-three-pennant"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 220
+y = 148
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 440
+y = 296
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-three-road"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 292
+y = 148
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 584
+y = 296
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-three-road-pennant"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 364
+y = 148
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 728
+y = 296
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-through"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 220
+y = 76
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 440
+y = 152
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-two-adjacent"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 148
+y = 220
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 296
+y = 440
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/city-two-opposite"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 76
+y = 220
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 152
+y = 440
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/monastery"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 76
+y = 4
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 152
+y = 8
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/monastery-road"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 148
+y = 4
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 296
+y = 8
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/road-crossroad"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 4
+y = 76
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 8
+y = 152
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/road-curve"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 292
+y = 4
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 584
+y = 8
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/road-junction"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 364
+y = 4
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 728
+y = 8
+width = 128
+height = 128
+
+[[resources]]
+id = "tiles/road-straight"
+
+[[resources.variants]]
+file = "tiles@1x.atlas"
+
+[resources.variants.region]
+x = 220
+y = 4
+width = 64
+height = 64
+
+[[resources.variants]]
+file = "tiles@2x.atlas"
+
+[resources.variants.region]
+x = 440
+y = 8
+width = 128
+height = 128

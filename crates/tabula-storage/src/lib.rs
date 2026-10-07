@@ -7,13 +7,20 @@
 //! inverts that: the ports end up shaped by SQL, and the fast test suite never
 //! materialises. Build ports → fakes → runtime → **then** this crate.
 //!
+//! ADR-0036 opens one narrower exception: the non-default, native-only
+//! `session-postgres` feature provides durable identity/session authority for
+//! isolated validation. Its explicit migrations live in `session_migrations/`;
+//! the general schema below and both production service entrypoints stay gated.
+//!
 //! **Forbidden: `axum`, game crates, renderers, `tabula-registry`.**
 //!
 //! ## Compile-time-checked queries, offline
 //!
 //! `sqlx` with the macros and a **committed `.sqlx/`** directory, so the
 //! workspace builds in CI and on a fresh checkout without a live database
-//! (doc 01 §1.2). Regenerate with `just sqlx-prepare` after changing a query.
+//! (doc 01 §1.2). Regenerate future workspace queries with `just sqlx-prepare`.
+//! The opt-in ADR-0036 session adapter uses `just sqlx-prepare-session` against
+//! its explicitly migrated disposable `PostgreSQL` database.
 //!
 //! If macro compile times become painful, fall back to `sqlx::query` with
 //! hand-mapped rows in the hot files — not to an ORM.
@@ -95,3 +102,27 @@
 //! ```
 
 #![forbid(unsafe_code)]
+
+/// Isolated PostgreSQL identity/session authority (ADR-0036).
+///
+/// This optional slice does not enable either production service or `WebSocket`
+/// delivery. Observations remain snapshots; the isolated HTTP publication guard
+/// fences only a bounded server-frame handoff under ADR-0036.
+#[cfg(all(feature = "session-postgres", not(target_arch = "wasm32")))]
+pub mod session;
+
+/// Isolated atomic PostgreSQL match journal and explicit migrations (ADR-0040).
+#[cfg(all(feature = "match-postgres", not(target_arch = "wasm32")))]
+#[clippy::msrv = "1.94"]
+pub mod match_postgres;
+
+/// Bounded durable join-code admission and live session/commit fencing.
+#[cfg(all(feature = "online-match-postgres", not(target_arch = "wasm32")))]
+#[clippy::msrv = "1.94"]
+pub mod online_match;
+
+#[cfg(all(feature = "accounts-postgres", not(target_arch = "wasm32")))]
+pub mod accounts;
+
+#[cfg(all(feature = "social-postgres", not(target_arch = "wasm32")))]
+pub mod social;

@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 2. Consumed by Leptos (web), presentation (canvas), and the admin UI —
 # so it must not drag any of them into the others.

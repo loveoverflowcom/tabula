@@ -6,17 +6,23 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
-# PHASE 5. Recommended to start life as a module inside tabula-match in
-# Phase 4 and be EXTRACTED here in Phase 5 (doc 01 §3).
+# The explicitly isolated account/social exception opens only friends and
+# presence. Rooms, matchmaking and the remaining Phase 5 gate stay closed.
 # FORBIDDEN: sqlx, axum, game crates, and tabula-game-api — the lobby reasons
 # about GameCapabilities, never about rules (ADR-023).
+[features]
+default = []
+authority = ["dep:tabula-session"]
+
 [dependencies]
 tabula-core     = { workspace = true }
-tabula-protocol = { workspace = true }
-tabula-registry = { workspace = true }
-tabula-match    = { workspace = true }
+serde          = { workspace = true }
 thiserror       = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tabula-session = { workspace = true, optional = true }
 
 # tokio   = { workspace = true }
 # tracing = { workspace = true }

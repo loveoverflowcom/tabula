@@ -3,6 +3,11 @@
 Plain SQL, run by `sqlx migrate`, versioned in this repository, applied in CI and
 at boot behind a flag. One tool, no second migration framework. (doc 01 §1.2)
 
+This general storage schema remains phase-gated. ADR-0036's bounded session
+validation uses the separate `../session_migrations/` directory, applied only
+through explicit `PgSessionStore::migrate` or the disposable CI prepare job.
+Neither production service activates those migrations.
+
 ```bash
 cargo sqlx migrate add <name>     # creates NNNNNNNNNNNNNN_<name>.sql
 just db-migrate

@@ -20,7 +20,7 @@ flowchart TB
         PRES["Presenter (per game): View → RenderList"]
         ANIM["animation engine · motion tokens"]
         DS2["design tokens → Theme struct"]
-        REND["renderer-macroquad"]
+        REND["tabula-render-macroquad"]
     end
     subgraph SHARED["Shared Rust crates (both runtimes)"]
         NET["tabula-net-client"]
@@ -58,6 +58,31 @@ Ambiguous cases and their rulings:
 - **Lobby "ready" panel while the board is visible**: canvas, because it must be one visual scene.
 - **Settings during a match**: a canvas-drawn overlay with only the handful of in-match toggles
   (sound, motion, board theme); the full settings page is shell.
+
+### 1.2 Public occupant display
+
+`tabula-presentation` owns the pure host-to-gameplay `PublicDisplay` / `PublicDisplayMap`
+contract. Its neutral `AvatarFallback` semantics live in `tabula-design`, allowing shell and
+canvas to share the same fallback without the shell importing the presentation runtime.
+The host supplies an explicit public subject, display revision,
+optionally permitted label, and optionally declared managed `AssetRef`; rules and projections
+do not fetch profiles or derive an avatar from a seat, role, phase or alive status. Game status
+is a separate marker outside the avatar. No account identifier is a display label.
+
+An image remains on the shared human/bot/empty neutral fallback until the host completes its
+exact resource ticket after its existing managed loading boundary succeeds. Occupant changes,
+vacating, rebinding, display revisions and new host epochs retire old image state and late
+callbacks. Every new host activation uses a fresh epoch; clones are display snapshots within
+that activation, not independent resource owners. Hosts retain the same display facts across
+their dashboard/header/game surfaces and keep image crop and dimensions consistent.
+
+The current self-profile HTTP DTO has only `version` and `account_id`. This contract adds no
+HTTP field, avatar URL, profile lookup, delivery service or authenticated simulator seat.
+ADR-0035's local Werewolf host supplies synthetic guest subjects and no image or label; the
+shell's header/home/self-profile and the local game therefore use the same neutral human
+fallback. Managed account image delivery remains unavailable until an approved public source
+and resource adapter exist. Pure readiness tests prove callback binding, not actual image
+delivery or account integration.
 
 ---
 
@@ -119,8 +144,11 @@ Two independent WASM bundles:
 ```
 
 `/play/:match_id` is a **separate document** (a real navigation, not a client-side route into a
-canvas), served by a minimal HTML page that boots `game.wasm` with parameters from the URL and a
-short-lived join token from `sessionStorage`.
+canvas), served by a minimal HTML page that boots `game.wasm` with bounded public
+parameters. Under [ADR-0031](../adr/0031-browser-native-session-contract.md), the
+same-origin document authenticates with its HttpOnly cookie and obtains a fresh
+scoped join grant by HTTP, held only in memory. No credential/grant travels in
+URL or sessionStorage. This networked handoff remains future-phase work.
 
 ### 3.2 Why separate bundles (ADR-011)
 
@@ -137,26 +165,87 @@ The duplication cost is real but small: `tabula-protocol`, `tabula-core`, `tabul
 and `tabula-net-client` appear in both bundles. They are the *small* crates. The presenters and
 Macroquad — the big things — appear only in `game.wasm`.
 
-### 3.3 Native (desktop and mobile)
+The DOM catalog/setup consumer uses `registered_discovery_games()` and
+`DiscoveryCatalog`: its read-only erased interface carries the existing facts,
+configuration validation and handoff declarations, but no canonical match
+factory/restoration vtable. Each method statically forwards to the unchanged
+game adapter (I-9); the full `ErasedGame`, legacy catalog and server factories
+remain available with their original signatures. This prevents unused authority
+code from being retained merely by discovery, without weakening validation or
+changing the separate-document boundary. The existing emitted shell-WASM cap
+remains 900,000 bytes; source graph and actual emitted bytes are separate evidence.
 
-One binary. The shell screens are drawn by the **same** Macroquad runtime using a small set of
-`RenderList`-based UI components from `tabula-presentation`, themed by the same tokens.
+[ADR-0044](../adr/0044-isolated-account-registration-social.md) adds a separate,
+non-default `account-social` shell composition for verified enrollment, editable
+profiles and authorized social snapshots. Its combined `online,account-social`
+artifact has an enforced 1,100,000-byte raw WASM ceiling. Default and `online`
+without that feature retain the 900,000-byte ceiling. CI measures all three
+optimized emitted artifacts, then runs the complete account/social acceptance
+on the combined artifact. This bounded additional account UI does not load game
+presenters/assets or authorize production startup; emitted size establishes no
+browser timing or phase-exit claim.
 
-This is a real divergence between web and native and it is accepted deliberately:
+### 3.3 Native desktop and mobile
 
-- Web gets a DOM shell because the web platform's text, forms, accessibility, and deep linking are
-  worth using.
-- Native gets a canvas shell because shipping a WebView (or a second UI toolkit) into the mobile app
-  just to render a lobby list contradicts ADR-019 and doubles the mobile surface.
-- **The consequence to manage:** the lobby/catalog UI must be implemented twice (Leptos components
-  and `tabula-presentation` widgets). That is bounded (roughly a dozen screens, mostly lists,
-  cards, and forms) and both implementations consume the same tokens and the same protocol types,
-  so they stay visually and behaviorally consistent. Screen *specifications* live in
-  `docs/ui/screens/` and are the shared source of truth.
-- **EXPERIMENT** (Phase 6): if native shell screens become a drag, evaluate a Tauri shell for
-  desktop only, keeping mobile native.
+**Desktop** is one binary. The shell screens are drawn by the **same** Macroquad runtime using a
+small set of `RenderList`-based UI components from `tabula-presentation`, themed by the same
+tokens. Gameplay never sits in a WebView there (ADR-019).
+
+**Mobile** uses the CMP shell of ADR-0032 with native Rust/Macroquad gameplay in
+that same app, per [ADR-0043](../adr/0043-native-mobile-gamehost.md). Kotlin/Swift own
+UI, navigation and permitted device services. Rust owns rules, projection,
+presentation, `RenderList` and the renderer; canonical state and per-frame drawing
+commands never cross the host bridge (I-5/I-6/I-10).
+
+The WebView/WKWebView mobile gameplay choice of ADR-0032/0033 is superseded. Its
+mobile hosts and packaging are retired. Current Android/iOS builds show gameplay
+unavailable until a real native adapter exists; there is no web fallback.
+Macroquad/Miniquad standalone mobile support alone does not prove CMP embedding.
+
+Web retains its separate DOM shell and WASM game documents. Desktop retains its
+native Macroquad runtime. Mobile shell screens consume the same generated Kotlin
+tokens and `docs/ui/screens/` specifications. ADR-0045 adds a generated public
+registry catalog and CMP Home/Library/detail/setup review; discovery availability
+does not establish native gameplay readiness. Native surface/input,
+lifecycle, first-frame and performance acceptance must be executed on Android/iOS;
+CMP desktop preview pixels establish only shell layout.
+
+Issue #101 extends the existing CMP foundation with adaptive application chrome, shared shell
+components, vi/en copy and public shell route identities for Home, Games, detail, setup and
+Account. The simulated local preview enters through `GameHost`; production gameplay remains
+unavailable under ADR-0043, as do native catalog/account services. Saved navigation restores
+shell locations, never an active local match. This supplies the navigation seam for subsequent mobile parity work without opening
+native accounts, remote discovery, OS deep links or a phase exit. Issue #102's
+[bounded discovery parity](../adr/0045-mobile-discovery-parity.md) extends that
+seam with actual public registry metadata, search and filters. Catalog generation
+is checked independently of runtime packaging; setup remains read-only and
+native start unavailable until ADR-0043's adapter/configuration contract is met. See the
+[mobile shell contract](../ui/screens/mobile-shell.md) and its separate execution ledger.
+
+[ADR-0046](../adr/0046-mobile-account-surfaces.md) extends only the CMP shell
+with Account/Login/Register/self-Profile/Friends task screens and a typed
+account-session port. Current read-only identity must be supplied by an adapter;
+production defaults to explicit native-adapter unavailability. The optional
+managed image is bound to the exact current identity instance and otherwise
+uses neutral. No native provider/secure-store/social integration, profile edit,
+private persistence or native GameHost change is opened. The
+[screen contract](../ui/screens/mobile-account.md) and
+[evidence ledger](../verification/issue-103-mobile-account/README.md) distinguish
+this UI draft from the separate ADR-0038/0044 isolated web implementation and
+from unexecuted native/device acceptance.
 
 ### 3.4 Handoff: entering and leaving a match
+
+The networked flow below remains a future-phase contract. The implemented opt-in
+local discovery handoff is bounded by [ADR-0030](../adr/0030-local-discovery-gameplay-handoff.md):
+`/play/local/` opens a separate existing Macroquad document, with public validated
+two-human configuration and a trusted return to detail/setup. Local return/reload
+starts over; it is neither a server identity nor saved resume or `/matches/:id`.
+The local shell never prefetches gameplay. Explicit launch loads the selected
+WASM, fonts, one nearest-density critical piece atlas and the small managed
+nearest-density grain texture; cover textures and
+other games are not required for its first board. Its bounded public-file cache
+is described in §12.2 and the [loading ledger](../verification/game-loading/README.md).
 
 ```mermaid
 sequenceDiagram
@@ -167,12 +256,13 @@ sequenceDiagram
 
     U->>SH: click "Start"
     SH->>SRV: POST /matches (or room start)
-    SRV-->>SH: { match_id, join_token }
-    SH->>SH: sessionStorage.set(match_ctx { match_id, join_token, game_id@version, pack })
+    SRV-->>SH: { match_id, public runtime metadata }
+    SH->>SH: sessionStorage.set(public match_ctx { match_id, game_id@version, pack })
     SH->>SH: prefetch asset pack manifest + game.wasm (link rel=prefetch)
     SH->>GR: navigate to /play/:match_id
     GR->>GR: read match_ctx; show branded loader with real progress
-    GR->>SRV: WS Hello + Attach (join_token)
+    GR->>SRV: authenticated HTTP + CSRF: obtain fresh scoped join grant
+    GR->>SRV: cookie + Origin WS upgrade; credential-free Hello + Attach(grant)
     SRV-->>GR: Welcome { view, capabilities }
     Note over GR: play
     GR->>SRV: match ends (ViewEvent Ended)
@@ -288,11 +378,11 @@ pub trait KvStore {
 
 | Data | Key | Backend | Notes |
 |---|---|---|---|
-| Session token | `auth.session` | web: `localStorage`; native: OS keychain/credential store | Never in plain files on native |
+| Session credential | outside `KvStore` | web: server-set host-only HttpOnly cookie; native: OS keychain/credential store | [ADR-0031](../adr/0031-browser-native-session-contract.md); no JS-readable storage/plain files |
 | Preferences (theme, motion, audio, a11y) | `prefs.v1` | KvStore | Synced to the server when logged in, so a new device inherits them |
 | Asset cache | content-hash keys | web: Cache API/IndexedDB; native: app cache dir | Managed by `tabula-assets` (§12) |
 | Cached catalog | `catalog.v1` | KvStore | ETag revalidated |
-| Last match context | `match.ctx` | `sessionStorage` (web) | For handoff + refresh recovery |
+| Public match context | `match.ctx` | `sessionStorage` (web) | Untrusted non-secret hints only; revalidate session/permission and reacquire memory-only grant |
 | Replay cache | `replay.<id>` | native only | Optional |
 
 **No game state is ever cached locally as authoritative.** On reconnect, the server is the source
@@ -311,7 +401,7 @@ flowchart LR
     A["AnimationSet<br/>driven by ViewEvents"] --> P
     T["Theme (tokens)"] --> P
     AS["AssetPack handles"] --> P
-    P --> RL["RenderList<br/>(flat, sorted, immutable)"]
+    P --> RL["RenderList<br/>(opaque, ordered, immutable)"]
     RL --> RB["Renderer backend"]
     RB --> GPU["screen"]
     IN["InputEvent"] --> P2["Presenter::on_input"]
@@ -325,38 +415,89 @@ flowchart LR
 board games at a few hundred draw items per frame, rebuilding is cheap and eliminates an entire
 class of stale-UI bugs.
 
+`InputEvent::Pointer` carries a finite `PointerPosition`. Renderer backends validate framework
+coordinates before emitting the backend-neutral event; the presentation contract does not impose a
+viewport bound, so an otherwise valid pointer may be outside the viewport.
+
+The public list is opaque and can only be produced by a validating builder. The backend receives a
+flat stream, but the builder models every clip, transform, and opacity scope as a tree group before
+flattening it. At each tree level, sibling draws and groups are stably ordered by `(layer, z)`;
+the opening command, descendants, and closing command of a group stay contiguous. Consequently a
+low-layer board group cannot leap over a root HUD draw merely because it contains stateful commands,
+and inner draw layers do not escape their parent group. This replaces the earlier, unsound notion of
+sorting an already-flat stream containing `Push*`/`Pop*` pairs.
+
+### 5.1.1 Locked rendering semantics
+
+`RenderListBuilder` is a deterministic, pure presentation-description builder: validated commands
+become a tree of draws and scope groups, which is stably flattened for a backend. A group is a
+**stacking context**. `Layer` and `z` are ordering roles **only among siblings in one stacking
+context**; equal sibling keys preserve insertion order. A scope's own `(layer, z)` positions the
+whole group, and a child layer never escapes that position. This is deliberately not a global
+"higher layer is always on top" rule.
+
+Presenters use finite **local logical units** for every `Rect`, sprite, text point, and path point.
+`Viewport` is the finite, positive logical drawing extent. A backend maps logical units to device
+pixels; `Dpi` affects that mapping only, never values stored in a `RenderList`. `measure_text`
+returns logical-unit metrics for the same reason.
+
+The camera is a local-to-logical mapping applied to draw geometry after active local transforms:
+`logical = (local - camera.origin) * camera.zoom`. The default origin `(0, 0)` and zoom `1` are
+identity. A `PushTransform` composes with its parent (`parent × child`) before the camera. A camera
+origin is the local point mapped to logical origin; it is intentionally named `origin`, rather than
+the previously ambiguous `center`.
+
+`PushClip` is an axis-aligned **logical viewport scissor**. Its rectangle is not affected by the
+camera or any `PushTransform`, regardless of whether the clip is pushed before or after a transform.
+For every draw, the backend transforms local geometry, applies the camera, intersects rasterization
+with the active logical scissor, then converts to device pixels. Rotated or transformed clips are
+not part of this MVP contract.
+
+`PushOpacity` is inherited **primitive opacity**: each descendant primitive multiplies its alpha by
+the active opacity product. It is not render-target-backed composited group opacity, so overlapping
+semi-transparent descendants can differ from a true group composite. A shipped need for the latter
+is the migration trigger for an explicitly different render-target capability; it must not silently
+change this command's semantics.
+
+`tabula-render-headless` has two roles. Its recorder preserves every valid list verbatim. Its CPU
+rasterizer implements only solid, square rectangles (and their borders), scopes, camera, and the
+semantics above; it returns a structured unsupported-command diagnostic for sprites, text, paths,
+linear gradients, and rounded rectangles rather than producing an incomplete golden image.
+
 ### 5.2 The MVP render command set
 
 ```rust
 // crates/tabula-presentation/src/render.rs
-pub struct RenderList {
-    pub cmds: Vec<RenderCmd>,     // sorted by (layer, z) at build end
-    pub camera: Camera2D,
-}
+pub struct RenderList { /* private validated command stream + camera */ }
+// RenderListBuilder constructs nested stacking contexts, stably sorts sibling
+// nodes by (layer, z), checks balanced Push*/Pop* pairs, then flattens for backends.
 
 pub enum RenderCmd {
-    /// Textured quad from an atlas region, with tint, rotation, and pivot.
-    Sprite { asset: AssetHandle, rect: Rect, src: Option<Rect>, tint: Color,
-             rot: f32, pivot: Vec2, layer: Layer, z: i16 },
+    /// Textured quad for a logical resource, with tint, rotation, and pivot.
+    Sprite { asset: AssetRef, rect: Rect, tint: Color,
+             rotation: f32, pivot: Vec2, layer: Layer, z: i16 },
     /// Rounded rectangle with optional per-corner radii and border.
     Rect { rect: Rect, radii: Corners, fill: Option<Paint>, border: Option<Border>,
            layer: Layer, z: i16 },
     /// Single-line or wrapped text with a semantic style token.
-    Text { text: TextRef, at: Vec2, style: TextStyleToken, align: Align,
-           max_width: Option<f32>, color: Color, layer: Layer, z: i16 },
+    Text { text: String, at: Vec2, style: TextStyleToken, align: Align,
+           max_width: Option<Positive>, color: Color, layer: Layer, z: i16 },
     /// Straight or quadratic polyline; used for arrows, connections, highlights.
     Path { points: SmallVec<[Vec2; 8]>, stroke: Border, closed: bool,
            fill: Option<Paint>, layer: Layer, z: i16 },
-    /// Push/pop a rectangular clip (scissor). Must be balanced.
-    PushClip { rect: Rect }, PopClip,
-    /// Push/pop a 2D affine transform (translate/rotate/scale).
-    PushTransform { mat: Affine2 }, PopTransform,
-    /// Push/pop group opacity. Backends may implement via tint if no render target exists.
-    PushOpacity { alpha: f32 }, PopOpacity,
+    /// A logical-viewport scissor group. `layer`/`z` order the whole group.
+    PushClip { rect: Rect, layer: Layer, z: i16 }, PopClip { layer: Layer, z: i16 },
+    /// A local affine-transform group. `matrix` is finite; singular matrices are legal.
+    PushTransform { matrix: Affine2, layer: Layer, z: i16 },
+    PopTransform { layer: Layer, z: i16 },
+    /// An inherited primitive-opacity group, not true off-screen group compositing.
+    PushOpacity { opacity: Opacity, layer: Layer, z: i16 },
+    PopOpacity { layer: Layer, z: i16 },
 }
 
-pub enum Paint { Solid(Color), LinearGradient { from: Vec2, to: Vec2, stops: SmallVec<[(f32, Color); 4]> } }
-pub struct Layer(pub u8);   // Board=0, Pieces=10, Overlay=20, HUD=30, Modal=40, Toast=50
+pub enum Paint { Solid(Color), LinearGradient(LinearGradient) }
+pub struct LinearGradient { /* finite endpoints; at least two ordered GradientStop values */ }
+pub struct Layer(pub u8);   // a sibling ordering role: Board=0, Pieces=10, …
 ```
 
 That is the whole set. Nine command kinds, one paint type with two variants, one layer scheme.
@@ -367,8 +508,8 @@ Keeping these *outside* the abstraction is what prevents building a UI framework
 
 | Concern | Where it lives | Why not abstracted yet |
 |---|---|---|
-| Window/canvas creation, resize, DPI | `renderer-macroquad` | Every backend does this differently; the presenter only needs a logical size |
-| Font loading, atlas packing, glyph caching | `renderer-macroquad` | Text is the most backend-specific area; we expose `TextStyleToken` + measured extents only |
+| Window/canvas creation, resize, DPI | `tabula-render-macroquad` | Every backend does this differently; the presenter only needs a logical size |
+| Font loading, atlas packing, glyph caching | `tabula-render-macroquad` | Text is the most backend-specific area; we expose `TextStyleToken` + measured extents only |
 | Text *shaping* (bidi, ligatures, complex scripts) | Macroquad's capability today | If we need it, `cosmic-text` lands in the backend, not in the contract |
 | Particle systems, shaders, post-processing | Not supported | No game needs it yet. When one does, it arrives as `RenderCmd::Effect { id, params }` with a backend-provided registry (§5.4) |
 | Render targets / offscreen passes | Not supported | Needed for real group opacity and blur; deferred until a design requires it |
@@ -418,10 +559,10 @@ flowchart TB
         RL["RenderList + InputEvent + AudioCue + Theme"]
     end
     subgraph BACKENDS["Backends (replaceable)"]
-        MQ["renderer-macroquad<br/>NOW: web · desktop · Android · iOS"]
+        MQ["tabula-render-macroquad<br/>NOW: web · desktop · Android · iOS"]
         MINI["renderer-miniquad<br/>IF Macroquad blocks us"]
         WGPU["renderer-wgpu<br/>DEFER: winit + wgpu"]
-        HEADLESS["renderer-headless<br/>golden-image + RenderList tests"]
+        HEADLESS["tabula-render-headless<br/>golden-image + RenderList tests"]
     end
     GAMES["game presenters"] --> RL
     UI["shell widgets (native)"] --> RL
@@ -431,7 +572,7 @@ flowchart TB
     RL --> HEADLESS
 ```
 
-### 6.1 `renderer-headless` exists from day one
+### 6.1 `tabula-render-headless` exists from day one
 
 A backend that records the `RenderList` (and optionally rasterizes it with `tiny-skia` for golden
 images) is how presentation gets tested in CI without a GPU. It is ~200 lines and it pays for the
@@ -442,18 +583,19 @@ justification for the abstraction existing before we need a second real renderer
 
 ```rust
 pub trait Renderer {
-    fn begin_frame(&mut self, size: Vec2, dpi: f32) -> FrameCtx;
-    fn submit(&mut self, list: &RenderList);
-    fn end_frame(&mut self);
-    fn measure_text(&self, text: &str, style: TextStyleToken, max_width: Option<f32>) -> TextMetrics;
-    fn load_pack(&mut self, pack: &LoadedPack) -> Result<PackHandles, RenderError>;
-    fn drain_input(&mut self) -> impl Iterator<Item = InputEvent>;
+    fn begin_frame(&mut self, viewport: Viewport, dpi: Dpi, now_ms: u64, theme: Theme) -> FrameCtx;
+    fn submit(&mut self, list: &RenderList) -> Result<(), RenderError>;
+    fn end_frame(&mut self) -> Result<(), RenderError>;
+    fn measure_text(&self, text: &str, style: TextStyleToken, max_width: Option<Positive>) -> Result<TextMetrics, RenderError>;
+    fn drain_input(&mut self) -> Vec<InputEvent>;
 }
 ```
 
 `measure_text` is the one place presenters must ask the backend a question mid-layout. It is
 synchronous and cached; a backend swap changes metrics slightly, which is acceptable because
-layouts are token-driven and flexible rather than pixel-pinned.
+layouts are token-driven and flexible rather than pixel-pinned. Its returned extent is in logical
+units, never backend device pixels. Asset mapping remains a Phase-3 concern and does not cross this
+MVP renderer boundary yet.
 
 ### 6.3 Migration triggers
 
@@ -461,7 +603,7 @@ layouts are token-driven and flexible rather than pixel-pinned.
 |---|---|---|
 | Macroquad → Miniquad | Need custom render targets or shader pipelines Macroquad hides; text shaping requires direct control; input handling bugs we cannot patch around; Macroquad maintenance stalls | Rewrite one crate (`renderer-*`), ~2–4 weeks; games unaffected |
 | Miniquad → winit+wgpu | Need compute, modern pipeline features, better multi-window, or a 3D game | 6–10 weeks; games unaffected if the command set held |
-| Add `renderer-headless` | Immediately (Phase 2) | ~1 week |
+| Add `tabula-render-headless` | Immediately (Phase 2) | ~1 week |
 
 **Anti-trigger:** "wgpu is more modern" is not a trigger. The trigger must be a blocked feature or
 a shipped-quality problem.
@@ -568,7 +710,7 @@ pub struct ColorTokens {
     pub last_action: Color,        // "the opponent just did this"
     pub threat: Color,             // check, danger, being voted
     pub hidden: Color,             // card backs, fog, unknown role
-    pub team: [Color; 8],          // team/seat identity, colorblind-safe set
+    pub team: [Color; 8],          // team/seat identity; never the sole differentiator
     pub seat_marker: [Color; 8],
 }
 
@@ -599,19 +741,36 @@ pub struct ShapeTokens {
 }
 
 pub struct StateLayerTokens {
-    pub hover: f32,     // 0.08 opacity of on-color over the container
-    pub focus: f32,     // 0.12
-    pub press: f32,     // 0.12
-    pub drag: f32,      // 0.16
-    pub disabled_content: f32,   // 0.38
-    pub disabled_container: f32, // 0.12
+    pub hover: Percent,     // 0.08 opacity of on-color over the container
+    pub focus: Percent,     // 0.12
+    pub press: Percent,     // 0.12
+    pub drag: Percent,      // 0.16
+    pub disabled_content: Percent,   // 0.38
+    pub disabled_container: Percent, // 0.12
 }
 
 pub struct SpaceTokens { /* 0,2,4,8,12,16,20,24,32,40,48,64 */ }
 pub struct Density { pub scale: f32, pub min_target: f32 }   // min_target ≥ 44 dp touch
 ```
 
+The generated implementation is intentionally more precise than this abridged
+sketch: `Theme` contains all twelve named spacing values; reference and
+semantic shape roles; disabled state layers; renderer-neutral role+size
+typography; and semantic motion profiles. Bounded values such as exact-whole-percentage opacities,
+positive metrics, radii, density, and spring parameters are validated before
+generation and represented by refined runtime values. See
+[`docs/ui/tokens.md`](../ui/tokens.md) for the authored-token audit and the
+executable verification ledger.
+
 ### 7.4 Typography
+
+Owner-requested issue #87 restores the original Design 01 display-serif page
+and discovery-hero headings on Home/Library, as specified in
+[screen 01](../ui/screens/01-library.md). This bounded shell exception does not
+change game semantics or the sans control/body vocabulary. The web adapter emits
+font size/line height in root-relative units; renderer/CMP logical metrics remain
+unchanged so browser font-scale preferences are respected without shrinking targets.
+
 
 | Role | Use | Notes |
 |---|---|---|
@@ -647,8 +806,8 @@ flowchart TB
 
 ### 8.1 Generation, not duplication
 
-`tokens.toml` is authored once. `xtask gen-tokens` emits Rust consts, CSS custom properties, and a
-JSON export. CI fails if generated files are stale. There is **no hand-written color literal**
+`tokens.toml` is authored once (ADR-027). `xtask gen-tokens` emits the typed `tabula-design` Rust
+runtime plus CSS custom properties and a JSON export. CI fails if generated files are stale. There is **no hand-written color literal**
 anywhere in `apps/web`, `tabula-presentation`, or any game presenter — enforced by a lint
 (`xtask check-no-raw-colors`) that greps for hex literals and `Color::new(` outside
 `tabula-design`.
@@ -697,17 +856,20 @@ list.push(RenderCmd::Rect {
 ### 8.4 Per-game accent
 
 ```toml
-# games/chess/game.toml
+# games/chess/game.toml (future contract; not a Phase-2 pipeline)
 [theme]
-accent      = "#3E7B5A"      # source color; tonal palette is derived at build time
+accent      = "#3E7B5A"      # source color for a build-time resolver
 board_light = "sys.surface.container-lowest"
 board_dark  = "sys.surface.container-high"
 mood        = "calm"          # calm | lively | tense — selects a motion profile
 ```
 
-The derived tonal palette is **precomputed at build time** (not runtime HCT math), keeping
-`tabula-design` dependency-free and the client fast. A game may not override semantic *roles*, only
-supply source colors — so contrast guarantees hold.
+`tokens.toml` currently uses **authored resolved schemes**: its reference
+palette is design guidance and its resolved semantic scheme values are the
+authority. A future game accent resolver may be precomputed at build time (not
+runtime) and may accept only a source accent and mood. A game may not override
+semantic *roles* such as `danger`, `legal_target`, focus, or accessibility
+critical on-colors.
 
 ---
 
@@ -730,6 +892,20 @@ Concretely:
 - If two events arrive faster than their animations, animations **compress or drop**; they never
   queue unboundedly. Rule: an animation whose start is already >600 ms stale snaps to its end state.
 
+The renderer-neutral `GamePresentation::on_view_event_with_projection` default hook
+adds the previous and current **authorized `View`**, never canonical `State`, to
+accepted event dispatch. Local and isolated online hosts supply those endpoints;
+Chess uses them to pin one bounded composition and locate captures (including en
+passant) at the actual prior square. Existing event-only presenters retain their
+behavior through the default hook. `on_command_rejected` discards local previews
+or motion after a definitive rule rejection without changing the current view.
+Recovery/resync/disconnect replace `Local` rather than replaying historical motion.
+The current hosts have no event-origin presentation timestamp: their event-only
+fallback starts at observation time, and resync snapshots contain no events. A
+presenter with an explicit original timestamp applies the shared strict `>600 ms`
+late-arrival boundary; elapsed sampling of an already-started move still resolves
+to its terminal state and does not restart it.
+
 ### 9.2 Semantic motion tokens
 
 Each maps to a spring/duration and a choreography, so the same action feels the same in every game.
@@ -747,7 +923,7 @@ Each maps to a spring/duration and a choreography, so the same action feels the 
 | `motion.vote` | vote cast/retracted | `dur_short` marker fly to target + counter tick |
 | `motion.score-update` | score/clock changes | number roll with `ease_decelerate`, `dur_medium`; clocks never animate digits |
 | `motion.win` / `motion.lose` | outcome | `dur_xlong` choreographed sequence, always skippable by tap |
-| `motion.invalid` | rejected command | 120 ms 3-cycle shake, `danger` state layer flash, short dry sound — **never a modal** |
+| `motion.invalid` | rejected command | 80 ms authored profile, `danger` state layer flash, short dry sound — **never a modal** |
 | `motion.enter` / `motion.exit` | overlays, sheets, toasts | `spring_standard` slide+fade, exit 0.7× duration of enter |
 | `motion.drag-lift` / `motion.drag-drop` | picking up / releasing | elevation change + shadow growth + 1.04 scale |
 
@@ -791,8 +967,8 @@ across DOM and canvas.
 
 ```rust
 pub struct ReducedMotion {
-    /// Multiply all durations by this (0.0 = instant).
-    pub duration_scale: f32,        // 0.0 in strict mode, 0.5 in "less motion"
+    /// A validated percentage that multiplies durations (0 = instant).
+    pub duration_scale: Percent,    // 0 strict, 50 "less motion"
     /// Replace movement with cross-fade.
     pub prefer_fade: bool,
     /// Disable parallax, camera drift, background motion, particles entirely.
@@ -801,6 +977,11 @@ pub struct ReducedMotion {
     pub keep_informative: bool,     // default true
 }
 ```
+
+Motion profiles carry an `Informative` or `Ambient` category in addition to
+their resolved duration, spring, and optional stagger. Reduced-motion policy
+can therefore preserve/shorten informative movement while disabling ambient
+motion; it is not merely a zero-duration switch.
 
 The `keep_informative` default matters: a strict "no animation" mode that teleports pieces makes
 board games *less* accessible, not more. The right reduced-motion behavior is short, direct,
@@ -822,7 +1003,7 @@ information survives even at zero duration.
 
 Orientation:
 
-- **Portrait** is the primary mobile target for hand-held games (cards, werewolf).
+- **Portrait** is the primary mobile target for hand-held games (Caro, Werewolf).
 - **Landscape** is primary for wide boards (chess is fine either way; tiles prefers landscape).
 - Each game declares `preferred_orientation` and `min_board_aspect` in its manifest; the runtime
   rotates/letterboxes accordingly and never distorts the board's aspect.
@@ -874,8 +1055,10 @@ traversal, focus rendering, and activation.
 #### The Board Reader (canvas accessibility fallback)
 
 A canvas is opaque to assistive technology. Rather than pretend otherwise, every game provides
-`describe(view, viewer) -> A11yDescription` (doc 02 §3), and the client renders it as a **real DOM
-mirror** on web (and as a native accessibility tree on mobile, via a small platform bridge).
+`describe(view, viewer) -> A11yDescription` (doc 02 §3). The client-side presentation layer derives
+its accessibility description from `(View, Local)` so transient controls such as promotion remain
+visible, then renders it as a **real DOM mirror** on web (and as a native accessibility tree on
+mobile, via a small platform bridge).
 
 ```rust
 pub struct A11yDescription {
@@ -894,10 +1077,9 @@ pub struct A11yAction { pub id: ActionId, pub label: String, pub enabled: bool }
 ```
 
 On web, the game page renders this as a visually-hidden but focusable DOM tree next to the canvas,
-updated from the same `View`. Activating a DOM item dispatches the same `Intent` the canvas would.
-**Result: the game is playable entirely without the canvas.** This is why `describe()` is part of
-the game contract rather than an afterthought — it is not optional politeness, it is the only way a
-canvas game is accessible.
+updated from the same `(View, Local)` inputs. Activating a DOM item exposes an `ActionId`; mapping
+that id to an `Intent` is a Phase 5 residual, not yet an end-to-end path. The target is playability
+without the canvas. This is why `describe()` is part of the game contract rather than an afterthought.
 
 Phase plan: `status` + `actions` in Phase 5 (announcements and keyboard play), full `regions`
 navigation in Phase 9. Games with no `describe()` implementation are flagged in CI and may not be
@@ -929,24 +1111,33 @@ handle. We adopt one behind `VoiceService`, measure, and keep the option to chan
 
 ## 12. Asset system
 
-### 12.1 Model
+### 12.1 Target model
+
+The following diagram describes the target asset-delivery system. The pure
+manifest, identity, integrity, source-port, and deterministic pack-builder
+boundaries described in §12.2 are implemented today; concrete delivery
+adapters for the general CDN service remain future work. The opt-in local WASM
+host has a narrower concrete adapter and public-file cache, described below.
 
 ```mermaid
 flowchart TB
-    SRC["assets/packs/chess/*<br/>source art, audio, fonts"] --> BUILD["xtask pack-assets chess"]
-    BUILD --> ATLAS["texture atlases (+ mipmaps)"]
-    BUILD --> AUDIO["audio (ogg/opus)"]
-    BUILD --> MAN["pack manifest<br/>version · per-file blake3 · sizes · atlas coords"]
-    ATLAS --> CDN[("CDN — immutable, content-hashed paths")]
-    AUDIO --> CDN
-    MAN --> CDN
-    MAN --> SRV["server: validates + serves manifest URL"]
+    SRC["games/chess/assets/*<br/>source art, audio, fonts"] --> BUILD["xtask pack-assets chess"]
+    BUILD --> PACK["staged pack output<br/>opaque files + pack.toml"]
+    PACK --> CDN[("CDN — immutable, content-hashed paths")]
+    PACK --> SRV["server: validates + serves manifest URL"]
     CDN --> CACHE["client cache<br/>web: Cache API · native: app cache dir"]
-    CACHE --> LOAD["tabula-assets loader → AssetHandle"]
-    LOAD --> REND["renderer-macroquad: upload textures"]
+    CACHE --> LOAD["tabula-assets loader → OwnedVerifiedAssetBytes"]
+    LOAD --> DECODE["future decoder / backend boundary"]
+    DECODE --> HANDLE["future AssetHandle"]
+    HANDLE --> REND["tabula-render-macroquad: upload textures"]
 ```
 
-### 12.2 Rules
+### 12.2 Target delivery rules
+
+The following rules describe the target Phase-3 delivery system. The pure
+manifest, identity, integrity, source-port, and deterministic pack-builder
+boundaries described below are implemented today; concrete delivery adapters
+remain future work.
 
 1. **No game's full-resolution assets are in any app binary.** The binary carries only: brand
    assets, UI icons, two fonts, and a tiny placeholder set (so a game is playable-if-ugly when the
@@ -960,55 +1151,221 @@ flowchart TB
    `Low` (celebration art, alternative themes) loads lazily. The loader reports real byte progress
    for the branded loader (§3.4).
 5. **Integrity check on every cached file** (blake3 vs manifest). A mismatch re-downloads.
-6. **Per-density variants**: `@1x/@2x/@3x` atlases, chosen from `FrameCtx.dpi`; the manifest lists
-   only what exists and the loader picks the nearest.
+6. **Per-density variants**: `@1x/@2x/@3x` atlases, with the manifest listing only what exists.
+   `BoundAssetPack::resolve(asset_ref, target_density)` is the pure layer that selects the nearest
+   physical `AssetFile`; `AssetSource` and `load_verified` consume its selected `AssetPath` and do
+   not choose density variants.
 7. **Cache budget**: 300 MB default on native, 150 MB on web, LRU eviction by pack, never evicting
    the pack of a live match.
-8. **Offline**: a previously-played game's pack stays cached, so a local/bot game works offline
-   (Phase 3 already supports local play with no server).
+8. **Offline target**: a previously-played pack remains cached so local/bot play can use it without
+   a server. The rules engine already supports local play; asset-pack caching does not exist yet.
 
-### 12.3 Manifest sketch
+The Phase-3 asset identity is typed and pinned end-to-end. The architecture
+enforces a strict separation between logical resource identity and physical pack metadata:
+
+- **`AssetRef`** (`tabula-game-api`): semantic/logical resource identity representing presentation and catalog intent (e.g. `pieces/white-knight`, `catalog/icon`, `board/background`). Presenters and metadata never know physical filenames, atlas coordinates, density variants, hashes, or CDN URLs.
+- **`AssetFileName`** (`tabula-assets`): manifest-local identity of a physical file entry (e.g. `pieces@2x.atlas`, `move.ogg`).
+- **`AssetPath`** (`tabula-assets`): canonical relative physical pack path (e.g. `chess/1.0.0/pieces@2x.b3-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png`).
+- **`AssetPackRef`** (`tabula-assets`): exact versioned asset pack identity (e.g. `chess@1.0.0`).
+
+```text
+GameMetadata / GamePresentation
+              │
+              ▼
+           AssetRef
+              │
+              │ explicit resource declaration + pure resolution
+              ▼
+      AssetPackManifest
+              │
+              ├── AssetResource
+              ├── AssetFileName
+              ├── AssetPath
+              ├── AssetContentHash
+              └── AssetDensity
+```
+
+The current implementation includes the pure identity, binding, resolution, and byte-integrity layer:
+
+- `AssetPackRef`: the exact pack identity (`AssetPackId`) and version (`AssetPackVersion`), canonically formatted as `pack@version`.
+- `AssetPackManifest.game`: the reverse-DNS game ID to which the pack is bound.
+- `AssetResource`: one explicit `AssetRef` declaration with one density-independent file variant or one variant per density-aware `AssetFile`.
+- `AssetPixelRegion`: structural physical source-pixel metadata, distinct from logical `Rect`; it proves positive extents and non-overflowing endpoints, not decoded-image bounds.
+- `AssetPackManifest::validate_binding(...) -> BoundAssetPack`: pure binding evidence for one exact requested `AssetPackRef` and `GameId`.
+- `BoundAssetPack::resolve(...) -> ResolvedAsset`: pure deterministic metadata lookup. Exact density wins; otherwise nearest density wins, with equal distances selecting the higher density.
+- `AssetSource`: platform-neutral, async-capable port addressed only by a physical `AssetPath`; it returns owned `UnverifiedAssetBytes` and never performs integrity verification.
+- `MemoryAssetSource`: deterministic in-memory reference source for tests; it is not a cache and does not know logical `AssetRef` values.
+- `VerifiedAssetBytes`: typed proof binding an exact `AssetFile` and verified raw bytes, constructible only by `AssetFile::verify_bytes` after size and BLAKE3 checks succeed.
+- `OwnedVerifiedAssetBytes`: owned proof-bearing payload binding an exact `AssetFile`; its only public byte view is immutable, and it is constructible only after the same size and BLAKE3 checks succeed.
+- `load_verified(file, source)`: thin async-capable orchestration that fetches explicitly unverified bytes and returns `OwnedVerifiedAssetBytes`, preserving source failures separately from integrity failures without requiring `Send`.
+
+Implemented now:
+
+- deterministic xtask pack-assets <game> source inspection, full-digest paths, runtime manifest generation, staged publication, and post-build integrity verification.
+
+- manifest TOML parsing with unknown-field rejection;
+- validated pack/file identity, canonical relative paths, hashes, sizes, priorities, and densities;
+- duplicate file-name and path rejection;
+- explicit logical resource declarations with no filename inference;
+- structural atlas-region validation and shared physical atlas files;
+- pack-to-game binding witness and deterministic pure resource resolution;
+- byte-level integrity verification against manifest-declared size and BLAKE3 hash ([`AssetFile::verify_bytes`] returning [`VerifiedAssetBytes`]).
+- platform-neutral `AssetSource` port with explicit `UnverifiedAssetBytes` output;
+- deterministic `MemoryAssetSource` reference adapter and source-to-integrity composition;
+- owned verified payload construction and the `load_verified` source-to-integrity boundary;
+- `tabula-render-macroquad::assets`: PNG-only bounded decode of owned verified bytes,
+  decoded atlas bounds, pack/version/hash/density texture identity, bounded
+  residency including live leases, explicit missing/ready/failed states, and
+  safe release/reuse through managed backend texture ownership;
+- Sprite preflight and affine textured-mesh execution with camera, clip, tint,
+  inherited opacity, source region, pivot/rotation and stable command order;
+- a tiny editable CC0 Tiles fixture loaded through `MemoryAssetSource` by the
+  local host, plus presentation-only placement/preview motion. This fixture
+  does not change ADR-017's production delivery policy.
+
+- the ADR-0030 local WASM host's allowlisted public-resource adapter: game-owned
+  resource declarations resolve through the existing manifest; `load_verified`
+  still checks exact size/BLAKE3 before bounded texture decode. WASM fonts and
+  artwork are external, selected only on explicit demand. Native retains its
+  tiny embedded fixtures and default multi-game binary;
+- atomic local staging generates SHA-256 content URLs for the WASM, fonts and
+  pack files, plus pinned script/style references with SRI. The host checks size
+  and SHA-256 before executing/delivering bytes. HTML remains mutable/no-store;
+- an optional local-host CacheStorage namespace, with Web Locks for concurrent
+  resource and budget operations, reverified hits, corrupt-entry refetch, and
+  file-LRU eviction. Its payloads plus bounded recency index fit 150 MiB and 32
+  entries; four concurrent loads reserve at most 64 MiB of declared payload.
+  Storage/lock absence or denial falls back to verified network loading. No
+  service worker, storage-persistence request, private configuration/state cache,
+  general pack-LRU, offline promise or native disk cache is introduced. Already
+  consumed live WASM/textures stay in their document even if the public file is
+  evicted from disk. Renderer texture residency retains its existing budget.
+
+Not implemented yet:
+
+- general atlas tooling, mipmap generation, or media conversion (the Tiles
+  fixture has its own editable art generator);
+- general filesystem/HTTP/browser asset-source implementations outside the
+  explicitly bounded local WASM host;
+- general persistent pack-cache/LRU, CDN URL/signature generation and native
+  disk delivery. The narrow local host's verified file-LRU and explicit
+  fresh-document retry do not complete that Phase-3 delivery service;
+- font/audio decoding and delivery adapters. Raster textures are implemented
+  inside the renderer; `tabula-assets` remains free of decoder/GPU types.
+
+The resolution and loading pipeline flow:
+
+```text
+GamePresentation::asset_pack()
+        ↓
+   AssetPackRef
+        ↓
+  manifest fetch          [future]
+        ↓
+ parse + validate
+        ↓
+ validate_binding → BoundAssetPack
+        ↓
+resource resolution       [implemented / pure]
+        ↓
+   ResolvedAsset
+        ↓
+     AssetFile
+        ↓
+AssetSource::fetch(AssetPath) [port; memory reference implemented]
+        ↓
+  UnverifiedAssetBytes     [untrusted input]
+        ↓
+verify size + BLAKE3      [implemented / pure]
+        ↓
+OwnedVerifiedAssetBytes   [owned proof-bearing payload]
+        ↓
+ bounded PNG decode       [implemented / renderer]
+        ↓
+ ready texture leases     [implemented / renderer]
+```
+
+The Phase-3 manifest parser proves that each path is a safe, canonical relative
+pack path and that the manifest declares a structurally valid content hash. `AssetPath` does not
+yet prove that the path embeds that hash. Pure byte-level integrity verification (`AssetFile::verify_bytes`
+and `AssetFile::verify_owned_bytes`) enforces that actual bytes match the declared size and BLAKE3
+hash before producing a borrowed `VerifiedAssetBytes` or owned `OwnedVerifiedAssetBytes` value.
+`load_verified` composes the source port with the owned trust transition. The local
+fixture host routes memory-source bytes through it before bounded raster decoding.
+Future production source/cache orchestration will use this boundary before trusted cache
+insertion or decoding. The current `MemoryAssetSource` exercises the same composition without
+performing I/O.
+
+### 12.3 Manifest schema
+
+The parser accepts `pack`, `version`, `game`, `files`, and explicit `resources`; unknown fields
+at every level are rejected. A logical resource is never inferred from a filename, path, atlas
+name, extension, or density suffix. `RenderCmd::Sprite` carries only `AssetRef` and logical
+geometry; physical source-pixel regions belong only to the matching resource variant.
 
 ```toml
-# generated: assets/packs/chess/pack.toml → served as pack.json
+# generated: target/asset-packs/chess/1.0.0/pack.toml → served as pack.json
 pack    = "chess"
 version = "1.0.0"
 game    = "com.tabula.chess"
 
 [[files]]
-name     = "pieces@2x.atlas"
-path     = "chess/1.0.0/pieces@2x.b3-4f8a...png"
-hash     = "4f8a..."
+name     = "pieces@1x.atlas"
+path     = "chess/1.0.0/pieces@1x.b3-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
+hash     = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bytes    = 412_003
+priority = "critical"
+density  = 1
+
+[[files]]
+name     = "pieces@2x.atlas"
+path     = "chess/1.0.0/pieces@2x.b3-fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210.png"
+hash     = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+bytes    = 824_006
 priority = "critical"
 density  = 2
 
-[[files]]
-name     = "move.ogg"
-path     = "chess/1.0.0/move.b3-9c21....ogg"
-hash     = "9c21..."
-bytes    = 8_112
-priority = "high"
+[[resources]]
+id = "pieces/white-knight"
 
-[atlas.pieces]
-# name -> (x, y, w, h) so presenters reference AssetRef("pieces/white-knight")
-white-knight = [0, 0, 128, 128]
+[[resources.variants]]
+file = "pieces@1x.atlas"
+region = { x = 0, y = 0, width = 64, height = 64 }
+
+[[resources.variants]]
+file = "pieces@2x.atlas"
+region = { x = 0, y = 0, width = 128, height = 128 }
 ```
 
 ---
 
 ## 13. Audio
 
-- One `AudioSink` trait in `tabula-presentation`; `renderer-macroquad` implements it for MVP.
-- Presenters emit `AudioCue { asset, gain, pan, priority, cooldown_ms }` alongside render commands;
-  the sink handles voice-count limits and cooldowns so a 13-card deal does not fire 13 overlapping
-  sounds (the deal cue is one sound with a stagger, not thirteen).
-- Buses: `sfx`, `ui`, `music`, `voice-duck`. When voice chat is active, `music` ducks by 12 dB and
-  `sfx` by 6 dB. **EXPERIMENT** — Macroquad's audio may not support buses cleanly; if not, this is
-  the trigger to adopt `kira` in the backend (doc 01 §1.3), with no change above the trait.
+### 13.1 Stable Phase-2 contract
+
+- `tabula-presentation` owns the synchronous, renderer-neutral `AudioCue` / `AudioSink` contract;
+  `tabula-render-macroquad` supplies the MVP sink.
+- A presenter derives ordered, pack-local one-shot cue IDs from authoritative projected
+  `ViewEvent`s, never canonical `State` or speculative `Intent`. The active
+  `GamePresentation::asset_pack()` scopes IDs, so platform code never branches on `game_id`.
+- Presentation owns cue semantics; the sink owns playback of already-resolved handles; the asset
+  system owns loading and resolution. Asset loading remains Phase 3 work.
+- Playback failures (for example, an unavailable loaded handle) are non-authoritative: they cannot
+  fail, roll back, or otherwise alter a match, its projection, or input processing.
 - Every audio cue has a visual equivalent (§10.4).
-- Sound is off by default on web (browsers block autoplay anyway) and on by default on native, with
-  a first-run prompt.
+
+### 13.2 Deferred client and backend policy
+
+The following are product/backend policy, not fields or behavior in the stable `AudioCue` API:
+
+- mute and volume preferences;
+- voice ducking;
+- buses and music;
+- browser autoplay policy;
+- cooldown and voice-count policy.
+
+They remain deferred until a shipped behavior establishes a concrete requirement. They must not
+change the meaning of a pack-local cue identity or affect authoritative match behavior.
 
 ---
 
@@ -1031,11 +1388,11 @@ Feedback: state layers · focus ring · shake(invalid) · confetti(win, reduced-
 
 | Phase | Frontend deliverable |
 |---|---|
-| 2 | `tabula-design` tokens + `xtask gen-tokens`; `tabula-presentation` with the §5.2 command set; `renderer-macroquad`; `renderer-headless`; chess board renders and is playable locally hot-seat |
+| 2 | `tabula-design` tokens + `xtask gen-tokens`; `tabula-presentation` with the §5.2 command set; `tabula-render-macroquad`; `tabula-render-headless`; chess board renders and is playable locally hot-seat |
 | 3 | Card fan, tile board with camera/zoom/rotation; animation engine + motion tokens; audio cues; asset packs |
 | 4 | `tabula-net-client`; networked play in the native client; reconnect UI; spectator view |
 | 5 | Leptos shell (all routes in §2.1); handoff; a11y `status`+`actions`; settings incl. motion/contrast; admin skeleton |
-| 6 | Mobile layouts, safe areas, touch tuning, orientation handling, native shell screens |
+| 6 | Mobile layouts, safe areas, touch tuning, orientation handling, Compose shell screens and native Macroquad `GameHost` (ADR-0043; adapter blocked) |
 | 7 | Werewolf UI: phase banners, voting, scoped chat overlay, role reveal choreography |
 | 8 | Voice UI |
 | 9 | Board Reader full regions; replay viewer with scrub; delayed spectator UI; theming polish |

@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 5. A SEPARATE BUNDLE from apps/web on purpose: operator tooling should
 # not be shipped to every player, and its authz role is different.

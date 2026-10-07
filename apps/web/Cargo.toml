@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 5. CSR only — SSR is deferred (doc 04 §3.5): this is an authenticated
 # app, and the SEO need is limited to marketing pages that can be static.
@@ -13,20 +14,45 @@ repository.workspace   = true
 # Built with `trunk`. Ships as static files behind the CDN.
 
 [dependencies]
-tabula-core = { workspace = true }
+tabula-registry = { workspace = true }
+tabula-design = { workspace = true }
+tabula-match-http = { workspace = true, optional = true }
+leptos          = { workspace = true }
+leptos_router   = { workspace = true }
+# ADR-0036 PR3: default dependency exposes DTOs only, never the runtime owner.
+tabula-session-http = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+web-sys = { workspace = true, features = ["Window", "MediaQueryList", "EventTarget", "HtmlDialogElement", "HtmlElement", "Element", "NodeList"] }
+wasm-bindgen = { workspace = true }
 
-# Phase 5 — uncomment with the first route.
-# tabula-protocol   = { workspace = true }
-# tabula-registry   = { workspace = true }
-# tabula-design     = { workspace = true }
-# tabula-assets     = { workspace = true }
-# tabula-net-client = { workspace = true, features = ["web"] }
-# leptos            = { workspace = true }
-# leptos_router     = { workspace = true }
-# web-sys           = { workspace = true }
-# wasm-bindgen      = { workspace = true }
-# serde             = { workspace = true }
-# serde_json        = { workspace = true }
+[features]
+default = []
+# Bounded direct-match controls; default shell stays account/local only.
+online = ["dep:tabula-match-http"]
+# ADR-0044 opt-in enrollment/profile/social UI and its one app-owned stream.
+# Its measured expanded shell has a separate, explicit loading profile.
+account-social = []
+# Explicit native test harness; no production listener or service activation.
+account-http-acceptance = ["tabula-session-http/isolated", "dep:tabula-session", "dep:tabula-core", "dep:axum", "dep:tokio", "dep:http-body", "dep:bytes"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = ["Crypto", "WebSocket", "MessageEvent", "CloseEvent", "ErrorEvent", "Location", "Navigator", "Storage", "StorageEvent", "BroadcastChannel", "AbortController", "AbortSignal", "Request", "RequestInit", "RequestMode", "RequestCache", "RequestCredentials", "RequestRedirect", "Response", "Headers", "ReadableStream", "ReadableStreamDefaultReader", "Document", "Element", "NodeList", "VisibilityState", "Event"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tabula-session = { workspace = true, optional = true }
+tabula-core = { workspace = true, optional = true }
+axum = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["net", "io-util"] }
+http-body = { workspace = true, optional = true }
+bytes = { workspace = true, optional = true }
+
+[[test]]
+name = "account_http"
+required-features = ["account-http-acceptance"]
 
 [lints]
 workspace = true

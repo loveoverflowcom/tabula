@@ -8,15 +8,19 @@
 
 ## 1. Stage-0 topology
 
-One binary. Inside it, clearly separated modules that map 1:1 to crates, so that the later
+One gameplay binary. Inside it, clearly separated modules map to crates, so the later
 process split (doc 06 §7) is a wiring change and not a rewrite.
+[ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md) reserves account authentication
+and session lifecycle in `tabula-auth` with external Kanidm credentials/OIDC.
+Gameplay session enforcement and match grants remain here. Both services are
+frames; cross-service revocation/expiry evidence is required before enablement.
 
 ```mermaid
 flowchart TB
     subgraph PROC["services/tabula-server — one process"]
         direction TB
         AX["axum Router<br/>HTTP + /ws upgrade"]
-        AUTH["auth module<br/>sessions · tokens · argon2 · OIDC"]
+        AUTH["session enforcement<br/>current authority · match grants"]
         SESS["session layer<br/>one task pair per connection"]
         ROUTER["room router<br/>DashMap&lt;MatchId, MatchHandle&gt;"]
         SUP["match supervisor<br/>spawn · drain · restart · hibernate"]
@@ -33,8 +37,13 @@ flowchart TB
     PG[("PostgreSQL")]
     OBJ[("Object storage<br/>replays · snapshots(large) · asset packs")]
     SFU["Voice SFU + coturn"]
+    AUTHAPI["tabula-auth: account authentication and sessions"]
+    KANIDM["Kanidm: credentials and OIDC"]
 
     AX --> AUTH
+    AUTH --> STORE
+    AUTHAPI --> KANIDM
+    AUTHAPI -->|tabula-storage| PG
     AX --> SESS
     AX --> LOBBY
     SESS --> ROUTER --> ACT
@@ -82,11 +91,15 @@ backpressure decision in the server.
 ## 2. HTTP API surface
 
 Small on purpose — screens drive it. Everything real-time goes over the WebSocket.
+This is a future-phase surface, not implemented endpoints.
+[ADR-0031](../adr/0031-browser-native-session-contract.md) owns session channels,
+CSRF, lifetime, revocation and upgrade/Attach authority.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/v1/auth/register` / `login` / `logout` / `refresh` | Opaque session tokens |
-| `GET` | `/api/v1/auth/oidc/:provider` + `/callback` | OAuth |
+| `POST` | `/api/v1/auth/register` / `login` / `logout` / `refresh` | Channel-bound opaque server sessions; browser cookie/native bearer |
+| `GET` | `/api/v1/auth/context` | Proposed typed session disposition + memory-only CSRF bootstrap; no-store |
+| `GET` | `/api/v1/auth/oidc/kanidm` + `/callback` | Proposed Kanidm OIDC through tabula-auth (ADR-0034) |
 | `GET` | `/api/v1/me` | Profile, settings, entitlements |
 | `GET` | `/api/v1/games` | Catalog (rollout-filtered, localized keys) |
 | `GET` | `/api/v1/games/:id` | Metadata + capabilities + config schema + asset pack ref |
@@ -102,8 +115,14 @@ Small on purpose — screens drive it. Everything real-time goes over the WebSoc
 | `GET` | `/healthz` `/readyz` `/metrics` | Ops |
 | `*` | `/api/v1/admin/*` | Operator endpoints, separate authz role |
 
-Conventions: `Authorization: Bearer <session>`; UUIDv7 ids; RFC 9457 problem+json errors;
+Conventions: browser host-only HttpOnly session cookie, native
+`Authorization: Bearer <session>`; exact Origin/CSRF and ambiguity rejection
+under ADR-0031; UUIDv7 ids; RFC 9457 problem+json errors;
 cursor pagination; `Idempotency-Key` honored on all `POST`s that create resources.
+
+All `/api/v1/auth/*` paths are proposed tabula-auth routes exposed through the
+same trusted app origin. Profile, friends/presence and match grants stay in
+tabula-server; local play does not require an account.
 
 ---
 
@@ -117,14 +136,15 @@ sequenceDiagram
     participant R as Router
     participant M as Match Actor
 
-    C->>GW: GET /ws  Upgrade + Sec-WebSocket-Protocol: tabula.v1.postcard
+    C->>GW: GET /ws Upgrade + codec; browser cookie + Origin / native bearer
+    GW->>GW: authenticate current auth session; validate origin/channel
     GW-->>C: 101 Switching Protocols (selected subprotocol)
-    C->>S: Hello { protocol_version, client_build, auth: Bearer, codec }
-    S->>S: authenticate; load user; create SessionId
+    C->>S: Hello { protocol_version, client_build, codec }
+    S->>S: negotiate; bind authenticated record; create connection SessionId
     S-->>C: HelloAck { session_id, server_time, features, limits }
     Note over C,S: Session is now authenticated but attached to nothing.
 
-    C->>S: Attach { match_id, join_token?, as: Seat|Spectator, resume_from? }
+    C->>S: Attach { match_id, join_token, as: Seat|Spectator, resume_from? }
     S->>R: lookup(match_id)  → spawn/rehydrate if needed
     R-->>S: MatchHandle
     S->>M: Attach { session, viewer, resume_from }
@@ -145,12 +165,16 @@ sequenceDiagram
 - **Subprotocol negotiation carries the codec**: `tabula.v1.postcard` (production) or
   `tabula.v1.json` (dev/debug). The server refuses JSON in production for non-staff accounts —
   it is a debugging aid, not a supported client path. Doc 05 §4.
-- **`Hello` is an application-level frame**, not HTTP headers, so browsers (which cannot set
-  arbitrary WS headers) and native clients use the same path. Auth token travels in `Hello`.
+- **Authentication is at HTTP upgrade**: browser cookie + exact Origin, native
+  explicit bearer (no cookies). `Hello` is credential-free application-level
+  negotiation, bounded by a 5-second deadline. Browser code cannot set arbitrary
+  WS headers; it does not need to read the HttpOnly cookie. See ADR-0031; auth
+  sessions and process-local connection SessionIds are distinct.
 - **Version mismatch** → `Close(4400, "protocol_version_unsupported")` with the supported range in
   the body so the client can prompt for an update.
-- **One session may attach to at most one match** plus any number of *lobby* subscriptions.
-  Spectating a second match requires a second session. This keeps the routing table simple.
+- **One connection SessionId may attach to at most one match** plus any number
+  of *lobby* subscriptions. Spectating a second match requires a second WS
+  connection, not a second durable auth-session record. This keeps the routing table simple.
 
 ### 3.2 Frames, heartbeat, and limits
 
@@ -164,7 +188,7 @@ sequenceDiagram
 | Outbound queue | 256 messages, bounded | Overflow → `Close(4409, "slow_consumer")` |
 | Inbound rate | 20 msg/s burst 40, per session; 5 commands/s per match seat | Token bucket; excess → `Reject{RATE_LIMITED}`, repeated → close |
 | Idle (no attach) | 60 s | Close unattached sessions |
-| Max sessions per user | 4 | Prevent socket farming |
+| Max WS connections per user | 4 | Prevent socket farming; distinct from auth-session records |
 
 ### 3.3 Close codes
 
@@ -478,6 +502,19 @@ fn logical_now(&self) -> LogicalTime {
 
 ## 8. Ordering, idempotency, and versioning
 
+**Executable isolated exception:** [ADR-0039](../adr/0039-isolated-match-actor-runtime.md)
+implements the bounded offline actor and generic registry bridge under native
+`tabula-match/isolated`. The following production sketches remain plans outside
+that exception. Its receipts are scoped to resolved record/subject/epoch/seat
+generation; retained high-watermarks outlive bounded receipt expiry/eviction.
+Canonical counters stay internal; per-attachment visible revisions avoid hidden
+action-existence leaks through global gaps. [ADR-0040](../adr/0040-isolated-durable-match-postgres.md)
+subsequently opens only native opt-in consistent PostgreSQL journaling, durable
+operation scopes/receipts/owner fencing and exact bounded recovery (§9.7).
+Network listeners/resume and durable authority/private-delivery fences remain
+closed. The in-memory-cache/AckAfterApply/supervision sketches below do not
+override that adapter's stronger commit and fail-stop laws.
+
 ### 8.1 The three counters
 
 | Counter | Scope | Purpose |
@@ -515,7 +552,7 @@ Rules:
 ### 8.3 Ack policy per durability class
 
 ```text
-AckAfterPersist  (chess, cards, tiles — anything ranked or with stakes)
+AckAfterPersist  (chess, Caro, tiles — anything ranked or with stakes)
     apply → append → fsync-level commit → Ack → broadcast
     p95 target: 25 ms same-region (dominated by one Postgres round trip)
     loss window: none
@@ -553,13 +590,30 @@ interval, so worst-case recovery is a fixed small number of `apply` calls (micro
 
 | Class | Interval | Storage | Example |
 |---|---|---|---|
-| `Tiny` (< 1 KiB) | every 200 inputs + on end | Postgres `BYTEA` | chess, tictactoe |
-| `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` | cards, werewolf |
-| `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | Postgres `BYTEA`, zstd | tiles |
+| `Tiny` (< 1 KiB) | every 200 inputs + on end | Postgres `BYTEA` | chess |
+| `Small` (< 16 KiB) | every 100 inputs + on end | Postgres `BYTEA` | werewolf |
+| `Medium` (< 256 KiB) | every 50 inputs + on end + on hibernate | Postgres `BYTEA`, zstd | (none yet) |
 | `Large` (≥ 256 KiB) | every 25 inputs + on hibernate | Object storage, pointer row in PG | future |
 
 Additional triggers: before drain, before hibernation, on `rules_version` boundary, and whenever
 `apply` exceeded its budget (so a slow match is cheap to recover).
+
+Caro's `StateSizeClass` remains `TBD` until its final board dimensions and canonical encoding are
+implemented and measured; the implementation then selects `Tiny` or `Small` from the encoded
+state size rather than from the placeholder design.
+
+Tiles was the design's expected `Medium` example. Phase 3 measured it
+(`games/tiles/tests/state_size.rs`, over complete matches at every supported seat count): **a full
+Tiles board encodes to about 1.7 KB**, so Tiles is `Small`, and the `Medium` row above deliberately
+names no game rather than naming one on the strength of an estimate. A class that no shipped game
+occupies is an honest table entry; a class assigned from a guess sets a snapshot cadence nobody
+measured.
+
+What this does *not* mean is that `StateSizeClass` is idle. Tiles' state grows about fivefold over
+a match while chess's barely moves, which is the behaviour the class exists to describe; the
+absolute numbers simply came out smaller than the design guessed, because a `BTreeMap` of 72
+`(i16, i16) -> (u8, u8)` entries plus its feature graph is small. The trigger to revisit the
+`Medium` row is a game whose canonical state genuinely exceeds 16 KiB — not a re-estimate.
 
 ### 9.3 State hashes
 
@@ -577,12 +631,15 @@ users (
   id            uuid primary key,            -- v7
   handle        citext unique not null,
   email         citext unique,
-  password_hash text,                        -- null for OAuth-only
   created_at    timestamptz not null default now(),
   status        text not null,               -- active | suspended | deleted
   flags         jsonb not null default '{}'
 );
-user_identities ( user_id, provider, subject, primary key (provider, subject) );
+-- ADR-0034: Kanidm owns credentials; Tabula binds verified issuer + subject.
+user_identities ( user_id, issuer, subject, primary key (issuer, subject) );
+-- ADR-0031 requires channel, credential digest/generation, account epoch,
+-- idle/absolute deadlines and atomic refresh/revocation; these are not final DDL.
+-- The id is metadata, never an opaque bearer credential.
 sessions ( id uuid primary key, user_id uuid, created_at, last_seen_at, expires_at,
            device jsonb, revoked_at );
 
@@ -721,6 +778,44 @@ final snapshot are retained longer, being much smaller.
 - `synchronous_commit = on` for the match transaction (we are claiming durability); consider
   `remote_write` only if a replica setup makes it meaningful.
 
+### 9.7 Implemented bounded journal contract (ADR-0040)
+
+The SQL-free `tabula-match::durable` port and DTOs are default contracts; registry
+and Tokio are separate optional actor dependencies. Native non-default
+`tabula-storage/match-postgres` owns the isolated SQL adapter and explicit test
+migrations. Neither production service consumes the adapter or opens a listener.
+
+Creation binds the exact approved game/package/rules identity, config, roster,
+seed, version/index zero and initial events/state/hash/snapshot. An accepted
+input's recorded bytes/time/index, events, version/hash, due snapshot and complete
+bounded operation ledger share one transaction and committed-head update.
+Reservation and rejected-command receipt-only changes use the same owner fence
+without advancing canonical version. Known success precedes Ack, projection
+output and keyed effects. Known/indeterminate write failure stops the actor;
+reopen, rather than continued speculative state or automatic apply retry,
+establishes the database's committed truth.
+
+Durable operation identity retains session record/subject/epoch/seat/generation;
+connection SessionId and correlation do not reset it. Scope high-watermarks
+persist for the match lifetime despite bounded receipt TTL/count eviction.
+New scopes are reserved at authorized attachment and refused at capacity, never
+allocated by a private command or made available by watermark eviction. Every
+mutation checks expected committed version and durable owner generation in the
+same database transaction. Reopen's newer generation excludes all stale-owner
+mutations, including same-version ledger-only updates.
+
+Reopening loads a consistent committed prefix and replays its contiguous isolated
+accepted stream with exact recorded identity/config/seed and original logical
+times. It compares creation and every input's events/hash, all snapshots and the
+head/ledger. Missing, extra, skewed, malformed, rejected or inconsistent stored
+data fails closed. Snapshots are checked reconstruction accelerators, never
+independent authority; they cannot conceal inconsistent earlier history.
+The isolated policy snapshots initial/every 20/terminal state, bounds snapshots
+to 1 MiB and ledgers to 4 MiB, and recovery to 10,001 records/64 MiB. This is a bounded
+integrity-first slice, not general streaming recovery, compaction or performance
+acceptance. [ADR0040](../adr/0040-isolated-durable-match-postgres.md) owns the laws;
+the [ledger](../verification/durable-match-postgres/README.md) owns actual evidence.
+
 ---
 
 ## 10. Reconnect and resume
@@ -856,6 +951,12 @@ Live matches never touch it.
 ---
 
 ## 13. Failure recovery
+
+The table and startup policy below are full-production plans. ADR0040's isolated
+adapter instead stops on a known/indeterminate commit failure and accepts fresh
+explicit reopening only after its exact consistent-log/ledger verification.
+It supplies no production supervisor, automatic socket Resync, outage/timer
+scheduling or policy that permits a live actor to continue after a failed write.
 
 | Failure | Detection | Recovery | Data loss |
 |---|---|---|---|
@@ -1165,7 +1266,7 @@ cheap today.
 | Information leaks | `project`/`view_event` + `SecretModel` scans (doc 02 §7.3); `hidden_information` games get stricter CI |
 | Spectator coaching | Spectator delay capability; separate spectator chat channel; ranked matches may forbid spectators entirely |
 | Bot/automation abuse | Rate limits, behavioral metrics (inter-command timing distribution), reported to the anti-abuse queue. Not solved by client attestation, which is unwinnable. |
-| Session theft | Opaque server-side sessions, rotation on privilege change, device list + revoke, `Secure`/`HttpOnly`/`SameSite=Lax` cookies for web, keychain storage for native |
+| Session theft / CSRF / stale authority | [ADR-0031](../adr/0031-browser-native-session-contract.md): channel-bound opaque sessions; host-only `Secure`/`HttpOnly`/`SameSite=Lax` browser cookie, native keychain; exact Origin/CSRF, upgrade authentication, expiry/rotation and durable revocation fences; future device-list/revoke UI remains gated |
 | Seed disclosure | Seeds encrypted at rest, never serialized into any client message, excluded from debug dumps (`MatchDebugDump` redacts it even for `Audit`) |
 | Operator abuse | Admin actions are `Input::Admin` — they land in the same immutable log with `OperatorId`, so every intervention is auditable |
 | Rating manipulation | Ratings computed server-side from `MatchOutcome`; smurf/boost heuristics in the rating job; `Aborted` outcomes never count |

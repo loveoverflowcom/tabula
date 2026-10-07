@@ -1,0 +1,19 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {mount} from '../adapter.mjs';import {setup,envelope} from './helpers.mjs';
+test('mock lifecycle repeats 20 mounts leaving zero owned canvases listeners RAF and textures',async()=>{
+ const s=setup();for(let i=0;i<20;i++){const c=mount({...s.options,identity:{session_id:'test-session',generation:i}});await c.ready;c.set_view({...envelope(i),generation:i});s.step();assert.equal(s.container.children.length,1);assert.equal(c.snapshot().pending_raf,1);c.dispose();c.dispose();assert.equal(c.snapshot().listeners,0);assert.equal(c.snapshot().pending_raf,0);assert.equal(c.snapshot().resources.textures,0);assert.equal(s.container.children.length,0);assert.equal(s.window.count()+s.document.count(),0);assert.equal(s.callbacks.size,0);}
+});
+test('dispose pending initialization prevents late attach; replacement owns its canvas',async()=>{
+ const s=setup();let resolve;const old=mount({...s.options,backendFactory:()=>new Promise(r=>resolve=r)});old.dispose();const next=mount(s.options);await next.ready;const late=s.makeBackend();resolve(late);await old.ready;assert.equal(late.snapshot().disposed,true);assert.equal(s.container.children.length,1);assert.equal(next.snapshot().status,'ready');assert.equal(old.snapshot().listeners,0);next.dispose();
+});
+test('disposal revokes input before focus and pointer cleanup callbacks',async()=>{
+ const s=setup(),inputs=[];const c=mount({...s.options,on_input:v=>inputs.push(v)});await c.ready;c.set_view(envelope());const canvas=s.backends[0].canvas;canvas.fire('pointerdown',{pointerId:1,button:0,clientX:50,clientY:50});const count=inputs.length;c.dispose();assert.equal(inputs.length,count);canvas.fire('pointerup',{pointerId:1,button:0,clientX:60,clientY:60});assert.equal(inputs.length,count);
+});
+test('pointercancel modal focus visibility suspend and DPI changes route finite typed inputs',async()=>{
+ const s=setup(),inputs=[];const c=mount({...s.options,on_input:v=>inputs.push(v)});await c.ready;c.set_view(envelope());const canvas=s.backends[0].canvas;
+ canvas.fire('pointerdown',{pointerId:1,button:0,clientX:10,clientY:20});canvas.fire('pointercancel');assert.equal(inputs.find(v=>v.input.phase==='cancel').input.position[0],0);canvas.fire('keydown',{key:'ArrowRight',repeat:false});assert.equal(inputs.at(-1).input.key,'ArrowRight');
+ c.set_preferences({reduced_motion:true,audio_enabled:true,volume:0.5,modal:true});const count=inputs.length;canvas.fire('keydown',{key:'Enter',repeat:false});assert.equal(inputs.length,count);c.set_preferences({reduced_motion:true,audio_enabled:true,volume:0.5,modal:false});assert.equal(canvas.active,true);
+ c.resize({width:640,height:480,dpi:2});assert.equal(s.backends[0].viewport.dpi,2);s.document.visibilityState='hidden';s.document.fire('visibilitychange');assert.equal(c.snapshot().pending_raf,0);s.document.visibilityState='visible';s.document.fire('visibilitychange');assert.equal(c.snapshot().pending_raf,1);c.suspend();assert.equal(c.snapshot().pending_raf,0);c.resume();assert.equal(c.snapshot().pending_raf,1);assert.equal(c.snapshot().audio_supported,false);c.dispose();
+});
+test('stale set_view has no visual commit; initialization and renderer errors clean owned resources',async()=>{
+ const s=setup(),errors=[];const c=mount({...s.options,on_error:e=>errors.push(e)});await c.ready;c.set_view(envelope(2));assert.throws(()=>c.set_view(envelope(1)));assert.equal(c.snapshot().revision,2);s.backends[0].draw=()=>{throw Error('gpu failure');};s.step();assert.equal(c.snapshot().status,'failed');assert.equal(c.snapshot().listeners,0);assert.equal(c.snapshot().pending_raf,0);assert.equal(errors.length,1);const failed=mount({...s.options,backendFactory:async()=>{throw Error('init failure');},on_error:e=>errors.push(e)});await failed.ready;assert.equal(failed.snapshot().status,'failed');assert.equal(s.container.children.length,0);
+});

@@ -14,10 +14,674 @@
 //   - the focus ring is 3px, always, and is NEVER removed
 //   - a disabled control must also be EXPLAINED (tooltip / aria), because a
 //     greyed-out button with no reason is a dead end
+//
+// Shared controls retain the Material 3 Expressive foundation. Original Design 01
+// shell/discovery composition lives in shell.scss and library.scss (issue #87).
+// Outlines on controls carry focus, selection or error; ornamental hero material
+// is decorative artwork and never communicates interaction state.
 
-// .btn--filled {
-//   background: var(--sys-color-primary);
-//   color: var(--sys-color-on-primary);
-//   border-radius: var(--sys-shape-button);
-// }
-// .btn--filled[data-state="hover"]::after { opacity: var(--sys-state-hover); }
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--sys-color-surface);
+  color: var(--sys-color-on-surface);
+  font-family: var(--sys-type-body-md-family);
+  font-size: var(--sys-type-body-md-size);
+  line-height: var(--sys-type-body-md-line-height);
+}
+
+// ---------------------------------------------------------------- scaffolding
+
+.skip-link {
+  position: fixed;
+  left: var(--sys-space-sm);
+  // Translate by the actual box height: large text can wrap past a fixed offset.
+  top: 0;
+  transform: translateY(calc(-100% - var(--sys-space-sm)));
+  z-index: 100;
+  padding: var(--sys-space-md) var(--sys-space-lg);
+  border-radius: var(--sys-shape-button);
+  background: var(--sys-color-primary);
+  color: var(--sys-color-on-primary);
+  text-decoration: none;
+
+  &:focus {
+    top: var(--sys-space-sm);
+    transform: none;
+  }
+}
+
+.section > .btn,
+.setup > .btn,
+.banner .btn {
+  align-self: flex-start;
+}
+
+.section__title {
+  margin: 0;
+  font-family: var(--sys-type-headline-lg-family);
+  font-size: var(--sys-type-headline-lg-size);
+  line-height: var(--sys-type-headline-lg-line-height);
+  font-weight: var(--sys-type-headline-lg-weight);
+}
+
+.section__subtitle {
+  margin: 0;
+  font-family: var(--sys-type-title-lg-family);
+  font-size: var(--sys-type-title-lg-size);
+  line-height: var(--sys-type-title-lg-line-height);
+  font-weight: var(--sys-type-title-lg-weight);
+}
+
+.section__lead {
+  margin: 0;
+  font-size: var(--sys-type-title-md-size);
+  line-height: var(--sys-type-title-md-line-height);
+  color: var(--sys-color-on-surface-variant);
+}
+
+.section__body,
+.meta {
+  margin: 0;
+  color: var(--sys-color-on-surface-variant);
+}
+
+.meta {
+  font-size: var(--sys-type-body-sm-size);
+}
+
+// --------------------------------------------------------------------- fields
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-xs);
+  min-width: 160px;
+}
+
+.field__label {
+  font-size: var(--sys-type-label-lg-size);
+  line-height: var(--sys-type-label-lg-line-height);
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.field__control {
+  min-height: var(--sys-density-min-target);
+  padding: 0 var(--sys-space-md);
+  border: 0;
+  border-radius: var(--sys-shape-sm);
+  background: var(--sys-color-container-high);
+  color: var(--sys-color-on-surface);
+  font: inherit;
+}
+
+.field__hint {
+  margin: 0;
+  font-size: var(--sys-type-body-sm-size);
+  color: var(--sys-color-on-surface-variant);
+}
+
+.field__error {
+  margin: 0;
+  font-size: var(--sys-type-body-sm-size);
+  font-weight: var(--sys-type-label-lg-weight);
+  color: var(--sys-color-danger);
+}
+
+// The error outline is functional, not decoration: it survives a flattened
+// tonal surface in the high-contrast schemes.
+.field[data-state="invalid"] .field__control {
+  outline: var(--sys-focus-ring-width) solid var(--sys-color-danger);
+  outline-offset: var(--sys-space-xxs);
+}
+
+// --------------------------------------------------------------------- toolbar
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-lg);
+  align-items: flex-end;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.filters__legend {
+  padding: 0;
+  font-size: var(--sys-type-label-lg-size);
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.results__count {
+  margin: 0;
+  color: var(--sys-color-on-surface-variant);
+}
+
+// ----------------------------------------------------------------------- cards
+
+// Passive labels. They carry meaning in text and are deliberately not shaped
+// like the chips that act.
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.badge {
+  padding: var(--sys-space-xxs) var(--sys-space-sm);
+  border-radius: var(--sys-shape-chip);
+  background: var(--sys-color-container-high);
+  color: var(--sys-color-on-surface-variant);
+  font-size: var(--sys-type-label-md-size);
+}
+
+.badge--mode {
+  color: var(--sys-color-on-surface);
+}
+
+// --------------------------------------------------------- rows, facts, groups
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-xxs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A contained list: the group is one tonal shape, so only its outer corners
+// are large.
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-xs);
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-xs);
+  background: var(--sys-color-container);
+
+  &:first-child {
+    border-start-start-radius: var(--sys-shape-card);
+    border-start-end-radius: var(--sys-shape-card);
+  }
+
+  &:last-child {
+    border-end-start-radius: var(--sys-shape-card);
+    border-end-end-radius: var(--sys-shape-card);
+  }
+}
+
+.row__label {
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.row__body {
+  color: var(--sys-color-on-surface-variant);
+}
+
+// A disabled row dims its own content, never its reason.
+.row[data-state="disabled"] .row__label,
+.row[data-state="disabled"] .row__body,
+.group__option[data-state="disabled"] .group__label,
+.group__option[data-state="disabled"] .group__body {
+  opacity: var(--sys-state-disabled-content);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--sys-space-sm) var(--sys-space-lg);
+  margin: 0;
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.facts dt {
+  color: var(--sys-color-on-surface-variant);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+// Detail capabilities retain term/value reading order at compact widths and
+// large text. Other facts consumers keep their existing layout.
+.facts--detail {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+
+  > dt,
+  > dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  > dd + dt {
+    margin-block-start: var(--sys-space-sm);
+  }
+}
+
+// A root-relative breakpoint follows the browser's preferred text size.
+// Zero-minimum tracks still let both columns wrap when their content grows.
+@media (min-width: 37.5rem) {
+  .facts--detail {
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+
+    > dd + dt {
+      margin-block-start: 0;
+    }
+  }
+}
+
+.facts__static {
+  margin: 0;
+  padding: var(--sys-space-md) var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+// A connected selection group: 2 dp gaps, small inner corners, rounded ends.
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-xxs);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group__legend {
+  padding: 0 0 var(--sys-space-sm);
+  font-size: var(--sys-type-label-lg-size);
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.group__option {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sys-space-xs) var(--sys-space-md);
+  align-items: center;
+  min-height: var(--sys-density-min-target);
+  padding: var(--sys-space-md) var(--sys-space-lg);
+  border-radius: var(--sys-shape-sm);
+  background: var(--sys-color-container);
+
+  &:first-of-type {
+    border-start-start-radius: var(--sys-shape-xl);
+    border-start-end-radius: var(--sys-shape-xl);
+  }
+
+  &:last-of-type {
+    border-end-start-radius: var(--sys-shape-xl);
+    border-end-end-radius: var(--sys-shape-xl);
+  }
+
+  // Selection is tonal AND marked: the native radio stays visible so the
+  // choice is not carried by colour alone.
+  &:has(.group__input:checked) {
+    background: var(--sys-color-primary);
+    color: var(--sys-color-on-primary);
+  }
+}
+
+.group__input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--sys-color-selected);
+}
+
+.group__label {
+  font-weight: var(--sys-type-label-lg-weight);
+
+  // The whole row is the pointer target. The native radio is 20px, which is
+  // what a radio should look like, but 20px is not a target anyone can hit
+  // reliably: doc 04 section 9.4 asks for at least 44dp. The label already
+  // activates its own input, so stretching it over the row is the target
+  // without a second control. Transparent: it changes nothing that is drawn.
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+}
+
+.group__body,
+.reason {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.group__body {
+  font-size: var(--sys-type-body-sm-size);
+}
+
+// A reason is readable text at full contrast, never a faded tooltip.
+.reason {
+  color: var(--sys-color-on-surface);
+  font-size: var(--sys-type-body-sm-size);
+}
+
+.reason__why {
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.group__option:has(.group__input:checked) .group__body,
+.group__option:has(.group__input:checked) .reason {
+  color: var(--sys-color-on-primary);
+}
+
+// ------------------------------------------------------------- banners, status
+
+.banner {
+  margin: 0;
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container-high);
+}
+
+.banner--error {
+  outline: var(--sys-focus-ring-width) solid var(--sys-color-danger);
+  outline-offset: calc(var(--sys-space-xxs) * -1);
+  color: var(--sys-color-on-surface);
+}
+
+.status {
+  margin: 0;
+  font-weight: var(--sys-type-label-lg-weight);
+}
+
+.status[data-phase="ready"] {
+  color: var(--sys-color-success);
+}
+
+.status[data-phase="rejected"],
+.status[data-phase="unavailable"] {
+  color: var(--sys-color-danger);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-md);
+  align-items: flex-start;
+}
+
+// ------------------------------------------------------------------- buttons
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--sys-density-min-target);
+  min-width: var(--sys-density-min-target);
+  padding: 0 var(--sys-space-xxl);
+  border: 0;
+  border-radius: var(--sys-shape-full);
+  font: inherit;
+  font-weight: var(--sys-type-label-lg-weight);
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.btn--filled {
+  background: var(--sys-color-primary);
+  color: var(--sys-color-on-primary);
+}
+
+.btn--tonal {
+  background: var(--sys-color-container-high);
+  color: var(--sys-color-on-surface);
+}
+
+.btn--text {
+  background: transparent;
+  color: var(--sys-color-primary);
+}
+
+// One strongest action per task, taller when there is room for it.
+.btn--principal {
+  min-height: 56px;
+  font-size: var(--sys-type-title-md-size);
+}
+
+// State layers are one on-colour overlay, expressed once.
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.btn:hover::after {
+  opacity: var(--sys-state-hover);
+}
+
+.btn:active::after {
+  opacity: var(--sys-state-press);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: var(--sys-state-disabled-content);
+}
+
+// The focus ring is never removed, and keeps its own gap from the control.
+:focus-visible {
+  outline: var(--sys-focus-ring-width) solid var(--sys-focus-ring-color);
+  outline-offset: var(--sys-space-xxs);
+}
+
+// --------------------------------------------------------------- setup screen
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-lg);
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-sm);
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.summary__title {
+  margin: 0;
+  font-size: var(--sys-type-title-md-size);
+  font-weight: var(--sys-type-title-md-weight);
+}
+
+.summary .facts {
+  padding: 0;
+  background: transparent;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-md);
+}
+
+// ------------------------------------------------------------------ responsive
+//
+// Compact is the base. Each larger step adds columns rather than shrinking
+// type, so 200% zoom simply lands back on the compact layout.
+
+@media (min-width: 600px) {
+  .main {
+    padding: var(--sys-space-xxl);
+  }
+
+  .actions {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+// ------------------------------------------------------ isolated account tasks
+// ADR-0036 reuses the shell foundation rather than the design pack's sample
+// purple palette, hero, identity controls or statistics. All reasons remain
+// full-contrast text; no private field doubles as a live-status announcement.
+.section.account {
+  max-width: 760px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.account__state,
+.account__profile,
+.account__local {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-md);
+}
+
+.account__local {
+  padding-block: var(--sys-space-md);
+}
+
+.account__local .field__label,
+.account .row__body {
+  margin: 0;
+}
+
+// The synchronous lifecycle mask must win over component display rules. The
+// browser's default [hidden] rule alone loses to .account__profile display:flex.
+[data-account-private][hidden] {
+  display: none !important;
+}
+
+.account__state {
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.account__facts {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.account__id {
+  min-width: 0;
+  font-family: var(--sys-type-mono-md-family);
+  font-size: var(--sys-type-mono-md-size);
+  line-height: var(--sys-type-mono-md-line-height);
+  overflow-wrap: anywhere;
+}
+
+.account__confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sys-space-md);
+  margin: 0;
+  padding: var(--sys-space-lg);
+  min-width: 0;
+  border: 0;
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+}
+
+.account__confirmation legend {
+  padding: 0 var(--sys-space-sm);
+}
+
+.btn--danger {
+  background: var(--sys-color-danger);
+  color: var(--sys-color-on-danger);
+}
+
+.account__actions {
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.account__actions > .btn {
+  white-space: normal;
+  text-align: center;
+  padding-block: var(--sys-space-sm);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.account__feature-link {
+  display: flex;
+  align-items: center;
+  min-height: var(--sys-density-min-target);
+  color: var(--sys-color-on-surface);
+  text-underline-offset: var(--sys-space-xxs);
+}
+
+.public-account {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sys-density-min-target);
+  margin-block-end: var(--sys-space-md);
+  color: var(--sys-color-on-surface);
+  gap: var(--sys-space-sm);
+}
+
+@media (max-width: 599px) {
+  .account .section__title {
+    font-size: var(--sys-type-headline-sm-size);
+    line-height: var(--sys-type-headline-sm-line-height);
+  }
+}
+
+@media (min-width: 600px) {
+  .account__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .account__facts {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+}
+
+@import "online";
+
+@import "shell";
+@import "library";
+
+// Native account forms preserve semantic tokens and compact reading width.
+.account__form { display: flex; flex-direction: column; gap: 16px; margin-block: 24px; min-width: 0; }
+.account__form .field { display: flex; flex-direction: column; min-width: 0; gap: 8px; }
+.account__form .field__control { width: 100%; min-width: 0; min-height: var(--sys-density-min-target); box-sizing: border-box; }
+.account__details { margin-block: 24px; padding-block: 16px; border-block-start: 1px solid var(--sys-color-outline-variant); }
+.account__social-list { list-style: none; padding: 0; display: grid; gap: 16px; }
+.account__social-row { padding: 16px; border: 1px solid var(--sys-color-outline-variant); border-radius: var(--sys-shape-md); overflow-wrap: anywhere; min-width: 0; }
+.account__social-row .actions { margin-block-start: 8px; }
+.account__social-row > a {
+  display: flex;
+  align-items: center;
+  min-height: var(--sys-density-min-target);
+  color: var(--sys-color-primary);
+  text-underline-offset: var(--sys-space-xxs);
+}

@@ -1,0 +1,46 @@
+[package]
+name = "tabula-online-match-acceptance"
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.96"
+publish = false
+
+# A separate acceptance-only workspace keeps browser/server infrastructure out
+# of the shipped game graph. Neither production service imports this binary.
+[workspace]
+resolver = "2"
+
+[features]
+default = []
+# Fixture control methods never enter ordinary service or browser builds.
+body-publication-test = ["tabula-match-http/acceptance-test-support", "dep:bytes", "dep:http-body"]
+continuity-test = ["body-publication-test", "tabula-storage/online-match-test-support"]
+
+[[bin]]
+name = "online-match-fixture"
+path = "src/main.rs"
+
+[dependencies]
+tabula-core = { path = "../../crates/tabula-core" }
+tabula-game-api = { path = "../../crates/tabula-game-api" }
+tabula-game-chess = { path = "../../games/chess" }
+tabula-match = { path = "../../crates/tabula-match", features = ["isolated"] }
+tabula-match-http = { path = "../../crates/tabula-match-http", features = ["isolated"] }
+tabula-protocol = { path = "../../crates/tabula-protocol" }
+tabula-registry = { path = "../../crates/tabula-registry" }
+tabula-session = { path = "../../crates/tabula-session" }
+tabula-session-http = { path = "../../crates/tabula-session-http", features = ["isolated"] }
+tabula-storage = { path = "../../crates/tabula-storage", features = ["online-match-postgres"] }
+axum = { version = "=0.8.8", default-features = false, features = ["http1", "tokio"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bytes = { version = "1", optional = true }
+http-body = { version = "1", optional = true }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "postgres"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "signal"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "deny"

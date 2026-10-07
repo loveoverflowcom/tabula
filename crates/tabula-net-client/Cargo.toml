@@ -6,6 +6,7 @@ edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
 # PHASE 4. The reconnect/idempotency logic is subtle and security-relevant, and
 # is needed by the Leptos shell, the Macroquad client, the load generator, and
@@ -13,7 +14,6 @@ repository.workspace   = true
 [dependencies]
 tabula-core     = { workspace = true }
 tabula-protocol = { workspace = true }
-tabula-registry = { workspace = true }
 thiserror       = { workspace = true }
 
 # Two backends behind ONE API. Target-determined, so features, not cfg.

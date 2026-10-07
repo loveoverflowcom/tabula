@@ -1,219 +1,98 @@
-# Tabula — Nền tảng Board Game Cross-Platform bằng Rust
+# Tabula
 
-**Tabula** là một runtime nền tảng board game được xây dựng bằng Rust, cho phép tạo và triển khai nhiều trò chơi board độc lập (cờ vua, bài, social-deduction, tile-placement, party games) mà không cần sửa đổi code nền tảng.
+Tabula là runtime board game bằng Rust: luật xác định, SDK cho từng game,
+projection theo người xem và công cụ replay. Nền tảng sở hữu cơ chế; từng game
+sở hữu luật. Thêm game không được tạo nhánh xử lý theo `game_id` trong platform.
 
-```
-                       ┌──────────────────────────┐
-                       │      Rust Workspace      │
-                       └────────────┬─────────────┘
-                                    │
-                 ┌──────────────────▼──────────────────┐
-                 │         tabula-core                 │
-                 │                                     │
-                 │ Rules / State / Action / RNG        │
-                 │ Turn / Replay / Validation          │
-                 │ Visibility / PlayerView             │
-                 │ NO Macroquad / NO HTTP / NO DB      │
-                 └──────────┬────────────────┬─────────┘
-                            │                │
-              WASM/native   │                │ native
-                            │                │
-          ┌─────────────────▼───┐       ┌────▼──────────────────┐
-          │ Client              │       │ Backend               │
-          │                     │       │                       │
-          │ Macroquad           │       │ Tokio + Axum          │
-          │ 2D gameplay         │       │ WebSocket + HTTP      │
-          │                     │       │ SQLx + PostgreSQL     │
-          └──────────┬──────────┘       └────────┬──────────────┘
-                     │                           │
-        Web/WASM ────┤                           │
-        Android ─────┤                           │
-        iOS ─────────┘                           │
-                                                 │
-          ┌─────────────────────┐                │
-          │ Leptos              │◄───────────────┘
-          │                     │
-          │ Landing / Lobby     │
-          │ Account / Chat      │
-          │ Shop / Dashboard    │
-          │ Admin / CMS         │
-          └─────────────────────┘
-```
+Đọc [mục lục tài liệu](docs/README.md) và
+[doc 00 — Architecture Principles](docs/architecture/00-architecture-principles.md)
+trước khi sửa code. [AGENTS.md](AGENTS.md) hướng dẫn cách làm việc;
+[hai skills chính](.agents/skills/README.md) cung cấp workflow và kỹ thuật theo nhu cầu.
 
-## 🎮 Tính năng chính
+## Kiến trúc và trạng thái
 
-- **Runtime Game-Agnostic**: Lõi kinh doanh độc lập với logic game cụ thể
-- **Multiplayer Server-Authoritative**: Máy chủ kiểm soát tất cả trạng thái game
-- **Cross-Platform**: Web (WASM), Android, iOS, Desktop
-- **Realtime Communication**: WebSocket cho multiplayer hiệu năng cao
-- **Replay & Versioning**: Ghi lại toàn bộ trò chơi, hỗ trợ phiên bản game
-- **Scalable Architecture**: Modular monolith có thể phát triển sang microservices
+| Thành phần | Trách nhiệm và phạm vi hiện tại |
+|---|---|
+| `tabula-core`, `tabula-game-api`, `games/*` | Kernel, hợp đồng game và luật thuần Rust; luật không đọc clock, socket hoặc DB |
+| `tabula-registry` | Catalog và dispatch qua hợp đồng chung; discovery/setup có slice được mở theo ADR-0028 |
+| `tabula-presentation`, `renderer-*` | Chuyển projection thành `RenderList`, xử lý input và render; trạng thái UI nằm ngoài canonical state |
+| `apps/game-client` | Gameplay Macroquad native trên desktop và WASM trên web |
+| `apps/web` | Shell Leptos CSR; discovery/setup và handoff local có phạm vi ADR-0028/0030 |
+| `apps/mobile/` | Một cây Compose Multiplatform cho Android/iOS theo ADR-0032; foundation; hướng native Macroquad theo ADR-0043, adapter/gameplay chưa có |
+| `apps/desktop` | Shell Tauri tùy chọn; gameplay không phụ thuộc Tauri |
+| `services/tabula-server`, `tabula-match`, `tabula-storage` | Kiến trúc multiplayer server-authoritative, Tokio/Axum và PostgreSQL; phần runtime ngoài slice được mở vẫn theo phase gate |
+| `services/tabula-auth` | Skeleton backend auth dùng Kanidm theo [ADR-0034](docs/adr/0034-kanidm-auth-service-skeleton.md); TODO trong Rust, chưa có login/session runtime cho #54 |
 
-## 🛠️ Tech Stack
+Web shell và gameplay là hai WASM bundle/document riêng (ADR-011).
+Hướng mobile dùng CMP quản lý UI/navigation và Macroquad native trong cùng app qua
+`GameHost`. [ADR-0043](docs/adr/0043-native-mobile-gamehost.md) bỏ đường gameplay WebView;
+adapter native đang blocked, app hiện chỉ có shell và không mở game.
+Xem [ADR-0043](docs/adr/0043-native-mobile-gamehost.md) và
+[mobile README](apps/mobile/README.md) để biết phạm vi đã mở.
 
-| Lớp | Công nghệ |
-|-----|-----------|
-| **Game Rules** | Pure Rust crate (không phụ thuộc) |
-| **Shared Protocol** | Rust + Serde |
-| **Gameplay Client** | Macroquad (2D graphics) |
-| **Web Portal** | Leptos (SSR + reactivity) |
-| **Backend** | Tokio + Axum |
-| **Realtime** | WebSocket |
-| **Database** | PostgreSQL + SQLx |
-| **Asset Delivery** | Object storage + CDN |
-| **Deployment** | Container + managed PostgreSQL |
+Với multiplayer, luồng thiết kế là: client gửi command → platform xác thực và
+sắp thứ tự → game áp dụng `Input` → platform lưu kết quả → `project`/`view_event`
+tạo `View`/`ViewEvent` cho từng người xem. Client không nhận canonical `State`.
+Luồng online này không được suy ra từ việc demo local chạy được.
 
-## 📚 Cấu trúc dự án
+## Cấu trúc repo
 
-```
-tabula/
-├── docs/
-│   └── architecture/          # Hướng dẫn thiết kế chi tiết
-│       ├── 00-architecture-principles.md    # Nguyên tắc & ADR
-│       ├── 01-stack-and-repository-plan.md  # Stack & cấu trúc repo
-│       ├── 02-game-module-and-sdk-design.md # Game SDK
-│       ├── 03-backend-and-multiplayer-plan.md
-│       ├── 04-frontend-and-design-system.md
-│       ├── 05-data-protocol-and-replay.md
-│       ├── 06-scaling-deployment-and-observability.md
-│       ├── 07-phases-and-implementation-roadmap.md
-│       ├── 08-first-games-validation-plan.md
-│       └── 09-synthesis-and-decision-register.md
-├── rust-first-cross-platform.md    # Nghiên cứu về stack Rust
-├── deep-research-report.md         # Báo cáo nghiên cứu thị trường
-└── README.md                       # File này
-```
+| Thư mục / file | Nội dung |
+|---|---|
+| [`crates/`](crates/README.md) | Thư viện platform, SDK, presentation và adapters |
+| [`games/`](games/README.md) | Mỗi game một crate; rules/bots/presentation tách bằng features |
+| [`apps/`](apps/README.md) | Game runtime, web/admin và desktop shell |
+| [`apps/mobile/`](apps/mobile/README.md) | `shared/`, `android/`, `ios/` trong một Gradle root |
+| `services/`, `deploy/` | Binary server và cấu hình triển khai theo phase |
+| [`xtask/`](xtask/README.md), [`justfile`](justfile) | Automation và lệnh tiện ích |
+| `tests/` | Replay goldens và harnesses theo phạm vi triển khai |
+| [`docs/`](docs/README.md) | Architecture, ADR, game/UI specs, queue và bằng chứng |
+| [`.agents/skills/`](.agents/skills/README.md) | Skills chính; `.claude/skills` trỏ về cùng cây |
+| [`tokens.toml`](tokens.toml), [`deps.toml`](deps.toml) | Nguồn authored cho design tokens và luật dependency |
 
-## 🚀 Bắt đầu nhanh
+Hai báo cáo gốc [nghiên cứu stack](rust-first-cross-platform.md) và
+[nghiên cứu thị trường](deep-research-report.md) là nguồn lịch sử. Hợp đồng hiện tại
+nằm trong docs 00–09 và ADRs; các báo cáo cũ không xác định tiến độ triển khai.
 
-### Yêu cầu hệ thống
+## Chạy local
 
-- Rust 1.70+ (cài đặt qua [rustup](https://rustup.rs/))
-- PostgreSQL 14+ (cho backend)
-- Node.js 18+ (nếu sử dụng tooling frontend)
-
-### Cài đặt
+Dùng toolchain pin trong [`rust-toolchain.toml`](rust-toolchain.toml), không chọn
+version theo báo cáo nghiên cứu cũ. Web cần `trunk`; `just` là wrapper tùy chọn.
 
 ```bash
-# Clone dự án
-git clone <repository-url>
+git clone https://github.com/loveoverflowcom/tabula.git
 cd tabula
+git switch develop
 
-# Kiểm tra cấu trúc Rust workspace
-cargo --version
-cargo metadata --format-version 1 | jq '.workspace_members'
+# Gameplay native local
+cargo run -p tabula-game-client
+
+# Shell discovery/setup, gameplay chưa được bind
+cd apps/web
+trunk serve
 ```
 
-### Đọc tài liệu kiến trúc
+Từ repo root, `just wasm-serve` build/stage gameplay WASM riêng;
+`just web-local-serve` build và serve shell cùng handoff gameplay local opt-in
+(ADR-0030). Đây là local play, không phải tài khoản hoặc multiplayer server.
+Lệnh và prerequisites mobile nằm trong [mobile README](apps/mobile/README.md).
 
-**Cho người mới:**
-```
-00 (Architecture Principles)
-→ 01 (Stack & Repository)
-→ 07 (Roadmap)
-```
+## Kiểm tra trước PR
 
-**Để implement game:**
-```
-00 → 02 (Game SDK)
-→ 08 (First Games)
-→ 04 (Frontend)
-```
+```bash
+cargo xtask check  # tương đương just check, portable core gate
 
-**Để work trên backend:**
-```
-00 → 03 (Backend & Multiplayer)
-→ 05 (Protocol & Replay)
-→ 06 (Scaling & Observability)
+# Skills, resource links và bridge
+python3 .agents/skills/tabula-engineering/scripts/check_skills.py
+python3 .agents/skills/tabula-engineering/scripts/test_check_skills.py
+python3 .agents/skills/tabula-engineering/scripts/test_ai_doc_contracts.py
 ```
 
-**Để work trên client:**
-```
-00 → 04 (Frontend & Design System)
-→ 05 (Protocol)
-```
+Kiểm tra skills cần Python 3 và PyYAML. CI còn kiểm tra feature matrix và WASM;
+thay đổi game/mobile có các kiểm tra bổ sung trong [AGENTS.md](AGENTS.md).
+Ghi đúng command, source ref, kết quả và phần chưa kiểm chứng khi báo cáo.
 
-## 📋 Quy ước code
-
-- **Crate prefix**: `tabula-` (ví dụ: `tabula-core`, `tabula-backend`)
-- **Game crates**: `tabula-game-<slug>` trong thư mục `games/`
-- **Invariants**: Ký hiệu `I-*n` được định nghĩa tại doc 00 §7
-- **Decisions**: Ký hiệu `ADR-*nnn` (Architectural Decision Record) tại doc 00 §10
-
-## 📖 Các tài liệu chính
-
-| # | File | Khi nào đọc |
-|---|------|-----------|
-| 00 | Architecture Principles | **Luôn đọc trước** — Các invariant, ADR |
-| 01 | Stack & Repository Plan | Tạo crate, thêm dependency, setup CI |
-| 02 | Game Module & SDK Design | Implement game contract |
-| 03 | Backend & Multiplayer Plan | Implement gateway, sessions, persistence |
-| 04 | Frontend & Design System | Implement Leptos shell, Macroquad client |
-| 05 | Data Protocol & Replay | Đồng bộ wire protocol, serialization |
-| 06 | Scaling & Observability | Deploy, monitor, scale |
-| 07 | Phases & Roadmap | Planning & execution |
-| 08 | First Games Validation | Chọn & implement game reference |
-| 09 | Synthesis & Decision Register | Quick answers & LOCK/EXPERIMENT/DEFER |
-
-## 🎯 Status Markers
-
-Các tài liệu kiến trúc sử dụng ba trạng thái:
-
-- **LOCK NOW** — Quyết định chính thức. Không bàn lại mà không ADR mới.
-- **EXPERIMENT** — Hướng đã chọn, chi tiết chưa kiểm chứng. Build behind a seam.
-- **DEFER** — Cố tình không xây ngay. Giữ tường seam, không viết code.
-
-## 💡 Kiến trúc chính
-
-### Core (`tabula-core`)
-- Trạng thái game & action handling
-- Turn management
-- Replay & validation
-- Player view & visibility
-- **Không phụ thuộc**: Macroquad, HTTP, Database
-
-### Backend
-- **Framework**: Tokio + Axum
-- **Protocol**: WebSocket + HTTP
-- **Database**: PostgreSQL + SQLx
-- Qản lý session, match actors, persistence
-
-### Client
-- **Gameplay**: Macroquad (2D graphics)
-- **Portal**: Leptos (web SSR + reactivity)
-- **Targets**: Web (WASM), Android, iOS, Desktop
-
-## 🔄 Multiplayer Flow
-
-1. **Client** gửi action qua WebSocket
-2. **Backend** nhận, validate, apply vào `tabula-core`
-3. **Backend** broadcast state update cho tất cả clients
-4. **Client** render state mới
-
-## 📊 Thị trường & Context
-
-- **Board Game thị trường**: ~18.95 tỷ USD (2026), dự báo 30.06 tỷ USD (2031)
-- **Online board games**: ~2.72 tỷ USD (2026)
-- **Competitors**: Board Game Arena (1347 games), Chess.com (250M+ users)
-- **Opportunity**: Tabula là platform cho độc lập game creators
-
-## 🤝 Đóng góp
-
-Xem tài liệu kiến trúc trước khi contribute. ADR và Invariants là mandatory reference.
-
-## 📝 License
-
-[Chưa xác định — Xem CLAUDE.md hoặc LICENSE file khi có]
-
-## 📞 Contact
-
-Maintainer: Love Overflow  
-Email: manh.pd1@kiotviet.com
-
----
-
-**Bắt đầu từ đâu?**
-- Tìm hiểu tổng quan? → Đọc `docs/architecture/00-architecture-principles.md`
-- Muốn implement game? → Đọc `docs/architecture/02-game-module-and-sdk-design.md`
-- Cần setup dev environment? → Đọc `docs/architecture/01-stack-and-repository-plan.md`
-- Xem timeline? → Đọc `docs/architecture/07-phases-and-implementation-roadmap.md`
+[Roadmap](docs/architecture/07-phases-and-implementation-roadmap.md) quy định gates;
+[work queue](docs/work-plan/README.md) ghi các slice và prerequisites.
+`LOCK NOW`, `EXPERIMENT`, `DEFER` là trạng thái quyết định, không phải dấu hiệu
+một tính năng đã được implement hoặc chạy trên thiết bị.

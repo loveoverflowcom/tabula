@@ -1,0 +1,19 @@
+{
+  "source_commit": "ae40d8efda28c141127116b3342d80843aba4185",
+  "source_directory": "docs/ui/tabula-logo-lavender",
+  "source_sha256": {
+    "palette.json": "e1f17692a1aa4ecb8fdbdf68dd4d0f6c3c11216ab68fb18676dd9c199c34ebd2",
+    "preview.html": "440b002d0214d235f01ee49b045d79ef4a14787378a9d924bd34c372e0a9f2a7",
+    "tabula-app-icon.svg": "93feac260ae7a45b291eab6a1e1381b18925c506ece9dd87ffcfd8a0cfa7867b",
+    "tabula-lockup-dark.svg": "8f91c25de35c60815c50d6ab4f591c88fb896d693574511587d244923e9bcd4c",
+    "tabula-lockup-light.svg": "b2b96592a1ce278e74d49892e3d9cb6cd0e9886dd790d83d96999878171a9130",
+    "tabula-mark-black.svg": "e801e6c0030f58033de523a56c5e77584002c44d4804e81d36da0138308d157a",
+    "tabula-mark-micro.svg": "246862edbf0b8d4088128659b606440136a1f8167d0814e2c5fd2988a5a40e64",
+    "tabula-mark-mono.svg": "e150d0b82b5ffe2b0574e6cc638ad33e4c16f2a86f0832486b70083da5c74124",
+    "tabula-mark-on-dark.svg": "0ad3f25bc31073d2b8cae1ff153bcd595fd3087e47d1a096548724c7833ed433",
+    "tabula-mark-primary.png": "89bf0dde2d98c127629254a4df4c777cf1c6ac2315d622dbdfb5feffe1187054",
+    "tabula-mark-primary.svg": "12c5719102eb94a298e7de01c943e0322f416155ad8c9808d31c07fca6ab7151",
+    "tabula-mark-white.svg": "54272a58f277d933ba19e21642cd4a62d4d1b222e290c81dbe24d71e0afb7136",
+    "tabula-wordmark.svg": "1509504498fa34224800eaacad33af3aeb5e6cfd2abac2e2b1ad5d998806aacc"
+  }
+}

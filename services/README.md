@@ -4,9 +4,16 @@ Server binaries. **Leaves**: nothing depends on them.
 
 | Service | Phase | What it is |
 |---|---|---|
-| [`tabula-server`](tabula-server) | 4 | THE binary at Stage 0: HTTP API + WS gateway + match runtime + lobby |
+| [`tabula-server`](tabula-server) | 4 | Gameplay binary: HTTP API + WS gateway + match runtime + lobby; enforces current sessions and resource permissions |
+| [`tabula-auth`](tabula-auth) | 4 | Kanidm-backed account auth/session lifecycle skeleton; no listener or credential handling |
 
-## One binary, on purpose (ADR-015)
+Both are compiled frames that print their phase gate and exit with failure.
+Implementation TODOs are in their Rust modules; remove each as its implementation
+and evidence land. [ADR-0034](../docs/adr/0034-kanidm-auth-service-skeleton.md)
+records the auth exception and keeps Phase 4/5 runtime gates closed for issue #54.
+Kanidm is operator-managed infrastructure; no deployment is provisioned here.
+
+## One gameplay binary, on purpose (ADR-015/0034)
 
 Doc 01 §2.3 rejects "separate services from day one" explicitly:
 
@@ -32,8 +39,15 @@ crates are the boundary; the process count is a deployment decision.
 5. + matchmaker                             only when the matchmaker itself needs replication
 ```
 
-**Explicitly never split out:** lobby, chat, auth, catalog, presence. They are
-libraries inside the gateway.
+Lobby, chat, catalog and presence remain libraries inside the gameplay gateway.
+ADR-0034 reserves account authentication separately; it does not split the room
+directory or gameplay runtime. Session enforcement and match grants stay with
+the gameplay server, while tabula-auth owns session lifecycle behind storage ports.
+All Tabula SQL stays in tabula-storage; services do not depend on one another's crates.
+
+Browser auth routes will share the app's trusted HTTPS origin through proxy
+routing. ADR-0031 still governs cookies/native bearer, CSRF and lifetime. A real
+cross-service revocation fence is required before enabling either account surface.
 
 Each step has a measured trigger in doc 06 §1.1. "It feels like it should be a
 service" is not one.

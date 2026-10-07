@@ -1,0 +1,336 @@
+{
+ "schema": 1,
+ "comment": "Canonical wire vectors for the ADR-0033 host bridge. tests/host-bridge.test.cjs and the Kotlin BridgeVectorsTest both execute every entry; a change here is a protocol change.",
+ "pageToHost": [
+  {
+   "name": "hello",
+   "text": "{\"v\":1,\"type\":\"hello\"}",
+   "accept": true,
+   "message": {
+    "type": "hello"
+   }
+  },
+  {
+   "name": "ready",
+   "text": "{\"v\":1,\"type\":\"ready\",\"gen\":7,\"bootMs\":1235}",
+   "accept": true,
+   "message": {
+    "type": "ready",
+    "gen": 7,
+    "bootMs": 1235
+   }
+  },
+  {
+   "name": "failed",
+   "text": "{\"v\":1,\"type\":\"failed\",\"gen\":7,\"code\":\"graphics-context\",\"detail\":\"The graphics context was lost.\"}",
+   "accept": true,
+   "message": {
+    "type": "failed",
+    "gen": 7,
+    "code": "graphics-context",
+    "detail": "The graphics context was lost."
+   }
+  },
+  {
+   "name": "failed with escaped text (decode only: encode emits raw UTF-8)",
+   "text": "{\"v\":1,\"type\":\"failed\",\"gen\":7,\"code\":\"runtime\",\"detail\":\"a\\\"b\\\\c\\u00e9\"}",
+   "accept": true,
+   "message": {
+    "type": "failed",
+    "gen": 7,
+    "code": "runtime",
+    "detail": "a\"b\\cé"
+   },
+   "decodeOnly": true
+  },
+  {
+   "name": "failed with raw UTF-8",
+   "text": "{\"v\":1,\"type\":\"failed\",\"gen\":7,\"code\":\"runtime\",\"detail\":\"a\\\"b\\\\cé\"}",
+   "accept": true,
+   "message": {
+    "type": "failed",
+    "gen": 7,
+    "code": "runtime",
+    "detail": "a\"b\\cé"
+   }
+  },
+  {
+   "name": "exit",
+   "text": "{\"v\":1,\"type\":\"exit\",\"gen\":7}",
+   "accept": true,
+   "message": {
+    "type": "exit",
+    "gen": 7
+   }
+  },
+  {
+   "name": "service",
+   "text": "{\"v\":1,\"type\":\"service\",\"gen\":7,\"id\":1,\"name\":\"keep-awake\",\"enabled\":true}",
+   "accept": true,
+   "message": {
+    "type": "service",
+    "gen": 7,
+    "id": 1,
+    "name": "keep-awake",
+    "enabled": true
+   }
+  },
+  {
+   "name": "extra field",
+   "text": "{\"v\":1,\"type\":\"exit\",\"gen\":7,\"token\":\"x\"}",
+   "accept": false
+  },
+  {
+   "name": "missing field",
+   "text": "{\"v\":1,\"type\":\"ready\",\"gen\":7}",
+   "accept": false
+  },
+  {
+   "name": "wrong version",
+   "text": "{\"v\":2,\"type\":\"exit\",\"gen\":7}",
+   "accept": false
+  },
+  {
+   "name": "zero generation",
+   "text": "{\"v\":1,\"type\":\"exit\",\"gen\":0}",
+   "accept": false
+  },
+  {
+   "name": "string generation",
+   "text": "{\"v\":1,\"type\":\"exit\",\"gen\":\"7\"}",
+   "accept": false
+  },
+  {
+   "name": "fractional generation",
+   "text": "{\"v\":1,\"type\":\"exit\",\"gen\":7.5}",
+   "accept": false
+  },
+  {
+   "name": "exponent number",
+   "text": "{\"v\":1,\"type\":\"exit\",\"gen\":7e0}",
+   "accept": false,
+   "hostOnly": true
+  },
+  {
+   "name": "leading zero",
+   "text": "{\"v\":1,\"type\":\"exit\",\"gen\":07}",
+   "accept": false
+  },
+  {
+   "name": "negative boot time",
+   "text": "{\"v\":1,\"type\":\"ready\",\"gen\":7,\"bootMs\":-1}",
+   "accept": false
+  },
+  {
+   "name": "huge boot time",
+   "text": "{\"v\":1,\"type\":\"ready\",\"gen\":7,\"bootMs\":3600001}",
+   "accept": false
+  },
+  {
+   "name": "unknown service",
+   "text": "{\"v\":1,\"type\":\"service\",\"gen\":7,\"id\":1,\"name\":\"microphone\",\"enabled\":true}",
+   "accept": false
+  },
+  {
+   "name": "non-boolean enabled",
+   "text": "{\"v\":1,\"type\":\"service\",\"gen\":7,\"id\":1,\"name\":\"keep-awake\",\"enabled\":1}",
+   "accept": false
+  },
+  {
+   "name": "unknown failure code",
+   "text": "{\"v\":1,\"type\":\"failed\",\"gen\":7,\"code\":\"oops\",\"detail\":\"\"}",
+   "accept": false
+  },
+  {
+   "name": "detail beyond 200 code points",
+   "text": "{\"v\":1,\"type\":\"failed\",\"gen\":7,\"code\":\"runtime\",\"detail\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+   "accept": false,
+   "hostOnly": true
+  },
+  {
+   "name": "unknown type",
+   "text": "{\"v\":1,\"type\":\"shell\",\"gen\":7}",
+   "accept": false
+  },
+  {
+   "name": "duplicate key",
+   "text": "{\"v\":1,\"type\":\"hello\",\"type\":\"exit\"}",
+   "accept": false
+  },
+  {
+   "name": "trailing comma",
+   "text": "{\"v\":1,\"type\":\"hello\",}",
+   "accept": false
+  },
+  {
+   "name": "trailing garbage",
+   "text": "{\"v\":1,\"type\":\"hello\"} x",
+   "accept": false
+  },
+  {
+   "name": "array",
+   "text": "[1]",
+   "accept": false
+  },
+  {
+   "name": "not json",
+   "text": "hello",
+   "accept": false
+  },
+  {
+   "name": "empty",
+   "text": "",
+   "accept": false
+  },
+  {
+   "name": "raw control character in string",
+   "text": "{\"v\":1,\"type\":\"failed\",\"gen\":7,\"code\":\"runtime\",\"detail\":\"a\tb\"}",
+   "accept": false
+  },
+  {
+   "name": "lone surrogate escape",
+   "text": "{\"v\":1,\"type\":\"failed\",\"gen\":7,\"code\":\"runtime\",\"detail\":\"\\ud800\"}",
+   "accept": false,
+   "hostOnly": true
+  }
+ ],
+ "hostToPage": [
+  {
+   "name": "init",
+   "text": "{\"v\":1,\"type\":\"init\",\"gen\":7,\"capabilities\":[\"keep-awake\"],\"preferences\":{\"theme\":\"dark\",\"motion\":\"reduced\",\"locale\":\"en\"}}",
+   "accept": true,
+   "message": {
+    "type": "init",
+    "gen": 7,
+    "capabilities": [
+     "keep-awake"
+    ],
+    "preferences": {
+     "theme": "dark",
+     "motion": "reduced",
+     "locale": "en"
+    }
+   }
+  },
+  {
+   "name": "init without capabilities",
+   "text": "{\"v\":1,\"type\":\"init\",\"gen\":2147483647,\"capabilities\":[],\"preferences\":{\"theme\":\"system\",\"motion\":\"system\",\"locale\":\"vi\"}}",
+   "accept": true,
+   "message": {
+    "type": "init",
+    "gen": 2147483647,
+    "capabilities": [],
+    "preferences": {
+     "theme": "system",
+     "motion": "system",
+     "locale": "vi"
+    }
+   }
+  },
+  {
+   "name": "suspend",
+   "text": "{\"v\":1,\"type\":\"suspend\",\"gen\":7}",
+   "accept": true,
+   "message": {
+    "type": "suspend",
+    "gen": 7
+   }
+  },
+  {
+   "name": "resume",
+   "text": "{\"v\":1,\"type\":\"resume\",\"gen\":7}",
+   "accept": true,
+   "message": {
+    "type": "resume",
+    "gen": 7
+   }
+  },
+  {
+   "name": "dispose",
+   "text": "{\"v\":1,\"type\":\"dispose\",\"gen\":7}",
+   "accept": true,
+   "message": {
+    "type": "dispose",
+    "gen": 7
+   }
+  },
+  {
+   "name": "back-requested",
+   "text": "{\"v\":1,\"type\":\"back-requested\",\"gen\":7}",
+   "accept": true,
+   "message": {
+    "type": "back-requested",
+    "gen": 7
+   }
+  },
+  {
+   "name": "reply ok",
+   "text": "{\"v\":1,\"type\":\"reply\",\"gen\":7,\"id\":1,\"ok\":true,\"code\":\"ok\"}",
+   "accept": true,
+   "message": {
+    "type": "reply",
+    "gen": 7,
+    "id": 1,
+    "ok": true,
+    "code": "ok"
+   }
+  },
+  {
+   "name": "reply denied",
+   "text": "{\"v\":1,\"type\":\"reply\",\"gen\":7,\"id\":2,\"ok\":false,\"code\":\"denied\"}",
+   "accept": true,
+   "message": {
+    "type": "reply",
+    "gen": 7,
+    "id": 2,
+    "ok": false,
+    "code": "denied"
+   }
+  },
+  {
+   "name": "init extra field",
+   "text": "{\"v\":1,\"type\":\"init\",\"gen\":7,\"capabilities\":[],\"preferences\":{\"theme\":\"dark\",\"motion\":\"reduced\",\"locale\":\"en\"},\"token\":\"x\"}",
+   "accept": false
+  },
+  {
+   "name": "init unknown capability",
+   "text": "{\"v\":1,\"type\":\"init\",\"gen\":7,\"capabilities\":[\"microphone\"],\"preferences\":{\"theme\":\"dark\",\"motion\":\"reduced\",\"locale\":\"en\"}}",
+   "accept": false
+  },
+  {
+   "name": "init duplicate capability",
+   "text": "{\"v\":1,\"type\":\"init\",\"gen\":7,\"capabilities\":[\"keep-awake\",\"keep-awake\"],\"preferences\":{\"theme\":\"dark\",\"motion\":\"reduced\",\"locale\":\"en\"}}",
+   "accept": false
+  },
+  {
+   "name": "init unknown theme",
+   "text": "{\"v\":1,\"type\":\"init\",\"gen\":7,\"capabilities\":[],\"preferences\":{\"theme\":\"purple\",\"motion\":\"reduced\",\"locale\":\"en\"}}",
+   "accept": false
+  },
+  {
+   "name": "init missing preference",
+   "text": "{\"v\":1,\"type\":\"init\",\"gen\":7,\"capabilities\":[],\"preferences\":{\"theme\":\"dark\",\"motion\":\"reduced\"}}",
+   "accept": false
+  },
+  {
+   "name": "wrong version",
+   "text": "{\"v\":2,\"type\":\"suspend\",\"gen\":7}",
+   "accept": false
+  },
+  {
+   "name": "zero generation",
+   "text": "{\"v\":1,\"type\":\"suspend\",\"gen\":0}",
+   "accept": false
+  },
+  {
+   "name": "unknown type",
+   "text": "{\"v\":1,\"type\":\"eval\",\"gen\":7}",
+   "accept": false
+  },
+  {
+   "name": "reply unknown code",
+   "text": "{\"v\":1,\"type\":\"reply\",\"gen\":7,\"id\":1,\"ok\":true,\"code\":\"maybe\"}",
+   "accept": false
+  }
+ ]
+}

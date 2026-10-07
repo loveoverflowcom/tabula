@@ -1,12 +1,13 @@
 # CI pipeline — doc 01 §6.1.
 #
-# Target PR wall-clock: UNDER 10 MINUTES. If it grows past that, move the wasm and
-# integration jobs into a merge-queue-only stage rather than weakening the checks.
+# Target PR wall-clock: UNDER 10 MINUTES. If it grows past that, move the wasm
+# job into a merge-queue-only stage rather than weakening the checks.
 # Weakening a check is how the invariants rot.
 #
-# Phase note: several jobs below are inert until the crates they check exist.
-# They are wired now on purpose — doc 09 §7 step 4: "Write the enforcement FIRST.
-# Then deliberately add a forbidden dependency and confirm CI fails."
+# Phase note: Only implemented / current-phase required gates run on normal PRs.
+# Narrow ADR exceptions additionally run executable isolated wire/actor vectors
+# and disposable session/provider database acceptance. Full Phase 4 transport,
+# match persistence/recovery and future xtask protocol commands remain gated.
 
 name: ci
 
@@ -24,6 +25,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # One maintained skill tree, working metadata/links/helpers, and failure fixtures.
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 -m pip install PyYAML==6.0.3
+      - run: python3 .agents/skills/tabula-engineering/scripts/check_skills.py
+      - run: python3 .agents/skills/tabula-engineering/scripts/test_check_skills.py
+      - run: python3 .agents/skills/tabula-engineering/scripts/test_ai_doc_contracts.py
+      - run: python3 tools/check-repository-hygiene.py
+      - run: python3 -m unittest discover -s tools/tests -p test_repository_hygiene.py -v
+      - run: python3 tools/native-voice-harness/test_run.py
+      - run: python3 tools/check-mobile-native-policy.py
+      - run: python3 -m unittest discover -s tools/tests -p test_mobile_native_policy.py -v
+
   # ---------------------------------------------------------------- fast gates
   fmt-clippy:
     runs-on: ubuntu-latest
@@ -59,16 +77,26 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask check-no-game-ids
 
-  # game.toml is the ops-readable source of truth for the catalog; it must equal
-  # the compiled GameMetadata/GameCapabilities. (doc 02 §4.3)
+  # Game-owned asset sources, game.toml schema and Cargo feature shape. A future compiled-metadata
+  # cross-check is not implemented by check-manifests yet. (doc 02 §4.3)
   manifests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 tools/tests/check-game-asset-locality.py
       - uses: dtolnay/rust-toolchain@master
         with: { toolchain: "1.96" }
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask check-manifests
+      # Source relocation must preserve the pinned content-addressed manifests.
+      - run: |
+          for game in chess tiles werewolf; do
+            cargo xtask pack-assets "$game"
+            version=$(python3 -c 'import sys,tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["version"])' "games/$game/assets/fixture.pack.toml")
+            cmp "target/asset-packs/$game/$version/pack.toml" "games/$game/assets/fixture.pack.toml"
+          done
 
   # Generated files are committed. If they are stale the diff is a silent lie.
   generated-current:
@@ -79,7 +107,76 @@ jobs:
         with: { toolchain: "1.96" }
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask gen-tokens
-      - run: git diff --exit-code -- apps/web/style/tokens.css crates/tabula-design/src/generated.rs
+      - run: git diff --exit-code -- apps/web/style/tokens.css crates/tabula-design/src/generated.rs docs/ui/tokens.json apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/design/TabulaTokens.kt
+      - run: cargo xtask check-mobile-catalog
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 -m pip install Pillow==11.3.0
+      - run: python3 tools/tests/check-primary-theme.py
+      - run: python3 -m unittest discover -s tools/tests -p test_brand_identity.py -v
+
+  # No hand-written raw color literals in presentation or game code (doc 04 §8.1).
+  raw-colors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "1.96" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo xtask check-no-raw-colors
+
+  # ADR-0043: compile the CMP shell and inspect its APK for retired web gameplay payloads.
+  # Desktop preview uses test doubles; neither a native game adapter nor device execution is proved.
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: gradle/actions/setup-gradle@v4
+      - working-directory: apps/mobile
+        run: ./gradlew --console=plain :shared:testAndroidHostTest :previewApp:test :android:assembleDebug
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 tools/check-mobile-native-policy.py --apk apps/mobile/android/build/outputs/apk/debug/android-debug.apk
+      - working-directory: apps/mobile
+        run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-shell-doubles-evidence
+          path: |
+            apps/mobile/previewApp/build/reports/shell-screenshots
+            apps/mobile/previewApp/build/test-results/test
+            apps/mobile/shared/build/test-results
+          if-no-files-found: warn
+
+  # ADR-0037/0043: Swift voice adapter + Kotlin framework compile/link and native-only
+  # package inspection. No native gameplay, microphone or real SFU acceptance is implied.
+  mobile-ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: xcodebuild -version && swift --version
+      - working-directory: apps/mobile
+        run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
+      - working-directory: apps/mobile/ios
+        run: xcodebuild -project TabulaApp.xcodeproj -scheme Tabula -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/tabula-ios" CODE_SIGNING_ALLOWED=NO build
+      - run: python3 tools/check-mobile-native-policy.py --app "$RUNNER_TEMP/tabula-ios/Build/Products/Debug-iphonesimulator/Tabula.app"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-ios-generated-headers
+          path: |
+            apps/mobile/shared/build/bin/**/*Framework/TabulaShared.framework/Headers
+            apps/mobile/shared/build/xcode-frameworks/**/TabulaShared.framework/Headers
+          if-no-files-found: warn
 
   # -------------------------------------------------------------------- tests
   test:
@@ -92,6 +189,30 @@ jobs:
       - uses: taiki-e/install-action@nextest
       # Unit + property + replay. Every game crate's conformance! suite runs here.
       - run: cargo nextest run --workspace
+      # ADR-0039 is opt-in: default workspace tests cannot exercise the actor.
+      # Offline ports are not production auth, PostgreSQL or WebSocket proof.
+      - name: Isolated match actor and executable wire vectors
+        run: |
+          cargo nextest run -p tabula-match --features isolated
+          cargo test -p tabula-registry --test runtime
+          cargo test -p tabula-registry --doc
+          cargo test -p tabula-protocol
+          cargo clippy -p tabula-match --features isolated --all-targets -- -D warnings
+      # ADR-0038: optional provider code must have executed adversarial crypto
+      # tests, not only a default std-only service frame or a feature build.
+      - name: Isolated Kanidm verifier and login boundary
+        run: |
+          cargo test -p tabula-auth --features web-oidc --lib
+          cargo test -p tabula-session-http --features isolated --test browser_login_http
+      # ADR-0036 PR3: actual TCP adapter responses consumed by the isolated
+      # account lifecycle. Synthetic test identities do not prove provider login.
+      - name: Isolated account HTTP consumer
+        run: |
+          cargo test -p tabula-web --features account-http-acceptance --test account_http -- --list > account-http-test-list.txt
+          grep -Eq '^tcp_context_then_current_self_profile_is_required_to_publish_identity: test$' account-http-test-list.txt
+          grep -Eq '^private_body_failure_after_received_200_stays_masked_until_explicit_recheck: test$' account-http-test-list.txt
+          cat account-http-test-list.txt
+          cargo test -p tabula-web --features account-http-acceptance --test account_http
 
   # doc 01 §5.1 rule 1: every crate builds with no features AND with all features.
   features:
@@ -103,17 +224,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --workspace --no-default-features
       - run: cargo check --workspace --all-features
-
-  # I-13: a wire type cannot change without a protocol version bump.
-  # Phase 4+ (no-op until tabula-protocol exists).
-  protocol-vectors:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with: { toolchain: "1.96" }
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo xtask check-protocol
 
   # WASM-only breakage (panics, missing features, size regressions) is invisible
   # to the native build. Phase 2+ for game-client, Phase 5+ for web.
@@ -127,35 +237,46 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - run: cargo check -p tabula-game-client --target wasm32-unknown-unknown --no-default-features --features web
+      - run: cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release
+      - run: cargo xtask stage-wasm-game
+      # Current local loading boundary: real loader contracts, cache fault
+      # cases and byte/resource budgets; never substitute for browser timing.
+      - uses: actions/setup-node@v4
+        with: { node-version: "24" }
+      - run: node --test apps/game-client/web/tests/*.test.cjs
+      - run: python3 tools/test_serve_local_shell.py
+      - run: cargo tree -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --edges normal > target/local-game-graph.txt
+      - run: python3 tools/tests/check-loading-budgets.py --game-wasm target/wasm32-unknown-unknown/wasm-release/tabula-game-client.wasm --game-tree target/local-game-graph.txt
       - run: cargo check -p tabula-web --target wasm32-unknown-unknown
+      - run: cargo check -p tabula-protocol -p tabula-registry -p tabula-match --target wasm32-unknown-unknown --all-features
       # Bundle size cap: < 6 MB gzipped (doc 01 §7). Fail on a >10% regression.
       # - run: cargo xtask check-bundle-size
+
+  # ADR-0035 opt-in local Werewolf proof. Target compilation and mocked/headless
+  # checks remain distinct from real native/browser/mobile visual acceptance.
+  werewolf-local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96"
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: cargo test -p tabula-game-werewolf --features presentation
+      - run: cargo test -p tabula-game-client --no-default-features --features werewolf --test werewolf_simulator
+      - run: cargo check -p tabula-game-client --no-default-features --features werewolf --bin tabula-werewolf-client
+      - run: cargo build -p tabula-game-client --no-default-features --features web-werewolf --bin tabula-werewolf-client --target wasm32-unknown-unknown --profile wasm-release
+      - run: cargo xtask stage-wasm-game --game werewolf
+      - run: cargo tree -p tabula-game-client --no-default-features --features web-werewolf --target wasm32-unknown-unknown --edges normal > target/werewolf-game-graph.txt
+      - run: python3 tools/tests/check-werewolf-loading-budgets.py --wasm target/wasm32-unknown-unknown/wasm-release/tabula-werewolf-client.wasm --tree target/werewolf-game-graph.txt --bundle target/tabula-web-werewolf --receipt target/werewolf-loading-receipt.json
 
   deny:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
-
-  # Real Postgres, real WebSocket, multiple clients. Phase 4+.
-  integration:
-    runs-on: ubuntu-latest
-    needs: [test]
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: tabula
-          POSTGRES_DB: tabula_test
-        options: >-
-          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
-        ports: ["5432:5432"]
-    env:
-      DATABASE_URL: postgres://postgres:tabula@localhost:5432/tabula_test
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with: { toolchain: "1.96" }
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@nextest
-      - run: cargo nextest run -p tabula-integration-tests --no-fail-fast
+        with:
+          arguments: --all-features

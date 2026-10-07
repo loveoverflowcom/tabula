@@ -1,0 +1,26 @@
+[package]
+name = "tabula-match-postgres-acceptance"
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.96"
+publish = false
+
+# ADR-0040: acceptance only; infrastructure deps never unify into shipped games.
+[workspace]
+resolver = "2"
+
+[dependencies]
+tabula-core = { path = "../../crates/tabula-core" }
+tabula-game-api = { path = "../../crates/tabula-game-api" }
+tabula-match = { path = "../../crates/tabula-match", features = ["isolated"] }
+tabula-protocol = { path = "../../crates/tabula-protocol" }
+tabula-registry = { path = "../../crates/tabula-registry", features = ["test-support"] }
+tabula-storage = { path = "../../crates/tabula-storage", features = ["match-postgres-test-support"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "postgres"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "deny"

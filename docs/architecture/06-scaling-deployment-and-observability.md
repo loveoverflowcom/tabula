@@ -48,11 +48,11 @@ Knowing the unit costs turns capacity planning into arithmetic instead of anxiet
 
 | Component | Estimate | Notes |
 |---|---|---|
-| Canonical state | 0.5–4 KB (chess/cards/werewolf), 30–120 KB (tiles) | `StateSizeClass` |
+| Canonical state | 0.5–4 KB (chess/Werewolf; Caro TBD), ~1.7 KB measured for a full Tiles board (design estimate was 30–120 KB) | `StateSizeClass` |
 | Actor overhead | ~4 KB | task, timer heap, seat table, idempotency ring |
 | Mailbox (idle) | ~0.5 KB | tokio mpsc allocates in blocks, lazily |
 | Viewer bookkeeping | ~200 B × viewers | — |
-| **Total live match** | **~8 KB typical, ~130 KB for tiles** | 10,000 chess matches ≈ 80 MB |
+| **Total live match** | **~8 KB typical, ~6 KB for tiles** | 10,000 chess matches ≈ 80 MB |
 
 ### 2.2 Per-connection cost
 
@@ -69,7 +69,7 @@ Knowing the unit costs turns capacity planning into arithmetic instead of anxiet
 |---|---|
 | Envelope decode + rate limit | 2–5 µs |
 | `decode_command` | 1–5 µs |
-| `apply` (chess/cards/werewolf) | 5–50 µs |
+| `apply` (chess/Caro/Werewolf) | 5–50 µs |
 | `apply` (tiles, incremental scoring) | 20–200 µs |
 | `view_events` per viewer group | 5–20 µs |
 | Canonical encode + hash (hash every 20th) | 3–10 µs |
@@ -153,6 +153,24 @@ statement_timeout        = 5s (app pool)
 ```
 
 ---
+
+### 3.5 Isolated durability evidence is not Stage-0 activation
+
+[ADR-0040](../adr/0040-isolated-durable-match-postgres.md) permits only native
+opt-in match journaling and explicit recovery with real disposable PostgreSQL 16
+transaction/fault/reopen/process evidence. Both production entrypoints stay
+closed; migrations are explicit isolated test operations, not live rollout.
+Expected-version plus durable owner generation excludes stale database writers
+after reopen. That fence is not the placement/lease/service split in §4.4/§5.1,
+or revocation of queued socket output and external effects.
+
+Known or indeterminate commit failure stops the isolated actor; a fresh verified
+reopen establishes durable truth. No AckAfterApply buffer, live read-only fallback,
+automatic supervisor, timer/outage policy, real online crash/resync, load/SLO,
+backup/PITR or production seed-encryption acceptance follows. Stage 0 exits and
+production deployment/at-rest/access-control obligations remain unchanged.
+The [delivery ledger](../verification/durable-match-postgres/README.md) separates
+planned checks from actual real-server, process, local and CI receipts.
 
 ## 4. Stage 1 — one tuned host (≤ ~1,000 CCU)
 
@@ -454,9 +472,15 @@ create table match_inputs_2026_09 partition of match_inputs
 5. + matchmaker                         (only when the matchmaker itself needs replication)
 ```
 
-**Explicitly not split:** lobby, chat, auth, catalog, presence. They are libraries inside the
+**Explicitly not split:** lobby, chat, catalog, presence. They are libraries inside the
 gateway. Splitting them buys independent deploys we do not need and costs N× the failure modes
 (ADR-015).
+
+[ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md) records the owner-selected
+exception: account authentication/session lifecycle is reserved for tabula-auth
+with operator-managed Kanidm. Gameplay retains session enforcement and match
+grants. These are skeletons, not a deployment; coherent cross-service revocation
+is a prerequisite before enabling account runtime.
 
 ### 7.2 Internal transport (Stage 2+)
 

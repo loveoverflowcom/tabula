@@ -45,7 +45,8 @@ pub enum Viewer {
 ///
 /// The **game** decides what a delayed spectator sees; the **platform** enforces
 /// the delay by buffering. Delay exists so a spectator cannot relay information
-/// to a player in real time — ranked cards uses `Delayed { by: 30s }`.
+/// to a player in real time — a ranked hidden-information game may use
+/// `Delayed { by: 30s }`.
 /// (doc 02 §12.2, doc 03 §11.1)
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum SpectatorTier {

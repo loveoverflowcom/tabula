@@ -14,11 +14,12 @@ in [`deps.toml`](../deps.toml), and repeated in each crate's `src/lib.rs` header
 | [`tabula-testkit`](tabula-testkit) | 0 | The conformance suite every game must pass |
 | [`tabula-design`](tabula-design) | 2 | Semantic tokens, generated into CSS and a `Theme` |
 | [`tabula-presentation`](tabula-presentation) | 2 | `View` → `RenderList`, input model, animation, a11y |
-| [`renderer-macroquad`](renderer-macroquad) | 2 | The first `Renderer` backend — deliberately replaceable |
+| [`tabula-render-macroquad`](tabula-render-macroquad) | 2 | The first `Renderer` backend — deliberately replaceable |
 | [`tabula-assets`](tabula-assets) | 3 | Versioned, hashed per-game asset packs |
 | [`tabula-protocol`](tabula-protocol) | 4 | The wire: envelopes, versions, dual codec, error codes |
 | [`tabula-registry`](tabula-registry) | 4 | The catalog — the **only** crate that names games |
 | [`tabula-match`](tabula-match) | 4 | Authoritative match runtime: actor, pipeline, ports |
+| [`tabula-session`](tabula-session) | 4, isolated ADR-0036 | Internal identity/session policy and ports; no production activation |
 | [`tabula-storage`](tabula-storage) | 4 | The **only** crate that knows SQL exists |
 | [`tabula-net-client`](tabula-net-client) | 4 | Client session: connect, resume, sequencing, idempotency |
 | [`tabula-lobby`](tabula-lobby) | 5 | Rooms, matchmaking, presence |
@@ -50,7 +51,7 @@ implementation. That is deliberate — see [`AGENTS.md`](../AGENTS.md) §4 and d
      │                 │                  │
   registry        presentation ───────────┘
      │                 │
-   match         renderer-macroquad
+   match         tabula-render-macroquad
      │                 │
    lobby          apps/game-client
      │
@@ -65,3 +66,7 @@ stabilises. Trigger: zero changes to either crate for two consecutive phases
 
 Everything else is "never" — each split earns its keep by being the seam that
 makes something replaceable.
+
+[ADR-0036](../docs/adr/0036-isolated-durable-session-validation.md) is the explicit
+exception for internal session policy and opt-in PostgreSQL validation. It does
+not turn other skeletons into implemented services or prove phase exits.

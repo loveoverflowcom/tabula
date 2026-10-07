@@ -1,0 +1,89 @@
+# Bounded Design-01 UI acceptance; no new backend/gameplay fault campaign.
+name: dashboard-design01
+on:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'crates/tabula-design/**'
+      - 'crates/tabula-registry/**'
+      - 'games/**/assets/catalog-cover.svg'
+      - 'tokens.toml'
+      - 'xtask/src/tokens_cmd.rs'
+      - 'tools/dashboard-acceptance/**'
+      - '.github/workflows/dashboard-design01.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: dashboard-design01-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  actual-leptos-and-original-prototype:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      TABULA_DASHBOARD_ACCEPTANCE: '1'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+      BEFORE_REF: ab0983e92135bc42399066aa891c1e5a27e7a37e
+      REFERENCE_REF: fe6a6bac1037ea28355bd1f1192acdca6f2ce123
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out exact pre-restoration runtime
+        uses: actions/checkout@v4
+        with:
+          ref: ab0983e92135bc42399066aa891c1e5a27e7a37e
+          path: verification-inputs/before
+      - name: Check out byte-preserved original Design 01
+        uses: actions/checkout@v4
+        with:
+          ref: fe6a6bac1037ea28355bd1f1192acdca6f2ce123
+          path: verification-inputs/reference
+          sparse-checkout: docs/ui/dashboard-original-design-01
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.96'
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          workspaces: |
+            . -> target/dashboard-after
+            verification-inputs/before -> target/dashboard-before
+      - name: Validate independent acceptance helpers
+        run: |
+          python3 -m pip install -r tests/online-match/requirements.txt
+          python3 -m unittest discover -s tools/dashboard-acceptance -p 'test_*.py' -v
+          python3 -m py_compile tools/dashboard-acceptance/run.py
+          python3 -m playwright install --with-deps chromium
+      - name: Build actual before and after Leptos applications
+        run: |
+          test "$(git -C verification-inputs/before rev-parse HEAD)" = "$BEFORE_REF"
+          test "$(git -C verification-inputs/reference rev-parse HEAD)" = "$REFERENCE_REF"
+          cargo install trunk --version 0.21.14 --locked
+          (cd verification-inputs/before/apps/web && CARGO_TARGET_DIR="$GITHUB_WORKSPACE/verification-inputs/before/target/dashboard-before" TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
+          (cd apps/web && CARGO_TARGET_DIR="$GITHUB_WORKSPACE/target/dashboard-after" TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
+      - name: Capture authentic pixels and assert responsive/keyboard/data boundaries
+        run: |
+          python3 tools/dashboard-acceptance/run.py \
+            --after-dist apps/web/dist \
+            --before-dist verification-inputs/before/apps/web/dist \
+            --reference-root verification-inputs/reference/docs/ui/dashboard-original-design-01/design-01 \
+            --output verification/dashboard-design01-artifacts \
+            --after-revision "$(git rev-parse HEAD)" \
+            --before-revision "$BEFORE_REF" \
+            --reference-revision "$REFERENCE_REF"
+      - name: Preserve public before/after/prototype evidence and exact build receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-design01-actual-browser-evidence
+          path: verification/dashboard-design01-artifacts/*
+          if-no-files-found: error
+          retention-days: 14

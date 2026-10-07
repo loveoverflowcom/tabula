@@ -1,0 +1,92 @@
+# ADR-0040: isolated durable match acceptance only, no production service.
+name: match-postgres
+
+on:
+  pull_request:
+    paths:
+      - 'crates/tabula-core/**'
+      - 'crates/tabula-game-api/**'
+      - 'crates/tabula-match/**'
+      - 'crates/tabula-match-journal/**'
+      - 'crates/tabula-registry/**'
+      - 'crates/tabula-storage/**'
+      - 'games/**'
+      - 'tests/match-postgres/**'
+      - '.github/workflows/match-postgres.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'deps.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: match-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  durable-match:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tabula_match_acceptance
+          POSTGRES_USER: tabula_test
+          # Ephemeral, runner-local trust; no persistent credentials.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          PGUSER: tabula_test
+          PGDATABASE: tabula_match_acceptance
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TABULA_MATCH_DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_match_acceptance
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: '1.96' }
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            tests/match-postgres -> target
+      - name: Format and lint the standalone acceptance harness
+        run: |
+          cargo fmt --manifest-path tests/match-postgres/Cargo.toml --all -- --check
+          cargo clippy --manifest-path tests/match-postgres/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Assert nonempty actual actor recovery selection
+        run: |
+          cargo test --manifest-path tests/match-postgres/Cargo.toml --locked --test recovery -- --list > match-actor-test-list.txt
+          grep -Eq '^real_postgres_.*: test$' match-actor-test-list.txt
+          test "$(grep -Ec '^real_postgres_.*: test$' match-actor-test-list.txt)" -ge 16
+          cat match-actor-test-list.txt
+      - name: Exercise real PostgreSQL actor, kill, and restart boundaries
+        run: |
+          cargo test --manifest-path tests/match-postgres/Cargo.toml --locked --test recovery real_postgres_ -- --test-threads=2
+      - name: Assert nonempty adapter transaction selection
+        run: |
+          cargo test -p tabula-storage --features match-postgres-test-support real_postgres -- --list --ignored > match-storage-test-list.txt
+          grep -Eq '^.*real_postgres.*: test$' match-storage-test-list.txt
+          test "$(grep -Ec '^.*real_postgres.*: test$' match-storage-test-list.txt)" -ge 12
+          cat match-storage-test-list.txt
+      - name: Exercise real PostgreSQL adapter transactions
+        run: cargo test -p tabula-storage --features match-postgres-test-support real_postgres -- --ignored --test-threads=2
+      - name: Preserve executed selection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-postgres-test-selection
+          path: |
+            match-actor-test-list.txt
+            match-storage-test-list.txt
+          if-no-files-found: error

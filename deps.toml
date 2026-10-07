@@ -27,21 +27,71 @@ crates = [
 # `std::time` is banned by clippy `disallowed_types` instead — see clippy.toml.
 
 # -----------------------------------------------------------------------------
+# Tiers — dependency direction (doc 00 §7: "arrows point down, always").
+#
+# A crate may depend on another workspace crate at the SAME OR A LOWER rank,
+# never a higher one. `test` and `tooling` are unconstrained by design: a test
+# harness exercises everything below it, and tooling is never shipped.
+# `xtask check-deps` reads this list positionally — index is rank.
+# -----------------------------------------------------------------------------
+[tiers]
+order         = ["deterministic", "contract", "client", "runtime", "binary"]
+unconstrained = ["test", "tooling"]
+
+# -----------------------------------------------------------------------------
+# Categories — named, reusable groups of forbidden dependencies for the
+# architecture-boundary checks in `xtask check-deps` (avoids hard-coded
+# `if crate_name == "foo"` policy logic in Rust).
+#
+# `by_name` lists external or internal crates by their package name.
+# `by_path_prefix` classifies an INTERNAL crate by the directory it lives in
+# (relative to the workspace root), so a newly added `games/*` or `apps/*`
+# crate is covered automatically with no edit here.
+# -----------------------------------------------------------------------------
+[categories.by_name]
+rendering     = ["macroquad", "miniquad", "wgpu", "tabula-render-macroquad", "tabula-presentation"]
+ui_framework  = ["leptos", "leptos_router", "tauri"]
+web_framework = ["axum", "tower", "tower-http", "tower-governor", "leptos", "tauri"]
+networking    = ["tokio", "tokio-tungstenite", "reqwest", "tabula-net-client"]
+persistence   = ["sqlx", "tabula-storage"]
+
+[categories.by_path_prefix]
+application   = ["apps", "services"]
+game_specific = ["games"]
+
+# -----------------------------------------------------------------------------
 # Deterministic core tier — I-1 applies. Adding a line here needs an ADR.
 # -----------------------------------------------------------------------------
 [crate."tabula-core"]
 tier  = "deterministic"
 allow = ["serde", "postcard", "rand_chacha", "rand_core", "blake3", "thiserror", "smallvec", "compact_str"]
+# The one crate the whole product depends on: reject every layer above it,
+# direct or transitive.
+forbidden_categories = [
+  "rendering", "ui_framework", "web_framework", "networking",
+  "persistence", "application", "game_specific",
+]
 
 [crate."tabula-game-api"]
 tier  = "deterministic"
 allow = ["tabula-core", "serde", "thiserror", "smallvec", "compact_str"]
+# The game contract: renderers, app shells, server implementations, storage,
+# and specific games would all make it recompile/re-version for the wrong
+# reasons.
+forbidden_categories = ["rendering", "web_framework", "application", "persistence", "game_specific"]
 
 # Game rules halves. The `presentation` feature is the ONLY way a game may see
 # the client stack, and the server always builds with default-features = false.
 [crate."games/*"]
 tier    = "deterministic"
-allow   = ["tabula-core", "tabula-game-api", "serde", "smallvec", "compact_str", "thiserror"]
+# `blake3` and `proptest` are here for the test/build halves, which this list
+# does not distinguish from the shipped half: `blake3` is every game's
+# build-dependency (the rules-source hash), and `proptest` is the workspace's
+# chosen property-test generator — already `tabula-testkit`'s own dependency,
+# already the engineering `property-testing.md` reference prescribes, and
+# never in a shipped graph. The transitive-ban walk (I-1) is separately
+# dev-edge-aware, so neither can smuggle a banned crate into a server build.
+allow   = ["tabula-core", "tabula-game-api", "serde", "smallvec", "compact_str", "thiserror", "blake3", "proptest"]
 feature = { presentation = ["tabula-presentation", "tabula-design", "tabula-assets", "glam"], testkit = ["tabula-testkit"] }
 
 # -----------------------------------------------------------------------------
@@ -63,6 +113,13 @@ allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "serde", "toml", "
 # game. That containment is what makes I-9 checkable.
 allow_games = true
 
+# ADR-0040: immutable pure journal contract avoids all-feature actor/game
+# unification into the storage/authentication graph. No runtime or SQL edges.
+[crate."tabula-match-journal"]
+tier = "contract"
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "serde"]
+forbidden_categories = ["rendering", "ui_framework", "web_framework", "networking", "persistence", "application", "game_specific"]
+
 [crate."tabula-design"]
 tier    = "contract"
 allow   = ["serde"]
@@ -73,7 +130,7 @@ feature = { leptos-adapter = ["leptos"] }
 # -----------------------------------------------------------------------------
 [crate."tabula-assets"]
 tier    = "client"
-allow   = ["tabula-core", "serde", "blake3", "toml", "thiserror"]
+allow   = ["tabula-core", "tabula-game-api", "serde", "blake3", "toml", "thiserror"]
 feature = { http = ["reqwest"], web = ["web-sys", "wasm-bindgen"] }
 
 [crate."tabula-presentation"]
@@ -81,9 +138,13 @@ tier  = "client"
 allow = ["tabula-core", "tabula-game-api", "tabula-design", "tabula-assets", "glam", "serde", "smallvec"]
 # Forbidden even behind a feature: macroquad, miniquad, wgpu, leptos, tokio, any I/O.
 
-[crate."renderer-macroquad"]
+[crate."tabula-render-macroquad"]
 tier  = "client"
-allow = ["macroquad", "tabula-presentation", "tabula-design", "tabula-assets", "tabula-core", "glam"]
+allow = ["macroquad", "image", "blake3", "tabula-presentation", "tabula-design", "tabula-assets", "tabula-core", "glam"]
+
+[crate."tabula-render-headless"]
+tier  = "client"
+allow = ["tabula-presentation", "tabula-design", "tiny-skia", "glam"]
 
 [crate."tabula-net-client"]
 tier    = "client"
@@ -95,18 +156,39 @@ feature = { native = ["tokio", "tokio-tungstenite"], web = ["web-sys", "wasm-bin
 # -----------------------------------------------------------------------------
 [crate."tabula-match"]
 tier  = "runtime"
-allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tokio", "tracing", "futures", "bytes", "thiserror", "smallvec"]
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tokio", "tracing", "futures", "bytes", "thiserror", "smallvec", "serde", "tabula-match-journal"]
 # Forbidden: sqlx (ports only), axum, any game crate, any renderer.
 
 [crate."tabula-lobby"]
 tier  = "runtime"
-allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tokio", "tracing", "thiserror"]
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tokio", "tracing", "thiserror", "serde"]
+feature = { authority = ["tabula-session"] }
 # Forbidden: sqlx, axum, game crates, AND tabula-game-api — the lobby reasons
 # about GameCapabilities, never about rules (ADR-023).
 
+[crate."tabula-session"]
+tier = "runtime"
+allow = ["tabula-core", "thiserror", "sha2", "base64", "getrandom"]
+forbidden_categories = ["rendering", "ui_framework", "web_framework", "networking", "persistence", "application", "game_specific"]
+
+[crate."tabula-session-http"]
+tier = "runtime"
+# core/tower/proptest are native test-only authority/wire/Origin evidence.
+allow = ["serde", "serde_json", "tabula-core", "tower", "proptest", "tabula-lobby", "thiserror", "futures"]
+feature = { isolated = ["tabula-session", "axum", "tokio", "hmac", "sha2", "base64", "bytes", "http-body", "url"], postgres = ["tabula-storage", "sqlx"] }
+forbidden_categories = ["rendering", "ui_framework", "application", "game_specific"]
+
+# ADR-0041: default/WASM DTOs only; native authority composition is opt-in.
+[crate."tabula-match-http"]
+tier = "runtime"
+allow = ["serde", "serde_json", "tabula-core", "tabula-protocol"]
+feature = { isolated = ["tabula-session", "tabula-session-http", "tabula-match", "tabula-storage", "tabula-game-api", "tabula-registry", "axum", "tokio", "bytes", "http-body", "hmac", "sha2", "base64"] }
+forbidden_categories = ["ui_framework", "application"]
+forbid = ["macroquad", "miniquad", "wgpu", "tabula-render-macroquad", "tabula-render-headless"]
+
 [crate."tabula-storage"]
 tier  = "runtime"
-allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror"]
+allow = ["sqlx", "tokio", "tabula-core", "tabula-game-api", "tabula-protocol", "tracing", "uuid", "bytes", "thiserror", "tabula-session", "tabula-match-journal", "serde", "blake3", "tabula-lobby"]
 # The ONLY crate allowed to know SQL exists. Forbidden: axum, game crates,
 # renderers, tabula-registry.
 
@@ -118,25 +200,33 @@ feature = { livekit = [], managed = [] }
 [crate."tabula-testkit"]
 tier  = "test"
 # Everything except axum/sqlx. It is a dev-dependency of every game crate.
-allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-presentation", "proptest", "insta", "serde", "postcard", "blake3", "thiserror", "smallvec"]
+allow = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-presentation", "proptest", "insta", "serde", "postcard", "blake3", "thiserror", "smallvec", "crc32fast", "ruzstd"]
 
 # -----------------------------------------------------------------------------
 # Binaries. Nothing depends on these — services and apps are leaves.
 # -----------------------------------------------------------------------------
 [crate."services/tabula-server"]
 tier  = "binary"
-allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-lobby", "tabula-storage", "tabula-voice", "tokio", "axum", "tower", "tower-http", "tower-governor", "sqlx", "tracing", "tracing-subscriber", "opentelemetry", "metrics", "figment", "argon2", "jsonwebtoken", "openidconnect", "uuid", "serde", "serde_json", "anyhow"]
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-match", "tabula-lobby", "tabula-storage", "tabula-voice", "tokio", "axum", "tower", "tower-http", "tower-governor", "sqlx", "tracing", "tracing-subscriber", "opentelemetry", "metrics", "figment", "argon2", "jsonwebtoken", "openidconnect", "uuid", "serde", "serde_json", "anyhow", "tabula-match-http"]
+
+[crate."services/tabula-auth"]
+tier  = "binary"
+allow = ["tower", "tabula-core", "ring"] # Native test-only router/ephemeral crypto evidence.
+feature = { web-oidc = ["tabula-session", "tabula-session-http", "tokio", "reqwest", "serde", "serde_json", "url", "sha2", "base64", "jsonwebtoken", "axum"], postgres-acceptance = ["tabula-storage", "sqlx"], accounts-social = ["tabula-lobby"] }
+forbidden_categories = ["game_specific", "rendering", "ui_framework"]
 
 [crate."apps/game-client"]
 tier    = "binary"
-allow   = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-presentation", "tabula-assets", "tabula-net-client", "renderer-macroquad", "macroquad"]
-feature = { native = ["tokio"], web = ["web-sys", "wasm-bindgen"] }
+allow   = ["tabula-core", "tabula-game-api", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-presentation", "tabula-assets", "tabula-net-client", "tabula-render-macroquad", "macroquad", "glam"]
+allow_games = true # Phase 2 local vertical slice; Phase 4 moves selection behind registry.
+feature = { native = ["tokio"], web = ["web-sys", "wasm-bindgen"], online = ["tabula-match-http", "serde", "serde_json"] }
 # I-15: `leptos` must NEVER appear in this graph, native or wasm.
 forbid  = ["leptos", "tauri"]
 
 [crate."apps/web"]
 tier  = "binary"
-allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-assets", "tabula-net-client", "leptos", "leptos_router", "web-sys", "wasm-bindgen", "serde", "serde_json"]
+allow = ["tabula-core", "tabula-protocol", "tabula-registry", "tabula-design", "tabula-assets", "tabula-net-client", "leptos", "leptos_router", "web-sys", "wasm-bindgen", "serde", "serde_json", "tabula-session-http", "js-sys", "wasm-bindgen-futures", "sha2"]
+feature = { online = ["tabula-match-http"], account-http-acceptance = ["tabula-session", "axum", "tokio", "http-body", "bytes"] }
 
 [crate."apps/admin"]
 tier  = "binary"

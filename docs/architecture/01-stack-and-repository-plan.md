@@ -36,7 +36,7 @@ Status markers per [doc 00 §11](./00-architecture-principles.md#11-decision-cla
 | Connection pooling | `sqlx::PgPool`, size tuned per doc 06 §6 | pgbouncer | Sufficient until multiple processes multiply pools; then add pgbouncer in transaction mode | When total app connections approach Postgres `max_connections` (doc 06 §4.3) | LOCK NOW |
 | Wire codec (prod) | `postcard` | `bincode`, `rmp-serde`, Protobuf | Compact, `serde`-native, no schema compiler, `no_std`-friendly | See ADR-009 trigger | LOCK NOW (dual codec) / EXPERIMENT (choice) |
 | Wire codec (debug) | `serde_json` | CBOR diagnostic | Human-inspectable in browser devtools and `websocat` | Never remove; it is a developer-experience requirement | LOCK NOW |
-| Auth | Own email+password (`argon2id`) and OAuth (Google/Apple) via `openidconnect`; sessions as opaque server-side tokens; short-lived signed match tokens (`jsonwebtoken`, HS256 → later EdDSA) | Auth0/Clerk, pure JWT sessions | Opaque sessions are revocable; signed match tokens are stateless where statelessness matters (the WS join path) | If self-hosting OAuth becomes a burden, a managed IdP fits behind the same `IdentityProvider` port | LOCK NOW |
+| Auth | Kanidm owns credentials/OIDC; `tabula-auth` owns the provider adapter and opaque Tabula session lifecycle; `tabula-server` enforces current sessions and scoped match grants ([ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md)) | Managed IdP behind the provider boundary | Avoid a local password authority; retain ADR-0031's revocable channel-bound sessions and resource permissions | Before enabling runtime, prove cross-service revocation/expiry and real provider integration | ACCEPTED SKELETON + ADR-0038 OPT-IN INVITED WEB SLICE; PRODUCTION GATED |
 | Rate limiting | `tower-governor` for HTTP; per-session token bucket in the gateway for WS | Redis-backed limiter | In-process is correct at Stage 0–1; the interface allows a shared backend later | When multiple gateway processes need shared limits (doc 06 §4.3) | LOCK NOW |
 | Background jobs | Postgres-backed queue (`SELECT ... FOR UPDATE SKIP LOCKED`) inside the server binary | `apalis`, sidekiq-style, Kafka | We have Postgres and few jobs (rating recompute, replay compaction, asset GC) | When job volume or isolation demands a separate worker binary — a small step, seam preserved | LOCK NOW |
 | Observability | `tracing` + `tracing-subscriber` + `opentelemetry` (OTLP) + `metrics` exposed as Prometheus | Datadog agent, raw logs | Span-per-command tracing is the debugging tool for a match runtime | Doc 06 §9 | LOCK NOW |
@@ -53,9 +53,9 @@ Status markers per [doc 00 §11](./00-architecture-principles.md#11-decision-cla
 | Web gameplay | Macroquad WASM on its own route (`/play/:match_id`), separate `.wasm` | Same-binary integration | ADR-011 | If interleaved DOM overlays become a hard requirement | LOCK NOW / EXPERIMENT (UX of handoff) |
 | Desktop | Native Macroquad binary; **optional** Tauri shell for launcher/updater/notifications | Tauri-only, Electron | Gameplay must not sit inside a WebView (ADR-019) | Add Tauri in Phase 5 if updater/launcher value is real | LOCK NOW (optional) |
 | Desktop updater | `cargo-dist` + GitHub Releases; Tauri updater if Tauri lands | Sparkle/WinSparkle | Least infra for a small team | When we need staged rollouts/percentage deploys | EXPERIMENT |
-| Mobile | Native Macroquad via `cargo-apk`/`cargo-ndk` (Android) and a thin Xcode wrapper (iOS) | Tauri mobile, Flutter host | Direct GPU/input path, no WebView | Tauri mobile only for shell screens, post-Phase 6 | LOCK NOW |
+| Mobile | CMP shell/navigation; native Rust/Macroquad `GameHost` in the same Android/iOS app ([ADR-0043](../adr/0043-native-mobile-gamehost.md)); voice/device services in the host | Mobile WebView gameplay (retired), separate game app, alternative engine | Reuses Rust rules/presenter/renderer; native embedding still requires platform adapters and device evidence | A reviewed upstream embedding API/patch and actual per-platform execution | ACCEPTED DIRECTION / BLOCKED NATIVE ADAPTERS; shell builds without gameplay |
 | Client networking | `tabula-net-client`: one API, two backends — `tokio-tungstenite` (native), browser `WebSocket` via `web-sys` (WASM) | separate ad-hoc code per target | The reconnect/sequence/idempotency logic is subtle and must exist once | Never | LOCK NOW |
-| Client local storage | Trait `KvStore` with backends: `web-sys` `localStorage`/IndexedDB (web), platform dirs + file (desktop, via `directories`), `SharedPreferences`/`UserDefaults` bridge (mobile) | sled, rusqlite everywhere | Only small data needs persisting (settings, tokens, cached manifests, replay cache index) | If offline replay libraries grow, add a `rusqlite`/IndexedDB-backed blob store behind the same trait | LOCK NOW |
+| Client local storage | Trait `KvStore` with backends: `web-sys` `localStorage`/IndexedDB (web), platform dirs + file (desktop, via `directories`), `SharedPreferences`/`UserDefaults` bridge (mobile) | sled, rusqlite everywhere | Only non-secret small data persists (settings, public cached manifests, replay cache index); credentials use browser HttpOnly cookie/native OS keychain outside KvStore ([ADR-0031](../adr/0031-browser-native-session-contract.md)) | If offline replay libraries grow, add a `rusqlite`/IndexedDB-backed blob store behind the same trait | LOCK NOW |
 | Audio (SFX/music) | Macroquad's audio for MVP; abstract behind `AudioSink` in `tabula-presentation` | `kira`, `rodio` | Ships fastest; abstraction lets us move to `kira` for mixing/ducking | Move to `kira` when we need buses, ducking under voice chat, or precise scheduling | EXPERIMENT |
 | Voice | WebRTC + Opus; `coturn` for TURN; SFU = **managed or proven self-hosted** (LiveKit self-host is the reference candidate) behind `VoiceService` | Custom SFU, mesh-only | Mesh is fine for ≤4; werewolf needs 6–20, which needs an SFU | Provider decided in Phase 8 by measurement | LOCK NOW (separation) / EXPERIMENT (provider) |
 | Text rendering | Macroquad's font rendering for MVP; keep all text behind `RenderCmd::Text` with a `TextStyle` token | `fontdue`/`cosmic-text` in a custom path | Text shaping is the most likely Macroquad ceiling; the indirection means we can swap to `cosmic-text` without touching games | When we need complex scripts (Arabic/Devanagari), rich text, or precise line-breaking | EXPERIMENT |
@@ -94,7 +94,7 @@ One repository. One Cargo workspace. Few binaries. Strong crate boundaries. (ADR
 | `boardgame-assets` | `tabula-assets` |
 | `boardgame-storage` | `tabula-storage` |
 | `boardgame-game-api` | `tabula-game-api` |
-| `renderer-macroquad` | `renderer-macroquad` (unchanged) |
+| `renderer-macroquad` | `tabula-render-macroquad` |
 | `voice-api` | `tabula-voice` |
 | *(new)* | `tabula-registry`, `tabula-match`, `tabula-lobby`, `tabula-net-client`, `tabula-testkit` |
 
@@ -120,10 +120,12 @@ tabula/
 │   ├── tabula-registry/           # compile-time catalog, manifests, ErasedGame, version resolution
 │   ├── tabula-match/              # match actor, mailbox, command pipeline, snapshot policy, ports
 │   ├── tabula-lobby/              # rooms, matchmaking, presence (domain + ports)
+│   ├── tabula-session/            # isolated identity/session policy and ports (ADR-0036)
+│   ├── tabula-session-http/       # opt-in isolated HTTP context/profile boundary (ADR-0036)
 │   ├── tabula-storage/            # sqlx/Postgres implementations of the ports; migrations
 │   ├── tabula-presentation/       # View → RenderList, input model, animation, layout
 │   ├── tabula-design/             # semantic tokens + theme; css/macroquad adapters (features)
-│   ├── renderer-macroquad/        # Renderer impl for RenderList
+│   ├── tabula-render-macroquad/        # Renderer impl for RenderList
 │   ├── tabula-assets/             # asset manifests, resolution, cache, loader ports
 │   ├── tabula-net-client/         # client session: connect, resume, sequence, codec negotiation
 │   ├── tabula-voice/              # VoiceService trait + provider adapters (features)
@@ -131,24 +133,25 @@ tabula/
 │
 ├── games/
 │   ├── chess/                     # tabula-game-chess      (Game A — doc 08)
-│   ├── cards/                     # tabula-game-cards      (Game B)
-│   ├── werewolf/                  # tabula-game-werewolf   (Game C)
-│   ├── tiles/                     # tabula-game-tiles      (Game D)
-│   └── tictactoe/                 # tabula-game-tictactoe  (the SDK smoke test / template)
+│   ├── caro/                      # tabula-game-caro       (Game B — doc 08)
+│   ├── tiles/                     # tabula-game-tiles      (Game C — Carcassonne-like)
+│   └── werewolf/                  # tabula-game-werewolf   (Game D)
 │
 ├── apps/
-│   ├── game-client/               # Macroquad binary: native (desktop/mobile) + wasm target
+│   ├── game-client/               # Macroquad binary: native desktop + wasm target (native mobile integration blocked under ADR-0043)
 │   ├── web/                       # Leptos application shell (CSR)
 │   ├── desktop/                   # OPTIONAL Tauri shell (Phase 5+); not required for gameplay
+│   ├── mobile/                    # ONE mobile tree (ADR-0032): Gradle root + Xcode host
+│   │   ├── shared/                # Compose Multiplatform library: UI, navigation, GameHost interface
+│   │   ├── android/               # Android application module
+│   │   ├── ios/                   # Xcode project hosting the shared framework
+│   │   └── previewApp/            # Desktop preview and shared-shell tests; testing only
 │   └── admin/                     # operator UI (Leptos, reuses design tokens) — Phase 5+
 │
 ├── services/
-│   └── tabula-server/             # THE binary at Stage 0: HTTP + WS + match runtime + lobby
-│                                  # Splits later into gateway / match-worker (doc 06 §7)
-│
-├── mobile/
-│   ├── android/                   # gradle wrapper around the cdylib
-│   └── ios/                       # Xcode project wrapping the staticlib
+│   ├── tabula-server/             # Gameplay: HTTP + WS + match runtime + lobby
+│   │                              # Splits later into gateway / match-worker (doc 06 §7)
+│   └── tabula-auth/               # Kanidm account/session skeleton (ADR-0034), runtime gated
 │
 ├── xtask/                         # check-deps, check-no-game-ids, gen-tokens, gen-protocol-vectors
 ├── deploy/
@@ -156,13 +159,17 @@ tabula/
 │   ├── systemd/                   # Stage 0–1 unit files
 │   └── terraform/                 # optional, Stage 2+
 ├── assets/
-│   ├── brand/                     # logo, shared fonts, shared icons
-│   └── packs/                     # per-game source assets + pack build scripts
+│   ├── brand/                     # shared logo and icons
+│   └── fonts/                     # shared fonts and licenses
 └── tests/
     ├── integration/               # server + Postgres + real WS, multi-client scenarios
     ├── load/                      # Rust load generator
     └── replays/                   # committed golden replays per game (determinism regression)
 ```
+
+Game-owned source art, generators, provenance and pack manifests live under
+`games/<game>/assets/` beside their game crate. Shared resources remain under `assets/`;
+built content-addressed packs remain under `target/asset-packs/` (ADR-017).
 
 ### 2.3 Challenges to the structure proposed in the brief
 
@@ -179,6 +186,11 @@ services from day one. **Rejected for Stage 0.** Reasons:
 
 So: **one `tabula-server` binary composed of library crates that already have the right seams.**
 The crates are the boundary; the process count is a deployment decision.
+
+[ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md) reserves one owner-selected
+exception: Kanidm-backed account authentication in `tabula-auth`. Gameplay, lobby,
+chat, catalog and presence remain together. Both binaries are gated skeletons;
+provider/session implementation and deployment are not opened by their layout.
 
 Also rejected: a separate `boardgame-game-api` **and** `boardgame-core` **and** a registry crate
 being three crates was questioned — but kept, because `tabula-core` is depended on by the protocol
@@ -247,7 +259,7 @@ For each crate: responsibility, allowed deps, forbidden deps, why separate, when
   persist → project → broadcast), `state_version`, idempotency cache, timer wheel driver, snapshot
   policy, reconnect/resume, spectator attach, effect execution, ports:
   `EventLog`, `SnapshotStore`, `MatchRepo`, `Clock`, `BotRunner`, `Broadcast`.
-- **Allowed:** `tabula-core`, `tabula-game-api`, `tabula-protocol`, `tabula-registry`, `tokio`,
+- **Allowed:** `tabula-core`, `tabula-game-api`, `tabula-protocol`, `serde`; `tabula-registry` and `tokio` only behind the non-default native `isolated` actor feature (ADR-0040),
   `tracing`, `async-trait` (or AFIT), `futures`.
 - **Forbidden:** `sqlx`, `axum`, any game crate directly, any renderer.
 - **Why separate:** this is the hardest, most correctness-critical async code in the product; it
@@ -274,6 +286,8 @@ For each crate: responsibility, allowed deps, forbidden deps, why separate, when
 - **Responsibility:** `sqlx` implementations of all ports; `migrations/`; batching for event
   appends; snapshot (de)serialization to Postgres or object storage; query modules per aggregate.
 - **Allowed:** `sqlx`, `tokio`, `tabula-core`, `tabula-game-api` (for snapshot/event byte types),
+  the SQL-free `tabula-match-journal` contract (reexported by `tabula-match::durable`) only behind native non-default
+  `match-postgres` (ADR-0040),
   `tabula-protocol`, `tracing`, `uuid`, `time`.
 - **Forbidden:** `axum`, game crates, renderers, `tabula-registry`.
 - **Why separate:** the only crate allowed to know SQL. Everything above it is testable with
@@ -304,11 +318,12 @@ For each crate: responsibility, allowed deps, forbidden deps, why separate, when
   any of them into the others.
 - **Merge:** never.
 
-### `renderer-macroquad` — the first backend
+### `tabula-render-macroquad` — the first backend
 
 - **Responsibility:** execute a `RenderList` with Macroquad; texture/font/atlas management; map
   Macroquad input to `InputEvent`; window/canvas lifecycle; frame pacing; implement `AudioSink`.
-- **Allowed:** `macroquad`, `tabula-presentation`, `tabula-design`, `tabula-assets`, `tabula-core`.
+- **Allowed:** `macroquad`, `image` (PNG-only bounded decoding), `tabula-presentation`,
+  `tabula-design`, `tabula-assets`, `tabula-core`.
 - **Forbidden:** any game crate, `tabula-protocol`, `tokio`.
 - **Why separate:** it is the designated *replaceable* component. A future `renderer-wgpu` slots in
   with no changes above it.
@@ -367,18 +382,17 @@ Do **not** create all fifteen crates on day one. Create them when a phase needs 
 | Crate | Created in |
 |---|---|
 | `tabula-core`, `tabula-game-api`, `tabula-testkit` | Phase 0 |
-| `games/tictactoe` | Phase 0 |
 | `games/chess` | Phase 1 |
-| `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `apps/game-client` | Phase 2 |
-| `tabula-assets`, `games/cards` | Phase 3 |
-| `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server` | Phase 4 |
+| `tabula-design`, `tabula-presentation`, `tabula-render-macroquad`, `apps/game-client` | Phase 2 |
+| `tabula-assets`, `games/caro`, `games/tiles` (rules + presentation), `games/werewolf` (rules/headless) | Phase 3 |
+| `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server`, `services/tabula-auth` | Phase 4 |
 | `tabula-lobby`, `apps/web`, `apps/admin` | Phase 5 |
-| `games/werewolf` | Phase 7 |
+| `games/werewolf` (presentation, social, and online) | Phase 7 |
 | `tabula-voice` | Phase 8 |
-| `games/tiles` | Phase 3 (rules) → Phase 9 (full) |
+| `games/tiles` (async polish) | Phase 9 |
 | `apps/desktop` (Tauri) | Phase 5, optional |
 
-Phase 0–3 therefore has **no server, no protocol, no database** — and four crates. That is
+Phase 0–3 therefore has **no server, no protocol, no database**. That is
 deliberate: the determinism and presentation contracts must be right before networking exists,
 because networking is much harder to change than to add.
 
@@ -397,14 +411,14 @@ flowchart BT
     STORE["tabula-storage"]
     DESIGN["tabula-design"]
     PRES["tabula-presentation"]
-    RMQ["renderer-macroquad"]
+    RMQ["tabula-render-macroquad"]
     ASSETS["tabula-assets"]
     NETC["tabula-net-client"]
     VOICE["tabula-voice"]
     TK["tabula-testkit"]
 
     GCHESS["games/chess"]
-    GCARDS["games/cards"]
+    GCARO["games/caro"]
     GWW["games/werewolf"]
     GTILES["games/tiles"]
 
@@ -428,18 +442,18 @@ flowchart BT
     RMQ --> ASSETS
 
     GCHESS --> GAPI
-    GCARDS --> GAPI
+    GCARO --> GAPI
     GWW --> GAPI
     GTILES --> GAPI
     GCHESS -.->|presentation feature| PRES
-    GCARDS -.->|presentation feature| PRES
+    GCARO -.->|presentation feature| PRES
     GWW -.->|presentation feature| PRES
     GTILES -.->|presentation feature| PRES
 
     REG --> GAPI
     REG --> PROTO
     REG --> GCHESS
-    REG --> GCARDS
+    REG --> GCARO
     REG --> GWW
     REG --> GTILES
 
@@ -640,7 +654,7 @@ disallowed-methods = [
 | `xtask gen-protocol-vectors` | Regenerate golden wire vectors (requires an explicit `--bump` with a version) |
 | `xtask pack-assets <game>` | Build, hash, and manifest a game's asset pack |
 | `xtask new-game <slug>` | Scaffold a game crate from the template (doc 02 §10) |
-| `xtask replay <file>` | Replay a golden or production replay locally and print divergence |
+| `xtask replay <file> [--diagnose]` | Replay a golden or production replay locally; optionally print evidence-strength diagnostics |
 | `xtask db reset` / `db migrate` | Local Postgres lifecycle |
 
 ---
@@ -654,8 +668,8 @@ disallowed-methods = [
 | Linux desktop | `x86_64-unknown-linux-gnu`, `aarch64-…` | `apps/game-client` (feature `native`) | AppImage or tarball via `cargo-dist` |
 | macOS desktop | `aarch64-apple-darwin`, `x86_64-…` | same | Universal binary; notarization needed for distribution |
 | Windows desktop | `x86_64-pc-windows-msvc` | same | Code-signing needed |
-| Android | `aarch64-linux-android` (+ `armv7`, `x86_64` for emulators) | `apps/game-client` as `cdylib` → `mobile/android` | `cargo-apk` initially; graduate to `cargo-ndk` + Gradle when we need Play Billing, notifications, or custom `Activity` behavior |
-| iOS | `aarch64-apple-ios`, `aarch64-apple-ios-sim` | `apps/game-client` as `staticlib` → `mobile/ios` | Thin Xcode wrapper; `cargo-lipo`-style packaging |
+| Android | Gradle (AGP) + future native library | `apps/mobile/shared` (CMP) → `apps/mobile/android`; native Macroquad surface behind `GameHost` | ADR-0043: shell only today; no native game artifact/adapter is implemented |
+| iOS | Kotlin/Native `iosArm64`, `iosSimulatorArm64` + Xcode | `apps/mobile/shared` static framework → `apps/mobile/ios`; future native game surface/controller | ADR-0043: no supported attach API in pinned Miniquad; adapter/link packaging blocked |
 | Server | `x86_64-unknown-linux-gnu` (musl optional) | `services/tabula-server` | Container image; also runs natively via systemd at Stage 0–1 |
 
 **WASM constraints that shape the client design** (do not rediscover these in Phase 5):
@@ -696,3 +710,61 @@ Adding any of these requires an ADR that names the measurable symptom that force
 ---
 
 **Next:** [`02-game-module-and-sdk-design.md`](./02-game-module-and-sdk-design.md)
+
+### Bounded session implementation exception
+
+[ADR-0036](../adr/0036-isolated-durable-session-validation.md) adds the runtime
+`tabula-session` library: exact identity keys, redacted opaque credentials,
+checked session lifecycle policy and durable ports. It may depend on
+`tabula-core`, `thiserror`, `sha2`, `base64` and native OS entropy (`getrandom`);
+never SQL, networking, rendering, a service or a game. `tabula-storage`
+implements those ports behind non-default native `session-postgres`, with
+compile-time checked PostgreSQL queries and isolated additive migrations.
+Neither service consumes it yet. Kanidm, ADR-0031 and production gates stand.
+
+The non-default native `session-postgres` infrastructure feature uses SQLx 0.9
+and requires Rust 1.94 (the pinned build toolchain remains 1.96). It does not
+change the workspace/default or deterministic game SDK declaration of 1.85.
+SQLx 0.8 was rejected because RNG feature unification violated I-1; the newer
+runtime dependency keeps the kernel RNG package identity separate.
+
+The second isolated slice adds `tabula-session-http`: serde DTOs by default,
+opt-in native `isolated` Axum/Tokio handlers and independent HMAC-SHA256 CSRF,
+and `postgres` composition for disposable acceptance. It has no SQL or service
+imports. Axum's WS/macros features remain disabled here: this slice has no WS,
+and Tungstenite's rand 0.8 entropy feature unification would violate I-1.
+Storage owns cross-process account advisory ordering and bounded first-frame
+publication guards. The HTTP adapter holds that guard through one private Body
+frame; committed clock facts precede release. Hyper buffering/TCP arrival and
+all gameplay/WS output remain separate, so S09 is still partial.
+
+### Bounded durable match implementation exception
+
+[ADR-0040](../adr/0040-isolated-durable-match-postgres.md) permits native non-default
+`tabula-storage/match-postgres` after ADR-0039. The dedicated contract crate
+`tabula-match-journal` owns serializable server-only DTOs and journal ports with
+no registry, Tokio or SQL dependency; `tabula-match::durable` reexports them.
+Registry and Tokio remain optional behind the isolated actor feature. A separate
+contract crate is required because Cargo all-feature unification would otherwise
+pull actor registry/game dependencies into storage and account-authentication
+graphs. Storage consumes only this pure contract, not actor orchestration. The
+SQL ownership boundary and dependency bans remain unchanged.
+
+The adapter owns one consistent transaction for canonical head/input/events/hash,
+due snapshot and complete bounded operation ledger, durable expected-version/
+owner-generation checks, and one consistent committed load. Explicit isolated
+migrations and real PostgreSQL 16 fault/reopen/process fixtures do not authorize
+a live migration. Both service entrypoints remain closed. Production seed
+encryption, session/commit/private-output fencing, online transport and broad
+phase gates remain separate obligations; exact executed evidence belongs in the
+[durability ledger](../verification/durable-match-postgres/README.md).
+
+### Recovered direct-match HTTP DTO boundary (ADR-0041)
+
+`tabula-match-http` currently owns versioned pure request/response DTOs and their
+JSON compatibility vectors only. It depends on core/protocol/serde; `deps.toml`
+forbids network, persistence, game and rendering dependencies. Its proposed native
+`isolated` gateway and the server's `online-match` wiring are not enabled because
+the runtime implementation and online storage adapter are absent. Existing match
+and session ports have recovered opt-in authority hooks; those ports alone prove
+neither durable online commit nor queued HTTP publication authority.

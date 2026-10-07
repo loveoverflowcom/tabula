@@ -1,0 +1,19 @@
+[package]
+name = "tabula-match-journal"
+version = "0.0.0"
+description = "SQL-free atomic match journal contract, isolated from actor/game feature unification."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# ADR-0040: shared contract only. No runtime, registry, game, SQL, or application.
+[dependencies]
+tabula-core = { workspace = true }
+tabula-game-api = { workspace = true }
+tabula-protocol = { workspace = true }
+serde = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,116 @@
+# Bounded PR2/PR3 actual-browser continuity proof. Genuine provider/core/mobile jobs stay intact.
+name: online-match
+on:
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'games/**'
+      - 'services/**'
+      - 'apps/web/**'
+      - 'apps/game-client/**'
+      - 'xtask/**'
+      - 'tests/online-match/**'
+      - '.github/workflows/online-match.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'deps.toml'
+      - '.sqlx/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: online-match-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  two-browser-chess:
+    runs-on: ubuntu-22.04
+    # Cold-cache official Chromium, Trunk, shell and WASM builds are included.
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tabula_online_acceptance
+          POSTGRES_USER: tabula_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+          PGUSER: tabula_test
+          PGDATABASE: tabula_online_acceptance
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TABULA_ONLINE_MATCH_DISPOSABLE: '1'
+      TABULA_ONLINE_MATCH_DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_online_acceptance
+      TABULA_MATCH_DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_online_acceptance
+      SQLX_OFFLINE: 'true'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.96'
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # Preserve public build inputs after an acceptance failure; all gates rerun.
+          # Ephemeral credentials, keys and browser profiles live only in RUNNER_TEMP.
+          cache-on-failure: true
+          workspaces: |
+            . -> target
+            tests/online-match -> target
+      - name: Install official pinned actual Chromium and scoped trust-store tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libnss3-tools xvfb xauth
+          python3 -m pip install -r tests/online-match/requirements.txt
+          python3 -m playwright install --with-deps chromium
+      - name: Validate fixture helpers and standalone Rust harness
+        run: |
+          bash -n tests/online-match/run.sh
+          python3 -m unittest discover -s tests/online-match -p 'test_*.py' -v
+          cargo fmt --manifest-path tests/online-match/Cargo.toml --all -- --check
+          cargo clippy --manifest-path tests/online-match/Cargo.toml --features continuity-test --locked --all-targets -- -D warnings
+          cargo test --manifest-path tests/online-match/Cargo.toml --features continuity-test --locked --bin online-match-fixture
+          cargo build --manifest-path tests/online-match/Cargo.toml --features continuity-test --locked --bin online-match-fixture
+      - name: Assert nonempty real composed-authority transaction scenarios
+        run: |
+          mkdir -p verification/online-match-artifacts
+          cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --list --ignored > verification/online-match-artifacts/storage-test-selection.txt
+          grep -Eq '^.*real_postgres_online_.*: test$' verification/online-match-artifacts/storage-test-selection.txt
+          test "$(grep -Ec '^.*real_postgres_online_.*: test$' verification/online-match-artifacts/storage-test-selection.txt)" -ge 14
+          cat verification/online-match-artifacts/storage-test-selection.txt
+          cargo test -p tabula-storage --features online-match-postgres --locked real_postgres_online_ -- --ignored --test-threads=2
+      - name: Assert nonempty real process-owner fencing scenarios
+        run: |
+          cargo test -p tabula-storage --features online-match-test-support --locked real_postgres_native_owner_ -- --list --ignored > verification/online-match-artifacts/owner-test-selection.txt
+          test "$(grep -Ec '^.*real_postgres_native_owner_.*: test$' verification/online-match-artifacts/owner-test-selection.txt)" -ge 2
+          cargo test -p tabula-storage --features online-match-test-support --locked real_postgres_native_owner_ -- --ignored --test-threads=2
+      - name: Build the actual shell and separate gameplay document
+        run: |
+          cargo install trunk --version 0.21.14 --locked
+          (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
+          cargo build -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --profile wasm-release
+          cargo xtask stage-local-play
+          mkdir -p verification/online-match-artifacts
+          cargo tree -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --edges normal > verification/online-match-artifacts/online-game-graph.txt
+          python3 tools/tests/check-loading-budgets.py --game-wasm target/wasm32-unknown-unknown/wasm-release/tabula-game-client.wasm --game-tree verification/online-match-artifacts/online-game-graph.txt --shell-dist apps/web/dist --write-receipt verification/online-match-artifacts/loading-budget-receipt.json
+          python3 tools/tests/check-staged-loading.py --shell-dist apps/web/dist --write-receipt verification/online-match-artifacts/staged-loading-receipt.json
+      - name: Complete actual rendered Chess and network/refresh/authority/SIGKILL continuity partitions
+        run: xvfb-run -a -s '-screen 0 1280x960x24 -nolisten tcp' bash tests/online-match/run.sh
+      - name: Preserve only secret-free screenshots, actions and durable verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: online-match-browser-public-evidence
+          path: verification/online-match-artifacts/*
+          if-no-files-found: error
+          retention-days: 7

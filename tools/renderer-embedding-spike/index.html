@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tabula #60 renderer embedding surrogate</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="spike.css">
+</head>
+<body data-shell="surrogate-dom">
+<main>
+  <h1>Renderer embedding experiment</h1>
+  <p>Isolated surrogate DOM shell. Use <a href="leptos.html">the Leptos example</a> for the actual framework runtime. This surface never opens a match socket.</p>
+  <div class="controls">
+    <button data-action="mount:iframe">Mount Macroquad iframe</button>
+    <button data-action="mount:pixi">Mount Pixi canvas</button>
+    <button data-action="dispose">Unmount</button>
+    <button data-action="focus">Focus canvas</button>
+    <button data-action="modal">Toggle shell modal</button>
+    <button data-action="motion">Toggle reduced motion</button>
+    <a href="macroquad.html">Macroquad separate document control</a>
+  </div>
+  <output id="spike-status" aria-live="polite">Loading experiment modules…</output>
+  <div id="renderer-container" aria-label="Isolated permitted projection rendering surface"></div>
+</main>
+<section id="spike-modal" hidden aria-label="Shell modal" role="dialog" aria-modal="true">
+  <h2>Shell retains modal focus</h2>
+  <button data-action="modal">Return to canvas</button>
+</section>
+<script type="module" src="host.mjs"></script>
+</body>
+</html>

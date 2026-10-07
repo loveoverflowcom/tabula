@@ -8,6 +8,7 @@ Client applications. All are **leaves**: nothing depends on them.
 | [`web`](web) | 5 | The Leptos application shell: auth, catalog, rooms, queue, profile, results. CSR. |
 | [`admin`](admin) | 5 | Operator UI. Role-gated, separate bundle. |
 | [`desktop`](desktop) | 5, optional | Tauri launcher/updater. **Never required for gameplay** (ADR-019). |
+| [`mobile`](mobile/README.md) | 6, bounded foundation | One Compose Multiplatform app workspace containing shared UI, Android/iOS hosts and a desktop preview for tests. |
 
 ## The separation rule (doc 04 §1.1, ADR-011)
 
@@ -33,31 +34,41 @@ client-side route into a canvas.
 
 **`leptos` must never appear in `apps/game-client`'s dependency graph** — native
 or WASM. And per ADR-019, **Tauri is never required for gameplay on any
-platform**. Gameplay in a WebView would make WebView latency the product's
-ceiling.
+platform**. On desktop, gameplay in a WebView would make WebView latency the
+product's ceiling. On mobile the owner accepted a WebView `GameHost` under
+[ADR-0032](../docs/adr/0032-compose-multiplatform-mobile-host.md), with that latency
+risk still unmeasured and an evidence requirement before it ships. The mobile app
+lives in [`apps/mobile/`](mobile/README.md).
 
 ## The handoff (doc 04 §3.4)
 
+This is the future network flow under
+[ADR-0031](../docs/adr/0031-browser-native-session-contract.md). Credentials stay
+in the browser HttpOnly cookie/native secure store; public handoff hints grant
+no authority. ADR-0030 local play has neither identity nor network resume.
+
 ```text
-shell:  POST /matches → { match_id, join_token }
-shell:  sessionStorage["match.ctx"] = { match_id, join_token, game_id@version, pack }
+shell:  POST /matches → { match_id, public runtime metadata }
+shell:  sessionStorage["match.ctx"] = { match_id, game_id@version, pack }
 shell:  prefetch game.wasm + pack manifest DURING the room screen
 shell:  navigate to /play/:match_id
 game:   read match.ctx → branded loader with real byte-level progress
-game:   WS Hello + Attach(join_token) → Welcome { view, capabilities }
+game:   authenticated HTTP + CSRF → fresh memory-only scoped attach grant
+game:   cookie + Origin WS upgrade; Hello + Attach(grant) → Welcome { view, capabilities }
 game:   ... play ... → in-canvas result → navigate to /matches/:id
 ```
 
-Back/forward and deep links must work; re-entering `/play/:id` resumes.
+Back/forward and deep links revalidate the current session and permissions
+before network resume. Stored cursors/IDs cannot authorize attachment.
 
-**Native has no navigation — it swaps a scene.** The same `MatchContext` struct
+**Desktop has no navigation — it swaps a scene.** The same `MatchContext` struct
 is passed in-process, so the runtime code is identical everywhere.
 
-## Shell screens are implemented twice, on purpose
+## Shell screens are implemented once per shell, on purpose
 
 Lobby and catalog UI: once in Leptos, once with `tabula-presentation` widgets for
-native. About a dozen screens. The alternative is a WebView on mobile, which
-ADR-019 rules out.
+the desktop client; Compose Multiplatform in `apps/mobile/` for Android and iOS (ADR-0032).
+About a dozen screens.
 
 The *specification* lives once, in [`docs/ui/screens/`](../docs/ui/README.md), and
 both implementations reference it. Two implementations of an unwritten spec

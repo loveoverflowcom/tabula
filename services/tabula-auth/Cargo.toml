@@ -1,0 +1,60 @@
+[package]
+name        = "tabula-auth"
+version     = "0.0.0"
+description = "Opt-in invited-account Kanidm OIDC and Tabula browser sessions; production remains gated."
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+publish.workspace      = true
+
+# PHASE 4 — ADR-0034. A service leaf; no other crate depends on this binary.
+# Default bootstrap remains std-only. ADR-0038 native opt-in dependencies are
+# mirrored in deps.toml and never enter deterministic/game/WASM DTO graphs.
+[features]
+default = []
+web-oidc = ["dep:tabula-session", "dep:tabula-session-http", "dep:tokio", "dep:reqwest", "dep:serde", "dep:serde_json", "dep:url", "dep:sha2", "dep:base64", "dep:jsonwebtoken", "dep:axum"]
+accounts = ["web-oidc", "tabula-session-http/accounts"]
+accounts-social = ["accounts", "tabula-session-http/social", "dep:tabula-lobby"]
+accounts-acceptance = ["accounts-social", "postgres-acceptance", "tabula-session-http/social", "tabula-storage/social-postgres"]
+postgres-acceptance = ["web-oidc", "dep:tabula-storage", "dep:sqlx"]
+
+# Provider/runtime dependencies never enter the default skeleton or a WASM graph.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tabula-session = { workspace = true, optional = true }
+tabula-lobby = { workspace = true, optional = true, features = ["authority"] }
+tabula-session-http = { workspace = true, features = ["isolated"], optional = true }
+tokio = { workspace = true, optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"], optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+url = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+base64 = { workspace = true, optional = true }
+jsonwebtoken = { workspace = true, optional = true }
+axum = { workspace = true, optional = true }
+tabula-storage = { workspace = true, features = ["accounts-postgres"], optional = true }
+sqlx = { workspace = true, optional = true }
+
+[dev-dependencies]
+tower.workspace = true
+tabula-core.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+# Test-process-only ephemeral ES256 vectors; never a committed private key.
+ring = "0.17"
+
+[[test]]
+name = "kanidm_provider"
+required-features = ["postgres-acceptance"]
+
+[package.metadata.tabula.feature-msrv]
+web-oidc = "1.88"
+postgres-acceptance = "1.94"
+
+[lints]
+workspace = true
+
+[[example]]
+name = "account_social_acceptance"
+required-features = ["accounts-acceptance"]

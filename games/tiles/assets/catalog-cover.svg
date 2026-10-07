@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 364 160" aria-hidden="true" focusable="false">
+<!-- Discovery-only adaptation of Design01 src/boards.mjs gameArt and styles/app.css.
+     Game-owned shape, shared semantic shell-art palette; no runtime resources. -->
+<rect width="364" height="160" fill="var(--sys-color-shell-cover-mint)"/>
+<g transform="translate(72.8 16) rotate(-19 42.5 42.5) scale(.85)">
+<rect y="4.706" width="100" height="100" rx="5" fill="var(--sys-color-shell-art-line)"/>
+<g transform="rotate(90 50 50)">
+<rect width="100" height="100" rx="5" fill="var(--sys-color-shell-art-field-light)"/>
+<path d="M8 13h8m-4-4v8M75 70h8m-4-4v8M22 79h6" stroke="var(--sys-color-shell-art-line)" stroke-width="1.3" opacity=".55"/>
+<path d="M0 0h100v24l-15-5-12 14-16-6-15 13L26 25 0 28z" fill="var(--sys-color-shell-art-earth)"/>
+<path d="M0 8h100" stroke="var(--sys-color-shell-art-road)" stroke-width="3"/>
+<path d="M50 0V100" stroke="var(--sys-color-shell-art-road)" stroke-width="13" fill="none"/>
+<path d="M50 0V100" stroke="var(--sys-color-shell-art-earth)" stroke-width="1" fill="none"/>
+<circle cx="77" cy="23" r="9" fill="var(--sys-color-shell-art-line)"/>
+<circle cx="70" cy="28" r="7" fill="var(--sys-color-shell-art-field-dark)"/>
+</g>
+</g>
+<g transform="translate(98.28 96) rotate(-19 42.5 42.5) scale(.85)">
+<rect y="4.706" width="100" height="100" rx="5" fill="var(--sys-color-shell-art-line)"/>
+<g transform="rotate(180 50 50)">
+<rect width="100" height="100" rx="5" fill="var(--sys-color-shell-art-field-light)"/>
+<path d="M8 13h8m-4-4v8M75 70h8m-4-4v8M22 79h6" stroke="var(--sys-color-shell-art-line)" stroke-width="1.3" opacity=".55"/>
+<path d="M50 0v50h50M50 50v50" stroke="var(--sys-color-shell-art-road)" stroke-width="13" fill="none"/>
+<path d="M50 0v50h50M50 50v50" stroke="var(--sys-color-shell-art-earth)" stroke-width="1" fill="none"/>
+<circle cx="77" cy="23" r="9" fill="var(--sys-color-shell-art-line)"/>
+<circle cx="70" cy="28" r="7" fill="var(--sys-color-shell-art-field-dark)"/>
+</g>
+</g>
+<g transform="translate(174.72 43.2) rotate(-19 42.5 42.5) scale(.85)">
+<rect y="4.706" width="100" height="100" rx="5" fill="var(--sys-color-shell-art-line)"/>
+<rect width="100" height="100" rx="5" fill="var(--sys-color-shell-art-field-dark)"/>
+<path d="M8 13h8m-4-4v8M75 70h8m-4-4v8M22 79h6" stroke="var(--sys-color-shell-art-line)" stroke-width="1.3" opacity=".55"/>
+<path d="M0 50h32q18 0 18 18v32" stroke="var(--sys-color-shell-art-road)" stroke-width="13" fill="none"/>
+<path d="M0 50h32q18 0 18 18v32" stroke="var(--sys-color-shell-art-earth)" stroke-width="1" fill="none"/>
+<path d="M19 22 30 10l11 12v17H19z" fill="var(--sys-color-shell-art-piece-light)"/>
+<path d="m16 23 14-16 14 16" stroke="var(--sys-color-shell-art-earth)" stroke-width="5" fill="none"/>
+<circle cx="77" cy="23" r="9" fill="var(--sys-color-shell-art-line)"/>
+<circle cx="70" cy="28" r="7" fill="var(--sys-color-shell-art-field-dark)"/>
+</g>
+<g transform="translate(201 33)" fill="var(--sys-color-shell-art-earth)" stroke="var(--sys-color-shell-art-line)" stroke-width=".8"><circle cx="19" cy="12" r="7"/><path d="M12 18h14l-3 9c8 4 12 11 12 21H3c0-10 4-17 12-21Z"/></g>
+</svg>

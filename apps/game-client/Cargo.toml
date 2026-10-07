@@ -1,13 +1,15 @@
 [package]
 name        = "tabula-game-client"
+default-run = "tabula-game-client"
 version     = "0.0.0"
-description = "The Macroquad gameplay client: desktop, mobile, and web-at-/play/:match_id."
+description = "The Macroquad gameplay client: desktop and web-at-/play/:match_id (the wasm build is also what the mobile WebView loads, ADR-0032)."
 edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+publish.workspace      = true
 
-# PHASE 2 (hot-seat) → PHASE 4 (online) → PHASE 6 (mobile).
+# PHASE 2 (hot-seat) → PHASE 4 (online) → PHASE 6 (mobile WebView host, ADR-0032).
 #
 # I-15: `leptos` must NEVER appear in this crate's dependency graph, native or
 # wasm. Gameplay does not live in a DOM runtime (ADR-011, ADR-019).
@@ -15,30 +17,66 @@ repository.workspace   = true
 
 [lib]
 name       = "tabula_game_client"
-# Phase 6: Android links the cdylib, iOS links the staticlib. Adding them now
-# costs nothing and documents the target shape (doc 01 §7).
-crate-type = ["rlib"]  # ["rlib", "cdylib", "staticlib"] from Phase 6
+# Mobile no longer links this crate as a cdylib/staticlib: ADR-0032 hosts the wasm build in a
+# WebView instead, so only `rlib` is needed (doc 01 §7).
+crate-type = ["rlib"]
 
 [dependencies]
 tabula-core     = { workspace = true }
 tabula-game-api = { workspace = true }
-
-# Phase 2+ — uncomment with the first scene.
-# tabula-design       = { workspace = true }
-# tabula-presentation = { workspace = true }
-# tabula-assets       = { workspace = true }
-# renderer-macroquad  = { workspace = true }
-# macroquad           = { workspace = true }
+tabula-design       = { workspace = true }
+tabula-presentation = { workspace = true }
+tabula-assets       = { workspace = true }
+tabula-render-macroquad    = { workspace = true }
+macroquad           = { workspace = true }
+glam                = { workspace = true }
+# Phase 2 uses the game package directly; the Phase 4 registry will replace
+# this leaf dependency when the online runtime is introduced.
+tabula-game-chess   = { workspace = true, features = ["rules", "presentation"], optional = true }
+tabula-game-tiles     = { workspace = true, features = ["rules", "presentation", "bots"], optional = true }
+# Opt-in DTO surface; no native authority.
+tabula-protocol = { workspace = true, optional = true }
+tabula-net-client = { workspace = true, optional = true }
+tabula-match-http = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 # Phase 4+
 # tabula-protocol   = { workspace = true }
 # tabula-registry   = { workspace = true }
 # tabula-net-client = { workspace = true }
 
+tabula-game-werewolf = { workspace = true, features = ["rules", "presentation"], optional = true }
+
+[[bin]]
+name = "tabula-game-client"
+path = "src/main.rs"
+required-features = ["chess"]
+
+[[bin]]
+name = "tabula-werewolf-client"
+path = "src/bin/werewolf.rs"
+required-features = ["werewolf"]
+
 [features]
-default = []
+default = ["chess", "tiles"]
+chess = ["dep:tabula-game-chess"]
+# The deployed local Chess host opts out of the native multi-game leaf wiring.
+tiles  = ["dep:tabula-game-tiles"]
+# ADR-0035 opt-in isolated-seat local simulator, not online social launch.
+werewolf = ["dep:tabula-game-werewolf"]
 # tokio only behind the native feature, for the native transport (doc 00 §8.1).
 native = []
-web    = []
+web    = ["chess"]
+web-werewolf = ["werewolf"]
+# Separate authenticated document; default local hot seat is unchanged.
+online = ["dep:tabula-protocol", "dep:tabula-net-client", "dep:tabula-match-http", "dep:serde_json", "dep:serde"]
+
+# Preserve the existing cross-game unit/integration/renderer-example evidence
+# under native test builds, including --no-default-features. This development
+# dependency is not part of the deployed WASM binary's normal dependency graph.
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tabula-game-chess = { workspace = true, features = ["rules", "presentation"] }
+tabula-game-tiles = { workspace = true, features = ["rules", "presentation", "bots"] }
 
 [lints]
 workspace = true

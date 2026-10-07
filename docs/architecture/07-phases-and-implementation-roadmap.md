@@ -91,23 +91,23 @@ deserve disproportionate care.
 tabula/ workspace: Cargo.toml, rust-toolchain.toml, deny.toml, deps.toml, justfile, xtask
 crates/tabula-core:      ids, LogicalTime, MatchSeed, DetRng (ChaCha8 + pinned shuffle),
                          Viewer, Audience, SeatRoster, SeatChange, MatchOutcome,
-                         StateHash + canonical_hash, RuleError
+                         StateHash + canonical_encode/decode + state_hash, RuleError
 crates/tabula-game-api:  GameRules, GameModule, Input, Outcome, Effect, Init, Ctx,
                          GameMetadata, GameCapabilities, LegalCommands, A11yDescription
 crates/tabula-testkit:   conformance! macro, determinism harness, proptest strategies,
                          in-memory fakes, replay reader/writer (format v1), self-play driver
-games/tictactoe:         the full worked example from doc 02 §10
 xtask:                   check-deps, check-no-game-ids, check-manifests
 CI:                      fmt, clippy (with rules-crate clippy.toml), nextest, deny,
                          no-default-features/all-features builds, deps matrix
-docs/:                   these documents committed; ADR process live
+docs/:                   these documents committed; ADR process live (Phase 0 prototype
+                         lessons preserved in docs/legacy/tictactoe.md)
 ```
 
 | Field | Content |
 |---|---|
 | **Contracts introduced** | `GameRules`, `GameModule`, `Input`, `Effect`, `Ctx`, `Viewer`, `DetRng`, replay format v1, the conformance suite. **These are the ones that must be right.** |
-| **Tests required** | Full conformance suite green for tictactoe; `xtask check-deps` fails on a deliberately-added forbidden dep (test the enforcement, not just the rule); determinism harness proven to catch a seeded `HashMap` iteration bug and a `SystemTime` call. |
-| **Demo / acceptance** | `cargo xtask selfplay tictactoe --matches 10000` runs in seconds, all matches terminate, all determinism and projection checks pass, and a `.tbr` replay round-trips. A one-page terminal report. |
+| **Tests required** | Full conformance suite green; `xtask check-deps` fails on a deliberately-added forbidden dep (test the enforcement, not just the rule); determinism harness proven to catch a seeded `HashMap` iteration bug and a `SystemTime` call. |
+| **Demo / acceptance** | Deterministic selfplay runs in seconds, all matches terminate, all determinism and projection checks pass, and a `.tbr` replay round-trips. A one-page terminal report. |
 | **Risks** | (a) Over-designing `GameCapabilities` before any game needs the fields — mitigate with doc 02 §5's consumer table, and delete any field without a consumer. (b) `DetRng` API churn later — mitigate by pinning the algorithm and the shuffle now. (c) `Ctx`/`Effect` shapes proving wrong — accepted; Phase 1 and 3 are allowed to change them, Phase 4 is not. |
 | **Deferred** | Everything else. No rendering, no protocol crate, no server, no database. |
 | **Exit criteria** | Conformance suite green; enforcement tests prove CI catches violations; `docs/architecture/*` matches the code; a second developer can scaffold a game with `xtask new-game` and get a passing suite. |
@@ -131,7 +131,8 @@ games/chess:  State/Command/Event/View, full legal move generation (incl. castli
               50-move rule, insufficient material, clocks (Fischer + Bronstein increments),
               resign/draw offers, timeout handling via Input::Timer
 games/chess bots:  Trivial (random legal) + Easy (material + piece-square, depth 2)
-tabula-testkit additions:  perft harness, golden replay corpus, divergence bisector
+tabula-testkit additions:  perft harness, golden replay corpus, evidence-aware divergence
+                            diagnosis and validated-prefix reproducer
 xtask:  selfplay, replay, perft
 ```
 
@@ -164,8 +165,8 @@ crates/tabula-presentation:  RenderList + the nine RenderCmd variants; Layer sch
                              InputEvent model; hit-testing; focus graph service; animation engine
                              (springs + tokens); AudioSink/AudioCue; GamePresentation trait;
                              the ~20 shared widgets (buttons, cards, lists, dialogs, sheets)
-crates/renderer-macroquad:   Renderer impl, atlas/font management, input normalization, audio
-crates/renderer-headless:    RenderList recorder + tiny-skia rasterizer for golden images
+crates/tabula-render-macroquad:   Renderer impl, atlas/font management, input normalization, audio
+crates/tabula-render-headless:    RenderList recorder + tiny-skia rasterizer for golden images
 apps/game-client:            native + wasm targets; scene stack; hot-seat local match driver
 games/chess/src/ui.rs:       board, pieces, drag+tap interaction, clocks, move list, motion tokens
 ```
@@ -177,42 +178,48 @@ games/chess/src/ui.rs:       board, pieces, drag+tap interaction, clocks, move l
 | **Demo / acceptance** | Hot-seat chess on desktop **and** in a browser, with clocks, legal-move highlighting, drag and tap input, capture/check/checkmate animations, sound, light/dark themes, and reduced-motion mode. Same binary, two targets. |
 | **Risks** | (a) Macroquad text/layout limits appear here — this is the phase where we learn whether Miniquad is needed (doc 04 §6.3); budget a spike. (b) The command set growing to please one visual idea — enforce §5.4. (c) The animation engine turning into a framework — cap it: springs, tweens, staggers, and a "snap if stale" rule; nothing else. |
 | **Deferred** | Networking. Leptos shell. Mobile-specific layouts. Board Reader regions. Voice UI. |
-| **Exit criteria** | Chess playable hot-seat on desktop and web from one codebase; zero Macroquad references outside `renderer-macroquad`; golden `RenderList` and image tests green; WASM game bundle < 6 MB gzipped; 60 fps on a mid-range phone browser and a 5-year-old laptop. |
+| **Exit criteria** | Chess playable hot-seat on desktop and web from one codebase; zero Macroquad references outside `tabula-render-macroquad`; golden `RenderList` and image tests green; WASM game bundle < 6 MB gzipped; 60 fps on a mid-range phone browser and a 5-year-old laptop. |
 
 ---
 
-## Phase 3 — Local playable games
+## Phase 3 — Local games and rules benchmarks
 
 **Read first:** 00, 02 (§12), 04, 08.
 
+Validate the game contract against three dimensions that Chess cannot cover: a simple,
+independently-added product game (Caro), dynamic spatial/RNG state (Tiles, Carcassonne-like), and
+hidden, phased, many-seat rules (Werewolf). Chess and tic-tac-toe carry forward from Phases 0–1 as
+already-validated foundations, not as new work in this phase.
+
 | Field | Content |
 |---|---|
-| **Goal** | Three more games playable locally against bots: cards (Tiến Lên), tiles (Carcassonne-like), and a werewolf *rules skeleton* — proving the contract absorbs hidden information, RNG, large state, and phases. |
+| **Goal** | Caro and Tiles are playable locally against bots; Werewolf is executable headlessly as the secrecy/phased-rules benchmark — proving the contract absorbs a cheap second product game, RNG-backed dynamic state, and hidden/phased information, respectively. |
 | **Why now** | This is the cheapest possible place to discover a contract flaw. Every flaw found here costs a crate change; found after Phase 4 it costs a protocol change and a migration. |
 
 **Deliverables**
 
 ```text
-games/cards (Tiến Lên):  hidden hands, deck shuffle from DetRng, deck commitment scheme,
-                         trick resolution, finishing order → standings; hand-fan presentation
-                         with deal/play/reveal motion; SecretModel; bots (Trivial + Easy)
-games/tiles:             tile bag, placement validation, incremental feature graph scoring,
-                         meeples; large-board presentation with camera pan/zoom/rotation;
-                         legal-position hints; bots
+games/caro:              simple GameRules implementation, larger fixed board, win-line
+                         detection (row/column/diagonal), local play, bots (Trivial + Easy);
+                         no hidden information, no SecretModel needed
+games/tiles (Carcassonne-like): tile bag, deterministic RNG draws, placement validation,
+                         incremental feature graph scoring, meeples; large-board presentation
+                         with camera pan/zoom/rotation; legal-position hints; bots; SecretModel
+                         projection scan proving remaining bag-order secrecy
 games/werewolf (rules only): phases, role assignment, night actions, voting, redaction with
                          view_event → None, chat/voice scope Effects; NO UI yet
-crates/tabula-assets:    manifest, hashing, cache, loaders, priorities; xtask pack-assets
+crates/tabula-assets:    manifest, hashing, cache, loaders, priorities, integrity, resolution; xtask pack-assets source inspection, deterministic full-digest paths, manifest generation, and staged verification
 Local play driver:       bot opponents, seat selection, "replay this match" from .tbr
 ```
 
 | Field | Content |
 |---|---|
 | **Contracts introduced** | `SecretModel`, `AssetPack` manifest + `AssetRef`/`AssetHandle`, `Effect::SetChatScopes`/`SetVoiceScopes` (defined and exercised in tests, not yet enforced by a server), `LegalCommands::Hints`. |
-| **Tests required** | Conformance for all four games; projection-leak scans on cards and werewolf (the reason this phase exists); commitment-scheme verification test; snapshot size measurement per game feeding `StateSizeClass`; asset integrity tests; 100k self-play per game; performance test that `apply` stays inside budget for tiles' incremental scoring. |
-| **Demo / acceptance** | One app, four games in a local menu: play chess, Tiến Lên, and tiles against bots; run the werewolf rules headlessly with a text visualizer showing per-viewer projections side by side (**this side-by-side projection viewer is the demo that proves the security model**). |
-| **Risks** | (a) Werewolf's redaction is the hardest projection work in the product — do it now, headless, where it is inspectable. (b) Tiles' state size may push snapshot policy — measure and record. (c) Cards' commitment scheme may prove not worth the complexity — it is an EXPERIMENT and may be dropped with a note. |
-| **Deferred** | Werewolf UI (Phase 7). Networking. Voice. Async turns. |
-| **Exit criteria** | Four games pass conformance; projection scans green; the side-by-side projection viewer shows correct information asymmetry for cards and werewolf; **no change required to `tabula-core`/`tabula-game-api` in the final two weeks of the phase** (the contract has stopped moving). |
+| **Tests required** | Conformance for all four reference games plus tic-tac-toe; projection-security scans on Werewolf for roles, night actions, and event existence, and on Tiles for remaining bag-order secrecy; snapshot size measurement per game feeding `StateSizeClass`; asset integrity tests; 100k self-play per game; performance test that `apply` stays inside budget for tiles' incremental scoring. |
+| **Demo / acceptance** | One app, four reference games plus the tic-tac-toe smoke test in a local menu: play chess, Caro, and tiles against bots; run the werewolf rules headlessly with a text visualizer showing per-viewer projections side by side (**this side-by-side projection viewer is the demo that proves the security model**); verify the Tiles projection scan across reachable draws. |
+| **Risks** | (a) Werewolf's redaction is the hardest projection work in the product — do it now, headless, where it is inspectable. (b) Tiles' state size may push snapshot policy — measure and record. (c) Caro's exact rule variant (freestyle vs. Renju-style restrictions) is a game-design decision deferred past this phase — do not let it block the SDK-friction measurement. |
+| **Deferred** | Werewolf UI (Phase 7). Networking. Voice. Async turns. Caro's final rule-variant decision. |
+| **Exit criteria** | Chess remains green as the correctness control; tic-tac-toe remains green as the SDK smoke test; Caro passes conformance without changes to `tabula-core`/`tabula-game-api`, game-specific platform behavior, or `services/` (apart from mechanically required registration); Tiles validates deterministic RNG + dynamic spatial state + bag-order secrecy; Werewolf validates hidden information + projection/event secrecy; all Phase-3 games pass their conformance suites; projection-security checks are green for both Tiles and Werewolf; no game-specific branches were added to platform crates; **no change required to `tabula-core`/`tabula-game-api` in the final two weeks of the phase** (the contract has stopped moving — a meaningful freeze on the contract, not a calendar ritual). |
 
 ---
 
@@ -222,7 +229,7 @@ Local play driver:       bot opponents, seat selection, "replay this match" from
 
 | Field | Content |
 |---|---|
-| **Goal** | Real networked play: server, protocol, match actors, event log, snapshots, reconnect, spectators — chess and cards playable between two devices over the internet. |
+| **Goal** | Real networked play: server, protocol, match actors, event log, snapshots, reconnect, spectators — chess and caro playable between two devices over the internet. |
 | **Why now** | The contract is stable (Phase 3 exit criterion). Building the server on a moving contract is how protocols get corrupted. |
 
 **Deliverables**
@@ -242,8 +249,10 @@ crates/tabula-storage:    sqlx repositories, migrations (doc 03 §9.4), event ba
 crates/tabula-net-client: connect/handshake, seq, pending commands, resume with backoff+jitter,
                           two transports (tokio / web-sys)
 services/tabula-server:   axum HTTP (doc 03 §2 minus matchmaking), WS gateway, session layer,
-                          room router, auth (password + one OAuth provider), table chat,
+                          room router, session enforcement + match grants, table chat,
                           admin inspect/cancel, tracing + metrics + OTLP
+services/tabula-auth:     Kanidm account authentication + opaque Tabula session lifecycle
+                          (ADR-0034); skeleton only until provider/revocation evidence
 apps/game-client:         online mode, lobby-less direct join by code, spectate by link,
                           connection-state UI
 tests/integration:        multi-client scenarios against real Postgres
@@ -254,13 +263,18 @@ deploy:                   compose (dev), systemd + Caddy (Stage 0 prod), backup 
 | Field | Content |
 |---|---|
 | **Contracts introduced** | The **wire protocol** (`ClientEnvelope`/`ServerEnvelope`, `PROTOCOL_VERSION` 1.0), `ErasedGame`/`ErasedMatch`, all storage ports, the database schema, `MatchHandle`/`Envelope`. Everything here is expensive to change afterwards — hence Phase 3's exit criterion. |
-| **Tests required** | Golden wire vectors; protocol fuzzing (`cargo-fuzz` on both decoders); integration: two clients play a full chess game; idempotency (replay the same `client_seq` → one application, two identical acks); reconnect mid-game with `ResumeOk` and with forced `Resync`; hard-kill the server mid-match and verify rehydration with correct state hash; spectator sees only projected data (asserted against `SecretModel` for cards); rate-limit and slow-consumer behavior; drain with zero lost matches (L7); `no_state_type_on_the_wire`; the nightly replay-verification job wired up. |
-| **Demo / acceptance** | Two phones (or two browsers on different networks) play a full game of chess with clocks; one of them kills the app mid-game, reopens, and resumes in the correct position with the correct clock; a third device spectates; a fourth plays Tiến Lên with three bots and, at the end, verifies the deck commitment. The server is redeployed **during** the chess game and nobody notices. |
+| **Tests required** | Golden wire vectors; protocol fuzzing (`cargo-fuzz` on both decoders); integration: two clients play a full chess game; idempotency (replay the same `client_seq` → one application, two identical acks); reconnect mid-game with `ResumeOk` and with forced `Resync`; hard-kill the server mid-match and verify rehydration with correct state hash; spectator sees only projected data (asserted against `SecretModel` for Werewolf and Tiles); rate-limit and slow-consumer behavior; drain with zero lost matches (L7); `no_state_type_on_the_wire`; the nightly replay-verification job wired up. |
+| **Demo / acceptance** | Two phones (or two browsers on different networks) play a full game of chess with clocks; one of them kills the app mid-game, reopens, and resumes in the correct position with the correct clock; a third device spectates; a fourth plays Tiles (Carcassonne-like) against three bots and, at the end, replays the match and confirms the tile draws and state hash reproduce exactly. The server is redeployed **during** the chess game and nobody notices. |
 | **Risks** | (a) **The highest-risk phase.** Ordering/idempotency bugs are subtle and appear under load — mitigate with the integration matrix above plus L4/L7 from day one, not at the end. (b) Ack-latency disappointment if Postgres is remote — measure early and set `Durability` per game accordingly. (c) Protocol churn — every change goes through `xtask gen-protocol-vectors --bump`, which makes churn visible. (d) Temptation to add matchmaking/lobby here — resist; join-by-code is enough to demo. |
 | **Deferred** | Matchmaking, rooms/invites, presence, web shell, voice, hibernation/async turns, delayed spectators, Redis, multi-process. |
 | **Exit criteria** | The demo above passes repeatedly; L1 sustains 500 CCU at p95 ack < 60 ms; L7 shows zero lost matches; nightly replay verification green for a week; integrity counters at zero; restore-from-backup rehearsed. |
 
 ---
+
+ADR-0034 permits only the server/auth module frames as preparation for #54; it
+does not open Phase 4 or prove the deliverables above. TODOs live in Rust beside
+their future implementations. Auth lifecycle and gameplay enforcement must share
+durable authority with verified revocation/expiry ordering under ADR-0031.
 
 ## Phase 5 — Web application shell
 
@@ -305,20 +319,47 @@ apps/desktop (optional):  Tauri shell evaluation spike — launcher + updater + 
 
 | Field | Content |
 |---|---|
-| **Goal** | Real Android and iOS apps running native Macroquad gameplay, with mobile-appropriate layout, input, and lifecycle handling. |
+| **Goal** | Real Android and iOS apps: a Compose Multiplatform shell and navigation hosting the existing Rust/Macroquad game natively in the same app, with mobile-appropriate layout, input, and lifecycle handling ([ADR-0043](../adr/0043-native-mobile-gamehost.md)). |
 | **Why now** | Board games are played on phones. Doing this after the shell means the layout system and input model are already exercised on touch via the web build. |
+
+**Slice delivered ahead of the gate (ADR-0032).** The CMP project (`apps/mobile/shared`, `apps/mobile/android`,
+`apps/mobile/ios`), a minimal shell with navigation, a reserved `GameHost` slot, and the generated
+Kotlin token adapter exist before the Phase 5 exit. That does **not** complete or open Phase 6.
+Everything below except those items and explicitly recorded bounded slices stays gated,
+and the chain's later changes each need their own evidence.
+
+**Bounded discovery parity (ADR-0045, issue #102).** Home, searchable/filterable
+Library, detail and read-only setup review consume a generated public registry
+catalog independently of runtime packaging. This extends #101's shell only.
+Production local start remains unavailable under ADR-0043; native accounts,
+remote catalog, resume, network play and Phase 6 exit remain gated.
+
+**Bounded account UI draft (ADR-0046, issue #103).** CMP account task screens and
+a typed session port may display current read-only adapter identity. Production
+uses explicit native-adapter unavailability; provider login/enrollment, secure
+storage, native social/profile mutations and private persistence remain gated.
+This presentation slice changes neither native GameHost nor Phase 6 exit and
+cannot substitute doubles or desktop layout for actual native integration.
+
+**Historical second slice (ADR-0033).** WebView/JavaScript/WASM gameplay was tested
+only in desktop stand-ins and Chrome, never on mobile devices. [ADR-0043](../adr/0043-native-mobile-gamehost.md)
+supersedes that choice under #81 and retires mobile selection/packaging. Native
+adapters remain blocked; the CMP shell currently has no playable game. This does
+not complete Phase 6 or open networking, preload/asset services or store release.
 
 **Deliverables**
 
 ```text
-mobile/android:  cargo-ndk/cargo-apk build, Gradle wrapper, Activity lifecycle bridge
-                 (pause/resume/background → connection suspend + resume), back button,
-                 safe areas, keyboard/IME bridge for chat, push notifications (FCM)
-mobile/ios:      Xcode wrapper around the staticlib, scene lifecycle, safe areas,
-                 keyboard bridge, push notifications (APNs)
-apps/game-client:  native shell screens (catalog, room, results) using tabula-presentation
-                   widgets; deep links (tabula://match/:id and universal links);
-                   OS keychain token storage; low-power/thermal awareness (frame cap)
+apps/mobile/shared:   Compose Multiplatform shell: screens, navigation, tokens (generated Kotlin adapter),
+                 GameHost interface                                                [foundation: done]
+apps/mobile/android:  Gradle application module; Activity lifecycle bridge (pause/resume/background →
+                 connection suspend + resume), back button, safe areas, keyboard/IME, push (FCM)
+apps/mobile/ios:      Xcode host of the shared framework; scene lifecycle, safe areas, keyboard bridge,
+                 push (APNs)
+GameHost:        Native Macroquad surface/controller in the same CMP Android/iOS app;
+                 generation-scoped mount/dispose and typed lifecycle events; local game first
+mobile host:     OS keychain token storage (ADR-0031); deep links (tabula://match/:id and universal
+                 links); device permissions; voice capture (Phase 8); low-power/thermal awareness
 layout:          compact/medium breakpoints, portrait+landscape per game manifest,
                  expanded hit rects, lifted-piece preview, thumb-reach action placement
 server:          push notification service for async turns and invites
@@ -326,11 +367,11 @@ server:          push notification service for async turns and invites
 
 | Field | Content |
 |---|---|
-| **Contracts introduced** | `MatchContext` handoff struct (native), deep-link URL scheme, push notification payload schema, lifecycle events into `tabula-net-client` (suspend/resume). |
-| **Tests required** | Smoke tests on a real device matrix (2 Android tiers, 2 iOS tiers) driven by a scripted match; background/foreground reconnect test (background for 5 min, return, resume correctly); battery/thermal measurement over a 20-minute session; touch-target audit; store-compliance checklist (privacy manifest, data disclosure, age rating). |
+| **Contracts introduced** | `GameHost` interface and its lifecycle events; `MatchContext` handoff struct, deep-link URL scheme, push notification payload schema, lifecycle events into `tabula-net-client` (suspend/resume). Native network attachment remains gated against ADR-0031. |
+| **Tests required** | Per-platform native CMP embedding evidence (tap/drag, animation, Back, repeated open/close, stale callbacks, surface/context loss, input cancel, preload failure/cancel, resize/DPI/safe areas, suspend/resume and process death); cold/warm first usable frame, frame-time p50/p95/p99, dropped frames, touch latency, CPU/RAM and background behavior with device/build/backend/cache provenance and explicit budgets; smoke tests on a real device matrix (2 Android tiers, 2 iOS tiers) driven by a scripted match; background/foreground reconnect test (background for 5 min, return, resume correctly); battery/thermal measurement over a 20-minute session; touch-target audit; store-compliance checklist (privacy manifest, data disclosure, age rating). |
 | **Demo / acceptance** | Install from TestFlight/internal track; play a full ranked chess game on a phone; lock the screen mid-game, unlock 3 minutes later, resume correctly; receive a push notification for an async turn and open directly into the match. |
-| **Risks** | (a) iOS build/signing friction — budget real time; do a "hello triangle" spike in Phase 2 to de-risk. (b) Macroquad mobile input/lifecycle gaps — this is a plausible Miniquad trigger; keep the escape hatch in mind. (c) Store review of a "gambling-adjacent" card game — check content rating early. (d) Native shell screens doubling UI work — keep them minimal; the web shell remains the full-featured surface. |
-| **Deferred** | Tauri mobile, gamepad support, tablet-specific layouts beyond `medium`, in-app purchase, Android/iOS widgets. |
+| **Risks** | (a) iOS build/signing friction — the CMP framework links only on macOS; budget real time and a macOS CI job. (b) **Native embedding is blocked** by pinned Miniquad application-loop/lifetime APIs; native speed and safety need actual in-app device evidence (ADR-0043). (c) Store review of a "gambling-adjacent" card game — check content rating early. (d) Compose and Leptos screen implementations doubling UI work — keep them minimal; the web shell remains the full-featured surface. |
+| **Deferred** | Tauri mobile, gamepad support, tablet-specific layouts beyond `medium`, in-app purchase, Android/iOS widgets, networked mobile play. |
 | **Exit criteria** | Both apps play a full match reliably on the device matrix; suspend/resume works; battery drain < 8%/hour of active play on a mid-tier device; crash-free sessions > 99.5% in internal testing; both stores accept the build. |
 
 ---
@@ -417,8 +458,8 @@ infra:                 coturn deployment, SFU deployment or provider account, ba
 
 ```text
 SDK:              `xtask new-game` templates for three archetypes (board / cards / phased);
-                  generated config forms from Config schema; a game-development guide with the
-                  tictactoe walkthrough; API docs with examples on every trait method;
+                  generated config forms from Config schema; a game-development guide with an
+                  example walkthrough; API docs with examples on every trait method;
                   a local dev harness (`xtask play <game>` with hot-reloading presentation)
 platform:         async turns + hibernation (doc 03 §11); durable timers; push notifications for
                   async; delayed spectators; replay viewer (projected replays, scrub, speed);
@@ -521,13 +562,13 @@ Phase C — untrusted third-party modules
 
 | Phase | New crates | Modified heavily |
 |---|---|---|
-| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `games/tictactoe`, `xtask` | — |
+| 0 | `tabula-core`, `tabula-game-api`, `tabula-testkit`, `xtask` | — |
 | 1 | `games/chess` | `tabula-testkit`, `tabula-game-api` (last chance for churn) |
-| 2 | `tabula-design`, `tabula-presentation`, `renderer-macroquad`, `renderer-headless`, `apps/game-client` | `games/chess` (+ui) |
-| 3 | `tabula-assets`, `games/cards`, `games/tiles`, `games/werewolf` (rules) | `tabula-presentation` |
+| 2 | `tabula-design`, `tabula-presentation`, `tabula-render-macroquad`, `tabula-render-headless`, `apps/game-client` | `games/chess` (+ui) |
+| 3 | `tabula-assets`, `games/caro`, `games/tiles`, `games/werewolf` (rules) | `tabula-presentation` |
 | 4 | `tabula-protocol`, `tabula-registry`, `tabula-match`, `tabula-storage`, `tabula-net-client`, `services/tabula-server`, `tests/integration`, `tests/load` | `apps/game-client` |
 | 5 | `tabula-lobby`, `apps/web`, `apps/admin`, (`apps/desktop` spike) | `services/tabula-server` |
-| 6 | `mobile/android`, `mobile/ios` | `apps/game-client`, `tabula-presentation` |
+| 6 | `apps/mobile/shared`, `apps/mobile/android`, `apps/mobile/ios` | `apps/game-client` (future native adapter), `tabula-presentation` |
 | 7 | — | `games/werewolf` (+ui), `tabula-lobby`, `services/tabula-server` |
 | 8 | `tabula-voice` | `services/tabula-server`, `apps/game-client`, `apps/web` |
 | 9 | one new game (external), one board-archetype game | `tabula-game-api` docs, `tabula-match` (async/hibernation), `apps/web` (replay viewer) |
@@ -554,7 +595,8 @@ Phase C — untrusted third-party modules
 Phase 0   "A game's rules can be proven deterministic without a screen or a server."
 Phase 1   "Chess is correct, and its clocks live entirely inside its rules."
 Phase 2   "Chess is playable and beautiful, and nothing outside one crate knows what Macroquad is."
-Phase 3   "Four structurally different games work locally, and cards/werewolf keep their secrets."
+Phase 3   "Caro, Tiles, and Werewolf each stress a dimension Chess cannot, and Tiles and Werewolf
+           keep their secrets."
 Phase 4   "Two strangers play over the internet, survive a disconnect and a deploy, and the replay
            reproduces the match exactly."
 Phase 5   "A stranger signs up and plays a match without help."
@@ -569,3 +611,38 @@ Phase 11  "Someone else's game runs safely, and can be revoked in minutes."
 ---
 
 **Next:** [`08-first-games-validation-plan.md`](./08-first-games-validation-plan.md)
+
+## Isolated #54 implementation exception
+
+[ADR-0039](../adr/0039-isolated-match-actor-runtime.md) additionally permits the
+owner-requested second offline actor/wire PR after invited OIDC PR77. Its
+single-owner ordering, scoped receipts and projected-output acceptance do not
+prove Phase 3 stability, full Phase 4, SQL durability, network auth, reconnect,
+private-delivery fences or either service activation. Its SQL/recovery boundary
+is now narrowly extended by [ADR-0040](../adr/0040-isolated-durable-match-postgres.md),
+not by reinterpreting that offline evidence.
+
+ADR0040 authorizes PR1's consistent PostgreSQL journal, durable receipt watermarks
+and owner fence, exact bounded corruption-rejecting reopen and real DB/process
+acceptance. It begins the owner's new three-PR sequence after PR78: storage first,
+then actual join-code two-browser Chess, then online reconnect/resync/network/
+revocation/server-crash recovery. PR2 and PR3 are separate later-chat work items;
+PR1 does not implement their network/target outcomes. Both production listeners,
+live migration and all broad phase exits remain closed. See the
+[current queue](../work-plan/README.md#authorized-durable-to-online-match-series)
+and [durability ledger](../verification/durable-match-postgres/README.md).
+
+[ADR-0036](../adr/0036-isolated-durable-session-validation.md) permits three
+sequential isolated implementation slices: durable session policy/PostgreSQL
+validation, then HTTP session/self-profile, then account-state/profile UI.
+The first slice does not implement game networking or activate either service.
+Its database commit-fence receipt is not actual private-output fencing. All
+Phase 2/3/4/5 exits, provider proof and target-specific evidence remain owed;
+login/register/friends stay unavailable where their backend gates are unmet.
+
+[ADR-0044](../adr/0044-isolated-account-registration-social.md) subsequently opens
+the remaining #54 contracts by explicit owner request: verified-provider Tabula
+enrollment, permitted profile read/edit, durable friends/requests and one scoped
+presence stream. This is an isolated code/acceptance exception; provider account
+provisioning, production startup, live migrations, native/mobile social and broad
+phase exits remain gated. Missing authority never becomes a mock UI capability.

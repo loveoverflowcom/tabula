@@ -64,7 +64,7 @@ flowchart TB
     subgraph L1["Layer 1 — Deterministic Core (pure, sync, no I/O)"]
         CORE["tabula-core<br/>ids · DetRng · LogicalTime · Visibility · hashing"]
         GAPI["tabula-game-api<br/>GameRules · GameModule · Metadata · Capabilities"]
-        GAMES["games/*<br/>chess · cards · werewolf · tiles"]
+        GAMES["games/*<br/>chess · caro · werewolf · tiles (Carcassonne-like)"]
     end
     subgraph L2["Layer 2 — Contracts (pure, serializable)"]
         PROTO["tabula-protocol<br/>envelopes · versions · codecs"]
@@ -239,7 +239,7 @@ The canonical invariant:
 same initial state (from the same MatchSeed and MatchConfig)
 + same ordered input sequence
 + same rules version
-=================================================================
+===================================================
 byte-identical final state, identical event sequence, identical state hashes
 ```
 
@@ -432,14 +432,19 @@ Rows are consumers, columns are what they are permitted to depend on.
 | `tabula-design` | Y | — | — | — | – | — | — | — | — | — | — | — | — | f |
 | `tabula-presentation` | Y | Y | — | — | Y | – | Y | — | — | — | — | — | — | — |
 | `tabula-assets` | Y | — | Y | — | — | — | – | — | — | f | — | — | — | — |
-| `renderer-macroquad` | Y | — | — | — | Y | Y | Y | — | — | — | — | — | Y | — |
+| `tabula-render-macroquad` | Y | — | — | — | Y | Y | Y | — | — | — | — | — | Y | — |
 | `tabula-net-client` | Y | — | Y | Y | — | — | — | — | — | Y | — | — | — | — |
-| `tabula-match` | Y | Y | Y | Y | — | — | — | – | — | Y | — | — | — | — |
-| `tabula-lobby` | Y | — | Y | Y | — | — | — | Y | — | Y | — | — | — | — |
+| `tabula-match-journal` | Y | Y | Y | — | — | — | — | — | — | — | — | — | — | — |
+| `tabula-match` | Y | Y | Y | f | — | — | — | – | — | f | — | — | — | — |
+| `tabula-lobby` | Y | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `tabula-session` | Y | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `tabula-match-http` (DTOs only) | Y | — | Y | — | — | — | — | — | — | — | — | — | — | — |
+| `tabula-session-http` (isolated) | Y | — | — | — | — | — | — | — | f | f | f | f | — | — |
 | `tabula-storage` | Y | Y | Y | — | — | — | — | — | – | Y | — | Y | — | — |
 | `services/tabula-server` | Y | — | Y | Y | — | — | — | Y | Y | Y | Y | Y | — | — |
+| `services/tabula-auth` (opt-in) | Y | — | — | — | — | — | — | — | f | f | f | f | — | — |
 | `apps/game-client` | Y | Y | Y | Y | Y | Y | Y | — | — | f | — | — | Y | — |
-| `apps/web` (Leptos) | Y | — | Y | Y | Y | — | Y | — | — | — | — | — | — | Y |
+| `apps/web` (Leptos) | Y | — | Y | Y | Y | — | Y | — | — | f | f | — | — | Y |
 | `apps/desktop` (Tauri) | Y | — | Y | Y | Y | — | Y | — | — | Y | — | — | — | — |
 
 Notes on the interesting cells:
@@ -454,9 +459,22 @@ Notes on the interesting cells:
 - **`apps/game-client` may use tokio only behind a feature**, for the native build's networking;
   the WASM build uses browser WebSocket via `tabula-net-client`'s wasm backend.
 - **`tabula-storage` is the only crate allowed to know SQL exists.** Ports (traits) live in
-  `tabula-match`/`tabula-lobby`; the implementations live here. This is the seam that makes
+  `tabula-match`/`tabula-lobby`, and `tabula-session` for ADR-0036; the implementations live here. This is the seam that makes
   "swap Postgres deployment model" and "add a read replica" non-invasive.
+- **ADR-0040 permits storage to consume only the SQL-free `tabula-match-journal` contract (reexported by `tabula-match::durable`)**,
+  behind native non-default `match-postgres`. Registry and Tokio are optional
+  actor dependencies behind `tabula-match/isolated`; the storage port dependency
+  must not activate them or transitively import game crates. SQL remains in storage.
+- **`tabula-session` owns internal session policy and ports under ADR-0036.** Its runtime credential dependencies are forbidden in deterministic games. Storage may reference it only for the explicit isolated native session adapter; no service or client is activated.
+- **`tabula-session-http` is an isolated HTTP library under ADR-0036.** Default/WASM exposes versioned DTOs only; opt-in native `isolated` uses Axum/Tokio, session ports and WHATWG canonical HTTPS Origin validation, while `postgres` composes the storage adapter for disposable acceptance. It contains no SQL, provider verification, production bootstrap or game authority
+- **ADR-0044 opens bounded account enrollment/profile/social authority in the isolated composition.** `tabula-lobby` default owns pure social DTOs/decisions; native `authority` adds session ports without registry/match/game dependencies. `tabula-session-http` reexports those DTOs, while its native opt-in adapters compose current session and target-policy fences. SQL stays in storage. The new `/api/v2` contracts leave the existing session/immutable-profile shapes unchanged; production and broad phase exits stay closed.
+- **`apps/web` may consume only the default/WASM `tabula-session-http` DTO surface for ADR-0036 PR3.** Browser Fetch and document-memory CSRF remain in this leaf binary; no client-tier crate imports the runtime HTTP owner. Its non-default native `account-http-acceptance` feature composes the existing isolated authority/HTTP test fixture only; Axum/Tokio do not enable a production listener or either service.
+- **ADR-0041 permits `tabula-match-http` default/native/WASM DTOs and its non-default isolated native gateway**, with durable admission and commit/body-publication authority. ADR-0042 versions the HTTP carrier to 2 and adds bounded reconnect/resync; match wire 0.1 stays unchanged. Runtime dependencies remain native-only and explicitly opted in; production service entrypoints remain closed.
 - **Nothing depends on `services/*`.** Services are leaves (binaries).
+- **ADR-0034 reserves `tabula-auth` as a service leaf.** Its default is std-only
+  and closed; ADR-0038 adds native-only opt-in invited Kanidm OIDC/session HTTP
+  dependencies in `deps.toml`. No deterministic/game/client DTO graph imports
+  provider/runtime authority; ADR-0031's guarantees remain in force.
 
 ### 8.2 CI enforcement
 
@@ -487,7 +505,7 @@ flowchart TB
     subgraph CLIENTS["Clients"]
         WEB["Web — Leptos shell<br/>(login, lobby, catalog, profile, social)"]
         WGAME["Web — Macroquad WASM<br/>at /play/:match_id"]
-        MOB["Android / iOS — native Macroquad"]
+        MOB["Android / iOS — Compose Multiplatform shell<br/>+ native Macroquad GameHost, ADR-0043"]
         DESK["Desktop — native Macroquad<br/>(+ optional Tauri shell)"]
     end
 
@@ -497,7 +515,7 @@ flowchart TB
     end
 
     subgraph SERVER["Rust server — one binary at Stage 0"]
-        HTTP["Axum HTTP API<br/>auth · catalog · profile · admin"]
+        HTTP["Axum HTTP API<br/>session enforcement · catalog · profile · admin"]
         WS["WebSocket gateway<br/>connection + session layer"]
         ROUTER["Room router<br/>match_id → owner"]
         MATCH["Match actors<br/>(one Tokio task per live match)"]
@@ -509,7 +527,7 @@ flowchart TB
 
     subgraph GAMES["Game modules (linked in)"]
         G1["chess"]
-        G2["cards"]
+        G2["caro"]
         G3["werewolf"]
         G4["tiles"]
     end
@@ -525,6 +543,9 @@ flowchart TB
         SFU["SFU — managed or self-hosted"]
     end
 
+    AUTHAPI["tabula-auth: account authentication and sessions (ADR-0034)"]
+    KANIDM["Kanidm: credentials and OIDC"]
+
     WEB -->|HTTPS| LB
     WGAME -->|WSS| LB
     MOB -->|WSS + HTTPS| LB
@@ -535,6 +556,8 @@ flowchart TB
 
     LB --> HTTP
     LB --> WS
+    LB --> AUTHAPI --> KANIDM
+    AUTHAPI -->|tabula-storage| PG
     WS --> ROUTER --> MATCH
     MATCH --> REGISTRY --> GAMES
     HTTP --> LOBBY --> ROUTER
@@ -655,10 +678,12 @@ Rules for this boundary:
    session. It is authorized by an internal role, and access is logged.
 2. `Viewer::Spectator` may carry a delay for ranked/tournament play; the game decides what a
    delayed spectator sees, the platform enforces the delay by buffering.
-3. If a projection needs to hide something *and* prove something (e.g. "the deck really was
-   shuffled fairly"), use a commitment: publish `hash(deck_order || salt)` at match start and
-   reveal at match end. Verifiable, no secret leaked. **EXPERIMENT** — implement for cards in
-   Phase 3, generalize only if a second game needs it.
+3. If a projection needs to hide something *and* prove something later (e.g. "the shuffle really
+   was fair"), a commitment technique is available: publish `hash(secret || salt)` at match start
+   and reveal at match end. Verifiable, no secret leaked. **Not an active experiment** — it was
+   scoped for the now-removed Tiến Lên reference game (doc 09 §3.2); no game in the current
+   portfolio (chess, caro, tiles, werewolf) needs it. The technique remains available if a future
+   game's threat model requires it.
 
 ---
 
@@ -669,7 +694,7 @@ Longer discussion lives in the linked document.
 
 | ADR | Decision | Status | Why | Reconsider when |
 |---|---|---|---|---|
-| **001** | Rust for the deterministic core, protocol, server, and clients. JS/Kotlin/Swift only for platform glue. | LOCK NOW | One language for rules shared between server, client, bots, and tests is the single largest cost saving in the design. | Never for the core. Glue languages are already permitted. |
+| **001** | Rust for the deterministic core, protocol, server, and clients. JS/Kotlin/Swift only for platform glue — except that, on mobile, Kotlin/Swift may own the app UI, navigation, native GameHost hosting and device services, and never rules, projection or protocol decisions ([ADR-0032](../adr/0032-compose-multiplatform-mobile-host.md), superseded gameplay direction in ADR-0043). | LOCK NOW | One language for rules shared between server, client, bots, and tests is the single largest cost saving in the design. | Never for the core. Glue languages are already permitted. |
 | **002** | Game rules are a pure, sync, deterministic function; canonical state depends on nothing but `tabula-core`. | LOCK NOW | Enables replay, server validation, bots, audit, property testing — all from one property. | Never. This is the product. |
 | **003** | A single totally-ordered `Input` stream per match (player/timer/seat/admin), appended to one event log. | LOCK NOW | Makes replay total, disconnect/AFK ownership clean, and timers deterministic. See §3.1. | Never; extending `Input` with new variants is normal evolution. |
 | **004** | Server-authoritative. Clients get projections, never canonical state. | LOCK NOW | Anti-cheat is not retrofittable. | Never. |
@@ -681,19 +706,40 @@ Longer discussion lives in the linked document.
 | **010** | Macroquad is the first renderer, behind a `Renderer` trait fed by a `RenderList`. | LOCK NOW (abstraction) / EXPERIMENT (Macroquad's ceiling) | Fastest path to all four platforms with one Rust codebase. | Move to Miniquad when Macroquad blocks needed control (custom pipelines, render targets, text shaping); wgpu only when Miniquad blocks us. Doc 04 §6. |
 | **011** | Leptos for application UI; Macroquad WASM for gameplay; **separate WASM binaries**, shared Rust crates, not shared WASM memory. | LOCK NOW | Avoids fighting two runtimes for the canvas/DOM/event loop; keeps the app shell fast and the game binary small. | If a game must be embedded inside a DOM-heavy page with tight interleaving — then experiment with a single-binary integration. Doc 04 §3. |
 | **012** | No ECS as the primary architecture. Deterministic state machine + presentation layer. | LOCK NOW | Board-game state is small, highly structured, and rule-heavy; ECS optimizes for the wrong thing and harms determinism/readability. | If a game legitimately needs thousands of independently-simulated entities, that single game may use an ECS *internally* in its presentation half. |
-| **013** | PostgreSQL as the only datastore at Stage 0; event log + periodic snapshots as the durability model. | LOCK NOW | One store, transactional, well understood, replay-friendly. | Doc 06 gives the measurable triggers for adding Redis/object storage/read replicas. |
+| **013** | PostgreSQL as the only Tabula datastore at Stage 0; event log + periodic snapshots as the durability model. External credentials/directory are Kanidm-owned under ADR-0034. | LOCK NOW; identity-provider boundary amended by ADR-0034 | One Tabula store, transactional, well understood, replay-friendly. | Doc 06 gives the measurable triggers for adding Redis/object storage/read replicas. |
 | **014** | Redis is not in the MVP. | DEFER | Nothing needs cross-process coordination yet; adding it early creates a second source of truth. | Introduce when >1 match-owning process exists AND directory lookup p95 > 5 ms or presence fan-out saturates Postgres. Doc 06 §4.3. |
-| **015** | Modular monolith: one repo, one workspace, few binaries, strong crate boundaries. | LOCK NOW | A solo/small team cannot afford distributed-systems overhead; crate boundaries preserve the split seams. | Split a service out when its scaling curve or deploy cadence genuinely diverges. Doc 06 §7. |
+| **015** | Modular monolith: one repo, one workspace, few binaries, strong crate boundaries; ADR-0034 reserves account auth separately while gameplay stays in one process. | LOCK NOW; auth boundary amended by ADR-0034 | A solo/small team cannot afford distributed-systems overhead; crate boundaries preserve the split seams. | Split a gameplay service out when its scaling curve or deploy cadence genuinely diverges. Doc 06 §7. |
 | **016** | Voice is a separate plane: WebRTC + Opus, coturn, managed/proven SFU behind a `VoiceService` trait. | LOCK NOW (separation + trait) / EXPERIMENT (provider) | Media traffic must never share the game WebSocket's ordering or backpressure characteristics. | Provider choice is measured in Phase 8. Never write our own SFU for MVP. |
 | **017** | Assets ship as versioned, hashed **asset packs** per game, delivered from CDN and cached locally; not bundled into app releases. | LOCK NOW | Otherwise every app release grows with every game — fatal for mobile. Doc 04 §12. | Small games may inline a tiny pack; the mechanism stays. |
-| **018** | Design tokens are defined once in Rust (`tabula-design`) and adapted to CSS variables (Leptos) and a `Theme` struct (Macroquad). | LOCK NOW | One semantic language across DOM and canvas is the only way the product feels like one product. | Never; the adapters may change. |
-| **019** | Tauri is optional and never required for gameplay on any platform. | LOCK NOW | Gameplay must not depend on a WebView. Tauri earns its place only for launcher/updater/native integration. | Evaluate Tauri desktop in Phase 5, Tauri mobile shell no earlier than Phase 6 exit. |
-| **020** | No Kubernetes, Kafka, NATS, service mesh, or microservices before a measured need. | LOCK NOW | Each adds an operational tax that a small team pays daily and benefits from rarely. | Doc 06 lists the specific symptom for each. |
+| **018** | Design tokens are defined once in Rust (`tabula-design`) and adapted to CSS variables (Leptos) and a `Theme` struct (Macroquad). | SUPERSEDED by ADR-027 (representation only) | One semantic language across DOM and canvas is the only way the product feels like one product. | See ADR-027; the semantic-authority intent remains locked. |
+| **019** | Tauri is optional and never required for gameplay on any platform. | LOCK NOW; ADR-0043 retires the superseding mobile WebView path | Gameplay must not depend on a WebView. Mobile uses CMP UI/navigation with native Macroquad gameplay; its adapter and performance are unproven. | Evaluate Tauri desktop in Phase 5. The mobile shell remains CMP (ADR-0032/0043), not Tauri. |
+| **020** | No Kubernetes, Kafka, NATS, service mesh, or microservices before a measured need, except the owner-selected account-auth boundary of ADR-0034 (skeleton only). | LOCK NOW; auth exception recorded in ADR-0034 | Each adds an operational tax that a small team pays daily and benefits from rarely. | Doc 06 lists the specific symptom for each. |
 | **021** | Rules crates are `#![forbid(unsafe_code)]`; state hashing uses a canonical encoding, not `serde_json`. | LOCK NOW | Determinism and audit integrity. Doc 05 §7. | Never. |
 | **022** | The chat *transport* is platform; chat *scoping* is game-driven via `Effect::SetChatScopes`. | LOCK NOW | Werewolf makes scoping a core rule; chess makes it trivial. One mechanism serves both. | Never. |
 | **023** | Matchmaking is a platform service consuming only `GameCapabilities` + seat requirements; it never reads game state. | LOCK NOW | Keeps matchmaking generic across all games. Doc 03 §15. | Game-specific matchmaking hints may be added as declarative capability fields, never as code. |
 | **024** | Ratings are computed by the platform from game-emitted `MatchOutcome` events. Games never compute ratings. | LOCK NOW | Ladder integrity must be uniform across games. | Never. |
 | **025** | `tabula-testkit` is a first-class crate; every game crate must pass its conformance suite. | LOCK NOW | Determinism and projection safety cannot be checked by review alone. Doc 02 §11. | Never. |
+| **026** | The deterministic rules kernel: `&mut State` reducer kept; `state_hash` takes a typed `RulesVersion`, not a `&str` tag; `DetRng` derivation pinned with committed stability vectors; a rejected input is a total no-op (R8). Long form: [`docs/adr/0026-deterministic-rules-kernel.md`](../adr/0026-deterministic-rules-kernel.md). | LOCK NOW | Resolves three places where docs 02 and 05 specified the state hash differently, and pins the algorithms doc 09 §4 freezes forever. | The `&mut` reducer is revisited only if the mechanical R2 check proves insufficient in practice; the frozen algorithms need a superseding ADR plus an `ENCODING_VERSION` bump. |
+| **027** | One semantic design-token authority: `tokens.toml` is authored; `tabula-design` is the generated typed Rust runtime; CSS and JSON are generated adapters. Long form: [`docs/adr/0027-authored-design-token-source.md`](../adr/0027-authored-design-token-source.md). | LOCK NOW | Resolves ADR-018's source-of-truth ambiguity without weakening the shared DOM/canvas semantic contract. | A different authored format requires a new superseding ADR preserving typed validation and deterministic adapters. |
+| **028** | The discovery/setup slice (registry catalog + erased setup dispatch, and the `/`, `/games`, `/games/:id` shell routes) is implemented ahead of the Phase 4 and Phase 5 gates, with the unimplemented remainder of both phases named. Long form: [`docs/adr/0028-discovery-shell-ahead-of-phase-gate.md`](../adr/0028-discovery-shell-ahead-of-phase-gate.md). | ACCEPTED, REVISIT AT PHASE 3 EXIT | The owner chose the slice over the ordering; recording the crossing is what keeps the remaining gates meaningful. No invariant is relaxed: I-9 and I-15 are enforced unchanged. | Phase 3 exits: review the `ErasedGame` surface against every Phase 3 game before Phase 4 builds on it. |
+| **029** | An authorized isolated renderer/embedding spike compares the same Macroquad document/iframe artifact and a minimal PixiJS canvas adapter consuming Rust-derived presentation data. Long form: [`docs/adr/0029-renderer-embedding-spike.md`](../adr/0029-renderer-embedding-spike.md). | ACCEPTED TOOLING SCOPE; PRODUCTION CHOICE DEFERRED | Renderer choice and runtime containment need separate controls, validated lifecycle and target-specific evidence. ADR-010/011, dependency invariants and the remaining phase gates stay unchanged. | A concrete production embedding requirement and comparable runtime/lifecycle/resource evidence for the selected shipping targets, with residuals explicitly addressed. |
+| **030** | Opt-in discovery/setup handoff to the existing local two-human gameplay document, with bounded configuration, trusted return and lifecycle recovery. Long form: [`docs/adr/0030-local-discovery-gameplay-handoff.md`](../adr/0030-local-discovery-gameplay-handoff.md). | ACCEPTED LOCAL SCOPE | Connects the delivered standalone slice without duplicating rules or changing ADR-011 containment; network, native catalog, resume and remaining phase gates stay closed. | Another runtime/game consumer, native discovery, online/resume handoff or production hosting. |
+| **031** | Browser host-only HttpOnly cookies, native secure-store bearer credentials, HTTP/WS-upgrade channel authentication, credential-free Hello, memory-only scoped match grants and server-owned session lifecycle. Long form: [`docs/adr/0031-browser-native-session-contract.md`](../adr/0031-browser-native-session-contract.md). | ACCEPTED CONTRACT; RUNTIME GATED | Resolves contradictory storage/transport sketches without implementing accounts or weakening phase/I-13 gates; specifies CSRF, expiry, rotation and revocation oracles. | Cross-origin authenticated deployment, unsupported native secure store, longer-lived login, multi-process enforcement or implemented wire migration. |
+| **032** | CMP owns mobile app UI/navigation; Kotlin/Swift own permitted device services, Rust retains game ownership. [ADR-0032](../adr/0032-compose-multiplatform-mobile-host.md). Its mobile WebView gameplay choice is superseded by ADR-0043. | ACCEPTED CMP FOUNDATION; WEBVIEW GAMEPLAY SUPERSEDED | Preserves native shell UI and the generated token adapter without moving rules/projection/presenter. | Native adapter/device evidence and further mobile scopes follow ADR-0043 and their own gates. |
+| **033** | Historical first-party packaged WebView host/typed bridge. [ADR-0033](../adr/0033-webview-gamehost-first-party-embedding.md). Mobile hosts and packaging retired by ADR-0043. | SUPERSEDED MOBILE GAMEPLAY; HISTORICAL EVIDENCE | Retains the original scoped record without treating desktop Chrome/stand-ins as mobile execution. Web document/loader consumers remain unchanged. | Current native direction and evidence obligations are ADR-0043; no mobile WebView fallback. |
+| **034** | Kanidm owns credentials/OIDC; `tabula-auth` reserves account/session lifecycle, `tabula-server` enforces sessions and resource/match authority. Both are gated Rust frames. Long form: [ADR-0034](../adr/0034-kanidm-auth-service-skeleton.md). | ACCEPTED SKELETON; RUNTIME GATED | Owner-requested preparation for #54; records the exception without copying provider code or weakening ADR-0031. | Before any auth runtime: prove shared durable authority, cross-service revocation/expiry, proxy trust and real Kanidm integration. |
+| **035** | Opt-in Werewolf deterministic local referee and isolated-seat simulator with authorized projections, approved six-role pack and separate Macroquad document. Long form: [`docs/adr/0035-werewolf-local-simulator.md`](../adr/0035-werewolf-local-simulator.md). | ACCEPTED LOCAL SCOPE; ROLLOUT GATED | Explicit bounded presentation exception for the owner-requested playable standalone; preserves hidden-information boundaries and existing renderer/resource ownership. | Online/social play, voice, authenticated seats, persisted resume/replay, registry rollout or phase exits. |
+| **036** | Isolated durable session policy/ports and opt-in PostgreSQL acceptance, followed by isolated HTTP and shell UI in three sequential PRs. [ADR-0036](../adr/0036-isolated-durable-session-validation.md). | ACCEPTED BOUNDED IMPLEMENTATION; PRODUCTION CLOSED | Owner-authorized #54 progress without claiming provider, output-fence or phase exits. | Before provider-backed issuance, service activation, production migration or private-output delivery. |
+| **037** | Native mobile VoiceClient + CMP controls outside GameHost, official LiveKit adapters and an isolated loopback dev harness; backend VoiceService authority remains gated. [ADR-0037](../adr/0037-native-mobile-voice-client.md). | ACCEPTED BOUNDED CLIENT SCOPE; PRODUCTION UNAVAILABLE | Owner-authorized native media path without production grant/provider or game policy claims. | Before production grants, background capture, secret-channel enforcement or native shipping acceptance. |
+| **038** | Native opt-in invited Kanidm web OIDC, captured identity epochs, cookie-bound single-use callback and durable browser sessions, with actual disposable provider/PostgreSQL acceptance. [ADR-0038](../adr/0038-isolated-invited-kanidm-web-auth.md). | ACCEPTED NARROW IMPLEMENTATION; REAL PROVIDER MERGE GATE; PRODUCTION CLOSED | Owner-requested next implementation slice preserves existing phase, browser/native and deployment proof obligations. | Production, live provider provisioning, public signup, native login, additional provider/algorithm, security-event synchronization or private online transport. |
+| **039** | Native opt-in bounded single-owner match actor, generic rules bridge, scoped duplicate receipts and first executable isolated wire 0.1. [ADR-0039](../adr/0039-isolated-match-actor-runtime.md); SQL/recovery boundary narrowly extended by ADR-0040. | ACCEPTED NARROW OFFLINE IMPLEMENTATION; PRODUCTION CLOSED | Owner-requested second PR exercises authority/ordering/privacy without importing unmerged work or claiming Phase 4; canonical counters stay internal to avoid private-action existence leaks. | Any network consumer, durability beyond ADR-0040, durable session/commit/output fence, delayed spectator, listener or phase-exit claim. |
+| **040** | SQL-free match journal contract and native opt-in PostgreSQL atomic input/events/version/hash/snapshot/whole-ledger commit, durable monotonic scopes and owner fencing, exact bounded integrity-checked reopen. [ADR-0040](../adr/0040-isolated-durable-match-postgres.md). | ACCEPTED BOUNDED IMPLEMENTATION; VERIFICATION PENDING; PRODUCTION CLOSED | Owner-requested PR1 closes process-lifetime durability/duplicate gaps before separate join-code-browser and online-recovery PRs; snapshots cannot replace log consistency proof. | Any network consumer, production/live migration, ledger retention or recovery-proof weakening, remote leases/placement, online session/commit/output fence or phase-exit claim. |
+| **041** | Opt-in authenticated bounded HTTPS direct-match admission/polling, server seats and durable commit/body-publication authority; projection-only renderer and independent browser/PG acceptance. [ADR-0041](../adr/0041-isolated-direct-match-browser-play.md). | ACCEPTED PR2; VERIFICATION PENDING; PRODUCTION CLOSED | Owner requests real join-code browser Chess before separate interruption/recovery acceptance; polling preserves kernel entropy isolation. | Production/live migration, WSS/native, widened audience/clock/private effects, changed scope/wire, reconnect/crash recovery or phase-exit claim. |
+| **042** | Bounded fresh-authority reconnect/full-projection resync, HTTP2 non-authorizing operation-scope hints, exact online owner restart and first-frame owner fencing. [ADR0042](../adr/0042-isolated-match-reconnect-resync.md). | ACCEPTED PR3 SCOPE; ACCEPTANCE PENDING; PRODUCTION CLOSED | Completes the requested isolated interruption slice with explicit uncertain-result semantics and actual fault oracles. | Wider audience/clock/effects, production, native/mobile, distributed placement, relaxed bounds or broad phase exit. |
+| **043** | CMP mobile UI/navigation with native Rust/Macroquad gameplay in the same app; mobile WebView selection/packaging retired without fallback. [ADR-0043](../adr/0043-native-mobile-gamehost.md). | ACCEPTED DIRECTION; NATIVE ADAPTERS BLOCKED | Owner-requested #81 supersedes only ADR-0032/0033 mobile WebView gameplay, preserving Rust ownership, tokens, voice scope and unrelated gates. Current shell has no playable native game. | Before an upstream embedding patch/unsafe-policy change, actual native adapters/assets, preload, device performance or Phase 6 exit claims. |
+| **044** | Isolated Kanidm-verified Tabula enrollment, permitted profile read/edit, durable friend requests and scoped timestamped presence. [ADR-0044](../adr/0044-isolated-account-registration-social.md). | ACCEPTED BOUNDED IMPLEMENTATION; ISOLATED LOCAL ACCEPTANCE PASSED; PRODUCTION CLOSED | Owner explicitly requests every original #54 criterion, with current session/resource authority and real provider/PG/browser evidence. | Production/live provisioning, new credential/agreement policy, wider bounds, distributed presence, native/mobile social or phase exits. |
+| **045** | CMP Home/Library/detail/setup review consume a generated public registry discovery catalog, separately from packaged runtime availability. [ADR-0045](../adr/0045-mobile-discovery-parity.md). | BOUNDED LOCAL DISCOVERY | Owner-requested #102 extends the shell with real public metadata and web design parity while native gameplay, accounts, network discovery and resume remain unavailable. | Before native launch/configuration, remote catalog/account adapters, resume or Phase 6 exit claims. |
+| **046** | CMP Account/Login/Register/self-Profile/Friends UI draft with a typed current-state/session port and read-only adapter-supplied identity. [ADR-0046](../adr/0046-mobile-account-surfaces.md). | BOUNDED UI DRAFT; NATIVE PROVIDER/SOCIAL UNAVAILABLE | Owner-requested #103 presentation parity preserves the isolated web implementation while exposing honest native limits, lifecycle fencing and identity-bound managed avatar fallback. | Before native provider/deep-link/secure-store integration, social/profile mutations, private persistence, avatar delivery or completion/phase-exit claims beyond recorded evidence. |
 
 ---
 
@@ -715,7 +761,7 @@ opaque tagged game payloads on the wire
 one Tokio task per match, single-writer
 PostgreSQL as the only Stage-0 datastore
 one repo / one workspace / modular monolith
-design tokens defined once in Rust
+one authored design-token contract (`tokens.toml`), generated into a typed Rust runtime and adapters (ADR-027)
 voice on a separate plane behind a trait
 asset packs are per-game, versioned, hashed
 Rust-first
@@ -728,11 +774,11 @@ Postcard vs alternative game-payload encodings (measure size/CPU in Phase 4)
 Macroquad's practical ceiling for text, layout, and input (Phase 2–3)
 Macroquad UI vs a thin custom widget layer on RenderList (Phase 2)
 Leptos + Macroquad navigation/handoff UX at /play/:id (Phase 5)
-Tauri desktop shell value (Phase 5); Tauri mobile (post-Phase 6)
+Tauri desktop shell value (Phase 5); mobile shell is CMP under ADR-0032
+CMP shell + native Macroquad GameHost embedding, latency and lifecycle on Android/iOS (Phase 6; ADR-0043)
 voice provider: self-hosted SFU vs managed (Phase 8)
 snapshot cadence and event-log compaction policy (Phase 4, tune with data)
 sharded match executor vs task-per-match at high CCU (Phase 10)
-deck-commitment scheme for provable shuffles (Phase 3, cards)
 accessibility mirror ("Board Reader") depth (Phase 5)
 ```
 
@@ -763,7 +809,8 @@ Each row names a way this project could fail, and the *mechanism* (not the inten
 | Animation state treated as authoritative | Desyncs, cheats via slow clients, non-replayable matches. | I-10: dependency direction + no upstream message carries presentation state |
 | Client determining RNG results | Trivial cheating in every card/dice game. | I-4 + server-only `MatchSeed`; clients receive results, never seeds |
 | Leptos required inside the native game runtime | Native/mobile builds break or bloat; two UI paradigms fight. | I-15 dependency check on `apps/game-client` |
-| Tauri mandatory for mobile | WebView performance and input latency become the gameplay ceiling. | ADR-019 + mobile target is native Macroquad from Phase 6 |
+| Tauri mandatory for mobile | A second shell runtime and its lifecycle become a gameplay dependency. | ADR-019 + the mobile shell is Compose Multiplatform (ADR-0032) |
+| Native mobile embedding mistaken for a standalone build | A separate game app does not run inside CMP; duplicate event loops or stale surfaces can crash or leak resources. | ADR-0043 retires the mobile web fallback, requires actual in-app Android/iOS execution and records the native adapter as blocked until that evidence exists |
 | Redis before horizontal coordination exists | A second source of truth with no consistency story, plus an ops burden. | ADR-014 + a written numeric trigger (doc 06 §4.3) |
 | Kafka/NATS with no measured need | Weeks of plumbing for a problem we do not have. | ADR-020 + trigger list |
 | Kubernetes for initial deployment | Days of yak-shaving per week for a single-binary product. | ADR-020; Stage 0–1 is systemd/containers on one or two VPS (doc 06 §3) |
