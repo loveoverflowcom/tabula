@@ -57,6 +57,10 @@ own space at 200% text. The gameplay toolbar retains its labelled Back action.
 Rail width grows with measured localized navigation labels and the current text
 scale, bounded to one third of the viewport. Navigation labels remain centered
 and wrap between whole words when needed.
+Bottom navigation shares width according to the measured longest word in each
+label. When the labels cannot jointly fit in `labelMd`, they use the generated
+`labelSm` role at the same OS text scale. Both phone and rail labels retain
+complete words and the generated minimum target size.
 
 The page uses `shellCanvas`; contained rows use `shellPaper`/`shellNote`; the Home hero uses
 `shellHero`/`shellOnHero`. Generated primary/on-primary roles own the principal action and

@@ -80,26 +80,25 @@ class ResponsiveShellTest {
     }
 
     private fun DesktopComposeUiTest.assertNavigationWordsRemainWhole() {
-        onNodeWithTag("shell-navigation-rail").assertIsDisplayed()
         for (tag in listOf("home", "games", "account")) {
             val control = onNodeWithTag("shell-nav-$tag", useUnmergedTree = true).assertIsDisplayed()
             val textNodes = descendants(control.fetchSemanticsNode())
                 .filter { it.config.contains(SemanticsActions.GetTextLayoutResult) }
-            assertTrue(textNodes.isNotEmpty(), "rail navigation $tag retains a measured label")
+            assertTrue(textNodes.isNotEmpty(), "navigation $tag retains a measured label")
             for (node in textNodes) {
                 val layouts = mutableListOf<TextLayoutResult>()
                 assertTrue(node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts) == true)
-                assertTrue(layouts.isNotEmpty(), "rail navigation $tag returns an actual text layout")
+                assertTrue(layouts.isNotEmpty(), "navigation $tag returns an actual text layout")
                 for (layout in layouts) {
                     val label = layout.layoutInput.text.text
                     for (line in 0 until layout.lineCount) {
-                        assertFalse(layout.isLineEllipsized(line), "rail navigation keeps the complete label: $label")
+                        assertFalse(layout.isLineEllipsized(line), "navigation keeps the complete label: $label")
                         if (line < layout.lineCount - 1) {
                             val end = layout.getLineEnd(line, visibleEnd = true)
                             val nextStart = layout.getLineStart(line + 1)
                             val betweenWords = label.substring(end, nextStart).any { it.isWhitespace() } ||
                                 label.getOrNull(end)?.isWhitespace() == true
-                            assertTrue(betweenWords, "rail navigation cannot split a word: $label, line=$line")
+                            assertTrue(betweenWords, "navigation cannot split a word: $label, line=$line")
                         }
                     }
                 }
@@ -154,7 +153,7 @@ class ResponsiveShellTest {
                             openAccount()
                             assertUsableContentSlot(width, height)
                             assertShellTextFitsHorizontally()
-                            if (width > height) assertNavigationWordsRemainWhole()
+                            assertNavigationWordsRemainWhole()
                             captureShell("responsive-account-top-$case")
                             assertWholeTarget("account-open-profile", width, height)
                             onNodeWithTag("account-open-profile").performClick()
@@ -169,7 +168,7 @@ class ResponsiveShellTest {
                             assertWholeTarget("account-sign-out", width, height)
                             assertWholeTarget("account-browse-library", width, height)
                             assertLocalizedIconBack(language)
-                            if (width > height) assertNavigationWordsRemainWhole()
+                            assertNavigationWordsRemainWhole()
                             assertEquals(0, fixture.adapter.signOutCalls,
                                 "layout inspection and route navigation do not dispatch account mutations")
                         }

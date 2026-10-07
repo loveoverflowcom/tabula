@@ -60,6 +60,7 @@ import com.loveoverflow.tabula.mobile.design.TabulaShape
 import com.loveoverflow.tabula.mobile.design.TabulaSpace
 import com.loveoverflow.tabula.mobile.design.TabulaState
 import com.loveoverflow.tabula.mobile.design.TabulaText
+import com.loveoverflow.tabula.mobile.design.TabulaTextStyle
 import com.loveoverflow.tabula.mobile.design.TabulaType
 import com.loveoverflow.tabula.mobile.design.toTextStyle
 import com.loveoverflow.tabula.mobile.account.AccountIdentity
@@ -353,9 +354,29 @@ private fun ShellNavigation(destination: Destination, strings: ShellStrings, onN
             for ((target, copy, tag) in entries) ShellNavigationItem(destination, strings, onNavigate, target, copy, tag)
         }
     } else {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TabulaSpace.xxs.dp)) {
-            for ((target, copy, tag) in entries) {
-                Box(Modifier.weight(1f)) { ShellNavigationItem(destination, strings, onNavigate, target, copy, tag) }
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val textMeasurer = rememberTextMeasurer()
+            val density = LocalDensity.current
+            val color = LocalTabulaColors.current.onSurfaceVariant
+            fun minimumWidths(style: TabulaTextStyle) = entries.map { (_, copy, _) ->
+                val wordWidth = strings[copy].split(' ').maxOf {
+                    textMeasurer.measure(it, style = style.toTextStyle(color)).size.width
+                }
+                // Reserve the focus ring plus a small rounding gap without shrinking text.
+                maxOf(TabulaAccessibility.minTarget, with(density) { wordWidth.toDp().value } +
+                    2 * (TabulaAccessibility.focusRingWidth + TabulaSpace.xxs) + TabulaSpace.xxs)
+            }
+            val normalWidths = minimumWidths(TabulaType.labelMd)
+            val available = (maxWidth - TabulaSpace.xxs.dp * (entries.size - 1)).value
+            val style = if (normalWidths.sum() > available) TabulaType.labelSm else TabulaType.labelMd
+            val widths = if (style == TabulaType.labelMd) normalWidths else minimumWidths(style)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TabulaSpace.xxs.dp)) {
+                for ((index, entry) in entries.withIndex()) {
+                    val (target, copy, tag) = entry
+                    Box(Modifier.weight(widths[index])) {
+                        ShellNavigationItem(destination, strings, onNavigate, target, copy, tag, style)
+                    }
+                }
             }
         }
     }
@@ -369,6 +390,7 @@ private fun ShellNavigationItem(
     target: Destination,
     copy: ShellCopy,
     tag: String,
+    labelStyle: TabulaTextStyle = TabulaType.labelMd,
 ) {
     val selected = when (target) {
         Destination.Home -> destination == Destination.Home
@@ -383,12 +405,12 @@ private fun ShellNavigationItem(
         onClick = { onNavigate(target) },
         isSelected = selected,
         // Leave room for whole words at 200% text with the host's fallback typeface.
-        horizontalInset = TabulaSpace.xxs,
+        horizontalInset = TabulaSpace.none,
         modifier = Modifier.fillMaxWidth().testTag("shell-nav-$tag"),
     ) { color ->
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(TabulaSpace.xs.dp)) {
             NavigationIcon(tag, color)
-            TabulaText(strings[copy], TabulaType.labelMd, Modifier.fillMaxWidth(), color, TextAlign.Center)
+            TabulaText(strings[copy], labelStyle, Modifier.fillMaxWidth(), color, TextAlign.Center)
         }
     }
 }
