@@ -83,7 +83,8 @@ def main():
             "harness_commit": os.environ["GITHUB_SHA"], "run_id": os.environ["GITHUB_RUN_ID"], "started_at_utc": utc(),
             "playwright": version("playwright"), "tool_versions": {"rustc": subprocess.check_output(["rustc", "--version"], text=True).strip()},
             "fixture": "Public static anonymous Leptos entry, synthetic never-submitted join-code input, and disposable untimed same-device local Chess. No real account, session, canonical state, FEN, API response or CSS injected",
-            "scope": "Source-separated actual PR114, not stacked on PR112. Desktop Chromium CSS viewports/DPR only; physical mobile/native/CMP/online admission/paste permission/performance NOT_RUN",
+            "scope": "PR114 anonymous-entry-only followup on unchanged source. Local board evidence remains in run37602621508/artifact11474435288; no board rerun. Physical mobile/native/CMP/online admission/paste permission/performance NOT_RUN",
+            "previous_full_run":37602621508,"previous_full_artifact":11474435288,
             "builds": {}, "captures": [], "actions": [], "checks": [], "cases": [],
             "unrun": ["Authenticated create/join HTTPS/PostgreSQL fixture", "Clipboard permission/actual paste", "Native/device/CMP", "Audio/performance/frame pacing"]}
     for name, dist in [("shell", shell_dist), ("game", game_dist)]:
@@ -191,7 +192,7 @@ def main():
     except Exception as error:
         check("existing unchanged shell WASM loading budget", False, {"exception_type": type(error).__name__, "owner": "tools/tests/check-loading-budgets.py; not waived"})
 
-    with helper.static_origin(shell_dist, shell=True) as shell, helper.static_origin(game_dist, shell=False) as game, sync_playwright() as p:
+    with helper.static_origin(shell_dist, shell=True) as shell, sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
         data["browser_version"] = browser.version
         save()
@@ -222,12 +223,22 @@ def main():
                         page.wait_for_timeout(150)
                         check("anonymous Enter creates no match POST", not match_posts, {"match_post_count": len(match_posts)})
                         capture(page, "entry-desktop-synthetic-code-focused", "Actual keyboard-typed synthetic code, never submitted; no real invitation", "entry", True, {"synthetic_only": True})
-                        page.go_back()
-                        page.wait_for_url("**/games")
-                        page.go_forward()
-                        page.locator('[data-testid=online-join-code]').wait_for(state="visible")
-                        helper.locale(page, "en")
-                        capture(page, "entry-desktop-forward-en", "Actual browser Back/Forward and source locale control", "entry", True)
+                        try:
+                            data["actions"].append({"at_utc":utc(),"action":"Before native Back","path":urlsplit(page.url).path,"query_present":bool(urlsplit(page.url).query),"history_length":page.evaluate("history.length")});save()
+                            page.go_back(wait_until="domcontentloaded",timeout=10000)
+                            page.wait_for_timeout(400)
+                            back_path=urlsplit(page.url).path
+                            data["actions"].append({"at_utc":utc(),"action":"After native Back","path":back_path,"query_present":bool(urlsplit(page.url).query),"history_length":page.evaluate("history.length")});save()
+                            capture(page,"entry-after-native-back","Actual browser Back result; path recorded without assuming route","entry",True)
+                            page.go_forward(wait_until="domcontentloaded",timeout=10000)
+                            page.wait_for_timeout(400)
+                            data["actions"].append({"at_utc":utc(),"action":"After native Forward","path":urlsplit(page.url).path,"query_present":bool(urlsplit(page.url).query),"history_length":page.evaluate("history.length")});save()
+                            page.locator('[data-testid=online-join-code]').wait_for(state="visible")
+                            helper.locale(page, "en")
+                            capture(page, "entry-desktop-forward-en", "Actual browser Back/Forward and source locale control", "entry", True)
+                        except Exception as error:
+                            data["cases"].append({"name":"native Back/Forward diagnostics","status":"BLOCKED","error_type":type(error).__name__})
+                            save()
                 finally:
                     ctx.close()
             for width, height, locale in [(390, 844, "vi"), (320, 640, "en")]:
@@ -254,72 +265,21 @@ def main():
                     helper.require_font_preference(actual, 32)
                     helper.settle(page, shell + "/games/com.tabula.chess")
                     helper.locale(page, "en")
+                    data["font200_overflow_bounds"] = page.evaluate("""() => {
+ const rect=e=>{const b=e.getBoundingClientRect();return {x:b.x,y:b.y,width:b.width,height:b.height,right:b.right,bottom:b.bottom}};
+ const nodes=[...document.querySelectorAll('main *,header *,nav *')].filter(e=>!e.closest('[hidden],[aria-hidden=true],.sr-only,.visually-hidden,.skip-link')&&getComputedStyle(e).display!=='none'&&getComputedStyle(e).visibility!=='hidden').map(e=>({tag:e.tagName,id:e.id,class:e.className?.baseVal??e.className,rect:rect(e),grid_columns:getComputedStyle(e).gridTemplateColumns,overflow_x:getComputedStyle(e).overflowX})).filter(x=>x.rect.width>0&&x.rect.height>0&&x.rect.right>innerWidth+1).sort((a,b)=>b.rect.right-a.rect.right).slice(0,35);
+ return {viewport:innerWidth,document_scroll_width:document.documentElement.scrollWidth,offending:nodes,facts:document.querySelector('.facts')?{rect:rect(document.querySelector('.facts')),grid_columns:getComputedStyle(document.querySelector('.facts')).gridTemplateColumns}:null};
+}""");save()
                     capture(page, "entry-320-en-font200", "Actual Chromium 32px default-font preference, anonymous entry; no CSS scaling injected", "entry", True, {"initial_font_px": actual})
                 finally:
                     ctx.close()
         attempt("actual 200-percent default font entry", font_entry)
 
-        def boards():
-            for theme in ("light", "dark", "hc-light", "hc-dark"):
-                ctx, page = local(browser, game, theme=theme)
-                try:
-                    r = capture(page, "board-desktop-" + theme, "Actual Chessnut0.3 pieces in " + theme)
-                    check("actual requested board scheme " + theme, r["scheme"] == theme, {"scheme": r["scheme"]})
-                    if theme == "light":
-                        click(page, square(geometry(page), "e2"), "select e2")
-                        page.keyboard.press("ArrowRight")
-                        capture(page, "board-selected-keyboard-focus", "Actual selection/legal hints plus native directional keyboard focus")
-                        page.keyboard.press("Escape")
-                        click(page, flip(geometry(page)), "Flip local display")
-                        capture(page, "board-flipped-upright", "Actual reversed coordinates; piece artwork remains upright")
-                        click(page, flip(geometry(page)), "Flip back")
-                        sequence(page, ["e2e4", "d7d5", "e4d5", "g8f6"])
-                        capture(page, "board-after-capture", "Actual legal public capture sequence, not injected state")
-                finally:
-                    ctx.close()
-            for width, height, dpr in [(1200, 880, 2), (390, 844, 1), (390, 844, 2), (320, 640, 1)]:
-                ctx, page = local(browser, game, width, height, dpr=dpr)
-                try:
-                    capture(page, f"board-{width}-dpr{dpr}", "Actual local board at CSS viewport and recorded DPR")
-                    if width == 390 and dpr == 1:
-                        move(page, "e2e4")
-                        capture(page, "board-390-after-e2e4", "Actual narrow pointer input and Black-turn board")
-                finally:
-                    ctx.close()
-        attempt("four themes, selection/focus, both orientation, small/DPR boards", boards)
-
-        def promotions():
-            ctx, page = local(browser, game)
-            try:
-                sequence(page, ["a2a4", "h7h5", "a4a5", "h5h4", "a5a6", "h4h3", "a6b7", "h3g2", "b7a8"])
-                capture(page, "board-white-promotion-chooser", "Actual centered classic-base White promotion chooser")
-                click(page, promotion(geometry(page)), "Cancel promotion")
-                capture(page, "board-promotion-cancelled", "Actual Cancel keeps pawn at b7 and rook at a8")
-                move(page, "b7a8")
-                click(page, promotion(geometry(page), 0), "Choose White Queen")
-                move(page, "g2h1")
-                capture(page, "board-black-promotion-chooser", "Actual Black promotion chooser using licensed pieces")
-                click(page, promotion(geometry(page), 3), "Choose Black Knight")
-                page.wait_for_timeout(250)
-                capture(page, "board-both-promotions", "Actual White Queen a8 and Black Knight h1")
-            finally:
-                ctx.close()
-        attempt("both colors promotion with real Cancel/choice", promotions)
-
-        def check_and_result():
-            for filename, moves in [("board-live-check", ["e2e4", "f7f6", "d1h5"]), ("board-checkmate-result", ["f2f3", "e7e5", "g2g4", "d8h4"])]:
-                ctx, page = local(browser, game)
-                try:
-                    sequence(page, moves)
-                    capture(page, filename, "Actual ordinary public opening sequence and resulting check/result pixels")
-                finally:
-                    ctx.close()
-        attempt("reachable live check and terminal", check_and_result)
         browser.close()
     data["status"] = "PASS" if all(x["status"] == "PASS" for x in data["checks"]) and all(x["status"] == "CAPTURED" for x in data["cases"]) else "PARTIAL"
     data["finished_at_utc"] = utc()
     save()
-    assert any(c["kind"] == "game" for c in data["captures"]), "no actual runtime board captured"
+    assert len(data["captures"]) >= 3, "required actual anonymous entry frames unavailable"
 
 
 if __name__ == "__main__":

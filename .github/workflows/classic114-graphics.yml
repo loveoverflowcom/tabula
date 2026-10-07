@@ -1,4 +1,4 @@
-name: bounded-classic114-graphics
+name: bounded-classic114-entry-followup
 on:
   push:
     branches: ['evidence/classic114-runtime-capture-20261007']
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: bounded-classic114-graphics-${{ github.ref }}
+  group: bounded-classic114-entry-followup-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   actual-classic-entry-and-board:
@@ -38,20 +38,18 @@ jobs:
           python3 -m pip install -r actual-src/tests/online-match/requirements.txt
           python3 -m playwright install --with-deps chromium
           cargo install trunk --version 0.21.14 --locked
-      - name: Actual clean source Leptos and Chess WASM builds
+      - name: Actual clean source Leptos entry build
         working-directory: actual-src
         run: |
           cargo clean --locked
           (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
-          cargo build --locked -p tabula-game-client --no-default-features --features web --bin tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
-          cargo xtask stage-wasm-game
-      - name: Actual anonymous entry and source-separated licensed-piece runtime captures
-        run: python3 harness/tools/classic114-review/capture.py --source-root actual-src --output verification/classic114
+      - name: Actual anonymous entry route diagnostics and missing narrow captures
+        run: python3 harness/tools/classic114-review/capture.py --source-root actual-src --output verification/classic114-entry
       - name: Preserve original PNGs and exact source/build/action receipts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: actual-classic114-runtime
-          path: verification/classic114
+          name: actual-classic114-entry-followup
+          path: verification/classic114-entry
           if-no-files-found: error
           retention-days: 14
