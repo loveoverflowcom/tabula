@@ -238,14 +238,23 @@ where
         })?;
         let mut cues = AudioCues::new();
         for (view, events) in updates {
-            self.view = Some(view);
+            let previous = self.view.replace(view);
             for event in events {
-                cues.extend(P::on_view_event(&event, &mut self.local, frame));
+                if let Some(current) = self.view.as_ref() {
+                    cues.extend(P::on_view_event_with_projection(
+                        &event,
+                        previous.as_ref(),
+                        current,
+                        &mut self.local,
+                        frame,
+                    ));
+                }
             }
         }
         for envelope in frames {
             if let ServerMessage::Reject { error, .. } = envelope.body() {
                 self.rejection = Some(*error);
+                P::on_command_rejected(&mut self.local);
             }
         }
         Ok(cues)
@@ -295,6 +304,8 @@ mod tests {
         held: bool,
         events: u8,
         forbid_presentation: bool,
+        transitions: Vec<(Option<u8>, u8)>,
+        rejections: u8,
     }
     struct Presenter;
     impl GamePresentation for Presenter {
@@ -315,6 +326,20 @@ mod tests {
         fn on_view_event(event: &u8, local: &mut Local, _: &FrameCtx) -> AudioCues {
             local.events += *event;
             AudioCues::new()
+        }
+        fn on_view_event_with_projection(
+            event: &u8,
+            previous: Option<&u8>,
+            current: &u8,
+            local: &mut Local,
+            frame: &FrameCtx,
+        ) -> AudioCues {
+            local.transitions.push((previous.copied(), *current));
+            Self::on_view_event(event, local, frame)
+        }
+        fn on_command_rejected(local: &mut Local) {
+            local.held = false;
+            local.rejections += 1;
         }
         fn on_input(input: &InputEvent, _: &u8, local: &mut Local) -> Option<Intent<u8>> {
             match input {
@@ -586,5 +611,52 @@ mod tests {
             &[update(1, 0, 1, Vec::new()), update(2, 1, 2, Vec::new())]
         )
         .is_err());
+    }
+    #[test]
+    fn accepted_batches_deliver_each_previous_and_current_public_projection() {
+        let mut online = session();
+        online
+            .receive(
+                &[
+                    update(2, 1, 2, vec![canonical_encode(&3_u8).unwrap()]),
+                    update(3, 2, 4, vec![canonical_encode(&5_u8).unwrap()]),
+                ],
+                &frame(),
+            )
+            .unwrap();
+        assert_eq!(online.local.transitions, [(Some(1), 2), (Some(2), 4)]);
+        assert_eq!(online.local.events, 8);
+        assert_eq!(online.description().as_deref(), Some("4"));
+    }
+
+    #[test]
+    fn definitive_rejection_cleans_local_motion_without_replacing_projection() {
+        let mut online = session();
+        online
+            .on_input(&InputEvent::Key {
+                key: Key::Enter,
+                pressed: true,
+            })
+            .unwrap();
+        online
+            .receive(
+                &[ServerEnvelope::new(
+                    Some(1),
+                    2,
+                    ServerMessage::Reject {
+                        seq: 1,
+                        error: ErrorCode::RuleRejected,
+                    },
+                )
+                .unwrap()],
+                &frame(),
+            )
+            .unwrap();
+        assert_eq!(online.rejection(), Some(ErrorCode::RuleRejected));
+        assert_eq!(online.local.rejections, 1);
+        assert!(!online.local.held);
+        assert!(online.local.transitions.is_empty());
+        assert_eq!(online.description().as_deref(), Some("1"));
+        assert_eq!(online.state(), DirectState::Ready);
     }
 }

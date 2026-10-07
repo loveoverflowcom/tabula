@@ -178,8 +178,8 @@ mod tests {
         }
         assert_eq!(
             cache.stats().uploads,
-            6,
-            "two game-art densities plus two shared masks"
+            8,
+            "two densities each for pieces, cover and grain, plus two shared masks"
         );
     }
 
@@ -195,8 +195,8 @@ mod tests {
             &combined,
         ))
         .unwrap();
-        assert_eq!(cache.stats().uploads, 1);
-        assert_eq!(cache.stats().decodes, 1);
+        assert_eq!(cache.stats().uploads, 2);
+        assert_eq!(cache.stats().decodes, 2);
         for resource in [mark_asset(), wordmark_asset(), assets::cover_asset()] {
             assert_eq!(cache.state(&resource, density), Ok(AssetLoadState::Missing));
         }

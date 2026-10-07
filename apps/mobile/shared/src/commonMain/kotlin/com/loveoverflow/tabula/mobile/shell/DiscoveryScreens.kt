@@ -79,20 +79,45 @@ fun HomeScreen(
             }
         },
     ) {
-        ShellSurface(hero = true) {
-            TabulaText(strings.discovery(DiscoveryCopy.HeroEyebrow), TabulaType.labelLg, color = colors.shellOnHero)
-            TabulaText(strings.discovery(DiscoveryCopy.HeroHeading), TabulaType.displaySm, Modifier.semantics { heading() }, colors.shellOnHero)
-            TabulaText(strings.discovery(DiscoveryCopy.HeroBody), TabulaType.bodyLg, color = colors.shellOnHero)
-            DiscoveryHeroArt(Modifier.fillMaxWidth())
-            ShellActionButton(strings[ShellCopy.BrowseGames], ShellAction.Filled, onBrowse,
-                Modifier.fillMaxWidth().testTag("shell-browse-games"))
-        }
+        DiscoveryHero(strings, onBrowse)
         TabulaText(strings.discovery(DiscoveryCopy.CatalogHeading), TabulaType.titleLg, Modifier.semantics { heading() })
         CatalogContent(catalog, strings, onRetry) { games ->
             // Preserve registry order and show every entry; no invented ranking or featured tag.
             GameCards(games, strings, onDetail)
         }
         ShellActionButton(strings.discovery(DiscoveryCopy.BrowseAll), ShellAction.Text, onBrowse, Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+private fun DiscoveryHero(strings: ShellStrings, onBrowse: () -> Unit) {
+    val fontScale = LocalDensity.current.fontScale
+    ShellSurface(hero = true) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth >= 620.dp && fontScale <= 1.3f) {
+                Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.xl.dp), verticalAlignment = Alignment.CenterVertically) {
+                    HeroCopy(strings, onBrowse, Modifier.weight(1f))
+                    DiscoveryHeroArt(Modifier.weight(1f))
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp)) {
+                    DiscoveryHeroArt(Modifier.fillMaxWidth())
+                    HeroCopy(strings, onBrowse)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroCopy(strings: ShellStrings, onBrowse: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalTabulaColors.current
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp)) {
+        TabulaText(strings.discovery(DiscoveryCopy.HeroEyebrow), TabulaType.labelLg, color = colors.shellOnHero)
+        TabulaText(strings.discovery(DiscoveryCopy.HeroHeading), TabulaType.displaySm, Modifier.semantics { heading() }, colors.shellOnHero)
+        TabulaText(strings.discovery(DiscoveryCopy.HeroBody), TabulaType.bodyLg, color = colors.shellOnHero)
+        ShellActionButton(strings[ShellCopy.BrowseGames], ShellAction.Filled, onBrowse,
+            Modifier.fillMaxWidth().testTag("shell-browse-games"))
     }
 }
 
@@ -110,6 +135,7 @@ fun GamesScreen(
     ShellPage(strings[ShellCopy.Games], Modifier.testTag("shell-games"), displayTitle = true) {
         SearchField(query.text, strings, { onQueryChange(query.copy(text = it)) })
         if (catalog is DiscoveryCatalogState.Ready && catalog.games.isNotEmpty()) {
+            CategoryFilters(catalog.games, query, strings, onQueryChange)
             ShellActionButton(strings.discovery(if (showFilters) DiscoveryCopy.HideFilters else DiscoveryCopy.Filters),
                 ShellAction.Tonal, { showFilters = !showFilters }, Modifier.testTag("discovery-filter-toggle"))
             if (showFilters) CatalogFilters(catalog.games, query, strings, onQueryChange)
@@ -340,12 +366,18 @@ private fun SearchField(text: String, strings: ShellStrings, onChange: (String) 
 }
 
 @Composable
-private fun CatalogFilters(games: List<DiscoveryGame>, query: DiscoveryQuery, strings: ShellStrings, onChange: (DiscoveryQuery) -> Unit) {
-    ShellSurface(Modifier.testTag("discovery-filters")) {
+private fun CategoryFilters(games: List<DiscoveryGame>, query: DiscoveryQuery, strings: ShellStrings, onChange: (DiscoveryQuery) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp), modifier = Modifier.testTag("discovery-categories")) {
         val categories = games.flatMap { it.categories }.distinct()
         FilterChoices(strings.discovery(DiscoveryCopy.Category), categories.map { value ->
             value to games.first { value in it.categories }.categoryLabel(value, strings.languageTag)
         }, query.category, strings, "category") { onChange(query.copy(category = it)) }
+    }
+}
+
+@Composable
+private fun CatalogFilters(games: List<DiscoveryGame>, query: DiscoveryQuery, strings: ShellStrings, onChange: (DiscoveryQuery) -> Unit) {
+    ShellSurface(Modifier.testTag("discovery-filters")) {
         FilterChoices(strings.discovery(DiscoveryCopy.Players), games.flatMap { it.players }.distinct().sorted().map {
             it.toString() to strings.discoveryPlayers(listOf(it))
         }, query.players?.toString(), strings, "player") { onChange(query.copy(players = it?.toIntOrNull())) }

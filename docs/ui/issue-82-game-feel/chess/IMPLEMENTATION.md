@@ -1,5 +1,11 @@
 # Cờ vua — bàn chơi có chiều sâu, chuyển động có chủ đích
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/chess).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 Thực hiện sau [Ma sói #84](https://github.com/loveoverflowcom/tabula/issues/84), bổ sung cho [#82](https://github.com/loveoverflowcom/tabula/issues/82) và umbrella UI #51. Source đối chiếu `develop@e75624ae870a74f62f0f734fbcf2f12043047dd4` ngày 06/10/2026. Ảnh và HTML là design reference với fixture mẫu, không phải Macroquad screenshot hoặc multiplayer evidence.
 
 ## Hướng thiết kế

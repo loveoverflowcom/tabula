@@ -74,7 +74,10 @@ def check(distribution):
                 if payload.startswith(b"window.TabulaResourceManifest="):
                     manifest = json.loads(payload.decode().removeprefix("window.TabulaResourceManifest=").removesuffix(";\n"))
             pack = tomllib.loads((ROOT / "games/chess/assets/fixture.pack.toml").read_text())
-            assert manifest and manifest["schema"] == 1 and len(manifest["files"]) == 4 + len(pack["files"])
+            runtime_aliases = {"tabula-game-client.wasm", "assets/OpenSans-Regular.ttf", "assets/OpenSans-Semibold.ttf", "assets/NotoSerif-Bold.ttf"}
+            expected_aliases = runtime_aliases | {file["path"] for file in pack["files"]}
+            assert manifest and manifest["schema"] == 1
+            assert set(manifest["files"]) == expected_aliases, "staged runtime payloads must match the declared pack and fonts"
             critical = [file for file in pack["files"] if file["priority"] == "critical" and file["density"] == 1]
             assert len(critical) == 1
             aliases = ["tabula-game-client.wasm", "assets/OpenSans-Regular.ttf", "assets/OpenSans-Semibold.ttf", "assets/NotoSerif-Bold.ttf", critical[0]["path"]]

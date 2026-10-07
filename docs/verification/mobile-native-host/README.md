@@ -1,5 +1,12 @@
 # Issue #81 native mobile host review and CMP viewport acceptance
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-native-host); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 Date: 2026-10-06 (Asia/Ho_Chi_Minh). Base: `develop@c6d55a6fc3b326e14a466b6e9d988f897bb579e5`.
 Scope: [ADR-0043](../../adr/0043-native-mobile-gamehost.md) direction/source spike,
 retirement of mobile WebView selection/packaging, and compact shared CMP shell fixes.
@@ -98,9 +105,9 @@ complete action labels, reachable recovery and absence of image stretching or
 border offsets. Other matrix images are captures supported by geometry/interaction
 assertions, not a claim that every screenshot received a full design audit.
 
-- [Default app, 320×844](cmp/cmp-native-unavailable-default-app-320x844.png): native gameplay unavailable; no Play or Ready surface.
-- [Dark Home theme adapter, 390×844](cmp/cmp-native-unavailable-dark-theme-adapter-390x844.png): same unavailable shell policy and canonical brand.
-- [Landscape error recovery, 640×320, text 200%](cmp/cmp-host-failure-640x320-font2-simulated-host.png): Back remains visible while the long simulated failure scrolls to Retry.
+- [Historical Default app, 320×844](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-native-host/cmp/cmp-native-unavailable-default-app-320x844.png): native gameplay unavailable; no Play or Ready surface.
+- [Historical Dark Home theme adapter, 390×844](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-native-host/cmp/cmp-native-unavailable-dark-theme-adapter-390x844.png): same unavailable shell policy and canonical brand.
+- [Historical Landscape error recovery, 640×320, text 200%](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/mobile-native-host/cmp/cmp-host-failure-640x320-font2-simulated-host.png): Back remains visible while the long simulated failure scrolls to Retry.
 
 ## Issue #81 acceptance still owed
 

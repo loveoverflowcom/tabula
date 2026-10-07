@@ -102,3 +102,12 @@ Audio playback, network resume, native embedding and production routing are
 unimplemented. Safari/WebKit and native execution must have separate executed
 receipts or be marked blocked/not run. Compilation, Node tests, mocks and screenshot
 capture alone are not evidence of those runtimes or a performance advantage.
+
+## Evidence output
+
+The browser runners default to ignored `verification/issue-60/`. Supply an explicit
+output directory to keep runs separate. `summarize.py --evidence verification/issue-60`
+requires the complete declared input receipts, including environment and the twelve
+static runs; current source does not bundle historical measurements. Restore old
+inputs from the source-pinned archive in the issue60 ledger when reproducing that
+record. Keep new raw output in ignored paths or Actions Artifacts.

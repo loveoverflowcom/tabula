@@ -441,35 +441,36 @@ ring-color = "primary"
 # state semantics. Chess uses sys.color selected/focus/legal-target/threat
 # overlays for meaning; these roles only supply its approved carved-table art.
 # The white piece tint is the multiplicative identity for colored raster art.
+# Issue #85: truffle wood and slate follow the original game-feel reference.
+# Materials remain decorative; sys roles still own selected/legal/check/focus.
 [game-art.chess.light]
 page = "#F5F0E6"
 surface = "#FEFBF4"
-soft = "#E7E8DB"
-ink = "#193A3E"
-muted = "#526662"
-deep = "#153F44"
-on-deep = "#F7F1E4"
-board-light = "#ECE4D3"
-board-dark = "#5D8A80"
-brass = "#D5AB54"
+soft = "#E5DBE7"
+ink = "#352146"
+muted = "#6A5974"
+deep = "#302A33"
+on-deep = "#F1EAF7"
+board-light = "#D0BDAD"
+board-dark = "#665368"
+brass = "#CFAD77"
 piece-tint = "#FFFFFF"
 
 [game-art.chess.dark]
-page = "#102B30"
-surface = "#193A3F"
-soft = "#284A4D"
-ink = "#F2EBDB"
-muted = "#B3C9C3"
-deep = "#0B252B"
-on-deep = "#F7F1E4"
-board-light = "#ECE4D3"
-board-dark = "#5D8A80"
-brass = "#D5AB54"
+page = "#15111E"
+surface = "#241C2E"
+soft = "#302338"
+ink = "#F1EAF7"
+muted = "#BCA8CD"
+deep = "#302A33"
+on-deep = "#F1EAF7"
+board-light = "#D0BDAD"
+board-dark = "#665368"
+brass = "#CFAD77"
 piece-tint = "#FFFFFF"
 
-# Accessibility schemes remove ornamental tonal ambiguity around text. The
-# familiar bone/teal board remains artwork; functional marks stay sys.color
-# and presenters back their outlines with an opaque contrast plate.
+# Accessibility schemes remove ornamental tonal ambiguity around text.
+# Ivory/slate remain artwork; functional marks use contrasting sys roles.
 [game-art.chess.hc-light]
 page = "#FFFFFF"
 surface = "#FFFFFF"
@@ -478,9 +479,9 @@ ink = "#000000"
 muted = "#000000"
 deep = "#000000"
 on-deep = "#FFFFFF"
-board-light = "#ECE4D3"
-board-dark = "#5D8A80"
-brass = "#D5AB54"
+board-light = "#D0BDAD"
+board-dark = "#665368"
+brass = "#CFAD77"
 piece-tint = "#FFFFFF"
 
 [game-art.chess.hc-dark]
@@ -491,9 +492,9 @@ ink = "#FFFFFF"
 muted = "#FFFFFF"
 deep = "#000000"
 on-deep = "#FFFFFF"
-board-light = "#ECE4D3"
-board-dark = "#5D8A80"
-brass = "#D5AB54"
+board-light = "#D0BDAD"
+board-dark = "#665368"
+brass = "#CFAD77"
 piece-tint = "#FFFFFF"
 
 # Approved private-card decorative roles; common M3 dashboard stays unchanged

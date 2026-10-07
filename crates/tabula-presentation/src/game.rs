@@ -67,6 +67,27 @@ pub trait GamePresentation: Send + 'static {
         local: &mut Self::Local,
         frame: &FrameCtx,
     ) -> AudioCues;
+    /// Dispatches an accepted event with its authorized projection endpoints.
+    ///
+    /// Hosts pass the previous and current view from the same viewer. This optional
+    /// context lets a presenter locate a captured object without guessing from an
+    /// endpoint alone (for example Chess en passant). No canonical state crosses
+    /// this boundary; the default preserves existing event-only presenters.
+    fn on_view_event_with_projection(
+        event: &<Self::Rules as GameRules>::ViewEvent,
+        previous: Option<&<Self::Rules as GameRules>::View>,
+        current: &<Self::Rules as GameRules>::View,
+        local: &mut Self::Local,
+        frame: &FrameCtx,
+    ) -> AudioCues {
+        let _ = (previous, current);
+        Self::on_view_event(event, local, frame)
+    }
+    /// Discards presentation-only previews or motion after a definitive rejection.
+    /// Existing presenters without a rejection preview need no cleanup.
+    fn on_command_rejected(local: &mut Self::Local) {
+        let _ = local;
+    }
     fn on_input(
         input: &InputEvent,
         view: &<Self::Rules as GameRules>::View,

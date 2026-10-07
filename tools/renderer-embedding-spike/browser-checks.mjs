@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 if (!process.env.TABULA_PLAYWRIGHT) throw new Error('TABULA_PLAYWRIGHT driver path required');
 const { chromium } = require(process.env.TABULA_PLAYWRIGHT);
-const [output = 'docs/verification/issue-60', origin = 'http://127.0.0.1:8060'] = process.argv.slice(2);
+const [output = 'verification/issue-60', origin = 'http://127.0.0.1:8060'] = process.argv.slice(2);
 const browser = await chromium.launch({ executablePath: process.env.TABULA_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: false, ignoreDefaultArgs: ['--disable-backgrounding-occluded-windows'] });
 const context = await browser.newContext({ viewport: { width: 1100, height: 1100 }, deviceScaleFactor: 1 });
 const page = await context.newPage();

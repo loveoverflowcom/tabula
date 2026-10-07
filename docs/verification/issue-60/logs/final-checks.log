@@ -1,5 +1,0 @@
-$ npm run check --prefix tools/renderer-embedding-spike
-
-> tabula-renderer-embedding-spike@0.1.0 check
-> node --check adapter.mjs && node --check boundary.mjs && node --check bridge.mjs && node --check pixi-backend.mjs
-

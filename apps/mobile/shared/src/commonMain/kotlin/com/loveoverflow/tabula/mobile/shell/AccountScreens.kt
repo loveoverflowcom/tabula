@@ -47,6 +47,8 @@ import com.loveoverflow.tabula.mobile.localization.AccountCopy
 import com.loveoverflow.tabula.mobile.localization.ShellCopy
 import com.loveoverflow.tabula.mobile.localization.ShellStrings
 import com.loveoverflow.tabula.mobile.localization.account
+import com.loveoverflow.tabula.mobile.localization.ShellToolsCopy
+import com.loveoverflow.tabula.mobile.localization.tools
 import com.loveoverflow.tabula.mobile.navigation.Destination
 import com.loveoverflow.tabula.mobile.navigation.AccountTaskBackPort
 
@@ -72,6 +74,15 @@ fun AccountScreen(state: AccountState, strings: ShellStrings, actions: AccountAc
         AccountDestinationCard(AccountCopy.Friends, AccountCopy.FriendsActionBody, AccountCopy.Friends,
             Destination.Friends, "account-open-friends", strings, actions)
         if (state is AccountState.Authenticated) SignOutControls(state, strings, actions)
+        ShellToolMenuCard(strings.tools(ShellToolsCopy.Rooms), strings.tools(ShellToolsCopy.RoomsMenuBody), "account-open-rooms") {
+            actions.navigate(Destination.Rooms)
+        }
+        ShellToolMenuCard(strings.tools(ShellToolsCopy.History), strings.tools(ShellToolsCopy.HistoryMenuBody), "account-open-history") {
+            actions.navigate(Destination.History)
+        }
+        ShellToolMenuCard(strings.tools(ShellToolsCopy.Settings), strings.tools(ShellToolsCopy.SettingsMenuBody), "account-open-settings") {
+            actions.navigate(Destination.Settings)
+        }
         AccountLocalEscape(strings, actions)
         TabulaText(strings.account(AccountCopy.Preferences), TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
     }

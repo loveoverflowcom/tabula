@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
 if (!process.env.TABULA_PLAYWRIGHT) throw new Error('TABULA_PLAYWRIGHT driver path required');
 const { chromium } = require(process.env.TABULA_PLAYWRIGHT);
-const [kind = 'pixi', output = 'docs/verification/issue-60', origin = 'http://127.0.0.1:8060'] = process.argv.slice(2);
+const [kind = 'pixi', output = 'verification/issue-60', origin = 'http://127.0.0.1:8060'] = process.argv.slice(2);
 const server = await chromium.launchServer({ executablePath: process.env.TABULA_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: false });
 const browser = await chromium.connect(server.wsEndpoint());
 const context = await browser.newContext({ viewport: { width: 1100, height: 1100 }, deviceScaleFactor: 1 });

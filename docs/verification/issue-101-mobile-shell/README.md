@@ -1,5 +1,12 @@
 # Issue #101 — CMP shell foundation evidence
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 **Historical source evidence.** The ledger below records PR #105 at
 `2db7602e36a03aa93d8c182f1082bd698a2cf9b3`, before composition with ADR-0043's
 mobile WebView retirement. Production now has an empty catalog and unavailable
@@ -23,16 +30,16 @@ game-host bridge, native-media adapter or backend behavior changed (I-5/I-9/I-10
 
 | Claim / invariant | Owner and failure mode | Oracle / check | Status and residual |
 |---|---|---|---|
-| Portable core and token authority remain valid | Repository gate; stale adapters/raw colors/dependency drift | `cargo xtask check` | **PASS**: all gates; 1,270 Rust tests passed, 18 ignored, 0 failed. Ignored cases are not acceptance evidence. [Log](logs/core-gate.log.gz) |
+| Portable core and token authority remain valid | Repository gate; stale adapters/raw colors/dependency drift | `cargo xtask check` | **PASS**: all gates; 1,270 Rust tests passed, 18 ignored, 0 failed. Ignored cases are not acceptance evidence. [Historical Log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/core-gate.log.gz) |
 | Bounded public routes, caller return, no automatic local-match restoration | `BackStack`/Compose saved state; persisted launch authority or lost caller | 12 navigation tests and the Compose save/dispose/remount test | **PASS**, `example-tested`/`interaction-tested`; actual OS process death **NOT_RUN** |
 | vi/en copy and locale fallback | `ShellStrings`; missing/incorrect key or regional lookup | 3 locale tests, exhaustive switches, full-shell vi/en interactions | **PASS**, `example-tested`/`compiled`; game names remain manifest data |
 | Shared units and host lifecycle remain valid | Session/codec/navigation/controller; runtime leaks or changed Back/retry | Supplemental `:shared:testAndroidHostTest` | **PASS**: 63 tests, 0 skipped; JDK 21/SDK 36 override, not the pinned Android build |
-| Adaptive chrome, selected destinations and accessible labels | Shell components; hidden navigation, overflow or unreachability | Supplemental `:previewApp:test` | **PASS**: 17 tests, 0 skipped; simulated game/voice, not device execution. [Log](logs/mobile-tests.log.gz), [raw XML](logs/test-results.tar.gz) |
+| Adaptive chrome, selected destinations and accessible labels | Shell components; hidden navigation, overflow or unreachability | Supplemental `:previewApp:test` | **PASS**: 17 tests, 0 skipped; simulated game/voice, not device execution. [Historical Log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/mobile-tests.log.gz), [Historical raw XML](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/test-results.tar.gz) |
 | Local gameplay Back/retry/lifecycle remains intact | Existing `GameHost`/voice composition; duplicate mount, missed disposal | 10 lifecycle and 3 voice UI tests within the 17 | **PASS**, `interaction-tested` with doubles; real WebView/native audio **NOT_RUN** |
-| iOS Kotlin and static framework still build | Shared target adapters; unavailable common/native API | `:shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64 :shared:linkDebugFrameworkIosSimulatorArm64` | **PASS**, `compiled`. [Log](logs/ios.log.gz) |
-| iOS application compiles and packages the existing game | Xcode host/export boundary | `xcodebuild -project TabulaApp.xcodeproj -scheme Tabula -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/tabula-101-ios-build CODE_SIGNING_ALLOWED=NO build` | **PASS**, `compiled`; app was not launched. [Log](logs/xcode.log.gz) |
-| Pinned Android unit/APK gate | Host toolchain, JDK 17 and SDK 37 | `./gradlew --console=plain :shared:testAndroidHostTest :android:assembleDebug` | **BLOCKED** locally before source compilation: no JDK 17. SDK 37 is also absent. [Log](logs/mobile-required.log.gz) |
-| APK with installed platform 36 | Android dependency metadata; incompatible compile SDK | Supplemental full command including `:android:assembleDebug` | **BLOCKED**: Compose 1.12 requires SDK 37; no metadata check was bypassed. [Log](logs/mobile-apk-sdk36.log.gz) |
+| iOS Kotlin and static framework still build | Shared target adapters; unavailable common/native API | `:shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64 :shared:linkDebugFrameworkIosSimulatorArm64` | **PASS**, `compiled`. [Historical Log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/ios.log.gz) |
+| iOS application compiles and packages the existing game | Xcode host/export boundary | `xcodebuild -project TabulaApp.xcodeproj -scheme Tabula -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/tabula-101-ios-build CODE_SIGNING_ALLOWED=NO build` | **PASS**, `compiled`; app was not launched. [Historical Log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/xcode.log.gz) |
+| Pinned Android unit/APK gate | Host toolchain, JDK 17 and SDK 37 | `./gradlew --console=plain :shared:testAndroidHostTest :android:assembleDebug` | **BLOCKED** locally before source compilation: no JDK 17. SDK 37 is also absent. [Historical Log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/mobile-required.log.gz) |
+| APK with installed platform 36 | Android dependency metadata; incompatible compile SDK | Supplemental full command including `:android:assembleDebug` | **BLOCKED**: Compose 1.12 requires SDK 37; no metadata check was bypassed. [Historical Log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/mobile-apk-sdk36.log.gz) |
 
 The final core gate includes fmt, clippy with all features and warnings denied, workspace tests,
 dependency/game-id/manifest policy, generated adapter freshness, raw-color checks and cargo-deny.
@@ -64,34 +71,34 @@ The suite captured 38 images; retained review examples below were inspected for 
 surface/brand consistency, label wrapping and containment. Other images remain reproducible
 under `apps/mobile/previewApp/build/reports/shell-screenshots` and are uploaded by mobile CI.
 
-- [320 light English Home](screenshots/parity-320-light-en-home.png)
-- [390 dark Vietnamese Home](screenshots/parity-390-dark-vi-home.png)
-- [768 light Vietnamese Home](screenshots/parity-768-light-vi-home.png)
-- [768 dark English Library](screenshots/parity-768-dark-en-games.png)
-- [390 dark Vietnamese Account](screenshots/parity-390-dark-vi-account.png)
-- [320 dark Vietnamese, 200% Home](screenshots/parity-320-dark-vi-font200-home.png)
-- [320 dark Vietnamese, 200% setup after scrolling](screenshots/parity-320-dark-vi-font200-setup.png)
-- [320 high-contrast light](screenshots/brand-home-hclight-320.png)
-- [390 high-contrast dark](screenshots/brand-home-hcdark-390.png)
+- [Historical 320 light English Home](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/screenshots/parity-320-light-en-home.png)
+- [Historical 390 dark Vietnamese Home](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/screenshots/parity-390-dark-vi-home.png)
+- [Historical 768 light Vietnamese Home](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/screenshots/parity-768-light-vi-home.png)
+- [Historical 768 dark English Library](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/screenshots/parity-768-dark-en-games.png)
+- [Historical 390 dark Vietnamese Account](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/screenshots/parity-390-dark-vi-account.png)
+- [Historical 320 dark Vietnamese, 200% Home](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/screenshots/parity-320-dark-vi-font200-home.png)
+- [Historical 320 dark Vietnamese, 200% setup after scrolling](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/screenshots/parity-320-dark-vi-font200-setup.png)
+- [Historical 320 high-contrast light](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/screenshots/brand-home-hclight-320.png)
+- [Historical 390 high-contrast dark](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/screenshots/brand-home-hcdark-390.png)
 
 ## Environment and reproduction
 
 macOS 15.6/aarch64, Rust 1.96.1, Gradle 9.7.0, Kotlin 2.4.20, Compose 1.12.0, Xcode 16.3.
 Installed JVMs are 21/24 and Android platforms stop at 36. Repository pins remain JDK 17 and
 SDK 37. The supplemental check used the installed JVM/platform via an uncommitted init script;
-its [exact script](logs/local-toolchains.gradle) is retained as evidence, not build configuration.
+its [Historical exact script](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/local-toolchains.gradle) is retained as evidence, not build configuration.
 
 ```sh
 # From apps/mobile; the Android SDK path is host-specific.
-ANDROID_HOME=/Users/manhblue/Library/Android/sdk ./gradlew --console=plain \
+ANDROID_HOME=/path/to/android-sdk ./gradlew --console=plain \
   --no-configuration-cache -I /tmp/tabula-101-local-toolchains.gradle \
   :shared:testAndroidHostTest :previewApp:test
 ```
 
 Before the Xcode build, the unchanged game was built with
 `cargo build -p tabula-game-client --no-default-features --features web --target wasm32-unknown-unknown --profile wasm-release`
-and staged using `cargo xtask stage-mobile-game` ([build log](logs/game-build.log.gz),
-[staging log](logs/stage-game.log.gz)). This is packaging/compilation evidence only.
+and staged using `cargo xtask stage-mobile-game` ([Historical build log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/game-build.log.gz),
+[Historical staging log](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-101-mobile-shell/logs/stage-game.log.gz)). This is packaging/compilation evidence only.
 Retained logs normalize the absolute worktree root to `<worktree>`; results are otherwise preserved.
 
 Existing `.github/workflows/ci.yml` runs the pinned Android test/APK and desktop preview commands,

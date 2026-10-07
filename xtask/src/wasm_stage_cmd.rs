@@ -1340,6 +1340,25 @@ mod tests {
         }
     }
 
+    fn standard_runtime_payload_paths() -> [&'static str; 14] {
+        [
+            "tabula-game-client.wasm",
+            "assets/OpenSans-Regular.ttf",
+            "assets/OpenSans-Semibold.ttf",
+            "assets/NotoSerif-Bold.ttf",
+            "chess/0.3.0/cover@1x.b3-8cc678cb546c246e3b64c1c280b654d5316b08e41454a52daecc4a477241a5fd.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/cover@2x.b3-c6bb188094f6aa8364d5769833a7c60734063dc818eb136d07066efe0e1fff41.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/grain@1x.b3-5aadb473741576d04408bde4d6712afd1ce5286285dc9b12825d23b0336611bd.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/grain@2x.b3-af70f79ae71baa39dd630f4852e67b0c4e4f22bb17ce40fe0c2bc5a3ea70e46e.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/pieces@1x.b3-4c278a7bea9e13d861e4e0a27785682e7caa56b7e564b23f9b09f94ab69918ec.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/pieces@2x.b3-e32515f16e64c9e892b95c95a624f9187e11a463c649673cce2af2680ba3c34d.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/source/pieces/COPYRIGHT.b3-ef27da6c4cb8eec8b32cd6c12ee705673d75b1ab2ea85ebf43bea4aa02c5e59b.txt", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/source/pieces/LICENSE-Apache-2.0.b3-83cb3a2fcf829b6138e095b083016c34ddcdfa07b68d38782722c14fcf85ace6.txt", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/source/pieces/NOTICE.b3-a686c7949818fcd503bebd14f8887576e71e688b1360737fd1b55ce40c1b2257.txt", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/source/pieces/PIECE-PROVENANCE.b3-01ec0cc6d351bc8e5707c726f737e390b0cf7fc293806b151b7fc03a3a48e1ab.md", // xtask-allow-game-id: standalone managed-pack staging oracle.
+        ]
+    }
+
     #[test]
     fn staging_pins_every_runtime_payload_and_static_host_reference() {
         let directory = tempdir().unwrap();
@@ -1360,7 +1379,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             stage_versioned_resources(directory.path(), BundleKind::Standard).unwrap(),
-            12
+            14
         );
         let text = std::fs::read_to_string(directory.path().join("resource-manifest.js")).unwrap();
         let value: serde_json::Value = serde_json::from_str(
@@ -1370,7 +1389,15 @@ mod tests {
         .unwrap();
         assert_eq!(value["schema"], 1);
         let files = value["files"].as_object().unwrap();
-        assert_eq!(files.len(), 12);
+        let expected_paths: std::collections::BTreeSet<_> =
+            standard_runtime_payload_paths().into_iter().collect();
+        assert_eq!(
+            files
+                .keys()
+                .map(String::as_str)
+                .collect::<std::collections::BTreeSet<_>>(),
+            expected_paths
+        );
         for entry in files.values() {
             let bytes =
                 std::fs::read(directory.path().join(entry["url"].as_str().unwrap())).unwrap();

@@ -30,6 +30,7 @@ it does not interpret their rule meaning or reimplement rules (I-9/I-10).
 | Setup | `/games/:id?setup=1` | Read-only module defaults; explicit launch through a supplied packaged host, otherwise disabled native start and explanation |
 | Account | `/account` | Typed account state, current read-only adapter identity or visible native-adapter unavailability |
 | Account tasks | `/login`, `/register`, `/me`, `/friends` | ADR-0046 task navigation; read-only self Profile; native provider/enrollment/social unavailable |
+| Shell tools | `/rooms`, `/history`, `/settings` | Account menu tasks; Rooms/History explain missing native adapters and offer Library recovery; Settings changes local appearance, language and reduced motion |
 | Game host | `/play/local/` | In-memory preview `GameLaunch` through the retained `GameHost` seam; native adapter unavailable |
 
 These are route identities, not registered universal links or authorization URLs. Unknown
@@ -44,6 +45,20 @@ screen scroll/expanded-filter state are public presentation state retained acros
 An active local game restores to setup, requiring a fresh explicit launch. Launch
 preferences, capabilities and runtime state are not saved.
 No local continuation is promised after process death.
+
+The owner-requested [2026-10-07 prototype adaptation](../../research/main-recovery-20261007/README.md)
+uses the prototype as design input for this existing CMP tree. Home packages its decorative
+board-game illustration through Compose resources; catalog categories remain generated public
+facts and are directly selectable before the advanced filters. Rooms and History contain no
+fabricated room, result, rating or replay data and open no native service or phase gate.
+
+Settings stores only three allow-listed presentation choices with saved shell state: appearance
+(System/Light/Dark), language (System/English/Vietnamese) and motion (System/Reduced).
+Defaults follow the host; explicit reduced motion cannot disable an OS accessibility request.
+Theme and copy update immediately. A fresh explicit GameLaunch receives the resolved values;
+an active game retains its launch snapshot. These choices are neither account preferences synced
+to a server nor a new persistent store. Settings is a public task, separate from account identity
+and pending account operations, while retaining the Account navigation selection.
 
 ## Adaptive chrome and components
 

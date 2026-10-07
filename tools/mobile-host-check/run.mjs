@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const bundle = path.join(root, 'target/tabula-mobile-game');
 const outArg = process.argv.indexOf('--out');
-const out = path.resolve(outArg > 0 ? process.argv[outArg + 1] : path.join(root, 'docs/verification/mobile-game-host/desktop'));
+const out = path.resolve(outArg > 0 ? process.argv[outArg + 1] : path.join(root, 'verification/mobile-game-host/desktop'));
 const chromePath = process.env.TABULA_CHROME ?? 'google-chrome';
 fs.mkdirSync(path.join(out, 'screenshots'), { recursive: true });
 

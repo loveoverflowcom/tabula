@@ -1,3 +1,0 @@
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.07s
-     Running `/tmp/tabula60-target/debug/xtask check-manifests`
-check-manifests: 28 manifest(s) checked — all clear

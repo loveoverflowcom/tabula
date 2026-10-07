@@ -39,8 +39,8 @@ class SetupResources(HTMLParser):
 SetupResources().feed(setup)
 pack_rows=[row for row in rows if row['alias'] in pack_paths];assert len(pack_rows)==len(pack_paths)
 # #84 approved two village scenes in pack 0.2.0. Compare every emitted image
-# to that independent pixel/byte receipt instead of the retired 14-image cap.
-approved=json.loads((ROOT/'docs/ui/werewolf-approved/budgets.json').read_text())
+# to that game-owned reproducible pixel/byte budget contract instead of the retired 14-image cap.
+approved=json.loads((ROOT/'games/werewolf/assets/budgets.json').read_text())
 source=tomllib.loads((ROOT/'games/werewolf/assets/pack.source.toml').read_text())
 approved_files={entry['file']:entry for entry in approved['assets']}
 source_files={entry['name']:entry['source'] for entry in source['files']}

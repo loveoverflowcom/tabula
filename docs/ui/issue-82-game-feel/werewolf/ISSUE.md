@@ -1,22 +1,29 @@
 # Bản thiết kế cho [Ma sói #84](https://github.com/loveoverflowcom/tabula/issues/84)
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 ## Mục tiêu
 Redesign Ma sói trước Cờ vua theo yêu cầu chủ dự án từ [#82](https://github.com/loveoverflowcom/tabula/issues/82): **bàn làng có nhân vật và chuyển động**, hình/bài đúng chiều, nút thẳng hàng; giảm cảm giác một màn hình đầy nút số. Giữ Rust/Macroquad và primary tím của Tabula.
 
 **Ảnh dưới đây là bản thiết kế với dữ liệu mẫu**, xuất từ SVG; không phải screenshot Macroquad. HTML/CSS/MJS có choreography mẫu để review, không chứa game rules/network. Source đối chiếu `develop@e75624ae870a74f62f0f734fbcf2f12043047dd4`, ngày 06/10/2026.
 
 ## Thiết kế mới
-![Ma sói — bàn làng ban đêm, bài riêng đúng chiều](desktop-night.jpg)
+[Historical Ma sói — bàn làng ban đêm, bài riêng đúng chiều](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/desktop-night.jpg)
 
 <details>
 <summary>Bình minh, phiếu công khai và mobile responsive</summary>
 
-![Ma sói — bình minh](desktop-day.jpg)
-![Ma sói — phiếu công khai](desktop-vote.jpg)
-![Ma sói — mobile 390×844, avatar 4×3 và bài riêng drawer](mobile-night.jpg)
+[Historical Ma sói — bình minh](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/desktop-day.jpg)
+[Historical Ma sói — phiếu công khai](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/desktop-vote.jpg)
+[Historical Ma sói — mobile 390×844, avatar 4×3 và bài riêng drawer](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/mobile-night.jpg)
 
-![Ma sói — compact 320×640](compact-night.jpg)
-![Ma sói — landscape 844×390](landscape-night.jpg)
+[Historical Ma sói — compact 320×640](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/compact-night.jpg)
+[Historical Ma sói — landscape 844×390](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/landscape-night.jpg)
 
 </details>
 
@@ -28,7 +35,7 @@ Redesign Ma sói trước Cờ vua theo yêu cầu chủ dự án từ [#82](htt
 
 ## Bổ sung: avatar đồng bộ dashboard
 
-![Cùng tài khoản, cùng avatar trên dashboard và trong game](dashboard-avatar-sync.jpg)
+[Historical Cùng tài khoản, cùng avatar trên dashboard và trong game](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/dashboard-avatar-sync.jpg)
 
 - **Một tài khoản dùng một avatar** ở dashboard, header và ghế trong game. Đổi ghế/vai/pha/sống–chết giữ nguyên ảnh; status/selected/vote là marker riêng, không che mặt hoặc thay bằng role art.
 - Cùng resolver, asset reference/revision, crop tròn và fallback. Loading/error/offline không đổi kích thước layout; occupant đổi phải bỏ ảnh/callback của người cũ.
@@ -67,7 +74,7 @@ Mất quyền/đổi viewer/blur/phase phải **che private art ngay**, không c
 3. **Host đè footer ở 390×844**: phối hợp `standalone.css::.runtime-access` với `games/werewolf/src/presentation/render.rs`; mỗi vùng có owner/slot riêng.
 
 ## Source và nghiệm thu
-[Tải assets + source preview Ma sói (.zip)](../werewolf-assets.zip) · [Bộ source, SVG/PNG/JPG và art](.) · [Hướng triển khai + acceptance đầy đủ](IMPLEMENTATION.md) · [HTML](index.html) · [Motion MJS](preview.mjs) · [Exporter](export_preview.py) · [Nguồn ảnh/hash](ASSETS.md)
+[Historical Tải assets + source preview Ma sói (.zip)](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf-assets.zip) · [Bộ source, SVG/PNG/JPG và art lịch sử](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf) · [Hướng triển khai + acceptance đầy đủ](IMPLEMENTATION.md) · [Historical HTML](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/index.html) · [Historical Motion MJS](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/preview.mjs) · [Historical Exporter](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf/export_preview.py) · [Nguồn ảnh/hash](ASSETS.md)
 
 - [ ] Cùng account có cùng avatar/fallback ở dashboard/header/game, cả khi đổi ghế/vai/pha; loading/error/offline/late-load/occupant-change không hiển thị ảnh người cũ.
 - [ ] Review shared public display contract; không invent profile data/API. Game presentation dùng host-provided avatar reference, rules/projection không tải account data.

@@ -50,7 +50,7 @@ max_events_per_input = 4
 
 [assets]
 pack = "chess@0.3.0"
-size_kb = 310 # Bounded licensed piece/cover pack: 317401 bytes including legal docs, rounded up in KiB.
+size_kb = 315 # Licensed pieces, cover, grain and legal documents: 321728 bytes.
 
 [rollout]
 enabled = true

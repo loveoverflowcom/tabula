@@ -1,7 +1,8 @@
 # Chess standalone artwork fixture
 
 This bounded local pack exports the approved Apache-2.0 Chessnut pieces and
-editorial entry cover from the Chess design handoff. It exercises the production
+editorial entry cover from the Chess design handoff, plus issue #85’s decorative
+grain. The combined `chess@0.3.0` pack exercises the production
 logical-resource, binding, verification and bounded PNG-decoding path. It is an
 explicit small-game local fixture under ADR-017, not a general asset-delivery or
 CDN/cache implementation.
@@ -16,6 +17,8 @@ CDN/cache implementation.
   NOTICE.txt retain the source, copyright, license and added attribution notice.
   All four are also hashed, low-priority non-image files in the published pack;
   LILA-COPYING.md retains Lichess's explicit third-party license exception
+- `source/board-grain.svg` retains issue #85’s quiet transparent grain and its
+  adjacent provenance; no geometry, labels or state are baked in
 - `source/chess-atmosphere.png` is the retained full-resolution original, with its
   generation prompt and provenance alongside it; it is never embedded in the
   gameplay binary. `xtask` includes it only for build-time host packaging
@@ -34,26 +37,27 @@ and gutter is doubled at density 2.
 
 `cover@1x.png` and `cover@2x.png` are 240×160 and 480×320 RGB PNGs. The cover is
 only an entry illustration; it contains no controls, rules state, clocks or
-board hitboxes. The four PNGs total 303,308 encoded bytes. The complete eight-file
-pack, including legal text, is 317,401 bytes (310 KiB rounded up), with
-approximately 2 MB of decoded RGBA. The largest individual decoded allocation
+board hitboxes. The 128×128 and 256×256 grain PNGs add 4,327 bytes.
+The six PNGs total 307,635 bytes; the ten-file pack including legal text totals
+321,728 bytes (315 KiB rounded up), with 2,339,840 decoded RGBA bytes. The largest individual decoded allocation
 is below 1 MB. The asset-module regression test caps the inline fixture at
 320 KiB and rejects larger dimensions; the renderer applies its own limits too.
 
 Logical IDs are `pieces/{white,black}-{king,queen,bishop,knight,rook,pawn}` and
-`catalog/cover`. Presenters use only these IDs. Physical files, densities,
+`catalog/cover` and `board/grain`. Presenters use only these IDs. Physical files, densities,
 regions, byte counts and full BLAKE3 digests are manifest metadata.
 
-The host must map bytes by exact file name, because cover and pieces both have
-1x and 2x variants. `assets::ALL_IMAGES` supplies the four PNGs;
+The host must map bytes by exact file name, because cover, pieces and grain have
+1x and 2x variants. `assets::ALL_IMAGES` supplies the six PNGs;
 `assets::ALL_FILES` adds the four rights documents for packaging. Bytes still pass
 through `MemoryAssetSource` and `load_verified` before renderer decode/upload.
 Native main retains that complete file set in its live, manifest-bound generic
 `LocalSpriteResources` owner via `with_embedded_files`; `with_embedded_images`
 remains compatible for image-only fixtures. A native test fetches and verifies
-each rights document, then proves setup/gameplay decode only their two PNGs.
+each rights document, then proves setup/gameplay decode only their three selected-density PNGs.
 Legal text has no sprite resource declaration and never enters texture decode or
-first-board loading. WASM staging keeps each file's validated PNG/TXT/MD extension.
+first-board loading. Gameplay selects pieces and grain; setup selects the cover.
+WASM staging keeps each file's validated PNG/TXT/MD extension.
 
 ## Rebuild and verify
 
@@ -77,8 +81,8 @@ binding, exact sizes and every digest before publication.
 The game-owned sprite helper uses a 97%-of-cell square viewport, with the source's
 own transparent inset intact. Board, moving/dragged pieces, promotion and HUD
 piece examples share that helper. No rotation, whole-piece state tint, new
-renderer branch or runtime SVG rasterizer is introduced. Earlier issue-85
-material/motion work remains independent; its reserved 0.2.0 pack is not reused.
+renderer branch or runtime SVG rasterizer is introduced. The combined pack preserves issue #85’s material, grain, HUD and motion;
+its piece viewports use the licensed Chessnut silhouette.
 
 Chess's decorative material roles are authored under `game-art.chess` in
 `tokens.toml` and generated into the Rust/CSS/JSON adapters. Shared M3 navigation

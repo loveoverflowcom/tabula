@@ -19,6 +19,22 @@ priority = "high"
 density = 2
 
 [[files]]
+name = "grain@1x.atlas"
+path = "chess/0.3.0/grain@1x.b3-5aadb473741576d04408bde4d6712afd1ce5286285dc9b12825d23b0336611bd.png"
+hash = "5aadb473741576d04408bde4d6712afd1ce5286285dc9b12825d23b0336611bd"
+bytes = 1009
+priority = "high"
+density = 1
+
+[[files]]
+name = "grain@2x.atlas"
+path = "chess/0.3.0/grain@2x.b3-af70f79ae71baa39dd630f4852e67b0c4e4f22bb17ce40fe0c2bc5a3ea70e46e.png"
+hash = "af70f79ae71baa39dd630f4852e67b0c4e4f22bb17ce40fe0c2bc5a3ea70e46e"
+bytes = 3318
+priority = "high"
+density = 2
+
+[[files]]
 name = "pieces@1x.atlas"
 path = "chess/0.3.0/pieces@1x.b3-4c278a7bea9e13d861e4e0a27785682e7caa56b7e564b23f9b09f94ab69918ec.png"
 hash = "4c278a7bea9e13d861e4e0a27785682e7caa56b7e564b23f9b09f94ab69918ec"
@@ -61,6 +77,15 @@ path = "chess/0.3.0/source/pieces/PIECE-PROVENANCE.b3-01ec0cc6d351bc8e5707c726f7
 hash = "01ec0cc6d351bc8e5707c726f737e390b0cf7fc293806b151b7fc03a3a48e1ab"
 bytes = 2222
 priority = "low"
+
+[[resources]]
+id = "board/grain"
+
+[[resources.variants]]
+file = "grain@1x.atlas"
+
+[[resources.variants]]
+file = "grain@2x.atlas"
 
 [[resources]]
 id = "catalog/cover"

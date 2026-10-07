@@ -1,7 +1,0 @@
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
-     Running `/workspace/scratch/429f9ca90843/tabula/target/debug/xtask stage-wasm-game`
-stage-wasm-game: staged browser host into /workspace/scratch/429f9ca90843/tabula-chess-integration/target/tabula-web-game
-  - index.html (6155 bytes)
-  - mq_js_bundle.js (37828 bytes)
-  - tabula-game-client.wasm (1902364 bytes)
-  - 15 required host resources + canonical tokens.css

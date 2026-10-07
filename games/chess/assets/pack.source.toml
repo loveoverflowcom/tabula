@@ -25,6 +25,18 @@ priority = "high"
 density = 2
 
 [[files]]
+name = "grain@1x.atlas"
+source = "grain@1x.png"
+priority = "high"
+density = 1
+
+[[files]]
+name = "grain@2x.atlas"
+source = "grain@2x.png"
+priority = "high"
+density = 2
+
+[[files]]
 name = "COPYRIGHT.txt"
 source = "source/pieces/COPYRIGHT.txt"
 priority = "low"
@@ -184,3 +196,12 @@ file = "cover@1x.atlas"
 
 [[resources.variants]]
 file = "cover@2x.atlas"
+
+[[resources]]
+id = "board/grain"
+
+[[resources.variants]]
+file = "grain@1x.atlas"
+
+[[resources.variants]]
+file = "grain@2x.atlas"

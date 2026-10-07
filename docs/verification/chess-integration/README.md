@@ -1,5 +1,12 @@
 # Chess → Tabula local integration evidence
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/chess-integration); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 Date: 2026-10-04. Fresh worktree and branch `feat/chess-tabula-integration`.
 Fetched baseline: `develop @ 8891bb34382dac4605c3aa29cf406528a737ff40`.
 Frozen implementation commit: `0346191ce1116e3941c77f60b1b04836e2902188`.
@@ -42,11 +49,11 @@ workspace toolchain. Cargo build cache was shared through `CARGO_TARGET_DIR`;
 source and distributions remained in this separate worktree. Build tooling:
 Trunk **0.21.14** installed locked from crates.io; its pinned Sass 1.69.5,
 wasm-bindgen 0.2.129 and wasm-opt version_123 were fetched by Trunk. No product
-dependency added. Final command outputs are under [logs](logs/). Retained logs normalize only
+dependency added. Final command outputs are under [Historical logs](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/chess-integration/logs). Retained logs normalize only
 trailing whitespace and excess final blank lines; raw/retained hashes are in
-[log provenance](log-provenance.json).
-[Source/build fingerprints](source-build-manifest.json) and
-[actual runtime probes](runtime-probes.json) bind artifacts and blocked targets.
+[Historical log provenance](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/chess-integration/log-provenance.json).
+[Historical Source/build fingerprints](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/chess-integration/source-build-manifest.json) and
+[Historical actual runtime probes](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/chess-integration/runtime-probes.json) bind artifacts and blocked targets.
 
 | Check | Result and nonempty scope | Evidence kind |
 |---|---|---|
