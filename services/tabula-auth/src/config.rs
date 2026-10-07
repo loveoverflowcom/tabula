@@ -17,6 +17,7 @@ pub struct KanidmConfig {
     pub(crate) callback_url: String,
     pub(crate) admitted: Vec<ProviderIdentityKey>,
     pub(crate) root_certificate: Option<Vec<u8>>,
+    pub(crate) enrollment_enabled: bool,
 }
 impl fmt::Debug for KanidmConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -37,6 +38,42 @@ impl KanidmConfig {
         client_secret: String,
         admitted_subjects: Vec<String>,
     ) -> Result<Self, SessionError> {
+        Self::configured(
+            provider_origin,
+            browser_origin,
+            client_id,
+            client_secret,
+            admitted_subjects,
+            false,
+        )
+    }
+
+    /// Explicit Kanidm-backed Tabula enrollment mode. Provider credentials and
+    /// provisioning remain Kanidm-owned; an empty static invitation list is valid.
+    pub fn new_with_enrollment(
+        provider_origin: &str,
+        browser_origin: &str,
+        client_id: &str,
+        client_secret: String,
+        admitted_subjects: Vec<String>,
+    ) -> Result<Self, SessionError> {
+        Self::configured(
+            provider_origin,
+            browser_origin,
+            client_id,
+            client_secret,
+            admitted_subjects,
+            true,
+        )
+    }
+    fn configured(
+        provider_origin: &str,
+        browser_origin: &str,
+        client_id: &str,
+        client_secret: String,
+        admitted_subjects: Vec<String>,
+        enrollment_enabled: bool,
+    ) -> Result<Self, SessionError> {
         canonical_https_origin(provider_origin)?;
         canonical_https_origin(browser_origin)?;
         if client_id.is_empty()
@@ -46,7 +83,7 @@ impl KanidmConfig {
                 .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'_' | b'-'))
             || !(16..=4096).contains(&client_secret.len())
             || !client_secret.bytes().all(|b| b.is_ascii_graphic())
-            || admitted_subjects.is_empty()
+            || (!enrollment_enabled && admitted_subjects.is_empty())
             || admitted_subjects.len() > 32
         {
             return Err(SessionError::InvalidInput);
@@ -70,6 +107,7 @@ impl KanidmConfig {
             callback_url: format!("{browser_origin}/api/v1/auth/oidc/callback"),
             admitted,
             root_certificate: None,
+            enrollment_enabled,
         })
     }
 
@@ -162,5 +200,39 @@ mod tests {
             vec!["one".into(), "one".into()]
         )
         .is_err());
+    }
+}
+
+#[cfg(test)]
+mod enrollment_tests {
+    use super::*;
+    #[test]
+    fn enrollment_is_an_explicit_constructor_and_never_invents_provider_invites() {
+        assert!(KanidmConfig::new(
+            "https://idm.example",
+            "https://app.example",
+            "tabula",
+            "synthetic-only-secret".into(),
+            vec![]
+        )
+        .is_err());
+        let enrollment = KanidmConfig::new_with_enrollment(
+            "https://idm.example",
+            "https://app.example",
+            "tabula",
+            "synthetic-only-secret".into(),
+            vec![],
+        )
+        .unwrap();
+        assert!(enrollment.enrollment_enabled);
+        assert!(enrollment.admitted_identities().is_empty());
+        assert_eq!(
+            enrollment.callback_url(),
+            "https://app.example/api/v1/auth/oidc/callback"
+        );
+        assert_eq!(
+            enrollment.issuer(),
+            "https://idm.example/oauth2/openid/tabula"
+        );
     }
 }

@@ -416,6 +416,11 @@ body {
   color: var(--sys-color-on-surface);
 }
 
+.btn--text {
+  background: transparent;
+  color: var(--sys-color-primary);
+}
+
 // One strongest action per task, taller when there is room for it.
 .btn--principal {
   min-height: 56px;
@@ -513,17 +518,27 @@ body {
 // ADR-0036 reuses the shell foundation rather than the design pack's sample
 // purple palette, hero, identity controls or statistics. All reasons remain
 // full-contrast text; no private field doubles as a live-status announcement.
-.account {
+.section.account {
   max-width: 760px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
 .account__state,
-.account__profile {
+.account__profile,
+.account__local {
   display: flex;
   flex-direction: column;
   gap: var(--sys-space-md);
+}
+
+.account__local {
+  padding-block: var(--sys-space-md);
+}
+
+.account__local .field__label,
+.account .row__body {
+  margin: 0;
 }
 
 // The synchronous lifecycle mask must win over component display rules. The
@@ -581,6 +596,8 @@ body {
   white-space: normal;
   text-align: center;
   padding-block: var(--sys-space-sm);
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .account__feature-link {
@@ -623,3 +640,19 @@ body {
 
 @import "shell";
 @import "library";
+
+// Native account forms preserve semantic tokens and compact reading width.
+.account__form { display: flex; flex-direction: column; gap: 16px; margin-block: 24px; min-width: 0; }
+.account__form .field { display: flex; flex-direction: column; min-width: 0; gap: 8px; }
+.account__form .field__control { width: 100%; min-width: 0; min-height: var(--sys-density-min-target); box-sizing: border-box; }
+.account__details { margin-block: 24px; padding-block: 16px; border-block-start: 1px solid var(--sys-color-outline-variant); }
+.account__social-list { list-style: none; padding: 0; display: grid; gap: 16px; }
+.account__social-row { padding: 16px; border: 1px solid var(--sys-color-outline-variant); border-radius: var(--sys-shape-md); overflow-wrap: anywhere; min-width: 0; }
+.account__social-row .actions { margin-block-start: 8px; }
+.account__social-row > a {
+  display: flex;
+  align-items: center;
+  min-height: var(--sys-density-min-target);
+  color: var(--sys-color-primary);
+  text-underline-offset: var(--sys-space-xxs);
+}

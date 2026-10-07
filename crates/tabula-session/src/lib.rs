@@ -1,7 +1,7 @@
 //! Internal auth-session lifecycle policy and durable authority ports.
 //!
-//! ADR-0036 opens only this isolated foundation of Phase 4. Both service
-//! bootstraps, provider verification, production HTTP/WS enforcement and
+//! ADR-0036 and ADR-0044 open isolated session/account contracts. Both service
+//! bootstraps, production HTTP/WS enforcement and
 //! production deployment remain gated. Isolated HTTP credential operations and
 //! a bounded server-frame publication port are defined here. This library is
 //! owned by the auth lifecycle boundary in ADR-0034, never by deterministic game rules.
@@ -13,6 +13,7 @@
 
 #![forbid(unsafe_code)]
 
+mod accounts;
 mod browser_login;
 mod credential;
 mod http_ports;
@@ -20,6 +21,7 @@ mod policy;
 mod ports;
 mod types;
 
+pub use accounts::*;
 pub use browser_login::{
     BrowserLoginCallback, BrowserLoginProvider, BrowserLoginStart, CompletedBrowserLogin,
 };

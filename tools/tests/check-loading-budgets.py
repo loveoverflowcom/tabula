@@ -18,6 +18,11 @@ ROOT = Path(__file__).resolve().parents[2]
 GAME_RAW_LIMIT = 1_250_000
 GAME_GZIP_LIMIT = 500_000
 SHELL_RAW_LIMIT = 900_000
+ACCOUNT_SOCIAL_RAW_LIMIT = 1_100_000  # ADR-0044's explicitly opted-in composition.
+SHELL_MARKERS = {
+    "standard": b"tabula-shell-standard-v1",
+    "account-social": b"tabula-shell-account-social-v1",
+}
 
 
 def receipt(path):
@@ -53,7 +58,7 @@ def game_budget(path, graph):
     return result
 
 
-def shell_budget(directory):
+def shell_budget(directory, profile="standard"):
     html = (directory / "index.html").read_text()
     # Trunk emits imports and preload links for the same two shell artifacts.
     urls = set(re.findall(r'(?:src|href)="(/[^"?#]+)"', html))
@@ -67,11 +72,21 @@ def shell_budget(directory):
         rows.append(receipt(file))
     wasm = [row for row in rows if row["path"].endswith(".wasm")]
     assert len(wasm) == 1, "shell must download exactly its own WASM module"
-    assert wasm[0]["bytes"] <= SHELL_RAW_LIMIT, "shell WASM raw budget exceeded"
+    marker = SHELL_MARKERS[profile]
+    module = (directory / wasm[0]["path"]).read_bytes()
+    # Historical dashboard baselines predate the marker and retain the exact
+    # standard cap. Only the larger opted-in cap requires its compiled marker.
+    if profile == "account-social":
+        assert marker in module, "compiled shell profile does not match selected budget"
+    assert all(other not in module for other in SHELL_MARKERS.values() if other != marker), "ambiguous compiled shell profile"
+    limit = ACCOUNT_SOCIAL_RAW_LIMIT if profile == "account-social" else SHELL_RAW_LIMIT
+    assert wasm[0]["bytes"] <= limit, f"shell WASM raw budget exceeded: {wasm[0]['bytes']} > {limit} ({profile})"
     for css in directory.glob("*.css"):
         assert not re.search(r"url\s*\(\s*['\"]?(?:https?://|/play/|/resources/|[^)]*\.(?:png|ttf|wasm))", css.read_text()), "shell CSS eagerly references external/game assets"
     return {
         "evidence": "static emitted dependency inventory, not browser request waterfall",
+        "profile": profile,
+        "wasm_raw_limit": limit,
         "unique_resource_count_including_document": len(rows),
         "raw_bytes": sum(row["bytes"] for row in rows),
         "individual_gzip9_sum": sum(row["gzip9_bytes"] for row in rows),
@@ -82,14 +97,21 @@ def shell_budget(directory):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--game-wasm", type=Path, required=True)
+    parser.add_argument("--game-wasm", type=Path)
     parser.add_argument("--game-tree", type=Path)
     parser.add_argument("--shell-dist", type=Path)
+    parser.add_argument("--shell-profile", choices=SHELL_MARKERS, default="standard")
     parser.add_argument("--write-receipt", type=Path)
     args = parser.parse_args()
-    result = {"game": game_budget(args.game_wasm, args.game_tree)}
+    if not args.game_wasm and not args.shell_dist:
+        parser.error("at least one emitted game or shell artifact is required")
+    if args.shell_profile != "standard" and not args.shell_dist:
+        parser.error("--shell-profile requires --shell-dist")
+    result = {}
+    if args.game_wasm:
+        result["game"] = game_budget(args.game_wasm, args.game_tree)
     if args.shell_dist:
-        result["shell"] = shell_budget(args.shell_dist)
+        result["shell"] = shell_budget(args.shell_dist, args.shell_profile)
     encoded = json.dumps(result, indent=2) + "\n"
     if args.write_receipt:
         args.write_receipt.write_text(encoded)

@@ -41,14 +41,24 @@ platform-evidence task now includes discovery/launch/return and real BFCache/
 resource behavior. Native catalog, server resume, online/rated/AI and phase exits
 remain gated.
 
+The [latest #54 completion ledger](../verification/issue-54-account-followup/README.md)
+records work from develop `c6d55a6`. The owner explicitly requests every original
+criterion; [ADR-0044](../adr/0044-isolated-account-registration-social.md) opens
+bounded verified-provider Tabula enrollment, permitted profile read/edit and
+friends/presence authority in the isolated composition. #54 remains open until
+that scope and its acceptance are complete. Production startup, live provider
+provisioning, native/mobile social and broad phase exits remain gated.
+The planning text and receipts below preserve their earlier scopes.
+
 Issue #54's [account/social specification](../ui/screens/accounts-social.md)
 and [acceptance ledger](../ui/screens/accounts-social-verification.md) deliver
 PR A, originally reviewed against
 `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc` and now aligned with
 [ADR-0031](../adr/0031-browser-native-session-contract.md).
-Its next slices are deferred, not new active phase crossings:
-[B auth and self-profile](backlog/issue-54-auth-profile.md), then
-[C friends and presence](backlog/issue-54-friends-presence.md).
+Its original next slices were [B auth and self-profile](backlog/issue-54-auth-profile.md)
+and [C friends and presence](backlog/issue-54-friends-presence.md). ADR-0044
+subsequently authorizes their bounded isolated implementation, including the
+new contracts, without activating the production backlog.
 
 [#54 session policy](../adr/0031-browser-native-session-contract.md) is now
 reconciled in a separate prerequisite contract from

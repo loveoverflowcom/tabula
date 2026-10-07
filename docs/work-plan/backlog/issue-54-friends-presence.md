@@ -1,6 +1,14 @@
 # Issue #54 C — friends, presence and request actions
 
-**Status:** deferred by real social/lobby contracts and shell gate.
+**Status (2026-10-06):** the owner now authorizes real social/lobby contracts
+in the isolated composition under [ADR-0044](../../adr/0044-isolated-account-registration-social.md).
+The [completion ledger](../../verification/issue-54-account-followup/README.md)
+records actual acceptance. [#100](https://github.com/loveoverflowcom/tabula/issues/100)
+tracks the same work; #54 cannot close merely by transferring it.
+
+## Original production proposal (historical)
+
+The original production prerequisites below remain outside the bounded exception.
 
 **Outcome:** the signed-in viewer can read/search permitted friends, understand
 fresh/unknown/offline/stale presence and handle real requests with clear

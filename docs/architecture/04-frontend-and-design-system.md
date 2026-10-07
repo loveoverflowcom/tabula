@@ -175,6 +175,16 @@ code from being retained merely by discovery, without weakening validation or
 changing the separate-document boundary. The existing emitted shell-WASM cap
 remains 900,000 bytes; source graph and actual emitted bytes are separate evidence.
 
+[ADR-0044](../adr/0044-isolated-account-registration-social.md) adds a separate,
+non-default `account-social` shell composition for verified enrollment, editable
+profiles and authorized social snapshots. Its combined `online,account-social`
+artifact has an enforced 1,100,000-byte raw WASM ceiling. Default and `online`
+without that feature retain the 900,000-byte ceiling. CI measures all three
+optimized emitted artifacts, then runs the complete account/social acceptance
+on the combined artifact. This bounded additional account UI does not load game
+presenters/assets or authorize production startup; emitted size establishes no
+browser timing or phase-exit claim.
+
 ### 3.3 Native desktop and mobile
 
 **Desktop** is one binary. The shell screens are drawn by the **same** Macroquad runtime using a

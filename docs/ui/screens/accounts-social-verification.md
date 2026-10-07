@@ -1,5 +1,13 @@
 # Accounts/social — scope and evidence ledger
 
+**Current status (2026-10-06):** the PR A evidence below is historical.
+ADR-0036/0038 delivered durable sessions, HTTP/self-ID and invited Kanidm login.
+The owner explicitly requests every original #54 criterion; [ADR-0044](../../adr/0044-isolated-account-registration-social.md)
+now authorizes the bounded registration/profile/social contracts. The
+[completion ledger](../../verification/issue-54-account-followup/README.md)
+separates executed UI-double checks from real provider/PG/browser acceptance.
+Broad phase exits and production activation remain gated.
+
 PR A of [issue #54](https://github.com/loveoverflowcom/tabula/issues/54),
 originally reviewed against `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc`.
 Compatibility refresh merges

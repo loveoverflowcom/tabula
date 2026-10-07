@@ -1,5 +1,35 @@
 # Isolated account-state and self-profile delta
 
+## Current implementation, 2026-10-06
+
+The PR3 description below retains its original evidence boundary. Since then,
+[ADR-0038](../../adr/0038-isolated-invited-kanidm-web-auth.md) and merged PR77
+implemented invited Kanidm login and bounded non-secret cross-document logout
+suppression. Public registration, other-profile fields and social services
+remain unavailable. The [current follow-up ledger](../../verification/issue-54-account-followup/README.md)
+records the subsequent UI and connectivity checks separately from PR3 receipts.
+
+`/login` now has its own short task introduction. An already authenticated
+viewer gets a fixed read-only `/me` action instead of an account ID on the
+sign-in screen. `/account` and `/me` retain the permitted immutable ID. All
+three use the same current-authority controller, status/error panel and
+generation-keyed private output. Registration/friends/other-profile routes share
+explicit unavailable reasons, fixed sign-in/account recovery and a local-play
+escape. The escape has a filled Library action on unavailable tasks and quieter
+actions alongside supported account operations. All copy uses en/vi keys and
+existing semantic tokens; no new metric, form or social authority is inferred.
+
+Browser offline signals synchronously mask private nodes, abort/retire pending
+work and present disconnected or unresolved-logout/storage status. Startup,
+route recovery and request completion also check the browser's connectivity
+hint. Online signals start a fresh context/profile read only for a visible
+current route owner. Connectivity never grants authentication, confirms logout,
+or discards a saved suppression marker. Silent expiry/revocation, BFCache's
+first restored frame/tree and real provider/browser/native acceptance remain
+separate obligations under #74.
+
+## Original PR3 scope
+
 Issue #54 PR3, authorized by [ADR-0036](../../adr/0036-isolated-durable-session-validation.md),
 stacked on PR2 `3e539bfe`. This bounded slice does not open production authentication,
 provider registration, social services or the wider Phase 4/5 gates.

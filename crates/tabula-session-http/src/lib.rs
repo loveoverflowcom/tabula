@@ -1,11 +1,14 @@
 //! ADR-0036 isolated session/context and minimal read-only self-profile HTTP.
 //!
 //! Default/WASM builds expose only these explicitly versioned DTOs. The
-//! non-default native `isolated` adapter never starts a production service,
-//! authenticates a provider, or enables registration/social/gameplay authority.
+//! non-default native adapters never start a production service. ADR-0044 adds
+//! explicitly composed account/social authority; provider verification stays in
+//! the auth service library and gameplay authority remains separate.
 #![forbid(unsafe_code)]
 
 use serde::{Deserialize, Serialize};
+
+pub mod accounts;
 
 /// Version of this new, isolated JSON boundary (I-13); no gameplay wire changes.
 pub const HTTP_CONTRACT_VERSION: u8 = 1;
@@ -19,7 +22,8 @@ pub enum SessionDisposition {
     Unavailable,
 }
 
-/// Actual bounded capabilities. Only opt-in signed-out provider login can open.
+/// Actual bounded capabilities; ADR-0044 opens registration/social only in its
+/// explicitly composed isolated authority. Bits never establish permission.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 // Independent returned capabilities, not four coupled lifecycle-state bits.
@@ -95,6 +99,8 @@ impl std::fmt::Debug for NativeRefreshResponse {
 
 #[cfg(all(feature = "isolated", not(target_arch = "wasm32")))]
 pub mod isolated;
+#[cfg(all(feature = "social", not(target_arch = "wasm32")))]
+pub mod social;
 
 /// Invalid or incompatible data from an isolated HTTP response. Validation
 /// constrains shape/version only; it does not establish current server authority.
@@ -106,7 +112,7 @@ fn canonical_account_id(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        && u128::from_str_radix(value, 16).is_ok_and(|id| id != 0)
+        && value.bytes().any(|byte| byte != b'0')
 }
 fn canonical_token(value: &str) -> bool {
     value.len() == 43
@@ -123,8 +129,6 @@ impl ContextResponse {
     /// Client operation-generation/lifecycle checks remain separate obligations.
     pub fn validate_for_browser(&self) -> Result<(), InvalidHttpResponse> {
         if self.version != HTTP_CONTRACT_VERSION
-            || self.capabilities.register
-            || self.capabilities.friends
             || self
                 .csrf_token
                 .as_deref()
@@ -138,17 +142,22 @@ impl ContextResponse {
                     && self.csrf_token.is_some()
                     && self.capabilities.read_self_profile
                     && !self.capabilities.login
+                    && !self.capabilities.register
             }
             SessionDisposition::SignedOut => {
                 self.account_id.is_none()
                     && !self.capabilities.read_self_profile
-                    && (!self.capabilities.login || self.csrf_token.is_some())
+                    && !self.capabilities.friends
+                    && (!(self.capabilities.login || self.capabilities.register)
+                        || self.csrf_token.is_some())
             }
             SessionDisposition::Unavailable => {
                 self.account_id.is_none()
                     && self.csrf_token.is_none()
                     && !self.capabilities.login
                     && !self.capabilities.read_self_profile
+                    && !self.capabilities.register
+                    && !self.capabilities.friends
             }
         };
         if valid {

@@ -8,9 +8,11 @@
 //! > `/`, `/games` and `/games/:id` (with its `?setup=1` substate) are
 //! > implemented anyway, as a recorded decision: see
 //! > `docs/adr/0028-discovery-shell-ahead-of-phase-gate.md`. Every other route
-//! > remains gated except the isolated account-state/read-only self routes
-//! > `/account` and `/me` under ADR-0036. `/login`, `/register`, `/friends` and
-//! > `/u/:handle` explain their unavailable capabilities and collect nothing.
+//! > remains gated except the isolated account-state routes under ADR-0036
+//! > and configured Kanidm continuation under ADR-0038. ADR-0044 adds bounded
+//! > verified enrollment, self-profile editing, permitted other profiles and
+//! > social snapshots when the isolated authority advertises those capabilities.
+//! > Default and production compositions remain closed.
 //! > The optional `/play/local/` handoff opens
 //! > the existing standalone hot-seat runtime as a separate document
 //! > (ADR-0030, retaining ADR-011). The shell creates no match and provides no
@@ -23,8 +25,9 @@
 //!
 //! ```text
 //! /                     home · continue playing · featured games
-//! /account  /me         isolated account state · immutable read-only self ID
-//! /login  /register     unavailable provider auth explanation
+//! /account  /me         isolated account state · self-only profile and editing
+//! /login                configured Kanidm continuation
+//! /register             verified enrollment · explicit sign-in after acceptance
 //! /games                catalog (filter by category, players, duration, complexity)
 //! /games/:id            game detail · rules · config presets · play buttons
 //! /rooms                room browser
@@ -32,8 +35,8 @@
 //! /queue                matchmaking status
 //! /play/:match_id       → HANDS OFF to the game runtime (a separate document)
 //! /matches/:id          post-match summary · replay viewer · rematch
-//! /u/:handle            unavailable other-profile lookup explanation
-//! /friends              unavailable social explanation
+//! /u/:handle            authority-permitted other-profile projection
+//! /friends              permitted search · request decisions · scoped presence
 //! /settings             account · appearance · motion · accessibility · audio · privacy
 //! /shop                 cosmetics (later)
 //! /admin/*              operator tooling — role-gated, SEPARATE BUNDLE
@@ -113,11 +116,17 @@
 //! `xtask check-no-game-ids`, which treats this crate as restricted).
 
 mod account;
+#[cfg(feature = "account-social")]
+mod accounts_full;
 mod i18n;
+#[cfg(any(feature = "online", feature = "account-social", test))]
+mod json;
 #[cfg(feature = "online")]
 mod online;
 mod query;
 mod setup;
+#[cfg(feature = "account-social")]
+mod social_full;
 mod views;
 
 fn main() {
