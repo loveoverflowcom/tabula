@@ -1,0 +1,257 @@
+   Compiling tabula-game-chess v0.1.2 (/workspace/scratch/429f9ca90843/tabula-chess-design85-20261007/games/chess)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.75s
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/tabula_game_chess-ec328e8610c05689)
+
+running 113 tests
+test client_codec::tests::board_length_mismatch_is_rejected ... ok
+test client_codec::tests::projected_view_bytes_decode_and_reencode_without_wire_change ... ok
+test presentation::hud::compact_design_regressions::compact_actions_are_keyboard_reachable_and_held_opening_keys_cannot_confirm ... ok
+test client_codec::tests::public_event_variants_preserve_existing_positions_and_fields ... ok
+test presentation::hud::compact_design_regressions::dismissing_actions_does_not_reuse_the_same_pointer_release_on_the_board ... ok
+test presentation::hud::compact_design_regressions::popup_focus_excludes_covered_seats_and_tabs_remain_in_disclosed_actions ... ok
+test presentation::hud::responsive_regressions::a_board_drag_keeps_pointer_ownership_across_every_hud_region ... ok
+test presentation::assets::tests::every_piece_and_cover_resolve_at_both_declared_densities ... ok
+test presentation::hud::compact_design_regressions::player_board_status_actions_stay_aligned_and_bounded_without_turn_resize ... ok
+test presentation::hud::tests::blur_during_keyboard_confirmation_does_not_latch_the_opening_action ... ok
+test presentation::assets::tests::all_bundled_files_are_exact_manifest_bytes_and_bounded_pngs ... ok
+test presentation::hud::tests::cancelling_keyboard_confirmation_resets_the_hud_activation_latch ... ok
+test presentation::hud::compact_design_regressions::narrow_rail_and_landscape_check_titles_are_bounded_one_line_labels ... ok
+test presentation::hud::responsive_regressions::every_eligible_control_retains_44_dp_hit_and_keyboard_targets_in_small_layouts ... ok
+test presentation::hud::responsive_regressions::promotion_is_disabled_even_if_the_move_remains_legal_in_a_changed_projection ... ok
+test presentation::hud::compact_design_regressions::popup_padding_and_disabled_controls_shield_underlying_hotseat_bars ... ok
+test presentation::hud::tests::focus_loss_interrupts_drag_and_blocks_orphan_release_after_resume ... ok
+test presentation::hud::tests::hot_seat_override_requires_explicit_shell_admission_and_resets_on_move ... ok
+test presentation::hud::tests::local_flip_maps_all_square_centers_and_keeps_command_identity ... ok
+test presentation::hud::tests::terminal_board_has_directional_keyboard_access_to_flip_in_both_orientations ... ok
+test presentation::material::tests::high_contrast_removes_only_decorative_grain ... ok
+test presentation::hud::compact_design_regressions::seat_labels_and_absent_clocks_are_derived_from_projection_only ... ok
+test presentation::hud::tests::resign_is_safe_by_default_and_confirmed_once ... ok
+test presentation::hud::tests::offers_use_projected_offturn_eligibility_and_confirmation ... ok
+test presentation::material::tests::decorative_frame_stays_in_its_reserved_slot_and_grain_is_below_markers ... ok
+test presentation::hud::tests::opening_draw_control_is_disabled_without_inventing_eligibility ... ok
+test presentation::hud::tests::stale_or_changed_seat_confirmation_cannot_emit_an_action ... ok
+test presentation::motion::tests::timestamped_motion_accepts_threshold_and_snaps_only_later_arrivals ... ok
+test presentation::tests::a11y_describes_every_square_from_the_projection ... ok
+test presentation::motion::tests::legacy_event_only_capture_does_not_invent_a_victim_square ... ok
+test presentation::tests::a11y_describes_the_active_promotion_selection ... ok
+test presentation::tests::accepted_projected_move_emits_one_cue_without_mutating_canonical_state ... ok
+test presentation::motion::tests::accepted_move_has_low_arc_landing_scale_and_grounded_soft_shadow ... ok
+test presentation::tests::active_animation_does_not_gate_drag ... ok
+test presentation::motion::tests::input_blur_rejection_and_reset_snap_without_changing_the_projection ... ok
+test presentation::tests::animation_does_not_gate_input_or_intent_creation ... ok
+test presentation::tests::board_is_64_square_square_and_fits_both_viewport_orientations ... ok
+test presentation::tests::black_promotion_chooser_uses_black_piece_glyphs ... ok
+test presentation::tests::board_boundaries_clamp_directional_arrows ... ok
+test presentation::tests::chess_declares_typed_asset_pack_matching_metadata ... ok
+test presentation::tests::chess_move_animation_has_a_real_in_flight_sample ... ok
+test presentation::motion::tests::projection_pin_new_move_and_reduced_motion_discard_old_composition ... ok
+test presentation::tests::chess_board_focus_uses_shared_directional_navigation ... ok
+test presentation::tests::chess_move_animation_is_driven_by_view_event ... ok
+test presentation::tests::clock_updates_are_silent ... ok
+test presentation::motion::tests::accepted_capture_fades_at_actual_square_including_both_en_passant_colors ... ok
+test presentation::tests::clock_cards_fit_the_dock_at_compact_and_short_landscape_sizes ... ok
+test presentation::tests::chess_animation_never_mutates_authoritative_state ... ok
+test presentation::tests::drag_and_tap_and_keyboard_converge_on_the_same_move_command ... ok
+test presentation::tests::clocked_presentation_visibly_counts_down_from_authoritative_clock_state ... ok
+test presentation::tests::drag_outside_board_is_total_and_has_no_target ... ok
+test presentation::tests::drag_does_not_enable_keyboard_focus_visible ... ok
+test presentation::tests::drag_source_identity_never_changes ... ok
+test presentation::tests::chess_final_render_is_identical_after_sparse_or_dense_sampling ... ok
+test presentation::tests::end_to_end_projection_presentation_intent_and_rules_apply ... ok
+test presentation::tests::escape_cancels_promotion_without_emitting_a_command ... ok
+test presentation::motion::tests::accepted_castling_has_two_synchronized_upright_travels_and_no_endpoint_duplicates ... ok
+test presentation::tests::every_pointer_promotion_choice_emits_the_matching_command ... ok
+test presentation::tests::clock_hud_marks_turn_and_low_time_in_text_in_every_theme ... ok
+test presentation::tests::focus_is_local_and_never_mutates_authoritative_state ... ok
+test presentation::tests::golden_chess_promotion_chooser_modal ... ok
+test presentation::tests::golden_chess_initial_640x640_light ... ok
+test presentation::tests::golden_chess_drag_e2_to_e4_midflight_dark ... ok
+test presentation::tests::golden_chess_initial_320x640_responsive ... ok
+test presentation::tests::golden_chess_move_animation_midflight ... ok
+test presentation::tests::invalid_drop_emits_no_intent_and_restores_source_selection ... ok
+test presentation::tests::golden_chess_selected_focus_overlay_dark ... ok
+test presentation::tests::keyboard_opening_press_cannot_repeat_into_a_promotion_action ... ok
+test presentation::tests::legal_drag_emits_exact_move_intent ... ok
+test presentation::tests::movement_above_drag_threshold_enters_dragging ... ok
+test presentation::tests::keyboard_opened_promotion_uses_keyboard_modality_and_shows_focus_ring ... ok
+test presentation::tests::movement_below_drag_threshold_remains_tap_candidate ... ok
+test presentation::tests::keyboard_focus_renders_semantic_focus_ring ... ok
+test presentation::tests::initial_position_renders_all_board_squares_and_pieces_deterministically ... ok
+test presentation::tests::keyboard_promotion_navigation_is_clamped_and_commits_the_selected_piece ... ok
+test presentation::tests::pointer_cancel_during_drag_emits_no_intent_and_clears_drag ... ok
+test presentation::tests::pointer_and_keyboard_promotion_selection_share_command_construction ... ok
+test presentation::tests::pointer_down_on_movable_piece_enters_pressed_state ... ok
+test presentation::tests::pointer_and_keyboard_activation_build_the_same_move ... ok
+test presentation::tests::pointer_selection_is_local_and_valid_destination_emits_one_command ... ok
+test presentation::motion::tests::accepted_promotion_uses_prior_pawn_then_each_upright_endpoint_choice ... ok
+test presentation::tests::projected_capture_emits_capture_not_move ... ok
+test presentation::tests::golden_chess_terminal_checkmate_hud ... ok
+test presentation::tests::piece_in_transit_is_not_double_rendered ... ok
+test presentation::tests::promotion_choice_comes_from_the_canonical_legal_move_projection ... ok
+test presentation::tests::pointer_opened_promotion_keeps_pointer_modality_and_hides_focus_ring ... ok
+test presentation::tests::promotion_chooser_anchors_inward_from_the_target_in_both_orientations ... ok
+test presentation::tests::promotion_choice_type_contains_exactly_the_four_upgrade_pieces ... ok
+test presentation::tests::promotion_cancel_is_available_to_pointer_and_keyboard_when_choices_are_disabled ... ok
+test presentation::tests::promotion_controls_retain_44_dp_targets_on_compact_viewports ... ok
+test presentation::tests::promotion_animation_moves_a_pawn_and_finishes_as_the_promoted_piece ... ok
+test presentation::tests::promotion_choices_disable_when_the_projection_no_longer_permits_them ... ok
+test presentation::tests::promotion_drag_regression ... ok
+test presentation::tests::promotion_release_without_a_press_never_activates_a_choice ... ok
+test presentation::tests::promotion_pointer_cancellation_and_outside_release_preserve_the_modal ... ok
+test presentation::tests::promotion_window_focus_loss_blocks_activation ... ok
+test presentation::tests::real_opening_e2_to_e4_drag_drop_sequence ... ok
+test presentation::tests::resize_mid_drag_remains_total ... ok
+test presentation::tests::square_mapping_round_trips_centers_and_rejects_edges_outside_the_board ... ok
+test presentation::tests::resizing_between_clicks_keeps_hit_testing_on_the_current_board ... ok
+test presentation::tests::terminal_clock_checkpoint_does_not_keep_counting_down ... ok
+test rules::clock::tests::fischer_charge_matches_bounded_reference_model ... ok
+test rules::clock::tests::fischer_increment_caps_at_the_explicit_finite_domain_limit ... ok
+test rules::clock::tests::bronstein_charge_matches_bounded_reference_model ... ok
+test rules::clock::tests::timer_budget_matches_control_semantics_at_boundaries ... ok
+test presentation::tests::terminal_projected_events_preserve_move_then_game_end_cue_order ... ok
+test rules::clock::tests::fischer_near_limit_repeated_zero_elapsed_moves_are_deterministic ... ok
+test presentation::tests::terminal_projection_renders_result_and_disables_input ... ok
+test presentation::tests::promotion_widgets_use_semantic_themes_and_keep_reduced_motion_immediate ... ok
+test presentation::tests::rendering_proves_no_duplicate_piece_during_drag ... ok
+test presentation::tests::tab_navigation_traverses_all_board_squares ... ok
+test presentation::tests::cue_identity_is_frame_independent_and_present_is_audio_free ... ok
+test bot::tests::easy_bot_cannot_distinguish_unprojected_repetition_history ... ok
+
+test result: ok. 113 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/bot.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/bot-136410993e99c9ba)
+
+running 10 tests
+test easy_returns_none_for_the_wrong_seat_or_when_no_moves_are_projected ... ok
+test easy_bot_is_deterministic_for_identical_view_and_rng ... ok
+test trivial_bot_remains_deterministic_and_legal_for_a_fixed_seed ... ok
+test easy_uses_piece_square_positioning_when_material_is_equal ... ok
+test easy_equal_score_ties_use_rng_but_stay_with_the_best_moves ... ok
+test easy_treats_a_terminal_draw_as_neutral_utility ... ok
+test easy_chooses_the_materially_superior_capture ... ok
+test easy_searches_the_opponent_reply_before_taking_poisoned_material ... ok
+test easy_bot_always_returns_a_legal_projected_command ... ok
+test phase_one_bot_pairings_self_play_without_illegal_or_nondeterministic_moves ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 29.33s
+
+     Running tests/clocks.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/clocks-0169b045cfd1f7c0)
+
+running 28 tests
+test clock_config_is_validated_before_match_creation ... ok
+test admin_cancel_cancels_clock_timer ... ok
+test bronstein_exact_timeout_boundary_flags ... ok
+test bronstein_move_inside_delay_consumes_no_clock ... ok
+test bronstein_move_past_delay_consumes_only_excess ... ok
+test bronstein_delay_is_refunded_without_resetting_the_turn ... ok
+test clocked_creation_initializes_and_arms_the_white_clock ... ok
+test early_timer_rearms_instead_of_ending_match ... ok
+test clock_timer_rearms_for_new_side_after_move ... ok
+test fischer_exact_zero_flags_before_move ... ok
+test fischer_increment_is_not_granted_to_flagged_player ... ok
+test fischer_one_millisecond_before_deadline_survives ... ok
+test out_of_turn_move_does_not_consume_clock ... ok
+test fischer_move_decrements_elapsed_and_adds_increment ... ok
+test illegal_move_does_not_consume_clock ... ok
+test resignation_cancels_clock_timer ... ok
+test fischer_near_limit_repeated_zero_elapsed_moves_never_wrap ... ok
+test expired_clock_preempts_valid_non_move_commands ... ok
+test clocked_script_is_deterministic_in_state_events_and_effects ... ok
+test timeout_is_a_draw_when_the_surviving_side_has_only_a_king ... ok
+test timeout_ignores_flagged_side_material_when_survivor_is_bare_king ... ok
+test timeout_material_edges_distinguish_minor_and_mating_combinations ... ok
+test terminal_move_cancels_clock_timer ... ok
+test rejected_draw_command_does_not_consume_clock ... ok
+test seat_disconnect_does_not_pause_clock ... ok
+test timeout_with_mating_material_is_decisive_and_does_not_mutate_board ... ok
+test timer_at_exact_deadline_flags_side_to_move ... ok
+test unknown_timer_is_harmless ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/conformance.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/conformance-2f6e73270629b27b)
+
+running 11 tests
+test tabula_conformance_deterministic_rng ... ok
+test tabula_conformance_stable_identity ... ok
+test tabula_conformance_deterministic_initialization ... ok
+test tabula_conformance_invalid_command_safety ... ok
+test tabula_conformance_serialization_roundtrip ... ok
+test tabula_conformance_state_hash_sensitivity ... ok
+test tabula_conformance_terminal_behavior ... ok
+test tabula_conformance_deterministic_command_execution ... ok
+test tabula_conformance_ordered_events ... ok
+test tabula_conformance_deterministic_replay ... ok
+test tabula_conformance_legal_commands_sanity ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/module.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/module-47aa9794faa7d0a4)
+
+running 3 tests
+test module_bot_inventory_defaults_to_empty ... ok
+test package_declares_bot_levels_independently_of_the_bots_feature ... ok
+test declared_bot_levels_match_factories_for_all_four_levels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/perft.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/perft-b673b92dffb59050)
+
+running 2 tests
+test initial_position_depth_five_matches_published_oracle ... ignored, deep verification: run cargo test -p tabula-game-chess --test perft -- --ignored
+test published_positions_match_through_practical_depths ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.10s
+
+     Running tests/projection_control.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/projection_control-2a5f522328e56cf0)
+
+running 10 tests
+test projected_movement_hints_and_legal_commands_remain_move_only ... ok
+test a_move_changes_the_board_which_is_public_to_every_viewer ... ok
+test readonly_and_terminal_views_have_no_action_or_movement_affordances ... ok
+test projection_is_deterministic_for_a_fixed_reachable_state ... ok
+test check_is_projected_for_every_viewer_and_preserved_at_checkmate ... ok
+test opening_projects_resignation_but_no_premature_draw_offer ... ok
+test fifty_move_claim_is_projected_only_at_the_threshold_and_to_current_turn ... ok
+test every_non_move_command_is_reached_in_projection_reducer_agreement_checks ... ok
+test draw_offer_actions_follow_off_turn_seat_and_recipient ... ok
+test repetition_claim_uses_canonical_history_without_reconstructing_it_from_view ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/replay.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/replay-cf42e975bf3d21ad)
+
+running 7 tests
+test canonical_tree_rejects_noncanonical_feature_sources ... ok
+test all_rules_subtree_files_are_discovered_recursively ... ok
+test canonical_source_mutation_changes_oracle_hash ... ok
+test rules_hash_matches_independent_rules_subtree_oracle ... ok
+test committed_chess_clock_replay_contains_a_recorded_timer_input ... ok
+test canonical_rules_do_not_depend_on_crate_root_sources ... ok
+test committed_chess_replay_reproduces_its_independent_final_hash ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/rules.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/rules-b8f72f279fe97429)
+
+running 11 tests
+test fen_rejects_unrepresentable_positions ... ok
+test a_draw_offer_is_answered_by_the_other_seat_without_changing_turn ... ok
+test draw_offer_before_both_players_move_is_rejected ... ok
+test fifty_move_rule_is_claimable_and_seventy_five_move_rule_is_automatic ... ok
+test repetition_key_omits_an_unavailable_en_passant_target ... ok
+test all_promotion_choices_are_legal_and_change_the_piece ... ok
+test illegal_moves_are_byte_identical_noops ... ok
+test resigning_from_a_dead_position_is_a_draw_and_can_happen_off_turn ... ok
+test threefold_repetition_is_claimable_but_not_automatic ... ok
+test fivefold_repetition_is_automatic ... ok
+test legal_commands_are_stably_ordered_and_all_authoritative ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests tabula_game_chess
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

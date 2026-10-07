@@ -1,0 +1,19 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running unittests src/lib.rs (/workspace/scratch/429f9ca90843/chess85-validation/target/debug/deps/tabula_design-e712d72cbf067068)
+
+running 12 tests
+test tests::bounded_token_values_reject_invalid_boundaries ... ok
+test tests::foundation_action_state_layers_preserve_text_contrast ... ok
+test tests::design01_shell_preserves_brand_and_contrasted_four_scheme_surfaces ... ok
+test tests::foundation_tonal_surface_pairs_meet_their_thresholds ... ok
+test tests::game_art_text_pairs_and_identity_tint_preserve_accessibility ... ok
+test tests::high_contrast_strengthens_critical_surface_pairs ... ok
+test tests::generated_measurements_reject_non_finite_values ... ok
+test tests::t_portal_brand_pairs_meet_four_scheme_contrast ... ok
+test tests::named_semantic_accessibility_pairs_meet_their_thresholds ... ok
+test tests::mono_styles_require_tabular_figures ... ok
+test tests::t_portal_brand_palette_preserves_accessible_primary_violet_actions ... ok
+test tests::text_style_constructor_closes_metric_bypass ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -32,6 +32,12 @@ The [implementation ledger](../verification/standalone-chess/README.md) separate
 executed rules/presentation/build checks from unavailable real runtime pixels.
 Observed coordinate history does not close the gated #52 replay slice.
 
+The [#85 runtime redesign ledger](../verification/chess-redesign-85/README.md)
+records its bounded board/HUD/accepted-motion implementation. Remaining
+[exact-source target acceptance](backlog/chess-85-runtime-acceptance.md) is
+separate from source/headless checks and retains the issue's open pixel,
+device, accessibility and performance gates.
+
 The requested fresh-session Chess integration is implemented locally under
 [ADR-0030](../adr/0030-local-discovery-gameplay-handoff.md), reusing the standalone
 runtime in an opt-in separate document. Its

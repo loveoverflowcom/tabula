@@ -199,7 +199,7 @@ impl GameArtTokens {
     }
 }
 
-/// Chess's approved ivory, petrol, teal, bone and brass material roles.
+/// Chess's approved ivory, truffle wood, slate and restrained brass material roles.
 ///
 /// These do not override shared navigation or announce interactive state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

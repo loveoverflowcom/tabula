@@ -1,7 +1,8 @@
 # Chess standalone artwork fixture
 
 This bounded local pack exports the approved Tabula Carved Staunton pieces and
-editorial entry cover from the Chess design handoff. It exercises the production
+editorial entry cover from the Chess design handoff, plus issue #85's quiet
+transparent grain. Pack `chess@0.2.0` exercises the production
 logical-resource, binding, verification and bounded PNG-decoding path. It is an
 explicit small-game local fixture under ADR-017, not a general asset-delivery or
 CDN/cache implementation.
@@ -12,6 +13,8 @@ CDN/cache implementation.
 - `source/pieces/build_piece_set.py` retains the original editable geometry source
 - `source/pieces/PROVENANCE.md` records original authorship; no third-party piece
   images, fonts, icon sets or external SVG dependencies were used
+- `source/board-grain.svg` adapts the original issue #85 reference pattern;
+  its provenance is beside it. No board geometry, labels or game state are baked in
 - `source/chess-atmosphere.png` is the retained full-resolution original, with its
   generation prompt and provenance alongside it; it is never embedded in the
   gameplay binary. `xtask` includes it only for build-time host packaging
@@ -31,18 +34,25 @@ and gutter is doubled at density 2.
 
 `cover@1x.png` and `cover@2x.png` are 240×160 and 480×320 RGB PNGs. The cover is
 only an entry illustration; it contains no controls, rules state, clocks or
-board hitboxes. The complete four-file fixture is 280,240 encoded bytes and
-approximately 2 MB of decoded RGBA. The largest individual decoded allocation
+board hitboxes. `grain@1x.png` and `grain@2x.png` are transparent 128×128 and
+256×256 PNGs with restrained .035-alpha diagonal grain. The complete six-file
+fixture is 284,567 encoded bytes and 2,339,840 decoded RGBA bytes when both
+densities of every group are resident. The largest individual decoded allocation
 is below 1 MB. The asset-module regression test caps the inline fixture at
 320 KiB and rejects larger dimensions; the renderer applies its own limits too.
 
 Logical IDs are `pieces/{white,black}-{king,queen,bishop,knight,rook,pawn}` and
-`catalog/cover`. Presenters use only these IDs. Physical files, densities,
+`catalog/cover` and `board/grain`. Presenters use only these IDs. Physical files, densities,
 regions, byte counts and full BLAKE3 digests are manifest metadata.
 
-The host must map bytes by exact file name, because cover and pieces both have
+The host must map bytes by exact file name, because cover, pieces and grain all have
 1x and 2x variants. `assets::ALL_IMAGES` supplies that mapping. Bytes still pass
 through `MemoryAssetSource` and `load_verified` before renderer decode/upload.
+Skipping setup loads only the selected-density pieces and grain, not the cover.
+Repeated matches and DPR changes retain ready physical textures in the managed
+cache; loading this small gameplay group does not implement a general CDN service.
+High-contrast themes omit the decorative grain command without changing input
+geometry or semantic markers.
 
 ## Rebuild and verify
 
@@ -51,7 +61,7 @@ From the repository root, with Inkscape and Pillow installed:
 ```sh
 python3 games/chess/assets/generate.py
 cargo xtask pack-assets chess
-cp target/asset-packs/chess/0.1.0/pack.toml games/chess/assets/fixture.pack.toml
+cp target/asset-packs/chess/0.2.0/pack.toml games/chess/assets/fixture.pack.toml
 python3 games/chess/assets/generate.py --check
 cargo test -p tabula-game-chess --features presentation --lib presentation::assets::tests
 ```

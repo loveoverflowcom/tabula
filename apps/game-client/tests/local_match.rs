@@ -540,7 +540,7 @@ fn chess_presenter_produces_macroquad_supported_render_list_with_verified_art() 
             256 * 1024,
             2 * 1024 * 1024,
             4 * 1024 * 1024,
-            4,
+            6,
         )
         .unwrap(),
     );
