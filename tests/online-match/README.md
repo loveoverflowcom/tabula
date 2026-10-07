@@ -346,8 +346,9 @@ Network-loss partitions restore transport after the required committed-prefix
 witness and before sampling the other browser's pixels, so screenshot work does
 not consume the intentionally bounded recovery budget. Every original rendered
 board, exact retry, seat, scope and durable-stream assertion still runs.
-The same-record rotation control document is prepared before injecting its
-outage. Actual credential rotation, the second durable move and stale-attachment
+The same-record rotation control document and its current authentication facts
+are prepared before injecting its outage. Actual credential rotation, the second
+durable move and stale-attachment
 rejection still precede restoration; subsequent Black pixels are sampled after
 transport is restored, before further game input.
 

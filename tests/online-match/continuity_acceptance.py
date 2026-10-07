@@ -399,6 +399,9 @@ def same_record_rotation_game(contexts,private,ca,results):
     # and unrelated pixels must not consume the bounded recovery budget.
     control=contexts[0].new_page();control.goto(ORIGIN+GAME_PATH,wait_until='domcontentloaded')
     pair.board(0,'White to move')
+    before_cookie=next(cookie['value'] for cookie in contexts[0].cookies() if cookie['name']==SESSION_COOKIE)
+    current=context_facts(control)
+    require(current['account_id']==pair.facts[0]['account_id'],'rotation control page changed the account')
     old=pair.attachments[0][-1];gate=pair.arm(0,'after_commit')
     original=pair.tap(0,0);held(ca,gate);pair.held_prefix(ca,gate,1)
     network=PageNetwork(white);network.offline(True)
@@ -408,9 +411,6 @@ def same_record_rotation_game(contexts,private,ca,results):
     require(pending is not None and pending['operation_scope']==old['operation_scope'],
             'uncertain original operation was not retained before rotation')
     pair.board(1,'Black to move')
-    before_cookie=next(cookie['value'] for cookie in contexts[0].cookies() if cookie['name']==SESSION_COOKIE)
-    current=context_facts(control)
-    require(current['account_id']==pair.facts[0]['account_id'],'rotation control page changed the account')
     refreshed=api(control,'/api/v1/auth/refresh',{},current['csrf_token'])
     require(refreshed['status']==204 and refreshed['body'] is None,
             'existing browser credential rotation did not complete')
@@ -420,7 +420,7 @@ def same_record_rotation_game(contexts,private,ca,results):
     require(current['account_id']==pair.facts[0]['account_id'],'credential rotation changed the account')
     # Black's legal command prepares its real fan-out. White's cached old digest
     # can no longer authorize that output, so its local attachment is retired.
-    move(black,*MOVES[1],False,pair.match_id);pair.current_status(1,'White to move');pair.oracle(2)
+    move(black,*MOVES[1],False,pair.match_id);pair.oracle(2)
     stale=api(control,f'/api/v1/matches/{pair.match_id}/poll',
               {'version':MATCH_VERSION,'attachment_id':old['attachment_id']},current['csrf_token'])
     reattach_required(stale,'valid rotated membership received stale-attachment output')

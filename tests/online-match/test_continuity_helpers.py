@@ -44,12 +44,14 @@ class ContinuityHelperTests(unittest.TestCase):
             if path=='/api/v1/auth/refresh':
                 events.append(('credential_rotation',));return {'status':204,'body':None}
             events.append(('stale_probe',));return {'status':409,'body':{'code':'reattach_required'}}
+        def facts(page):
+            events.append(('context_read',));return {'account_id':'white','csrf_token':'A'*43}
         with mock.patch('continuity_acceptance.Pair',return_value=pair), \
              mock.patch('continuity_acceptance.PageNetwork',return_value=network), \
              mock.patch('continuity_acceptance.held'), \
              mock.patch('continuity_acceptance.pending_record',return_value={'operation_scope':scope}), \
              mock.patch('continuity_acceptance.fault_control',return_value={'status':200}), \
-             mock.patch('continuity_acceptance.context_facts',return_value={'account_id':'white','csrf_token':'A'*43}), \
+             mock.patch('continuity_acceptance.context_facts',side_effect=facts), \
              mock.patch('continuity_acceptance.api',side_effect=api_call), \
              mock.patch('continuity_acceptance.move'), \
              mock.patch('continuity_acceptance.reattach_required',side_effect=lambda *args:events.append(('stale_rejected',))), \
@@ -57,6 +59,7 @@ class ContinuityHelperTests(unittest.TestCase):
              mock.patch('continuity_acceptance.actual_response_json',return_value={'frames':[{'body':{'Ack':{'seq':1}}}]}):
             cases=[];same_record_rotation_game([context,mock.Mock()],mock.Mock(),mock.Mock(),cases)
         self.assertLess(events.index(('control_ready',)),events.index(('pointer_command',)))
+        self.assertLess(events.index(('context_read',)),events.index(('pointer_command',)))
         restored=events.index(('offline',False))
         for witness in (('credential_rotation',),('oracle',2,1),('stale_rejected',)):
             self.assertLess(events.index(witness),restored)
@@ -205,23 +208,33 @@ class ContinuityHelperTests(unittest.TestCase):
                 (apply_and_committed_refresh_game,'before_commit',0),
                 (apply_and_committed_refresh_game,'after_commit',1),
                 (same_record_rotation_game,None,1),(restart_between_grant_and_attach_game,None,1)):
-            pair=mock.Mock(pages=[mock.Mock(),mock.Mock()],attachments=[[{}],[{}]])
+            pair=mock.Mock(pages=[mock.Mock(),mock.Mock()],attachments=[[{}],[{}]],
+                           facts=[{'account_id':'white'},{'account_id':'black'}])
             pair.arm.return_value='synthetic-token'
+            gate_held=[]
+            def mark_held(*args):gate_held.append(True)
+            def prepared_facts(page):
+                self.assertFalse(gate_held,'authentication was attempted while the command was held')
+                return {'account_id':'white','csrf_token':'synthetic-csrf'}
             with self.subTest(operation=operation.__name__,partition=partition), \
                  mock.patch('continuity_acceptance.Pair',return_value=pair), \
-                 mock.patch('continuity_acceptance.held') as confirmed, \
+                 mock.patch('continuity_acceptance.held',side_effect=mark_held) as confirmed, \
                  mock.patch('continuity_acceptance.PageNetwork',side_effect=AfterHeldWitness), \
-                 mock.patch('continuity_acceptance.context_facts') as auth, \
+                 mock.patch('continuity_acceptance.context_facts',side_effect=prepared_facts) as auth, \
                  mock.patch('continuity_acceptance.api') as api_call:
                 with self.assertRaises(AfterHeldWitness):
                     contexts=[mock.Mock(),mock.Mock()]
+                    contexts[0].cookies.return_value=[{'name':'__Host-tabula_session','value':'synthetic-cookie'}]
                     if operation is crash_game:operation(contexts,None,'synthetic-ca',mock.Mock(),partition,[])
                     elif operation is apply_and_committed_refresh_game:operation(contexts,None,'synthetic-ca',partition,[])
                     elif operation is restart_between_grant_and_attach_game:operation(contexts,None,'synthetic-ca',mock.Mock(),[])
                     else:operation(contexts,None,'synthetic-ca',[])
                 confirmed.assert_called_once_with('synthetic-ca','synthetic-token')
                 pair.held_prefix.assert_called_once_with('synthetic-ca','synthetic-token',expected)
-                pair.oracle.assert_not_called();auth.assert_not_called();api_call.assert_not_called()
+                pair.oracle.assert_not_called();api_call.assert_not_called()
+                if operation is same_record_rotation_game:
+                    auth.assert_called_once_with(contexts[0].new_page.return_value)
+                else:auth.assert_not_called()
 
     def test_board_matches_exact_game_owned_seat_wording(self):
         # Fixed projected facts are independent examples from Chess status_text.
