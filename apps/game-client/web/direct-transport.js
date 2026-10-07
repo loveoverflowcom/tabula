@@ -21,6 +21,22 @@
     try { return JSON.parse(new TextDecoder("utf-8", {fatal:true}).decode(bytes)); }
     catch (_) { throw new Error("Online response is incompatible"); }
   }
+  function requestRejectedProblem(bytes) {
+    // Match problems and session PublicProblem use two closed shapes. Match
+    // literal members before parsing so duplicate keys cannot be erased by JSON.
+    const text = new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes);
+    const object = /^[ \t\r\n]*\{([\s\S]*)\}[ \t\r\n]*$/.exec(text);
+    if (!object || object[0] !== text) return false;
+    const members = object[1].split(","), keys = new Set();
+    if (members.length !== 1 && members.length !== 4) return false;
+    const values = {code:'"request_rejected"',version:"1",status:"403",title:'"Request rejected"'};
+    for (const member of members) {
+      const pair = /^[ \t\r\n]*"(code|version|status|title)"[ \t\r\n]*:[ \t\r\n]*("request_rejected"|"Request rejected"|1|403)[ \t\r\n]*$/.exec(member);
+      if (!pair || pair[0] !== member || pair[2] !== values[pair[1]] || keys.has(pair[1])) return false;
+      keys.add(pair[1]);
+    }
+    return keys.has("code") && (keys.size === 1 || keys.size === 4);
+  }
   class Retryable extends Error {}
   class AuthorityDenied extends Error {}
   function create({matchId, gameId, signal, current, onWaiting, onStatus, onRecovering, onUnavailable, fetcher=root.fetch, protocol=root.location?.protocol, timers=root, storage, now=()=>Date.now(), random=()=>Math.random(), lifecycle=root}) {
@@ -143,12 +159,12 @@
           const matchPost = body !== null && ["grant","attach","command","poll"].some(operation => path === endpoint(operation));
           const problem = !response.redirected && matchPost && response.headers.get("Content-Type")?.split(";")[0].trim() === "application/problem+json" && response.headers.get("Cache-Control")?.split(",").some(v => v.trim().toLowerCase() === "no-store");
           if (problem) {
-            // A restart changes the memory-only CSRF key. The rejected POST
-            // remains rejected; fresh context/grant/scope must precede any retry.
+            // A verified context rejection still rejects this POST. Fresh
+            // context/grant/attachment must precede rendering or any Rust retry.
             let exact = false;
             try {
               const bytes = await boundedBody(response,1024);
-              exact = /^[ \t\r\n]*\{[ \t\r\n]*"code"[ \t\r\n]*:[ \t\r\n]*"request_rejected"[ \t\r\n]*\}[ \t\r\n]*$/.test(new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes));
+              exact = requestRejectedProblem(bytes);
             } catch (error) {
               // Independent document/lifecycle retirement still requires fresh
               // authority. An unreadable current403 is never a verified marker.
