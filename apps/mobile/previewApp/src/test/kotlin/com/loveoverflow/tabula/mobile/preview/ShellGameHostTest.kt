@@ -179,6 +179,29 @@ class ShellGameHostTest {
     }
 
     @Test
+    fun changingBackPortsRetiresTheOldHandlerWithoutDisposingTheRuntime() = runDesktopComposeUiTest(width = 390, height = 844) {
+        val host = SimulatedGameHost(autoBootMillis = null)
+        val launch = com.loveoverflow.tabula.mobile.host.GameLaunch(
+            "com.example.preview",
+            com.loveoverflow.tabula.mobile.shell.gamePreferences(false, DeviceFacts(false, "en")),
+        )
+        var back by mutableStateOf(com.loveoverflow.tabula.mobile.host.GameBackPort())
+        val original = back
+        setContent { host.Content(launch, {}, androidx.compose.ui.Modifier, back) }
+        waitForIdle()
+        val first = runtime
+        first.page.completeBoot(); waitForIdle()
+        assertTrue(original.requestBack())
+        back = com.loveoverflow.tabula.mobile.host.GameBackPort()
+        waitForIdle()
+        assertFalse(original.requestBack(), "a retired port cannot still control the game")
+        assertTrue(back.requestBack())
+        assertSame(first, runtime)
+        assertEquals(1, SimulatedGameHost.createdCount)
+        assertEquals(0, SimulatedGameHost.disposedCount)
+    }
+
+    @Test
     fun suspendAndResumeReachThePageOnceEachAndStopAfterTheGameIsLeft() {
         val owner = TestOwner().also { it.event(Lifecycle.Event.ON_RESUME) }
         runShell(owner = owner) {

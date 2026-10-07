@@ -7,6 +7,11 @@ historical. Current mobile builds expose gameplay unavailable; native adapters
 and native artifact/assets packaging are not implemented. See
 [the current source spike/evidence](../../verification/mobile-native-host/README.md).
 
+The [adapter-contract prototype](../../verification/mobile-native-host/adapter-prototype.md)
+now supplies common admission/lifecycle decisions and an Android surface callback
+binding. Its controlled port tests do not establish a native context or thread.
+Keep the next engine/ABI decision distinct from this reviewable groundwork.
+
 ## Next small review boundaries
 
 1. Review/pin a bounded Miniquad embedding API/patch: iOS attach to the existing CMP

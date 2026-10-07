@@ -13,6 +13,12 @@ adapter/library/assets pipeline has been delivered; no hidden web fallback is
 selected. The [source spike and evidence ledger](../../docs/verification/mobile-native-host/README.md)
 record the pinned Miniquad embedding blockers and actual check results.
 
+The [adapter-contract prototype](../../docs/verification/mobile-native-host/adapter-prototype.md)
+now provides a typed native port, pure lifecycle coordinator, joined-worker admission
+gate and Android SurfaceView callback binding. Its controlled test port is not a
+Macroquad backend. Production gameplay remains unavailable; actual Android/iOS
+embedding, native libraries/assets and target/device checks are still required.
+
 ```text
 apps/mobile/shared/      CMP UI/navigation, generated tokens, GameHost seam, native voice policy
 apps/mobile/android/     Android Activity over :shared

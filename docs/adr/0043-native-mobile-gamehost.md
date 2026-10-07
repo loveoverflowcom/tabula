@@ -48,7 +48,17 @@ cost and preserve the current renderer. If it requires repository-owned unsafe
 Rust, its ADR must explicitly change the policy and fence that ownership; this
 ADR does not silently authorize it.
 
-## Contract for the next adapter
+## Executable adapter-contract prototype
+
+The next bounded #81 draft implements the common `NativeRuntimeOwner`,
+`NativeHostSession` and `NativeGameRuntime` control seam, plus an Android
+`SurfaceHolder`/touch binding. The [prototype ledger](../verification/mobile-native-host/adapter-prototype.md)
+records its source, tests and backend decision gates. It is not a playable engine
+adapter: no shipping port, native artifact/assets package or iOS child-controller
+is delivered. Both production entrypoints remain unavailable with empty runtime
+inventory. The existing unsafe-code prohibition and all unrelated gates stand.
+
+## Contract for the native backend
 
 The existing `GameHost` seam remains launch/preferences/capabilities in and
 `Ready`/`Failed`/`Exited` out, plus `GameBackPort`. The native adapter must specify
