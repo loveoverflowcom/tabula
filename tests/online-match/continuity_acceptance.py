@@ -40,6 +40,17 @@ CURRENT_BOARD = """({seat,status,readonly}) => {
   && d.onlineStatus===status && c && !c.hidden && !c.hasAttribute('aria-hidden') && getComputedStyle(c).visibility==='visible' && c.getBoundingClientRect().width>0
   && (readonly ? d.onlineConnection?.startsWith('Read-only') : d.onlineConnection==='Connected · server-authoritative');
 }"""
+EXHAUSTED_UNCERTAIN_CONCEALED = """() => {
+ const root=document.documentElement, canvas=document.querySelector('#glcanvas');
+ const error=document.querySelector('#runtime-error'), detail=document.querySelector('#error-detail');
+ return root.dataset.onlineAvailability==='unavailable'
+  && ['onlineSeat','onlineRevision','onlineStatus','onlineConnection'].every(key=>!Object.hasOwn(root.dataset,key))
+  && canvas && canvas.hidden && canvas.width===0 && canvas.height===0
+  && canvas.getAttribute('aria-hidden')==='true' && getComputedStyle(canvas).visibility==='hidden'
+  && Array.from(document.querySelectorAll('#online-status-container span')).every(node=>node.textContent.trim()==='')
+  && error && error.getBoundingClientRect().width>0 && error.getBoundingClientRect().height>0
+  && detail?.textContent.trim()==='The move result is unknown. Moves are blocked. Retry to check the saved server result, or return to Tabula.';
+}"""
 MOVES = [('f2','f3'),('e7','e5'),('g2','g4'),('d8','h4')]
 _PAIR_RESULTS = ContextVar('continuity_pair_results', default=None)
 
@@ -144,10 +155,12 @@ class Pair:
         self.pages=[context.new_page() for context in contexts]
         self.contexts=contexts;self.private=private;self.label=label
         self.attachments=[[],[]];self.commands=[[],[]]
+        self.failed_contexts=[0,0]
         self.facts=[];self.match_id=None;self.audit_inputs=0;self.expected_scopes=2
         for role,page in enumerate(self.pages):
             self.stage('enroll',role)
             page.on('requestfinished',lambda request,r=role:self.observe_attach_finished(request,r))
+            page.on('requestfailed',lambda request,r=role:self.observe_context_failed(request,r))
             page.on('request',lambda request,r=role:self.observe_command(request,r))
             page.goto(ORIGIN+'/__fixture/enroll',wait_until='domcontentloaded')
             enroll_actual_page(page,('white','black')[role],{'startup':{'enrollment':[]}})
@@ -192,12 +205,20 @@ class Pair:
         if self.match_id and urlsplit(request.url).path==f'/api/v1/matches/{self.match_id}/command':
             require(request.post_data is not None,'actual interrupted command body missing')
             self.commands[role].append(request.post_data)
-    def board(self,role,status,readonly=False,page=None):
+    def observe_context_failed(self,request,role):
+        if request.method=='GET' and urlsplit(request.url).path=='/api/v1/auth/context':
+            require(self.failed_contexts[role]<64,'failed context observations exceeded their bound')
+            self.failed_contexts[role]+=1
+    def current_status(self,role,status,readonly=False,page=None):
+        """Wait for current native presenter facts and geometry, without a pixel claim."""
         status=seat_status(role,status)
         self.stage('board',role)
         page=page or self.pages[role]
         page.bring_to_front()
         page.wait_for_function(CURRENT_BOARD,arg={'seat':role,'status':status,'readonly':readonly},timeout=60_000)
+        return page
+    def board(self,role,status,readonly=False,page=None):
+        page=self.current_status(role,status,readonly,page)
         rendered_canvas_pixels(page)
     def arm(self,role,point):
         self.facts[role]=context_facts(self.pages[role])
@@ -264,6 +285,44 @@ def ready_server(page):
     raise AcceptanceFailure('restarted real native server did not answer validated HTTPS')
 
 
+def restart_with_fresh_attachment(pair, supervisor):
+    """Wait for Black's actual new request/body after the old owner is reaped.
+
+    An unchanged pre-crash White-turn projection can satisfy CURRENT_BOARD
+    before the next poll observes owner loss. Its pixels do not prove resync.
+    This observes genuine requests only; no context, grant or frame is replaced.
+    """
+    page=pair.pages[1];previous=pair.attachments[1][-1];started=[]
+    started_after=page.evaluate('Date.now()')
+    def request_started(request):
+        if request.method!='POST' or urlsplit(request.url).path!=f'/api/v1/matches/{pair.match_id}/attach':return
+        require(len(started)<64,'post-crash attachment attempts exceeded their observation bound')
+        started.append(getattr(request,'_impl_obj',request))
+    def delivered(request):
+        # Native timing is available when the request completes, and may still
+        # be -1 during its initial request event.
+        start=request.timing['startTime']
+        return (type(start) in (int,float) and start>started_after
+                and any(getattr(request,'_impl_obj',request) is item for item in started)
+                and completed_attachment_response(request,pair.match_id) is not None)
+    page.on('request',request_started)
+    try:
+        # The caller has already SIGKILLed/reaped the old native owner. Native
+        # browser start timing also excludes older queued request events.
+        with page.expect_event('requestfinished',predicate=delivered,timeout=60_000) as received:
+            require(supervisor.restart('normal')['alive'] is True,'native server restart failed')
+        response=completed_attachment_response(received.value,pair.match_id)
+        require(response is not None,'post-crash authenticated attachment body was absent')
+        current=actual_response_json(response)
+        require(current['version']==MATCH_VERSION and current['seat']==1
+                and not private_frame_keys(current),'post-crash attachment changed seat or disclosed canonical facts')
+        require(current['attachment_id']!=previous['attachment_id']
+                and current['operation_scope']==previous['operation_scope'],
+                'post-crash attachment retained old transport or changed operation identity')
+    finally:
+        page.remove_listener('request',request_started)
+
+
 def network_refresh_game(contexts,private,ca,results,evidence):
     pair=Pair(contexts,private,'network-refresh');white,black=pair.pages
     network=PageNetwork(white);old=pair.attachments[0][-1]
@@ -290,16 +349,20 @@ def network_refresh_game(contexts,private,ca,results,evidence):
     released=fault_control(ca,'release',gate)
     require(released['status']==200,'staged actual COMMIT gate could not release')
     black.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
-    pair.board(0,'White to move');pair.oracle(2,0)
-    black_network.offline(False);pair.board(1,'White to move');restored_same_scope(pair,1,old,original)
+    pair.current_status(0,'White to move');pair.oracle(2,0)
+    # Genuine COMMIT is independently confirmed. Do not consume the bounded
+    # offline recovery budget while the other process samples rendered pixels.
+    black_network.offline(False)
+    pair.board(0,'White to move');pair.board(1,'White to move');restored_same_scope(pair,1,old,original)
     results.append({'case':'drop_during_staged_apply_commit','pass':True,'committed_once':True,'exact_retry':True,'timeout_meant_failed_commit':False})
     move(white,*MOVES[2],False,pair.match_id);pair.write_audit(3);pair.board(1,'Black to move')
     # Drop actual poll transport while the other process commits the final move.
     def drop_poll(route):network.offline(True);route.abort('internetdisconnected')
     white.route(f'**/api/v1/matches/{pair.match_id}/poll',drop_poll,times=1)
     white.wait_for_function(RECOVERING_CONCEALED,timeout=15_000)
-    move(black,*MOVES[3],False,pair.match_id);pair.write_audit(4);pair.board(1,TERMINAL_STATUS)
-    network.offline(False);pair.board(0,TERMINAL_STATUS);pair.oracle(4)
+    move(black,*MOVES[3],False,pair.match_id);pair.write_audit(4);pair.oracle(4)
+    network.offline(False)
+    pair.board(1,TERMINAL_STATUS);pair.board(0,TERMINAL_STATUS);pair.oracle(4)
     require(pending_record(white,pair.match_id) is None,'settled commands retained a pending hint')
     white.reload(wait_until='domcontentloaded');pair.board(0,TERMINAL_STATUS)
     require(any(frame.get('body',{}).get('MatchUpdate',{}).get('revision')==0 and frame.get('body',{}).get('MatchUpdate',{}).get('view') for frame in pair.attachments[0][-1]['frames']),'committed refresh did not perform full projection resync')
@@ -319,7 +382,7 @@ def crash_game(contexts,private,ca,supervisor,committed,results):
     white_network=PageNetwork(white);white_network.offline(True)
     white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
     outcome=supervisor.kill();require(outcome['sigkill_reaped'] is True,'actual native server SIGKILL was not reaped')
-    restarted=supervisor.restart('normal');require(restarted['alive'] is True,'native server restart failed')
+    restart_with_fresh_attachment(pair,supervisor)
     pair.board(1,'Black to move' if committed else 'White to move')
     pair.oracle(1 if committed else 0,1)
     white_network.offline(False);pair.board(0,'Black to move');pair.oracle(1)
@@ -349,8 +412,16 @@ def apply_and_committed_refresh_game(contexts,private,ca,point,results):
 
 def same_record_rotation_game(contexts,private,ca,results):
     pair=Pair(contexts,private,'same-record-rotation');white,black=pair.pages
+    # Prepare the real control document before the deliberate outage. Startup
+    # and unrelated pixels must not consume the bounded recovery budget.
+    control=contexts[0].new_page();control.goto(ORIGIN+GAME_PATH,wait_until='domcontentloaded')
+    pair.board(0,'White to move')
+    before_cookie=next(cookie['value'] for cookie in contexts[0].cookies() if cookie['name']==SESSION_COOKIE)
+    current=context_facts(control)
+    require(current['account_id']==pair.facts[0]['account_id'],'rotation control page changed the account')
     old=pair.attachments[0][-1];gate=pair.arm(0,'after_commit')
     original=pair.tap(0,0);held(ca,gate);pair.held_prefix(ca,gate,1)
+    failed_before=pair.failed_contexts[0]
     network=PageNetwork(white);network.offline(True)
     require(fault_control(ca,'release',gate)['status']==200,'committed rotation-case barrier could not release')
     white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
@@ -358,10 +429,6 @@ def same_record_rotation_game(contexts,private,ca,results):
     require(pending is not None and pending['operation_scope']==old['operation_scope'],
             'uncertain original operation was not retained before rotation')
     pair.board(1,'Black to move')
-    control=contexts[0].new_page();control.goto(ORIGIN+GAME_PATH,wait_until='domcontentloaded')
-    before_cookie=next(cookie['value'] for cookie in contexts[0].cookies() if cookie['name']==SESSION_COOKIE)
-    current=context_facts(control)
-    require(current['account_id']==pair.facts[0]['account_id'],'rotation control page changed the account')
     refreshed=api(control,'/api/v1/auth/refresh',{},current['csrf_token'])
     require(refreshed['status']==204 and refreshed['body'] is None,
             'existing browser credential rotation did not complete')
@@ -371,10 +438,14 @@ def same_record_rotation_game(contexts,private,ca,results):
     require(current['account_id']==pair.facts[0]['account_id'],'credential rotation changed the account')
     # Black's legal command prepares its real fan-out. White's cached old digest
     # can no longer authorize that output, so its local attachment is retired.
-    move(black,*MOVES[1],False,pair.match_id);pair.board(1,'White to move');pair.oracle(2)
+    move(black,*MOVES[1],False,pair.match_id);pair.oracle(2)
     stale=api(control,f'/api/v1/matches/{pair.match_id}/poll',
               {'version':MATCH_VERSION,'attachment_id':old['attachment_id']},current['csrf_token'])
     reattach_required(stale,'valid rotated membership received stale-attachment output')
+    # This control journey intentionally outlasts bounded automatic recovery.
+    # Prove its exhausted neutral surface and exact retained hint before the
+    # source-owned visible Retry starts a genuinely fresh document.
+    exhausted_uncertain_move(pair,0,old,failed_before)
     observed={'original_ack':False}
     def original_ack(response):
         if urlsplit(response.url).path!=f'/api/v1/matches/{pair.match_id}/command' or response.status!=200:return
@@ -387,7 +458,10 @@ def same_record_rotation_game(contexts,private,ca,results):
         observed['original_ack']=any(frame.get('body',{}).get('Ack',{}).get('seq')==command_identity(original)['seq'] for frame in frames)
     white.on('response',original_ack)
     try:
-        control.close();network.offline(False)
+        network.offline(False);control.close()
+        with white.expect_navigation(wait_until='domcontentloaded'):
+            white.locator('#retry').dblclick(delay=10)
+        pair.board(1,'White to move')
         pair.board(0,'White to move');restored_same_scope(pair,0,old,original)
         require(observed['original_ack'],'same-record rotation did not reproduce the exact original Ack')
         pair.oracle(2);pair.full(2)
@@ -395,7 +469,22 @@ def same_record_rotation_game(contexts,private,ca,results):
     results.append({'case':'same_auth_record_rotation_preserves_uncertain_original_operation',
                     'pass':True,'credential_rotated':True,'reattach_required_observed':True,
                     'same_operation_scope':True,'exact_original_ack':True,'no_duplicate_move':True})
+    results[-1].update({'bounded_recovery_exhausted':True,'visible_user_retry_before_resync':True})
     network.close();pair.close()
+
+
+def exhausted_uncertain_move(pair,role,old,failed_before):
+    """Prove genuine bounded outage exhaustion before an explicit Retry gesture."""
+    page=pair.pages[role]
+    page.wait_for_function(EXHAUSTED_UNCERTAIN_CONCEALED,timeout=60_000)
+    attempts=page.evaluate('window.TabulaDirectTransport.MAX_ATTEMPTS')
+    require(type(attempts) is int and 1<=attempts<=16
+            and pair.failed_contexts[role]-failed_before==attempts,
+            'actual context failures did not match the runtime recovery bound')
+    pending=pending_record(page,pair.match_id)
+    require(pending is not None and pending.get('operation_scope')==old['operation_scope']
+            and isinstance(pending.get('command'),str),
+            'exhausted recovery lost the exact uncertain operation hint')
 
 
 def current_context_after_restart(ca:Path,cookie:str,account:str)->dict:
@@ -585,6 +674,7 @@ def retired_receipt_game(contexts,private,ca,supervisor,mode,results):
     supervisor.kill();supervisor.restart(mode)
     ready=contexts[0].new_page();ready_server(ready);ready.close()
     pair=Pair(contexts,private,mode+'-receipt');white,black=pair.pages
+    old=pair.attachments[0][-1];failed_before=pair.failed_contexts[0]
     gate=pair.arm(0,'after_commit');original=pair.tap(0,0);held(ca,gate)
     network=PageNetwork(white);network.offline(True)
     require(fault_control(ca,'release',gate)['status']==200,'receipt fault gate could not release')
@@ -599,7 +689,11 @@ def retired_receipt_game(contexts,private,ca,supervisor,mode,results):
     # credential/storage state is copied between opponent browser processes.
     pair.full(1,white=replacement)
     if mode=='expired':time.sleep(1.25)
-    network.offline(False);pair.board(0,TERMINAL_STATUS,readonly=True)
+    exhausted_uncertain_move(pair,0,old,failed_before)
+    network.offline(False);white.bring_to_front()
+    with white.expect_navigation(wait_until='domcontentloaded'):
+        white.locator('#retry').dblclick(delay=10)
+    pair.board(0,TERMINAL_STATUS,readonly=True)
     unknown=pending_record(white,pair.match_id)
     require(unknown is not None and unknown.get('unknown') is True and unknown.get('command') is None,
             'retired original receipt was mistaken for a failed command')
@@ -611,7 +705,8 @@ def retired_receipt_game(contexts,private,ca,supervisor,mode,results):
     white.wait_for_timeout(350)
     require(len(pair.commands[0])==before,'unknown-result board issued a new or repeated move')
     pair.oracle(4)
-    results.append({'case':mode+'_original_receipt_unknown_full_resync','pass':True,'unknown_never_failed':True,'read_only':True,'no_duplicate_move':True,'exact_retry_checked':True})
+    results.append({'case':mode+'_original_receipt_unknown_full_resync','pass':True,'unknown_never_failed':True,'read_only':True,'no_duplicate_move':True,'exact_retry_checked':True,
+                    'bounded_recovery_exhausted':True,'visible_user_retry_before_resync':True})
     network.close();pair.close()
 
 

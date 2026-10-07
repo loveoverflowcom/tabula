@@ -9,10 +9,183 @@ from unittest import mock
 from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_CONCEALED,
     PageNetwork, Pair, command_identity, pending_record, run, pair_diagnostics, current_context_after_restart, FOCUS_OBSERVER,
     same_record_rotation_game, focus_only_revoke_game, held_prefix,
-    crash_game, apply_and_committed_refresh_game, restart_between_grant_and_attach_game)
+    crash_game, apply_and_committed_refresh_game, restart_between_grant_and_attach_game,
+    restart_with_fresh_attachment, network_refresh_game, exhausted_uncertain_move, EXHAUSTED_UNCERTAIN_CONCEALED)
 
 
 class ContinuityHelperTests(unittest.TestCase):
+    def test_rotation_prepares_control_before_outage_and_restores_after_current_authority_witnesses(self):
+        # Coordination only: no mock response supplies actual browser evidence.
+        events=[];white,black,control=mock.MagicMock(),mock.Mock(),mock.Mock()
+        context=mock.Mock();context.new_page.return_value=control
+        context.cookies.side_effect=[[{'name':'__Host-tabula_session','value':'old'}],
+                                     [{'name':'__Host-tabula_session','value':'new'}]]
+        control.goto.side_effect=lambda *args,**kwargs:events.append(('control_ready',))
+        scope='b'*64;match_id='a'*32;command={'seq':1}
+        pair=mock.Mock(pages=[white,black],match_id=match_id,
+            facts=[{'account_id':'white'},{'account_id':'black'}],
+            failed_contexts=[0,0],
+            attachments=[[{'operation_scope':scope,'attachment_id':'old'}],[{}]])
+        pair.tap.side_effect=lambda *args:(events.append(('pointer_command',)) or
+            json.dumps({'version':2,'command':command}))
+        pair.current_status.side_effect=lambda role,status:events.append(('status',role,status))
+        pair.board.side_effect=lambda role,status:events.append(('pixels',role,status))
+        pair.oracle.side_effect=lambda expected,role=1:events.append(('oracle',expected,role))
+        callbacks={}
+        white.on.side_effect=lambda name,callback:callbacks.update({name:callback})
+        network=mock.Mock()
+        def offline(value):
+            events.append(('offline',value))
+            if value:pair.failed_contexts[0]=6
+        network.offline.side_effect=offline
+        white.evaluate.return_value=6
+        white.wait_for_function.side_effect=lambda predicate,**kwargs:events.append(('exhaustion_concealed',)) if predicate==EXHAUSTED_UNCERTAIN_CONCEALED else None
+        def retry(**kwargs):
+            events.append(('visible_retry',))
+            response=mock.Mock(url=f'https://localhost:9443/api/v1/matches/{match_id}/command',status=200)
+            response.request.post_data=json.dumps({'version':2,'command':command,'attachment_id':'fresh'})
+            callbacks['response'](response)
+        white.locator.return_value.dblclick.side_effect=retry
+        def api_call(page,path,*args):
+            if path=='/api/v1/auth/refresh':
+                events.append(('credential_rotation',));return {'status':204,'body':None}
+            events.append(('stale_probe',));return {'status':409,'body':{'code':'reattach_required'}}
+        def facts(page):
+            events.append(('context_read',));return {'account_id':'white','csrf_token':'A'*43}
+        with mock.patch('continuity_acceptance.Pair',return_value=pair), \
+             mock.patch('continuity_acceptance.PageNetwork',return_value=network), \
+             mock.patch('continuity_acceptance.held'), \
+             mock.patch('continuity_acceptance.pending_record',return_value={'operation_scope':scope,'command':'retained-original'}), \
+             mock.patch('continuity_acceptance.fault_control',return_value={'status':200}), \
+             mock.patch('continuity_acceptance.context_facts',side_effect=facts), \
+             mock.patch('continuity_acceptance.api',side_effect=api_call), \
+             mock.patch('continuity_acceptance.move'), \
+             mock.patch('continuity_acceptance.reattach_required',side_effect=lambda *args:events.append(('stale_rejected',))), \
+             mock.patch('continuity_acceptance.restored_same_scope'), \
+             mock.patch('continuity_acceptance.actual_response_json',return_value={'frames':[{'body':{'Ack':{'seq':1}}}]}):
+            cases=[];same_record_rotation_game([context,mock.Mock()],mock.Mock(),mock.Mock(),cases)
+        self.assertLess(events.index(('control_ready',)),events.index(('pointer_command',)))
+        self.assertLess(events.index(('context_read',)),events.index(('pointer_command',)))
+        restored=events.index(('offline',False))
+        for witness in (('credential_rotation',),('oracle',2,1),('stale_rejected',)):
+            self.assertLess(events.index(witness),restored)
+        self.assertLess(restored,events.index(('pixels',1,'White to move')))
+        self.assertLess(events.index(('exhaustion_concealed',)),restored)
+        self.assertLess(restored,events.index(('visible_retry',)))
+        self.assertEqual([event[1:] for event in events if event[0]=='pixels'],[
+            (0,'White to move'),(1,'Black to move'),(1,'White to move'),(0,'White to move')])
+        self.assertEqual(len(cases),1);pair.full.assert_called_once_with(2)
+        self.assertTrue(cases[0]['bounded_recovery_exhausted'])
+        self.assertTrue(cases[0]['visible_user_retry_before_resync'])
+        white.remove_listener.assert_called_once_with('response',callbacks['response'])
+
+    def test_exhausted_retry_requires_actual_attempt_bound_and_retained_scope_hint(self):
+        page=mock.Mock();page.evaluate.return_value=6
+        pair=mock.Mock(pages=[page,mock.Mock()],match_id='a'*32,failed_contexts=[6,0])
+        old={'operation_scope':'original-scope'}
+        valid={'operation_scope':'original-scope','command':'original-opaque-command'}
+        with mock.patch('continuity_acceptance.pending_record',return_value=valid):
+            exhausted_uncertain_move(pair,0,old,0)
+        page.wait_for_function.assert_called_once_with(EXHAUSTED_UNCERTAIN_CONCEALED,timeout=60_000)
+        for failures in (0,5,7):
+            pair.failed_contexts[0]=failures
+            with self.subTest(failures=failures),self.assertRaises(AcceptanceFailure):
+                exhausted_uncertain_move(pair,0,old,0)
+        pair.failed_contexts[0]=6
+        for pending in (None,{'operation_scope':'different','command':'original'},
+                        {'operation_scope':'original-scope','command':None}):
+            with self.subTest(pending=pending), \
+                 mock.patch('continuity_acceptance.pending_record',return_value=pending), \
+                 self.assertRaises(AcceptanceFailure):exhausted_uncertain_move(pair,0,old,0)
+
+    def test_network_restore_follows_durable_confirmation_before_other_browser_pixels(self):
+        # Coordination doubles only: actual pixels, commits and retransmission
+        # remain assertions in the real browser/PostgreSQL acceptance target.
+        events=[];pages=[mock.MagicMock(),mock.MagicMock()]
+        pair=mock.Mock(pages=pages,match_id='a'*32,attachments=[[
+            {'frames':[{'body':{'MatchUpdate':{'revision':0,'view':'projected fixture'}}}]}],[{}]])
+        pair.tap.return_value='unchanged-command';pair.arm.return_value='gate'
+        pair.current_status.side_effect=lambda role,status:events.append(('status',role,status))
+        pair.board.side_effect=lambda role,status:events.append(('pixels',role,status))
+        pair.oracle.side_effect=lambda expected,role=1:events.append(('oracle',expected,role))
+        def network(page):
+            value=mock.Mock();role=pages.index(page)
+            value.offline.side_effect=lambda offline:events.append(('offline',role,offline))
+            return value
+        with mock.patch('continuity_acceptance.Pair',return_value=pair), \
+             mock.patch('continuity_acceptance.PageNetwork',side_effect=network), \
+             mock.patch('continuity_acceptance.pending_record',side_effect=[{'version':2},None]), \
+             mock.patch('continuity_acceptance.restored_same_scope'), \
+             mock.patch('continuity_acceptance.held'), \
+             mock.patch('continuity_acceptance.fault_control',return_value={'status':200}), \
+             mock.patch('continuity_acceptance.move'):
+            cases=[];network_refresh_game([],mock.Mock(),mock.Mock(),cases,mock.Mock())
+        committed=events.index(('oracle',2,0))
+        self.assertEqual(events[committed-1:committed+4],[('status',0,'White to move'),
+            ('oracle',2,0),('offline',1,False),('pixels',0,'White to move'),('pixels',1,'White to move')])
+        terminal=events.index(('oracle',4,1))
+        self.assertEqual(events[terminal:terminal+5],[('oracle',4,1),('offline',0,False),
+            ('pixels',1,'Game over / Black wins / checkmate'),('pixels',0,'Game over / Black wins / checkmate'),('oracle',4,1)])
+        self.assertEqual(sum(event[0]=='pixels' for event in events),8)
+        self.assertEqual(len(cases),3)
+
+    def test_crash_restart_requires_a_new_request_and_completed_attachment_body(self):
+        match_id='a'*32;scope='b'*64
+        old={'version':2,'seat':1,'attachment_id':'c'*32,'operation_scope':scope,'frames':[]}
+        fresh={**old,'attachment_id':'d'*32}
+        page=mock.Mock();page.evaluate.return_value=100;listeners={};accepted=[]
+        page.on.side_effect=lambda name,callback:listeners.setdefault(name,[]).append(callback)
+        page.remove_listener.side_effect=lambda name,callback:listeners[name].remove(callback)
+        def request(failure=None,start=101):
+            value=mock.Mock(method='POST',url=f'https://localhost:9443/api/v1/matches/{match_id}/attach',failure=failure)
+            value.timing={'startTime':start}
+            value._impl_obj=object();value.response.return_value=mock.Mock(status=200)
+            return value
+        pre_crash=request(start=99);queued_old=request(start=99);header_only=request('net::ERR_ABORTED');current=request()
+        class Selection:
+            value=None
+            def __init__(self,predicate):self.predicate=predicate
+            def __enter__(self):return self
+            def __exit__(self,*args):
+                if not args[0] and self.value is None:raise BrowserTimeout('fresh attachment absent')
+            def finish(self,request):
+                accepted.append(self.predicate(request))
+                if accepted[-1]:self.value=request
+        selection=None
+        def expect(event,*,predicate,timeout):
+            nonlocal selection
+            self.assertEqual((event,timeout),('requestfinished',60_000))
+            selection=Selection(predicate);return selection
+        page.expect_event.side_effect=expect
+        def restart(mode):
+            self.assertEqual(mode,'normal')
+            selection.finish(pre_crash)
+            for value in (queued_old,header_only,current):
+                if value is current:value.timing={'startTime':-1}
+                for callback in listeners['request']:callback(value)
+                if value is current:value.timing={'startTime':101}
+                selection.finish(value)
+            return {'alive':True}
+        supervisor=mock.Mock();supervisor.restart.side_effect=restart
+        pair=SimpleNamespace(pages=[mock.Mock(),page],attachments=[[{}],[old]],match_id=match_id)
+        with mock.patch('continuity_acceptance.actual_response_json',return_value=fresh) as observed:
+            restart_with_fresh_attachment(pair,supervisor)
+        self.assertEqual(accepted,[False,False,False,True])
+        observed.assert_called_once_with(current.response.return_value)
+        self.assertEqual(listeners['request'],[])
+
+    def test_crash_restart_rejects_changed_operation_scope(self):
+        previous={'attachment_id':'a'*32,'operation_scope':'b'*64}
+        page=mock.MagicMock();page.evaluate.return_value=100;request=mock.Mock()
+        page.expect_event.return_value.__enter__.return_value=SimpleNamespace(value=request)
+        pair=SimpleNamespace(pages=[mock.Mock(),page],attachments=[[{}],[previous]],match_id='c'*32)
+        supervisor=mock.Mock();supervisor.restart.return_value={'alive':True}
+        with mock.patch('continuity_acceptance.completed_attachment_response',return_value=mock.Mock()), \
+             mock.patch('continuity_acceptance.actual_response_json',return_value={
+                 'version':2,'seat':1,'attachment_id':'d'*32,'operation_scope':'e'*64,'frames':[]}):
+            with self.assertRaises(AcceptanceFailure):restart_with_fresh_attachment(pair,supervisor)
+        page.remove_listener.assert_called_once()
+
     def test_held_prefix_uses_only_existing_ephemeral_token_and_known_public_expectation(self):
         reply={'status':200,'body':{'version':1,'expected_public_transcript_prefix':True}}
         with mock.patch('continuity_acceptance.wire_probe',return_value=reply) as request:
@@ -64,22 +237,34 @@ class ContinuityHelperTests(unittest.TestCase):
                 (apply_and_committed_refresh_game,'before_commit',0),
                 (apply_and_committed_refresh_game,'after_commit',1),
                 (same_record_rotation_game,None,1),(restart_between_grant_and_attach_game,None,1)):
-            pair=mock.Mock(pages=[mock.Mock(),mock.Mock()],attachments=[[{}],[{}]])
+            pair=mock.Mock(pages=[mock.Mock(),mock.Mock()],attachments=[[{}],[{}]],
+                           failed_contexts=[0,0],
+                           facts=[{'account_id':'white'},{'account_id':'black'}])
             pair.arm.return_value='synthetic-token'
+            gate_held=[]
+            def mark_held(*args):gate_held.append(True)
+            def prepared_facts(page):
+                self.assertFalse(gate_held,'authentication was attempted while the command was held')
+                return {'account_id':'white','csrf_token':'synthetic-csrf'}
             with self.subTest(operation=operation.__name__,partition=partition), \
                  mock.patch('continuity_acceptance.Pair',return_value=pair), \
-                 mock.patch('continuity_acceptance.held') as confirmed, \
+                 mock.patch('continuity_acceptance.held',side_effect=mark_held) as confirmed, \
                  mock.patch('continuity_acceptance.PageNetwork',side_effect=AfterHeldWitness), \
-                 mock.patch('continuity_acceptance.context_facts') as auth, \
+                 mock.patch('continuity_acceptance.context_facts',side_effect=prepared_facts) as auth, \
                  mock.patch('continuity_acceptance.api') as api_call:
                 with self.assertRaises(AfterHeldWitness):
-                    if operation is crash_game:operation([],None,'synthetic-ca',mock.Mock(),partition,[])
-                    elif operation is apply_and_committed_refresh_game:operation([],None,'synthetic-ca',partition,[])
-                    elif operation is restart_between_grant_and_attach_game:operation([],None,'synthetic-ca',mock.Mock(),[])
-                    else:operation([],None,'synthetic-ca',[])
+                    contexts=[mock.Mock(),mock.Mock()]
+                    contexts[0].cookies.return_value=[{'name':'__Host-tabula_session','value':'synthetic-cookie'}]
+                    if operation is crash_game:operation(contexts,None,'synthetic-ca',mock.Mock(),partition,[])
+                    elif operation is apply_and_committed_refresh_game:operation(contexts,None,'synthetic-ca',partition,[])
+                    elif operation is restart_between_grant_and_attach_game:operation(contexts,None,'synthetic-ca',mock.Mock(),[])
+                    else:operation(contexts,None,'synthetic-ca',[])
                 confirmed.assert_called_once_with('synthetic-ca','synthetic-token')
                 pair.held_prefix.assert_called_once_with('synthetic-ca','synthetic-token',expected)
-                pair.oracle.assert_not_called();auth.assert_not_called();api_call.assert_not_called()
+                pair.oracle.assert_not_called();api_call.assert_not_called()
+                if operation is same_record_rotation_game:
+                    auth.assert_called_once_with(contexts[0].new_page.return_value)
+                else:auth.assert_not_called()
 
     def test_board_matches_exact_game_owned_seat_wording(self):
         # Fixed projected facts are independent examples from Chess status_text.
@@ -219,6 +404,7 @@ class ContinuityHelperTests(unittest.TestCase):
         context.cookies.side_effect = [[{'name': '__Host-tabula_session', 'value': value}]
                                       for value in ('before', 'after')]
         pair = mock.Mock(pages=[white, black],
+                         failed_contexts=[0,0],
                          attachments=[[{'operation_scope': 'same-scope'}], []],
                          facts=[{'account_id': 'same-account'}, {}])
         pair.tap.return_value = 'original'

@@ -302,6 +302,38 @@ test("verified stale-CSRF403 keeps pending intent and revalidates context before
   assert.equal(paths.at(-1).init.headers["X-Tabula-CSRF"],newToken);
   f.transport.retire();
 });
+test("session request rejection on poll conceals old authority until fresh context/grant/attach",async()=>{
+  const members=['"version":1','"status":403','"title":"Request rejected"','"code":"request_rejected"'];
+  const permutations=items=>items.length?items.flatMap((item,i)=>permutations(items.filter((_,at)=>at!==i)).map(rest=>[item,...rest])):[[]];
+  for(const order of permutations(members)){
+    const paths=[],storage=memoryStorage(),command='{"seq":1}',newToken="C".repeat(43);
+    let contexts=0,concealed=0,seen=0;
+    const f=fixture(async(path,init)=>{
+      paths.push({path,init});
+      if(path.endsWith("/context"))return response({version:1,disposition:"authenticated",csrf_token:contexts++===0?"A".repeat(43):newToken});
+      if(path.endsWith("/poll"))return response(" \r\n{\t"+order.join(",\n")+" }\t",{status:403,headers:{"Cache-Control":"no-store","Content-Type":"application/problem+json"}});
+      return authFetcher()(path,init);
+    },{storage,onRecovering(){concealed++;},onStatus(){seen++;}});
+    const initial=JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-attach.txt")));
+    await f.transport.file("tabula-online-command/"+hex(command));
+    const original=storage.getItem("tabula.pending.v2."+id);
+    const status=generation=>"tabula-online-status/"+hex(JSON.stringify({seat:0,revision:1,status:"current",connection:"Connected",generation}));
+    await f.transport.file(status(initial.transport_generation));assert.equal(seen,1);
+    assert.deepEqual(JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-poll.txt"))),{transport:"recovering"});
+    assert.equal(concealed,1);assert.equal(contexts,1,"a rejected poll cannot grant itself fresh authority");
+    await f.transport.file(status(initial.transport_generation));assert.equal(seen,1);
+    assert.equal(storage.getItem("tabula.pending.v2."+id),original,"the exact intent and expiry must survive context rejection");
+    const fresh=JSON.parse(new TextDecoder().decode(await f.transport.file("tabula-online-recover.txt")));
+    assert.equal(fresh.transport,"resync");assert.equal(fresh.bootstrap.pending.command,command);
+    assert.equal(fresh.bootstrap.pending.operation_scope,scope);
+    assert.deepEqual(paths.slice(-3).map(call=>call.path.split("/").at(-1)),["context","grant","attach"]);
+    for(const call of paths.slice(-2))assert.equal(call.init.headers["X-Tabula-CSRF"],newToken);
+    assert.equal(paths.filter(call=>call.path.endsWith("/command")).length,1,"only Rust may decide to replay the original command");
+    await f.transport.file(status(initial.transport_generation));assert.equal(seen,1);
+    await f.transport.file(status(fresh.bootstrap.transport_generation));assert.equal(seen,2);
+    f.transport.retire();
+  }
+});
 test("nonexact or untrusted403 and genuine401 cannot become automatic context recovery",async()=>{
   const invalid=[
     ['{"code":"request_rejected","code":"request_rejected"}',403,true],
@@ -312,6 +344,30 @@ test("nonexact or untrusted403 and genuine401 cannot become automatic context re
     ['{"code":"request_rejected"}',403,false],
     ['{"code":"request_rejected"}',401,true],
     ['{"code":"request_rejected"}'+" ".repeat(1024),403,true],
+    ['{"version":1,"status":403,"title":"Request rejected"}',403,true],
+    ['{"status":403,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","code":"request_rejected","secret":"private-body"}',403,true],
+    ['{"version":1,"version":1,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"status":403,"code":"request_rejected"}',403,true],
+    ['{"version":1,"title":"Request rejected","title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"code":"request_rejected","code":"request_rejected"}',403,true],
+    ['{"version":"1","status":403,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":"403","title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":2,"status":403,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":401,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"title":"Other rejection","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","code":"match_unavailable"}',403,true],
+    ['\uFEFF{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"}\u2028',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"\u2028}',403,true],
+    ['{"version":1.0,"status":403,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"title":null,"code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","code":true}',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","\\u0063ode":"request_rejected"}',403,true],
+    ['[{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"}]',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","code":"request_rejected",}',403,true],
   ];
   for(const [body,status,noStore] of invalid){
     const f=fixture(authFetcher(()=>response(body,{status,headers:{"Content-Type":"application/problem+json",...(noStore?{"Cache-Control":"no-store"}:{})}})));
@@ -322,12 +378,13 @@ test("nonexact or untrusted403 and genuine401 cannot become automatic context re
 });
 
 test("missing or interrupted403 problem body cannot start automatic context recovery",async()=>{
-  for(const missing of [true,false]){
+  for(const body of [null,'{"code":"request_rejected"}','{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"}']){
+    const missing=body===null;
     const storage=memoryStorage();let released=false,calls=0,unavailable=0;
     const f=fixture(authFetcher(()=>{
       calls++;
       if(missing)return new Response(null,{status:403,headers:{"Cache-Control":"no-store","Content-Type":"application/problem+json"}});
-      return {status:403,redirected:false,headers:new Headers({"Cache-Control":"no-store","Content-Type":"application/problem+json"}),body:{getReader(){return {async read(){throw new Error("private-body");},releaseLock(){released=true;}};}}};
+      return {status:403,redirected:false,headers:new Headers({"Cache-Control":"no-store","Content-Type":"application/problem+json"}),body:{getReader(){let reads=0;return {async read(){if(reads++===0)return {done:false,value:new TextEncoder().encode(body)};throw new Error("private-body");},releaseLock(){released=true;}};}}};
     }),{storage,onUnavailable(){unavailable++;}});
     await f.transport.file("tabula-online-attach.txt");
     await assert.rejects(f.transport.file("tabula-online-command/"+hex('{"seq":1}')),error=>!error.message.includes("private-body"));
