@@ -27,10 +27,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleOwner
 import com.loveoverflow.tabula.mobile.TabulaApp
 import com.loveoverflow.tabula.mobile.account.AccountErrorReason
+import com.loveoverflow.tabula.mobile.account.AccountId
 import com.loveoverflow.tabula.mobile.account.AccountIdentity
 import com.loveoverflow.tabula.mobile.account.AccountInvalidation
 import com.loveoverflow.tabula.mobile.account.AccountOperation
 import com.loveoverflow.tabula.mobile.account.AccountRefreshResult
+import com.loveoverflow.tabula.mobile.account.AccountSessionAdapter
+import com.loveoverflow.tabula.mobile.account.AccountSessionController
+import com.loveoverflow.tabula.mobile.account.AccountSessionRequest
 import com.loveoverflow.tabula.mobile.account.AccountSignOutResult
 import com.loveoverflow.tabula.mobile.account.AccountState
 import com.loveoverflow.tabula.mobile.account.AccountUnavailableReason
@@ -82,14 +86,15 @@ class AccountUiTest {
     private fun DesktopComposeUiTest.assertTargetFits(tag: String, width: Int, height: Int = 844) {
         val target = onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
         val bounds = target.getUnclippedBoundsInRoot()
-        assertTrue(bounds.width >= 44.dp && bounds.height >= 44.dp, "$tag retains a 44 dp target: $bounds")
+        assertTrue(bounds.right - bounds.left >= 44.dp && bounds.bottom - bounds.top >= 44.dp,
+            "$tag retains a 44 dp target: $bounds")
         assertTrue(bounds.left >= 0.dp && bounds.right <= width.dp && bounds.top >= 0.dp && bounds.bottom <= height.dp,
             "$tag remains wholly reachable within the viewport: $bounds")
     }
 
     @Test
     fun productionDefaultRemainsUnavailableAndBrowsingDoesNotInventAnIdentity() = runDesktopComposeUiTest(width = 320, height = 844) {
-        setContent { AccountTestViewport(320, 844) { TabulaApp(deviceFacts = DeviceFacts(false, "en")) } }
+        setContent { AccountTestViewport(320, 844) { TabulaApp(scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
         openAccount()
         onNodeWithTag("shell-account-unavailable").performScrollTo().assertIsDisplayed()
         assertPrivateFactsAbsent(syntheticPreviewIdentity())
@@ -125,7 +130,7 @@ class AccountUiTest {
             try {
                 runDesktopComposeUiTest(width = 390, height = 844) {
                     setContent {
-                        AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) }
+                        AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) }
                     }
                     openAccount()
                     onNodeWithTag("account-state-${scenario.option}").performScrollTo().assertIsDisplayed()
@@ -145,7 +150,7 @@ class AccountUiTest {
             val fixture = SyntheticPreviewAccountFixture(scenario)
             try {
                 runDesktopComposeUiTest(width = 390, height = 844) {
-                    setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+                    setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
                     openAccount()
                     val routes = if (scenario == SyntheticPreviewAccountScenario.SignedOut) {
                         listOf("login", "register")
@@ -204,7 +209,7 @@ class AccountUiTest {
         val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Authenticated)
         val strings = ShellStrings.forLanguage("en")
         try {
-            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
             openAccount()
             onNodeWithTag("account-open-profile").performScrollTo().performClick()
             waitForIdle()
@@ -231,7 +236,7 @@ class AccountUiTest {
     fun cancellingSessionCheckRetiresLateIdentityAndRapidRetriesAreSingleFlight() = runDesktopComposeUiTest(width = 390, height = 844) {
         val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Error)
         try {
-            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
             openAccount()
             val retry = onNodeWithTag("account-retry").performScrollTo()
             val dispatchRetry = requireNotNull(retry.fetchSemanticsNode().config[SemanticsActions.OnClick].action)
@@ -262,7 +267,7 @@ class AccountUiTest {
     fun signOutConfirmationCanBeCancelledAndUnconfirmedLogoutLocksOutSessionRefresh() = runDesktopComposeUiTest(width = 390, height = 844) {
         val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Authenticated)
         try {
-            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
             openAccount()
             onNodeWithTag("account-sign-out").performScrollTo().performClick()
             waitForIdle()
@@ -311,7 +316,7 @@ class AccountUiTest {
     fun leavingAccountRoutesCancelsPendingWorkAndCannotRestorePrivateFacts() = runDesktopComposeUiTest(width = 390, height = 844) {
         val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Loading)
         try {
-            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
             openAccount()
             onNodeWithTag("shell-nav-games").performClick()
             waitForIdle()
@@ -329,7 +334,7 @@ class AccountUiTest {
     fun stoppingWaitForDispatchedSignOutDoesNotClaimLogoutOrAcceptItsRetiredReply() = runDesktopComposeUiTest(width = 390, height = 844) {
         val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Authenticated)
         try {
-            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
             openAccount()
             onNodeWithTag("account-sign-out").performScrollTo().performClick()
             waitForIdle()
@@ -369,7 +374,7 @@ class AccountUiTest {
                     val avatar = syntheticManagedAvatar(fixture.identity, TabulaScheme.Light)
                     setContent {
                         AccountTestViewport(390, 844) {
-                            TabulaApp(account = fixture.port, accountAvatar = avatar, deviceFacts = DeviceFacts(false, "en"))
+                            TabulaApp(account = fixture.port, accountAvatar = avatar, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en"))
                         }
                     }
                     openAccount()
@@ -429,7 +434,7 @@ class AccountUiTest {
         try {
             setContent {
                 AccountTestViewport(390, 844, lifecycleOwner = lifecycle) {
-                    TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en"))
+                    TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en"))
                 }
             }
             openAccount()
@@ -453,7 +458,7 @@ class AccountUiTest {
     fun profileToolbarBackCancelsLocalSignOutConfirmationBeforeLeavingTheRoute() = runDesktopComposeUiTest(width = 390, height = 844) {
         val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Authenticated)
         try {
-            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
             openAccount()
             onNodeWithTag("account-open-profile").performScrollTo().performClick()
             waitForIdle()
@@ -479,7 +484,7 @@ class AccountUiTest {
             val avatar = syntheticManagedAvatar(fixture.identity, TabulaScheme.Light)
             setContent {
                 AccountTestViewport(390, 844) {
-                    TabulaApp(account = fixture.port, accountAvatar = avatar, deviceFacts = DeviceFacts(false, "en"))
+                    TabulaApp(account = fixture.port, accountAvatar = avatar, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en"))
                 }
             }
             openAccount()
@@ -507,6 +512,119 @@ class AccountUiTest {
     }
 
     @Test
+    fun synchronousUnconfirmedSignOutRemainsRetryableWhenLoadingIsNotObserved() = runDesktopComposeUiTest(width = 390, height = 844) {
+        val identity = syntheticPreviewIdentity()
+        var signOutCalls = 0
+        var refreshCalls = 0
+        val adapter = object : AccountSessionAdapter {
+            override val supportsSignOut = true
+            override fun refresh(request: AccountSessionRequest, complete: (AccountRefreshResult) -> Unit) {
+                refreshCalls++
+                complete(AccountRefreshResult.Authenticated(identity))
+            }
+            override fun signOut(request: AccountSessionRequest, accountId: AccountId, complete: (AccountSignOutResult) -> Unit) {
+                assertEquals(identity.accountId, accountId)
+                signOutCalls++
+                complete(AccountSignOutResult.Unconfirmed)
+            }
+            override fun cancel(request: AccountSessionRequest) = Unit
+            override fun close() = Unit
+        }
+        val port = AccountSessionController(adapter)
+        port.refresh()
+        try {
+            setContent {
+                AccountTestViewport(390, 844) {
+                    TabulaApp(account = port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en"))
+                }
+            }
+            openAccount()
+            onNodeWithTag("account-sign-out").performScrollTo().performClick()
+            waitForIdle()
+            onNodeWithTag("account-confirm-sign-out").performScrollTo().performClick()
+            waitForIdle()
+            assertEquals(1, signOutCalls)
+            val retry = onNodeWithTag("account-retry").performScrollTo()
+            val queuedRetry = requireNotNull(retry.fetchSemanticsNode().config[SemanticsActions.OnClick].action)
+            runOnIdle {
+                // Both retries finish before a new frame; the equal safe error remains valid
+                // recovery copy even though each completion constructs a new Error instance.
+                repeat(2) { assertTrue(queuedRetry()) }
+                assertEquals(3, signOutCalls)
+                assertEquals(AccountState.Error(AccountErrorReason.SignOutUnconfirmed, AccountOperation.SignOut), port.state.value)
+            }
+            waitForIdle()
+            assertPrivateFactsAbsent(identity)
+            assertEquals(1, refreshCalls, "retry never refreshes over unresolved sign-out suppression")
+            onNodeWithTag("account-retry").performScrollTo().performClick()
+            waitForIdle()
+            assertEquals(4, signOutCalls, "the currently rendered equal error still permits another targeted retry")
+        } finally { port.close() }
+    }
+
+    @Test
+    fun queuedConfirmationCannotSignOutAFreshIdentityBeforeRecomposition() {
+        for (accountChanged in listOf(false, true)) {
+            var suppliedIdentity = syntheticPreviewIdentity()
+            val signedOutAccounts = mutableListOf<AccountId>()
+            val adapter = object : AccountSessionAdapter {
+                override val supportsSignOut = true
+                override fun refresh(request: AccountSessionRequest, complete: (AccountRefreshResult) -> Unit) {
+                    complete(AccountRefreshResult.Authenticated(suppliedIdentity))
+                }
+                override fun signOut(request: AccountSessionRequest, accountId: AccountId, complete: (AccountSignOutResult) -> Unit) {
+                    signedOutAccounts += accountId
+                    complete(AccountSignOutResult.Confirmed)
+                }
+                override fun cancel(request: AccountSessionRequest) = Unit
+                override fun close() = Unit
+            }
+            val port = AccountSessionController(adapter)
+            port.refresh()
+            val original = (port.state.value as AccountState.Authenticated).identity
+            try {
+                runDesktopComposeUiTest(width = 390, height = 844) {
+                    setContent {
+                        AccountTestViewport(390, 844) {
+                            TabulaApp(account = port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en"))
+                        }
+                    }
+                    openAccount()
+                    onNodeWithTag("account-sign-out").performScrollTo().performClick()
+                    waitForIdle()
+                    val confirm = onNodeWithTag("account-confirm-sign-out").performScrollTo()
+                    val queuedConfirm = requireNotNull(confirm.fetchSemanticsNode().config[SemanticsActions.OnClick].action)
+                    runOnIdle {
+                        if (accountChanged) {
+                            port.invalidate(AccountInvalidation.AccountChanged)
+                            suppliedIdentity = AccountIdentity(
+                                requireNotNull(AccountId.parse("22222222222222222222222222222222")), original.profile,
+                            )
+                        }
+                        port.refresh()
+                        val refreshed = port.state.value as AccountState.Authenticated
+                        assertTrue(refreshed.identity !== original)
+                        // Invoke the real old UI callback on the owner thread before Compose can
+                        // replace its confirmation. It must not act on this freshly admitted read.
+                        assertTrue(queuedConfirm())
+                        assertTrue(signedOutAccounts.isEmpty(), "an old confirmation cannot target a new identity snapshot")
+                        assertTrue(port.state.value === refreshed, "rejected stale confirmation preserves the current identity")
+                    }
+                    waitForIdle()
+                    onAllNodesWithTag("account-sign-out-confirmation").assertCountEquals(0)
+                    onNodeWithTag("account-sign-out").performScrollTo().performClick()
+                    waitForIdle()
+                    onNodeWithTag("account-confirm-sign-out").performScrollTo().performClick()
+                    waitForIdle()
+                    assertEquals(listOf(suppliedIdentity.accountId), signedOutAccounts,
+                        "a new confirmation still signs out the exact current account once")
+                    assertEquals(AccountState.SignedOut, port.state.value)
+                }
+            } finally { port.close() }
+        }
+    }
+
+    @Test
     fun replacingLifecycleOwnerRetiresOldDisplayWithoutClosingTheCurrentPort() = runDesktopComposeUiTest(width = 390, height = 844) {
         val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Authenticated)
         val first = SyntheticAccountTestLifecycleOwner()
@@ -516,7 +634,7 @@ class AccountUiTest {
         try {
             setContent {
                 AccountTestViewport(390, 844, lifecycleOwner = owner.value) {
-                    if (visible.value) TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en"))
+                    if (visible.value) TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en"))
                 }
             }
             openAccount()
@@ -547,7 +665,7 @@ class AccountUiTest {
         val identity = AccountIdentity(fixture.identity.accountId)
         try {
             fixture.adapter.completeRefresh(AccountRefreshResult.Authenticated(identity))
-            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
             openAccount()
             onNodeWithTag("account-open-profile").performScrollTo().performClick()
             waitForIdle()
@@ -565,31 +683,32 @@ class AccountUiTest {
 
     @Test
     fun longValidatedProfilesWrapAndActionsRemainReachableAcrossCompactThemesLocalesAndLargeText() {
-        for (width in listOf(320, 390)) for (scheme in listOf(TabulaScheme.Light, TabulaScheme.Dark)) {
+        val viewports = listOf(320 to 844, 390 to 844, 844 to 390)
+        for ((width, height) in viewports) for (scheme in TabulaScheme.entries) {
             for (language in listOf("en", "vi")) for (fontScale in listOf(1f, 2f)) {
                 val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Authenticated,
                     longFields = true, vietnamese = language == "vi")
                 try {
-                    runDesktopComposeUiTest(width = width, height = 844) {
+                    runDesktopComposeUiTest(width = width, height = height) {
                         setContent {
-                            AccountTestViewport(width, 844, fontScale) {
+                            AccountTestViewport(width, height, fontScale) {
                                 TabulaApp(account = fixture.port, scheme = scheme, deviceFacts = DeviceFacts(true, language))
                             }
                         }
                         openAccount()
                         assertShellTextFitsHorizontally()
-                        assertTargetFits("account-open-profile", width)
+                        assertTargetFits("account-open-profile", width, height)
                         onNodeWithTag("account-open-profile").performClick()
                         waitForIdle()
                         assertShellTextFitsHorizontally()
                         onNodeWithTag("profile-visibility").performScrollTo().assertIsDisplayed()
                         assertShellTextFitsHorizontally()
                         assertNoEditableCredentials()
-                        captureShell("account-profile-long-$width-${scheme.name.lowercase()}-$language-font${(fontScale * 100).toInt()}")
+                        captureShell("account-profile-long-${width}x$height-${scheme.name.lowercase()}-$language-font${(fontScale * 100).toInt()}")
                         onNodeWithTag("shell-back").performClick()
                         waitForIdle()
-                        assertTargetFits("account-sign-out", width)
-                        assertTargetFits("account-browse-library", width)
+                        assertTargetFits("account-sign-out", width, height)
+                        assertTargetFits("account-browse-library", width, height)
                         assertShellTextFitsHorizontally()
                     }
                 } finally { fixture.close() }
@@ -601,7 +720,7 @@ class AccountUiTest {
     fun cancelledPointerDoesNotDispatchRetryAndKeyboardActivationDispatchesOnce() = runDesktopComposeUiTest(width = 390, height = 844) {
         val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Error)
         try {
-            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
             openAccount()
             val retry = onNodeWithTag("account-retry").performScrollTo().assertIsDisplayed()
             retry.performMouseInput {
@@ -631,7 +750,7 @@ class AccountUiTest {
     fun adapterWithoutSignOutCapabilityDoesNotOfferAFalseLogoutAction() = runDesktopComposeUiTest(width = 390, height = 844) {
         val fixture = SyntheticPreviewAccountFixture(SyntheticPreviewAccountScenario.Authenticated, supportsSignOut = false)
         try {
-            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, deviceFacts = DeviceFacts(false, "en")) } }
+            setContent { AccountTestViewport(390, 844) { TabulaApp(account = fixture.port, scheme = TabulaScheme.Light, deviceFacts = DeviceFacts(false, "en")) } }
             openAccount()
             onAllNodesWithTag("account-sign-out").fetchSemanticsNodes().forEach { node ->
                 assertTrue(node.config.contains(SemanticsProperties.Disabled), "unsupported sign-out must be disabled if retained")

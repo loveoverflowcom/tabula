@@ -11,6 +11,54 @@
 - Final source baseline re-fetch: `origin/develop` remains the same `a386524`
   commit; checks below are local working-tree evidence, not published-tree CI
 
+## PR #109 local review follow-up — 2026-10-07
+
+The original environment records below are historical. A macOS review of
+`a386524..718ce47` and the fixes in this revision executed the configured gates
+with Rust 1.96, Gradle 9.7.0, Kotlin 2.4.20, the pinned coroutines 1.11.0,
+Microsoft OpenJDK 17.0.19, Android SDK 37 and Xcode 26.6 available.
+
+The review fixed the `DpRect` test compilation error without weakening target
+size assertions. It also reproduced a P2 presentation defect: an old sign-out
+confirmation could dispatch against a freshly admitted identity before Compose
+recomposed. The app now checks the exact current identity snapshot and capability
+at dispatch. A captured real confirmation callback fails with the original binding
+and passes with the guard for both same-account refresh and account replacement.
+An additional synchronous-unconfirmed regression preserves repeated targeted
+sign-out recovery when Loading is not observed.
+
+| Executed check | Result / established scope |
+|---|---|
+| `cargo xtask check` | PASS: all portable gates; workspace tests report 1292 passed and 18 ignored. Ignored cases are not acceptance evidence. |
+| `./gradlew :shared:testAndroidHostTest :previewApp:test :android:assembleDebug :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64 --no-daemon` | PASS: 157 shared host tests, 55 preview tests, zero failures/errors/skips; Android APK and both iOS Kotlin targets compile. |
+| New captured-callback regression with the original sign-out binding | FAIL as expected: the old confirmation dispatches on a new snapshot. Both new regression methods PASS with the final binding. |
+| Long-profile presentation selection | PASS: 48 cases across 320×844, 390×844 and 844×390, all four schemes, vi/en and font scale 1×/2×; original reachability and horizontal text assertions retained. |
+| `python3 tools/check-mobile-native-policy.py --apk apps/mobile/android/build/outputs/apk/debug/android-debug.apk` | PASS: source/configuration and one actual APK inspected; no native gameplay execution implied. |
+| Native policy helper tests / account runner syntax / whitespace | PASS: five Python regressions, `bash -n`, and `git diff --check`. |
+| `:previewApp:run -Ppreview.smokeWindow=true -Ppreview.width=320 -Ppreview.language=vi -Ppreview.fontScale=2 -Ppreview.account=unavailable` | PASS: actual desktop Window starts, reports 320×844 content and exits after its two-frame smoke check; account interactions are covered separately by Compose tests. |
+
+Account tests now select their scheme explicitly, so light-labelled captures
+cannot inherit a dark desktop setting. Actual captures were inspected for the
+default unavailable 320 dp light screen, 320 dp high-contrast light Vietnamese
+profile at 200%, 390 dp high-contrast dark English profile at 200%, and the
+844×390 dark Vietnamese profile at 200%. The inspected pixels show wrapping,
+contained profile hierarchy and the intended bottom-navigation/landscape-rail
+layout; scrolling and target reachability have separate executed assertions.
+These are synthetic shared CMP pixels, not Android/iOS device evidence.
+
+Reviewed/final source SHA256 identities:
+
+```text
+384a8e546b164686feee7b73ea1592298dcf360e5f766b43d94f893c9f460b73  TabulaApp.kt
+ff731bbc13bd87d757ac6d61c0d7c426aa78ca12f25010a5bfa32493acd32469  AccountUiTest.kt
+```
+
+Reviewer logs, regression controls and screenshots remain outside tracked
+source. Native provider, secure storage, callback/social integration,
+TalkBack/VoiceOver, real device interruption and gameplay remain unexecuted or
+unimplemented as stated in ADR-0046. This review does not close issue #103 or
+claim a phase exit. Published-head CI is separate from these local results.
+
 ## Current capability reconciliation
 
 [Issue #103](https://github.com/loveoverflowcom/tabula/issues/103)'s original
@@ -28,7 +76,7 @@ lookup, friend data and presence are not synthesized. The managed avatar is
 presentation-only and matched to the exact active identity instance; a previous
 image cannot return after same-account refresh through ID equality alone.
 
-## Changed claims and check status
+## Original implementation claims and check status
 
 | Claim / failure mode | Owner / suitable oracle | Status and evidence boundary |
 |---|---|---|

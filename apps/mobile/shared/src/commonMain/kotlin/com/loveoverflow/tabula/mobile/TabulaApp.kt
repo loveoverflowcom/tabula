@@ -24,6 +24,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.loveoverflow.tabula.mobile.account.AccountSessionPort
 import com.loveoverflow.tabula.mobile.account.AccountState
+import com.loveoverflow.tabula.mobile.account.AccountOperation
 import com.loveoverflow.tabula.mobile.account.UnavailableAccountSessionPort
 import com.loveoverflow.tabula.mobile.catalog.DiscoveryCatalogState
 import com.loveoverflow.tabula.mobile.catalog.DiscoveryQuery
@@ -152,7 +153,20 @@ fun TabulaApp(
             history = next
         },
         refresh = account::refresh,
-        signOut = account::signOut,
+        signOut = {
+            // A queued confirmation may outlive the rendered identity before StateFlow causes
+            // recomposition. Confirm only that exact current snapshot, never its replacement.
+            val current = account.state.value
+            when {
+                accountState is AccountState.Authenticated && current is AccountState.Authenticated &&
+                    current.identity === accountState.identity && current.canSignOut -> account.signOut()
+                accountState is AccountState.Error && accountState.retry == AccountOperation.SignOut &&
+                    // A synchronous retry can return equal safe error copy before Compose
+                    // observes Loading; the unresolved, already-confirmed intent stays retryable.
+                    current == accountState -> account.signOut()
+                else -> Unit
+            }
+        },
         cancel = account::cancelPending,
         back = accountBack,
     )
