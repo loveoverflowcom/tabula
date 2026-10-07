@@ -1,4 +1,4 @@
-"""Bounded source-pinned real Leptos facts reflow and native history recheck."""
+"""Bounded real Leptos native-history diagnostic on unchanged source."""
 import argparse
 import hashlib
 import importlib.util
@@ -43,9 +43,9 @@ def main():
         "harness_commit": os.environ["GITHUB_SHA"], "run_id": os.environ["GITHUB_RUN_ID"],
         "started_at_utc": utc(), "playwright": version("playwright"),
         "tool_versions": {"rustc": subprocess.check_output(["rustc", "--version"], text=True).strip()},
-        "fixture": "Actual static anonymous Leptos shell; authority unavailable. No account, API response, state, CSS or code input injected",
-        "scope": "Only affected 320/16px, 320/32px and 390/32px English facts reflow with actual browser default fonts and semantically awaited native history. No board rerun or acceptance expansion",
-        "historical_runs": [37602621508, 37606637708],
+        "fixture": "Actual static anonymous Leptos shell and native keyboard-typed disposable public code; authority unavailable. No account, API response, state, CSS or input value injected",
+        "scope": "Only 320/16px actual Library-to-Chess-to-native-Back/Forward and keyboard input recovery, with bounded public pageerror/console.error detail. No board rerun, authenticated admission or clipboard permission",
+        "historical_runs": [37602621508, 37606637708, 37609958188],
         "builds": {"shell": []}, "captures": [], "actions": [], "checks": [], "cases": [],
         "unrun": ["Authenticated create/join admission", "Clipboard/paste permission", "Physical mobile/native/CMP", "Audio, full motion and performance", "Board graphics rerun"],
     }
@@ -100,7 +100,7 @@ def main():
         check("unchanged 900000-byte shell loading budget", False, {"error_type": type(error).__name__, "budget_not_waived": True})
 
     with helper.static_origin(dist, shell=True) as origin, sync_playwright() as p:
-        for width, font in ((320, 16), (320, 32), (390, 32)):
+        for width, font in ((320, 16),):
             def partition():
                 with tempfile.TemporaryDirectory(prefix="classic114-font-") as temp:
                     profile = Path(temp)
@@ -113,8 +113,17 @@ def main():
                         data["browser_version_probe"] = browser_probe.send("Browser.getVersion")
                         data["browser_version"] = data["browser_version_probe"]["product"].split("/", 1)[-1]
                         browser_probe.detach()
-                        errors = []
-                        page.on("pageerror", lambda error: errors.append(str(error)[:1000]))
+                        errors, console_errors = [], []
+                        def page_error(error):
+                            if len(errors) >= 10:
+                                return
+                            stack = getattr(error, "stack", None)
+                            errors.append({"at_utc": utc(), "name": getattr(error, "name", None), "message": str(getattr(error, "message", str(error)))[:2000], "stack": str(stack)[:8000] if stack else None})
+                        def console_error(message):
+                            if message.type == "error" and len(console_errors) < 12:
+                                console_errors.append({"at_utc": utc(), "text": message.text[:4000]})
+                        page.on("pageerror", page_error)
+                        page.on("console", console_error)
                         initial = page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
                         helper.require_font_preference(initial, font)
                         helper.settle(page, origin + "/games")
@@ -122,18 +131,25 @@ def main():
                         page.locator('a[href="/games/com.tabula.chess"]').first.click()
                         page.locator('[data-testid=online-create]').wait_for(state="visible")
                         page.wait_for_timeout(250)
+                        before_code = page.locator('[data-testid=online-join-code]')
+                        before_code.click()
+                        before_code.press_sequentially("ab12cd34ef56zz", delay=25)
+                        before_value = before_code.input_value()
+                        check("pre-Back native synthetic code uppercase/max12", before_value == "AB12CD34EF56", {"actual_disposable_value": before_value, "expected_disposable_value": "AB12CD34EF56"})
                         m = metrics(page)
                         check(f"{width} EN font{font} native preference", m["root_font_px"] == font, {"initial_font_px": initial, "root_font_px": m["root_font_px"]})
                         facts = m["facts"]
                         check(f"{width} EN font{font} document/facts reflow", m["document_scroll_width"] <= width + 1 and facts is not None and all(c["rect"]["right"] <= width + 1 and c["rect"]["x"] >= -1 for c in facts["children"]), m)
                         check(f"{width} EN font{font} entry controls fit", len(m["controls"]) == 4 and all(c["rect"]["right"] <= width + 1 and c["rect"]["x"] >= -1 for c in m["controls"]), {"controls": m["controls"]})
-                        capture(page, f"entry-{width}-en-font{font}-full", "Actual complete game detail after source-pinned facts correction", True, {"initial_font_px": initial})
+                        capture(page, f"entry-{width}-en-font{font}-full", "Actual source-pinned detail with native typed disposable code before history recheck", True, {"initial_font_px": initial, "synthetic_only": True})
                         page.locator('.facts').scroll_into_view_if_needed()
                         capture(page, f"entry-{width}-en-font{font}-facts-viewport", "Original viewport at actual native-scrolled facts grid", False, {"initial_font_px": initial})
                         if font == 16:
                             def history():
                                 page.evaluate("scrollTo(0,0)")
                                 try:
+                                    data["actions"].append({"at_utc": utc(), "action": "Before native Back after actual Library card click, detail full-page and native facts viewport capture, then scroll-to-top", "path": urlsplit(page.url).path})
+                                    save()
                                     page.go_back(wait_until="networkidle", timeout=10000)
                                     page.locator('.catalog #search').wait_for(state="visible", timeout=10000)
                                     data["actions"].append({"at_utc": utc(), "action": "Native Back after actual Library content visible", "path": urlsplit(page.url).path})
@@ -141,21 +157,33 @@ def main():
                                     page.go_forward(wait_until="networkidle", timeout=10000)
                                     page.locator('[data-testid=online-join-code]').wait_for(state="visible", timeout=10000)
                                     data["actions"].append({"at_utc": utc(), "action": "Native Forward after actual detail entry visible", "path": urlsplit(page.url).path})
+                                    restored_code = page.locator('[data-testid=online-join-code]').input_value()
+                                    check("same-document public-code memory restores after Forward", restored_code == before_value == "AB12CD34EF56", {"expected_disposable_value": before_value, "actual_disposable_value": restored_code, "scope": "same document only, no reload/provider redirect persistence claim"})
                                     capture(page, "entry-320-native-forward-detail", "Native Forward with actual entry marker awaited", True)
-                                    check("native Back/Forward restored content without browser exception", not errors and urlsplit(page.url).path == "/games/com.tabula.chess", {"browser_errors": errors})
+                                    match_posts = []
+                                    page.on("request", lambda request: match_posts.append(urlsplit(request.url).path) if request.method == "POST" and urlsplit(request.url).path.startswith("/api/matches") else None)
+                                    code = page.locator('[data-testid=online-join-code]')
+                                    code.click()
+                                    code_metrics = code.evaluate("e=>({length:e.value.length,uppercase:e.value===e.value.toUpperCase(),max_length:e.maxLength,labels:e.labels?.length??0,focused:e===document.activeElement})")
+                                    check("native public-code input works after Forward", code_metrics["length"] == 12 and code_metrics["uppercase"] and code_metrics["max_length"] == 12 and code_metrics["labels"] == 1 and code_metrics["focused"], code_metrics)
+                                    capture(page, "entry-320-native-forward-code-focused", "Actual keyboard-typed disposable code after Forward; not a real invitation and never admitted", False, {"synthetic_only": True})
+                                    code.press("Enter")
+                                    page.wait_for_timeout(250)
+                                    check("recovered anonymous Enter creates no match POST", not match_posts, {"match_post_count": len(match_posts)})
+                                    check("native Back/Forward restored content without browser exception", not errors and urlsplit(page.url).path == "/games/com.tabula.chess", {"browser_errors": errors, "public_console_errors": console_errors})
                                 except Exception:
-                                    data["native_history_blocked_observation"] = {"path": urlsplit(page.url).path, "library_marker_count": page.locator('.catalog #search').count(), "entry_control_count": page.locator('[data-testid=online-join-code]').count(), "browser_errors": errors}
+                                    data["native_history_blocked_observation"] = {"path": urlsplit(page.url).path, "library_marker_count": page.locator('.catalog #search').count(), "entry_control_count": page.locator('[data-testid=online-join-code]').count(), "browser_errors": errors, "public_console_errors": console_errors}
                                     capture(page, "entry-320-native-history-blocked", "Original UI after bounded semantic history wait failed; cause unproven", True)
                                     raise
                             attempt("semantic native history recheck", history)
-                        data.setdefault("browser_error_observations", []).append({"font_px": font, "errors": errors})
+                        data.setdefault("browser_error_observations", []).append({"font_px": font, "errors": errors, "public_console_errors": console_errors})
                     finally:
                         ctx.close()
             attempt(f"actual {width} EN font{font} facts partition", partition)
     data["status"] = "PASS" if all(x["status"] == "PASS" for x in data["checks"]) and all(x["status"] == "CAPTURED" for x in data["cases"]) else "PARTIAL"
     data["finished_at_utc"] = utc()
     save()
-    assert len(data["captures"]) >= 6, "affected source must render all three actual width/font partitions"
+    assert len(data["captures"]) >= 3, "diagnostic must preserve actual pre-Back and outcome originals"
 
 
 if __name__ == "__main__":

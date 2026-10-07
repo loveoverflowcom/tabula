@@ -1,4 +1,4 @@
-name: bounded-classic114-facts-recheck
+name: bounded-classic114-history-diagnostic
 on:
   push:
     branches: ['evidence/classic114-runtime-capture-20261007']
@@ -6,10 +6,10 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: bounded-classic114-facts-recheck-${{ github.ref }}
+  group: bounded-classic114-history-diagnostic-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  actual-classic-facts-and-history:
+  actual-classic-native-history-diagnostic:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -23,7 +23,7 @@ jobs:
         with: {path: harness}
       - uses: actions/checkout@v4
         with:
-          ref: 49da8c29d805303255b1d7ea2d3cc5563c9c7787
+          ref: f68970bf48c0571bed083047031e8ff6b6e40a2a
           path: actual-src
       - uses: dtolnay/rust-toolchain@master
         with: {toolchain: '1.96', targets: wasm32-unknown-unknown}
@@ -43,13 +43,13 @@ jobs:
         run: |
           cargo clean --locked
           (cd apps/web && TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online)
-      - name: Actual scoped facts reflow and semantic history recheck
-        run: python3 harness/tools/classic114-review/capture.py --source-root actual-src --source-commit 49da8c29d805303255b1d7ea2d3cc5563c9c7787 --source-tree 58ce919119a3237bab626a86150b5d1c32b2ee48 --output verification/classic114-facts
+      - name: Actual corrected-source public history and code recovery
+        run: python3 harness/tools/classic114-review/capture.py --source-root actual-src --source-commit f68970bf48c0571bed083047031e8ff6b6e40a2a --source-tree da9b6898754688a0fddffda4104fc7ac5bb04516 --output verification/classic114-history-diagnostic
       - name: Preserve original PNGs and exact source/build/action receipts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: actual-classic114-facts-recheck
-          path: verification/classic114-facts
+          name: actual-classic114-history-diagnostic
+          path: verification/classic114-history-diagnostic
           if-no-files-found: error
           retention-days: 14
