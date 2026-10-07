@@ -30,6 +30,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.math.abs
 
 /** Genuine shared CMP discovery pixels/interactions; no browser or native gameplay is simulated by these claims. */
 @OptIn(ExperimentalTestApi::class)
@@ -41,6 +42,8 @@ class DiscoveryUiTest {
         Viewport(320, TabulaScheme.Light, "en"),
         Viewport(390, TabulaScheme.Light, "en"),
         Viewport(390, TabulaScheme.Dark, "vi"),
+        Viewport(390, TabulaScheme.HcLight, "vi"),
+        Viewport(390, TabulaScheme.HcDark, "en"),
         Viewport(768, TabulaScheme.Light, "vi"),
         Viewport(768, TabulaScheme.Dark, "en"),
     )
@@ -68,6 +71,11 @@ class DiscoveryUiTest {
                 }
                 waitForIdle()
                 onNodeWithTag("shell-home").assertIsDisplayed()
+                val hero = onNodeWithTag("discovery-hero-art").assertIsDisplayed()
+                val artBounds = hero.getUnclippedBoundsInRoot()
+                val artRatio = (artBounds.right - artBounds.left).value / (artBounds.bottom - artBounds.top).value
+                assertTrue(abs(artRatio - 43f / 24f) < 0.02f, "the imported scene keeps its aspect ratio: $artBounds")
+                hero.assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
                 onAllNodesWithTag("discovery-resume-unavailable").assertCountEquals(0)
                 assertShellTextFitsHorizontally()
                 captureShell("discovery-${case.name}-registry-home")
@@ -171,9 +179,16 @@ class DiscoveryUiTest {
             }
         }
         onNodeWithTag("shell-nav-games").performClick(); waitForIdle()
-        onNodeWithTag("discovery-filter-toggle").performScrollTo().performClick(); waitForIdle()
+        onAllNodesWithTag("discovery-filters").assertCountEquals(0)
         assertTarget("discovery-filter-category-abstract", 390)
         onNodeWithTag("discovery-filter-category-abstract").performClick()
+        // Categories are directly available, and expanding/collapsing other axes preserves them.
+        onNodeWithTag("discovery-filter-toggle").performScrollTo().performClick(); waitForIdle()
+        onNodeWithTag("discovery-filter-player-3").performScrollTo().performClick(); waitForIdle()
+        onNodeWithTag("discovery-no-results").performScrollTo().assertIsDisplayed()
+        onNodeWithTag("discovery-filter-player-all").performScrollTo().performClick(); waitForIdle()
+        onNodeWithTag("discovery-filter-toggle").performScrollTo().performClick(); waitForIdle()
+        onAllNodesWithTag("discovery-filters").assertCountEquals(0)
         onNodeWithTag("discovery-search").performScrollTo().performTextReplacement("Alpha"); waitForIdle()
         onNodeWithTag("discovery-filter-category-abstract")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))

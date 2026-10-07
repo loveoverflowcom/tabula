@@ -70,3 +70,11 @@ flamegraph.svg
 !/docs/ui/**/
 !/docs/ui/**/*.md
 !/docs/ui/tokens.json
+
+# Local Gradle diagnostics, signing fixtures and staged build output.
+.gradle/
+*.hprof
+debug.keystore
+debug.keystore.base64
+app/build/
+.build-outputs/

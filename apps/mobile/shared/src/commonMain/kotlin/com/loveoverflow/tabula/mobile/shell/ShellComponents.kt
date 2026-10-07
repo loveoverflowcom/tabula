@@ -67,7 +67,7 @@ import com.loveoverflow.tabula.mobile.account.AccountIdentity
 import com.loveoverflow.tabula.mobile.localization.ShellCopy
 import com.loveoverflow.tabula.mobile.localization.ShellStrings
 import com.loveoverflow.tabula.mobile.navigation.Destination
-import com.loveoverflow.tabula.mobile.navigation.isAccountTask
+import com.loveoverflow.tabula.mobile.navigation.isAccountSection
 
 /** Action emphasis from the shared foundation contract; labels and hit geometry never disappear. */
 enum class ShellAction { Filled, Tonal, Text }
@@ -126,6 +126,7 @@ private fun ShellInteractiveSurface(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isSelected: Boolean? = null,
+    role: Role = Role.Button,
     horizontalInset: Float = TabulaSpace.md,
     verticalInset: Float = TabulaSpace.sm,
     content: @Composable (Color) -> Unit,
@@ -150,7 +151,7 @@ private fun ShellInteractiveSurface(
     Box(
         modifier.widthIn(min = TabulaAccessibility.minTarget.dp).heightIn(min = TabulaAccessibility.minTarget.dp)
             .semantics { if (isSelected != null) selected = isSelected }
-            .clickable(enabled = enabled, role = Role.Button, interactionSource = source, indication = null, onClick = onClick)
+            .clickable(enabled = enabled, role = role, interactionSource = source, indication = null, onClick = onClick)
             .then(ring).padding(ringSpace),
         propagateMinConstraints = true,
     ) {
@@ -167,6 +168,29 @@ private fun ShellInteractiveSurface(
                 .padding(horizontal = horizontalInset.dp, vertical = verticalInset.dp),
             contentAlignment = Alignment.Center,
         ) { content(if (enabled) foreground else foreground.copy(alpha = TabulaState.disabledContent)) }
+    }
+}
+
+/** Token-backed radio choice with visible shape and selected semantics, usable at large text. */
+@Composable
+fun ShellPreferenceChoice(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalTabulaColors.current
+    ShellInteractiveSurface(
+        background = if (selected) colors.primary.copy(alpha = TabulaState.focus).compositeOver(colors.shellPaper) else colors.shellPaper,
+        foreground = if (selected) colors.primary else colors.onSurface,
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        isSelected = selected,
+        role = Role.RadioButton,
+    ) { color ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp), verticalAlignment = Alignment.CenterVertically) {
+            Canvas(Modifier.size(TabulaSpace.xl.dp).clearAndSetSemantics { }) {
+                val radius = size.minDimension / 2f - TabulaAccessibility.focusRingWidth.dp.toPx()
+                drawCircle(color, radius, style = Stroke(TabulaAccessibility.focusRingWidth.dp.toPx()))
+                if (selected) drawCircle(color, radius / 2f)
+            }
+            TabulaText(label, TabulaType.labelLg, Modifier.weight(1f), color)
+        }
     }
 }
 
@@ -318,7 +342,7 @@ private fun ShellTopbar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (destination is Destination.Detail || destination is Destination.Setup ||
-                (destination.isAccountTask && destination != Destination.Account)) {
+                (destination.isAccountSection && destination != Destination.Account)) {
                 ShellInteractiveSurface(
                     colors.shellPaper.copy(alpha = 0f), colors.primary, onBack,
                     Modifier.size(TabulaSpace.xxxxxl.dp).testTag("shell-back").semantics {
@@ -395,7 +419,7 @@ private fun ShellNavigationItem(
     val selected = when (target) {
         Destination.Home -> destination == Destination.Home
         Destination.Games -> destination == Destination.Games || destination is Destination.Detail || destination is Destination.Setup
-        Destination.Account -> destination.isAccountTask
+        Destination.Account -> destination.isAccountSection
         else -> false
     }
     val colors = LocalTabulaColors.current
