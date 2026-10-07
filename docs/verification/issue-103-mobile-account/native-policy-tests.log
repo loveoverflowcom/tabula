@@ -1,0 +1,10 @@
+test_apk_payload_inspection_rejects_renamed_wasm_and_compiled_legacy_host (tools.tests.test_mobile_native_policy.MobileNativePolicyTest.test_apk_payload_inspection_rejects_renamed_wasm_and_compiled_legacy_host) ... ok
+test_app_and_apk_cannot_pass_with_missing_artifacts_or_empty_selection (tools.tests.test_mobile_native_policy.MobileNativePolicyTest.test_app_and_apk_cannot_pass_with_missing_artifacts_or_empty_selection) ... ok
+test_bridge_payload_and_web_document_are_rejected_under_new_directories (tools.tests.test_mobile_native_policy.MobileNativePolicyTest.test_bridge_payload_and_web_document_are_rejected_under_new_directories) ... ok
+test_current_production_selection_and_configuration_are_native_only (tools.tests.test_mobile_native_policy.MobileNativePolicyTest.test_current_production_selection_and_configuration_are_native_only) ... ok
+test_disguised_gameplay_host_and_retired_staging_are_rejected (tools.tests.test_mobile_native_policy.MobileNativePolicyTest.test_disguised_gameplay_host_and_retired_staging_are_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.012s
+
+OK

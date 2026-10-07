@@ -165,6 +165,15 @@ bounded Home/Library/detail/setup review from a generated public registry catalo
 Catalog visibility is separate from packaged native runtime availability. It opens no
 remote discovery, native launch/configuration, accounts, resume or Phase 6 exit.
 
+[ADR-0046](docs/adr/0046-mobile-account-surfaces.md) opens #103's bounded CMP
+Account/Login/Register/self-Profile/Friends UI draft and typed account-session
+port. Only a current adapter supplies read-only identity; production defaults
+to explicit native-adapter unavailability. Provider login/enrollment, native
+social, profile mutations, credentials/persistence and phase exits remain gated.
+Named preview/test ports are doubles, not fake authentication or production fallback.
+The optional managed avatar is bound to the exact current identity instance.
+This scope does not change the separate native GameHost contract or its evidence.
+
 The owner-requested Werewolf standalone has a similarly bounded opt-in local exception:
 [ADR-0035](docs/adr/0035-werewolf-local-simulator.md). It permits its complete pure referee
 and isolated-seat local presenter using the existing renderer/resource pipeline. It does not

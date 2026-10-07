@@ -3,8 +3,10 @@
 The mobile shell adapts [the foundation](foundation.md), [Home/Library Design 01](01-library.md)
 and the current web chrome in `apps/web/src/views/parts.rs`. Architecture doc 00, doc 04 §3.3,
 ADR-0032, ADR-0043 and ADR-0045 govern ownership. Issue #102 extends the original
-application chrome and route scaffolding with registry-backed discovery. Account
-content remains unavailable. No phase exit is claimed.
+application chrome and route scaffolding with registry-backed discovery. Issue
+#103 adds [bounded account task screens](mobile-account.md) under ADR-0046:
+typed current state and read-only adapter-supplied identity, with production
+native provider/social integration unavailable. No phase exit is claimed.
 
 Production Android/iOS entrypoints use generated public registry discovery data and an
 empty packaged runtime inventory with unavailable gameplay under ADR-0043. The WebView
@@ -26,7 +28,8 @@ it does not interpret their rule meaning or reimplement rules (I-9/I-10).
 | Games | `/games` | Localized search and AND-combined category, exact seat-count, maximum estimated duration and complexity filters |
 | Detail | `/games/:id` | Registry artwork, description, metadata, mode declarations and rules-resource availability; unknown IDs never select another game |
 | Setup | `/games/:id?setup=1` | Read-only module defaults; explicit launch through a supplied packaged host, otherwise disabled native start and explanation |
-| Account | `/account` | Neutral account entry and visible native-account unavailability |
+| Account | `/account` | Typed account state, current read-only adapter identity or visible native-adapter unavailability |
+| Account tasks | `/login`, `/register`, `/me`, `/friends` | ADR-0046 task navigation; read-only self Profile; native provider/enrollment/social unavailable |
 | Game host | `/play/local/` | In-memory preview `GameLaunch` through the retained `GameHost` seam; native adapter unavailable |
 
 These are route identities, not registered universal links or authorization URLs. Unknown

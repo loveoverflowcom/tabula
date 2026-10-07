@@ -26,7 +26,8 @@ tasks.register<JavaExec>("run") {
     classpath = sourceSets.main.get().runtimeClasspath
     maxHeapSize = "1g"
     systemProperty("compose.layers.type", "ON_SAME_CANVAS")
-    for (option in listOf("width", "height", "dark", "language", "reducedMotion", "fontScale", "catalog", "smokeWindow")) {
+    for (option in listOf("width", "height", "dark", "language", "reducedMotion", "fontScale", "catalog", "smokeWindow",
+        "account", "accountLongFields", "accountAvatar")) {
         providers.gradleProperty("preview.$option").orNull?.let { systemProperty("tabula.preview.$option", it) }
     }
 }

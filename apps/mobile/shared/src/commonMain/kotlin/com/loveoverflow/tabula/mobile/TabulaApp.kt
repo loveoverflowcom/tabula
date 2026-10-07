@@ -4,6 +4,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import kotlinx.coroutines.delay
 import com.loveoverflow.tabula.mobile.voice.DevVoiceGrantSource
 import com.loveoverflow.tabula.mobile.voice.VoiceController
@@ -16,6 +19,13 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.loveoverflow.tabula.mobile.account.AccountSessionPort
+import com.loveoverflow.tabula.mobile.account.AccountState
+import com.loveoverflow.tabula.mobile.account.AccountOperation
+import com.loveoverflow.tabula.mobile.account.UnavailableAccountSessionPort
 import com.loveoverflow.tabula.mobile.catalog.DiscoveryCatalogState
 import com.loveoverflow.tabula.mobile.catalog.DiscoveryQuery
 import com.loveoverflow.tabula.mobile.catalog.RegistryDiscoveryCatalog
@@ -29,7 +39,17 @@ import com.loveoverflow.tabula.mobile.navigation.BackStack
 import com.loveoverflow.tabula.mobile.navigation.BackStackSaver
 import com.loveoverflow.tabula.mobile.navigation.Destination
 import com.loveoverflow.tabula.mobile.localization.ShellStrings
+import com.loveoverflow.tabula.mobile.localization.account
+import com.loveoverflow.tabula.mobile.navigation.isAccountTask
+import com.loveoverflow.tabula.mobile.navigation.AccountTaskBackPort
+import com.loveoverflow.tabula.mobile.shell.AccountActions
+import com.loveoverflow.tabula.mobile.shell.AccountAvatarImage
 import com.loveoverflow.tabula.mobile.shell.AccountScreen
+import com.loveoverflow.tabula.mobile.shell.LoginScreen
+import com.loveoverflow.tabula.mobile.shell.RegisterScreen
+import com.loveoverflow.tabula.mobile.shell.ProfileScreen
+import com.loveoverflow.tabula.mobile.shell.FriendsScreen
+import com.loveoverflow.tabula.mobile.shell.accountStatusCopy
 import com.loveoverflow.tabula.mobile.shell.DetailScreen
 import com.loveoverflow.tabula.mobile.shell.DeviceFacts
 import com.loveoverflow.tabula.mobile.shell.GameScreen
@@ -55,6 +75,10 @@ internal val FirstPartyCapabilities: Set<HostCapability> = setOf(HostCapability.
  * public registry discovery facts and cannot establish native launch availability (ADR-0045).
  * [scheme] and [deviceFacts] allow the same shell to be exercised with explicit presentation
  * settings in previews. Production callers omit them to read the host's settings.
+ * [account] is the app-owned current-session presentation port, closed on app disposal. Its
+ * production default stays unavailable; explicit preview adapters belong only to `previewApp`.
+ * [accountAvatar] is an already-loaded managed image bound to the exact current identity snapshot,
+ * not a remote image source or account credential. Neither value enters saved shell state.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Suppress("DEPRECATION")
@@ -68,7 +92,31 @@ fun TabulaApp(
     deviceFacts: DeviceFacts? = null,
     catalog: DiscoveryCatalogState = DiscoveryCatalogState.Ready(RegistryDiscoveryCatalog.games),
     onRetryCatalog: (() -> Unit)? = null,
+    account: AccountSessionPort = UnavailableAccountSessionPort,
+    accountAvatar: AccountAvatarImage? = null,
 ) {
+    // Account display is app-owned, never saved with navigation or held by a game runtime.
+    // Stop/background retires pending work and private facts; Start cannot silently sign in.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(account) { onDispose { account.close() } }
+    DisposableEffect(account, lifecycleOwner) {
+        val lifecycle = lifecycleOwner.lifecycle
+        account.onForegroundChanged(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> account.onForegroundChanged(true)
+                Lifecycle.Event.ON_STOP -> account.onForegroundChanged(false)
+                else -> Unit
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            account.onForegroundChanged(false)
+        }
+    }
+    // Replacing a port must not retain the previous port's initial collected presentation.
+    val accountState = key(account) { account.state.collectAsState().value }
     // Voice lifetime belongs to the app/session owner, not the replaceable game runtime.
     DisposableEffect(voice) { onDispose { voice?.close() } }
     LaunchedEffect(voice) {
@@ -86,6 +134,42 @@ fun TabulaApp(
     val dark = selectedScheme == TabulaScheme.Dark || selectedScheme == TabulaScheme.HcDark
     val device = deviceFacts ?: rememberDeviceFacts()
     val strings = ShellStrings.forLanguage(device.languageTag)
+    val accountBack = remember { AccountTaskBackPort() }
+    val navigateShell: (Destination) -> Unit = { target ->
+        val next = history.navigate(target)
+        if (next != history && history.current.isAccountTask) account.cancelPending()
+        history = next
+    }
+    val popShell: () -> Unit = {
+        if (!accountBack.requestBack() && history.canPop) {
+            if (history.current.isAccountTask) account.cancelPending()
+            history = history.pop()
+        }
+    }
+    val accountActions = AccountActions(
+        navigate = { target ->
+            val next = if (target == Destination.Home || target == Destination.Games) history.navigate(target) else history.push(target)
+            if (next != history && history.current.isAccountTask) account.cancelPending()
+            history = next
+        },
+        refresh = account::refresh,
+        signOut = {
+            // A queued confirmation may outlive the rendered identity before StateFlow causes
+            // recomposition. Confirm only that exact current snapshot, never its replacement.
+            val current = account.state.value
+            when {
+                accountState is AccountState.Authenticated && current is AccountState.Authenticated &&
+                    current.identity === accountState.identity && current.canSignOut -> account.signOut()
+                accountState is AccountState.Error && accountState.retry == AccountOperation.SignOut &&
+                    // A synchronous retry can return equal safe error copy before Compose
+                    // observes Loading; the unresolved, already-confirmed intent stays retryable.
+                    current == accountState -> account.signOut()
+                else -> Unit
+            }
+        },
+        cancel = account::cancelPending,
+        back = accountBack,
+    )
     val openLocalGame: (BundledGame) -> Unit = { game ->
         // Preferences are read at explicit launch, never recovered as match/session authority.
         val launch = GameLaunch(game.id, gamePreferences(dark, device.copy(languageTag = strings.languageTag)), FirstPartyCapabilities)
@@ -106,13 +190,16 @@ fun TabulaApp(
                 strings = strings,
             )
         } else {
-            // Gameplay keeps its existing host-first Back handling; shell routes pop directly.
-            BackHandler(enabled = history.canPop, onBack = { history = history.pop() })
+            // Gameplay keeps host-first Back; account confirmation dismisses before route Back.
+            BackHandler(enabled = history.canPop, onBack = popShell)
             ShellChrome(
                 destination = destination,
                 strings = strings,
-                onNavigate = { history = history.navigate(it) },
-                onBack = { history = history.pop() },
+                onNavigate = navigateShell,
+                onBack = popShell,
+                accountIdentity = (accountState as? AccountState.Authenticated)?.identity,
+                accountAvatar = accountAvatar,
+                accountDescription = strings.account(accountStatusCopy(accountState)),
             ) {
                 screenState.SaveableStateProvider(destination.routePath()) {
                     val discoveryGames = (catalog as? DiscoveryCatalogState.Ready)?.games.orEmpty()
@@ -153,7 +240,11 @@ fun TabulaApp(
                             },
                             onRetry = onRetryCatalog,
                         )
-                        Destination.Account -> AccountScreen(strings = strings)
+                        Destination.Account -> AccountScreen(accountState, strings, accountActions, accountAvatar)
+                        Destination.Login -> LoginScreen(accountState, strings, accountActions)
+                        Destination.Register -> RegisterScreen(accountState, strings, accountActions)
+                        Destination.Profile -> ProfileScreen(accountState, strings, accountActions, accountAvatar)
+                        Destination.Friends -> FriendsScreen(accountState, strings, accountActions)
                         is Destination.Game -> Unit
                     }
                 }
