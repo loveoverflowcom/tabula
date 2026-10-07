@@ -36,7 +36,8 @@ draft contains only implementation inputs and scoped implementation evidence.
 | Admission is capability-gated and duplicate-safe | online entry; false success, repeated create or stale completion | focused entry lifecycle/error tests | PASS |
 | Input, session and public-safe denial semantics survive | online entry and existing HTTP boundary | focused shell/core tests, source review | PASS |
 | Authoritative portable local core gate | `cargo xtask check` in its maintained order | frozen-source final aggregate invocation | PASS |
-| Actual canvas/Leptos visual quality | actual built documents; font/renderer/reflow differences | dedicated exact-head graphics capture | NOT_RUN |
+| Actual local-canvas piece quality | actual desktop-browser WASM; small silhouettes/orientation/promotion | 18 captured and inspected source 8ea board frames | PASS |
+| Actual entry reflow/history | actual native fields and measured text-scale layout | anonymous input checks passed; facts correction/history qualification await affected-source recheck | BLOCKED |
 | Real two-browser authenticated create/join | existing isolated HTTPS/PostgreSQL composition | maintained real-authority fixture | NOT_RUN |
 
 Commands, nonzero execution counts, toolchain/source identity and changed
@@ -128,7 +129,7 @@ No merge ordering or approval is implied.
 
 ## Remaining acceptance
 
-Actual 320×640/390×844/desktop/landscape layouts, four schemes, DPR1/2, 200%
+Actual 320×640/390×844/desktop/landscape layouts, four schemes, DPR 1/2, 200%
 text, both orientations, all small silhouettes and promotion/check/focus need
 named pixel inspection. Physical touch, screen-reader completion, native/mobile
 embedding and performance are separate target evidence. Quick matchmaking stays
@@ -138,3 +139,33 @@ The [backend roadmap #110](https://github.com/loveoverflowcom/tabula/issues/110)
 separately sequences service composition, Room ready/start and durable results;
 queue/matchmaking follows later. This draft implements none of those backend
 steps and never treats a full roster as user readiness or matchmaker authority.
+
+## Source-pinned browser follow-up
+
+The [original actual-browser review](https://github.com/loveoverflowcom/tabula/pull/114#issuecomment-6036071967) verifies 28 original PNGs across
+[source 8ea run1](https://github.com/loveoverflowcom/tabula/actions/runs/37602621508)
+and [entry-only follow-up](https://github.com/loveoverflowcom/tabula/actions/runs/37606637708).
+Eighteen local-board images were inspected: desktop/320/390, DPR 1/2, all four
+schemes, upright Flip, selection/focus, CHECK, both promotion choosers/Cancel
+and final queen/knight positions. Faint small HUD captions are inherited from
+this historical base and remain independent of PR112.
+
+Anonymous uppercase/max12/label/no-match-POST checks passed. At native 32px
+browser default font and viewport 320, inherited facts columns measured
+269.859px + 131.688px inside a 248px grid; every value ended at469.547px, and
+document scrollWidth was 470px. The scoped facts correction retains localized
+dt/dd order and shared tokens/fonts, adds a detail-only style hook, uses zero
+minimum tracks/wrapping and stacks compact term/value pairs. Source guard
+fails against original CSS; 102 web tests and native/WASM lint/check pass.
+Actual after-correction bounds/pixels remain pending.
+
+The old entry driver returned to `/games` and then the correct game URL, but
+its 400ms pre-Forward pause did not await actual Library content. A subsequent
+entry selector timed out without recorded browser exception. This remains a
+qualified harness/route-restoration observation, not an attributed router
+regression; the affected-source recheck awaits a semantic Library marker.
+Generated originals, JSON and logs stay in Actions artifacts, outside Git.
+
+Independent source review of the two-file correction found no actionable
+production defect. The frozen portable `cargo xtask check` passed; no
+rendered-after acceptance is inferred from that result.
