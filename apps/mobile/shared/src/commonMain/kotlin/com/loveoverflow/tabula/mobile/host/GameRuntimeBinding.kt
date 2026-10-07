@@ -8,21 +8,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
-/** What a platform runtime exposes so the shared composition glue can drive it. */
-interface GameRuntimeControls {
-    /** `true` when the game will handle Back itself (it shows its own leave confirmation). */
-    fun onBack(): Boolean
-
-    /** The app is leaving the foreground: stop drawing, keep the match and its clocks. */
-    fun suspend()
-
-    /** The app is back in the foreground. */
-    fun resume()
-
-    /** Release the surface. Called exactly once when the composable leaves; must be idempotent. */
-    fun dispose()
-}
-
 /**
  * The glue every platform host needs and must not duplicate: route Back to the runtime, forward
  * foreground/background to it, and dispose it when this composable leaves the composition.
@@ -33,14 +18,17 @@ interface GameRuntimeControls {
 @Composable
 fun BindGameRuntime(runtime: GameRuntimeControls, back: GameBackPort) {
     DisposableEffect(runtime) {
+        onDispose { runtime.dispose() }
+    }
+    // A replaced Back port retires the old handler without disposing the retained runtime.
+    DisposableEffect(runtime, back) {
         back.register { runtime.onBack() }
-        onDispose {
-            back.register(null)
-            runtime.dispose()
-        }
+        onDispose { back.register(null) }
     }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle, runtime) {
+        // Observing future events alone misses a host first composed while backgrounded.
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) runtime.resume() else runtime.suspend()
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> runtime.suspend()

@@ -5,6 +5,10 @@ Scope: [ADR-0043](../../adr/0043-native-mobile-gamehost.md) direction/source spi
 retirement of mobile WebView selection/packaging, and compact shared CMP shell fixes.
 **This is PR1, not completed native gameplay or closure of #81.**
 
+The later [2026-10-07 adapter-contract prototype](adapter-prototype.md) has its own
+fresh-develop source and local-check scope. The rows below retain this original
+2026-10-06 implementation/evidence and do not claim current native device execution.
+
 ## Observable change and ownership
 
 Both mobile entrypoints now provide the unavailable default host and an empty launch
