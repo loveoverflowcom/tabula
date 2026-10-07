@@ -154,6 +154,8 @@ interface NativeRuntimePort {
      * Immediate, idempotent old-surface access/input fence, safe even when a host callback reenters
      * during execute. It must return only after the worker cannot touch that surface again. The
      * queued Detach command handles remaining cleanup; this is not full runtime Stop/join.
+     * The lease is the last dispatched Attach/Resize ticket for that surface; pending revisions
+     * are retired by the coordinator without asking the backend to recognize an unseen ticket.
      * Android SurfaceHolder cannot wait for the owner's deferred effect queue to establish this.
      * Worker callbacks must be posted without synchronously waiting for the UI callback to finish,
      * otherwise an owner-thread surface fence could deadlock against the worker's callback wait.

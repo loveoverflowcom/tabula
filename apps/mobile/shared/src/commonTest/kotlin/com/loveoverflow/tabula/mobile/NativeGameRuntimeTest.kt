@@ -977,6 +977,168 @@ class NativeGameRuntimeTest {
     }
 
     @Test
+    fun reentrantResizeBeforeQueuedAttachDispatchStillAttachesTheReplacementSurface() {
+        val rig = Rig()
+        val runtime = rig.open()
+        val original = rig.attach(runtime)
+        rig.interactive(original)
+        val replacement = object : NativeSurface {}
+        val before = rig.port.commands.size
+        rig.port.onCommand = { command, _ ->
+            if (command is NativeRuntimeCommand.Back) {
+                val queued = assertNotNull(runtime.attach(replacement, geometry))
+                runtime.resize(queued, resizedGeometry)
+            }
+        }
+
+        assertTrue(runtime.onBack())
+        val current = assertNotNull(runtime.leaseFor(replacement))
+        val sent = rig.port.commands.drop(before)
+        val attached = sent.filterIsInstance<NativeRuntimeCommand.Attach>().single()
+        assertTrue(attached.surface === replacement)
+        assertEquals(current, attached.lease)
+        assertEquals(resizedGeometry, attached.geometry)
+        val attachIndex = sent.indexOf(attached)
+        assertTrue(sent.take(attachIndex).none { it is NativeRuntimeCommand.Resize }, "a replacement must be attached before it can be resized")
+        assertTrue(sent.take(attachIndex).filterIsInstance<NativeRuntimeCommand.Rendering>().none { it.enabled }, "rendering cannot start before the replacement is attached")
+        assertEquals(listOf(current), sent.filterIsInstance<NativeRuntimeCommand.Rendering>().filter { it.enabled }.map { it.lease })
+        assertEquals(listOf(original), rig.port.fences)
+        assertFalse(runtime.onBack(), "the replacement still needs fresh readiness")
+        assertEquals(1, rig.port.sent<NativeRuntimeCommand.Start>().size)
+    }
+
+    @Test
+    fun reentrantForegroundChangesBeforeQueuedAttachDispatchStillAttachItsSurface() {
+        for (resume in listOf(false, true)) {
+            val rig = Rig()
+            val runtime = rig.open()
+            val original = rig.attach(runtime)
+            rig.interactive(original)
+            val replacement = object : NativeSurface {}
+            val before = rig.port.commands.size
+            rig.port.onCommand = { command, _ ->
+                if (command is NativeRuntimeCommand.Back) {
+                    runtime.attach(replacement, geometry)
+                    runtime.suspend()
+                    if (resume) runtime.resume()
+                }
+            }
+
+            assertTrue(runtime.onBack())
+            val current = assertNotNull(runtime.leaseFor(replacement))
+            val sent = rig.port.commands.drop(before)
+            val attached = sent.filterIsInstance<NativeRuntimeCommand.Attach>().single()
+            assertTrue(attached.surface === replacement, "resume=$resume")
+            assertEquals(current, attached.lease, "resume=$resume")
+            assertEquals(geometry, attached.geometry, "resume=$resume")
+            val attachIndex = sent.indexOf(attached)
+            assertTrue(sent.take(attachIndex).none { it is NativeRuntimeCommand.Resize }, "resume=$resume: a foreground change cannot configure an unattached replacement")
+            assertTrue(sent.take(attachIndex).filterIsInstance<NativeRuntimeCommand.Rendering>().none { it.enabled }, "resume=$resume: rendering needs the attached surface")
+            assertEquals(if (resume) listOf(current) else emptyList(), sent.filterIsInstance<NativeRuntimeCommand.Rendering>().filter { it.enabled }.map { it.lease })
+            assertEquals(listOf(original), rig.port.fences, "resume=$resume")
+            assertFalse(runtime.onBack(), "resume=$resume: the replacement still needs fresh readiness")
+            assertEquals(1, rig.port.sent<NativeRuntimeCommand.Start>().size, "resume=$resume")
+        }
+    }
+
+    @Test
+    fun reentrantRetirementBeforeQueuedResizeDispatchFencesOnlyTheDispatchedSurfaceLease() {
+        for (dispose in listOf(false, true)) {
+            val rig = Rig()
+            val runtime = rig.open()
+            val original = rig.attach(runtime)
+            rig.interactive(original)
+            val before = rig.port.commands.size
+            rig.port.onCommand = { command, _ ->
+                if (command is NativeRuntimeCommand.Back) {
+                    val pending = assertNotNull(runtime.resize(original, resizedGeometry))
+                    assertNotEquals(original, pending)
+                    assertTrue(rig.port.sent<NativeRuntimeCommand.Resize>().isEmpty())
+                    if (dispose) runtime.dispose() else runtime.detach(pending)
+                    assertEquals(listOf(original), rig.port.fences, "the fence must name the surface ticket actually known to the backend")
+                }
+            }
+
+            assertTrue(runtime.onBack())
+            val sent = rig.port.commands.drop(before)
+            assertTrue(sent.filterIsInstance<NativeRuntimeCommand.Resize>().isEmpty(), "dispose=$dispose: the retired resize must never reach the backend")
+            assertTrue(sent.filterIsInstance<NativeRuntimeCommand.Rendering>().none { it.enabled }, "dispose=$dispose")
+            assertEquals(listOf(original), sent.filterIsInstance<NativeRuntimeCommand.Detach>().map { it.lease }, "dispose=$dispose")
+            assertEquals(if (dispose) 1 else 0, rig.port.sent<NativeRuntimeCommand.Stop>().size, "dispose=$dispose")
+            assertNull(runtime.surfaceLease, "dispose=$dispose")
+            assertEquals(1, rig.port.sent<NativeRuntimeCommand.Attach>().size, "dispose=$dispose")
+        }
+    }
+
+    @Test
+    fun reentrantDetachBeforeQueuedAttachDispatchDoesNotFenceAnUndispatchedReplacement() {
+        val rig = Rig()
+        val runtime = rig.open()
+        val original = rig.attach(runtime)
+        rig.interactive(original)
+        val replacement = object : NativeSurface {}
+        val before = rig.port.commands.size
+        rig.port.onCommand = { command, _ ->
+            if (command is NativeRuntimeCommand.Back) {
+                val queued = assertNotNull(runtime.attach(replacement, geometry))
+                val pending = assertNotNull(runtime.resize(queued, resizedGeometry))
+                runtime.detach(pending)
+                assertEquals(listOf(original), rig.port.fences, "the replacement never reached the backend and needs no native surface fence")
+            }
+        }
+
+        assertTrue(runtime.onBack())
+        val sent = rig.port.commands.drop(before)
+        assertTrue(sent.filterIsInstance<NativeRuntimeCommand.Attach>().isEmpty())
+        assertTrue(sent.filterIsInstance<NativeRuntimeCommand.Resize>().isEmpty())
+        assertTrue(sent.filterIsInstance<NativeRuntimeCommand.Rendering>().none { it.enabled })
+        assertEquals(listOf(original), sent.filterIsInstance<NativeRuntimeCommand.Detach>().map { it.lease })
+        assertNull(runtime.surfaceLease)
+        assertNull(runtime.leaseFor(replacement))
+        assertTrue(rig.port.sent<NativeRuntimeCommand.Stop>().isEmpty())
+        assertEquals(1, rig.port.sent<NativeRuntimeCommand.Start>().size)
+    }
+
+    @Test
+    fun reentrantSurfaceFenceCannotDispatchAReplacementBeforeThePreviousDetach() {
+        val rig = Rig()
+        val runtime = rig.open()
+        val original = rig.attach(runtime)
+        rig.interactive(original)
+        val replacement = object : NativeSurface {}
+        val before = rig.port.commands.size
+        var reentered = false
+        rig.port.onFence = { fenced ->
+            assertEquals(original, fenced)
+            assertFalse(reentered)
+            reentered = true
+            val pending = assertNotNull(runtime.leaseFor(replacement))
+            runtime.resize(pending, resizedGeometry)
+            assertTrue(rig.port.commands.drop(before).none { it is NativeRuntimeCommand.Attach }, "the replacement cannot execute until the immediate fence returns")
+        }
+        rig.port.onCommand = { command, _ ->
+            if (command is NativeRuntimeCommand.Back) runtime.attach(replacement, geometry)
+        }
+
+        assertTrue(runtime.onBack())
+        assertTrue(reentered, "the nested resize must be reached during the immediate fence")
+        val current = assertNotNull(runtime.leaseFor(replacement))
+        val sent = rig.port.commands.drop(before)
+        val detached = sent.filterIsInstance<NativeRuntimeCommand.Detach>().single()
+        val attached = sent.filterIsInstance<NativeRuntimeCommand.Attach>().single()
+        val enabled = sent.filterIsInstance<NativeRuntimeCommand.Rendering>().single { it.enabled }
+        assertEquals(original, detached.lease)
+        assertEquals(current, attached.lease)
+        assertTrue(attached.surface === replacement)
+        assertEquals(resizedGeometry, attached.geometry)
+        assertEquals(current, enabled.lease)
+        assertTrue(sent.indexOf(detached) < sent.indexOf(attached), "retiring the previous native surface must precede replacement attachment")
+        assertTrue(sent.indexOf(attached) < sent.indexOf(enabled), "replacement rendering must follow its attachment")
+        assertEquals(listOf(original), rig.port.fences)
+        assertEquals(1, rig.port.maximumExecutionDepth)
+    }
+
+    @Test
     fun synchronousStartFailureCanCompleteTeardownBeforeOpenReturnsWithoutLeakingAdmission() {
         val rig = Rig()
         rig.port.onCommand = { command, emit ->

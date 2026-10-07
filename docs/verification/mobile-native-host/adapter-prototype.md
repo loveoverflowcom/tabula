@@ -119,7 +119,7 @@ The Android platform archive was obtained from Google's official repository meta
 `ed8ebf7f8822a4de5686d427f237d2fa30ff7410` matched before extracting `android.jar`.
 No installed system SDK, build-tool configuration or production artifact is inferred.
 
-### Executed local checks
+### Executed local checks (initial Linux run)
 
 | Command / selected scope | Result | Evidence limit |
 |---|---|---|
@@ -150,3 +150,50 @@ remain NOT_IMPLEMENTED/NOT_RUN. Source/config policy checks inspect **0 real APK
 artifacts**. No GitHub CI checking/waiting is part of this owner-requested local review.
 
 This draft does not close #81, native device acceptance, store release or Phase 6.
+
+## PR #108 follow-up review — 2026-10-07
+
+Reviewed `f9e31cfad11f77f9a017c67726bc8f9fcf74c7c9` →
+`71b9d810ac8ce4ebb503ab8bb73348c3fb292075`, then the bounded fixes recorded with
+this ledger update. The initial Linux results above remain historical; the following
+checks use macOS arm64, JDK 17.0.19, Kotlin 2.4.20, Gradle 9.7.0 and Android SDK 37.
+
+Two related P2 defects were reproduced at the actual control boundary:
+
+- Reentrant resize/foreground changes retired a queued replacement `Attach`, so the
+  port received `Resize`/render-enable without ever receiving that surface. A queued
+  revision followed by destruction also fenced a ticket never dispatched to the port.
+  `NativeHostSession` now distinguishes planned from dispatched surface leases, retains
+  the replacement attachment with its latest geometry, and fences only known tickets.
+- Immediate `fenceSurface` reentry could queue replacement work before the previous
+  `Detach`. `NativeGameRuntime` now reserves retirement effects before calling the fence;
+  the drain still prevents deferred execution until the synchronous fence returns.
+
+Five retained commonTest regressions exercise these cases, including suspend/resume
+and detach/dispose partitions. Compiling the original two source files from `71b9d810`
+with the new test class produced **5 failures / 52 tests**. Keeping the fixed session
+with only the original executor produced exactly the retirement-order failure. The
+final actual sources pass **52 / 52**, using the Gradle-resolved official Kotlin compiler
+and JUnit 4.13.2 with `-no-stdlib -no-reflect -Werror -jvm-target 17`; original source
+snapshots and reviewer logs were kept outside the repository. No replacement coordinator,
+Android/Compose stub or shipping native backend was introduced.
+
+| Command / selected scope | Result | Evidence limit |
+|---|---|---|
+| `cargo xtask check` | **PASS**, all portable core gates | Existing Rust workspace/static/generated checks; no native gameplay |
+| `./gradlew --console=plain --offline :shared:testAndroidHostTest :previewApp:test :android:assembleDebug` from `apps/mobile` after online dependency resolution | **PASS**, 120 shared host tests (including 52 native coordinator tests), 29 desktop Compose tests; 0 skipped/failed; debug APK assembled | Actual shared/Compose compilation and shell interaction; controlled native port, no JNI/GPU/device execution |
+| Actual Android callback source compilation with Kotlin 2.4.20, `-Werror -jvm-target 17`, Android SDK 37 jar | **compiled PASS** | SurfaceHolder/touch source; no native surface interaction |
+| `./gradlew --console=plain --offline :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64` from `apps/mobile` | **compiled PASS**, both targets | Shared Kotlin source, no iOS native gameplay adapter or device execution; online metadata resolution stalled, offline retry succeeded |
+| `xcodebuild -project TabulaApp.xcodeproj -scheme Tabula -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/tabula-pr108-review/ios-build CODE_SIGNING_ALLOWED=NO build` from `apps/mobile/ios` | **compiled PASS**, Xcode 26.6 | CMP/Swift app and shared framework compile/link only; linker warns that a bundled ICU object targets iOS simulator 18.5 while the app deployment target is 15.0; no shipping-version/device compatibility claim |
+| `python3 tools/check-mobile-native-policy.py --apk apps/mobile/android/build/outputs/apk/debug/android-debug.apk` | **PASS**, 1 real APK inspected | Native-only source/config/payload policy; no gameplay frame |
+| `python3 tools/check-mobile-native-policy.py --app /tmp/tabula-pr108-review/ios-build/Build/Products/Debug-iphonesimulator/Tabula.app` | **PASS**, 1 real simulator app inspected | Native-only payload policy, no iOS native gameplay or interaction |
+| `python3 -m unittest discover -s tools/tests -p test_mobile_native_policy.py -v` | **PASS 5 tests** | Adversarial artifact/source policy fixtures |
+| `git diff --check` | **PASS** | Whitespace |
+
+The debug APK SHA-256 for this check is
+`7d8fe9a1e981226f5e0710558ec6cdc25f177f50434028eb94c16be0a066d3f4`.
+Independent source review covered the full prototype diff and the final fixes, including
+readiness, truthful stop/join admission, stale callbacks and Android surface ownership.
+The changed Back-port Compose regression now executes within the 29-test desktop suite.
+Actual Macroquad embedding, native libraries/assets, JNI/GPU/device interaction and
+performance remain unavailable. Keep the PR draft and #81 open; no phase exit follows.

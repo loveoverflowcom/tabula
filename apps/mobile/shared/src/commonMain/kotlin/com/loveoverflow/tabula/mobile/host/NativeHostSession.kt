@@ -28,6 +28,9 @@ internal class NativeHostSession(
         private set
     private var geometry: NativeSurfaceGeometry? = null
     private var surface: NativeSurface? = null
+    // Planned revisions can change while effects wait. Only dispatched Attach/Resize tickets
+    // identify a surface the port actually knows, including for the synchronous destruction fence.
+    private var dispatchedSurfaceLease: NativeSurfaceLease? = null
     private var surfaceRevision = 0L
     private var foreground = foreground
     private var contextReady = false
@@ -59,7 +62,12 @@ internal class NativeHostSession(
     }
 
     fun commandStarted(value: NativeRuntimeCommand) {
-        if (value is NativeRuntimeCommand.Stop) stopSent = true
+        when (value) {
+            is NativeRuntimeCommand.Attach -> dispatchedSurfaceLease = value.lease
+            is NativeRuntimeCommand.Resize -> dispatchedSurfaceLease = value.lease
+            is NativeRuntimeCommand.Stop -> stopSent = true
+            else -> Unit
+        }
     }
 
     fun acceptNotification(value: NativeHostEffect.Notify): Boolean {
@@ -85,25 +93,29 @@ internal class NativeHostSession(
 
     fun resize(expected: NativeSurfaceLease, value: NativeSurfaceGeometry): List<NativeHostEffect> {
         if (!current(expected) || value == geometry) return emptyList()
+        val currentSurface = surface ?: return emptyList()
         val ticket = nextLease() ?: return fail(NativeRuntimeEvent.Failure.Driver)
         resetReadiness()
         lease = ticket
         geometry = value
-        return releaseAwake() + command(
-            NativeRuntimeCommand.CancelPointers(expected), NativeRuntimeCommand.Rendering(expected, false),
-            NativeRuntimeCommand.Resize(ticket, value), NativeRuntimeCommand.Rendering(ticket, foreground),
+        return releaseAwake() + disableDispatchedSurface() + command(
+            configureSurface(ticket, currentSurface, value), NativeRuntimeCommand.Rendering(ticket, foreground),
         )
     }
 
     fun detach(expected: NativeSurfaceLease? = lease): List<NativeHostEffect> {
         if (expected == null || !current(expected)) return emptyList()
+        val dispatched = dispatchedSurfaceLease
+        dispatchedSurfaceLease = null
         lease = null
         geometry = null
         surface = null
         resetReadiness()
-        return releaseAwake() + command(
-            NativeRuntimeCommand.CancelPointers(expected), NativeRuntimeCommand.Rendering(expected, false), NativeRuntimeCommand.Detach(expected),
-        )
+        // A queued Attach that never reached the port needs no native cleanup. A pending Resize
+        // must fence the last dispatched ticket, rather than a revision unknown to the worker.
+        return releaseAwake() + if (dispatched != null) command(
+            NativeRuntimeCommand.CancelPointers(dispatched), NativeRuntimeCommand.Rendering(dispatched, false), NativeRuntimeCommand.Detach(dispatched),
+        ) else emptyList()
     }
 
     fun foreground(active: Boolean): List<NativeHostEffect> {
@@ -111,15 +123,14 @@ internal class NativeHostSession(
         foreground = active
         val previous = lease
         val value = geometry
+        val currentSurface = surface
         resetReadiness()
-        val cancel = if (previous != null) command(
-            NativeRuntimeCommand.CancelPointers(previous), NativeRuntimeCommand.Rendering(previous, false),
-        ) else emptyList()
+        val cancel = disableDispatchedSurface()
         // Both boundaries retire frame/resource/input callbacks, including delayed pre-pause frames.
-        val configure = if (previous != null && value != null) {
+        val configure = if (previous != null && value != null && currentSurface != null) {
             val ticket = nextLease() ?: return cancel + fail(NativeRuntimeEvent.Failure.Driver)
             lease = ticket
-            command(NativeRuntimeCommand.Resize(ticket, value), NativeRuntimeCommand.Rendering(ticket, active))
+            command(configureSurface(ticket, currentSurface, value), NativeRuntimeCommand.Rendering(ticket, active))
         } else emptyList()
         return cancel + releaseAwake() + command(NativeRuntimeCommand.Foreground(id, active)) + configure
     }
@@ -226,6 +237,16 @@ internal class NativeHostSession(
         surfaceRevision += 1
         return NativeSurfaceLease(id, surfaceRevision)
     }
+
+    private fun configureSurface(
+        ticket: NativeSurfaceLease, value: NativeSurface, geometry: NativeSurfaceGeometry,
+    ): NativeRuntimeCommand = if (dispatchedSurfaceLease == null) {
+        NativeRuntimeCommand.Attach(ticket, value, geometry)
+    } else NativeRuntimeCommand.Resize(ticket, geometry)
+
+    private fun disableDispatchedSurface(): List<NativeHostEffect> = dispatchedSurfaceLease?.let {
+        command(NativeRuntimeCommand.CancelPointers(it), NativeRuntimeCommand.Rendering(it, false))
+    } ?: emptyList()
 
     private fun live() = phase == Phase.Starting || phase == Phase.Interactive
     private fun current(ticket: NativeSurfaceLease) = live() && lease == ticket

@@ -157,6 +157,9 @@ class NativeGameRuntime internal constructor(
     }
 
     private fun enqueue(values: List<NativeHostEffect>) {
+        // Reserve retirement order before a fence can synchronously reenter. run() has already
+        // marked the queue as draining, so no deferred command executes before the fence returns.
+        effects.addAll(values)
         // SurfaceHolder destruction can reenter from a host callback while this queue drains.
         // Its safety fence must complete now, not after the outer execute/onEvent returns.
         val fenceFailures = mutableListOf<NativeHostEffect>()
@@ -170,7 +173,6 @@ class NativeGameRuntime internal constructor(
                 fenceFailures.addAll(session.fail(NativeRuntimeEvent.Failure.GraphicsContext))
             }
         }
-        effects.addAll(values)
         if (fenceFailures.isNotEmpty()) enqueue(fenceFailures)
     }
 
