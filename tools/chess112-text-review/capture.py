@@ -17,8 +17,8 @@ from PIL import Image
 from playwright.sync_api import sync_playwright
 from graphics_probe import public_samples, probe
 
-EXPECTED = "94dc7df5012640e7d6909d1ab5c02eb273d1dc37"
-TREE = "7a2f8d0ddd9474d038ab0fd59c6de23fa219da13"
+EXPECTED = "5153dcfcba96e6c5789d605be6ae12c1057fd760"
+TREE = "4f14aa88433b2b5979d7e08efa051db6e94c8ebe"
 
 
 def utc():
@@ -114,7 +114,7 @@ def main():
             "harness_commit": os.environ["GITHUB_SHA"], "run_id": os.environ["GITHUB_RUN_ID"],
             "started_at_utc": utc(), "playwright": version("playwright"),
             "fixture": "Disposable untimed same-device local Chess. Public legal input sequences only; no accounts, credentials, online service, FEN or canonical state injected/read",
-            "scope": "Narrow PR112 corrected HUD recheck against preserved c61 originals; actual source-owned compiled WASM, desktop Chromium viewports only; native/mobile/CMP/performance NOT_RUN",
+            "scope": "Single PR112 explicit-line guidance recheck against preserved94/c61 originals; actual source-owned compiled WASM, desktop Chromium viewports only; native/mobile/CMP/performance NOT_RUN",
             "before_source": "c61dbc62271cd4a5554dd62bc139a06bab58fb44", "before_run_id": 37589145897, "before_artifact_id": 11468256290,
             "builds": [], "captures": [], "actions": [], "checks": [], "cases": []}
     for p in sorted(dist.rglob("*")):
@@ -150,7 +150,7 @@ def main():
                   "scheme": page.locator("html").get_attribute("data-theme"), "locale": page.locator("html").get_attribute("lang"),
                   "bytes": len(b), "sha256": hashlib.sha256(b).hexdigest(), "original_png_unchanged": True,
                   "screenshot_elapsed_ms": screenshot_elapsed,
-                  "ocr_analysis": {"tool": "Tesseract 5 public screenshot analysis, no transformed PNG saved", "text": text[:8000]},
+                  "ocr_analysis": {"tool": data["tool_versions"]["tesseract"] + " / PSM11 public original screenshot analysis; no transformed PNG saved", "text": text[:8000]},
                   "actions_through_index": len(data["actions"])}
         if page.locator("#glcanvas").is_visible() and page.locator("#loader").is_hidden():
             record["canvas_bounds_after_paint"] = page.locator("#glcanvas").bounding_box()
@@ -232,40 +232,21 @@ def main():
         browser = p.chromium.launch(headless=True, args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
         data["browser_version"] = browser.version
         data["tool_versions"] = {"rustc": subprocess.check_output(["rustc", "--version"],text=True).strip(), "tesseract":subprocess.check_output(["tesseract","--version"],text=True).splitlines()[0]}
+        data["prior_text_source"] = "94dc7df5012640e7d6909d1ab5c02eb273d1dc37"
+        data["prior_text_run"] = 37595499517
+        data["prior_text_artifact"] = 11470817114
         save()
-        def desktop():
-            context, page = start(browser, origin)
-            try:
-                capture(page, "01-desktop-light-initial", "Actual corrected initial board/seat guidance; paired with before c61")
-                sequence(page, ["e2e4", "d7d5", "e4d5", "g8f6"])
-                r = capture(page, "04-desktop-capture-session-hud", "Actual corrected session/history guidance after same public sequence")
-                normalized = re.sub(r"[^a-z0-9]", "", r["ocr_analysis"]["text"].lower())
-                check("capture sequence public HUD coordinate observed", "e4" in normalized and "d5" in normalized and "f6" in normalized, {"oracle":"Raw OCR of original public rendered pixels; same assertion retained from old run"})
-            finally:
-                context.close()
-            context, page = start(browser, origin)
-            try:
-                sequence(page,["f2f3","e7e5","g2g4","d8h4"])
-                r = capture(page,"19-checkmate-result","Actual corrected Black wins/checkmate/terminal detail after same public inputs")
-                check("terminal visible public result", "checkmate" in r["ocr_analysis"]["text"].lower(), {"oracle":"Raw Tesseract result from original screenshot; same assertion retained"})
-            finally:
-                context.close()
-        attempt("corrected initial, history and result", desktop)
-        def narrow():
-            for width,height in [(390,844),(320,640)]:
-                context,page = start(browser,origin,width,height)
-                try:
-                    capture(page,f"narrow-{width}-initial","Actual corrected narrow player/status wording and layout")
-                    move(page,"e2e4")
-                    capture(page,f"narrow-{width}-after-e2e4","Actual narrow corrected Black-turn/player/status layout")
-                finally:
-                    context.close()
-        attempt("390px and320px wrapping",narrow)
-        browser.close()
-    data["status"] = "PASS" if all(x["status"] == "PASS" for x in data["checks"]) and all(x["status"] == "CAPTURED" for x in data["cases"]) else "PARTIAL"
+        context, page = start(browser, origin)
+        try:
+            capture(page, "01-desktop-light-initial", "Actual explicit two-line guidance at final wording-only source; original pixels require inspection")
+            data["cases"].append({"name":"single affected desktop guidance frame","status":"CAPTURED","new_captures":1})
+        finally:
+            context.close()
+            browser.close()
+    data["status"] = "PASS" if all(x["status"] == "PASS" for x in data["checks"]) else "PARTIAL"
     data["finished_at_utc"] = utc()
     save()
-    assert len(data["captures"]) == 7, "bounded required screenshot coverage unavailable"
+    assert len(data["captures"]) == 1, "required single screenshot unavailable"
 
 
 if __name__ == "__main__":

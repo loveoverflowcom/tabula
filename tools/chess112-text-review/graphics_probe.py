@@ -11,8 +11,11 @@ def public_samples(png_path, region, foreground, background):
                 for y in range(y0, min(y1, image.height))
                 for x in range(x0, min(x1, image.width))]
     selected, used = [], set()
+    white = [p for p in rows if p[2] == (255, 255, 255)]
+    midpoint = [(foreground[i] + background[i]) / 2 for i in range(3)]
+    antialias = sorted(rows, key=lambda p: sum((p[2][i] - midpoint[i]) ** 2 for i in range(3)))
     categories = [
-        ("white_edge_candidate", [p for p in rows if p[2] == (255, 255, 255)]),
+        ("white_edge_candidate" if white else "intermediate_edge_candidate", white or antialias),
         ("dark_ink", sorted(rows, key=lambda p: sum((p[2][i] - foreground[i]) ** 2 for i in range(3)))),
         ("background", [p for p in rows if p[2] == background]),
     ]

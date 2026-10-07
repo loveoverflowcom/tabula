@@ -1,4 +1,4 @@
-name: bounded-chess112-text
+name: bounded-chess112-wording
 on:
   push:
     branches: ['evidence/chess112-text-capture-20261007']
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: bounded-chess112-text-${{ github.ref }}
+  group: bounded-chess112-wording-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   actual-chess-graphics:
@@ -23,7 +23,7 @@ jobs:
         with: {path: harness}
       - uses: actions/checkout@v4
         with:
-          ref: 94dc7df5012640e7d6909d1ab5c02eb273d1dc37
+          ref: 5153dcfcba96e6c5789d605be6ae12c1057fd760
           path: actual-src
       - uses: dtolnay/rust-toolchain@master
         with: {toolchain: '1.96', targets: wasm32-unknown-unknown}
@@ -45,13 +45,13 @@ jobs:
           cargo clean --locked
           cargo build --locked -p tabula-game-client --no-default-features --features web --bin tabula-game-client --target wasm32-unknown-unknown --profile wasm-release
           cargo xtask stage-wasm-game
-      - name: Narrow corrected HUD screenshots and read-only graphics sample
-        run: python3 harness/tools/chess112-text-review/capture.py --source-root actual-src --output verification/chess112-text
+      - name: Single final guidance screenshot and read-only edge sample
+        run: python3 harness/tools/chess112-text-review/capture.py --source-root actual-src --output verification/chess112-wording
       - name: Preserve original screenshots and exact-source receipts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: actual-chess112-text-runtime
-          path: verification/chess112-text
+          name: actual-chess112-wording-runtime
+          path: verification/chess112-wording
           if-no-files-found: error
           retention-days: 14
