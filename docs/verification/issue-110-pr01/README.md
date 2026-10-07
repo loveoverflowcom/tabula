@@ -51,8 +51,9 @@ dependency/game-id/manifest checks, generated tokens/raw-color checks and
 `cargo deny`. Workspace compilation passed with both `--no-default-features`
 and `--all-features`; both services also compiled with `--all-features` for
 `wasm32-unknown-unknown`, preserving their native-only runtime boundaries.
-The shared online Python helper suite passed 168 tests; direct transport and
-standalone browser JavaScript suites passed 26 and 62 tests respectively.
+The shared online Python helper suite passed 168 tests. The current gameplay
+web JavaScript suite passed 123 tests, including 27 direct-transport tests,
+with `node --test --test-isolation=none apps/game-client/web/tests/*.test.cjs`.
 An ignored PostgreSQL test in the default suite is not a PASS.
 
 The continuity investigation found two separate harness sequencing defects:
@@ -67,7 +68,7 @@ An actual committed-crash probe then confirmed a separate transport defect:
 the session adapter's supported `PublicProblem` rejection has `version`,
 `status`, `title` and `code`; the client only recognized the gateway's one-field
 `request_rejected` problem. Exact media/no-store headers and the complete body
-were observed. The client compatibility fix must recognize the two closed forms
+were observed. The client compatibility fix recognizes the two closed forms
 without accepting malformed/duplicate/extra fields, or making rejected input
 successful; fresh context/grant/attachment remains necessary before render/retry.
 

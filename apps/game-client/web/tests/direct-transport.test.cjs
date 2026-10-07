@@ -360,6 +360,12 @@ test("nonexact or untrusted403 and genuine401 cannot become automatic context re
     ['{"version":1,"status":403,"title":"Other rejection","code":"request_rejected"}',403,true],
     ['{"version":1,"status":403,"title":"Request rejected","code":"match_unavailable"}',403,true],
     ['\uFEFF{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"}\u2028',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"\u2028}',403,true],
+    ['{"version":1.0,"status":403,"title":"Request rejected","code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"title":null,"code":"request_rejected"}',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","code":true}',403,true],
+    ['{"version":1,"status":403,"title":"Request rejected","\\u0063ode":"request_rejected"}',403,true],
     ['[{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"}]',403,true],
     ['{"version":1,"status":403,"title":"Request rejected","code":"request_rejected",}',403,true],
   ];
@@ -372,12 +378,13 @@ test("nonexact or untrusted403 and genuine401 cannot become automatic context re
 });
 
 test("missing or interrupted403 problem body cannot start automatic context recovery",async()=>{
-  for(const missing of [true,false]){
+  for(const body of [null,'{"code":"request_rejected"}','{"version":1,"status":403,"title":"Request rejected","code":"request_rejected"}']){
+    const missing=body===null;
     const storage=memoryStorage();let released=false,calls=0,unavailable=0;
     const f=fixture(authFetcher(()=>{
       calls++;
       if(missing)return new Response(null,{status:403,headers:{"Cache-Control":"no-store","Content-Type":"application/problem+json"}});
-      return {status:403,redirected:false,headers:new Headers({"Cache-Control":"no-store","Content-Type":"application/problem+json"}),body:{getReader(){return {async read(){throw new Error("private-body");},releaseLock(){released=true;}};}}};
+      return {status:403,redirected:false,headers:new Headers({"Cache-Control":"no-store","Content-Type":"application/problem+json"}),body:{getReader(){let reads=0;return {async read(){if(reads++===0)return {done:false,value:new TextEncoder().encode(body)};throw new Error("private-body");},releaseLock(){released=true;}};}}};
     }),{storage,onUnavailable(){unavailable++;}});
     await f.transport.file("tabula-online-attach.txt");
     await assert.rejects(f.transport.file("tabula-online-command/"+hex('{"seq":1}')),error=>!error.message.includes("private-body"));

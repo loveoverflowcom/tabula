@@ -26,13 +26,13 @@
     // literal members before parsing so duplicate keys cannot be erased by JSON.
     const text = new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes);
     const object = /^[ \t\r\n]*\{([\s\S]*)\}[ \t\r\n]*$/.exec(text);
-    if (!object) return false;
+    if (!object || object[0] !== text) return false;
     const members = object[1].split(","), keys = new Set();
     if (members.length !== 1 && members.length !== 4) return false;
     const values = {code:'"request_rejected"',version:"1",status:"403",title:'"Request rejected"'};
     for (const member of members) {
       const pair = /^[ \t\r\n]*"(code|version|status|title)"[ \t\r\n]*:[ \t\r\n]*("request_rejected"|"Request rejected"|1|403)[ \t\r\n]*$/.exec(member);
-      if (!pair || pair[2] !== values[pair[1]] || keys.has(pair[1])) return false;
+      if (!pair || pair[0] !== member || pair[2] !== values[pair[1]] || keys.has(pair[1])) return false;
       keys.add(pair[1]);
     }
     return keys.has("code") && (keys.size === 1 || keys.size === 4);
