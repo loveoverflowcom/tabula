@@ -1,0 +1,6 @@
+{
+  "name": "Tabula",
+  "description": "Deterministic, server-authoritative board game platform featuring Chess, Tic-Tac-Toe / Caro, Tiles, and Cards with local match simulation, rooms, analysis, and discovery.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
