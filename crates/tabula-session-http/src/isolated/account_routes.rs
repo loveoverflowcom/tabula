@@ -96,6 +96,24 @@ impl<A: HttpSessionAuthority + EnrollmentAuthority + AccountProfileAuthority + C
         state.account_readiness = Some(Arc::new(state.authority.clone()));
         Ok(self)
     }
+    /// Current-authority profile routes for the gameplay service (ADR-0047).
+    /// Provider enrollment and session issuance remain in the auth composition.
+    pub fn profile_router(&self) -> Router
+    where
+        A::ProfilePublication: 'static,
+    {
+        Router::new()
+            .route(
+                "/api/v2/profiles/me",
+                get(self_profile::<A>).merge(patch(update_profile::<A>)),
+            )
+            .route(
+                "/api/v2/profiles/by-handle/{handle}",
+                get(other_profile::<A>),
+            )
+            .with_state(Arc::clone(&self.state))
+            .layer(middleware::from_fn(no_store))
+    }
     /// Full explicitly enabled isolated account composition, without a listener.
     pub fn router_with_accounts<
         P: BrowserLoginProvider + BrowserEnrollmentProvider + Clone + 'static,
@@ -111,20 +129,14 @@ impl<A: HttpSessionAuthority + EnrollmentAuthority + AccountProfileAuthority + C
             provider: provider.clone(),
         });
         let enrollment_login: LoginProvider = Arc::new(EnrollmentLogin(provider.clone()));
+        let profiles = self.profile_router();
         let account = Router::new()
             .route("/api/v2/auth/enrollment/start", post(start::<A>))
             .route("/api/v2/auth/enrollment", get(enrollment_context::<A>))
             .route("/api/v2/auth/register", post(register::<A>))
-            .route(
-                "/api/v2/profiles/me",
-                get(self_profile::<A>).merge(patch(update_profile::<A>)),
-            )
-            .route(
-                "/api/v2/profiles/by-handle/{handle}",
-                get(other_profile::<A>),
-            )
             .with_state(Arc::clone(&self.state));
         account
+            .merge(profiles)
             .merge(self.routes(Some(Arc::new(provider))))
             .layer(Extension(enrollment))
             .layer(Extension(EnrollmentLoginProvider(enrollment_login)))

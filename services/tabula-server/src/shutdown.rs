@@ -1,5 +1,3 @@
-//! PHASE 4 — graceful drain; doc 06 §11.3.
-//!
-//! TODO(phase 4): on SIGTERM stop new attaches, snapshot/flush live matches,
-//! send Draining and close 4411 within the bounded drain deadline; lazy rehydrate
-//! on the next attach. Prove zero lost committed inputs with integration evidence.
+//! Production deploy/WS drain remains gated; doc 06 §11.3.
+//! ADR-0047's local/dev HTTP/social/actor deadline lives in `local_dev::serve`.
+//! TODO(phase 4): prove fleet rolling-deploy drain and production connection handoff.

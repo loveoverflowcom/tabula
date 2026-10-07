@@ -25,6 +25,8 @@ match-postgres-test-support = ["match-postgres"]
 online-match-postgres = ["session-postgres", "match-postgres"]
 # Disposable PR3 controls, never selected by an application or production service.
 online-match-test-support = ["online-match-postgres", "match-postgres-test-support"]
+# Issue #110 PR01: explicitly selected local/dev composition, never production.
+local-dev-postgres = ["social-postgres", "online-match-postgres"]
 
 # Optional native infrastructure has its own documented MSRV; default/storage
 # and the deterministic SDK retain the workspace declaration (ADR-0036).
@@ -36,6 +38,7 @@ match-postgres = "1.94"
 match-postgres-test-support = "1.94"
 online-match-postgres = "1.94"
 online-match-test-support = "1.94"
+local-dev-postgres = "1.94"
 
 [dependencies]
 tabula-core     = { workspace = true }
@@ -67,4 +70,3 @@ tokio = { workspace = true }
 
 [lints]
 workspace = true
-

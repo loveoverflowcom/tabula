@@ -1086,7 +1086,7 @@ async fn real_postgres_online_dataset_lifetime_room_bound_is_atomic() {
                 2
             )
             .await,
-        Err(OnlineMatchError::Busy)
+        Err(OnlineMatchError::CapacityExceeded)
     ));
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM online_match_rooms")
         .fetch_one(&f.observer)
@@ -1290,6 +1290,39 @@ async fn real_postgres_online_join_resamples_code_expiry_after_actual_room_wait(
 
 #[tokio::test]
 #[ignore = "requires explicit disposable PostgreSQL 16"]
+async fn real_postgres_online_configured_lifetime_capacity_cannot_overbook() {
+    let f = Fixture::new().await;
+    let owner = enroll(&f.first, 91_001, 92_001).await;
+    let store = PgOnlineMatchStore::with_lifetime_room_capacity(f.first.clone(), 1).unwrap();
+    let create = |id: u128, code: u8| {
+        store.create(
+            owner.operation,
+            MatchId(id),
+            [code; 32],
+            game(),
+            version(),
+            canonical_encode(&5_u64).unwrap(),
+            2,
+        )
+    };
+    let (first, second) = tokio::join!(create(93_001, 1), create(93_002, 2));
+    assert!(
+        (first.is_ok() && matches!(second, Err(OnlineMatchError::CapacityExceeded)))
+            || (second.is_ok() && matches!(first, Err(OnlineMatchError::CapacityExceeded)))
+    );
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM online_match_rooms")
+        .fetch_one(&f.observer)
+        .await
+        .unwrap();
+    assert_eq!(
+        count, 1,
+        "directory exclusion must preserve the configured bound"
+    );
+    f.close().await;
+}
+
+#[tokio::test]
+#[ignore = "requires explicit disposable PostgreSQL 16"]
 async fn real_postgres_online_dataset_lifetime_capacity_retains_completed_and_expired_ids() {
     let f = Fixture::new().await;
     let owner = enroll(&f.first, 77_777, 88_888).await;
@@ -1338,7 +1371,7 @@ async fn real_postgres_online_dataset_lifetime_capacity_retains_completed_and_ex
                 2,
             )
             .await,
-        Err(OnlineMatchError::Busy)
+        Err(OnlineMatchError::CapacityExceeded)
     ));
     let after_counts: (i64, i64, i64, i64, i64) = sqlx::query_as(counts_sql)
         .fetch_one(&f.observer)

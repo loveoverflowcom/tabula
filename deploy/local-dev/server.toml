@@ -1,0 +1,12 @@
+# Both services require the same operator-generated CSRF key via their CSRF_KEY environment override.
+# Set TABULA_SERVER_DATABASE_URL in the process environment; never commit it.
+mode = "local-dev"
+bind = "127.0.0.1:3002"
+browser_origin = "https://app.localhost:8444"
+schema_policy = "check"
+pool_connections = 8
+lifetime_room_capacity = 16
+request_capacity = 16
+work_capacity = 16
+live_match_capacity = 16
+drain_seconds = 15

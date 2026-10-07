@@ -212,6 +212,17 @@ impl<A: HttpSessionAuthority + 'static> IsolatedSessionHttp<A> {
         })
     }
 
+    /// Configure a distinct operator-generated 32-byte CSRF key for the two
+    /// local/dev adapters at the same origin (ADR-0047), before cloning.
+    /// This grants no session/resource authority and does not share signed-out
+    /// login flows: their context and callback remain owned by auth.
+    pub fn with_csrf_key(mut self, encoded: &str) -> Result<Self, SessionError> {
+        SessionCredential::parse(encoded)?;
+        let state = Arc::get_mut(&mut self.state).ok_or(SessionError::Conflict)?;
+        encoded.clone_into(&mut state.csrf_key);
+        Ok(self)
+    }
+
     /// Exact read transport plus current credential observation. Returned facts
     /// are snapshots; every effect/private output requires another durable fence.
     pub async fn authenticate_read(

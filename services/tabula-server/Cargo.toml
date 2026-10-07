@@ -26,15 +26,36 @@ publish.workspace      = true
 [features]
 default = []
 online-match = ["dep:tabula-match-http"]
+local-dev = ["online-match", "dep:tabula-storage", "dep:tabula-session-http", "dep:tabula-session", "dep:tabula-registry", "dep:tokio", "dep:axum", "dep:serde", "dep:figment", "dep:url"]
 
 [package.metadata.tabula-msrv]
 online-match = "1.94"
+local-dev = "1.94"
 
 [dependencies]
 tabula-core = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tabula-match-http = { workspace = true, optional = true, features = ["isolated"] }
+tabula-storage = { workspace = true, optional = true, features = ["local-dev-postgres"] }
+tabula-session-http = { workspace = true, optional = true, features = ["social"] }
+tabula-session = { workspace = true, optional = true }
+tabula-registry = { workspace = true, optional = true, features = ["game-chess", "game-tiles"] }
+tokio = { workspace = true, optional = true, features = ["net"] }
+axum = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+figment = { workspace = true, optional = true }
+url = { workspace = true, optional = true }
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tabula-session = { workspace = true }
+tabula-protocol = { workspace = true }
+tabula-match = { workspace = true, features = ["isolated"] }
+tabula-registry = { workspace = true, features = ["test-support"] }
+serde_json = { workspace = true }
 
 # Phase 4 — uncomment with the first route.
 # tabula-protocol = { workspace = true }

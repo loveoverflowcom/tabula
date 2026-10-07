@@ -1,8 +1,9 @@
 //! Bounded isolated join-code admission and live durable apply/commit authority.
 //! SQL stays storage-owned (I-15). Registry owns game/config meaning. No production
 //! listener, automatic migration, seat replacement or reconnect acceptance is opened.
-//! The disposable dataset admits at most 128 distinct room IDs over its lifetime,
-//! including completed and expired waiting rooms. This is not reusable capacity.
+//! The selected dataset admits a configured maximum of 1–128 distinct room IDs
+//! over its lifetime, including completed and expired waiting rooms. This is not
+//! reusable capacity; reclaiming active capacity belongs to issue #110 PR02.
 
 use crate::session::{LockedCredential, PgSessionPublication, PgSessionStore};
 use sqlx::{PgPool, Postgres, Transaction};
@@ -45,6 +46,8 @@ pub enum OnlineMatchError {
     Unavailable,
     #[error("busy")]
     Busy,
+    #[error("room capacity exhausted")]
+    CapacityExceeded,
     #[error("join unavailable")]
     JoinUnavailable,
     #[error("rate limited")]
@@ -123,6 +126,7 @@ impl fmt::Debug for OnlineMembership {
 #[derive(Clone)]
 pub struct PgOnlineMatchStore {
     pool: PgPool,
+    lifetime_room_capacity: i64,
 }
 impl fmt::Debug for PgOnlineMatchStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -173,7 +177,24 @@ impl RoomRow {
 }
 impl PgOnlineMatchStore {
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            lifetime_room_capacity: MAX_DATASET_LIFETIME_ROOMS,
+        }
+    }
+    /// Limits historical IDs without weakening the reviewed 128-owner ceiling.
+    /// Expired/completed IDs retain their slots until PR02 defines reclamation.
+    pub fn with_lifetime_room_capacity(
+        pool: PgPool,
+        capacity: u16,
+    ) -> Result<Self, OnlineMatchError> {
+        if !(1..=128).contains(&capacity) {
+            return Err(OnlineMatchError::InvalidInput);
+        }
+        Ok(Self {
+            pool,
+            lifetime_room_capacity: i64::from(capacity),
+        })
     }
     /// Embedded reviewed migration versions, sorted without database I/O.
     pub fn migration_versions() -> Vec<i64> {
@@ -242,7 +263,7 @@ impl PgOnlineMatchStore {
         let (mut tx, snapshot) = observe_or_commit(tx, &mut authority).await?;
         let now = snapshot.last_observed_at().get();
         check_user_capacity(&mut tx, snapshot.user_id(), now).await?;
-        check_dataset_lifetime_capacity(&mut tx).await?;
+        check_dataset_lifetime_capacity(&mut tx, self.lifetime_room_capacity).await?;
         let deadline = now
             .checked_add(CODE_LIFETIME_MS)
             .ok_or(OnlineMatchError::Unavailable)?;
@@ -565,13 +586,14 @@ async fn check_user_capacity(
 /// Completion and code expiry do not release a resident-owner/dataset slot.
 async fn check_dataset_lifetime_capacity(
     tx: &mut Transaction<'_, Postgres>,
+    capacity: i64,
 ) -> Result<(), OnlineMatchError> {
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM online_match_rooms")
         .fetch_one(&mut **tx)
         .await
         .map_err(unavailable)?;
-    if count >= MAX_DATASET_LIFETIME_ROOMS {
-        return Err(OnlineMatchError::Busy);
+    if count >= capacity {
+        return Err(OnlineMatchError::CapacityExceeded);
     }
     Ok(())
 }

@@ -1,4 +1,5 @@
 //! Storage-backed current actor authority and bounded server-private queues.
+use super::native_lifecycle::OwnerLifecycle;
 use super::{now_ms, problem, unavailable, Response, StatusCode};
 use crate::{MAX_BUFFERED_FRAMES, MAX_RESPONSE_BYTES};
 use std::{
@@ -29,6 +30,7 @@ pub(super) struct LiveMatch {
     pub output: Arc<QueueOutput>,
     pub gate: Arc<AsyncMutex<()>>,
     pub owner_task: tokio::task::AbortHandle,
+    pub lifecycle: OwnerLifecycle,
 }
 pub(super) struct NetworkClock {
     start: Instant,

@@ -27,6 +27,7 @@ shared evidence/status vocabulary.
 | [Trusted HTTPS Origin](issue-74-trusted-origin/README.md) | #74 F1 fail-fast configuration, constructor/property/wire regressions and remaining session-review gates |
 | [Offline match actor](isolated-match-actor/README.md) | ADR-0039 historical isolated ordering/authority/privacy/wire evidence; no SQL durability inferred |
 | [Durable match PostgreSQL](durable-match-postgres/README.md) | ADR-0040 atomic canonical/snapshot/ledger commit, durable scopes/fencing and exact bounded recovery; actual statuses distinguish DB/process/local/CI evidence |
+| [Issue #110 PR01](issue-110-pr01/README.md) | Local/dev service composition, checked schema readiness, shared session authority, bounded drain and exact restart evidence; browser/continuity limits recorded separately |
 
 UI-specific ledgers remain beside their contracts in
 [`docs/ui/screens/`](../ui/screens/README.md). Optional tool installation and

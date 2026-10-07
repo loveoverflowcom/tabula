@@ -148,7 +148,17 @@ canvas), served by a minimal HTML page that boots `game.wasm` with bounded publi
 parameters. Under [ADR-0031](../adr/0031-browser-native-session-contract.md), the
 same-origin document authenticates with its HttpOnly cookie and obtains a fresh
 scoped join grant by HTTP, held only in memory. No credential/grant travels in
-URL or sessionStorage. This networked handoff remains future-phase work.
+URL or sessionStorage. General networked handoff remains future-phase work;
+the bounded implemented exception follows.
+
+The bounded direct-match implementation is available under ADR-0041/0042;
+[ADR-0047](../adr/0047-local-dev-backend-lifecycle.md) composes its existing
+HTTP polling client with explicitly opted-in local/dev services and the
+account/social shell. Fresh current context, grant and attachment precede any
+restored projection or pending command retry. Unsupported authority responses
+fail closed, and a retry never treats rejected input as accepted. This does
+not implement room/ready/start or result/history/rematch, or open native/mobile
+or production.
 
 ### 3.2 Why separate bundles (ADR-011)
 

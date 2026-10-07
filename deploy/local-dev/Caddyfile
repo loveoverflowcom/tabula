@@ -1,0 +1,17 @@
+# Run from the repository root. This is a localhost edge, not deployment config.
+https://app.localhost:8444 {
+    tls internal
+    @auth path /api/v1/auth/context /api/v1/auth/login /api/v1/auth/oidc/callback /api/v1/auth/refresh /api/v1/auth/logout /api/v2/auth/*
+    handle @auth {
+        reverse_proxy 127.0.0.1:3001
+    }
+    @backend path /api/* /healthz /readyz
+    handle @backend {
+        reverse_proxy 127.0.0.1:3002
+    }
+    handle {
+        root * apps/web/dist
+        try_files {path} {path}/index.html /index.html
+        file_server
+    }
+}

@@ -215,6 +215,12 @@ PostgreSQL and browser acceptance are required for completion.
 
 ---
 
+[ADR-0047](docs/adr/0047-local-dev-backend-lifecycle.md) opens #110 PR01's explicit
+non-default native local/dev service composition, real checked readiness and
+bounded drain using existing authority/storage libraries. Default startup and
+production remain closed. Room/ready/start and result/history/rematch follow in
+PR02/PR03; no whole-phase exit is implied.
+
 ## 5. Before you open a pull request
 
 ```bash

@@ -3,3 +3,6 @@
 #![forbid(unsafe_code)]
 #[cfg(all(feature = "online-match", not(target_arch = "wasm32")))]
 pub use tabula_match_http::isolated::IsolatedMatchHttp;
+
+#[cfg(all(feature = "local-dev", not(target_arch = "wasm32")))]
+pub mod local_dev;

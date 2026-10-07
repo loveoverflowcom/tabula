@@ -4,6 +4,17 @@
 > [`03`](./03-backend-and-multiplayer-plan.md).
 > **Status: LOCK NOW** for the envelope shape, the dual-codec design, and the replay model.
 
+### Local/dev carrier continuity
+
+[ADR-0047](../adr/0047-local-dev-backend-lifecycle.md) opens the explicitly opted-in
+native local/dev auth and gameplay service leaves using existing PostgreSQL,
+session/account/social and registry-backed match authority. The
+[runbook](../local-dev-backend.md) documents typed configuration, check/apply
+migration policy, real readiness, one HTTPS origin and bounded shutdown.
+Existing match HTTP version 2/wire 0.1, exact recovery and disclosure fences
+remain unchanged. PR02 Room/ready/start and PR03 result/history/rematch follow;
+production, native/mobile and whole-phase exits remain separate.
+
 ---
 
 ## 1. Goals and constraints

@@ -13,7 +13,8 @@
 //! The default production entrypoint opens no listener or provider flow.
 //! ADR-0038 implements invited web OIDC only in the native opt-in library and
 //! disposable acceptance; no production activation is inferred.
-//! Remove each TODO when its implementation and required evidence land.
+//! ADR-0047 opens an explicit native loopback `local-dev` CLI using this library.
+//! Production deployment and provider security-event synchronization remain gated.
 
 #![forbid(unsafe_code)]
 
