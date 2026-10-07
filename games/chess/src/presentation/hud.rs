@@ -737,6 +737,7 @@ pub(super) fn draw(
             1,
         )?)?;
         let label_x = icon_size + 16.0;
+        let label_width = (rect.size().x - label_x - reserve - 18.0).max(0.0);
         text(
             builder,
             format!(
@@ -751,18 +752,23 @@ pub(super) fn draw(
             rect.origin() + Vec2::new(label_x, 1.0),
             TextStyleToken::LabelLg,
             art.ink,
-            (rect.size().x - label_x - reserve - 18.0).max(0.0),
+            label_width,
             Layer::HUD,
             1,
         )?;
         if rect.size().y >= 44.0 {
-            let label = if local.control_color == Some(color) {
+            let label = if local.hot_seat_controls && !matches!(view.status, Status::Playing) {
+                "Finished"
+            } else if local.control_color == Some(color) {
                 "Controlling"
             } else if local.hot_seat_controls {
                 "Tap to control"
             } else {
                 match view.you {
                     Some(you) if you == color => "Your seat",
+                    // Leave a little advance margin for the 14px loaded face
+                    // beside projected clocks; wide bars keep the full label.
+                    Some(_) if label_width < 104.0 => "Opponent",
                     Some(_) => "Opponent seat",
                     None => "Spectating",
                 }
@@ -773,7 +779,7 @@ pub(super) fn draw(
                 rect.origin() + Vec2::new(label_x, 22.0),
                 TextStyleToken::BodyMd,
                 art.ink,
-                (rect.size().x - label_x - reserve - 18.0).max(0.0),
+                label_width,
                 Layer::HUD,
                 1,
             )?;
@@ -2147,6 +2153,95 @@ mod compact_design_regressions {
                     frame.theme().game_art.chess.ink
                 })));
         }
+    }
+
+    #[test]
+    fn accepted_terminal_position_does_not_advertise_disabled_hotseat_controls() {
+        let mut state = crate::State::initial();
+        state.clock = Some(crate::ClockState {
+            remaining: [tabula_core::Millis(300_000); 2],
+            last_move_at: tabula_core::LogicalTime::ZERO,
+            control: crate::ClockControl::Fischer {
+                increment: tabula_core::Millis::ZERO,
+            },
+        });
+        let mut rng = tabula_core::DetRng::for_input(
+            &tabula_core::MatchSeed::from_bytes([0; 32]),
+            tabula_core::InputIndex(0),
+        );
+        let mut ctx = tabula_game_api::Ctx {
+            now: tabula_core::LogicalTime::ZERO,
+            index: tabula_core::InputIndex(0),
+            rng: &mut rng,
+            budget: tabula_game_api::Budget::default(),
+        };
+        ChessRules::apply(
+            &mut state,
+            tabula_game_api::Input::Player {
+                seat: ChessColor::White.seat(),
+                command: Command::Resign,
+            },
+            &mut ctx,
+        )
+        .unwrap();
+        let view = ChessRules::project(&state, Viewer::Seat(SeatId(0)));
+        assert!(matches!(view.status, Status::Ended { .. }));
+        assert!(view.actions.is_empty());
+        for control in [None, Some(ChessColor::White), Some(ChessColor::Black)] {
+            let (_, mut local, layout, frame) = setup(768.0, 480.0);
+            local.set_hot_seat_controls(true);
+            local.control_color = control;
+            let focus = graph(&controls(&view, &local, layout));
+            assert!(!focus.contains(CONTROL_TOP));
+            assert!(!focus.contains(CONTROL_BOTTOM));
+            let list = ChessPresentation::present(&view, &local, &frame);
+            let captions: Vec<_> = list
+                .commands()
+                .iter()
+                .filter_map(|command| match command {
+                    RenderCmd::Text { text, .. } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(
+                captions.iter().filter(|text| **text == "Finished").count(),
+                2
+            );
+            assert!(!captions.contains(&"Tap to control"));
+            assert!(!captions.contains(&"Controlling"));
+        }
+    }
+
+    #[test]
+    fn clocked_narrow_player_hint_preserves_ownership_without_widening_the_slot() {
+        let mut state = crate::State::initial();
+        state.clock = Some(crate::ClockState {
+            remaining: [tabula_core::Millis(300_000); 2],
+            last_move_at: tabula_core::LogicalTime::ZERO,
+            control: crate::ClockControl::Fischer {
+                increment: tabula_core::Millis::ZERO,
+            },
+        });
+        let view = ChessRules::project(&state, Viewer::Seat(SeatId(0)));
+        let (_, local, layout, frame) = setup(768.0, 480.0);
+        let list = ChessPresentation::present(&view, &local, &frame);
+        assert!(list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, at, style: TextStyleToken::BodyMd, max_width: Some(width), .. }
+                if text == "Opponent"
+                    && (at.y - layout.top_player.origin().y - 22.0).abs() < 0.001
+                    && (width.get() - 93.2).abs() < 0.001)));
+        assert!(list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, .. } if text == "Your seat")));
+        assert!(!list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, .. } if text == "Opponent seat")));
+        assert_eq!(
+            list.commands()
+                .iter()
+                .filter(|command| matches!(command,
+                RenderCmd::Text { text, style: TextStyleToken::MonoMd, .. } if text == "5:00"))
+                .count(),
+            2
+        );
     }
 
     #[test]
