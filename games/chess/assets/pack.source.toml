@@ -24,6 +24,26 @@ source = "cover@2x.png"
 priority = "high"
 density = 2
 
+[[files]]
+name = "COPYRIGHT.txt"
+source = "source/pieces/COPYRIGHT.txt"
+priority = "low"
+
+[[files]]
+name = "LICENSE-Apache-2.0.txt"
+source = "source/pieces/LICENSE-Apache-2.0.txt"
+priority = "low"
+
+[[files]]
+name = "NOTICE.txt"
+source = "source/pieces/NOTICE.txt"
+priority = "low"
+
+[[files]]
+name = "PIECE-PROVENANCE.md"
+source = "source/pieces/PIECE-PROVENANCE.md"
+priority = "low"
+
 [[resources]]
 id = "pieces/white-king"
 

@@ -40,7 +40,7 @@ pub struct LocalSpriteResources {
     gameplay: Vec<AssetRef>,
     shared_images: &'static [(&'static str, &'static [u8])],
     #[cfg(not(target_arch = "wasm32"))]
-    images: &'static [(&'static str, &'static [u8])],
+    files: &'static [(&'static str, &'static [u8])],
 }
 
 impl LocalSpriteResources {
@@ -72,7 +72,7 @@ impl LocalSpriteResources {
             gameplay,
             shared_images: &[],
             #[cfg(not(target_arch = "wasm32"))]
-            images: &[],
+            files: &[],
         })
     }
 
@@ -86,14 +86,21 @@ impl LocalSpriteResources {
         self
     }
 
-    /// Supplies the native host's tiny embedded fixtures, never original artwork.
+    /// Supplies the native host's tiny embedded texture fixtures.
     #[cfg(not(target_arch = "wasm32"))]
     #[must_use]
-    pub fn with_embedded_images(
-        mut self,
-        images: &'static [(&'static str, &'static [u8])],
-    ) -> Self {
-        self.images = images;
+    pub fn with_embedded_images(self, images: &'static [(&'static str, &'static [u8])]) -> Self {
+        self.with_embedded_files(images)
+    }
+
+    /// Retains the native host's complete bounded physical pack, including text.
+    ///
+    /// Files remain fetchable only through the bound manifest. Scene declarations
+    /// select textures; legal attachments are retained without decode or upload.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[must_use]
+    pub fn with_embedded_files(mut self, files: &'static [(&'static str, &'static [u8])]) -> Self {
+        self.files = files;
         self
     }
 
@@ -221,7 +228,7 @@ impl AssetSource for LocalSpriteResources {
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            self.images
+            self.files
                 .iter()
                 .find(|(name, _)| *name == file.name().as_str())
                 .map(|(_, bytes)| UnverifiedAssetBytes::new(bytes.to_vec()))
@@ -274,8 +281,9 @@ pub async fn preload_sprite_fixture(
 ///
 /// Unlike the legacy density-only fixture helper, this permits several files
 /// at one density and a density-independent cover without ambiguous selection.
-/// Every file still goes through pack binding, integrity checks and bounded
-/// renderer decode. Repeated preloads reuse content-identified textures.
+/// Only files referenced by sprite resources go through bounded renderer
+/// decode. Unreferenced pack attachments (such as legal notices) stay outside
+/// texture loading. Repeated preloads reuse content-identified textures.
 pub async fn preload_named_sprite_fixture(
     renderer: &mut MacroquadRenderer,
     manifest_text: &str,
@@ -285,13 +293,14 @@ pub async fn preload_named_sprite_fixture(
 ) -> Result<(), String> {
     let manifest = AssetPackManifest::from_toml(manifest_text)
         .map_err(|error| format!("local art manifest: {error}"))?;
+    let sprite_files = sprite_fixture_files(&manifest);
     for (index, (name, _)) in images.iter().enumerate() {
         if images[..index].iter().any(|(previous, _)| previous == name) {
             return Err(format!("duplicate local art file: {name}"));
         }
     }
     let mut source = MemoryAssetSource::new();
-    for file in manifest.files() {
+    for file in &sprite_files {
         let bytes = images
             .iter()
             .find(|(name, _)| *name == file.name().as_str())
@@ -303,7 +312,7 @@ pub async fn preload_named_sprite_fixture(
         .assets_mut()
         .bind_pack(&manifest, game, pack)
         .map_err(|error| format!("local art binding: {error}"))?;
-    for file in manifest.files() {
+    for file in &sprite_files {
         let verified = load_verified(file, &source)
             .await
             .map_err(|error| format!("local art load: {error}"))?;
@@ -313,6 +322,20 @@ pub async fn preload_named_sprite_fixture(
             .map_err(|error| format!("local art texture: {error}"))?;
     }
     Ok(())
+}
+
+/// Select only physical files declared as sprite resource variants.
+fn sprite_fixture_files(manifest: &AssetPackManifest) -> Vec<&AssetFile> {
+    manifest
+        .files()
+        .iter()
+        .filter(|file| {
+            manifest.resources().iter().any(|resource| {
+                (0..resource.variant_count())
+                    .any(|index| resource.variant(index).unwrap().file() == file.name())
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -325,7 +348,9 @@ mod tests {
     };
     #[rustfmt::skip]
     use tabula_game_chess::presentation::assets; // xtask-allow-game-id: local Phase 2 fixture boundary regression only.
-    use tabula_render_macroquad::assets::{AssetCacheLimits, DecodedRaster};
+    use tabula_render_macroquad::assets::{
+        decode_verified_raster, AssetCacheLimits, DecodedRaster,
+    };
 
     fn ready<F: Future>(future: F) -> F::Output {
         let mut future = std::pin::pin!(future);
@@ -383,7 +408,7 @@ mod tests {
         let mut source = RecordingSource::default();
         let manifest = AssetPackManifest::from_toml(assets::MANIFEST).unwrap();
         for file in manifest.files() {
-            let bytes = assets::ALL_IMAGES
+            let bytes = assets::ALL_FILES
                 .iter()
                 .find(|(name, _)| *name == file.name().as_str())
                 .unwrap()
@@ -395,6 +420,84 @@ mod tests {
 
     fn density(value: u8) -> AssetDensity {
         AssetDensity::new(value).unwrap()
+    }
+
+    #[test]
+    fn native_embedded_pack_retains_verified_rights_without_texture_preload() {
+        let resources = resources().with_embedded_files(assets::ALL_FILES);
+        assert_eq!(resources.files.len(), resources.manifest.files().len());
+        for (name, expected) in assets::NOTICES {
+            let file = resources
+                .manifest
+                .files()
+                .iter()
+                .find(|file| file.name().as_str() == *name)
+                .unwrap();
+            let verified = ready(load_verified(file, &resources)).unwrap();
+            assert_eq!(verified.bytes(), *expected);
+        }
+        let mut cache = SpriteAssetCache::new(FixtureUploader, AssetCacheLimits::default());
+        for scene in [LocalAssetScene::Setup, LocalAssetScene::Gameplay] {
+            ready(resources.prepare_with_source(&mut cache, scene, density(1), &resources))
+                .unwrap();
+        }
+        assert_eq!(cache.stats().decodes, 2);
+        assert_eq!(cache.stats().uploads, 2);
+        assert_eq!(cache.stats().resident_textures, 2);
+    }
+
+    #[test]
+    fn sprite_fixture_preload_excludes_every_legal_attachment() {
+        let manifest = AssetPackManifest::from_toml(assets::MANIFEST).unwrap();
+        let selected = sprite_fixture_files(&manifest);
+        assert_eq!(selected.len(), assets::ALL_IMAGES.len());
+        assert_eq!(
+            manifest.files().len(),
+            selected.len() + assets::NOTICES.len()
+        );
+        for (name, _) in assets::ALL_IMAGES {
+            assert!(selected.iter().any(|file| file.name().as_str() == *name));
+        }
+        for (name, _) in assets::NOTICES {
+            assert!(!selected.iter().any(|file| file.name().as_str() == *name));
+        }
+    }
+
+    #[test]
+    fn licensed_piece_atlas_preserves_monochrome_pixels_and_transparent_gutters() {
+        let resources = resources();
+        for target in [1, 2] {
+            let file = resources
+                .selected_files(LocalAssetScene::Gameplay, density(target))
+                .unwrap()[0];
+            let source = recording_source();
+            let verified = ready(load_verified(file, &source)).unwrap();
+            let raster = decode_verified_raster(&verified, AssetCacheLimits::default()).unwrap();
+            let scale = u32::from(target);
+            let (width, height) = (u32::from(raster.width()), u32::from(raster.height()));
+            assert_eq!((width, height), (432 * scale, 144 * scale));
+            let mut visible = 0;
+            for (index, pixel) in raster.rgba().chunks_exact(4).enumerate() {
+                let x = u32::try_from(index).unwrap() % width;
+                let y = u32::try_from(index).unwrap() / width;
+                let in_region = (4 * scale..68 * scale).contains(&(x % (72 * scale)))
+                    && (4 * scale..68 * scale).contains(&(y % (72 * scale)));
+                if !in_region {
+                    assert_eq!(pixel[3], 0, "gutter at {x}, {y}");
+                }
+                if pixel[3] != 0 {
+                    assert_eq!(pixel[0], pixel[1], "piece recolored at {x}, {y}");
+                    assert_eq!(pixel[1], pixel[2], "piece recolored at {x}, {y}");
+                    visible += 1;
+                }
+            }
+            assert!(visible > 0);
+            assert_eq!(
+                source.requests.borrow().len(),
+                1,
+                "legal text must not join first-board loading"
+            );
+        }
     }
 
     #[test]

@@ -6,7 +6,7 @@
 
 #![allow(clippy::doc_markdown)]
 
-/// Bounded original Chess artwork, resolved through the renderer asset pack.
+/// Bounded licensed Chessnut artwork, resolved through the renderer asset pack.
 pub mod assets;
 
 mod hud;
@@ -1573,7 +1573,9 @@ fn piece_sprite(
     layer: Layer,
     z: i16,
 ) -> Result<RenderCmd, RenderListError> {
-    let inset = cell.size() * 0.055;
+    // Chessnut's square viewBox includes its authored transparent silhouette
+    // inset. Keep that aspect ratio and use 97% of the cell in board and trays.
+    let inset = cell.size() * 0.015;
     let rect = Rect::new(cell.origin() + inset, cell.size() - inset * 2.0)?;
     Ok(RenderCmd::Sprite {
         asset: assets::piece_asset(piece),
@@ -4919,11 +4921,62 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_arithmetic, clippy::float_cmp)]
+    fn classic_piece_viewports_are_upright_nearly_full_square_and_untinted_in_all_schemes() {
+        for theme in [
+            tabula_design::ThemeKind::Light,
+            tabula_design::ThemeKind::Dark,
+            tabula_design::ThemeKind::HighContrastLight,
+            tabula_design::ThemeKind::HighContrastDark,
+        ] {
+            let theme = Theme::by_kind(theme);
+            for size in [28.0, 36.0, 64.0] {
+                let cell = Rect::new(Vec2::new(8.0, 12.0), Vec2::splat(size)).unwrap();
+                for color in [ChessColor::White, ChessColor::Black] {
+                    for kind in [
+                        PieceKind::King,
+                        PieceKind::Queen,
+                        PieceKind::Bishop,
+                        PieceKind::Knight,
+                        PieceKind::Rook,
+                        PieceKind::Pawn,
+                    ] {
+                        let piece = Piece { color, kind };
+                        let RenderCmd::Sprite {
+                            asset,
+                            rect,
+                            tint,
+                            rotation,
+                            pivot,
+                            ..
+                        } = piece_sprite(piece, cell, &theme, Layer::PIECES, 0).unwrap()
+                        else {
+                            panic!("piece must remain a managed sprite");
+                        };
+                        assert_eq!(asset, assets::piece_asset(piece));
+                        assert_eq!(rect.size().x, rect.size().y);
+                        assert!((rect.size().x - size * 0.97).abs() < 0.001);
+                        assert_eq!(pivot, cell.origin() + cell.size() * 0.5);
+                        assert_eq!(rotation, 0.0);
+                        assert_eq!(
+                            (tint.red(), tint.green(), tint.blue(), tint.alpha()),
+                            (u8::MAX, u8::MAX, u8::MAX, u8::MAX)
+                        );
+                        assert!(
+                            rect.origin().x > cell.origin().x && rect.origin().y > cell.origin().y
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn chess_declares_typed_asset_pack_matching_metadata() {
         let pack = ChessPresentation::asset_pack();
-        assert_eq!(pack, AssetPackRef::from_static("chess", "0.1.0"));
-        assert_eq!(pack.to_string(), "chess@0.1.0");
+        assert_eq!(pack, AssetPackRef::from_static("chess", "0.3.0"));
+        assert_eq!(pack.to_string(), "chess@0.3.0");
         assert_eq!(pack.pack().as_str(), "chess");
-        assert_eq!(pack.version().as_str(), "0.1.0");
+        assert_eq!(pack.version().as_str(), "0.3.0");
     }
 }

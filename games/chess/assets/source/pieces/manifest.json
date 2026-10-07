@@ -1,110 +1,94 @@
 {
-  "name": "Tabula Carved Staunton",
-  "version": "1.0",
-  "viewBox": "0 0 96 96",
-  "intendedSize": "36\u201364px",
-  "palette": {
-    "w": {
-      "name": "Ivory",
-      "fill": "#F7F1E4",
-      "edge": "#273638",
-      "accent": "#B58D42",
-      "facet": "#FFFFFF",
-      "facet_opacity": ".66"
-    },
-    "b": {
-      "name": "Ink",
-      "fill": "#243E42",
-      "edge": "#C0A671",
-      "accent": "#C0A671",
-      "facet": "#5D8A80",
-      "facet_opacity": ".48"
-    }
-  },
+  "source_repository": "lichess-org/lila",
+  "source_commit": "5820854ca42e082891d6a47ceb3b57d33ebb7fe1",
+  "source_path": "public/piece/chessnut",
+  "author": "Alexis Luengas",
+  "license": "Apache-2.0",
+  "copyright": "Copyright 2015 Alexis Luengas",
   "pieces": [
     {
-      "id": "wK",
-      "color": "w",
-      "kind": "K",
-      "name": "Ivory king",
-      "file": "wK.svg"
+      "file": "wK.svg",
+      "upstream_blob_sha": "de4bc2906d01f315ff7ae32ce28762cb373adea0",
+      "sha256": "f64f2d088fe96a10fa77104cd1a42339e5495f56d6dcfda491298decbda7b2fa",
+      "bytes": 3740,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/wK.svg"
     },
     {
-      "id": "wQ",
-      "color": "w",
-      "kind": "Q",
-      "name": "Ivory queen",
-      "file": "wQ.svg"
+      "file": "wQ.svg",
+      "upstream_blob_sha": "f748b8591896a8a15d21f11d775e841fab0c050b",
+      "sha256": "2d20b17499c7c268ca87f3c4038a3b1335e0a087010037b0d854f2f7f84aa254",
+      "bytes": 2110,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/wQ.svg"
     },
     {
-      "id": "wB",
-      "color": "w",
-      "kind": "B",
-      "name": "Ivory bishop",
-      "file": "wB.svg"
+      "file": "wB.svg",
+      "upstream_blob_sha": "7a2fb6cee8cba0ad7582f133f0b841a0f44798dc",
+      "sha256": "ec62a67ea0212ec75e151ff673b2ef27e33e1732665839148dfdd27c357ab096",
+      "bytes": 3719,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/wB.svg"
     },
     {
-      "id": "wN",
-      "color": "w",
-      "kind": "N",
-      "name": "Ivory knight",
-      "file": "wN.svg"
+      "file": "wN.svg",
+      "upstream_blob_sha": "7ccaeda6c799dfb23ad26151da574f8d0c2b17c9",
+      "sha256": "f0fac07e481f7b31d1b074e458908f8fcad9ee4abdc76d84c274b8c4f438e388",
+      "bytes": 881,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/wN.svg"
     },
     {
-      "id": "wR",
-      "color": "w",
-      "kind": "R",
-      "name": "Ivory rook",
-      "file": "wR.svg"
+      "file": "wR.svg",
+      "upstream_blob_sha": "66484063755b46619dd9fe7cfb19bd4d7816bb23",
+      "sha256": "57d662b9b905a603e1cf28e36d61576dfd1a50695b23724c7189cd0f15736f03",
+      "bytes": 2235,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/wR.svg"
     },
     {
-      "id": "wP",
-      "color": "w",
-      "kind": "P",
-      "name": "Ivory pawn",
-      "file": "wP.svg"
+      "file": "wP.svg",
+      "upstream_blob_sha": "e27c1b94839a5adc2865b6c14205bcf9b34dd5e8",
+      "sha256": "81cde9f22edf3f750a282335a6d1367f011642d5a9bb8a94c6c6859ab1b326ea",
+      "bytes": 658,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/wP.svg"
     },
     {
-      "id": "bK",
-      "color": "b",
-      "kind": "K",
-      "name": "Ink king",
-      "file": "bK.svg"
+      "file": "bK.svg",
+      "upstream_blob_sha": "a231ff2517c37779eea3e0bf392b57c59d7dc1d7",
+      "sha256": "9e3c0ec404aec41dfabea96a204712c3feae80a456496ec0398499a1a77e642f",
+      "bytes": 2309,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/bK.svg"
     },
     {
-      "id": "bQ",
-      "color": "b",
-      "kind": "Q",
-      "name": "Ink queen",
-      "file": "bQ.svg"
+      "file": "bQ.svg",
+      "upstream_blob_sha": "89b1902ec3e9d366c1100ca642f49c900fac9415",
+      "sha256": "cf47f78c1ad9a99163e942f70365f8dd2b6d911011a5d8298be3d0596ad924a2",
+      "bytes": 5090,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/bQ.svg"
     },
     {
-      "id": "bB",
-      "color": "b",
-      "kind": "B",
-      "name": "Ink bishop",
-      "file": "bB.svg"
+      "file": "bB.svg",
+      "upstream_blob_sha": "894405574e484714e5619627961e13bd3a930640",
+      "sha256": "933697379921e0a36f17a6863f5324e7f05fa73b243dab3d94e5ce8c37d064c2",
+      "bytes": 3490,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/bB.svg"
     },
     {
-      "id": "bN",
-      "color": "b",
-      "kind": "N",
-      "name": "Ink knight",
-      "file": "bN.svg"
+      "file": "bN.svg",
+      "upstream_blob_sha": "39126a2507ec7d47eea4455a5f51daaf36232dc9",
+      "sha256": "8842b49915174de6d224273f9dffd2a84f65dc5fc2b67c83441cfbe1b423d008",
+      "bytes": 921,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/bN.svg"
     },
     {
-      "id": "bR",
-      "color": "b",
-      "kind": "R",
-      "name": "Ink rook",
-      "file": "bR.svg"
+      "file": "bR.svg",
+      "upstream_blob_sha": "3b3d47d3fe62e29ba11ce94f5fb491429df547d0",
+      "sha256": "b588445132bd2295989b94b058d6ed91605b5dffbb5b4533a2f782848cae1684",
+      "bytes": 2051,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/bR.svg"
     },
     {
-      "id": "bP",
-      "color": "b",
-      "kind": "P",
-      "name": "Ink pawn",
-      "file": "bP.svg"
+      "file": "bP.svg",
+      "upstream_blob_sha": "337915dd57cf22a97c8ba9189bb405d78db56023",
+      "sha256": "22da60dfa9fc6bfb54b1ee369dc9e3555e567e43eaea0fccad2e0211259ff0aa",
+      "bytes": 764,
+      "source_url": "https://github.com/lichess-org/lila/blob/5820854ca42e082891d6a47ceb3b57d33ebb7fe1/public/piece/chessnut/bP.svg"
     }
   ]
 }

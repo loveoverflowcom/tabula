@@ -188,3 +188,12 @@ then separately review and prove real native provider/secure-store/callback and
 social integration when authorized. [The ledger](../verification/issue-103-mobile-account/README.md)
 keeps qualified focused JVM tests distinct from blocked/unexecuted target checks.
 Issue #103 stays open; unrelated queue ordering and native GameHost work are unchanged.
+
+## Classic Chess pieces and direct entry
+
+[Classic pieces and existing direct entry](140-chess-classic-direct-entry.md)
+is a new draft-review task from freshly fetched develop `face8a3e`. It consumes
+the approved design as runtime implementation inputs, preserves PR112's separate
+material/motion scope, and keeps real matchmaking and production activation gated.
+[Scoped verification](../verification/chess-classic-entry/README.md) owns its
+executed local checks and actual exact-source graphics coverage.

@@ -1526,7 +1526,7 @@ mod tests {
             256 * 1024,
             2 * 1024 * 1024,
             4 * 1024 * 1024,
-            4,
+            8, // Four PNGs plus four legal metadata files; only PNGs become textures.
         )
         .unwrap();
         let mut cache = SpriteAssetCache::new(CpuUploader, limits);
@@ -1537,12 +1537,12 @@ mod tests {
                 &assets::asset_pack(),
             )
             .unwrap(); // xtask-allow-game-id: local Phase 2 fixture boundary regression only.
-        for file in manifest.files() {
-            let bytes = assets::ALL_IMAGES
+        for (name, bytes) in assets::ALL_IMAGES {
+            let file = manifest
+                .files()
                 .iter()
-                .find(|(name, _)| *name == file.name().as_str())
-                .unwrap()
-                .1;
+                .find(|file| file.name().as_str() == *name)
+                .unwrap();
             cache
                 .insert_verified(
                     file.verify_owned_bytes(tabula_assets::UnverifiedAssetBytes::new(
@@ -1556,6 +1556,8 @@ mod tests {
             MacroquadRenderer::preflight_with_cache(&scene, &frame, &cache),
             Ok(())
         );
+        assert_eq!(cache.stats().decodes, 4);
+        assert_eq!(cache.stats().uploads, 4);
         // This exercises bounded decode/resource acceptance, never actual pixels.
     }
 

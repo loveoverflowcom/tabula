@@ -49,9 +49,10 @@ pub struct AccountController {
     inner: StoredValue<Runtime, LocalStorage>,
 }
 
-/// In-memory v2 completion fence, never a credential or serialized authority.
-/// Its exact route and context generation must remain current (ADR-0044).
-#[cfg(feature = "account-social")]
+/// In-memory completion fence, never a credential or serialized authority.
+/// Direct admission and v2 leaf adapters require the exact current route/context
+/// generation (ADR-0041 / ADR-0044).
+#[cfg(any(feature = "account-social", feature = "online"))]
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct DocumentAccountTicket {
     lease: RouteLease,
@@ -60,12 +61,13 @@ pub(crate) struct DocumentAccountTicket {
     csrf_token: String,
 }
 
-#[cfg(feature = "account-social")]
+#[cfg(any(feature = "account-social", feature = "online"))]
 impl DocumentAccountTicket {
     pub(crate) fn subject(&self) -> &str {
         &self.subject
     }
 
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
     pub(crate) fn csrf_token(&self) -> &str {
         &self.csrf_token
     }
@@ -149,7 +151,7 @@ pub fn use_account() -> AccountController {
 }
 impl AccountController {
     /// Read validated document controls only while this exact idle route is live.
-    #[cfg(feature = "account-social")]
+    #[cfg(any(feature = "account-social", feature = "online"))]
     pub(crate) fn document_ticket(self) -> Option<DocumentAccountTicket> {
         let _ = self.state.try_get();
         if !self.current() || !self.visible() || !self.connected() {
@@ -174,8 +176,8 @@ impl AccountController {
             .flatten()
     }
 
-    /// A late v2 response cannot cross a route, subject, context or lifecycle.
-    #[cfg(feature = "account-social")]
+    /// A late direct/v2 response cannot cross a route, subject, context or lifecycle.
+    #[cfg(any(feature = "account-social", feature = "online"))]
     pub(crate) fn ticket_current(self, ticket: &DocumentAccountTicket) -> bool {
         self.document_ticket().as_ref() == Some(ticket)
     }

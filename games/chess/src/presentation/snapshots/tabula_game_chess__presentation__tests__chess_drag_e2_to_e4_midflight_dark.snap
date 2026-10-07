@@ -1,6 +1,6 @@
 ---
 source: games/chess/src/presentation/mod.rs
-assertion_line: 4914
+assertion_line: 4920
 expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
 ---
 camera origin=(0.000, 0.000) zoom=1.000
@@ -71,38 +71,38 @@ commands (total 143):
   63: rect [origin=(358.660, 125.440) size=(38.660, 38.660)] radii=uniform(0.000) fill=solid(#5d8a80ff) border=none layer=board(0) z=61
   64: rect [origin=(397.320, 125.440) size=(38.660, 38.660)] radii=uniform(0.000) fill=solid(#ece4d3ff) border=none layer=board(0) z=62
   65: rect [origin=(435.980, 125.440) size=(38.660, 38.660)] radii=uniform(0.000) fill=solid(#5d8a80ff) border=none layer=board(0) z=63
-  66: sprite asset="pieces/white-rook" rect=[origin=(167.486, 398.186) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(184.690, 415.390) layer=pieces(10) z=0
-  67: sprite asset="pieces/white-knight" rect=[origin=(206.146, 398.186) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(223.350, 415.390) layer=pieces(10) z=1
-  68: sprite asset="pieces/white-bishop" rect=[origin=(244.806, 398.186) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(262.010, 415.390) layer=pieces(10) z=2
-  69: sprite asset="pieces/white-queen" rect=[origin=(283.466, 398.186) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(300.670, 415.390) layer=pieces(10) z=3
-  70: sprite asset="pieces/white-king" rect=[origin=(322.126, 398.186) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(339.330, 415.390) layer=pieces(10) z=4
-  71: sprite asset="pieces/white-bishop" rect=[origin=(360.786, 398.186) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(377.990, 415.390) layer=pieces(10) z=5
-  72: sprite asset="pieces/white-knight" rect=[origin=(399.446, 398.186) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(416.650, 415.390) layer=pieces(10) z=6
-  73: sprite asset="pieces/white-rook" rect=[origin=(438.106, 398.186) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(455.310, 415.390) layer=pieces(10) z=7
-  74: sprite asset="pieces/white-pawn" rect=[origin=(167.486, 359.526) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(184.690, 376.730) layer=pieces(10) z=8
-  75: sprite asset="pieces/white-pawn" rect=[origin=(206.146, 359.526) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(223.350, 376.730) layer=pieces(10) z=9
-  76: sprite asset="pieces/white-pawn" rect=[origin=(244.806, 359.526) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(262.010, 376.730) layer=pieces(10) z=10
-  77: sprite asset="pieces/white-pawn" rect=[origin=(283.466, 359.526) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(300.670, 376.730) layer=pieces(10) z=11
-  78: sprite asset="pieces/white-pawn" rect=[origin=(360.786, 359.526) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(377.990, 376.730) layer=pieces(10) z=13
-  79: sprite asset="pieces/white-pawn" rect=[origin=(399.446, 359.526) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(416.650, 376.730) layer=pieces(10) z=14
-  80: sprite asset="pieces/white-pawn" rect=[origin=(438.106, 359.526) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(455.310, 376.730) layer=pieces(10) z=15
-  81: sprite asset="pieces/black-pawn" rect=[origin=(167.486, 166.226) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(184.690, 183.430) layer=pieces(10) z=48
-  82: sprite asset="pieces/black-pawn" rect=[origin=(206.146, 166.226) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(223.350, 183.430) layer=pieces(10) z=49
-  83: sprite asset="pieces/black-pawn" rect=[origin=(244.806, 166.226) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(262.010, 183.430) layer=pieces(10) z=50
-  84: sprite asset="pieces/black-pawn" rect=[origin=(283.466, 166.226) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(300.670, 183.430) layer=pieces(10) z=51
-  85: sprite asset="pieces/black-pawn" rect=[origin=(322.126, 166.226) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(339.330, 183.430) layer=pieces(10) z=52
-  86: sprite asset="pieces/black-pawn" rect=[origin=(360.786, 166.226) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(377.990, 183.430) layer=pieces(10) z=53
-  87: sprite asset="pieces/black-pawn" rect=[origin=(399.446, 166.226) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(416.650, 183.430) layer=pieces(10) z=54
-  88: sprite asset="pieces/black-pawn" rect=[origin=(438.106, 166.226) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(455.310, 183.430) layer=pieces(10) z=55
-  89: sprite asset="pieces/black-rook" rect=[origin=(167.486, 127.566) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(184.690, 144.770) layer=pieces(10) z=56
-  90: sprite asset="pieces/black-knight" rect=[origin=(206.146, 127.566) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(223.350, 144.770) layer=pieces(10) z=57
-  91: sprite asset="pieces/black-bishop" rect=[origin=(244.806, 127.566) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(262.010, 144.770) layer=pieces(10) z=58
-  92: sprite asset="pieces/black-queen" rect=[origin=(283.466, 127.566) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(300.670, 144.770) layer=pieces(10) z=59
-  93: sprite asset="pieces/black-king" rect=[origin=(322.126, 127.566) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(339.330, 144.770) layer=pieces(10) z=60
-  94: sprite asset="pieces/black-bishop" rect=[origin=(360.786, 127.566) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(377.990, 144.770) layer=pieces(10) z=61
-  95: sprite asset="pieces/black-knight" rect=[origin=(399.446, 127.566) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(416.650, 144.770) layer=pieces(10) z=62
-  96: sprite asset="pieces/black-rook" rect=[origin=(438.106, 127.566) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(455.310, 144.770) layer=pieces(10) z=63
-  97: sprite asset="pieces/white-pawn" rect=[origin=(322.126, 320.866) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(339.330, 338.070) layer=pieces(10) z=110
+  66: sprite asset="pieces/white-rook" rect=[origin=(165.940, 396.640) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(184.690, 415.390) layer=pieces(10) z=0
+  67: sprite asset="pieces/white-knight" rect=[origin=(204.600, 396.640) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(223.350, 415.390) layer=pieces(10) z=1
+  68: sprite asset="pieces/white-bishop" rect=[origin=(243.260, 396.640) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(262.010, 415.390) layer=pieces(10) z=2
+  69: sprite asset="pieces/white-queen" rect=[origin=(281.920, 396.640) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(300.670, 415.390) layer=pieces(10) z=3
+  70: sprite asset="pieces/white-king" rect=[origin=(320.580, 396.640) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(339.330, 415.390) layer=pieces(10) z=4
+  71: sprite asset="pieces/white-bishop" rect=[origin=(359.240, 396.640) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(377.990, 415.390) layer=pieces(10) z=5
+  72: sprite asset="pieces/white-knight" rect=[origin=(397.900, 396.640) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(416.650, 415.390) layer=pieces(10) z=6
+  73: sprite asset="pieces/white-rook" rect=[origin=(436.560, 396.640) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(455.310, 415.390) layer=pieces(10) z=7
+  74: sprite asset="pieces/white-pawn" rect=[origin=(165.940, 357.980) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(184.690, 376.730) layer=pieces(10) z=8
+  75: sprite asset="pieces/white-pawn" rect=[origin=(204.600, 357.980) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(223.350, 376.730) layer=pieces(10) z=9
+  76: sprite asset="pieces/white-pawn" rect=[origin=(243.260, 357.980) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(262.010, 376.730) layer=pieces(10) z=10
+  77: sprite asset="pieces/white-pawn" rect=[origin=(281.920, 357.980) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(300.670, 376.730) layer=pieces(10) z=11
+  78: sprite asset="pieces/white-pawn" rect=[origin=(359.240, 357.980) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(377.990, 376.730) layer=pieces(10) z=13
+  79: sprite asset="pieces/white-pawn" rect=[origin=(397.900, 357.980) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(416.650, 376.730) layer=pieces(10) z=14
+  80: sprite asset="pieces/white-pawn" rect=[origin=(436.560, 357.980) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(455.310, 376.730) layer=pieces(10) z=15
+  81: sprite asset="pieces/black-pawn" rect=[origin=(165.940, 164.680) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(184.690, 183.430) layer=pieces(10) z=48
+  82: sprite asset="pieces/black-pawn" rect=[origin=(204.600, 164.680) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(223.350, 183.430) layer=pieces(10) z=49
+  83: sprite asset="pieces/black-pawn" rect=[origin=(243.260, 164.680) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(262.010, 183.430) layer=pieces(10) z=50
+  84: sprite asset="pieces/black-pawn" rect=[origin=(281.920, 164.680) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(300.670, 183.430) layer=pieces(10) z=51
+  85: sprite asset="pieces/black-pawn" rect=[origin=(320.580, 164.680) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(339.330, 183.430) layer=pieces(10) z=52
+  86: sprite asset="pieces/black-pawn" rect=[origin=(359.240, 164.680) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(377.990, 183.430) layer=pieces(10) z=53
+  87: sprite asset="pieces/black-pawn" rect=[origin=(397.900, 164.680) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(416.650, 183.430) layer=pieces(10) z=54
+  88: sprite asset="pieces/black-pawn" rect=[origin=(436.560, 164.680) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(455.310, 183.430) layer=pieces(10) z=55
+  89: sprite asset="pieces/black-rook" rect=[origin=(165.940, 126.020) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(184.690, 144.770) layer=pieces(10) z=56
+  90: sprite asset="pieces/black-knight" rect=[origin=(204.600, 126.020) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(223.350, 144.770) layer=pieces(10) z=57
+  91: sprite asset="pieces/black-bishop" rect=[origin=(243.260, 126.020) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(262.010, 144.770) layer=pieces(10) z=58
+  92: sprite asset="pieces/black-queen" rect=[origin=(281.920, 126.020) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(300.670, 144.770) layer=pieces(10) z=59
+  93: sprite asset="pieces/black-king" rect=[origin=(320.580, 126.020) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(339.330, 144.770) layer=pieces(10) z=60
+  94: sprite asset="pieces/black-bishop" rect=[origin=(359.240, 126.020) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(377.990, 144.770) layer=pieces(10) z=61
+  95: sprite asset="pieces/black-knight" rect=[origin=(397.900, 126.020) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(416.650, 144.770) layer=pieces(10) z=62
+  96: sprite asset="pieces/black-rook" rect=[origin=(436.560, 126.020) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(455.310, 144.770) layer=pieces(10) z=63
+  97: sprite asset="pieces/white-pawn" rect=[origin=(320.580, 319.320) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(339.330, 338.070) layer=pieces(10) z=110
   98: rect [origin=(333.077, 331.817) size=(12.505, 12.505)] radii=uniform(6.253) fill=solid(#141217ff) border=none layer=overlay(20) z=60
   99: rect [origin=(333.077, 293.157) size=(12.505, 12.505)] radii=uniform(6.253) fill=solid(#141217ff) border=none layer=overlay(20) z=60
   100: rect [origin=(335.077, 333.817) size=(8.505, 8.505)] radii=uniform(4.253) fill=solid(#74f8a6ff) border=none layer=overlay(20) z=61
@@ -140,10 +140,10 @@ commands (total 143):
   132: pop-opacity layer=hud(30) z=0
   133: rect [origin=(424.000, 505.760) size=(200.000, 44.000)] radii=uniform(14.000) fill=solid(#2b282fff) border=none layer=hud(30) z=0
   134: text "Resign" at=(524.000, 517.760) style=LabelLg align=Center max_width=184.000 color=#e7e1e5ff layer=hud(30) z=0
-  135: sprite asset="pieces/black-king" rect=[origin=(173.164, 67.324) size=(29.192, 29.192)] tint=#ffffffff rotation=0.000 pivot=(187.760, 81.920) layer=hud(30) z=1
+  135: sprite asset="pieces/black-king" rect=[origin=(171.852, 66.012) size=(31.816, 31.816)] tint=#ffffffff rotation=0.000 pivot=(187.760, 81.920) layer=hud(30) z=1
   136: text "Black" at=(214.160, 63.520) style=LabelSm align=Start max_width=172.480 color=#f2ebdbff layer=hud(30) z=1
   137: text "Local player" at=(214.160, 84.520) style=LabelSm align=Start max_width=172.480 color=#b3c9c3ff layer=hud(30) z=1
-  138: sprite asset="pieces/white-king" rect=[origin=(173.164, 463.644) size=(29.192, 29.192)] tint=#ffffffff rotation=0.000 pivot=(187.760, 478.240) layer=hud(30) z=1
+  138: sprite asset="pieces/white-king" rect=[origin=(171.852, 462.332) size=(31.816, 31.816)] tint=#ffffffff rotation=0.000 pivot=(187.760, 478.240) layer=hud(30) z=1
   139: text "White / turn" at=(214.160, 459.840) style=LabelSm align=Start max_width=172.480 color=#f2ebdbff layer=hud(30) z=1
   140: text "Local player" at=(214.160, 480.840) style=LabelSm align=Start max_width=172.480 color=#b3c9c3ff layer=hud(30) z=1
   141: text "Your turn / White" at=(28.000, 566.880) style=TitleSm align=Start max_width=584.000 color=#f2ebdbff layer=hud(30) z=1

@@ -73,8 +73,8 @@ def check(distribution):
                 assert integrity == expected, f"SRI mismatch: {relative}"
                 if payload.startswith(b"window.TabulaResourceManifest="):
                     manifest = json.loads(payload.decode().removeprefix("window.TabulaResourceManifest=").removesuffix(";\n"))
-            assert manifest and manifest["schema"] == 1 and len(manifest["files"]) == 8
             pack = tomllib.loads((ROOT / "games/chess/assets/fixture.pack.toml").read_text())
+            assert manifest and manifest["schema"] == 1 and len(manifest["files"]) == 4 + len(pack["files"])
             critical = [file for file in pack["files"] if file["priority"] == "critical" and file["density"] == 1]
             assert len(critical) == 1
             aliases = ["tabula-game-client.wasm", "assets/OpenSans-Regular.ttf", "assets/OpenSans-Semibold.ttf", "assets/NotoSerif-Bold.ttf", critical[0]["path"]]

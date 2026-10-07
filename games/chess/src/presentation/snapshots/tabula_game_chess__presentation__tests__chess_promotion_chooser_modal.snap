@@ -1,6 +1,6 @@
 ---
 source: games/chess/src/presentation/mod.rs
-assertion_line: 3849
+assertion_line: 3855
 expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
 ---
 camera origin=(0.000, 0.000) zoom=1.000
@@ -71,9 +71,9 @@ commands (total 135):
   63: rect [origin=(358.660, 125.440) size=(38.660, 38.660)] radii=uniform(0.000) fill=solid(#5d8a80ff) border=none layer=board(0) z=61
   64: rect [origin=(397.320, 125.440) size=(38.660, 38.660)] radii=uniform(0.000) fill=solid(#ece4d3ff) border=none layer=board(0) z=62
   65: rect [origin=(435.980, 125.440) size=(38.660, 38.660)] radii=uniform(0.000) fill=solid(#5d8a80ff) border=none layer=board(0) z=63
-  66: sprite asset="pieces/white-king" rect=[origin=(322.126, 398.186) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(339.330, 415.390) layer=pieces(10) z=4
-  67: sprite asset="pieces/white-pawn" rect=[origin=(322.126, 166.226) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(339.330, 183.430) layer=pieces(10) z=52
-  68: sprite asset="pieces/black-king" rect=[origin=(167.486, 127.566) size=(34.407, 34.407)] tint=#ffffffff rotation=0.000 pivot=(184.690, 144.770) layer=pieces(10) z=56
+  66: sprite asset="pieces/white-king" rect=[origin=(320.580, 396.640) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(339.330, 415.390) layer=pieces(10) z=4
+  67: sprite asset="pieces/white-pawn" rect=[origin=(320.580, 164.680) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(339.330, 183.430) layer=pieces(10) z=52
+  68: sprite asset="pieces/black-king" rect=[origin=(165.940, 126.020) size=(37.500, 37.500)] tint=#ffffffff rotation=0.000 pivot=(184.690, 144.770) layer=pieces(10) z=56
   69: text "Chess" at=(16.000, 16.000) style=DisplaySm align=Start max_width=608.000 color=#193a3eff layer=hud(30) z=0
   70: text "a" at=(180.824, 435.720) style=LabelSm align=Start max_width=38.660 color=#f7f1e4ff layer=hud(30) z=0
   71: text "8" at=(151.360, 138.971) style=LabelSm align=Start max_width=18.000 color=#f7f1e4ff layer=hud(30) z=0
@@ -104,10 +104,10 @@ commands (total 135):
   96: pop-opacity layer=hud(30) z=0
   97: rect [origin=(424.000, 505.760) size=(200.000, 44.000)] radii=uniform(14.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
   98: text "Resign" at=(524.000, 517.760) style=LabelLg align=Center max_width=184.000 color=#1e1c21ff layer=hud(30) z=0
-  99: sprite asset="pieces/black-king" rect=[origin=(173.164, 67.324) size=(29.192, 29.192)] tint=#ffffffff rotation=0.000 pivot=(187.760, 81.920) layer=hud(30) z=1
+  99: sprite asset="pieces/black-king" rect=[origin=(171.852, 66.012) size=(31.816, 31.816)] tint=#ffffffff rotation=0.000 pivot=(187.760, 81.920) layer=hud(30) z=1
   100: text "Black" at=(214.160, 63.520) style=LabelSm align=Start max_width=172.480 color=#193a3eff layer=hud(30) z=1
   101: text "Local player" at=(214.160, 84.520) style=LabelSm align=Start max_width=172.480 color=#526662ff layer=hud(30) z=1
-  102: sprite asset="pieces/white-king" rect=[origin=(173.164, 463.644) size=(29.192, 29.192)] tint=#ffffffff rotation=0.000 pivot=(187.760, 478.240) layer=hud(30) z=1
+  102: sprite asset="pieces/white-king" rect=[origin=(171.852, 462.332) size=(31.816, 31.816)] tint=#ffffffff rotation=0.000 pivot=(187.760, 478.240) layer=hud(30) z=1
   103: text "White / turn" at=(214.160, 459.840) style=LabelSm align=Start max_width=172.480 color=#193a3eff layer=hud(30) z=1
   104: text "Local player" at=(214.160, 480.840) style=LabelSm align=Start max_width=172.480 color=#526662ff layer=hud(30) z=1
   105: text "Your turn / White" at=(28.000, 566.880) style=TitleSm align=Start max_width=584.000 color=#193a3eff layer=hud(30) z=1
@@ -132,11 +132,11 @@ commands (total 135):
   124: text "Cancel" at=(320.000, 360.000) style=LabelLg align=Center max_width=230.000 color=#1e1c21ff layer=modal(40) z=0
   125: rect [origin=(193.500, 276.500) size=(67.000, 67.000)] radii=(tl=33.500, tr=11.500, br=11.500, bl=33.500) fill=none border=[width=3.000 color=#573b83ff] layer=modal(40) z=1
   126: rect [origin=(196.000, 279.000) size=(62.000, 62.000)] radii=(tl=31.000, tr=9.000, br=9.000, bl=31.000) fill=none border=[width=2.000 color=#fffbffff] layer=modal(40) z=1
-  127: sprite asset="pieces/white-queen" rect=[origin=(207.776, 284.376) size=(38.448, 38.448)] tint=#ffffffff rotation=0.000 pivot=(227.000, 303.600) layer=modal(40) z=2
+  127: sprite asset="pieces/white-queen" rect=[origin=(206.048, 282.648) size=(41.904, 41.904)] tint=#ffffffff rotation=0.000 pivot=(227.000, 303.600) layer=modal(40) z=2
   128: text "queen" at=(227.000, 316.000) style=LabelMd align=Center max_width=none color=#ffffffff layer=modal(40) z=2
-  129: sprite asset="pieces/white-rook" rect=[origin=(269.776, 284.376) size=(38.448, 38.448)] tint=#ffffffff rotation=0.000 pivot=(289.000, 303.600) layer=modal(40) z=2
+  129: sprite asset="pieces/white-rook" rect=[origin=(268.048, 282.648) size=(41.904, 41.904)] tint=#ffffffff rotation=0.000 pivot=(289.000, 303.600) layer=modal(40) z=2
   130: text "rook" at=(289.000, 316.000) style=LabelMd align=Center max_width=none color=#1e1c21ff layer=modal(40) z=2
-  131: sprite asset="pieces/white-bishop" rect=[origin=(331.776, 284.376) size=(38.448, 38.448)] tint=#ffffffff rotation=0.000 pivot=(351.000, 303.600) layer=modal(40) z=2
+  131: sprite asset="pieces/white-bishop" rect=[origin=(330.048, 282.648) size=(41.904, 41.904)] tint=#ffffffff rotation=0.000 pivot=(351.000, 303.600) layer=modal(40) z=2
   132: text "bishop" at=(351.000, 316.000) style=LabelMd align=Center max_width=none color=#1e1c21ff layer=modal(40) z=2
-  133: sprite asset="pieces/white-knight" rect=[origin=(393.776, 284.376) size=(38.448, 38.448)] tint=#ffffffff rotation=0.000 pivot=(413.000, 303.600) layer=modal(40) z=2
+  133: sprite asset="pieces/white-knight" rect=[origin=(392.048, 282.648) size=(41.904, 41.904)] tint=#ffffffff rotation=0.000 pivot=(413.000, 303.600) layer=modal(40) z=2
   134: text "knight" at=(413.000, 316.000) style=LabelMd align=Center max_width=none color=#1e1c21ff layer=modal(40) z=2

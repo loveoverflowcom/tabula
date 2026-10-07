@@ -616,19 +616,22 @@ fn stage_game_pack(
 ) -> Result<(), WasmStageError> {
     // The local slice packages the existing game-owned manifest, not a second
     // resource-selection policy or a new delivery service (ADR-0030).
-    let (manifest_text, images) = match kind {
-        BundleKind::Standard => (tabula_game_chess::presentation::assets::MANIFEST, tabula_game_chess::presentation::assets::ALL_IMAGES), // xtask-allow-game-id: local standalone packaging of the game-owned pack.
+    let (manifest_text, pack_files) = match kind {
+        BundleKind::Standard => (tabula_game_chess::presentation::assets::MANIFEST, tabula_game_chess::presentation::assets::ALL_FILES), // xtask-allow-game-id: local standalone packaging of the game-owned pack, including licensed-art notices.
         BundleKind::PrivateSimulator => (tabula_game_werewolf::presentation::assets::MANIFEST, tabula_game_werewolf::presentation::assets::ALL_IMAGES), // xtask-allow-game-id: ADR-0035 local standalone pack declaration.
     };
     let manifest = tabula_assets::AssetPackManifest::from_toml(manifest_text).map_err(|error| resource_error(format!("local pack manifest: {error}")))?;
     for file in manifest.files() {
-        let bytes = images.iter() // xtask-allow-game-id: local standalone packaging of the game-owned pack.
+        let bytes = pack_files.iter() // xtask-allow-game-id: local standalone packaging of the game-owned pack.
             .find(|(name, _)| *name == file.name().as_str())
             .map(|(_, bytes)| *bytes)
             .ok_or_else(|| resource_error(format!("local pack file missing: {}", file.name())))?;
         file.verify_bytes(bytes)
             .map_err(|error| resource_error(format!("local pack integrity: {error}")))?;
-        files.insert(file.path().as_str().to_owned(), immutable_resource(directory, bytes, "png")?);
+        let extension = Path::new(file.path().as_str()).extension()
+            .and_then(|value| value.to_str())
+            .ok_or_else(|| resource_error(format!("local pack file has no extension: {}", file.path())))?;
+        files.insert(file.path().as_str().to_owned(), immutable_resource(directory, bytes, extension)?);
     }
     Ok(())
 }
@@ -1357,7 +1360,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             stage_versioned_resources(directory.path(), BundleKind::Standard).unwrap(),
-            8
+            12
         );
         let text = std::fs::read_to_string(directory.path().join("resource-manifest.js")).unwrap();
         let value: serde_json::Value = serde_json::from_str(
@@ -1367,7 +1370,7 @@ mod tests {
         .unwrap();
         assert_eq!(value["schema"], 1);
         let files = value["files"].as_object().unwrap();
-        assert_eq!(files.len(), 8);
+        assert_eq!(files.len(), 12);
         for entry in files.values() {
             let bytes =
                 std::fs::read(directory.path().join(entry["url"].as_str().unwrap())).unwrap();
@@ -1375,6 +1378,25 @@ mod tests {
             assert_eq!(
                 format!("{:x}", Sha256::digest(&bytes)),
                 entry["sha256"].as_str().unwrap()
+            );
+        }
+        let pack = tabula_assets::AssetPackManifest::from_toml(
+            tabula_game_chess::presentation::assets::MANIFEST,
+        )
+        .unwrap(); // xtask-allow-game-id: exact licensed fixture packaging assertion.
+        for (name, bytes) in tabula_game_chess::presentation::assets::NOTICES {
+            // xtask-allow-game-id: exact licensed fixture packaging assertion.
+            let file = pack
+                .files()
+                .iter()
+                .find(|file| file.name().as_str() == *name)
+                .unwrap();
+            let entry = &files[file.path().as_str()];
+            let relative = entry["url"].as_str().unwrap();
+            assert_eq!(Path::new(relative).extension(), Path::new(name).extension());
+            assert_eq!(
+                std::fs::read(directory.path().join(relative)).unwrap(),
+                *bytes
             );
         }
         let play = std::fs::read_to_string(directory.path().join("play.html")).unwrap();

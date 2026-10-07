@@ -636,7 +636,7 @@ body {
   }
 }
 
-.online-panel { padding:24px; margin-block:24px; border-radius:var(--sys-shape-lg); background:var(--sys-color-container); color:var(--sys-color-on-surface); .field {margin-block:16px;} .field__control {max-width:16rem;} &__admission {padding-block:16px;} }
+@import "online";
 
 @import "shell";
 @import "library";

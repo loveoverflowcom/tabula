@@ -240,7 +240,7 @@ mod tests {
         for file in manifest.files() {
             let (_, bytes) = MASKS
                 .iter()
-                .chain(assets::ALL_IMAGES)
+                .chain(assets::ALL_FILES)
                 .find(|(name, _)| *name == file.name().as_str())
                 .unwrap();
             let mut bytes = bytes.to_vec();

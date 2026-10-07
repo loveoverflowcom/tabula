@@ -49,8 +49,8 @@ max_apply_micros = 2000
 max_events_per_input = 4
 
 [assets]
-pack = "chess@0.1.0"
-size_kb = 274 # Bounded local piece/cover pack: 280240 encoded bytes, rounded up in KiB.
+pack = "chess@0.3.0"
+size_kb = 310 # Bounded licensed piece/cover pack: 317401 bytes including legal docs, rounded up in KiB.
 
 [rollout]
 enabled = true
