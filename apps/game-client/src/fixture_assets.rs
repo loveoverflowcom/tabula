@@ -662,7 +662,7 @@ mod tests {
         for (game, pack, gameplay, diagnostic) in [
             (
                 &game,
-                AssetPackRef::from_static("chess", "0.3.0"), // xtask-allow-game-id: local Phase 2 fixture boundary regression only.
+                AssetPackRef::from_static("chess", "0.4.0"), // xtask-allow-game-id: local Phase 2 fixture boundary regression only.
                 assets::gameplay_resources(),
                 "local art binding",
             ),

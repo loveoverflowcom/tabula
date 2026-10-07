@@ -568,8 +568,8 @@ fn chess_presenter_produces_macroquad_supported_render_list_with_verified_art() 
         MacroquadRenderer::preflight_with_cache(&scene, &frame, &cache),
         Ok(())
     );
-    assert_eq!(cache.stats().decodes, 4);
-    assert_eq!(cache.stats().uploads, 4);
+    assert_eq!(cache.stats().decodes, 6);
+    assert_eq!(cache.stats().uploads, 6);
 }
 
 // ---------------------------------------------------------------------------
