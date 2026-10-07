@@ -48,7 +48,7 @@ receipts and source identities are retained under `runs/`.
 | HUD geometry/input | 320/390 portrait, short landscape, >=44dp controls, target-inward promotion, keyboard/repeat/cancel and popup shielding | PASS: twenty HUD tests plus layout/chooser cases in [113 Chess library tests](runs/chess-final-tests.log); actual glyph/physical-touch pixels remain unverified |
 | Per-game material/assets | Exact six-file `chess@0.2.0` metadata/hash, density selection, cold/retry/warm cache, unchanged Staunton exports | PASS: [reproducibility](runs/assets-reproducibility.log), [host cache tests](runs/host-final-tests.log), [metadata](runs/metadata-pack-tests.log), [12 contrast tests](runs/design-contrast-tests.log); actual GPU/device measurement remains unverified |
 | Rules/replay/conformance | Existing affected Chess/testkit targets and committed replay identities | PASS: [194 affected test executions](runs/chess-final-tests.log), including eleven conformance and seven replay tests; one ignored depth-five perft excluded |
-| Portable repository gate | Repository-owned `cargo xtask check` order | Historical pre-integration PASS: [full log](runs/core-before-integration-pass.log.gz), exit 0, [1,311 passing executions, 0 failed and 18 ignored](runs/core-before-integration-receipt.json). Integrated run completed fmt/Clippy/workspace/policy stages but its terminal result read was cancelled: [BLOCKED/PENDING receipt](runs/core-integrated-pending.json); no final integrated gate PASS claim |
+| Portable repository gate | Repository-owned `cargo xtask check` order | PASS on exact published `c4572e99` / tree `1a08b652`: [fresh full log](runs/core-approved-final.log.gz), exit 0; [1,311 passing executions, 0 failed, 18 ignored and 731 unchanged source hashes](runs/core-approved-final-receipt.json), including all-feature Clippy, policy and cargo-deny. Earlier cancelled/unconfirmed runs are historical and are not used as this receipt |
 | Standalone WASM build/staging | Existing isolated `web` feature, production stager and emitted immutable payloads | PASS: [optimized build](runs/wasm-final-build.log), [staging](runs/wasm-final-stage.log) and [all ten payload size/SHA-256 checks](runs/wasm-final-stage-integrity.json); compilation/staging does not establish browser execution |
 | Standalone loading budget | Actual emitted WASM, external artwork/font exclusion and selected-game normal dependency graph | PASS: [budget receipt](runs/wasm-final-loading-budget.json), 960,573 encoded bytes / 384,415 gzip9 bytes; no DOM runtime or unrelated game in the [normal graph](runs/wasm-final-game-tree.txt); no runtime-performance claim |
 | Runtime pixels | Actual Rust presenter → Macroquad runtime on named target/source | Local launch BLOCKED: Chromium AF_UNIX singleton socket is denied; source/headless tests are not visual proof |
@@ -65,14 +65,18 @@ and [five native-host policy tests](runs/native-host-policy-tests.log) also
 passed. The isolated host command was `cargo test --locked -p
 tabula-game-client --no-default-features --features web,online --lib --test
 local_match`. These checks do not imply live browser or native mobile gameplay.
-The [integrated source manifest](runs/source-manifest.json) binds 731 source
-and artifact files, including current develop, to their content hashes. It is
-source binding, not an integrated terminal gate receipt. The separately retained
-[pre-integration manifest](runs/source-manifest-before-integration.json) binds
-713 files with digest
+The [task-scoped source manifest](runs/source-manifest.json) publishes only
+Chess inputs and its directly changed presenter/host/token/asset consumers,
+bound to the exact complete repository head/tree. The full local gate checked
+731 source/artifact hashes; its broad file inventory remains local.
+The [fresh final receipt](runs/core-approved-final-receipt.json) confirms all
+checked hashes stayed unchanged after the exact-source gate. The separately retained
+[pre-integration manifest](runs/source-manifest-before-integration.json) records
+the earlier 713-file full-set digest
 `ff0075e65306d24864071fb536e6cb4f4cc8dad0e4591d53301e50c835d167f7`; its
 [complete receipt](runs/core-before-integration-receipt.json) confirms every
-recorded file hash stayed unchanged after that gate. Git HEAD metadata names
+checked file hash stayed unchanged after that gate. These shared manifests
+minimize the file inventory to this task's relevant inputs. Git HEAD metadata names
 the local validation checkpoint; the published equivalent is verified by tree
 identity. The latest merge changes no Rust/Cargo/Chess assets or goldens.
 [Golden review hashes](runs/golden-review.json) record the seven intentionally
@@ -91,11 +95,16 @@ aggregate gate pass. Production staging, runtime source and goldens were unchang
 this repair. Aggregate counts are executions, not unique tests; GitHub CI
 was not inspected.
 
-Large logs are retained losslessly as deterministic gzip files, with
+Large historical logs are retained losslessly as deterministic gzip files, with
 [uncompressed sizes/hashes and round-trip checks](runs/compressed-logs.json).
 The [integrated partial log](runs/core-integrated-pending.log.gz) records the
 completed stages before the cancelled result read; its terminal outcome is
-not inferred. The earlier full pass remains explicitly qualified. A pending
+not inferred. The earlier full pass remains explicitly qualified. Its original
+result session was unavailable when a retry was authorized, so a fresh gate ran
+on the clean, verified published head `c4572e99` and completed with exit 0.
+The [new log/receipt](runs/core-approved-final-receipt.json) records its source,
+counts and lossless compressed-log identity. No incomplete or unconfirmed run supplies the final receipt; the old
+pending receipt remains historical. A pending
 or cancelled result read does not become a full-gate PASS.
 
 The supported standalone build command was `cargo build --locked -p

@@ -13,5 +13,5 @@
   "terminal_exit": "NOT_CONFIRMED",
   "remaining": "cargo-deny terminal result; result-read was cancelled and is paused pending confirmation",
   "historical_full_pass": "core-before-integration-receipt.json",
-  "notes": "No alternate retry is used as acceptance evidence."
+  "notes": "Historical interrupted result is unconfirmed and is not final acceptance evidence."
 }

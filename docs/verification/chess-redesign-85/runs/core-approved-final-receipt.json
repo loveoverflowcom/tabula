@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "command": "cargo xtask check",
+  "git_head": "c4572e99f8264c89b1513194baef011f58074b70",
+  "git_tree": "1a08b6524b28d61c17202a06b3f2fb3115a08ea6",
+  "merged_develop": "face8a3e058e42fc846efa32082a9b76efaef3c2",
+  "exit_code": 0,
+  "source_digest": "23e0b379251a5fe18a44f0c8936421e170c74bfc6491a8b8fc77b791f3029319",
+  "files_checked": 731,
+  "changed_files_after_gate": [],
+  "passing_test_executions": 1311,
+  "failed_test_executions": 0,
+  "ignored_test_executions": 18,
+  "log": "core-approved-final.log.gz",
+  "uncompressed_log_bytes": 237423,
+  "uncompressed_log_sha256": "f604db42404c5267ab9755bcdb4b7ad53c9ffcdbcd940346636b6647fd55ce65",
+  "gzip_bytes": 38089,
+  "gzip_sha256": "ea6425976818b03528f60599aecadc5fbfad39be89e54c86b7461229216939f1",
+  "lossless_roundtrip": "PASS",
+  "gate_stages": [
+    "fmt",
+    "all-feature Clippy",
+    "workspace tests",
+    "check-deps",
+    "check-no-game-ids",
+    "check-manifests",
+    "generated design tokens",
+    "generated mobile discovery catalog",
+    "check-no-raw-colors",
+    "cargo-deny"
+  ],
+  "notes": "Fresh exact-source verification; earlier interrupted or inconclusive runs do not supply this receipt."
+}
