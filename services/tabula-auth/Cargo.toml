@@ -18,6 +18,7 @@ accounts = ["web-oidc", "tabula-session-http/accounts"]
 accounts-social = ["accounts", "tabula-session-http/social", "dep:tabula-lobby"]
 accounts-acceptance = ["accounts-social", "postgres-acceptance", "tabula-session-http/social", "tabula-storage/social-postgres"]
 postgres-acceptance = ["web-oidc", "dep:tabula-storage", "dep:sqlx"]
+local-dev = ["accounts", "dep:tabula-storage", "tabula-storage/local-dev-postgres", "dep:figment"]
 
 # Provider/runtime dependencies never enter the default skeleton or a WASM graph.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -35,6 +36,7 @@ jsonwebtoken = { workspace = true, optional = true }
 axum = { workspace = true, optional = true }
 tabula-storage = { workspace = true, features = ["accounts-postgres"], optional = true }
 sqlx = { workspace = true, optional = true }
+figment = { workspace = true, optional = true }
 
 [dev-dependencies]
 tower.workspace = true
@@ -51,6 +53,7 @@ required-features = ["postgres-acceptance"]
 [package.metadata.tabula.feature-msrv]
 web-oidc = "1.88"
 postgres-acceptance = "1.94"
+local-dev = "1.94"
 
 [lints]
 workspace = true

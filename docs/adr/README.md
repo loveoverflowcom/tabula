@@ -106,3 +106,8 @@ account UI draft and typed session port. Read-only identity requires a current
 adapter; production native provider/social remain unavailable. Preview/test
 doubles and shared layout evidence cannot establish native authentication,
 secure storage or phase completion. Native GameHost work remains separate.
+
+[ADR-0047](0047-local-dev-backend-lifecycle.md) opens issue #110's explicit
+native local/dev auth/gameplay service composition, checked readiness and bounded
+drain. Room/ready/start and result/history/rematch follow in PR02/PR03; production
+and whole-phase exits remain separate from this local integration.

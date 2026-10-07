@@ -126,3 +126,8 @@ pub mod accounts;
 
 #[cfg(all(feature = "social-postgres", not(target_arch = "wasm32")))]
 pub mod social;
+
+/// Explicit local/dev pool, whole-schema policy and readiness (issue #110 PR01).
+#[cfg(all(feature = "local-dev-postgres", not(target_arch = "wasm32")))]
+#[clippy::msrv = "1.94"]
+pub mod local_dev;

@@ -252,11 +252,12 @@ class FixtureHandler(BaseHTTPRequestHandler):
     def _proxy(self, headers):
         clean = filtered_headers(headers)
         body = read_request_body(headers, self.rfile)
-        connection = http.client.HTTPConnection(LOOPBACK, self.server.upstream_port, timeout=IO_TIMEOUT)
+        upstream_port = self._upstream_port()
+        connection = http.client.HTTPConnection(LOOPBACK, upstream_port, timeout=IO_TIMEOUT)
         try:
             connection.putrequest(self.command, self.path, skip_host=True, skip_accept_encoding=True)
             if not any(name.lower() == "host" for name, _ in clean):
-                connection.putheader("Host", f"{LOOPBACK}:{self.server.upstream_port}")
+                connection.putheader("Host", f"{LOOPBACK}:{upstream_port}")
             for name, value in clean:
                 connection.putheader(name, value)
             connection.putheader("Content-Length", str(len(body)))
@@ -271,6 +272,10 @@ class FixtureHandler(BaseHTTPRequestHandler):
             self._reply(response.status, upstream_headers, response_body, length)
         finally:
             connection.close()
+
+    def _upstream_port(self):
+        """One request-local upstream; subclasses may choose a fixed route owner."""
+        return self.server.upstream_port
 
     def _serve_static(self, headers):
         if self.command not in ("GET", "HEAD"):

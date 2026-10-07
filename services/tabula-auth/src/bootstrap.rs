@@ -1,6 +1,12 @@
 //! PHASE 4 — auth process composition; ADR-0034.
 
 /// Refuse production startup; ADR-0038 isolated proof is not deployment evidence.
+#[cfg(all(feature = "local-dev", not(target_arch = "wasm32")))]
+pub(crate) fn run() -> std::process::ExitCode {
+    tabula_auth::local_dev::run()
+}
+
+#[cfg(not(all(feature = "local-dev", not(target_arch = "wasm32"))))]
 pub(crate) fn run() -> std::process::ExitCode {
     // TODO(phase 4, #54): validate config, initialize redacted telemetry, connect
     // durable session storage, integrate proven provider adapter, compose routes and

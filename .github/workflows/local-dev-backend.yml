@@ -1,0 +1,90 @@
+name: local-dev-backend
+on:
+  pull_request:
+    paths:
+      - 'services/tabula-server/**'
+      - 'services/tabula-auth/**'
+      - 'crates/tabula-session-http/**'
+      - 'crates/tabula-match-http/**'
+      - 'crates/tabula-storage/**'
+      - 'crates/tabula-registry/**'
+      - 'crates/tabula-protocol/**'
+      - 'apps/web/**'
+      - 'apps/game-client/**'
+      - 'tests/local-dev/**'
+      - 'tests/kanidm/**'
+      - 'tests/accounts/**'
+      - 'tests/online-match/**'
+      - 'deploy/local-dev/**'
+      - '.github/workflows/local-dev-backend.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: local-dev-backend-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  real-services:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tabula_local_dev_browser_acceptance
+          POSTGRES_USER: tabula_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SQLX_OFFLINE: 'true'
+      TABULA_LOCAL_DEV_TEST_DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_local_dev_browser_acceptance
+      TABULA_LOCAL_DEV_BROWSER_DATABASE_URL: postgres://tabula_test@127.0.0.1:5432/tabula_local_dev_browser_acceptance
+      TABULA_LOCAL_DEV_DISPOSABLE: '1'
+      TABULA_KANIDM_SOCIAL: '1'
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: '-D warnings'
+      CHROME_DEVEL_SANDBOX: /opt/google/chrome/chrome-sandbox
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: '1.96', targets: wasm32-unknown-unknown, components: 'rustfmt, clippy' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: Swatinem/rust-cache@v2
+      - name: Install pinned browser and local trust helpers
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libnss3-tools
+          python3 -m pip install -r tests/accounts/requirements.txt
+          python3 -m playwright install --with-deps chromium
+          cargo install trunk --version 0.21.14 --locked
+      - name: Compile actual service entrypoints and assert real durable restart
+        run: |
+          cargo build -p tabula-server -p tabula-auth --features tabula-server/local-dev,tabula-auth/local-dev --locked
+          cargo test -p tabula-server --features local-dev --test local_dev --locked -- --list --ignored > /tmp/local-dev-test-selection.txt
+          grep -Eq '^real_process_http_sigterm_restart_preserves_seats_and_duplicate_watermark: test$' /tmp/local-dev-test-selection.txt
+          cargo test -p tabula-server --features local-dev --test local_dev --locked -- --ignored
+      - name: Build current web and independent gameplay documents
+        run: |
+          (cd apps/web && NO_COLOR=true TABULA_PLAY_BASE=/play trunk build --release --cargo-profile wasm-release --features online,account-social)
+          cargo build -p tabula-game-client --no-default-features --features web,online --target wasm32-unknown-unknown --profile wasm-release --locked
+          cargo xtask stage-local-play
+          python3 tools/tests/check-loading-budgets.py --shell-dist apps/web/dist --shell-profile account-social
+          python3 -m py_compile tests/local-dev/run.py tests/local-dev/tls_frontend.py
+          python3 -m unittest discover -s tests/local-dev -p 'test_*.py' -v
+      - name: Real provider login and two-browser complete match through service binaries
+        run: bash tests/kanidm/run.sh python3 tests/local-dev/run.py --receipt verification/local-dev-backend/browser-receipt.json
+      - name: Preserve bounded public evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-dev-backend-evidence
+          path: verification/local-dev-backend/*
+          if-no-files-found: error
+          retention-days: 7

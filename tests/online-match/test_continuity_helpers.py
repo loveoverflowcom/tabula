@@ -9,10 +9,68 @@ from unittest import mock
 from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_CONCEALED,
     PageNetwork, Pair, command_identity, pending_record, run, pair_diagnostics, current_context_after_restart, FOCUS_OBSERVER,
     same_record_rotation_game, focus_only_revoke_game, held_prefix,
-    crash_game, apply_and_committed_refresh_game, restart_between_grant_and_attach_game)
+    crash_game, apply_and_committed_refresh_game, restart_between_grant_and_attach_game,
+    restart_with_fresh_attachment)
 
 
 class ContinuityHelperTests(unittest.TestCase):
+    def test_crash_restart_requires_a_new_request_and_completed_attachment_body(self):
+        match_id='a'*32;scope='b'*64
+        old={'version':2,'seat':1,'attachment_id':'c'*32,'operation_scope':scope,'frames':[]}
+        fresh={**old,'attachment_id':'d'*32}
+        page=mock.Mock();page.evaluate.return_value=100;listeners={};accepted=[]
+        page.on.side_effect=lambda name,callback:listeners.setdefault(name,[]).append(callback)
+        page.remove_listener.side_effect=lambda name,callback:listeners[name].remove(callback)
+        def request(failure=None,start=101):
+            value=mock.Mock(method='POST',url=f'https://localhost:9443/api/v1/matches/{match_id}/attach',failure=failure)
+            value.timing={'startTime':start}
+            value._impl_obj=object();value.response.return_value=mock.Mock(status=200)
+            return value
+        pre_crash=request(start=99);queued_old=request(start=99);header_only=request('net::ERR_ABORTED');current=request()
+        class Selection:
+            value=None
+            def __init__(self,predicate):self.predicate=predicate
+            def __enter__(self):return self
+            def __exit__(self,*args):
+                if not args[0] and self.value is None:raise BrowserTimeout('fresh attachment absent')
+            def finish(self,request):
+                accepted.append(self.predicate(request))
+                if accepted[-1]:self.value=request
+        selection=None
+        def expect(event,*,predicate,timeout):
+            nonlocal selection
+            self.assertEqual((event,timeout),('requestfinished',60_000))
+            selection=Selection(predicate);return selection
+        page.expect_event.side_effect=expect
+        def restart(mode):
+            self.assertEqual(mode,'normal')
+            selection.finish(pre_crash)
+            for value in (queued_old,header_only,current):
+                if value is current:value.timing={'startTime':-1}
+                for callback in listeners['request']:callback(value)
+                if value is current:value.timing={'startTime':101}
+                selection.finish(value)
+            return {'alive':True}
+        supervisor=mock.Mock();supervisor.restart.side_effect=restart
+        pair=SimpleNamespace(pages=[mock.Mock(),page],attachments=[[{}],[old]],match_id=match_id)
+        with mock.patch('continuity_acceptance.actual_response_json',return_value=fresh) as observed:
+            restart_with_fresh_attachment(pair,supervisor)
+        self.assertEqual(accepted,[False,False,False,True])
+        observed.assert_called_once_with(current.response.return_value)
+        self.assertEqual(listeners['request'],[])
+
+    def test_crash_restart_rejects_changed_operation_scope(self):
+        previous={'attachment_id':'a'*32,'operation_scope':'b'*64}
+        page=mock.MagicMock();page.evaluate.return_value=100;request=mock.Mock()
+        page.expect_event.return_value.__enter__.return_value=SimpleNamespace(value=request)
+        pair=SimpleNamespace(pages=[mock.Mock(),page],attachments=[[{}],[previous]],match_id='c'*32)
+        supervisor=mock.Mock();supervisor.restart.return_value={'alive':True}
+        with mock.patch('continuity_acceptance.completed_attachment_response',return_value=mock.Mock()), \
+             mock.patch('continuity_acceptance.actual_response_json',return_value={
+                 'version':2,'seat':1,'attachment_id':'d'*32,'operation_scope':'e'*64,'frames':[]}):
+            with self.assertRaises(AcceptanceFailure):restart_with_fresh_attachment(pair,supervisor)
+        page.remove_listener.assert_called_once()
+
     def test_held_prefix_uses_only_existing_ephemeral_token_and_known_public_expectation(self):
         reply={'status':200,'body':{'version':1,'expected_public_transcript_prefix':True}}
         with mock.patch('continuity_acceptance.wire_probe',return_value=reply) as request:

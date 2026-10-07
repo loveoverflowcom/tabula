@@ -335,6 +335,14 @@ Twenty-eight mandatory partitions currently form twenty-four independently audit
   bytes, including any partial bytes observed before a transport exception
 - New fenced owner recovery precedes release of held old-owner output
 
+The crash partitions wait for an authenticated Black attachment request that
+started after the old process was SIGKILLed and reaped, and whose genuine body
+completed after restart. Native request timing excludes queued pre-crash events;
+canceled responses and headers alone cannot satisfy the witness. The fresh
+attachment must preserve Black's seat and operation scope and replace its old
+transport identity before the existing board, pixel and durable-prefix checks.
+An unchanged pre-crash White-turn board is therefore insufficient resync evidence.
+
 The one-shot gates exist only in the explicitly selected `continuity-test`
 standalone fixture and `acceptance-test-support` native gateway. Hooks match
 trusted match, auth record and attachment. They never manufacture command

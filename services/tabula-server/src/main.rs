@@ -7,7 +7,8 @@
 //! The crates are the boundary; the process count is a deployment decision.
 //! Account authentication is reserved for `services/tabula-auth` and Kanidm
 //! (ADR-0034); this binary enforces Tabula sessions and gameplay permissions.
-//! Both services are skeletons: no listener, credentials, or account API is active.
+//! ADR-0047 opens only the explicit native `local-dev` composition and loopback
+//! listeners; the default production bootstrap remains closed.
 //!
 //! Doc 01 §2.3 rejects the "separate services from day one" outline explicitly:
 //! matchmaking, lobby, and the match runtime all need the same room directory,
@@ -140,7 +141,7 @@
 //! ## Skeleton module layout (TODOs live beside their future implementation)
 //!
 //! ```text
-//! src/main.rs        entry point; delegates to the closed phase gate
+//! src/main.rs        default gate or explicit local/dev CLI
 //! src/bootstrap.rs   boot: config → tracing → storage → registry → serve
 //! src/config.rs      the typed config struct; validated once, fails fast
 //! src/http.rs        catalog, profile, match and later lobby/social/admin routes

@@ -3,7 +3,7 @@
 
 use std::{
     collections::BTreeMap,
-    future::poll_fn,
+    future::{poll_fn, Future},
     pin::Pin,
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -38,7 +38,7 @@ use tabula_session::{
     AccountOperationId, AuthSessionId, BoundedSocketFrame, SessionBinding, SessionChannel,
     SessionPublication, SocketFramePublication, MAX_SOCKET_FRAME_BYTES,
 };
-use tokio::sync::watch;
+use tokio::sync::{watch, Notify};
 
 use crate::{
     isolated::{guarded_json, IsolatedSessionHttp},
@@ -242,12 +242,16 @@ impl PresenceHub {
 struct SocialState<A> {
     http: IsolatedSessionHttp<A>,
     hub: Arc<PresenceHub>,
+    shutdown: Option<watch::Receiver<bool>>,
+    lifecycle: Arc<SocketLifecycle>,
 }
 impl<A> Clone for SocialState<A> {
     fn clone(&self) -> Self {
         Self {
             http: self.http.clone(),
             hub: self.hub.clone(),
+            shutdown: self.shutdown.clone(),
+            lifecycle: self.lifecycle.clone(),
         }
     }
 }
@@ -261,6 +265,125 @@ impl Drop for AttachedSocket {
     }
 }
 
+#[derive(Default)]
+struct SocketTasks {
+    stopping: bool,
+    active: usize,
+    failed: bool,
+}
+#[derive(Default)]
+struct SocketLifecycle {
+    tasks: Mutex<SocketTasks>,
+    finished: Notify,
+}
+impl SocketLifecycle {
+    fn register(self: &Arc<Self>) -> Option<SocketTask> {
+        let mut tasks = self.tasks.lock().ok()?;
+        if tasks.stopping || tasks.active >= SOCKET_CAPACITY {
+            return None;
+        }
+        tasks.active += 1;
+        Some(SocketTask {
+            lifecycle: self.clone(),
+            started: false,
+            completed: false,
+        })
+    }
+    fn stop(&self) -> bool {
+        let Ok(mut tasks) = self.tasks.lock() else {
+            return false;
+        };
+        tasks.stopping = true;
+        true
+    }
+    async fn wait_idle(&self) -> bool {
+        loop {
+            // Register the wake before observing the count, so final completion
+            // cannot fall between the observation and an unregistered wait.
+            let finished = self.finished.notified();
+            tokio::pin!(finished);
+            finished.as_mut().enable();
+            match self.tasks.lock() {
+                Ok(tasks) if tasks.active == 0 => return !tasks.failed,
+                Ok(_) => {}
+                Err(_) => return false,
+            }
+            finished.await;
+        }
+    }
+}
+struct SocketTask {
+    lifecycle: Arc<SocketLifecycle>,
+    started: bool,
+    completed: bool,
+}
+impl Drop for SocketTask {
+    fn drop(&mut self) {
+        if let Ok(mut tasks) = self.lifecycle.tasks.lock() {
+            tasks.active = tasks.active.saturating_sub(1);
+            tasks.failed |= self.started && !self.completed;
+            if tasks.active == 0 {
+                self.lifecycle.finished.notify_waiters();
+            }
+        }
+    }
+}
+
+/// Completion for the existing router's ticker and upgraded socket tasks.
+///
+/// The caller first sends `true` on its shutdown watch, then waits within the
+/// process drain budget. HTTP graceful shutdown alone does not own upgrades.
+pub struct SocialShutdown {
+    lifecycle: Arc<SocketLifecycle>,
+    ticker: tokio::task::JoinHandle<Result<(), ()>>,
+}
+impl std::fmt::Debug for SocialShutdown {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("SocialShutdown([REDACTED])")
+    }
+}
+impl SocialShutdown {
+    /// Rejects new socket admission and waits for actual detach and ticker exit.
+    /// Timeout, a poisoned tracker or ticker failure never reports completion.
+    pub async fn finish(mut self, budget: Duration) -> bool {
+        if !self.lifecycle.stop() {
+            self.ticker.abort();
+            return false;
+        }
+        let complete = tokio::time::timeout(budget, async {
+            self.lifecycle.wait_idle().await && matches!((&mut self.ticker).await, Ok(Ok(())))
+        })
+        .await
+        .unwrap_or(false);
+        if !complete {
+            self.ticker.abort();
+        }
+        complete
+    }
+}
+
+async fn wait_shutdown(shutdown: &mut Option<watch::Receiver<bool>>) {
+    let Some(shutdown) = shutdown else {
+        std::future::pending::<()>().await;
+        return;
+    };
+    loop {
+        if *shutdown.borrow_and_update() || shutdown.changed().await.is_err() {
+            return;
+        }
+    }
+}
+async fn until_shutdown<T>(
+    mut shutdown: Option<watch::Receiver<bool>>,
+    work: impl Future<Output = T>,
+) -> Option<T> {
+    tokio::select! {
+        biased;
+        () = wait_shutdown(&mut shutdown) => None,
+        result = work => Some(result),
+    }
+}
+
 impl<A> IsolatedSessionHttp<A>
 where
     A: SocialAuthority + Send + Sync + 'static,
@@ -269,44 +392,65 @@ where
     /// One explicit isolated router and one coalesced in-process presence owner.
     /// Clone this router for a listener; do not create independent owners for one origin.
     pub fn social_router(&self) -> Router {
+        self.build_social_router(None).0
+    }
+    /// The same single presence owner with explicit process shutdown tracking.
+    /// Send `true` before waiting on the returned controller (issue #110 PR01).
+    pub fn social_router_with_shutdown(
+        &self,
+        shutdown: watch::Receiver<bool>,
+    ) -> (Router, SocialShutdown) {
+        self.build_social_router(Some(shutdown))
+    }
+    fn build_social_router(
+        &self,
+        shutdown: Option<watch::Receiver<bool>>,
+    ) -> (Router, SocialShutdown) {
         let hub = PresenceHub::new();
+        let lifecycle = Arc::new(SocketLifecycle::default());
         let weak = Arc::downgrade(&hub);
         let http = self.clone();
-        tokio::spawn(async move {
-            let mut ticker = tokio::time::interval(Duration::from_millis(500));
-            let mut published = 0;
-            loop {
-                ticker.tick().await;
-                let Some(hub) = weak.upgrade() else {
-                    break;
-                };
-                let (revision, offline) = match hub.data.lock() {
-                    Ok(mut data) => {
-                        PresenceHub::expire(&mut data);
-                        (data.revision, data.tracker.drain_offline(now_ms()))
+        let ticker_shutdown = shutdown.clone();
+        let ticker = tokio::spawn(async move {
+            until_shutdown(ticker_shutdown, async move {
+                let mut ticker = tokio::time::interval(Duration::from_millis(500));
+                let mut published = 0;
+                loop {
+                    ticker.tick().await;
+                    let Some(hub) = weak.upgrade() else {
+                        break;
+                    };
+                    let (revision, offline) = match hub.data.lock() {
+                        Ok(mut data) => {
+                            PresenceHub::expire(&mut data);
+                            (data.revision, data.tracker.drain_offline(now_ms()))
+                        }
+                        Err(_) => return Err(()),
+                    };
+                    if revision != published {
+                        published = revision;
+                        let _ = hub.wake.send(revision);
                     }
-                    Err(_) => break,
-                };
-                if revision != published {
-                    published = revision;
-                    let _ = hub.wake.send(revision);
-                }
-                for (user, at) in offline {
-                    // A failed metadata write never creates a live presence fact.
-                    if http
-                        .authority()
-                        .social_record_offline(user, at)
-                        .await
-                        .is_err()
-                    {
-                        if let Ok(mut data) = hub.data.lock() {
-                            data.tracker.retry_offline(user, at);
+                    for (user, at) in offline {
+                        // A failed metadata write never creates a live presence fact.
+                        if http
+                            .authority()
+                            .social_record_offline(user, at)
+                            .await
+                            .is_err()
+                        {
+                            if let Ok(mut data) = hub.data.lock() {
+                                data.tracker.retry_offline(user, at);
+                            }
                         }
                     }
                 }
-            }
+                Ok(())
+            })
+            .await
+            .unwrap_or(Ok(()))
         });
-        Router::new()
+        let router = Router::new()
             .route("/api/v2/social", get(snapshot::<A>))
             .route("/api/v2/social/search", get(search::<A>))
             .route("/api/v2/social/mutate", post(mutate::<A>))
@@ -314,8 +458,11 @@ where
             .with_state(SocialState {
                 http: self.clone(),
                 hub,
+                shutdown,
+                lifecycle: lifecycle.clone(),
             })
-            .layer(middleware::from_fn(no_store_layer))
+            .layer(middleware::from_fn(no_store_layer));
+        (router, SocialShutdown { lifecycle, ticker })
     }
 }
 
@@ -522,13 +669,38 @@ where
         return problem(SocialError::RateLimited);
     }
     let binding = session.binding();
+    let Some(task) = state.lifecycle.register() else {
+        return problem(SocialError::Unavailable);
+    };
     no_store(
         upgrade
             .protocols([PROTOCOL])
             .max_message_size(INBOUND_LIMIT)
             .max_frame_size(INBOUND_LIMIT)
-            .on_upgrade(move |socket| socket_loop(state, socket, binding)),
+            .on_upgrade(move |socket| tracked_socket(state, socket, binding, task)),
     )
+}
+
+async fn tracked_socket<A>(
+    state: SocialState<A>,
+    mut socket: WebSocket,
+    binding: SessionBinding,
+    mut task: SocketTask,
+) where
+    A: SocialAuthority + Send + Sync + 'static,
+    A::SocialPublication: 'static,
+{
+    task.started = true;
+    let shutdown = state.shutdown.clone();
+    if until_shutdown(shutdown, socket_loop(state, &mut socket, binding))
+        .await
+        .is_none()
+    {
+        // Canceling the scoped loop drops AttachedSocket through its existing
+        // detach path before reporting this upgraded task as complete.
+        close(&mut socket, 4411).await;
+    }
+    task.completed = true;
 }
 
 async fn close(socket: &mut WebSocket, code: u16) {
@@ -610,7 +782,7 @@ async fn send_snapshot<P: SocketFramePublication>(
 
 // One loop owns the scoped stream, input budget and fail-closed lifetime.
 #[allow(clippy::too_many_lines)]
-async fn socket_loop<A>(state: SocialState<A>, mut socket: WebSocket, binding: SessionBinding)
+async fn socket_loop<A>(state: SocialState<A>, socket: &mut WebSocket, binding: SessionBinding)
 where
     A: SocialAuthority + Send + Sync + 'static,
     A::SocialPublication: 'static,
@@ -626,13 +798,13 @@ where
         _ => false,
     };
     if !valid {
-        close(&mut socket, 4400).await;
+        close(socket, 4400).await;
         return;
     }
     // Revalidate the historical upgrade binding before counting an attachment.
     if let Err(error) = state.http.authority().observe_binding(binding).await {
         close(
-            &mut socket,
+            socket,
             if error == tabula_session::SessionError::Unauthenticated {
                 4401
             } else {
@@ -643,7 +815,7 @@ where
         return;
     }
     let Some(connection) = state.hub.attach(binding) else {
-        close(&mut socket, 4429).await;
+        close(socket, 4429).await;
         return;
     };
     let _attached = AttachedSocket {
@@ -654,7 +826,7 @@ where
     let mut heartbeat = tokio::time::interval(Duration::from_secs(2));
     heartbeat.tick().await;
     let Ok(mut scope) = random_scope() else {
-        close(&mut socket, 1011).await;
+        close(socket, 1011).await;
         return;
     };
     let mut revision = 0_u64;
@@ -663,12 +835,12 @@ where
     let mut challenge: Option<PeerChallenge> = None;
     loop {
         if !state.hub.fresh(connection) {
-            close(&mut socket, 1001).await;
+            close(socket, 1001).await;
             return;
         }
         if challenge.is_none() {
             let Ok(nonce) = random_scope() else {
-                close(&mut socket, 1011).await;
+                close(socket, 1011).await;
                 return;
             };
             challenge = Some(PeerChallenge {
@@ -690,11 +862,11 @@ where
             .await,
             Ok(Ok(()))
         ) {
-            close(&mut socket, 1011).await;
+            close(socket, 1011).await;
             return;
         }
         let Some(bindings) = state.hub.bindings() else {
-            close(&mut socket, 1011).await;
+            close(socket, 1011).await;
             return;
         };
         let mut candidate = match state
@@ -705,24 +877,24 @@ where
         {
             Ok(candidate) => candidate,
             Err(SocialError::Unauthenticated) => {
-                close(&mut socket, 4401).await;
+                close(socket, 4401).await;
                 return;
             }
             Err(_) => {
-                close(&mut socket, 1011).await;
+                close(socket, 1011).await;
                 return;
             }
         };
         let Some(next_revision) = revision.checked_add(1) else {
-            close(&mut socket, 1011).await;
+            close(socket, 1011).await;
             return;
         };
         revision = next_revision;
         candidate.value.scope_id.clone_from(&scope);
         candidate.value.revision = revision;
-        if let Err(error) = send_snapshot(&mut socket, candidate).await {
+        if let Err(error) = send_snapshot(socket, candidate).await {
             close(
-                &mut socket,
+                socket,
                 if error == SocialError::Unauthenticated {
                     4401
                 } else {
@@ -735,15 +907,15 @@ where
         loop {
             tokio::select! {
                 _ = heartbeat.tick() => break,
-                changed = wake.changed() => { if changed.is_err() { close(&mut socket,1011).await; return; } break; },
+                changed = wake.changed() => { if changed.is_err() { close(socket,1011).await; return; } break; },
                 message = socket.recv() => {
                     if incoming_window.elapsed() >= Duration::from_secs(60) { incoming_window = Instant::now(); incoming = 0; }
                     incoming = incoming.saturating_add(1);
-                    if incoming > 120 { close(&mut socket,4429).await; return; }
+                    if incoming > 120 { close(socket,4429).await; return; }
                     match message {
                         Some(Ok(Message::Text(text))) if text.len() <= INBOUND_LIMIT => {
-                            let Ok(SocialClientMessage::Resync) = serde_json::from_str::<SocialClientMessage>(&text) else { close(&mut socket,4400).await; return; };
-                            let Ok(new_scope) = random_scope() else { close(&mut socket,1011).await; return; };
+                            let Ok(SocialClientMessage::Resync) = serde_json::from_str::<SocialClientMessage>(&text) else { close(socket,4400).await; return; };
+                            let Ok(new_scope) = random_scope() else { close(socket,1011).await; return; };
                             scope = new_scope; revision = 0; break;
                         },
                         Some(Ok(Message::Pong(pong))) => {
@@ -751,7 +923,7 @@ where
                         },
                         Some(Ok(Message::Ping(_))) => {},
                         Some(Ok(Message::Close(_)) | Err(_)) | None => return,
-                        _ => { close(&mut socket,4400).await; return; },
+                        _ => { close(socket,4400).await; return; },
                     }
                 }
             }
@@ -766,6 +938,102 @@ mod tests {
         convert::Infallible,
         task::{Context, Poll},
     };
+
+    #[tokio::test]
+    async fn shutdown_cancels_the_scoped_socket_work_and_detaches_before_completion() {
+        let hub = PresenceHub::new();
+        let binding = Publication::new().snapshot.binding();
+        let connection = hub.attach(binding).unwrap();
+        let attached = AttachedSocket {
+            hub: hub.clone(),
+            connection,
+        };
+        let lifecycle = Arc::new(SocketLifecycle::default());
+        let mut task = lifecycle.register().unwrap();
+        let (stop, shutdown) = watch::channel(false);
+        let ticker_shutdown = shutdown.clone();
+        let ticker = tokio::spawn(async move {
+            until_shutdown(Some(ticker_shutdown), std::future::pending::<()>()).await;
+            Ok(())
+        });
+        let socket = tokio::spawn(async move {
+            task.started = true;
+            let work = async move {
+                let _attached = attached;
+                std::future::pending::<()>().await;
+            };
+            assert!(until_shutdown(Some(shutdown), work).await.is_none());
+            task.completed = true;
+            drop(task);
+        });
+        assert_eq!(hub.bindings().unwrap().len(), 1);
+        stop.send(true).unwrap();
+        assert!(
+            SocialShutdown {
+                lifecycle: lifecycle.clone(),
+                ticker,
+            }
+            .finish(Duration::from_secs(1))
+            .await
+        );
+        socket.await.unwrap();
+        assert!(hub.bindings().unwrap().is_empty());
+        assert!(
+            lifecycle.register().is_none(),
+            "drain closes upgraded admission"
+        );
+    }
+
+    #[tokio::test]
+    async fn shutdown_does_not_report_success_for_lost_work_or_failed_ticker() {
+        let lifecycle = Arc::new(SocketLifecycle::default());
+        let mut task = lifecycle.register().unwrap();
+        task.started = true;
+        drop(task); // A started callback disappearing before its normal exit.
+        let ticker = tokio::spawn(async { Ok(()) });
+        assert!(
+            !SocialShutdown { lifecycle, ticker }
+                .finish(Duration::from_secs(1))
+                .await
+        );
+
+        let lifecycle = Arc::new(SocketLifecycle::default());
+        let ticker = tokio::spawn(async { Err(()) });
+        assert!(
+            !SocialShutdown { lifecycle, ticker }
+                .finish(Duration::from_secs(1))
+                .await
+        );
+
+        let lifecycle = Arc::new(SocketLifecycle::default());
+        let task = lifecycle.register().unwrap();
+        let ticker = tokio::spawn(async { Ok(()) });
+        assert!(
+            !SocialShutdown { lifecycle, ticker }
+                .finish(Duration::from_millis(1))
+                .await
+        );
+        drop(task);
+    }
+
+    #[tokio::test]
+    async fn shutdown_is_observed_before_work_and_channel_loss_also_stops() {
+        let (stop, shutdown) = watch::channel(true);
+        let ran = std::sync::atomic::AtomicBool::new(false);
+        assert!(until_shutdown(Some(shutdown), async {
+            ran.store(true, Ordering::Release);
+        })
+        .await
+        .is_none());
+        assert!(!ran.load(Ordering::Acquire));
+        drop(stop);
+
+        let (stop, shutdown) = watch::channel(false);
+        drop(stop);
+        assert!(until_shutdown(Some(shutdown), std::future::pending::<()>())
+            .await
+            .is_none());
+    }
 
     #[test]
     fn transport_presence_expires_without_exact_fresh_pong() {

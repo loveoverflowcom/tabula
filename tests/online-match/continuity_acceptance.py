@@ -264,6 +264,44 @@ def ready_server(page):
     raise AcceptanceFailure('restarted real native server did not answer validated HTTPS')
 
 
+def restart_with_fresh_attachment(pair, supervisor):
+    """Wait for Black's actual new request/body after the old owner is reaped.
+
+    An unchanged pre-crash White-turn projection can satisfy CURRENT_BOARD
+    before the next poll observes owner loss. Its pixels do not prove resync.
+    This observes genuine requests only; no context, grant or frame is replaced.
+    """
+    page=pair.pages[1];previous=pair.attachments[1][-1];started=[]
+    started_after=page.evaluate('Date.now()')
+    def request_started(request):
+        if request.method!='POST' or urlsplit(request.url).path!=f'/api/v1/matches/{pair.match_id}/attach':return
+        require(len(started)<64,'post-crash attachment attempts exceeded their observation bound')
+        started.append(getattr(request,'_impl_obj',request))
+    def delivered(request):
+        # Native timing is available when the request completes, and may still
+        # be -1 during its initial request event.
+        start=request.timing['startTime']
+        return (type(start) in (int,float) and start>started_after
+                and any(getattr(request,'_impl_obj',request) is item for item in started)
+                and completed_attachment_response(request,pair.match_id) is not None)
+    page.on('request',request_started)
+    try:
+        # The caller has already SIGKILLed/reaped the old native owner. Native
+        # browser start timing also excludes older queued request events.
+        with page.expect_event('requestfinished',predicate=delivered,timeout=60_000) as received:
+            require(supervisor.restart('normal')['alive'] is True,'native server restart failed')
+        response=completed_attachment_response(received.value,pair.match_id)
+        require(response is not None,'post-crash authenticated attachment body was absent')
+        current=actual_response_json(response)
+        require(current['version']==MATCH_VERSION and current['seat']==1
+                and not private_frame_keys(current),'post-crash attachment changed seat or disclosed canonical facts')
+        require(current['attachment_id']!=previous['attachment_id']
+                and current['operation_scope']==previous['operation_scope'],
+                'post-crash attachment retained old transport or changed operation identity')
+    finally:
+        page.remove_listener('request',request_started)
+
+
 def network_refresh_game(contexts,private,ca,results,evidence):
     pair=Pair(contexts,private,'network-refresh');white,black=pair.pages
     network=PageNetwork(white);old=pair.attachments[0][-1]
@@ -319,7 +357,7 @@ def crash_game(contexts,private,ca,supervisor,committed,results):
     white_network=PageNetwork(white);white_network.offline(True)
     white.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
     outcome=supervisor.kill();require(outcome['sigkill_reaped'] is True,'actual native server SIGKILL was not reaped')
-    restarted=supervisor.restart('normal');require(restarted['alive'] is True,'native server restart failed')
+    restart_with_fresh_attachment(pair,supervisor)
     pair.board(1,'Black to move' if committed else 'White to move')
     pair.oracle(1 if committed else 0,1)
     white_network.offline(False);pair.board(0,'Black to move');pair.oracle(1)

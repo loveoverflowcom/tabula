@@ -21,7 +21,10 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     fmt,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
+    },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tabula_core::{GameId, MatchId, MatchSeed, SessionId};
@@ -42,16 +45,19 @@ use tabula_storage::{
 use tokio::sync::{oneshot, Mutex as AsyncMutex, MutexGuard as AsyncMutexGuard, Semaphore};
 #[path = "native_body.rs"]
 mod native_body;
+#[path = "native_lifecycle.rs"]
+mod native_lifecycle;
 #[path = "native_ports.rs"]
 mod native_ports;
 #[cfg(feature = "acceptance-test-support")]
 pub use crate::{AcceptanceFaultHook, AcceptanceFaultPhase, AcceptanceFaultPoint};
 use native_body::{private_response, PrivateAttachment};
+use native_lifecycle::track_owner;
+pub use native_lifecycle::{InvalidMatchHttpConfig, MatchHttpConfig, ShutdownReport};
 use native_ports::{
     ActiveRequest, AuthorizedAttachment, ClosedEffects, LiveMatch, NetworkAuthority, NetworkClock,
     NetworkJournal, QueueOutput,
 };
-const MAX_LIVE_MATCHES: usize = 128;
 const REQUEST_DEADLINE: Duration = Duration::from_secs(20);
 const STATE_WAIT_DEADLINE: Duration = Duration::from_secs(5);
 const GRANT_LIFETIME_MS: u64 = 600_000;
@@ -106,6 +112,10 @@ struct GatewayState {
     live: AsyncMutex<BTreeMap<MatchId, Arc<LiveMatch>>>,
     request_permits: Arc<Semaphore>,
     work_permits: Arc<Semaphore>,
+    config: MatchHttpConfig,
+    draining: AtomicBool,
+    live_count: AtomicUsize,
+    shutdown_gate: AsyncMutex<()>,
     limits: std::sync::Mutex<runtime::Limits>,
     #[cfg(feature = "acceptance-test-support")]
     hook: std::sync::Mutex<Option<Arc<dyn AcceptanceFaultHook>>>,
@@ -120,6 +130,25 @@ impl IsolatedMatchHttp {
         matches: PgMatchStore,
         games: Vec<Arc<dyn ErasedGame>>,
     ) -> Result<Self, SessionError> {
+        Self::with_config(
+            session_http,
+            sessions,
+            online,
+            matches,
+            games,
+            MatchHttpConfig::default(),
+        )
+    }
+    /// Compose explicit local capacities without changing correctness/retention limits.
+    /// This opens no listener and changes no durable room or receipt-ledger budget.
+    pub fn with_config(
+        session_http: IsolatedSessionHttp<PgSessionStore>,
+        sessions: PgSessionStore,
+        online: PgOnlineMatchStore,
+        matches: PgMatchStore,
+        games: Vec<Arc<dyn ErasedGame>>,
+        config: MatchHttpConfig,
+    ) -> Result<Self, SessionError> {
         if games.len() > 64 {
             return Err(SessionError::InvalidInput);
         }
@@ -132,13 +161,90 @@ impl IsolatedMatchHttp {
                 games,
                 signing_key: random_bytes()?,
                 live: AsyncMutex::new(BTreeMap::new()),
-                request_permits: Arc::new(Semaphore::new(64)),
-                work_permits: Arc::new(Semaphore::new(64)),
+                request_permits: Arc::new(Semaphore::new(config.request_capacity())),
+                work_permits: Arc::new(Semaphore::new(config.work_capacity())),
+                config,
+                draining: AtomicBool::new(false),
+                live_count: AtomicUsize::new(0),
+                shutdown_gate: AsyncMutex::new(()),
                 limits: std::sync::Mutex::new(runtime::Limits::default()),
                 #[cfg(feature = "acceptance-test-support")]
                 hook: std::sync::Mutex::new(None),
             }),
         })
+    }
+    /// Readiness closes immediately when any clone starts shutdown (doc03 §6.4).
+    pub fn is_draining(&self) -> bool {
+        self.state.draining.load(Ordering::Acquire)
+    }
+    /// Close readiness and new HTTP admission before draining server bodies.
+    /// Idempotent across clones; retained work and owners remain untouched.
+    pub fn begin_shutdown(&self) {
+        self.state.draining.store(true, Ordering::Release);
+        self.state.request_permits.close();
+    }
+    /// Stop admission, retain cancelled-request work, then FIFO-drain owners.
+    ///
+    /// The caller also drains its HTTP server so private bodies release their
+    /// publication leases. A timeout preserves owners and reports incomplete
+    /// shutdown; it never aborts an actor or declares uncertain writes rolled back.
+    pub async fn shutdown(&self, budget: Duration) -> ShutdownReport {
+        self.begin_shutdown();
+        let deadline = tokio::time::Instant::now()
+            .checked_add(budget)
+            .unwrap_or_else(tokio::time::Instant::now);
+        let Ok(_shutdown) =
+            tokio::time::timeout_at(deadline, self.state.shutdown_gate.lock()).await
+        else {
+            return self.shutdown_timeout();
+        };
+        if wait_for_quiescence(
+            &self.state.request_permits,
+            &self.state.work_permits,
+            self.state.config,
+            deadline,
+        )
+        .await
+        .is_err()
+        {
+            return self.shutdown_timeout();
+        }
+        self.state.work_permits.close();
+        let Ok(map) = tokio::time::timeout_at(deadline, self.state.live.lock()).await else {
+            return self.shutdown_timeout();
+        };
+        let mut pending = tokio::task::JoinSet::new();
+        for (id, live) in map.iter() {
+            let id = *id;
+            let live = live.clone();
+            pending.spawn(async move { (id, live.lifecycle.drain(deadline).await) });
+        }
+        drop(map);
+        let mut report = ShutdownReport::default();
+        while let Some(result) = pending.join_next().await {
+            match result {
+                Ok((id, Ok(drained))) => {
+                    if self.state.live.lock().await.remove(&id).is_some() {
+                        self.state.live_count.fetch_sub(1, Ordering::AcqRel);
+                    }
+                    if drained {
+                        report.drained += 1;
+                    } else {
+                        report.failed += 1;
+                    }
+                }
+                Ok((_, Err(()))) | Err(_) => report.timed_out = true,
+            }
+        }
+        report.remaining = self.state.live_count.load(Ordering::Acquire);
+        report
+    }
+    fn shutdown_timeout(&self) -> ShutdownReport {
+        ShutdownReport {
+            remaining: self.state.live_count.load(Ordering::Acquire),
+            timed_out: true,
+            ..ShutdownReport::default()
+        }
     }
     /// Install only an explicitly opted-in disposable command barrier.
     #[cfg(feature = "acceptance-test-support")]
@@ -213,6 +319,7 @@ impl IsolatedMatchHttp {
             .await
             .remove(&id)
             .ok_or(tabula_match::durable::RuntimePortError::Unavailable)?;
+        self.state.live_count.fetch_sub(1, Ordering::AcqRel);
         live.owner_task.abort();
         live.authority.close();
         live.journal.set(None)?;
@@ -288,12 +395,45 @@ async fn bound_requests(
     request: Request,
     next: Next,
 ) -> Response {
-    let Ok(_permit) = state.request_permits.clone().try_acquire_owned() else {
-        return problem(StatusCode::TOO_MANY_REQUESTS, "busy");
+    let _permit = match admit_request(&state.draining, state.request_permits.clone()) {
+        Ok(permit) => permit,
+        Err(error) => return error.response(),
     };
     match tokio::time::timeout(Duration::from_secs(30), next.run(request)).await {
         Ok(response) => response,
         Err(_) => problem(StatusCode::REQUEST_TIMEOUT, "request_timeout"),
+    }
+}
+fn admit_request(
+    draining: &AtomicBool,
+    permits: Arc<Semaphore>,
+) -> Result<tokio::sync::OwnedSemaphorePermit, RequestAdmissionError> {
+    if draining.load(Ordering::Acquire) {
+        return Err(RequestAdmissionError::Draining);
+    }
+    let Ok(permit) = permits.try_acquire_owned() else {
+        return if draining.load(Ordering::Acquire) {
+            Err(RequestAdmissionError::Draining)
+        } else {
+            Err(RequestAdmissionError::Capacity)
+        };
+    };
+    if draining.load(Ordering::Acquire) {
+        return Err(RequestAdmissionError::Draining);
+    }
+    Ok(permit)
+}
+#[derive(Debug)]
+enum RequestAdmissionError {
+    Draining,
+    Capacity,
+}
+impl RequestAdmissionError {
+    fn response(self) -> Response {
+        match self {
+            Self::Draining => problem(StatusCode::SERVICE_UNAVAILABLE, "server_draining"),
+            Self::Capacity => problem(StatusCode::TOO_MANY_REQUESTS, "request_capacity"),
+        }
     }
 }
 async fn no_store(request: Request, next: Next) -> Response {
@@ -338,6 +478,9 @@ fn online_problem(e: OnlineMatchError) -> Response {
         OnlineMatchError::Unavailable => unavailable(),
         OnlineMatchError::Busy | OnlineMatchError::RateLimited => {
             problem(StatusCode::TOO_MANY_REQUESTS, "busy")
+        }
+        OnlineMatchError::CapacityExceeded => {
+            problem(StatusCode::TOO_MANY_REQUESTS, "room_capacity_exhausted")
         }
         OnlineMatchError::InvalidInput => invalid(),
         OnlineMatchError::JoinUnavailable => problem(StatusCode::FORBIDDEN, "match_unavailable"),
@@ -598,6 +741,9 @@ async fn ensure_live(
     m: &OnlineMembership,
 ) -> Result<Arc<LiveMatch>, Response> {
     let mut map = bounded_state_lock(&state.live, STATE_WAIT_DEADLINE).await?;
+    if state.draining.load(Ordering::Acquire) {
+        return Err(problem(StatusCode::SERVICE_UNAVAILABLE, "server_draining"));
+    }
     if let Some(live) = map.get(&m.match_id()) {
         if !live.handle.is_closed() && live.journal.journal.is_owner_active() {
             return Ok(live.clone());
@@ -605,9 +751,10 @@ async fn ensure_live(
         live.owner_task.abort();
         live.authority.close();
         map.remove(&m.match_id());
+        state.live_count.fetch_sub(1, Ordering::AcqRel);
     }
-    if map.len() >= MAX_LIVE_MATCHES {
-        return Err(problem(StatusCode::TOO_MANY_REQUESTS, "busy"));
+    if map.len() >= state.config.live_capacity() {
+        return Err(problem(StatusCode::TOO_MANY_REQUESTS, "match_capacity"));
     }
     let game = state
         .games
@@ -626,6 +773,9 @@ async fn ensure_live(
     let started = guard.membership().started();
     let limits = *state.limits.lock().map_err(|_| unavailable())?;
     let (journal, ready) = open_online_journal(state, m.match_id(), guard, started).await?;
+    if state.draining.load(Ordering::Acquire) {
+        return Err(problem(StatusCode::SERVICE_UNAVAILABLE, "server_draining"));
+    }
     #[cfg(feature = "acceptance-test-support")]
     journal
         .set_hook(state.hook.lock().map_err(|_| unavailable())?.clone())
@@ -646,7 +796,7 @@ async fn ensure_live(
         }),
         clock: Arc::new(NetworkClock::new()),
     };
-    let (handle, _host, task) = if started {
+    let (handle, host, task) = if started {
         runtime::recover_for_admission(m.match_id(), game, m.config(), roster, ports, limits)
             .await
             .map_err(|_| unavailable())?
@@ -663,11 +813,34 @@ async fn ensure_live(
         }
         runtime::spawn(m.match_id(), created, ports, limits).map_err(|_| unavailable())?
     };
+    let (owner_task, lifecycle) =
+        finish_owner_startup(host, task, &authority, &journal, ready).await?;
+    let live = Arc::new(LiveMatch {
+        handle,
+        journal,
+        authority,
+        output,
+        gate: Arc::new(AsyncMutex::new(())),
+        owner_task,
+        lifecycle,
+    });
+    map.insert(m.match_id(), live.clone());
+    state.live_count.fetch_add(1, Ordering::AcqRel);
+    Ok(live)
+}
+async fn finish_owner_startup(
+    host: runtime::HostControl,
+    task: tokio::task::JoinHandle<runtime::Summary>,
+    authority: &Arc<NetworkAuthority>,
+    journal: &Arc<NetworkJournal>,
+    ready: Option<oneshot::Receiver<Result<(), tabula_match::durable::RuntimePortError>>>,
+) -> Result<(tokio::task::AbortHandle, native_lifecycle::OwnerLifecycle), Response> {
     let owner_task = task.abort_handle();
     let owner_authority = authority.clone();
-    tokio::spawn(async move {
-        let _ = task.await;
+    let owner_journal = journal.clone();
+    let lifecycle = track_owner(host, task, move || {
         owner_authority.close();
+        owner_journal.set(None).is_ok()
     });
     if let Some(receive) = ready {
         if !matches!(
@@ -681,16 +854,7 @@ async fn ensure_live(
         }
     }
     journal.set(None).map_err(|_| unavailable())?;
-    let live = Arc::new(LiveMatch {
-        handle,
-        journal,
-        authority,
-        output,
-        gate: Arc::new(AsyncMutex::new(())),
-        owner_task,
-    });
-    map.insert(m.match_id(), live.clone());
-    Ok(live)
+    Ok((owner_task, lifecycle))
 }
 async fn open_online_journal(
     state: &GatewayState,
@@ -784,7 +948,7 @@ async fn attach(
         state.work_permits.clone(),
         attach_serialized(state, id, op, body),
     ) else {
-        return problem(StatusCode::TOO_MANY_REQUESTS, "busy");
+        return problem(StatusCode::TOO_MANY_REQUESTS, "work_capacity");
     };
     match task.await {
         Ok(response) => response,
@@ -853,23 +1017,9 @@ async fn attach_serialized(
     let Ok(active) = ActiveRequest::new(live.journal.clone(), guard) else {
         return unavailable();
     };
-    if live
-        .authority
-        .insert(AuthorizedAttachment {
-            binding: binding.clone(),
-            credential: op,
-            scope,
-        })
-        .is_err()
-        || live.output.insert(binding.clone()).is_err()
-    {
-        return unavailable();
-    }
-    let Ok(ticket) = live.handle.attach(
-        binding.clone(),
-        tabula_registry::ClientViewer::Seat(scope.seat),
-    ) else {
-        return unavailable();
+    let ticket = match enqueue_attachment(&live, &binding, op, scope) {
+        Ok(ticket) => ticket,
+        Err(error) => return error.response(),
     };
     let result = wait_for_owner(&live, ticket).await;
     drop(active);
@@ -890,6 +1040,54 @@ async fn attach_serialized(
         return unavailable();
     };
     publish_attachment(&state, &live, &m, binding, op, &value).await
+}
+fn enqueue_attachment(
+    live: &LiveMatch,
+    binding: &Binding,
+    credential: CredentialOperation,
+    scope: tabula_match::durable::OperationScope,
+) -> Result<runtime::Ticket, AttachmentAdmissionError> {
+    if live
+        .authority
+        .insert(AuthorizedAttachment {
+            binding: binding.clone(),
+            credential,
+            scope,
+        })
+        .is_err()
+    {
+        return Err(AttachmentAdmissionError::Unavailable);
+    }
+    if let Err(error) = live.output.insert(binding.clone()) {
+        live.authority.remove(binding);
+        return Err(AttachmentAdmissionError::Output(error));
+    }
+    let ticket = match live.handle.attach(
+        binding.clone(),
+        tabula_registry::ClientViewer::Seat(scope.seat),
+    ) {
+        Ok(ticket) => ticket,
+        Err(error) => {
+            live.output.remove(binding);
+            live.authority.remove(binding);
+            return Err(AttachmentAdmissionError::Actor(error));
+        }
+    };
+    Ok(ticket)
+}
+enum AttachmentAdmissionError {
+    Unavailable,
+    Output(tabula_match::durable::RuntimePortError),
+    Actor(runtime::AdmissionError),
+}
+impl AttachmentAdmissionError {
+    fn response(self) -> Response {
+        match self {
+            Self::Unavailable => unavailable(),
+            Self::Output(error) => runtime_capacity_problem(error, "attachment_capacity"),
+            Self::Actor(error) => actor_problem(error),
+        }
+    }
 }
 async fn publish_attachment(
     state: &GatewayState,
@@ -987,7 +1185,7 @@ async fn command(
         state.work_permits.clone(),
         command_serialized(state, id, op, body),
     ) else {
-        return problem(StatusCode::TOO_MANY_REQUESTS, "busy");
+        return problem(StatusCode::TOO_MANY_REQUESTS, "work_capacity");
     };
     match task.await {
         Ok(response) => response,
@@ -1066,8 +1264,9 @@ async fn command_serialized(
     if active.command(point).is_err() {
         return unavailable();
     }
-    let Ok(ticket) = live.handle.command(binding.clone(), body.command().clone()) else {
-        return unavailable();
+    let ticket = match live.handle.command(binding.clone(), body.command().clone()) {
+        Ok(ticket) => ticket,
+        Err(error) => return actor_problem(error),
     };
     let result = wait_for_owner(&live, ticket).await;
     drop(active);
@@ -1107,6 +1306,40 @@ where
         let _permit = permit;
         work.await
     }))
+}
+fn actor_problem(error: runtime::AdmissionError) -> Response {
+    match error {
+        runtime::AdmissionError::Busy => problem(StatusCode::TOO_MANY_REQUESTS, "actor_capacity"),
+        runtime::AdmissionError::Closed | runtime::AdmissionError::InvalidLimits => unavailable(),
+    }
+}
+fn runtime_capacity_problem(
+    error: tabula_match::durable::RuntimePortError,
+    code: &'static str,
+) -> Response {
+    match error {
+        tabula_match::durable::RuntimePortError::Busy => {
+            problem(StatusCode::TOO_MANY_REQUESTS, code)
+        }
+        _ => unavailable(),
+    }
+}
+/// Closed HTTP admission does not discard already-owned journal operations.
+async fn wait_for_quiescence(
+    requests: &Semaphore,
+    work: &Semaphore,
+    config: MatchHttpConfig,
+    deadline: tokio::time::Instant,
+) -> Result<(), ()> {
+    tokio::time::timeout_at(deadline, async {
+        while requests.available_permits() != config.request_capacity()
+            || work.available_permits() != config.work_capacity()
+        {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .map_err(|_| ())
 }
 async fn wait_for_owner(live: &LiveMatch, ticket: runtime::Ticket) -> Result<(), Response> {
     if matches!(
@@ -1195,6 +1428,92 @@ async fn poll(
 #[cfg(test)]
 mod recovery_admission_tests {
     use super::*;
+    #[tokio::test]
+    async fn capacity_and_draining_are_distinct_and_admission_stays_closed() {
+        let permits = Arc::new(Semaphore::new(1));
+        let draining = AtomicBool::new(false);
+        let held = admit_request(&draining, permits.clone()).unwrap();
+        let full = admit_request(&draining, permits.clone())
+            .unwrap_err()
+            .response();
+        assert_eq!(full.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(
+            axum::body::to_bytes(full.into_body(), 1024)
+                .await
+                .unwrap()
+                .as_ref(),
+            b"{\"code\":\"request_capacity\"}"
+        );
+        draining.store(true, Ordering::Release);
+        permits.close();
+        drop(held);
+        assert_eq!(permits.available_permits(), 1);
+        let closed = admit_request(&draining, permits).unwrap_err().response();
+        assert_eq!(closed.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(
+            axum::body::to_bytes(closed.into_body(), 1024)
+                .await
+                .unwrap()
+                .as_ref(),
+            b"{\"code\":\"server_draining\"}"
+        );
+    }
+    #[tokio::test]
+    async fn shutdown_quiescence_waits_for_cancelled_request_work_without_aborting_it() {
+        let config = MatchHttpConfig::new(1, 1, 1).unwrap();
+        let requests = Semaphore::new(1);
+        let work = Arc::new(Semaphore::new(1));
+        requests.close();
+        let (release, gate) = oneshot::channel::<()>();
+        let task = spawn_bounded_work(work.clone(), async move {
+            gate.await.unwrap();
+        })
+        .unwrap();
+        let owner = task.abort_handle();
+        drop(task);
+        assert_eq!(
+            wait_for_quiescence(
+                &requests,
+                &work,
+                config,
+                tokio::time::Instant::now() + Duration::from_millis(5)
+            )
+            .await,
+            Err(())
+        );
+        assert!(!owner.is_finished());
+        assert_eq!(work.available_permits(), 0);
+        release.send(()).unwrap();
+        wait_for_quiescence(
+            &requests,
+            &work,
+            config,
+            tokio::time::Instant::now() + Duration::from_secs(1),
+        )
+        .await
+        .unwrap();
+        assert!(owner.is_finished());
+    }
+    #[tokio::test]
+    async fn room_capacity_failure_is_public_safe_and_distinct_from_busy() {
+        let response = online_problem(OnlineMatchError::CapacityExceeded);
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(
+            axum::body::to_bytes(response.into_body(), 1024)
+                .await
+                .unwrap()
+                .as_ref(),
+            b"{\"code\":\"room_capacity_exhausted\"}"
+        );
+        assert_eq!(
+            actor_problem(runtime::AdmissionError::Busy).status(),
+            StatusCode::TOO_MANY_REQUESTS
+        );
+        assert_eq!(
+            actor_problem(runtime::AdmissionError::Closed).status(),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
+    }
     #[tokio::test]
     async fn cancelled_request_keeps_detached_work_bounded() {
         let permits = Arc::new(Semaphore::new(1));

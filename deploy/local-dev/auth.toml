@@ -1,0 +1,13 @@
+# Both services require the same operator-generated CSRF key via their CSRF_KEY environment override.
+# Set TABULA_AUTH_DATABASE_URL and TABULA_AUTH_CLIENT_SECRET in the environment.
+mode = "local-dev"
+bind = "127.0.0.1:3001"
+browser_origin = "https://app.localhost:8444"
+provider_origin = "https://localhost:8443"
+client_id = "tabula"
+schema_policy = "check"
+pool_connections = 8
+lifetime_room_capacity = 16
+drain_seconds = 15
+# For an operator-created private provider CA, configure its public PEM path:
+# root_certificate = "/absolute/path/to/provider-ca.pem"

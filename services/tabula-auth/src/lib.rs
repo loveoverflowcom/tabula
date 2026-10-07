@@ -8,3 +8,6 @@ pub mod config;
 pub mod http;
 #[cfg(all(feature = "web-oidc", not(target_arch = "wasm32")))]
 pub mod oidc;
+
+#[cfg(all(feature = "local-dev", not(target_arch = "wasm32")))]
+pub mod local_dev;

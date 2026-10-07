@@ -12,6 +12,7 @@ contract. A specification or successful local check does not open a phase gate.
 | Game rules, variants and information models | [Per-game notes](games/README.md), plus source and conformance fixtures |
 | Shared screen contracts and generated token adapters | [UI index](ui/README.md), [screen index](ui/screens/README.md); authored tokens live in [`tokens.toml`](../tokens.toml) |
 | Upcoming slices and prerequisites | [Work queue](work-plan/README.md); linked GitHub issues own acceptance |
+| Explicit local/dev backend service commands | [Local/dev runbook](local-dev-backend.md), ADR-0047 and [PR01 evidence](verification/issue-110-pr01/README.md) |
 | Executed checks, provenance and remaining target evidence | [Verification index](verification/README.md); [verification tools](../verification/README.md) describe optional campaigns |
 | Performance workloads and measurements | [Performance index](perf/README.md) |
 | Renderer/embedding investigation | [Issue 60 RFC](rfcs/issue-60-renderer-embedding.md), [ADR-0029](adr/0029-renderer-embedding-spike.md) and its [execution ledger](verification/issue-60/README.md) |

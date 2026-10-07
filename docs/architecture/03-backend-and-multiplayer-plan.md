@@ -4,6 +4,17 @@
 > Wire format details are in [`05`](./05-data-protocol-and-replay.md); topology evolution and
 > operational triggers are in [`06`](./06-scaling-deployment-and-observability.md).
 
+### Local/dev executable composition
+
+[ADR-0047](../adr/0047-local-dev-backend-lifecycle.md) opens the explicitly opted-in
+native local/dev auth and gameplay service leaves using existing PostgreSQL,
+session/account/social and registry-backed match authority. The
+[runbook](../local-dev-backend.md) documents typed configuration, check/apply
+migration policy, real readiness, one HTTPS origin and bounded shutdown.
+Existing match HTTP version 2/wire 0.1, exact recovery and disclosure fences
+remain unchanged. PR02 Room/ready/start and PR03 result/history/rematch follow;
+production, native/mobile and whole-phase exits remain separate.
+
 ---
 
 ## 1. Stage-0 topology
