@@ -332,11 +332,13 @@ class ShellNavigationTest {
             captureShell("parity-320-dark-vi-font200-games-scrolled")
             onNodeWithTag("shell-details-${games.last().id}").performClick(); waitForIdle()
             onNodeWithTag("shell-setup-action").performScrollTo().assertIsDisplayed()
-            assertShortLabelWrapsAtWordBoundaries("shell-back")
+            onNodeWithTag("shell-back").assertIsDisplayed().assert(SemanticsMatcher.expectValue(
+                SemanticsProperties.ContentDescription, listOf(strings[ShellCopy.Back])))
             assertShellTextFitsHorizontally()
             onNodeWithTag("shell-setup-action").performClick(); waitForIdle()
             onNodeWithTag("shell-online-unavailable").performScrollTo().assertIsDisplayed()
-            assertShortLabelWrapsAtWordBoundaries("shell-back")
+            onNodeWithTag("shell-back").assertIsDisplayed().assert(SemanticsMatcher.expectValue(
+                SemanticsProperties.ContentDescription, listOf(strings[ShellCopy.Back])))
             assertShellTextFitsHorizontally()
             captureShell("parity-320-dark-vi-font200-setup")
             onNodeWithTag("shell-start-local").performScrollTo().assertIsDisplayed().performClick(); waitForIdle()

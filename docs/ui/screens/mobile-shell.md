@@ -51,6 +51,12 @@ Phone layouts at 320 and 390 dp use a compact brand/context bar, neutral account
 scrollable page and labeled bottom navigation. Wider layouts use a navigation rail. Safe-area
 padding belongs to the outer chrome; navigation consumes its own layout slot so content is
 not placed underneath it. Large text can increase component heights and scroll content.
+Compact pages and cards use 16 dp insets. Nested shell tasks use a 48 dp Back icon
+target with the localized accessible name; the brand and account entry retain their
+own space at 200% text. The gameplay toolbar retains its labelled Back action.
+Rail width grows with measured localized navigation labels and the current text
+scale, bounded to one third of the viewport. Navigation labels remain centered
+and wrap between whole words when needed.
 
 The page uses `shellCanvas`; contained rows use `shellPaper`/`shellNote`; the Home hero uses
 `shellHero`/`shellOnHero`. Generated primary/on-primary roles own the principal action and
@@ -58,7 +64,7 @@ selected navigation. No mobile palette is authored. The canonical T Portal brand
 human avatar preserve the web identity without claiming an authenticated profile.
 
 Reusable components own the page scaffold, top bar, compact navigation/rail, action emphasis,
-surface grouping, state panel and progress affordance. Actions have labels and at least the
+surface grouping, state panel and progress affordance. Actions have accessible names and at least the
 generated minimum target size; focus and selected state are visible and semantic. Lists,
 headings and statuses retain their accessibility meaning. Loading components are available to
 future adapters; no artificial loading sequence or speculative server data is introduced.
