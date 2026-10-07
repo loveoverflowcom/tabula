@@ -192,12 +192,16 @@ class Pair:
         if self.match_id and urlsplit(request.url).path==f'/api/v1/matches/{self.match_id}/command':
             require(request.post_data is not None,'actual interrupted command body missing')
             self.commands[role].append(request.post_data)
-    def board(self,role,status,readonly=False,page=None):
+    def current_status(self,role,status,readonly=False,page=None):
+        """Wait for current native presenter facts and geometry, without a pixel claim."""
         status=seat_status(role,status)
         self.stage('board',role)
         page=page or self.pages[role]
         page.bring_to_front()
         page.wait_for_function(CURRENT_BOARD,arg={'seat':role,'status':status,'readonly':readonly},timeout=60_000)
+        return page
+    def board(self,role,status,readonly=False,page=None):
+        page=self.current_status(role,status,readonly,page)
         rendered_canvas_pixels(page)
     def arm(self,role,point):
         self.facts[role]=context_facts(self.pages[role])
@@ -328,16 +332,20 @@ def network_refresh_game(contexts,private,ca,results,evidence):
     released=fault_control(ca,'release',gate)
     require(released['status']==200,'staged actual COMMIT gate could not release')
     black.wait_for_function(RECOVERING_CONCEALED,timeout=10_000)
-    pair.board(0,'White to move');pair.oracle(2,0)
-    black_network.offline(False);pair.board(1,'White to move');restored_same_scope(pair,1,old,original)
+    pair.current_status(0,'White to move');pair.oracle(2,0)
+    # Genuine COMMIT is independently confirmed. Do not consume the bounded
+    # offline recovery budget while the other process samples rendered pixels.
+    black_network.offline(False)
+    pair.board(0,'White to move');pair.board(1,'White to move');restored_same_scope(pair,1,old,original)
     results.append({'case':'drop_during_staged_apply_commit','pass':True,'committed_once':True,'exact_retry':True,'timeout_meant_failed_commit':False})
     move(white,*MOVES[2],False,pair.match_id);pair.write_audit(3);pair.board(1,'Black to move')
     # Drop actual poll transport while the other process commits the final move.
     def drop_poll(route):network.offline(True);route.abort('internetdisconnected')
     white.route(f'**/api/v1/matches/{pair.match_id}/poll',drop_poll,times=1)
     white.wait_for_function(RECOVERING_CONCEALED,timeout=15_000)
-    move(black,*MOVES[3],False,pair.match_id);pair.write_audit(4);pair.board(1,TERMINAL_STATUS)
-    network.offline(False);pair.board(0,TERMINAL_STATUS);pair.oracle(4)
+    move(black,*MOVES[3],False,pair.match_id);pair.write_audit(4);pair.oracle(4)
+    network.offline(False)
+    pair.board(1,TERMINAL_STATUS);pair.board(0,TERMINAL_STATUS);pair.oracle(4)
     require(pending_record(white,pair.match_id) is None,'settled commands retained a pending hint')
     white.reload(wait_until='domcontentloaded');pair.board(0,TERMINAL_STATUS)
     require(any(frame.get('body',{}).get('MatchUpdate',{}).get('revision')==0 and frame.get('body',{}).get('MatchUpdate',{}).get('view') for frame in pair.attachments[0][-1]['frames']),'committed refresh did not perform full projection resync')

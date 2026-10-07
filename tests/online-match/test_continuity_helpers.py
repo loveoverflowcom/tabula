@@ -10,10 +10,41 @@ from continuity_acceptance import (AcceptanceFailure, CURRENT_BOARD, RECOVERING_
     PageNetwork, Pair, command_identity, pending_record, run, pair_diagnostics, current_context_after_restart, FOCUS_OBSERVER,
     same_record_rotation_game, focus_only_revoke_game, held_prefix,
     crash_game, apply_and_committed_refresh_game, restart_between_grant_and_attach_game,
-    restart_with_fresh_attachment)
+    restart_with_fresh_attachment, network_refresh_game)
 
 
 class ContinuityHelperTests(unittest.TestCase):
+    def test_network_restore_follows_durable_confirmation_before_other_browser_pixels(self):
+        # Coordination doubles only: actual pixels, commits and retransmission
+        # remain assertions in the real browser/PostgreSQL acceptance target.
+        events=[];pages=[mock.MagicMock(),mock.MagicMock()]
+        pair=mock.Mock(pages=pages,match_id='a'*32,attachments=[[
+            {'frames':[{'body':{'MatchUpdate':{'revision':0,'view':'projected fixture'}}}]}],[{}]])
+        pair.tap.return_value='unchanged-command';pair.arm.return_value='gate'
+        pair.current_status.side_effect=lambda role,status:events.append(('status',role,status))
+        pair.board.side_effect=lambda role,status:events.append(('pixels',role,status))
+        pair.oracle.side_effect=lambda expected,role=1:events.append(('oracle',expected,role))
+        def network(page):
+            value=mock.Mock();role=pages.index(page)
+            value.offline.side_effect=lambda offline:events.append(('offline',role,offline))
+            return value
+        with mock.patch('continuity_acceptance.Pair',return_value=pair), \
+             mock.patch('continuity_acceptance.PageNetwork',side_effect=network), \
+             mock.patch('continuity_acceptance.pending_record',side_effect=[{'version':2},None]), \
+             mock.patch('continuity_acceptance.restored_same_scope'), \
+             mock.patch('continuity_acceptance.held'), \
+             mock.patch('continuity_acceptance.fault_control',return_value={'status':200}), \
+             mock.patch('continuity_acceptance.move'):
+            cases=[];network_refresh_game([],mock.Mock(),mock.Mock(),cases,mock.Mock())
+        committed=events.index(('oracle',2,0))
+        self.assertEqual(events[committed-1:committed+4],[('status',0,'White to move'),
+            ('oracle',2,0),('offline',1,False),('pixels',0,'White to move'),('pixels',1,'White to move')])
+        terminal=events.index(('oracle',4,1))
+        self.assertEqual(events[terminal:terminal+5],[('oracle',4,1),('offline',0,False),
+            ('pixels',1,'Game over / Black wins / checkmate'),('pixels',0,'Game over / Black wins / checkmate'),('oracle',4,1)])
+        self.assertEqual(sum(event[0]=='pixels' for event in events),8)
+        self.assertEqual(len(cases),3)
+
     def test_crash_restart_requires_a_new_request_and_completed_attachment_body(self):
         match_id='a'*32;scope='b'*64
         old={'version':2,'seat':1,'attachment_id':'c'*32,'operation_scope':scope,'frames':[]}

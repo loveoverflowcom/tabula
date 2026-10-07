@@ -342,6 +342,10 @@ canceled responses and headers alone cannot satisfy the witness. The fresh
 attachment must preserve Black's seat and operation scope and replace its old
 transport identity before the existing board, pixel and durable-prefix checks.
 An unchanged pre-crash White-turn board is therefore insufficient resync evidence.
+Network-loss partitions restore transport after the required committed-prefix
+witness and before sampling the other browser's pixels, so screenshot work does
+not consume the intentionally bounded recovery budget. Every original rendered
+board, exact retry, seat, scope and durable-stream assertion still runs.
 
 The one-shot gates exist only in the explicitly selected `continuity-test`
 standalone fixture and `acceptance-test-support` native gateway. Hooks match

@@ -61,7 +61,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes libnss3-tools
-          python3 -m pip install -r tests/accounts/requirements.txt
+          python3 -m pip install -r tests/accounts/requirements.txt -r tests/online-match/requirements.txt
           python3 -m playwright install --with-deps chromium
           cargo install trunk --version 0.21.14 --locked
       - name: Compile actual service entrypoints and assert real durable restart

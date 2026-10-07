@@ -6,6 +6,7 @@ the public receipt contains closed case labels and source provenance only.
 """
 import argparse
 import asyncio
+import io
 import json
 import hashlib
 import os
@@ -24,6 +25,7 @@ import real_browser_acceptance as account
 sys.path.insert(0, str(ROOT / "tests/online-match"))
 from browser_acceptance import board_square
 from playwright.async_api import async_playwright
+from PIL import Image
 
 ORIGIN = "https://app.localhost:8444"
 GAME = "/games/com.tabula.chess"
@@ -118,6 +120,19 @@ async def reload_boards(pages, match_id, status):
         require((await attached.value).status == 200, "fresh post-restart attachment failed")
         await board(page, seat, status)
 
+async def rendered_board(page, path):
+    # Match the existing independent-browser oracle: a visible canvas or a
+    # compiled WASM alone does not establish actual rendered game content.
+    await page.bring_to_front()
+    shot = await page.locator("#glcanvas").screenshot(timeout=30000)
+    pixels = Image.open(io.BytesIO(shot)).convert("RGB")
+    require(pixels.width >= 600 and pixels.height >= 400,
+            "rendered canvas is unexpectedly small")
+    require(len(pixels.resize((160, 120)).getcolors(19201) or []) > 32,
+            "actual canvas pixels are blank or lack rendered game content")
+    path.write_bytes(shot)
+    return shot
+
 async def browser(args, private, processes, server, server_command, provider, cases):
     peer = dict(provider, **provider["social_peer"])
     peer_path = private / "peer.json"
@@ -155,6 +170,8 @@ async def browser(args, private, processes, server, server_command, provider, ca
                 await page.get_by_test_id("online-enter").wait_for(state="visible")
                 await page.get_by_test_id("online-enter").click()
                 await board(page, seat, "White to move")
+            initial_white = await rendered_board(pages[0], args.receipt.with_name("white-initial.png"))
+            await rendered_board(pages[1], args.receipt.with_name("black-initial.png"))
             match_id = await pages[0].evaluate("new URL(location.href).searchParams.get('match_id')")
             require(isinstance(match_id, str) and len(match_id) == 32, "actual match navigation missing")
             original = await play(pages[0], *MOVES[0], match_id)
@@ -170,12 +187,17 @@ async def browser(args, private, processes, server, server_command, provider, ca
                 status = TERMINAL if index == 3 else ("Black to move" if seat == 0 else "White to move")
                 await board(pages[1-seat], 1-seat, status)
             for seat, page in enumerate(pages): await board(page, seat, TERMINAL)
+            terminal_white = await rendered_board(pages[0], args.receipt.with_name("white-terminal.png"))
+            await rendered_board(pages[1], args.receipt.with_name("black-terminal.png"))
+            require(initial_white != terminal_white,
+                    "actual canvas pixels did not change after full game")
             cases.append("two_rendered_boards_complete_durable_checkmate")
-            await pages[0].locator("#glcanvas").screenshot(path=str(args.receipt.with_suffix(".png")))
             require(json.loads(original)["version"] == 2, "supported HTTP carrier not used")
             processes.drain(server)
             server = processes.start("server-terminal-restarted", server_command); processes.ready(server, 3002)
             await reload_boards(pages, match_id, TERMINAL)
+            for seat, page in enumerate(pages):
+                await rendered_board(page, args.receipt.with_name(("white", "black")[seat] + "-restarted-terminal.png"))
             cases.append("terminal_projection_survives_second_service_restart")
             for context in contexts: await context.close()
             contexts.clear()
@@ -245,6 +267,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("--receipt", type=Path, required=True); args = parser.parse_args()
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
     args.receipt.unlink(missing_ok=True)
+    for seat in ("white", "black"):
+        for stage in ("initial", "terminal", "restarted-terminal"):
+            args.receipt.with_name(seat + "-" + stage + ".png").unlink(missing_ok=True)
     receipt = {"status": "fail", "source_sha": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                "working_tree_dirty": bool(subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=ROOT, text=True).strip()), "source_tree": subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=ROOT, text=True).strip(), "cases": []}
     try:
