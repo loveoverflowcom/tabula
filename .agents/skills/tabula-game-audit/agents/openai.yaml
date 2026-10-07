@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabula Game Audit"
+  short_description: "Audit game rules, secrecy, replay, and presentation"
+  default_prompt: "Use $tabula-game-audit to review this game change and report evidence, findings, and remaining gaps."

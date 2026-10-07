@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabula Engineering"
+  short_description: "Contract-driven Rust design and verification"
+  default_prompt: "Use $tabula-engineering to implement this change with explicit invariants, adequate checks, and a scoped evidence report."

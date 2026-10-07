@@ -14,8 +14,8 @@ Cargo.lock.bak
 # /apps/web/style/tokens.css
 # /crates/tabula-design/src/generated.rs
 
-# built asset packs (sources live in assets/packs/<game>/src)
-/assets/packs/**/build
+# built asset packs (sources live in games/<game>/assets/)
+/games/*/assets/build
 
 # local env / secrets
 .env
@@ -33,6 +33,32 @@ deploy/**/*.secret.*
 __pycache__/
 *.py[cod]
 
+# local verification output
+/mutants.out/
+/mutants.out.old/
+
 # local perf/profiling output
 perf.data*
 flamegraph.svg
+
+# mobile (Gradle / Kotlin)
+/apps/mobile/.gradle/
+/apps/mobile/.kotlin/
+/apps/mobile/local.properties
+/apps/mobile/**/build/
+
+# Ephemeral native voice dev grant fixture: debug-only; never commit credentials.
+/apps/mobile/voice-dev-grant.json
+
+# Disposable provider public receipts are CI artifacts, not source
+/verification/kanidm-oidc-artifacts/
+
+# Disposable actual-browser receipts are CI artifacts, never source or secrets.
+/verification/online-match-artifacts/
+/verification/account-social-artifacts/
+.gradle/
+*.hprof
+debug.keystore
+debug.keystore.base64
+app/build/
+.build-outputs/
