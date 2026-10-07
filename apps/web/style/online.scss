@@ -1,0 +1,76 @@
+// Direct entry shares the shell's tonal Material hierarchy. No game artwork or
+// game palette enters this platform component (I-9 / doc 04 §8.1).
+.play-entry {
+  display: grid;
+  gap: var(--sys-space-lg);
+  min-width: 0;
+  width: 100%;
+  max-width: 42rem;
+  margin-block: var(--sys-space-lg);
+}
+.online-panel,
+.online-quick {
+  display: grid;
+  gap: var(--sys-space-lg);
+  min-width: 0;
+  padding: var(--sys-space-xxl);
+  border-radius: var(--sys-shape-sheet);
+  color: var(--sys-color-on-surface);
+  overflow-wrap: anywhere;
+}
+.online-panel {
+  background: var(--sys-color-shell-paper);
+  .section__subtitle { font-size: var(--sys-type-headline-sm-size); }
+  .btn { min-height: 3rem; padding-block: var(--sys-space-md); white-space: normal; text-align: center; }
+  .btn--principal { min-height: 3.5rem; }
+  .field { min-width: 0; }
+  .field__control {
+    min-width: 0;
+    width: 100%;
+    min-height: 3.25rem;
+    border: 1px solid var(--sys-color-outline);
+    border-radius: var(--sys-shape-board);
+    padding: var(--sys-space-md) var(--sys-space-lg);
+    background: var(--sys-color-container-high);
+  }
+  .field__control::placeholder { color: var(--sys-color-on-surface-variant); opacity: 1; }
+  .field__control[readonly] { cursor: progress; }
+}
+.online-panel__scope { max-width: 34ch; }
+.online-panel__create { width: 100%; margin-block: var(--sys-space-sm); }
+.online-panel__join { margin: 0; gap: var(--sys-space-sm); }
+.online-panel__join-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sys-space-md); }
+.online-panel__status { margin: 0; color: var(--sys-color-on-surface-variant); }
+.online-panel__admission {
+  display: grid;
+  gap: var(--sys-space-lg);
+  padding: var(--sys-space-lg);
+  border-radius: var(--sys-shape-card);
+  background: var(--sys-color-container);
+  min-width: 0;
+  p { margin: 0; }
+}
+.online-panel__session-action { display: grid; gap: var(--sys-space-md); }
+.online-panel__share { display: grid; gap: var(--sys-space-sm); }
+.online-panel__code { font-family: var(--sys-type-mono-md-family); font-size: var(--sys-type-mono-md-size); letter-spacing: .06em; overflow-wrap: anywhere; }
+.online-quick { background: var(--sys-color-container); }
+.online-quick__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sys-space-md); }
+.online-quick__badge {
+  display: inline-block;
+  padding: var(--sys-space-xs) var(--sys-space-lg);
+  border-radius: var(--sys-shape-full);
+  background: var(--sys-color-container-high);
+  color: var(--sys-color-primary);
+  font-size: var(--sys-type-label-md-size);
+  font-weight: var(--sys-type-label-md-weight);
+}
+@media (min-width: 40rem) {
+  .online-panel__join-controls { grid-template-columns: minmax(0, 1fr) auto; }
+}
+[data-theme="hc-light"] .online-panel,
+[data-theme="hc-dark"] .online-panel,
+[data-theme="hc-light"] .online-quick,
+[data-theme="hc-dark"] .online-quick {
+  outline: 1px solid var(--sys-color-outline);
+  outline-offset: -1px;
+}

@@ -612,7 +612,9 @@ mod tests {
                 _ => None,
             })
             .unwrap();
-        assert!(moving_width < from.size().x * 0.89);
+        // The licensed sprite occupies 97% of its animated cell; landing
+        // still scales the cell from 0.94 to 1.0.
+        assert!((moving_width - from.size().x * 0.97 * (0.94 + factor * 0.06)).abs() < 0.001);
         assert!(pivot_at(
             &ChessPresentation::present(&current, &local, &frame(1280)),
             IN_TRANSIT_PIECE_Z

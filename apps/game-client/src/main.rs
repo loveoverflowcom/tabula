@@ -136,8 +136,8 @@ async fn run_chess( // xtask-allow-game-id: direct Phase 2 local vertical slice 
         }
     };
     #[cfg(not(target_arch = "wasm32"))]
-    let resources = resources.with_embedded_images(
-        tabula_game_chess::presentation::assets::ALL_IMAGES, // xtask-allow-game-id: direct Phase 2 local vertical slice wiring.
+    let resources = resources.with_embedded_files(
+        tabula_game_chess::presentation::assets::ALL_FILES, // xtask-allow-game-id: native bounded pack ownership retains licensed piece notices without decoding them.
     );
     if !options.skip_setup {
         match run_setup(renderer, theme, options.clock, &resources).await {

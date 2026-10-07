@@ -83,16 +83,13 @@ fn detail_body(messages: &Messages, entry: &CatalogEntry) -> AnyView {
     let messages = messages.clone();
     let game = entry.game();
     let metadata = game.metadata();
-    let capabilities = game.capabilities();
     let id = metadata.id().as_str().to_owned();
     let startable = entry.startable();
     let setup_href = format!("/games/{id}?setup=1");
     let back_label = messages.text("detail.back");
     let setup_label = messages.text("detail.setup");
     #[cfg(feature = "online")]
-    let online = crate::online::runtime_binding()
-        .supports_discovery_direct(game)
-        .then(|| view! { <crate::online::OnlinePanel id=id.clone()/> });
+    let online = view! { <crate::online::OnlinePanel id=id.clone()/> };
     #[cfg(not(feature = "online"))]
     let online = ();
 
@@ -115,27 +112,7 @@ fn detail_body(messages: &Messages, entry: &CatalogEntry) -> AnyView {
 
             {online}
             <h2 class="section__subtitle">{messages.text("detail.capabilities")}</h2>
-            <dl class="facts">
-                <dt>{messages.text("detail.seats")}</dt>
-                <dd>{seat_label(&messages, capabilities)}</dd>
-                <dt>{messages.text("detail.duration")}</dt>
-                <dd>
-                    {messages
-                        .format(
-                            "detail.duration.range",
-                            &[
-                                &metadata.estimated_minutes().min().to_string(),
-                                &metadata.estimated_minutes().max().to_string(),
-                            ],
-                        )}
-                </dd>
-                <dt>{messages.text("detail.complexity")}</dt>
-                <dd>{messages.text(complexity_label_key(metadata.complexity()))}</dd>
-                <dt>{messages.text("detail.rating")}</dt>
-                <dd>{messages.text(rating_key(metadata.content_rating()))}</dd>
-                <dt>{messages.text("detail.hidden_information")}</dt>
-                <dd>{yes_no(&messages, capabilities.hidden_information())}</dd>
-            </dl>
+            {detail_facts(&messages, entry)}
             <p class="meta">{messages.text("detail.declared.hint")}</p>
 
             <h2 class="section__subtitle" id="modes">{messages.text("detail.modes")}</h2>
@@ -171,6 +148,35 @@ fn detail_body(messages: &Messages, entry: &CatalogEntry) -> AnyView {
     .into_any()
 }
 
+fn detail_facts(messages: &Messages, entry: &CatalogEntry) -> impl IntoView {
+    let game = entry.game();
+    let metadata = game.metadata();
+    let capabilities = game.capabilities();
+    view! {
+        <dl class="facts facts--detail">
+            <dt>{messages.text("detail.seats")}</dt>
+            <dd>{seat_label(messages, capabilities)}</dd>
+            <dt>{messages.text("detail.duration")}</dt>
+            <dd>
+                {messages
+                    .format(
+                        "detail.duration.range",
+                        &[
+                            &metadata.estimated_minutes().min().to_string(),
+                            &metadata.estimated_minutes().max().to_string(),
+                        ],
+                    )}
+            </dd>
+            <dt>{messages.text("detail.complexity")}</dt>
+            <dd>{messages.text(complexity_label_key(metadata.complexity()))}</dd>
+            <dt>{messages.text("detail.rating")}</dt>
+            <dd>{messages.text(rating_key(metadata.content_rating()))}</dd>
+            <dt>{messages.text("detail.hidden_information")}</dt>
+            <dd>{yes_no(messages, capabilities.hidden_information())}</dd>
+        </dl>
+    }
+}
+
 fn mode_row(messages: &Messages, support: ModeSupport) -> AnyView {
     let messages = messages.clone();
     let label = messages.text(support.mode.label_key());
@@ -203,5 +209,82 @@ const fn rating_key(rating: tabula_registry::ContentRating) -> &'static str {
         tabula_registry::ContentRating::Everyone => "rating.everyone",
         tabula_registry::ContentRating::Teen => "rating.teen",
         tabula_registry::ContentRating::Mature => "rating.mature",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A source guard for the CSS hook, not a browser-layout assertion.
+    #[test]
+    fn detail_facts_source_keeps_zero_minimum_compact_track_and_wrapping() {
+        let stylesheet = include_str!("../../style/app.scss");
+        let (_, scoped) = stylesheet
+            .split_once("\n.facts--detail {")
+            .expect("detail facts have their own rule");
+        let (compact, _) = scoped
+            .split_once("\n@media (min-width: 37.5rem) {")
+            .expect("the wider layout follows the browser's text size");
+        for declaration in [
+            "grid-template-columns: minmax(0, 1fr);",
+            "min-width: 0;",
+            "overflow-wrap: anywhere;",
+        ] {
+            assert!(compact.contains(declaration), "missing {declaration}");
+        }
+    }
+
+    /// Native HTML proves the semantic reading order and the detail-only style
+    /// hook. Actual text-scale reflow still needs the browser acceptance pass.
+    #[test]
+    fn detail_facts_keep_localized_term_value_pairs_in_reading_order() {
+        for locale in tabula_registry::Locale::ALL {
+            let (messages, catalog) = shell(locale);
+            assert!(!catalog.entries().is_empty());
+            for entry in catalog.entries() {
+                let html = Owner::new().with(|| detail_facts(&messages, entry).to_html());
+                assert!(html.contains("class=\"facts facts--detail\""));
+                assert_eq!(html.matches("<dt>").count(), 5);
+                assert_eq!(html.matches("<dd>").count(), 5);
+                let game = entry.game();
+                let metadata = game.metadata();
+                let values = [
+                    ("detail.seats", seat_label(&messages, game.capabilities())),
+                    (
+                        "detail.duration",
+                        messages.format(
+                            "detail.duration.range",
+                            &[
+                                &metadata.estimated_minutes().min().to_string(),
+                                &metadata.estimated_minutes().max().to_string(),
+                            ],
+                        ),
+                    ),
+                    (
+                        "detail.complexity",
+                        messages.text(complexity_label_key(metadata.complexity())),
+                    ),
+                    (
+                        "detail.rating",
+                        messages.text(rating_key(metadata.content_rating())),
+                    ),
+                    (
+                        "detail.hidden_information",
+                        yes_no(&messages, game.capabilities().hidden_information()),
+                    ),
+                ];
+                let mut rest = html
+                    .strip_prefix("<dl class=\"facts facts--detail\">")
+                    .expect("detail list retains its scoped style hook");
+                for (key, value) in values {
+                    let pair = format!("<dt>{}</dt><dd>{value}</dd>", messages.text(key));
+                    rest = rest.strip_prefix(&pair).expect(
+                        "each localized term is immediately followed by its registry value",
+                    );
+                }
+                assert_eq!(rest, "</dl>");
+            }
+        }
     }
 }

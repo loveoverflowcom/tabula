@@ -149,21 +149,21 @@ commands (total 220):
   142: push-opacity opacity=0.120 layer=pieces(10) z=4
   143: rect [origin=(330.200, 445.950) size=(22.100, 2.975)] radii=uniform(1.487) fill=solid(#302a33ff) border=none layer=pieces(10) z=4
   144: pop-opacity layer=pieces(10) z=4
-  145: sprite asset="pieces/white-king" rect=[origin=(322.337, 413.438) size=(37.825, 37.825)] tint=#ffffffff rotation=0.000 pivot=(341.250, 432.350) layer=pieces(10) z=4
+  145: sprite asset="pieces/white-king" rect=[origin=(320.638, 411.738) size=(41.225, 41.225)] tint=#ffffffff rotation=0.000 pivot=(341.250, 432.350) layer=pieces(10) z=4
   146: push-opacity opacity=0.070 layer=pieces(10) z=52
   147: rect [origin=(327.106, 190.950) size=(28.288, 3.808)] radii=uniform(1.904) fill=solid(#302a33ff) border=none layer=pieces(10) z=52
   148: pop-opacity layer=pieces(10) z=52
   149: push-opacity opacity=0.120 layer=pieces(10) z=52
   150: rect [origin=(330.200, 190.950) size=(22.100, 2.975)] radii=uniform(1.487) fill=solid(#302a33ff) border=none layer=pieces(10) z=52
   151: pop-opacity layer=pieces(10) z=52
-  152: sprite asset="pieces/white-pawn" rect=[origin=(322.337, 158.438) size=(37.825, 37.825)] tint=#ffffffff rotation=0.000 pivot=(341.250, 177.350) layer=pieces(10) z=52
+  152: sprite asset="pieces/white-pawn" rect=[origin=(320.638, 156.738) size=(41.225, 41.225)] tint=#ffffffff rotation=0.000 pivot=(341.250, 177.350) layer=pieces(10) z=52
   153: push-opacity opacity=0.070 layer=pieces(10) z=56
   154: rect [origin=(157.106, 148.450) size=(28.288, 3.808)] radii=uniform(1.904) fill=solid(#302a33ff) border=none layer=pieces(10) z=56
   155: pop-opacity layer=pieces(10) z=56
   156: push-opacity opacity=0.120 layer=pieces(10) z=56
   157: rect [origin=(160.200, 148.450) size=(22.100, 2.975)] radii=uniform(1.487) fill=solid(#302a33ff) border=none layer=pieces(10) z=56
   158: pop-opacity layer=pieces(10) z=56
-  159: sprite asset="pieces/black-king" rect=[origin=(152.337, 115.938) size=(37.825, 37.825)] tint=#ffffffff rotation=0.000 pivot=(171.250, 134.850) layer=pieces(10) z=56
+  159: sprite asset="pieces/black-king" rect=[origin=(150.637, 114.237) size=(41.225, 41.225)] tint=#ffffffff rotation=0.000 pivot=(171.250, 134.850) layer=pieces(10) z=56
   160: text "Chess" at=(150.000, 12.800) style=TitleLg align=Start max_width=340.000 color=#352146ff layer=hud(30) z=0
   161: text "a" at=(167.000, 454.600) style=LabelSm align=Start max_width=42.500 color=#f1eaf7ff layer=hud(30) z=0
   162: text "8" at=(140.000, 128.475) style=LabelSm align=Start max_width=18.000 color=#f1eaf7ff layer=hud(30) z=0
@@ -188,10 +188,10 @@ commands (total 220):
   181: text "Flip" at=(234.000, 588.800) style=LabelLg align=Center max_width=152.000 color=#1e1c21ff layer=hud(30) z=0
   182: rect [origin=(322.000, 576.800) size=(168.000, 44.000)] radii=uniform(14.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
   183: text "Actions" at=(406.000, 588.800) style=LabelLg align=Center max_width=152.000 color=#1e1c21ff layer=hud(30) z=0
-  184: sprite asset="pieces/black-king" rect=[origin=(157.760, 58.960) size=(28.480, 28.480)] tint=#ffffffff rotation=0.000 pivot=(172.000, 73.200) layer=hud(30) z=1
+  184: sprite asset="pieces/black-king" rect=[origin=(156.480, 57.680) size=(31.040, 31.040)] tint=#ffffffff rotation=0.000 pivot=(172.000, 73.200) layer=hud(30) z=1
   185: text "Black" at=(198.000, 52.200) style=LabelLg align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
   186: text "Opponent seat" at=(198.000, 73.200) style=BodyMd align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
-  187: sprite asset="pieces/white-king" rect=[origin=(157.760, 479.760) size=(28.480, 28.480)] tint=#ffffffff rotation=0.000 pivot=(172.000, 494.000) layer=hud(30) z=1
+  187: sprite asset="pieces/white-king" rect=[origin=(156.480, 478.480) size=(31.040, 31.040)] tint=#ffffffff rotation=0.000 pivot=(172.000, 494.000) layer=hud(30) z=1
   188: text "White / turn" at=(198.000, 473.000) style=LabelLg align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
   189: text "Your seat" at=(198.000, 494.000) style=BodyMd align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
   190: text "Your turn / White" at=(158.000, 530.400) style=LabelLg align=Start max_width=324.000 color=#352146ff layer=hud(30) z=1
@@ -216,11 +216,11 @@ commands (total 220):
   209: text "Cancel" at=(341.250, 288.100) style=LabelLg align=Center max_width=230.000 color=#1e1c21ff layer=modal(40) z=0
   210: rect [origin=(214.750, 204.600) size=(67.000, 67.000)] radii=(tl=33.500, tr=11.500, br=11.500, bl=33.500) fill=none border=[width=3.000 color=#573b83ff] layer=modal(40) z=1
   211: rect [origin=(217.250, 207.100) size=(62.000, 62.000)] radii=(tl=31.000, tr=9.000, br=9.000, bl=31.000) fill=none border=[width=2.000 color=#fffbffff] layer=modal(40) z=1
-  212: sprite asset="pieces/white-queen" rect=[origin=(229.026, 212.476) size=(38.448, 38.448)] tint=#ffffffff rotation=0.000 pivot=(248.250, 231.700) layer=modal(40) z=2
+  212: sprite asset="pieces/white-queen" rect=[origin=(227.298, 210.748) size=(41.904, 41.904)] tint=#ffffffff rotation=0.000 pivot=(248.250, 231.700) layer=modal(40) z=2
   213: text "queen" at=(248.250, 244.100) style=LabelMd align=Center max_width=none color=#ffffffff layer=modal(40) z=2
-  214: sprite asset="pieces/white-rook" rect=[origin=(291.026, 212.476) size=(38.448, 38.448)] tint=#ffffffff rotation=0.000 pivot=(310.250, 231.700) layer=modal(40) z=2
+  214: sprite asset="pieces/white-rook" rect=[origin=(289.298, 210.748) size=(41.904, 41.904)] tint=#ffffffff rotation=0.000 pivot=(310.250, 231.700) layer=modal(40) z=2
   215: text "rook" at=(310.250, 244.100) style=LabelMd align=Center max_width=none color=#1e1c21ff layer=modal(40) z=2
-  216: sprite asset="pieces/white-bishop" rect=[origin=(353.026, 212.476) size=(38.448, 38.448)] tint=#ffffffff rotation=0.000 pivot=(372.250, 231.700) layer=modal(40) z=2
+  216: sprite asset="pieces/white-bishop" rect=[origin=(351.298, 210.748) size=(41.904, 41.904)] tint=#ffffffff rotation=0.000 pivot=(372.250, 231.700) layer=modal(40) z=2
   217: text "bishop" at=(372.250, 244.100) style=LabelMd align=Center max_width=none color=#1e1c21ff layer=modal(40) z=2
-  218: sprite asset="pieces/white-knight" rect=[origin=(415.026, 212.476) size=(38.448, 38.448)] tint=#ffffffff rotation=0.000 pivot=(434.250, 231.700) layer=modal(40) z=2
+  218: sprite asset="pieces/white-knight" rect=[origin=(413.298, 210.748) size=(41.904, 41.904)] tint=#ffffffff rotation=0.000 pivot=(434.250, 231.700) layer=modal(40) z=2
   219: text "knight" at=(434.250, 244.100) style=LabelMd align=Center max_width=none color=#1e1c21ff layer=modal(40) z=2

@@ -1,4 +1,4 @@
-//! Bounded exports of the approved original Chess artwork. (doc 04 §12, ADR-017)
+//! Bounded exports of the licensed Chessnut artwork. (doc 04 §12, ADR-017)
 //!
 //! The local host resolves game-owned resource groups through the exact manifest.
 //! Native fixtures use embedded bytes; WASM fetches only the selected physical
@@ -43,6 +43,45 @@ pub const ALL_IMAGES: &[(&str, &[u8])] = &[
     ("grain@2x.atlas", GRAIN_2X),
 ];
 
+/// Exact retained third-party rights documents, never decoded as textures.
+///
+/// Native bundles retain these bytes; WASM staging distributes them as hashed
+/// non-image pack files without adding them to first-board resource selection.
+pub const NOTICES: &[(&str, &[u8])] = &[
+    (
+        "COPYRIGHT.txt",
+        include_bytes!("../../assets/source/pieces/COPYRIGHT.txt"),
+    ),
+    (
+        "LICENSE-Apache-2.0.txt",
+        include_bytes!("../../assets/source/pieces/LICENSE-Apache-2.0.txt"),
+    ),
+    (
+        "NOTICE.txt",
+        include_bytes!("../../assets/source/pieces/NOTICE.txt"),
+    ),
+    (
+        "PIECE-PROVENANCE.md",
+        include_bytes!("../../assets/source/pieces/PIECE-PROVENANCE.md"),
+    ),
+];
+
+/// Complete physical pack file set for host packaging, including legal text.
+/// Runtime texture loading uses [`ALL_IMAGES`] and logical resource selection.
+#[cfg(not(target_arch = "wasm32"))]
+pub const ALL_FILES: &[(&str, &[u8])] = &[
+    ("grain@1x.atlas", GRAIN_1X),
+    ("grain@2x.atlas", GRAIN_2X),
+    ("pieces@1x.atlas", ATLAS_1X),
+    ("pieces@2x.atlas", ATLAS_2X),
+    ("cover@1x.atlas", COVER_1X),
+    ("cover@2x.atlas", COVER_2X),
+    ("COPYRIGHT.txt", NOTICES[0].1),
+    ("LICENSE-Apache-2.0.txt", NOTICES[1].1),
+    ("NOTICE.txt", NOTICES[2].1),
+    ("PIECE-PROVENANCE.md", NOTICES[3].1),
+];
+
 /// Logical resources needed by any local board, including later promotions.
 ///
 /// The platform resolves these declarations without recognizing piece names,
@@ -78,7 +117,7 @@ pub fn setup_resources() -> Vec<AssetRef> {
 /// Exact game-version-pinned artwork identity, independent of file resolution.
 #[must_use]
 pub fn asset_pack() -> AssetPackRef {
-    AssetPackRef::from_static("chess", "0.2.0")
+    AssetPackRef::from_static("chess", "0.3.0")
 }
 
 /// Logical piece identity only; physical regions and density remain in the pack.
@@ -122,14 +161,14 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     fn all_bundled_files_are_exact_manifest_bytes_and_bounded_pngs() {
         let manifest = AssetPackManifest::from_toml(MANIFEST).unwrap();
-        assert_eq!(manifest.files().len(), ALL_IMAGES.len());
+        assert_eq!(manifest.files().len(), ALL_FILES.len());
         let mut encoded_total = 0;
-        for file in manifest.files() {
-            let bytes = ALL_IMAGES
+        for (name, bytes) in ALL_IMAGES {
+            let file = manifest
+                .files()
                 .iter()
-                .find(|(name, _)| *name == file.name().as_str())
-                .unwrap()
-                .1;
+                .find(|file| file.name().as_str() == *name)
+                .unwrap();
             file.verify_bytes(bytes).unwrap();
             assert_eq!(&bytes[..8], b"\x89PNG\r\n\x1a\n");
             let width = u32::from_be_bytes(bytes[16..20].try_into().unwrap());
@@ -140,6 +179,30 @@ mod tests {
         }
         // An explicit tiny local-pack bound, not permission to inline original art.
         assert!(encoded_total <= 320 * 1024);
+    }
+
+    #[test]
+    fn legal_documents_are_hashed_pack_files_outside_sprite_resources() {
+        let manifest = AssetPackManifest::from_toml(MANIFEST).unwrap();
+        assert_eq!(NOTICES.len(), 4);
+        for (name, bytes) in NOTICES {
+            let file = manifest
+                .files()
+                .iter()
+                .find(|file| file.name().as_str() == *name)
+                .unwrap();
+            file.verify_bytes(bytes).unwrap();
+            assert_eq!(file.priority(), tabula_assets::AssetPriority::Low);
+            assert!(file.density().is_none());
+            assert!(manifest.resources().iter().all(|resource| {
+                (0..resource.variant_count())
+                    .all(|index| resource.variant(index).unwrap().file() != file.name())
+            }));
+        }
+        assert_eq!(NOTICES[0].1, b"Copyright 2015 Alexis Luengas\n");
+        assert!(std::str::from_utf8(NOTICES[1].1)
+            .unwrap()
+            .contains("Apache License"));
     }
 
     #[test]

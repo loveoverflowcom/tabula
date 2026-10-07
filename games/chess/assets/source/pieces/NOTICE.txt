@@ -1,0 +1,11 @@
+Chessnut chess pieces
+Copyright 2015 Alexis Luengas
+Licensed under the Apache License, Version 2.0
+
+Original project: https://github.com/LexLuengas/chessnut-pieces
+Distribution source: lichess-org/lila public/piece/chessnut
+Pinned source: 5820854ca42e082891d6a47ceb3b57d33ebb7fe1
+
+This attribution notice was added for the Tabula design package.
+The standalone SVG source files are retained byte-identically.
+Board layouts and design preview compositions are new Tabula design work.

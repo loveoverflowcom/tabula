@@ -87,6 +87,8 @@ pub fn App() -> impl IntoView {
     let locale: LocaleSignal = RwSignal::new(Locale::En);
     provide_context(locale);
     crate::account::provide_account_session();
+    #[cfg(feature = "online")]
+    crate::online::provide_online_session();
     #[cfg(feature = "account-social")]
     crate::social_full::provide_social();
 

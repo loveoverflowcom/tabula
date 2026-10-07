@@ -616,19 +616,22 @@ fn stage_game_pack(
 ) -> Result<(), WasmStageError> {
     // The local slice packages the existing game-owned manifest, not a second
     // resource-selection policy or a new delivery service (ADR-0030).
-    let (manifest_text, images) = match kind {
-        BundleKind::Standard => (tabula_game_chess::presentation::assets::MANIFEST, tabula_game_chess::presentation::assets::ALL_IMAGES), // xtask-allow-game-id: local standalone packaging of the game-owned pack.
+    let (manifest_text, pack_files) = match kind {
+        BundleKind::Standard => (tabula_game_chess::presentation::assets::MANIFEST, tabula_game_chess::presentation::assets::ALL_FILES), // xtask-allow-game-id: local standalone packaging of the game-owned pack, including licensed-art notices.
         BundleKind::PrivateSimulator => (tabula_game_werewolf::presentation::assets::MANIFEST, tabula_game_werewolf::presentation::assets::ALL_IMAGES), // xtask-allow-game-id: ADR-0035 local standalone pack declaration.
     };
     let manifest = tabula_assets::AssetPackManifest::from_toml(manifest_text).map_err(|error| resource_error(format!("local pack manifest: {error}")))?;
     for file in manifest.files() {
-        let bytes = images.iter() // xtask-allow-game-id: local standalone packaging of the game-owned pack.
+        let bytes = pack_files.iter() // xtask-allow-game-id: local standalone packaging of the game-owned pack.
             .find(|(name, _)| *name == file.name().as_str())
             .map(|(_, bytes)| *bytes)
             .ok_or_else(|| resource_error(format!("local pack file missing: {}", file.name())))?;
         file.verify_bytes(bytes)
             .map_err(|error| resource_error(format!("local pack integrity: {error}")))?;
-        files.insert(file.path().as_str().to_owned(), immutable_resource(directory, bytes, "png")?);
+        let extension = Path::new(file.path().as_str()).extension()
+            .and_then(|value| value.to_str())
+            .ok_or_else(|| resource_error(format!("local pack file has no extension: {}", file.path())))?;
+        files.insert(file.path().as_str().to_owned(), immutable_resource(directory, bytes, extension)?);
     }
     Ok(())
 }
@@ -1337,18 +1340,22 @@ mod tests {
         }
     }
 
-    fn standard_runtime_payload_paths() -> [&'static str; 10] {
+    fn standard_runtime_payload_paths() -> [&'static str; 14] {
         [
             "tabula-game-client.wasm",
             "assets/OpenSans-Regular.ttf",
             "assets/OpenSans-Semibold.ttf",
             "assets/NotoSerif-Bold.ttf",
-            "chess/0.2.0/cover@1x.b3-8cc678cb546c246e3b64c1c280b654d5316b08e41454a52daecc4a477241a5fd.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
-            "chess/0.2.0/cover@2x.b3-c6bb188094f6aa8364d5769833a7c60734063dc818eb136d07066efe0e1fff41.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
-            "chess/0.2.0/grain@1x.b3-5aadb473741576d04408bde4d6712afd1ce5286285dc9b12825d23b0336611bd.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
-            "chess/0.2.0/grain@2x.b3-af70f79ae71baa39dd630f4852e67b0c4e4f22bb17ce40fe0c2bc5a3ea70e46e.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
-            "chess/0.2.0/pieces@1x.b3-143639222e2604f324068497ed1538f23528af661ce87404449f2078ef0eb3bb.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
-            "chess/0.2.0/pieces@2x.b3-3d0bfafcdb1c6a5b4a932e036b2d3f5827e201f7646550216dfabd5fe2df5ac1.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/cover@1x.b3-8cc678cb546c246e3b64c1c280b654d5316b08e41454a52daecc4a477241a5fd.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/cover@2x.b3-c6bb188094f6aa8364d5769833a7c60734063dc818eb136d07066efe0e1fff41.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/grain@1x.b3-5aadb473741576d04408bde4d6712afd1ce5286285dc9b12825d23b0336611bd.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/grain@2x.b3-af70f79ae71baa39dd630f4852e67b0c4e4f22bb17ce40fe0c2bc5a3ea70e46e.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/pieces@1x.b3-4c278a7bea9e13d861e4e0a27785682e7caa56b7e564b23f9b09f94ab69918ec.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/pieces@2x.b3-e32515f16e64c9e892b95c95a624f9187e11a463c649673cce2af2680ba3c34d.png", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/source/pieces/COPYRIGHT.b3-ef27da6c4cb8eec8b32cd6c12ee705673d75b1ab2ea85ebf43bea4aa02c5e59b.txt", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/source/pieces/LICENSE-Apache-2.0.b3-83cb3a2fcf829b6138e095b083016c34ddcdfa07b68d38782722c14fcf85ace6.txt", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/source/pieces/NOTICE.b3-a686c7949818fcd503bebd14f8887576e71e688b1360737fd1b55ce40c1b2257.txt", // xtask-allow-game-id: standalone managed-pack staging oracle.
+            "chess/0.3.0/source/pieces/PIECE-PROVENANCE.b3-01ec0cc6d351bc8e5707c726f737e390b0cf7fc293806b151b7fc03a3a48e1ab.md", // xtask-allow-game-id: standalone managed-pack staging oracle.
         ]
     }
 
@@ -1372,7 +1379,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             stage_versioned_resources(directory.path(), BundleKind::Standard).unwrap(),
-            10
+            14
         );
         let text = std::fs::read_to_string(directory.path().join("resource-manifest.js")).unwrap();
         let value: serde_json::Value = serde_json::from_str(
@@ -1398,6 +1405,25 @@ mod tests {
             assert_eq!(
                 format!("{:x}", Sha256::digest(&bytes)),
                 entry["sha256"].as_str().unwrap()
+            );
+        }
+        let pack = tabula_assets::AssetPackManifest::from_toml(
+            tabula_game_chess::presentation::assets::MANIFEST,
+        )
+        .unwrap(); // xtask-allow-game-id: exact licensed fixture packaging assertion.
+        for (name, bytes) in tabula_game_chess::presentation::assets::NOTICES {
+            // xtask-allow-game-id: exact licensed fixture packaging assertion.
+            let file = pack
+                .files()
+                .iter()
+                .find(|file| file.name().as_str() == *name)
+                .unwrap();
+            let entry = &files[file.path().as_str()];
+            let relative = entry["url"].as_str().unwrap();
+            assert_eq!(Path::new(relative).extension(), Path::new(name).extension());
+            assert_eq!(
+                std::fs::read(directory.path().join(relative)).unwrap(),
+                *bytes
             );
         }
         let play = std::fs::read_to_string(directory.path().join("play.html")).unwrap();

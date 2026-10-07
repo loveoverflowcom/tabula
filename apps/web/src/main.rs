@@ -119,7 +119,11 @@ mod account;
 #[cfg(feature = "account-social")]
 mod accounts_full;
 mod i18n;
-#[cfg(any(feature = "online", feature = "account-social", test))]
+#[cfg(any(
+    all(feature = "online", target_arch = "wasm32"),
+    feature = "account-social",
+    test
+))]
 mod json;
 #[cfg(feature = "online")]
 mod online;

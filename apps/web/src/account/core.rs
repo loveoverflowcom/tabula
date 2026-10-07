@@ -319,9 +319,9 @@ impl Default for AccountCore {
     }
 }
 impl AccountCore {
-    /// Current document-only control facts for v2 leaf adapters (ADR-0044).
+    /// Current document-only controls for direct/v2 leaf adapters (ADR-0041/0044).
     /// The caller must also fence route, connectivity and presentation generation.
-    #[cfg(feature = "account-social")]
+    #[cfg(any(feature = "account-social", feature = "online"))]
     pub(super) fn current_document_context(&self) -> Option<(String, String)> {
         if self.pending.is_some() || self.logout_suppressed || self.persistence_unavailable {
             return None;

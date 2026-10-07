@@ -540,7 +540,7 @@ fn chess_presenter_produces_macroquad_supported_render_list_with_verified_art() 
             256 * 1024,
             2 * 1024 * 1024,
             4 * 1024 * 1024,
-            6,
+            10, // Six PNGs plus four legal metadata files; only PNGs become textures.
         )
         .unwrap(),
     );
@@ -551,12 +551,12 @@ fn chess_presenter_produces_macroquad_supported_render_list_with_verified_art() 
             &assets::asset_pack(),
         )
         .unwrap();
-    for file in manifest.files() {
-        let bytes = assets::ALL_IMAGES
+    for (name, bytes) in assets::ALL_IMAGES {
+        let file = manifest
+            .files()
             .iter()
-            .find(|(name, _)| *name == file.name().as_str())
-            .unwrap()
-            .1;
+            .find(|file| file.name().as_str() == *name)
+            .unwrap();
         cache
             .insert_verified(
                 file.verify_owned_bytes(tabula_assets::UnverifiedAssetBytes::new(bytes.to_vec()))
@@ -568,6 +568,8 @@ fn chess_presenter_produces_macroquad_supported_render_list_with_verified_art() 
         MacroquadRenderer::preflight_with_cache(&scene, &frame, &cache),
         Ok(())
     );
+    assert_eq!(cache.stats().decodes, 6);
+    assert_eq!(cache.stats().uploads, 6);
 }
 
 // ---------------------------------------------------------------------------
