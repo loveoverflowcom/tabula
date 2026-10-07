@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 
 /**
@@ -44,13 +45,14 @@ fun TabulaTextStyle.toTextStyle(color: Color): TextStyle = TextStyle(
     letterSpacing = letterSpacing.sp,
 )
 
-/** Text drawn from a generated style; the default colour is the semantic `onSurface`. */
+/** Text drawn from a generated style, with optional paragraph alignment (doc 04 §10). */
 @Composable
 fun TabulaText(
     text: String,
     style: TabulaTextStyle,
     modifier: Modifier = Modifier,
     color: Color = LocalTabulaColors.current.onSurface,
+    textAlign: TextAlign = TextAlign.Unspecified,
 ) {
-    BasicText(text = text, modifier = modifier, style = style.toTextStyle(color))
+    BasicText(text = text, modifier = modifier, style = style.toTextStyle(color).copy(textAlign = textAlign))
 }

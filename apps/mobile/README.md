@@ -91,6 +91,10 @@ inventory with unavailable gameplay under ADR-0043;
 the desktop preview supplies explicit catalog and game doubles for navigation tests.
 Home/Library/Account use labeled bottom navigation on phones and a rail from 600 dp.
 Content scrolls within the remaining space, with safe insets owned by the outer shell.
+Compact page/card insets are 16 dp. Nested shell Back uses a localized accessible
+icon target, and rail width follows measured navigation labels at the OS font
+scale. Account text uses compact generated roles and stacks identity details
+when a row would leave too little reading width; 200% text remains supported.
 The Account entry uses a neutral human silhouette; native account and full catalog
 services have visible unavailable states.
 
@@ -122,6 +126,10 @@ and error recovery. [Issue #101's ledger](../../docs/verification/issue-101-mobi
 retains its historical checks separately from native device acceptance. Inspect
 this shell with `:previewApp:run -Ppreview.width=320 -Ppreview.language=vi
 -Ppreview.dark=true -Ppreview.fontScale=2` (simulated game page).
+`ResponsiveShellTest` also exercises synthetic long Account/Profile data at
+320×844, 390×844 and 844×390, across all four schemes, vi/en and 100%/200% text.
+Its captures distinguish font scale, viewport and scroll position; desktop pixels
+establish shared layout rather than native device rendering.
 
 Account preview data is explicitly synthetic and restricted to `previewApp`. Run
 `:previewApp:run -Ppreview.account=authenticated -Ppreview.accountLongFields=true

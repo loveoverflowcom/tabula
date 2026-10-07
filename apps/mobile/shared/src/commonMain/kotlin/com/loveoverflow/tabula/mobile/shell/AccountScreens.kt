@@ -1,6 +1,7 @@
 package com.loveoverflow.tabula.mobile.shell
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -61,7 +63,7 @@ class AccountActions(
 @Composable
 fun AccountScreen(state: AccountState, strings: ShellStrings, actions: AccountActions, avatar: AccountAvatarImage? = null) {
     AccountPage(strings[ShellCopy.AccountTitle], "shell-account") {
-        TabulaText(strings.account(AccountCopy.Intro), TabulaType.bodyLg, color = LocalTabulaColors.current.onSurfaceVariant)
+        TabulaText(strings.account(AccountCopy.Intro), TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
         AccountIdentityCard(state, strings, avatar)
         AccountStatusPanel(state, strings, actions, accountEntry = true)
         if (state !is AccountState.Authenticated) AccountAccessLinks(strings, actions)
@@ -79,7 +81,7 @@ fun AccountScreen(state: AccountState, strings: ShellStrings, actions: AccountAc
 @Composable
 fun LoginScreen(state: AccountState, strings: ShellStrings, actions: AccountActions) {
     AccountPage(strings.account(AccountCopy.Login), "shell-login") {
-        TabulaText(strings.account(AccountCopy.LoginIntro), TabulaType.bodyLg, color = LocalTabulaColors.current.onSurfaceVariant)
+        TabulaText(strings.account(AccountCopy.LoginIntro), TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
         AccountStatusPanel(state, strings, actions)
         if (state is AccountState.Authenticated) {
             ShellSurface {
@@ -101,7 +103,7 @@ fun LoginScreen(state: AccountState, strings: ShellStrings, actions: AccountActi
 @Composable
 fun RegisterScreen(state: AccountState, strings: ShellStrings, actions: AccountActions) {
     AccountPage(strings.account(AccountCopy.Register), "shell-register") {
-        TabulaText(strings.account(AccountCopy.RegisterIntro), TabulaType.bodyLg, color = LocalTabulaColors.current.onSurfaceVariant)
+        TabulaText(strings.account(AccountCopy.RegisterIntro), TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
         if (state is AccountState.Authenticated) {
             ShellSurface {
                 TabulaText(strings.account(AccountCopy.AlreadySignedIn), TabulaType.bodyMd)
@@ -123,7 +125,7 @@ fun RegisterScreen(state: AccountState, strings: ShellStrings, actions: AccountA
 @Composable
 fun ProfileScreen(state: AccountState, strings: ShellStrings, actions: AccountActions, avatar: AccountAvatarImage? = null) {
     AccountPage(strings.account(AccountCopy.Profile), "shell-profile") {
-        TabulaText(strings.account(AccountCopy.ProfileIntro), TabulaType.bodyLg, color = LocalTabulaColors.current.onSurfaceVariant)
+        TabulaText(strings.account(AccountCopy.ProfileIntro), TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
         AccountStatusPanel(state, strings, actions)
         if (state is AccountState.Authenticated) {
             AccountIdentityCard(state, strings, avatar)
@@ -157,7 +159,7 @@ fun ProfileScreen(state: AccountState, strings: ShellStrings, actions: AccountAc
 @Composable
 fun FriendsScreen(state: AccountState, strings: ShellStrings, actions: AccountActions) {
     AccountPage(strings.account(AccountCopy.Friends), "shell-friends") {
-        TabulaText(strings.account(AccountCopy.FriendsIntro), TabulaType.bodyLg, color = LocalTabulaColors.current.onSurfaceVariant)
+        TabulaText(strings.account(AccountCopy.FriendsIntro), TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
         ShellStatePanel(strings.account(AccountCopy.FriendsUnavailable), strings.account(AccountCopy.FriendsUnavailableBody),
             Modifier.testTag("account-friends-unavailable"))
         if (state !is AccountState.Authenticated) AccountAccessLinks(strings, actions)
@@ -186,15 +188,34 @@ private fun AccountPage(title: String, tag: String, content: @Composable android
 private fun AccountIdentityCard(state: AccountState, strings: ShellStrings, avatar: AccountAvatarImage?) {
     val identity = (state as? AccountState.Authenticated)?.identity
     ShellSurface(Modifier.testTag("account-identity"), hero = true) {
-        Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp), verticalAlignment = Alignment.CenterVertically) {
-            ShellIdentityAvatar(identity, avatar, strings)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TabulaSpace.xs.dp)) {
-                TabulaText(identity?.profile?.displayName ?: if (identity == null) strings[ShellCopy.Anonymous]
-                    else strings.account(AccountCopy.SignedIn), TabulaType.titleLg)
-                TabulaText(identity?.profile?.let { "@${it.handle}" } ?: strings.account(AccountCopy.Status),
-                    TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // Stack identity fields when the avatar leaves too little text width at the
+            // user's current font scale (doc 04 §10.4). Text keeps its full OS scaling.
+            val avatarSize = TabulaSpace.xxxxxl.dp
+            val gap = TabulaSpace.lg.dp
+            val textMeasure = (TabulaType.bodyMd.size * 12f * LocalDensity.current.fontScale).dp
+            if (maxWidth < avatarSize + gap + textMeasure) {
+                Column(verticalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp)) {
+                    ShellIdentityAvatar(identity, avatar, strings, size = avatarSize)
+                    AccountIdentityDetails(identity, strings, Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.CenterVertically) {
+                    ShellIdentityAvatar(identity, avatar, strings, size = avatarSize)
+                    AccountIdentityDetails(identity, strings, Modifier.weight(1f))
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun AccountIdentityDetails(identity: AccountIdentity?, strings: ShellStrings, modifier: Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(TabulaSpace.xs.dp)) {
+        TabulaText(identity?.profile?.displayName ?: if (identity == null) strings[ShellCopy.Anonymous]
+            else strings.account(AccountCopy.SignedIn), TabulaType.titleMd)
+        TabulaText(identity?.profile?.let { "@${it.handle}" } ?: strings.account(AccountCopy.Status),
+            TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
     }
 }
 
@@ -253,7 +274,7 @@ private fun AccountStatusPanel(state: AccountState, strings: ShellStrings, actio
 private fun ProfileFact(label: AccountCopy, value: String, tag: String, strings: ShellStrings) {
     Column(Modifier.fillMaxWidth().testTag(tag), verticalArrangement = Arrangement.spacedBy(TabulaSpace.xs.dp)) {
         TabulaText(strings.account(label), TabulaType.labelLg, color = LocalTabulaColors.current.onSurfaceVariant)
-        TabulaText(value, TabulaType.bodyLg)
+        TabulaText(value, TabulaType.bodyMd)
     }
 }
 
