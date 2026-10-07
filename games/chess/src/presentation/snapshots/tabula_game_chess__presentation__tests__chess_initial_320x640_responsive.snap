@@ -1,6 +1,5 @@
 ---
 source: games/chess/src/presentation/mod.rs
-assertion_line: 3782
 expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
 ---
 camera origin=(0.000, 0.000) zoom=1.000
@@ -393,10 +392,10 @@ commands (total 395):
   385: rect [origin=(162.000, 513.600) size=(143.920, 44.000)] radii=uniform(14.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
   386: text "Actions" at=(233.960, 525.600) style=LabelLg align=Center max_width=127.920 color=#1e1c21ff layer=hud(30) z=0
   387: sprite asset="pieces/black-king" rect=[origin=(21.840, 52.560) size=(28.480, 28.480)] tint=#ffffffff rotation=0.000 pivot=(36.080, 66.800) layer=hud(30) z=1
-  388: text "Black" at=(62.080, 48.800) style=LabelSm align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
-  389: text "Opponent seat" at=(62.080, 69.800) style=LabelSm align=Start max_width=225.840 color=#6a5974ff layer=hud(30) z=1
+  388: text "Black" at=(62.080, 45.800) style=LabelLg align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
+  389: text "Opponent seat" at=(62.080, 66.800) style=BodyMd align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
   390: sprite asset="pieces/white-king" rect=[origin=(21.840, 416.560) size=(28.480, 28.480)] tint=#ffffffff rotation=0.000 pivot=(36.080, 430.800) layer=hud(30) z=1
-  391: text "White / turn" at=(62.080, 412.800) style=LabelSm align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
-  392: text "Your seat" at=(62.080, 433.800) style=LabelSm align=Start max_width=225.840 color=#6a5974ff layer=hud(30) z=1
+  391: text "White / turn" at=(62.080, 409.800) style=LabelLg align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
+  392: text "Your seat" at=(62.080, 430.800) style=BodyMd align=Start max_width=225.840 color=#352146ff layer=hud(30) z=1
   393: text "Your turn / White" at=(22.080, 467.200) style=LabelLg align=Start max_width=275.840 color=#352146ff layer=hud(30) z=1
-  394: text "Coordinates / captures: this session" at=(22.080, 486.200) style=LabelSm align=Start max_width=275.840 color=#6a5974ff layer=hud(30) z=1
+  394: text "Observed this session only" at=(22.080, 487.200) style=BodyMd align=Start max_width=275.840 color=#352146ff layer=hud(30) z=1

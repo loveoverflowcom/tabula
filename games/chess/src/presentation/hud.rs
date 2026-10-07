@@ -748,8 +748,8 @@ pub(super) fn draw(
                     ""
                 }
             ),
-            rect.origin() + Vec2::new(label_x, 4.0),
-            TextStyleToken::LabelSm,
+            rect.origin() + Vec2::new(label_x, 1.0),
+            TextStyleToken::LabelLg,
             art.ink,
             (rect.size().x - label_x - reserve - 18.0).max(0.0),
             Layer::HUD,
@@ -770,9 +770,9 @@ pub(super) fn draw(
             text(
                 builder,
                 label,
-                rect.origin() + Vec2::new(label_x, 25.0),
-                TextStyleToken::LabelSm,
-                art.muted,
+                rect.origin() + Vec2::new(label_x, 22.0),
+                TextStyleToken::BodyMd,
+                art.ink,
                 (rect.size().x - label_x - reserve - 18.0).max(0.0),
                 Layer::HUD,
                 1,
@@ -954,6 +954,32 @@ fn movement_label(movement: &ObservedMove) -> String {
     )
 }
 
+/// Single-row portrait summary. Full piece names remain in the rail;
+/// the standard promotion letters keep a 14px session label inside its slot.
+fn compact_movement_label(movement: &ObservedMove) -> String {
+    let promotion = movement.promotion.map_or(String::new(), |piece| {
+        let letter = match piece {
+            PieceKind::Pawn => 'P',
+            PieceKind::Knight => 'N',
+            PieceKind::Bishop => 'B',
+            PieceKind::Rook => 'R',
+            PieceKind::Queen => 'Q',
+            PieceKind::King => 'K',
+        };
+        format!("={letter}")
+    });
+    format!(
+        "{}{}{}{promotion}",
+        square_name(movement.from),
+        if movement.captured.is_some() {
+            "x"
+        } else {
+            "→"
+        },
+        square_name(movement.to),
+    )
+}
+
 #[allow(clippy::too_many_lines)]
 fn draw_status(
     builder: &mut RenderListBuilder,
@@ -983,6 +1009,17 @@ fn draw_status(
         z: 0,
     })?;
     let title = result_title(view).unwrap_or_else(|| {
+        // A short portrait surface cannot fit the second detail line. Keep an
+        // accepted draw offer visible in its title, including simultaneous check.
+        if !toolbar && status.size().y < 48.0 {
+            if let Some(offer) = view.draw_offer {
+                return if view.in_check {
+                    format!("CHECK / {} draw offer", color_name(offer))
+                } else {
+                    format!("Draw offer / {}", color_name(offer))
+                };
+            }
+        }
         if rail || toolbar {
             format!(
                 "{}{}",
@@ -1023,7 +1060,7 @@ fn draw_status(
         .iter()
         .filter_map(|movement| movement.captured)
         .count();
-    let last = local.move_history.last().map(movement_label);
+    let last = local.move_history.last().map(compact_movement_label);
     let detail = if let Status::Ended { outcome } = &view.status {
         outcome.summary().to_owned()
     } else if let Some(offer) = view.draw_offer {
@@ -1038,21 +1075,19 @@ fn draw_status(
         }
     } else {
         last.map_or_else(
-            || "Coordinates / captures: this session".into(),
-            |movement| format!("{movement} · {captures} captured (session)"),
+            || "Observed this session only".into(),
+            |movement| format!("Session: {movement} / {captures} captured"),
         )
     };
-    if status.size().y >= 44.0 {
+    // Two 20px text rows must stay inside the compact status surface. The rail
+    // has its own helper slot, with room for a second wrapped instruction line.
+    if status.size().y >= 48.0 {
         text(
             builder,
             detail,
-            status.origin() + Vec2::new(padding, if rail { 44.0 } else { 27.0 }),
-            if rail {
-                TextStyleToken::BodySm
-            } else {
-                TextStyleToken::LabelSm
-            },
-            art.muted,
+            status.origin() + Vec2::new(padding, if rail { 44.0 } else { 28.0 }),
+            TextStyleToken::BodyMd,
+            art.ink,
             width,
             Layer::HUD,
             1,
@@ -1073,8 +1108,8 @@ fn draw_status(
             builder,
             "Observed this session only",
             status.origin() + Vec2::new(padding, 122.0),
-            TextStyleToken::LabelSm,
-            art.muted,
+            TextStyleToken::LabelLg,
+            art.ink,
             width,
             Layer::HUD,
             1,
@@ -1089,7 +1124,7 @@ fn draw_status(
                     movement_label(movement)
                 ),
                 status.origin() + Vec2::new(padding, 148.0 + row * 26.0),
-                TextStyleToken::BodySm,
+                TextStyleToken::BodyMd,
                 art.ink,
                 width,
                 Layer::HUD,
@@ -1102,8 +1137,8 @@ fn draw_status(
                 builder,
                 "Captured this session",
                 status.origin() + Vec2::new(padding, capture_y),
-                TextStyleToken::LabelMd,
-                art.muted,
+                TextStyleToken::LabelLg,
+                art.ink,
                 width,
                 Layer::HUD,
                 1,
@@ -1120,8 +1155,8 @@ fn draw_status(
                     builder,
                     "None observed",
                     status.origin() + Vec2::new(padding, capture_y + 24.0),
-                    TextStyleToken::LabelSm,
-                    art.muted,
+                    TextStyleToken::BodyMd,
+                    art.ink,
                     width,
                     Layer::HUD,
                     1,
@@ -1827,7 +1862,11 @@ mod compact_design_regressions {
     }
 
     fn claim_position(offered_draw: bool) -> View {
-        let mut state = crate::State::from_fen("4k3/8/8/8/8/8/8/R3K2R w - - 100 60").unwrap();
+        projected_position("4k3/8/8/8/8/8/8/R3K2R w - - 100 60", offered_draw)
+    }
+
+    fn projected_position(fen: &str, offered_draw: bool) -> View {
+        let mut state = crate::State::from_fen(fen).unwrap();
         if offered_draw {
             let mut rng = tabula_core::DetRng::for_input(
                 &tabula_core::MatchSeed::from_bytes([0; 32]),
@@ -1937,6 +1976,147 @@ mod compact_design_regressions {
                 RenderCmd::Text { text, .. } if text == "White / CHECK")));
             assert!(!list.commands().iter().any(|command| matches!(command,
                 RenderCmd::Text { text, .. } if text == "Your turn / White / CHECK")));
+        }
+    }
+
+    #[test]
+    fn informational_hud_uses_readable_roles_inside_existing_line_slots() {
+        for kind in [
+            tabula_design::ThemeKind::Light,
+            tabula_design::ThemeKind::Dark,
+            tabula_design::ThemeKind::HighContrastLight,
+            tabula_design::ThemeKind::HighContrastDark,
+        ] {
+            for (width, height) in [
+                (1100.0, 850.0),
+                (1440.0, 960.0),
+                (390.0, 844.0),
+                (320.0, 640.0),
+                (844.0, 390.0),
+                (320.0, 580.0),
+            ] {
+                let (view, mut local, layout, _) = setup(width, height);
+                local.set_hot_seat_controls(true);
+                for _ in 0..4 {
+                    record_move(
+                        &mut local,
+                        ChessColor::White,
+                        Square(54),
+                        Square(63),
+                        Some(PieceKind::Knight),
+                        Some(Piece {
+                            color: ChessColor::Black,
+                            kind: PieceKind::Rook,
+                        }),
+                    );
+                }
+                let theme = Theme::by_kind(kind);
+                let frame = FrameCtx::new(local.viewport, Dpi::new(1.0).unwrap(), 0, theme);
+                let list = ChessPresentation::present(&view, &local, &frame);
+                let mut checked = 0;
+                for command in list.commands() {
+                    let RenderCmd::Text {
+                        text,
+                        at,
+                        style,
+                        color,
+                        layer,
+                        ..
+                    } = command
+                    else {
+                        continue;
+                    };
+                    if *layer != Layer::HUD {
+                        continue;
+                    }
+                    let surface = [layout.top_player, layout.bottom_player, layout.status]
+                        .into_iter()
+                        .find(|rect| rect.contains(*at));
+                    let Some(surface) = surface else {
+                        continue;
+                    };
+                    checked += 1;
+                    let metrics = frame.theme().text_style(*style);
+                    assert!(metrics.size().get() >= 14.0, "{text}: {style:?}");
+                    assert!(
+                        at.y + metrics.line_height().get()
+                            <= surface.origin().y + surface.size().y + 0.001,
+                        "{text}: first line escapes its existing surface"
+                    );
+                    if matches!(
+                        text.as_str(),
+                        "Tap to control"
+                            | "Observed this session only"
+                            | "Captured this session"
+                            | "None observed"
+                            | "Select a piece, then a legal destination"
+                    ) {
+                        assert_eq!(*color, frame.theme().game_art.chess.ink);
+                    }
+                }
+                assert!(checked >= 3, "the HUD text selection must be nonempty");
+            }
+        }
+    }
+
+    #[test]
+    fn compact_observed_promotions_keep_standard_letters_and_session_qualification() {
+        let (view, mut local, _, frame) = setup(320.0, 640.0);
+        for (kind, letter) in [
+            (PieceKind::Queen, 'Q'),
+            (PieceKind::Rook, 'R'),
+            (PieceKind::Bishop, 'B'),
+            (PieceKind::Knight, 'N'),
+        ] {
+            local.move_history.clear();
+            record_move(
+                &mut local,
+                ChessColor::White,
+                Square(54),
+                Square(63),
+                Some(kind),
+                Some(Piece {
+                    color: ChessColor::Black,
+                    kind: PieceKind::Rook,
+                }),
+            );
+            let list = ChessPresentation::present(&view, &local, &frame);
+            let expected = format!("Session: g7xh8={letter} / 1 captured");
+            assert!(list.commands().iter().any(|command| matches!(command,
+                RenderCmd::Text { text, style: TextStyleToken::BodyMd, .. }
+                    if text == &expected)));
+            assert!(movement_label(local.move_history.last().unwrap()).contains(piece_name(kind)));
+        }
+    }
+
+    #[test]
+    fn short_compact_status_preserves_accepted_draw_offer_and_check_cues() {
+        let (_, local, layout, frame) = setup(320.0, 580.0);
+        assert!((44.0..48.0).contains(&layout.status.size().y));
+        for (fen, expected, in_check) in [
+            (
+                "4k3/8/8/8/8/8/8/R3K2R w - - 100 60",
+                "Draw offer / Black",
+                false,
+            ),
+            (
+                "4k3/8/8/8/8/8/4r3/4K3 w - - 0 2",
+                "CHECK / Black draw offer",
+                true,
+            ),
+        ] {
+            let view = projected_position(fen, true);
+            assert_eq!(view.draw_offer, Some(ChessColor::Black));
+            assert_eq!(view.in_check, in_check);
+            assert!(view.actions.contains(&Command::AcceptDraw));
+            let list = ChessPresentation::present(&view, &local, &frame);
+            assert!(list.commands().iter().any(|command| matches!(command,
+            RenderCmd::Text { text, style: TextStyleToken::LabelLg, color, .. }
+                if text == expected && *color == if in_check {
+                    frame.theme().color.danger
+                } else {
+                    frame.theme().game_art.chess.ink
+                })));
         }
     }
 

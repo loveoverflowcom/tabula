@@ -2,8 +2,9 @@
 
 ## Outcome
 
-Inspect exact-source real Macroquad pixels and interrupted input for the
-implemented board/HUD/accepted-motion slice; then complete only the remaining
+Recheck the HUD readability follow-up against exact-source real Macroquad
+pixels, preserve the earlier PARTIAL receipt, and inspect interrupted input for
+the implemented board/HUD/accepted-motion slice; then complete the remaining
 motion polish recorded in the [#85 ledger](../../verification/chess-redesign-85/README.md).
 
 ## Why
@@ -15,7 +16,8 @@ claims have named target evidence.
 
 ## Dependencies
 
-A permitted actual Macroquad display/capture route. Local Chromium launch is
+A separately authorized dedicated browser-capture workflow is available; the
+first source-pinned receipt is linked in the ledger. Local Chromium launch is
 blocked by AF_UNIX socket permissions. The existing native mobile adapter and
 actual device gates remain independent. Remote event-age semantics require
 approved timestamp context before claiming stale-arrival behavior.

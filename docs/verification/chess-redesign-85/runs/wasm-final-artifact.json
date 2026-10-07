@@ -1,6 +1,0 @@
-{
-  "artifact": "/workspace/scratch/429f9ca90843/chess85-validation/target/wasm32-unknown-unknown/wasm-release/tabula-game-client.wasm",
-  "bytes": 960573,
-  "sha256": "a882d57739a9b64e156c1c28785cae658d5f4246c22d96d54f09034dd7caa189",
-  "scope": "Supported standalone Macroquad WASM build; browser execution not established"
-}

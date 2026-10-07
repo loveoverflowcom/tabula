@@ -2,7 +2,7 @@
 
 Original code-authored decorative artwork for issue #85, 2026-10-07. The
 diagonal 26-unit pattern and restrained dark-grain treatment are adapted from
-Tabula's original [design exporter](../../../../docs/ui/issue-82-game-feel/chess/export_preview.py),
+Tabula's original [design exporter archive](https://github.com/loveoverflowcom/tabula/blob/dac1c2940a7d1fa22f6057074618ab3377d8604f/docs/ui/issue-82-game-feel/chess/export_preview.py),
 retained by merged [PR #86](https://github.com/loveoverflowcom/tabula/pull/86).
 No stock artwork, font, external SVG dependency or third-party piece source is
 used. The original Staunton sources remain unchanged.

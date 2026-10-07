@@ -1,6 +1,5 @@
 ---
 source: games/chess/src/presentation/mod.rs
-assertion_line: 3859
 expression: "& $crate :: presentation ::\nrender_list_snapshot($crate :: presentation :: AsRenderList ::\nas_render_list(& list))"
 ---
 camera origin=(0.000, 0.000) zoom=1.000
@@ -190,13 +189,13 @@ commands (total 220):
   182: rect [origin=(322.000, 576.800) size=(168.000, 44.000)] radii=uniform(14.000) fill=solid(#eae3edff) border=none layer=hud(30) z=0
   183: text "Actions" at=(406.000, 588.800) style=LabelLg align=Center max_width=152.000 color=#1e1c21ff layer=hud(30) z=0
   184: sprite asset="pieces/black-king" rect=[origin=(157.760, 58.960) size=(28.480, 28.480)] tint=#ffffffff rotation=0.000 pivot=(172.000, 73.200) layer=hud(30) z=1
-  185: text "Black" at=(198.000, 55.200) style=LabelSm align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
-  186: text "Opponent seat" at=(198.000, 76.200) style=LabelSm align=Start max_width=274.000 color=#6a5974ff layer=hud(30) z=1
+  185: text "Black" at=(198.000, 52.200) style=LabelLg align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
+  186: text "Opponent seat" at=(198.000, 73.200) style=BodyMd align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
   187: sprite asset="pieces/white-king" rect=[origin=(157.760, 479.760) size=(28.480, 28.480)] tint=#ffffffff rotation=0.000 pivot=(172.000, 494.000) layer=hud(30) z=1
-  188: text "White / turn" at=(198.000, 476.000) style=LabelSm align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
-  189: text "Your seat" at=(198.000, 497.000) style=LabelSm align=Start max_width=274.000 color=#6a5974ff layer=hud(30) z=1
+  188: text "White / turn" at=(198.000, 473.000) style=LabelLg align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
+  189: text "Your seat" at=(198.000, 494.000) style=BodyMd align=Start max_width=274.000 color=#352146ff layer=hud(30) z=1
   190: text "Your turn / White" at=(158.000, 530.400) style=LabelLg align=Start max_width=324.000 color=#352146ff layer=hud(30) z=1
-  191: text "Coordinates / captures: this session" at=(158.000, 549.400) style=LabelSm align=Start max_width=324.000 color=#6a5974ff layer=hud(30) z=1
+  191: text "Observed this session only" at=(158.000, 550.400) style=BodyMd align=Start max_width=324.000 color=#352146ff layer=hud(30) z=1
   192: push-opacity opacity=0.380 layer=modal(40) z=-1
   193: rect [origin=(0.000, 0.000) size=(640.000, 640.000)] radii=uniform(0.000) fill=solid(#4c4e58ff) border=none layer=modal(40) z=-1
   194: pop-opacity layer=modal(40) z=-1

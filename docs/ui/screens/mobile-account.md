@@ -161,6 +161,12 @@ actions stack. Content scrolls within existing safe-area/chrome slots; controls
 meet the generated minimum target and remain reachable above bottom navigation.
 Wider layouts preserve source order and use the existing shell rail. Light,
 dark, high-contrast light/dark and vi/en all retain contrast and hierarchy.
+Account paragraphs and profile values use `bodyMd`; identity names and section
+headings use `titleMd`, while individual field labels retain `labelLg`.
+These generated roles retain the full OS font scale.
+The identity card stacks its avatar above the details when the remaining row
+width would be less than twelve body-text ems at the current scale. Long names,
+handles and IDs retain all their characters; they are not ellipsized to fit.
 
 Headings, labelled state regions and separate named buttons retain semantic
 roles. Unknown/loading/error/permission-loss is announced at a useful transition,

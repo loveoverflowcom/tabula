@@ -1850,6 +1850,9 @@ fn square_name(square: Square) -> String {
 }
 
 #[cfg(test)]
+mod layout_pointer_fixture_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use tabula_core::{
