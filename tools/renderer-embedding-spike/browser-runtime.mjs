@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const driver = process.env.TABULA_PLAYWRIGHT;
 if (!driver) throw new Error('Set TABULA_PLAYWRIGHT to an installed playwright-core package.');
 const { chromium } = require(driver);
-const [kind = 'document', output = 'docs/verification/issue-60', origin = 'http://127.0.0.1:8060'] = process.argv.slice(2);
+const [kind = 'document', output = 'verification/issue-60', origin = 'http://127.0.0.1:8060'] = process.argv.slice(2);
 const executable = process.env.TABULA_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const server = await chromium.launchServer({ executablePath: executable, headless: false, args: ['--no-first-run', '--no-default-browser-check'] });
 const browser = await chromium.connect(server.wsEndpoint());

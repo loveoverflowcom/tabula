@@ -1,8 +1,0 @@
-{
-  "status": "BLOCKED",
-  "browser": "Safari 18.6 (20621.3.11.11.3)",
-  "command": "/usr/bin/safaridriver -p 9600; POST /session {capabilities:{alwaysMatch:{browserName:safari}}}",
-  "error": "session not created: enable Allow remote automation in Developer Safari Settings",
-  "settings_changed": false,
-  "webkit_playwright_runtime": "NOT_INSTALLED"
-}

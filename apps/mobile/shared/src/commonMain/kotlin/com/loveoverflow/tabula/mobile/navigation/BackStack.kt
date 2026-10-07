@@ -34,6 +34,15 @@ sealed interface Destination {
     /** Native social capability surface; it contains no saved friend/request/profile target. */
     data object Friends : Destination
 
+    /** Native room availability; no invitation, room id or seat authority is saved. */
+    data object Rooms : Destination
+
+    /** Native history availability; no private match data or resumed game is saved. */
+    data object History : Destination
+
+    /** Local presentation choices, independent of account/session authority (I-10). */
+    data object Settings : Destination
+
     /** A game surface, presented through the platform's [com.loveoverflow.tabula.mobile.host.GameHost]. */
     data class Game(val launch: GameLaunch) : Destination
 
@@ -51,6 +60,9 @@ sealed interface Destination {
         Register -> "/register"
         Profile -> "/me"
         Friends -> "/friends"
+        Rooms -> "/rooms"
+        History -> "/history"
+        Settings -> "/settings"
         is Game -> "/play/local/"
     }
 
@@ -69,6 +81,9 @@ sealed interface Destination {
                 "/register" -> Register
                 "/me" -> Profile
                 "/friends" -> Friends
+                "/rooms" -> Rooms
+                "/history" -> History
+                "/settings" -> Settings
                 else -> {
                     if (!path.startsWith("/games/")) return null
                     val setup = path.endsWith("?setup=1")
@@ -89,6 +104,10 @@ sealed interface Destination {
 val Destination.isAccountTask: Boolean
     get() = this == Destination.Account || this == Destination.Login || this == Destination.Register ||
         this == Destination.Profile || this == Destination.Friends
+
+/** Account-tab locations include local tools without making them account/session tasks. */
+val Destination.isAccountSection: Boolean
+    get() = isAccountTask || this == Destination.Rooms || this == Destination.History || this == Destination.Settings
 
 private const val MaxRouteLength = 256
 private const val MaxHistoryEntries = 32

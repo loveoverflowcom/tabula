@@ -1,5 +1,11 @@
 # Unfocused wrapped skip-link concealment
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/dashboard-design01).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 Fresh baseline: develop `7716b2ef91c8c2e79e49db6879de19a5742ee76a`, tree
 `1f851b5fc3be2916db2408d52554777b5ebdc489`, after PR93.
 

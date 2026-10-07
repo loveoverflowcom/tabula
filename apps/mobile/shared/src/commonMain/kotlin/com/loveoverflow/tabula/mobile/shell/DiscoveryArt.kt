@@ -1,6 +1,8 @@
 package com.loveoverflow.tabula.mobile.shell
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -18,13 +20,19 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.loveoverflow.tabula.mobile.catalog.DiscoveryCover
 import com.loveoverflow.tabula.mobile.design.LocalTabulaColors
 import com.loveoverflow.tabula.mobile.design.TabulaColors
 import com.loveoverflow.tabula.mobile.design.TabulaShape
+import com.loveoverflow.tabula.mobile.design.TabulaSpace
+import com.loveoverflow.tabula.mobile.resources.Res
+import com.loveoverflow.tabula.mobile.resources.tabula_discovery_hero
 import kotlin.math.tan
+import org.jetbrains.compose.resources.painterResource
 
 /** Decorative game-owned cover only; this does not load a runtime asset or any match data (I-5). */
 @Composable
@@ -45,17 +53,25 @@ fun DiscoveryGameCover(cover: DiscoveryCover?, modifier: Modifier = Modifier) {
     }
 }
 
-/** Abstract shell illustration, intentionally independent of game metadata or gameplay. */
+/** Bundled decorative discovery illustration; it grants no catalog or native gameplay availability. */
 @Composable
 fun DiscoveryHeroArt(modifier: Modifier = Modifier) {
     val colors = LocalTabulaColors.current
-    Canvas(modifier.aspectRatio(3f).clearAndSetSemantics { }) { drawNeutralDiscoveryArt(colors, hero = true) }
+    val shape = RoundedCornerShape(TabulaShape.card.dp)
+    Image(
+        painter = painterResource(Res.drawable.tabula_discovery_hero),
+        contentDescription = null,
+        // The source is 1376 × 768. Keep its composition at every width and never put UI copy on it.
+        contentScale = ContentScale.Crop,
+        modifier = modifier.aspectRatio(43f / 24f).clip(shape)
+            .border(TabulaSpace.xxs.dp, colors.outline, shape).testTag("discovery-hero-art"),
+    )
 }
 
-private fun DrawScope.drawNeutralDiscoveryArt(colors: TabulaColors, hero: Boolean = false) {
+private fun DrawScope.drawNeutralDiscoveryArt(colors: TabulaColors) {
     val factor = minOf(size.width / 364f, size.height / 160f)
     scale(factor, factor, pivot = Offset.Zero) {
-        if (!hero) drawRect(colors.shellCoverSage, size = androidx.compose.ui.geometry.Size(364f, 160f))
+        drawRect(colors.shellCoverSage, size = androidx.compose.ui.geometry.Size(364f, 160f))
         val stroke = Stroke(2f)
         withTransform({ rotate(-16f, Offset(167f, 80f)) }) {
             drawRoundRect(colors.primary, Offset(120f, 20f), androidx.compose.ui.geometry.Size(94f, 120f), CornerRadius(12f), style = stroke)

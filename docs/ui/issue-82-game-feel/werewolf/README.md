@@ -1,5 +1,11 @@
 # Ma Sói — Đêm ở làng Sương
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/werewolf).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 Bản thiết kế • dữ liệu mẫu • mô phỏng cục bộ. Mở `index.html` qua một server static. Không có luật game, authority, mạng, chat hoặc voice.
 
 ## Avatar tài khoản chung

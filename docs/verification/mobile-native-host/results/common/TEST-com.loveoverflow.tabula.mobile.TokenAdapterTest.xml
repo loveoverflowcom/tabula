@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="TokenAdapterTest[desktop]" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-06T15:13:58.179Z" hostname="Mac-mini-cua-Manh.local" time="0.006">
-  <properties/>
-  <testcase name="touchTargetKeepsTheAccessibilityFloor[desktop]" classname="com.loveoverflow.tabula.mobile.TokenAdapterTest" time="0.001"/>
-  <testcase name="everyAuthoredSchemeResolvesAndSchemesDiffer[desktop]" classname="com.loveoverflow.tabula.mobile.TokenAdapterTest" time="0.005"/>
-  <testcase name="teamAndSeatPalettesKeepTheAuthoredWidth[desktop]" classname="com.loveoverflow.tabula.mobile.TokenAdapterTest" time="0.0"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

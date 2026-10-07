@@ -1,5 +1,11 @@
 # Cờ vua — Bàn gỗ trầm
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/ui/issue-82-game-feel/chess).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 Bản thiết kế • dữ liệu mẫu • mô phỏng cục bộ. Bàn cờ 2D có khung gỗ trầm, ô màu ivory/plum, quân Staunton rõ hình và cùng hướng. Primary/focus tím; viền brass là chất liệu của quân cờ. Không dùng Unicode, emoji hoặc ảnh quân cờ được sinh bằng imagegen.
 
 ## Mở bản tương tác

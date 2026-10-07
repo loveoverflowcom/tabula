@@ -1,5 +1,11 @@
 # Werewolf standalone verification
 
+Historical artifact notice: removed raw evidence/design files remain in the pinned
+[pre-cleanup archive](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/werewolf-standalone).
+Commands and results below describe that original source/build, not current runtime
+acceptance. Use ignored `verification/` output for new captures and receipts.
+
+
 Scope: ADR-0035's opt-in deterministic referee and isolated-seat local simulator.
 Implementation began at develop 115159c and publication is reconciled with the later
 CMP foundation / ADR-0032, first-party host / ADR-0033, renderer renames and

@@ -1,6 +1,0 @@
-$ npm run licenses --prefix tools/renderer-embedding-spike
-
-> tabula-renderer-embedding-spike@0.1.0 licenses
-> node check-dependencies.mjs
-
-PASS: 12 exact lock pins with registry SRI, allowed licenses, and retained notices

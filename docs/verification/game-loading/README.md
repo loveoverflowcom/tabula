@@ -1,5 +1,12 @@
 # Local game loading and cache evidence
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/game-loading); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 Date: 2026-10-04. Baseline: `develop @ 3527b65d6643d805d6c80352d165d97f71417ccc`.
 Scope: a draft optimization PR for the existing local discovery-to-gameplay slice.
 ADR-011/0029/0030 containment, game authority, common M3 discovery and remaining
@@ -37,8 +44,8 @@ Python gzip level 9 with `mtime=0`, not an observed server compression policy.
 
 Gameplay WASM decreases 770,686 raw bytes (40.5%) and 485,355 gzip-9 bytes (53.7%).
 This is an emitted-payload result, not a startup-time, CPU or heap claim.
-[Baseline inventory](baseline-bundles.json), [current budgets](current-bundles.json)
-and [source/build fingerprints](source-build-manifest.json) retain exact hashes.
+[Historical Baseline inventory](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/game-loading/baseline-bundles.json), [Historical current budgets](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/game-loading/current-bundles.json)
+and [Historical source/build fingerprints](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/game-loading/source-build-manifest.json) retain exact hashes.
 The deployed normal dependency graph excludes Tiles and Leptos. Byte inspection
 finds none of the three authored fonts, four Chess PNGs or two Tiles PNGs inside
 that WASM; the baseline contains all nine complete byte sequences.
@@ -74,7 +81,7 @@ density. Ordinary frames do not rebuild the resource-selection metadata.
 A real staged HTTP smoke executed one HTML, two styles, five pinned scripts and
 the five DPI1 runtime payload requests: 13 explicit requests, 1,523,072 body bytes.
 Every script/style SRI, runtime SHA-256/size and immutable response header matched.
-See the [HTTP receipt](http-wiring.json). This exercises actual staged paths and
+See the [Historical HTTP receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/game-loading/http-wiring.json). This exercises actual staged paths and
 HTTP responses; it neither executes CSS font selection nor simulates a browser
 waterfall, WASM frame or cache hit. The declared fonts/pieces runtime payload sum
 is 1,376,798 bytes including the current WASM, before the small host dependencies.
@@ -122,7 +129,7 @@ No offline availability or general CDN/native pack-cache implementation is claim
 
 ## Executed checks and limitations
 
-Retained command output is under [logs](logs/); [log provenance](log-provenance.json)
+Retained command output is under [Historical logs](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/game-loading/logs); [Historical log provenance](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/game-loading/log-provenance.json)
 records raw and retained hashes. Normalization only trims trailing whitespace and
 excess final blank lines. Final aggregate checks passed after the earlier recovered
 lint/empty-WASM staging failures. Independent review found and drove quote-style

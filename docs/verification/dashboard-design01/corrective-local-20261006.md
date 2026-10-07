@@ -1,5 +1,12 @@
 # Dashboard resource, keyboard and large-text correction
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/dashboard-design01); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 Fresh baseline: `59ec8c62152d0b2d749f1a6ceba9982b5e8d2ac6`, tree
 `fa4f55e81bc1bd860ccfb58cb1738a8e3aa2a176`. This preserves the newly merged
 public-display/avatar and Werewolf/renderer work. Earlier `6637c66` captures are
@@ -85,7 +92,7 @@ checkpoint repeats the portable gate; its result is reported in the PR.
 - Independent final source/API/security and test-refactor review: PASS within
   this scope; no lost cases or changed validation/handoff behavior
 
-[Exact local emitted loading receipt](corrective-loading-receipt.json) records
+[Historical Exact local emitted loading receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/dashboard-design01/corrective-loading-receipt.json) records
 shipping source hashes, tool/profile settings and every selected artifact's byte
 count/hash. The unchanged budget owner, protocol, canonical full factories/runtime,
 current public-display/avatar, gameplay, tokens/theme and CI workflows remain

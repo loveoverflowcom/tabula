@@ -36,6 +36,8 @@ jobs:
       - run: python3 .agents/skills/tabula-engineering/scripts/check_skills.py
       - run: python3 .agents/skills/tabula-engineering/scripts/test_check_skills.py
       - run: python3 .agents/skills/tabula-engineering/scripts/test_ai_doc_contracts.py
+      - run: python3 tools/check-repository-hygiene.py
+      - run: python3 -m unittest discover -s tools/tests -p test_repository_hygiene.py -v
       - run: python3 tools/native-voice-harness/test_run.py
       - run: python3 tools/check-mobile-native-policy.py
       - run: python3 -m unittest discover -s tools/tests -p test_mobile_native_policy.py -v

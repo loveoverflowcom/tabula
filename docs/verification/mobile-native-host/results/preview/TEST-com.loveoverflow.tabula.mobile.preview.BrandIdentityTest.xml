@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.loveoverflow.tabula.mobile.preview.BrandIdentityTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-06T15:13:58.912Z" hostname="Mac-mini-cua-Manh.local" time="0.565">
-  <properties/>
-  <testcase name="canonicalIdentityFitsSmallPhonesAndHasOneAccessibleHeadingInEveryScheme" classname="com.loveoverflow.tabula.mobile.preview.BrandIdentityTest" time="0.564"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

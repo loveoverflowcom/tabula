@@ -1,5 +1,12 @@
 # ADR-0029: isolate renderer/embedding evidence and defer production migration
 
+Historical artifact notice: raw captures, generated receipts/logs and design exports
+were removed from the source tree. Pinned links below use the pre-cleanup archive
+[`80d9fdb9`](https://github.com/loveoverflowcom/tabula/tree/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/adr); those artifacts describe their original
+source/build and do not establish current runtime acceptance. New output belongs in
+ignored `verification/` directories or GitHub Actions Artifacts.
+
+
 - **Status:** accepted for tooling scope; production renderer/embedding choice deferred
 - **Date:** 2026-10-03
 - **Supersedes:** none; ADR-010, ADR-011 and ADR-0028 remain in force
@@ -70,13 +77,13 @@ source/build/asset fingerprints, measurements, captures and residuals. Three
 static runs each execute Macroquad in a document, the same artifact in an iframe,
 and PixiJS in the isolated Leptos shell on Chrome 154.0.8037.97. Each uses the
 same permitted initial #59 checkpoint, assets, 900×720 logical viewport and DPR1.
-See the [document](../verification/issue-60/runs/chromium-document-1.json),
-[iframe](../verification/issue-60/runs/chromium-iframe-1.json) and
-[PixiJS](../verification/issue-60/runs/chromium-pixi-1.json) representative receipts
+See the [Historical document](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-document-1.json),
+[Historical iframe](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-iframe-1.json) and
+[Historical PixiJS](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-pixi-1.json) representative receipts
 and the [RFC's target table](../rfcs/issue-60-renderer-embedding.md#executed-evidence-and-present-limits).
-Three [native Macroquad runs](../verification/issue-60/runs/native-static-1.json)
+Three [Historical native Macroquad runs](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/native-static-1.json)
 provide a separate control with process observations.
-The [native authority smoke](../verification/issue-60/runs/native-authority-smoke.json)
+The [Historical native authority smoke](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/native-authority-smoke.json)
 also executes 12 stdin requests with recorded session/generation/revision checks;
 it establishes the local process boundary rather than browser WASM interop.
 
@@ -88,11 +95,11 @@ shared pages and is not unique resident memory. A bridge ping is a message
 round trip, not input-to-visible or match latency. These differences prevent an
 engine ranking from the measured values.
 
-The [Safari probe](../verification/issue-60/safari-probe.json) records Safari 18.6
+The [Historical Safari probe](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/safari-probe.json) records Safari 18.6
 session creation as BLOCKED because remote automation is disabled, with the
 setting unchanged; the alternate Playwright WebKit runtime is not installed.
 No Safari/WebKit rendering result is inferred. The final
-[Chromium interaction receipt](../verification/issue-60/runs/chromium-interactions.json)
+[Historical Chromium interaction receipt](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-interactions.json)
 is PARTIAL: 11 checks PASS and one BLOCKED. Actual automatic visibility suspension
 was not reached because Chrome stayed `visible` after bounded tab-switch and
 minimization attempts. Manual suspend/resume exercises real RAF cancellation and
@@ -106,12 +113,12 @@ activations yield one accepted command and one `dropped_stale_checkpoint` result
 Production still needs its own typed state-version/resolved-intent boundary and
 concurrency coverage; the local checkpoint guard is not a shipping protocol.
 
-[Pixi](../verification/issue-60/runs/chromium-pixi-cycles.json) and
-[iframe](../verification/issue-60/runs/chromium-iframe-cycles.json) each complete
+[Historical Pixi](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-pixi-cycles.json) and
+[Historical iframe](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/runs/chromium-iframe-cycles.json) each complete
 50 actual render/dispose cycles with owned callback/listener/resource counts at
 zero after cleanup. Process RSS rises during these short campaigns; complete
 heap/GPU reclamation and absence of all memory leaks are unproven. The
-[final source/build manifest](../verification/issue-60/source-manifest.json)
+[Historical final source/build manifest](https://github.com/loveoverflowcom/tabula/blob/80d9fdb96f18cd59fa85c9401b533d66bf04b5d7/docs/verification/issue-60/source-manifest.json)
 binds the refreshed static control inputs after compilation finished.
 
 Audio, navigation/back/deep-link and online handoff, paired realtime motion/input
