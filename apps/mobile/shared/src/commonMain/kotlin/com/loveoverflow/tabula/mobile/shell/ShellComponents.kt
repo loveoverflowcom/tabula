@@ -257,7 +257,8 @@ fun ShellPage(
     displayTitle: Boolean = false,
     scrollable: Boolean = true,
     titleContent: @Composable () -> Unit = {
-        TabulaText(title, if (displayTitle) TabulaType.displaySm else TabulaType.headlineSm, Modifier.semantics { heading() })
+        if (displayTitle) ShellDisplayHeading(title)
+        else TabulaText(title, TabulaType.headlineSm, Modifier.semantics { heading() })
     },
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -271,6 +272,15 @@ fun ShellPage(
             titleContent()
             content()
         }
+    }
+}
+
+/** Design 01 display hierarchy adapts to the available reading width without scaling body text. */
+@Composable
+fun ShellDisplayHeading(title: String, modifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        TabulaText(title, if (maxWidth < 600.dp) TabulaType.shellDisplay else TabulaType.displaySm,
+            Modifier.semantics { heading() })
     }
 }
 

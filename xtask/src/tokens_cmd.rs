@@ -363,6 +363,8 @@ struct ShapeSource {
 #[serde(deny_unknown_fields)]
 struct TypographySource {
     family: FontStacksSource,
+    #[serde(rename = "shell-display")]
+    shell_display: TextStyleSource,
     display: TextSizesSource,
     headline: TextSizesSource,
     title: TextSizesSource,
@@ -655,6 +657,10 @@ fn validate(source: &TokenSource) -> Result<(), TokenError> {
     for (key, value) in shape_values(&source.sys.shape) {
         non_negative(key, value)?;
     }
+    validate_text(
+        "sys.type.shell-display",
+        &source.sys.typography.shell_display,
+    )?;
     validate_type(&source.sys.typography.display)?;
     validate_type(&source.sys.typography.headline)?;
     validate_type(&source.sys.typography.title)?;
@@ -855,7 +861,7 @@ fn rust(source: &TokenSource) -> String {
     output
 }
 fn typography_rust(type_: &TypographySource) -> String {
-    format!("TypographyTokens {{ display: {}, headline: {}, title: {}, body: {}, label: {}, mono: {} }}", text_sizes_rust(&type_.display), text_sizes_rust(&type_.headline), text_sizes_rust(&type_.title), text_sizes_rust(&type_.body), text_sizes_rust(&type_.label), mono_sizes_rust(&type_.mono))
+    format!("TypographyTokens {{ shell_display: {}, display: {}, headline: {}, title: {}, body: {}, label: {}, mono: {} }}", text_style_rust(&type_.shell_display), text_sizes_rust(&type_.display), text_sizes_rust(&type_.headline), text_sizes_rust(&type_.title), text_sizes_rust(&type_.body), text_sizes_rust(&type_.label), mono_sizes_rust(&type_.mono))
 }
 fn text_sizes_rust(value: &TextSizesSource) -> String {
     format!(
@@ -1007,6 +1013,7 @@ fn css_system(output: &mut String, sys: &SystemSource) {
     ] {
         writeln!(output, "  --sys-type-family-{name}: {stack};").expect("String write");
     }
+    css_text_style(output, "shell-display", &sys.typography.shell_display);
     css_text_styles(output, "display", &sys.typography.display);
     css_text_styles(output, "headline", &sys.typography.headline);
     css_text_styles(output, "title", &sys.typography.title);
@@ -1173,6 +1180,12 @@ fn kotlin_type_section(type_: &TypographySource) -> String {
          class TabulaTextStyle(\n    val role: TabulaFontRole,\n    val size: Float,\n    val lineHeight: Float,\n    val weight: Int,\n    val letterSpacing: Float,\n)\n\n\
          object TabulaType {\n",
     );
+    writeln!(
+        out,
+        "    val shellDisplay = {}",
+        kotlin_text_style(&type_.shell_display)
+    )
+    .expect("String write");
     for (role, styles) in [
         ("display", &type_.display),
         ("headline", &type_.headline),

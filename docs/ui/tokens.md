@@ -49,6 +49,13 @@ Typography uses `TextStyleToken`'s closed semantic names such as `BodyMd` and
 always requests tabular figures. The runtime has no strings, font files,
 browser objects, or GPU handles.
 
+`sys.type.shell-display` is the compact CMP discovery heading role: Home and
+Library page titles plus the Home introduction use the display family at
+28sp, 36sp line height and regular weight (400). Rust exposes
+`TextStyleToken::ShellDisplay`, CSS emits `--sys-type-shell-display-*`, and
+Kotlin exposes `TabulaType.shellDisplay`. This additive role preserves the
+generic display scale and the readable body/label styles (doc 04 §7.4).
+
 `Density::min_target` is a logical accessibility unit (dp-like), not a physical
 pixel. Elevation levels are abstract: CSS may map them to shadows while canvas
 renderers may use authored assets or another suitable visual treatment.

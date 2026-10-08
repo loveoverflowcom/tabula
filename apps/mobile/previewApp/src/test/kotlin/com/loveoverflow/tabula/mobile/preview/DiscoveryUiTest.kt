@@ -77,6 +77,14 @@ class DiscoveryUiTest {
                 assertTrue(abs(artRatio - 43f / 24f) < 0.02f, "the imported scene keeps its aspect ratio: $artBounds")
                 hero.assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
                 onAllNodesWithTag("discovery-resume-unavailable").assertCountEquals(0)
+                if (case.width == 390) {
+                    // Check the initial viewport, before any performScrollTo can hide the density regression.
+                    val content = onNodeWithTag("shell-content-scroll").getUnclippedBoundsInRoot()
+                    val firstCard = onNodeWithTag("discovery-card-${RegistryDiscoveryCatalog.games.first().id}")
+                        .assertIsDisplayed().getUnclippedBoundsInRoot()
+                    assertTrue(firstCard.top >= content.top && firstCard.bottom <= content.bottom,
+                        "one complete game card is visible on Home without scrolling: $firstCard, content=$content")
+                }
                 assertShellTextFitsHorizontally()
                 captureShell("discovery-${case.name}-registry-home")
                 onNodeWithTag("shell-nav-games").performClick(); waitForIdle()

@@ -82,6 +82,16 @@ The page uses `shellCanvas`; contained rows use `shellPaper`/`shellNote`; the Ho
 selected navigation. No mobile palette is authored. The canonical T Portal brand and neutral
 human avatar preserve the web identity without claiming an authenticated profile.
 
+Compact Home/Library page and hero headings use the generated `shell-display` role
+(serif, 28sp/36sp, regular weight). At default text size, the Home illustration is a
+96dp landscape thumbnail beside the hero heading; prose and the browse action keep the
+full reading width. Compact catalog cards put an 84dp landscape thumbnail beside the
+name/tagline, with complete metadata and the detail action below. At 390×844dp the first
+card is fully visible before scrolling. Above 130% text, copy and cards reflow vertically;
+the hero art remains secondary. Body text, control labels and the ≥44dp target floor are
+unchanged. Desktop preview PNG pixels must be assessed at their recorded logical viewport
+and font scale; enlarging an exported image does not establish larger mobile typography.
+
 Reusable components own the page scaffold, top bar, compact navigation/rail, action emphasis,
 surface grouping, state panel and progress affordance. Actions have accessible names and at least the
 generated minimum target size; focus and selected state are visible and semantic. Lists,

@@ -247,6 +247,7 @@ impl Theme {
     #[must_use]
     pub const fn text_style(self, token: TextStyleToken) -> TextStyle {
         match token {
+            TextStyleToken::ShellDisplay => self.type_.shell_display,
             TextStyleToken::DisplayLg => self.type_.display.lg,
             TextStyleToken::DisplayMd => self.type_.display.md,
             TextStyleToken::DisplaySm => self.type_.display.sm,
@@ -487,6 +488,8 @@ pub struct MonoTextSizes {
 /// Typography tokens chosen by semantic role and size. (doc 04 §7.4)
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypographyTokens {
+    /// Compact shell page and hero headings; retains the display font family (doc 04 §7.4).
+    pub shell_display: TextStyle,
     pub display: TextSizes,
     pub headline: TextSizes,
     pub title: TextSizes,
@@ -498,6 +501,8 @@ pub struct TypographyTokens {
 /// The stable semantic text vocabulary accepted by normal presentation code.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TextStyleToken {
+    /// Compact shell page and hero headings (doc 04 §7.4).
+    ShellDisplay,
     DisplayLg,
     DisplayMd,
     DisplaySm,

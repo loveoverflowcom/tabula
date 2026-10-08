@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -28,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.testTag
@@ -74,7 +76,7 @@ fun HomeScreen(
         titleContent = {
             Column(verticalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp)) {
                 TabulaText(strings[ShellCopy.HomeHeading], TabulaType.labelLg, color = colors.onSurfaceVariant)
-                TabulaText(strings.discovery(DiscoveryCopy.HomeHeading), TabulaType.displaySm, Modifier.semantics { heading() })
+                ShellDisplayHeading(strings.discovery(DiscoveryCopy.HomeHeading))
                 TabulaText(strings[ShellCopy.HomeIntro], TabulaType.bodyLg, color = colors.onSurfaceVariant)
             }
         },
@@ -92,17 +94,28 @@ fun HomeScreen(
 @Composable
 private fun DiscoveryHero(strings: ShellStrings, onBrowse: () -> Unit) {
     val fontScale = LocalDensity.current.fontScale
-    ShellSurface(hero = true) {
+    ShellSurface(Modifier.testTag("discovery-hero"), hero = true) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            if (maxWidth >= 620.dp && fontScale <= 1.3f) {
+            val compact = maxWidth < 620.dp
+            if (!compact && fontScale <= 1.3f) {
                 Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.xl.dp), verticalAlignment = Alignment.CenterVertically) {
                     HeroCopy(strings, onBrowse, Modifier.weight(1f))
                     DiscoveryHeroArt(Modifier.weight(1f))
                 }
+            } else if (fontScale <= 1.3f) {
+                // Only the decorative art shares the heading row; prose and the target keep full width.
+                Column(verticalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp), verticalAlignment = Alignment.CenterVertically) {
+                        HeroHeading(strings, compact = true, Modifier.weight(1f))
+                        DiscoveryHeroArt(Modifier.width((TabulaSpace.xxxxxxl + TabulaSpace.xxxl).dp))
+                    }
+                    HeroBodyAndAction(strings, onBrowse)
+                }
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp)) {
-                    DiscoveryHeroArt(Modifier.fillMaxWidth())
-                    HeroCopy(strings, onBrowse)
+                Column(verticalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp)) {
+                    // Large text gets the entire reading width; the illustration stays secondary.
+                    HeroCopy(strings, onBrowse, compact = compact)
+                    DiscoveryHeroArt(Modifier.width((TabulaSpace.xxxxxxl + TabulaSpace.xxxl).dp).align(Alignment.End))
                 }
             }
         }
@@ -110,11 +123,27 @@ private fun DiscoveryHero(strings: ShellStrings, onBrowse: () -> Unit) {
 }
 
 @Composable
-private fun HeroCopy(strings: ShellStrings, onBrowse: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = LocalTabulaColors.current
+private fun HeroCopy(strings: ShellStrings, onBrowse: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp)) {
+        HeroHeading(strings, compact)
+        HeroBodyAndAction(strings, onBrowse)
+    }
+}
+
+@Composable
+private fun HeroHeading(strings: ShellStrings, compact: Boolean, modifier: Modifier = Modifier) {
+    val colors = LocalTabulaColors.current
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp)) {
         TabulaText(strings.discovery(DiscoveryCopy.HeroEyebrow), TabulaType.labelLg, color = colors.shellOnHero)
-        TabulaText(strings.discovery(DiscoveryCopy.HeroHeading), TabulaType.displaySm, Modifier.semantics { heading() }, colors.shellOnHero)
+        TabulaText(strings.discovery(DiscoveryCopy.HeroHeading), if (compact) TabulaType.shellDisplay else TabulaType.displaySm,
+            Modifier.semantics { heading() }, colors.shellOnHero)
+    }
+}
+
+@Composable
+private fun HeroBodyAndAction(strings: ShellStrings, onBrowse: () -> Unit) {
+    val colors = LocalTabulaColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp)) {
         TabulaText(strings.discovery(DiscoveryCopy.HeroBody), TabulaType.bodyLg, color = colors.shellOnHero)
         ShellActionButton(strings[ShellCopy.BrowseGames], ShellAction.Filled, onBrowse,
             Modifier.fillMaxWidth().testTag("shell-browse-games"))
@@ -310,10 +339,11 @@ private fun GameCards(games: List<DiscoveryGame>, strings: ShellStrings, onDetai
     val fontScale = LocalDensity.current.fontScale
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val columns = if (fontScale > 1.3f || maxWidth < 620.dp) 1 else if (maxWidth < 1_000.dp) 2 else 3
+        val compactCards = maxWidth < 620.dp && fontScale <= 1.3f
         Column(verticalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp)) {
             for (chunk in games.chunked(columns)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.lg.dp)) {
-                    for (game in chunk) Box(Modifier.weight(1f)) { GameCard(game, strings, onDetail) }
+                    for (game in chunk) Box(Modifier.weight(1f)) { GameCard(game, strings, onDetail, compactCards) }
                     repeat(columns - chunk.size) { Box(Modifier.weight(1f)) }
                 }
             }
@@ -322,19 +352,32 @@ private fun GameCards(games: List<DiscoveryGame>, strings: ShellStrings, onDetai
 }
 
 @Composable
-private fun GameCard(game: DiscoveryGame, strings: ShellStrings, onDetail: (DiscoveryGame) -> Unit) {
+private fun GameCard(game: DiscoveryGame, strings: ShellStrings, onDetail: (DiscoveryGame) -> Unit, compact: Boolean) {
     val shape = RoundedCornerShape(TabulaShape.card.dp)
     val colors = LocalTabulaColors.current
     Column(Modifier.fillMaxWidth().background(colors.shellPaper, shape)
         .border(TabulaSpace.xxs.dp, if (colors.shellPaper == colors.shellCanvas) colors.outline else colors.shellPaper, shape).testTag("discovery-card-${game.id}")) {
-        DiscoveryGameCover(game.cover, Modifier.fillMaxWidth())
+        if (!compact) DiscoveryGameCover(game.cover, Modifier.fillMaxWidth())
         Column(Modifier.fillMaxWidth().padding(TabulaSpace.lg.dp), verticalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp)) {
-            TabulaText(game.displayName(strings.languageTag), TabulaType.titleLg, Modifier.semantics { heading() })
-            TabulaText(game.tagline(strings.languageTag), TabulaType.bodyMd, color = colors.onSurfaceVariant)
+            if (compact) {
+                Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp), verticalAlignment = Alignment.CenterVertically) {
+                    DiscoveryGameCover(game.cover, Modifier.width((TabulaSpace.xxxxxxl + TabulaSpace.xl).dp)
+                        .clip(RoundedCornerShape(TabulaShape.sm.dp)))
+                    GameCardHeading(game, strings, Modifier.weight(1f))
+                }
+            } else GameCardHeading(game, strings)
             GameFacts(game, strings)
             ShellActionButton(strings.details(game.displayName(strings.languageTag)), ShellAction.Text,
                 { onDetail(game) }, Modifier.fillMaxWidth().testTag("shell-details-${game.id}"))
         }
+    }
+}
+
+@Composable
+private fun GameCardHeading(game: DiscoveryGame, strings: ShellStrings, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp)) {
+        TabulaText(game.displayName(strings.languageTag), TabulaType.titleLg, Modifier.semantics { heading() })
+        TabulaText(game.tagline(strings.languageTag), TabulaType.bodyMd, color = LocalTabulaColors.current.onSurfaceVariant)
     }
 }
 

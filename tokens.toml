@@ -267,6 +267,13 @@ chip = 8.0
 display = 'Georgia, "Noto Serif", "Times New Roman", serif'
 text = "ui-sans-serif, system-ui, sans-serif"
 mono = "ui-monospace, SFMono-Regular, monospace"
+[sys.type.shell-display]
+# Compact CMP Home/Library and hero headings; preserve the generic display scale.
+family = "display"
+size = 28.0
+line-height = 36.0
+weight = 400
+letter-spacing = 0.0
 [sys.type.display.lg]
 family = "display"
 size = 57.0

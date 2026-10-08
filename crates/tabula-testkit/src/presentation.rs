@@ -337,6 +337,7 @@ fn format_opt_paint(p: Option<&Paint>) -> String {
 
 const fn format_text_style(s: TextStyleToken) -> &'static str {
     match s {
+        TextStyleToken::ShellDisplay => "ShellDisplay",
         TextStyleToken::DisplayLg => "DisplayLg",
         TextStyleToken::DisplayMd => "DisplayMd",
         TextStyleToken::DisplaySm => "DisplaySm",

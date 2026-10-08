@@ -290,6 +290,7 @@ class TabulaTextStyle(
 )
 
 object TabulaType {
+    val shellDisplay = TabulaTextStyle(TabulaFontRole.Display, 28.0f, 36.0f, 400, 0.0f)
     val displayLg = TabulaTextStyle(TabulaFontRole.Display, 57.0f, 64.0f, 700, -0.5f)
     val displayMd = TabulaTextStyle(TabulaFontRole.Display, 45.0f, 52.0f, 700, -0.25f)
     val displaySm = TabulaTextStyle(TabulaFontRole.Display, 36.0f, 44.0f, 700, 0.0f)

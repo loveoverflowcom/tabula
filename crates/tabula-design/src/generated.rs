@@ -20,6 +20,7 @@ const fn percent(value: u8) -> Percent {
 }
 
 const TYPE: TypographyTokens = TypographyTokens {
+    shell_display: TextStyle::generated(FontFamilyRole::Display, 28.0, 36.0, 400, 0.0, false),
     display: TextSizes {
         lg: TextStyle::generated(FontFamilyRole::Display, 57.0, 64.0, 700, -0.5, false),
         md: TextStyle::generated(FontFamilyRole::Display, 45.0, 52.0, 700, -0.25, false),

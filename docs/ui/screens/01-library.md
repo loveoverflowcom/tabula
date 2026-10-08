@@ -63,7 +63,7 @@ registry identifier or Play action. The source pack's hash navigator is design n
 
 ## Layout at each breakpoint
 
-Source order is navigation, task heading, Home discovery hero, continue region, then featured catalog and secondary help. `/games` has a focused heading/search, continue region, labeled filters, result status and full catalog, with no repeated hero. Desktop Library search can sit beside its heading; reading and keyboard order stay coherent. Landscape lightweight artwork above compact metadata is the original card hierarchy. An eligible Resume remains the strongest action in its own region.
+Source order is navigation, task heading, Home discovery hero, continue region, then featured catalog and secondary help. `/games` has a focused heading/search, continue region, labeled filters, result status and full catalog, with no repeated hero. Desktop Library search can sit beside its heading; reading and keyboard order stay coherent. Landscape lightweight artwork above compact metadata is the original desktop card hierarchy. CMP adapts compact cards with a landscape thumbnail beside the name/tagline, preserving full metadata and actions below. An eligible Resume remains the strongest action in its own region.
 
 | Width | Home and Library layout |
 |---|---|
@@ -78,6 +78,13 @@ or fixed-height requirement. No horizontal page scrolling or scaled-down targets
 padding supplements the gutter. Normal/compact density changes spacing, preserving type size,
 labels, focus clearance, and ≥44 × 44 dp targets. Navigation names/links come from supported
 shell destinations; the sample “My games” label does not introduce a new route.
+
+The owner-requested CMP mobile density correction uses the additive `shell-display`
+role (28sp/36sp, regular serif) for compact page/hero headings. The Home image sits
+beside its heading, with body text and the browse action at full width; one complete
+catalog card is visible before scrolling at 390×844dp and default text scale.
+[The mobile shell specification](mobile-shell.md) records thumbnail geometry and
+large-text reflow. This adaptation preserves body/control sizes and minimum targets.
 
 ## Components and content
 
