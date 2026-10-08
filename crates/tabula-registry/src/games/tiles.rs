@@ -110,6 +110,13 @@ pub struct TilesSetup; // xtask-allow-game-id: registry-owned game adapter.
 impl GameSetup for TilesSetup {
     type Module = tabula_game_tiles::TilesModule; // xtask-allow-game-id: registry-owned game adapter.
 
+    fn catalog_icon() -> Option<crate::mobile_discovery::DiscoveryIcon> {
+        Some(crate::mobile_discovery::DiscoveryIcon {
+            resource_name: "catalog_icon_tiles",
+            source_dir: "games/tiles/assets",
+        })
+    }
+
     fn catalog_cover_svg() -> Option<&'static str> {
         Some(include_str!(
             "../../../../games/tiles/assets/catalog-cover.svg"

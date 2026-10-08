@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class DiscoveryCatalogTest {
@@ -90,12 +91,14 @@ class DiscoveryCatalogTest {
     @Test
     fun generatedRegistryCatalogContainsCompleteLightweightBilingualDiscoveryData() {
         val games = RegistryDiscoveryCatalog.games
-        assertTrue(games.isNotEmpty(), "this build links discovery modules")
+        assertEquals(3, games.size, "the Library contains two linked descriptors and one explicitly planned entry")
+        assertEquals(setOf("Chess", "Tiles", "Werewolf"), games.map { it.displayName("en") }.toSet())
         assertEquals(games.size, games.map { it.id }.toSet().size)
         games.forEach { game ->
             assertTrue(game.players.isNotEmpty())
             assertTrue(game.minMinutes <= game.maxMinutes)
             assertTrue(game.version.isNotBlank())
+            assertTrue(assertNotNull(game.catalogIcon).matches(Regex("[a-z0-9_]+")))
             listOf("vi", "en").forEach { language ->
                 assertTrue(game.names[language].orEmpty().isNotBlank())
                 assertTrue(game.descriptions[language].orEmpty().isNotBlank())
@@ -103,10 +106,24 @@ class DiscoveryCatalogTest {
                 assertTrue(game.contentRatingNames[language].orEmpty().isNotBlank())
                 game.fields.forEach { assertTrue(it.labels[language].orEmpty().isNotBlank()) }
             }
+        }
+        val (planned, linked) = games.partition { it.planned }
+        assertEquals(2, linked.size)
+        linked.forEach { game ->
+            assertTrue(game.modes.isNotEmpty(), "linked discovery retains its real mode descriptors")
             val cover = assertNotNull(game.cover)
             assertTrue(cover.svg.encodeToByteArray().size < 8192)
             assertFalse(cover.svg.contains("<image"))
             assertFalse(cover.svg.contains("href="))
         }
+        val informational = planned.single()
+        assertEquals(mapOf("en" to "Werewolf", "vi" to "Ma sói"), informational.names)
+        assertEquals((6..20).toList(), informational.players)
+        assertTrue(informational.hiddenInformation)
+        assertEquals("0.1.0", informational.version)
+        assertEquals(2, informational.rulesVersion)
+        assertNull(informational.cover, "the planned entry declares square discovery art rather than a linked cover")
+        assertTrue(informational.modes.isEmpty(), "planned information cannot advertise a setup mode")
+        assertTrue(informational.fields.isEmpty(), "planned information cannot advertise configurable fields")
     }
 }

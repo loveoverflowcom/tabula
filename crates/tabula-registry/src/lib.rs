@@ -168,6 +168,7 @@ pub mod erased;
 pub mod games;
 pub mod i18n;
 pub mod launch;
+pub mod mobile_discovery;
 mod parse;
 pub mod runtime;
 

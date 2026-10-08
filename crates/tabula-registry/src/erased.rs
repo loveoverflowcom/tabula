@@ -47,6 +47,12 @@ pub trait GameSetup: Send + Sync + 'static {
         None
     }
 
+    /// Optional square discovery icon sources for the generated CMP Library
+    /// (ADR-0045). They remain separate from runtime asset packs.
+    fn catalog_icon() -> Option<crate::mobile_discovery::DiscoveryIcon> {
+        None
+    }
+
     /// The setup form this game offers.
     fn form() -> &'static ConfigForm;
 
@@ -112,6 +118,10 @@ pub trait ErasedGame: Send + Sync {
     /// Game-owned lightweight decorative art for Home/Library cards only.
     /// This is trusted compile-time SVG, never user input or a runtime asset pack.
     fn catalog_cover_svg(&self) -> Option<&'static str>;
+    /// Optional game-owned square artwork consumed only by CMP catalog tooling.
+    fn catalog_icon(&self) -> Option<crate::mobile_discovery::DiscoveryIcon> {
+        None
+    }
     fn form(&self) -> &'static ConfigForm;
     fn modes(&self) -> &'static [ModeSupport];
     /// Explicit direct browser host declaration, never capability inference.
@@ -261,6 +271,10 @@ impl<S: GameSetup> ErasedGame for Adapter<S> {
 
     fn catalog_cover_svg(&self) -> Option<&'static str> {
         S::catalog_cover_svg()
+    }
+
+    fn catalog_icon(&self) -> Option<crate::mobile_discovery::DiscoveryIcon> {
+        S::catalog_icon()
     }
 
     fn form(&self) -> &'static ConfigForm {

@@ -1,7 +1,7 @@
 # Official Material Symbols
 
 The `material_symbol_*.xml` shell icons are Google Material Symbols Outlined,
-24px, default weight/grade and unfilled variant. The seven-file subset comes
+24px, default weight/grade and unfilled variant. The fifteen-file subset comes
 from [`google/material-design-icons`](https://github.com/google/material-design-icons/tree/737e3324305806514d7909874fa1818ae1808232/symbols/android)
 at commit `737e3324305806514d7909874fa1818ae1808232`:
 
@@ -11,6 +11,14 @@ at commit `737e3324305806514d7909874fa1818ae1808232`:
 | Library | `grid_view/materialsymbolsoutlined/grid_view_24px.xml` |
 | Account and neutral avatar | `person/materialsymbolsoutlined/person_24px.xml` |
 | Back | `arrow_back/materialsymbolsoutlined/arrow_back_24px.xml` |
+| List view | `view_list/materialsymbolsoutlined/view_list_24px.xml` |
+| Filters | `tune/materialsymbolsoutlined/tune_24px.xml` |
+| Dismiss sheet | `close/materialsymbolsoutlined/close_24px.xml` |
+| Open detail | `chevron_right/materialsymbolsoutlined/chevron_right_24px.xml` |
+| Players | `group/materialsymbolsoutlined/group_24px.xml` |
+| Duration | `schedule/materialsymbolsoutlined/schedule_24px.xml` |
+| Complexity | `layers/materialsymbolsoutlined/layers_24px.xml` |
+| Filter dropdown | `expand_more/materialsymbolsoutlined/expand_more_24px.xml` |
 | Search | `search/materialsymbolsoutlined/search_24px.xml` |
 | Selected preference | `radio_button_checked/materialsymbolsoutlined/radio_button_checked_24px.xml` |
 | Unselected preference | `radio_button_unchecked/materialsymbolsoutlined/radio_button_unchecked_24px.xml` |

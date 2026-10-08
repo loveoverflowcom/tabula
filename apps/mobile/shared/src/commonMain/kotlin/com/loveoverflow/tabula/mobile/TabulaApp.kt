@@ -198,8 +198,10 @@ fun TabulaApp(
         } else {
             // Gameplay keeps host-first Back; account confirmation dismisses before route Back.
             BackHandler(enabled = history.canPop, onBack = popShell)
+            val background = if (destination is Destination.Detail) history.pop().current else destination
+            val discoveryGames = (catalog as? DiscoveryCatalogState.Ready)?.games.orEmpty()
             ShellChrome(
-                destination = destination,
+                destination = background,
                 strings = strings,
                 onNavigate = navigateShell,
                 onBack = popShell,
@@ -207,11 +209,10 @@ fun TabulaApp(
                 accountAvatar = accountAvatar,
                 accountDescription = strings.account(accountStatusCopy(accountState)),
             ) {
-                screenState.SaveableStateProvider(destination.routePath()) {
-                    val discoveryGames = (catalog as? DiscoveryCatalogState.Ready)?.games.orEmpty()
-                    when (destination) {
+                screenState.SaveableStateProvider(background.routePath()) {
+                    when (val destination = background) {
                         Destination.Home -> HomeScreen(
-                            catalog = catalog,
+                            catalog = if (catalog is DiscoveryCatalogState.Ready) DiscoveryCatalogState.Ready(catalog.games.filterNot { it.planned }) else catalog,
                             strings = strings,
                             onBrowse = { history = history.navigate(Destination.Games) },
                             onDetail = { history = history.push(Destination.Detail(it.id)) },
@@ -225,22 +226,14 @@ fun TabulaApp(
                             onDetail = { history = history.push(Destination.Detail(it.id)) },
                             onRetry = onRetryCatalog,
                         )
-                        is Destination.Detail -> DetailScreen(
-                            game = discoveryGames.firstOrNull { it.id == destination.gameId },
-                            catalog = catalog,
-                            strings = strings,
-                            canLaunch = gameHost !== PlaceholderGameHost && games.any { it.id == destination.gameId },
-                            onSetup = { history = history.push(Destination.Setup(destination.gameId)) },
-                            onOpenRules = { uri -> uriHandler.openUri(uri) },
-                            onRetry = onRetryCatalog,
-                        )
+                        is Destination.Detail -> Unit
                         is Destination.Setup -> SetupScreen(
                             game = discoveryGames.firstOrNull { it.id == destination.gameId },
                             catalog = catalog,
                             strings = strings,
-                            canLaunch = gameHost !== PlaceholderGameHost && games.any { it.id == destination.gameId },
+                            canLaunch = gameHost !== PlaceholderGameHost && discoveryGames.any { it.id == destination.gameId && !it.planned } && games.any { it.id == destination.gameId },
                             onPlay = {
-                                if (gameHost !== PlaceholderGameHost && discoveryGames.any { it.id == destination.gameId }) {
+                                if (gameHost !== PlaceholderGameHost && discoveryGames.any { it.id == destination.gameId && !it.planned }) {
                                     games.firstOrNull { it.id == destination.gameId }?.let(openLocalGame)
                                 }
                             },
@@ -257,6 +250,19 @@ fun TabulaApp(
                         is Destination.Game -> Unit
                     }
                 }
+            }
+            if (destination is Destination.Detail) screenState.SaveableStateProvider(destination.routePath()) {
+                val selected = discoveryGames.firstOrNull { it.id == destination.gameId }
+                DetailScreen(
+                    game = selected,
+                    catalog = catalog,
+                    strings = strings,
+                    canLaunch = selected?.planned == false && gameHost !== PlaceholderGameHost && games.any { it.id == destination.gameId },
+                    onSetup = { if (selected?.planned == false) history = history.push(Destination.Setup(destination.gameId)) },
+                    onDismiss = popShell,
+                    onOpenRules = { uri -> uriHandler.openUri(uri) },
+                    onRetry = onRetryCatalog,
+                )
             }
         }
     }

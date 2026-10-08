@@ -17,10 +17,18 @@ import com.loveoverflow.tabula.mobile.resources.material_symbol_person
 import com.loveoverflow.tabula.mobile.resources.material_symbol_radio_button_checked
 import com.loveoverflow.tabula.mobile.resources.material_symbol_radio_button_unchecked
 import com.loveoverflow.tabula.mobile.resources.material_symbol_search
+import com.loveoverflow.tabula.mobile.resources.material_symbol_view_list
+import com.loveoverflow.tabula.mobile.resources.material_symbol_tune
+import com.loveoverflow.tabula.mobile.resources.material_symbol_close
+import com.loveoverflow.tabula.mobile.resources.material_symbol_chevron_right
+import com.loveoverflow.tabula.mobile.resources.material_symbol_group
+import com.loveoverflow.tabula.mobile.resources.material_symbol_schedule
+import com.loveoverflow.tabula.mobile.resources.material_symbol_layers
+import com.loveoverflow.tabula.mobile.resources.material_symbol_expand_more
 import org.jetbrains.compose.resources.painterResource
 
 /** Official Material Symbols used by shell controls; game and brand artwork have separate owners. */
-internal enum class ShellSymbol { Home, Library, Account, Back, Search, RadioChecked, RadioUnchecked }
+internal enum class ShellSymbol { Home, Library, Account, Back, Search, RadioChecked, RadioUnchecked, List, Filter, Close, Chevron, People, Clock, Layers, Expand }
 
 /**
  * A decorative Material3 icon; its parent owns the localized action/name/state (doc 04 §10).
@@ -41,6 +49,14 @@ internal fun ShellIcon(
         ShellSymbol.Search -> Res.drawable.material_symbol_search
         ShellSymbol.RadioChecked -> Res.drawable.material_symbol_radio_button_checked
         ShellSymbol.RadioUnchecked -> Res.drawable.material_symbol_radio_button_unchecked
+        ShellSymbol.List -> Res.drawable.material_symbol_view_list
+        ShellSymbol.Filter -> Res.drawable.material_symbol_tune
+        ShellSymbol.Close -> Res.drawable.material_symbol_close
+        ShellSymbol.Chevron -> Res.drawable.material_symbol_chevron_right
+        ShellSymbol.People -> Res.drawable.material_symbol_group
+        ShellSymbol.Clock -> Res.drawable.material_symbol_schedule
+        ShellSymbol.Layers -> Res.drawable.material_symbol_layers
+        ShellSymbol.Expand -> Res.drawable.material_symbol_expand_more
     }
     Icon(
         painter = painterResource(resource),

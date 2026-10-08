@@ -20,6 +20,10 @@ pub trait ErasedDiscoveryGame: Send + Sync {
     /// Game-owned lightweight decorative art for Home/Library cards only.
     /// This is trusted compile-time SVG, never user input or a runtime asset pack.
     fn catalog_cover_svg(&self) -> Option<&'static str>;
+    /// Optional game-owned square artwork for the generated CMP Library.
+    fn catalog_icon(&self) -> Option<crate::mobile_discovery::DiscoveryIcon> {
+        None
+    }
     fn form(&self) -> &'static ConfigForm;
     fn modes(&self) -> &'static [ModeSupport];
     /// Explicit direct browser host declaration, never capability inference.
@@ -59,6 +63,10 @@ impl<G: crate::ErasedGame + ?Sized> ErasedDiscoveryGame for G {
 
     fn catalog_cover_svg(&self) -> Option<&'static str> {
         <G as crate::ErasedGame>::catalog_cover_svg(self)
+    }
+
+    fn catalog_icon(&self) -> Option<crate::mobile_discovery::DiscoveryIcon> {
+        <G as crate::ErasedGame>::catalog_icon(self)
     }
 
     fn form(&self) -> &'static ConfigForm {

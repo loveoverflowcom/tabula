@@ -8,7 +8,7 @@ do not open the Phase-5 gate or establish a working catalog/resume adapter.
 
 ## Authoritative visual reference (issue #87)
 
-For this screen, the original 1 October 2026 **Design 01** is the visual oracle.
+For web Home/Library, the original 1 October 2026 **Design 01** is the visual oracle.
 The later Design 02 compact/sans/short-cover interpretation is superseded for
 Home/Library only. [Pinned source and provenance](https://github.com/loveoverflowcom/tabula/tree/fe6a6bac1037ea28355bd1f1192acdca6f2ce123/docs/ui/dashboard-original-design-01)
 contains byte-preserved `libraryScreen`, `shell`, `gameArt`, CSS and preview PNGs
@@ -41,6 +41,17 @@ The shared primary violet is authored in the [token contract](../tokens.md#share
 Gameplay material palettes and interaction semantics
 remain independent. Web typography metrics use root-relative units for font scaling.
 
+The CMP Library's 2026-10-08 continuation follows the owner-supplied
+`tabula-cmp-mobile-design` handoff instead of the original compact landscape-card
+adaptation. The pack records
+[`develop @ 6d31cef51f9f186e6bd43213c6ecb0d0d7a47162`](https://github.com/loveoverflowcom/tabula/tree/6d31cef51f9f186e6bd43213c6ecb0d0d7a47162)
+as its metadata/token provenance. `docs/handoff.md`, `cmp-design-spec.mjs` and
+the list/grid/filter/detail PNGs supply the Library reference; its Home and
+Account tabs are chrome examples. [The mobile shell contract](mobile-shell.md)
+owns the adaptation below. Home, Account and the web Design 01 composition
+retain their existing owners. Browser QA of the supplied HTML is design
+evidence, not a CMP or Android/iOS test result.
+
 ## Task and route distinction
 
 The user finds a game they can actually play, checks its capabilities, and opens its detail
@@ -63,9 +74,9 @@ registry identifier or Play action. The source pack's hash navigator is design n
 
 ## Layout at each breakpoint
 
-Source order is navigation, task heading, Home discovery hero, continue region, then featured catalog and secondary help. `/games` has a focused heading/search, continue region, labeled filters, result status and full catalog, with no repeated hero. Desktop Library search can sit beside its heading; reading and keyboard order stay coherent. Landscape lightweight artwork above compact metadata is the original desktop card hierarchy. CMP adapts compact cards with a landscape thumbnail beside the name/tagline, preserving full metadata and actions below. An eligible Resume remains the strongest action in its own region.
+Source order is navigation, task heading, Home discovery hero, continue region, then featured catalog and secondary help. `/games` has a focused heading/search, continue region, labeled filters, result status and full catalog, with no repeated hero. Desktop Library search can sit beside its heading; reading and keyboard order stay coherent. Landscape lightweight artwork above compact metadata is the original desktop card hierarchy. CMP Home retains its compact landscape thumbnail adaptation; the CMP Library uses the separate square-logo composition below. An eligible Resume remains the strongest action in its own region.
 
-| Width | Home and Library layout |
+| Width | Original Design 01 Home and web Library layout |
 |---|---|
 | Compact, <600 dp; verify 320/390 | 64 dp toolbar, 18 dp gutters, one artwork-card column; continue text wraps; labeled search and filters stack; fixed bottom navigation is ≥72 dp plus safe-area inset with matching content padding |
 | Medium, 600–904 dp; verify 768 | 64 dp toolbar and drawer/bottom navigation, 24 dp gutters; two catalog columns when full text/targets fit, otherwise one; filters wrap above results; resume remains above browsing |
@@ -85,6 +96,36 @@ beside its heading, with body text and the browse action at full width; one comp
 catalog card is visible before scrolling at 390×844dp and default text scale.
 [The mobile shell specification](mobile-shell.md) records thumbnail geometry and
 large-text reflow. This adaptation preserves body/control sizes and minimum targets.
+
+The current CMP Library puts its localized title beside the canonical T Portal
+mark in the compact top bar and begins the page with search; it has no duplicate
+heading, hero or banner. List is the default, with an accessible list/grid
+selection. Both layouts use a 72 dp square game logo, names/taglines and readable
+seat-count, duration-estimate and complexity metadata. Grid uses two columns at
+390 dp when contents fit, and one at 320 dp or 200% text. Heights and metadata
+wrap with content; the existing 16 dp page insets and minimum touch/focus targets
+remain owned by the shell foundation.
+
+Library filters open a modal bottom sheet with labeled category, exact player
+count, maximum estimated duration and complexity dropdowns. Each axis uses
+generated metadata and all axes combine with AND. Opening copies the applied
+values into a draft; Reset changes the draft, Apply commits all axes together,
+and dismiss/Back drops unapplied edits. Search keeps the existing accent-insensitive
+matching. Applied constraints and the displayed result count stay visible on
+Library. Detail is another scrollable modal sheet with an 88 dp square logo and
+source-backed facts. Close/Back restores the invoking Library's search, applied
+filters, display choice and scroll; card selection never starts gameplay.
+Registered mode declarations remain available through the Ways to play
+disclosure toggle; the initial detail sheet keeps its information compact.
+
+The generated mobile Library also receives a separate metadata-only planned
+Werewolf descriptor, explicitly labeled Coming soon/Sắp có. It uses the manifest's
+opaque identifier and facts (6–20 seats, 15–45 minutes, medium complexity),
+without changing the disabled/staff rollout or registering a playable module.
+Planned detail has no setup or launch action, modes or configuration; a restored
+planned setup route shows information-only unavailability. Home
+excludes planned entries. Production native start remains unavailable for all
+entries under ADR-0043; the informational card adds no runtime inventory.
 
 ## Components and content
 
@@ -174,4 +215,6 @@ there is no shell prefetch of game WASM, atlas, model or role resources.
 
 [Restoration verification ledger](../../verification/dashboard-design01/README.md)
 separates source/unit/compile evidence, actual Chromium artifacts and remaining
-native/CMP/assistive-technology scope. Screenshots alone do not prove gameplay.
+native/CMP/assistive-technology scope. This is evidence for the original web
+restoration, separate from the supplied mobile design pack and the current CMP
+Library continuation. Screenshots alone do not prove gameplay.

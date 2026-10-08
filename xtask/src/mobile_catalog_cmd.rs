@@ -4,16 +4,26 @@
 use std::{fmt::Write as _, path::Path};
 
 use tabula_registry::{
-    discovery::ErasedDiscoveryGame, platform_messages, Category, Complexity, ContentRating,
-    FieldKind, Locale,
+    discovery::ErasedDiscoveryGame,
+    mobile_discovery::{planned_mobile_discovery_games, DiscoveryIcon, PlannedDiscoveryGame},
+    platform_messages, Category, Complexity, ContentRating, FieldKind, GameMetadata, Locale,
+    Messages,
 };
 
 const OUTPUT: &str = "apps/mobile/shared/src/commonMain/kotlin/com/loveoverflow/tabula/mobile/catalog/RegistryDiscoveryCatalog.kt";
+const ICON_OUTPUT: &str = "apps/mobile/shared/src/commonMain/composeResources/files";
 
 pub fn run() -> Result<(), String> {
     let root = crate::workspace::root().map_err(|error| error.to_string())?;
     let generated = generate()?;
+    let resources = icon_resources(&root)?;
     std::fs::write(root.join(OUTPUT), generated).map_err(|error| error.to_string())?;
+    for (path, bytes) in resources {
+        let target = root.join(path);
+        std::fs::create_dir_all(target.parent().ok_or("missing icon parent")?)
+            .map_err(|error| error.to_string())?;
+        std::fs::write(target, bytes).map_err(|error| error.to_string())?;
+    }
     println!("generated {OUTPUT}");
     Ok(())
 }
@@ -30,16 +40,25 @@ fn check_at(root: &Path) -> Result<bool, String> {
         eprintln!("{OUTPUT} is stale; run `cargo xtask gen-mobile-catalog`");
         return Ok(false);
     }
+    for (path, expected) in icon_resources(root)? {
+        if std::fs::read(root.join(&path)).map_err(|error| error.to_string())? != expected {
+            eprintln!("{path} is stale; run `cargo xtask gen-mobile-catalog`");
+            return Ok(false);
+        }
+    }
     println!("mobile discovery catalog matches the Rust registry");
     Ok(true)
 }
 
 fn generate() -> Result<String, String> {
     let games = tabula_registry::registered_discovery_games();
+    let planned = planned_mobile_discovery_games();
     let game_ids: Vec<_> = games
         .iter()
-        .map(|game| {
-            game.metadata()
+        .map(|game| game.metadata())
+        .chain(planned.iter().map(|game| &game.metadata))
+        .map(|metadata| {
+            metadata
                 .id()
                 .as_str()
                 .rsplit('.')
@@ -59,6 +78,9 @@ fn generate() -> Result<String, String> {
     for game in games {
         emit_game(&mut out, game.as_ref())?;
     }
+    for game in planned {
+        emit_planned(&mut out, game)?;
+    }
     out.push_str("    )\n}\n");
     // A generated literal is the only exemption. Normal Kotlin consumer files remain scanned.
     Ok(out
@@ -77,7 +99,52 @@ fn generate() -> Result<String, String> {
 
 #[allow(clippy::too_many_lines)]
 fn emit_game(out: &mut String, game: &dyn ErasedDiscoveryGame) -> Result<(), String> {
-    let metadata = game.metadata();
+    emit_metadata(
+        out,
+        game.metadata(),
+        (1..=u8::MAX).filter(|count| game.capabilities().seats().allowed().contains(*count)),
+        game.capabilities().hidden_information(),
+        |key| translated(game, key),
+    )?;
+    emit_setup(out, game)?;
+    if let Some(icon) = game.catalog_icon() {
+        emit_icon(out, icon);
+    }
+    out.push_str("        ),\n");
+    Ok(())
+}
+
+fn emit_planned(out: &mut String, game: &PlannedDiscoveryGame) -> Result<(), String> {
+    emit_metadata(
+        out,
+        &game.metadata,
+        game.players.iter().copied(),
+        game.hidden_information,
+        |key| translated_messages(game.messages, key),
+    )?;
+    out.push_str("            planned = true,\n            modes = emptyList(),\n            fields = emptyList(),\n");
+    emit_icon(out, game.icon);
+    out.push_str("        ),\n");
+    Ok(())
+}
+
+fn emit_icon(out: &mut String, icon: DiscoveryIcon) {
+    writeln!(
+        out,
+        "            catalogIcon = {},",
+        kotlin_string(icon.resource_name)
+    )
+    .unwrap();
+}
+
+#[allow(clippy::too_many_lines)]
+fn emit_metadata(
+    out: &mut String,
+    metadata: &GameMetadata,
+    seats: impl Iterator<Item = u8>,
+    hidden_information: bool,
+    translated: impl Fn(Option<&str>) -> Result<String, String>,
+) -> Result<(), String> {
     let rules_version = i32::try_from(metadata.rules_version().0)
         .map_err(|_| "rules version exceeds the CMP discovery representation".to_owned())?;
     writeln!(out, "        DiscoveryGame(").unwrap();
@@ -95,7 +162,7 @@ fn emit_game(out: &mut String, game: &dyn ErasedDiscoveryGame) -> Result<(), Str
         writeln!(
             out,
             "            {property} = {},",
-            translated(game, Some(key.as_str()))?
+            translated(Some(key.as_str()))?
         )
         .unwrap();
     }
@@ -116,7 +183,7 @@ fn emit_game(out: &mut String, game: &dyn ErasedDiscoveryGame) -> Result<(), Str
             Ok(format!(
                 "{} to {}",
                 kotlin_string(id),
-                translated(game, Some(key))?
+                translated(Some(key))?
             ))
         })
         .collect::<Result<Vec<_>, String>>()?;
@@ -132,8 +199,6 @@ fn emit_game(out: &mut String, game: &dyn ErasedDiscoveryGame) -> Result<(), Str
         string_list(metadata.tags().iter().map(String::as_str))
     )
     .unwrap();
-    let seats =
-        (1..=u8::MAX).filter(|count| game.capabilities().seats().allowed().contains(*count));
     writeln!(
         out,
         "            players = listOf({}),",
@@ -165,7 +230,7 @@ fn emit_game(out: &mut String, game: &dyn ErasedDiscoveryGame) -> Result<(), Str
     writeln!(
         out,
         "            complexityNames = {},",
-        translated(game, Some(key))?
+        translated(Some(key))?
     )
     .unwrap();
     writeln!(out, "            rulesVersion = {rules_version},").unwrap();
@@ -185,26 +250,25 @@ fn emit_game(out: &mut String, game: &dyn ErasedDiscoveryGame) -> Result<(), Str
     writeln!(
         out,
         "            contentRatingNames = {},",
-        translated(game, Some(rating_key))?
+        translated(Some(rating_key))?
     )
     .unwrap();
-    writeln!(
-        out,
-        "            hiddenInformation = {},",
-        game.capabilities().hidden_information()
-    )
-    .unwrap();
+    writeln!(out, "            hiddenInformation = {hidden_information},").unwrap();
     writeln!(
         out,
         "            rulesUrls = {},",
         translated(
-            game,
             metadata
                 .rules_url_key()
                 .map(tabula_registry::I18nKey::as_str)
         )?
     )
     .unwrap();
+    Ok(())
+}
+
+#[allow(clippy::too_many_lines)]
+fn emit_setup(out: &mut String, game: &dyn ErasedDiscoveryGame) -> Result<(), String> {
     out.push_str("            modes = listOf(\n");
     for support in game.modes() {
         writeln!(out, "                DiscoveryMode(").unwrap();
@@ -325,18 +389,24 @@ fn emit_game(out: &mut String, game: &dyn ErasedDiscoveryGame) -> Result<(), Str
         )
         .unwrap();
     }
-    out.push_str("        ),\n");
     Ok(())
 }
 
 fn translated(game: &dyn ErasedDiscoveryGame, key: Option<&str>) -> Result<String, String> {
+    translated_messages(|locale| game.messages(locale), key)
+}
+
+fn translated_messages(
+    messages: impl Fn(Locale) -> Messages,
+    key: Option<&str>,
+) -> Result<String, String> {
     let Some(key) = key else {
         return Ok("emptyMap()".to_owned());
     };
     let rows = Locale::ALL
         .into_iter()
         .map(|locale| {
-            let table = game.messages(locale);
+            let table = messages(locale);
             let text = table
                 .iter()
                 .chain(platform_messages(locale))
@@ -352,6 +422,58 @@ fn translated(game: &dyn ErasedDiscoveryGame, key: Option<&str>) -> Result<Strin
         })
         .collect::<Result<Vec<_>, String>>()?;
     Ok(format!("mapOf({})", rows.join(", ")))
+}
+
+/// Check discovery-only companions before copying, keeping the source owner and
+/// generated consumer byte-identical without embedding artwork in Kotlin source.
+fn icon_resources(root: &Path) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let linked = tabula_registry::registered_discovery_games();
+    let icons = linked.iter().filter_map(|game| game.catalog_icon()).chain(
+        planned_mobile_discovery_games()
+            .into_iter()
+            .map(|game| game.icon),
+    );
+    let mut resources = Vec::new();
+    for icon in icons {
+        if icon.resource_name.is_empty()
+            || !icon
+                .resource_name
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+        {
+            return Err("invalid discovery icon resource name".to_owned());
+        }
+        for pixels in [256_u32, 512] {
+            let source = root
+                .join(icon.source_dir)
+                .join(format!("catalog-icon-{pixels}.png"));
+            let bytes =
+                std::fs::read(&source).map_err(|error| format!("{}: {error}", source.display()))?;
+            validate_icon_png(&bytes, pixels)?;
+            resources.push((
+                format!("{ICON_OUTPUT}/{}-{pixels}.png", icon.resource_name),
+                bytes,
+            ));
+        }
+    }
+    Ok(resources)
+}
+
+fn validate_icon_png(bytes: &[u8], pixels: u32) -> Result<(), String> {
+    // IHDR dimensions and bounded size are enough to reject an accidentally copied
+    // master/pack. Compose's actual image decode/build validates renderability.
+    if bytes.len() < 33
+        || bytes.len() > 768 * 1024
+        || &bytes[..8] != b"\x89PNG\r\n\x1a\n"
+        || &bytes[12..16] != b"IHDR"
+        || bytes[16..20] != pixels.to_be_bytes()
+        || bytes[20..24] != pixels.to_be_bytes()
+    {
+        return Err(format!(
+            "discovery icon must be a bounded square {pixels}px PNG companion"
+        ));
+    }
+    Ok(())
 }
 
 fn string_list<'a>(values: impl Iterator<Item = &'a str>) -> String {
@@ -419,7 +541,7 @@ mod tests {
         );
         assert_eq!(
             generated.matches("        DiscoveryGame(").count(),
-            games.len()
+            games.len() + planned_mobile_discovery_games().len()
         );
         for game in games {
             assert!(generated.contains(&format!(
@@ -456,12 +578,166 @@ mod tests {
     #[test]
     fn stale_generated_catalog_is_rejected() {
         let root = tempfile::tempdir().unwrap();
+        copy_icon_fixture(root.path());
         let path = root.path().join(OUTPUT);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, generate().unwrap()).unwrap();
         assert!(check_at(root.path()).unwrap());
         std::fs::write(&path, "// stale catalog\n").unwrap();
         assert!(!check_at(root.path()).unwrap());
+    }
+
+    fn copy_icon_fixture(root: &Path) {
+        let workspace = crate::workspace::root().unwrap();
+        let linked = tabula_registry::registered_discovery_games();
+        for icon in linked.iter().filter_map(|game| game.catalog_icon()).chain(
+            planned_mobile_discovery_games()
+                .into_iter()
+                .map(|game| game.icon),
+        ) {
+            for pixels in [256, 512] {
+                let path = format!("{}/catalog-icon-{pixels}.png", icon.source_dir);
+                let target = root.join(&path);
+                std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+                std::fs::copy(workspace.join(path), target).unwrap();
+            }
+        }
+        for (path, bytes) in icon_resources(root).unwrap() {
+            let target = root.join(path);
+            std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+            std::fs::write(target, bytes).unwrap();
+        }
+    }
+
+    #[test]
+    fn stale_or_missing_generated_icon_companion_is_rejected() {
+        let root = tempfile::tempdir().unwrap();
+        copy_icon_fixture(root.path());
+        let path = root.path().join(OUTPUT);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, generate().unwrap()).unwrap();
+        assert!(check_at(root.path()).unwrap());
+        let icons = icon_resources(root.path()).unwrap();
+        assert!(!icons.is_empty(), "must exercise actual source artwork");
+        std::fs::write(root.path().join(&icons[0].0), b"stale companion").unwrap();
+        assert!(!check_at(root.path()).unwrap());
+        std::fs::remove_file(root.path().join(&icons[0].0)).unwrap();
+        assert!(check_at(root.path()).is_err());
+    }
+
+    #[test]
+    fn icon_contract_rejects_master_wrong_dimensions_and_non_png() {
+        let root = crate::workspace::root().unwrap();
+        let icons = icon_resources(&root).unwrap();
+        assert!(!icons.is_empty());
+        for (_, bytes) in icons {
+            let mut wrong_dimensions = bytes.clone();
+            wrong_dimensions[16..20].copy_from_slice(&1254_u32.to_be_bytes());
+            assert!(validate_icon_png(&wrong_dimensions, 256).is_err());
+            assert!(validate_icon_png(&bytes[..20], 256).is_err());
+            let mut oversized = bytes;
+            oversized.resize(768 * 1024 + 1, 0);
+            assert!(validate_icon_png(&oversized, 256).is_err());
+        }
+        assert!(validate_icon_png(b"not an image", 256).is_err());
+    }
+
+    #[test]
+    fn planned_information_matches_manifest_and_cannot_offer_setup() {
+        let root = crate::workspace::root().unwrap();
+        let planned = planned_mobile_discovery_games();
+        assert!(!planned.is_empty());
+        for game in planned {
+            let manifest_path = root
+                .join(game.icon.source_dir)
+                .parent()
+                .unwrap()
+                .join("game.toml");
+            let manifest: toml::Value =
+                toml::from_str(&std::fs::read_to_string(manifest_path).unwrap()).unwrap();
+            let metadata = &game.metadata;
+            assert_eq!(manifest["id"].as_str(), Some(metadata.id().as_str()));
+            assert_eq!(
+                manifest["version"].as_str(),
+                Some(metadata.version().as_str())
+            );
+            assert_eq!(
+                manifest["rules_version"].as_integer(),
+                Some(i64::from(metadata.rules_version().0))
+            );
+            assert_eq!(manifest["rollout"]["enabled"].as_bool(), Some(false));
+            assert_eq!(manifest["rollout"]["audience"].as_str(), Some("staff"));
+            assert_eq!(
+                manifest["name_key"].as_str(),
+                Some(metadata.name_key().as_str())
+            );
+            assert_eq!(
+                manifest["tagline_key"].as_str(),
+                Some(metadata.tagline_key().as_str())
+            );
+            assert_eq!(
+                manifest["description_key"].as_str(),
+                Some(metadata.description_key().as_str())
+            );
+            assert_eq!(
+                manifest["complexity"].as_str(),
+                Some(complexity(metadata.complexity()).0)
+            );
+            assert_eq!(
+                manifest["content_rating"].as_str(),
+                Some(content_rating(metadata.content_rating()).0)
+            );
+            let categories = manifest["categories"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|value| value.as_str().unwrap())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                categories,
+                metadata
+                    .categories()
+                    .iter()
+                    .map(|value| category(*value).0)
+                    .collect::<Vec<_>>()
+            );
+            let tags = manifest["tags"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|value| value.as_str().unwrap())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                tags,
+                metadata
+                    .tags()
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>()
+            );
+            assert_eq!(
+                manifest["capabilities"]["hidden_information"].as_bool(),
+                Some(game.hidden_information)
+            );
+            assert_eq!(
+                manifest["estimated_minutes"][0].as_integer(),
+                Some(i64::from(metadata.estimated_minutes().min()))
+            );
+            assert_eq!(
+                manifest["estimated_minutes"][1].as_integer(),
+                Some(i64::from(metadata.estimated_minutes().max()))
+            );
+            let min = u8::try_from(manifest["seats"]["min"].as_integer().unwrap()).unwrap();
+            let max = u8::try_from(manifest["seats"]["max"].as_integer().unwrap()).unwrap();
+            assert_eq!(game.players, (min..=max).collect::<Vec<_>>());
+            let mut generated = String::new();
+            emit_planned(&mut generated, game).unwrap();
+            assert!(generated.contains("planned = true"));
+            assert!(generated.contains("modes = emptyList()"));
+            assert!(generated.contains("fields = emptyList()"));
+            assert!(!generated.contains("registryAvailable = true"));
+            assert!(!generated.contains("DiscoveryChoice("));
+        }
     }
 
     #[test]
@@ -478,10 +754,14 @@ mod tests {
             1
         );
         let generated = generate().unwrap();
-        let registered: Vec<_> = tabula_registry::registered_discovery_games()
+        let linked = tabula_registry::registered_discovery_games();
+        let planned = planned_mobile_discovery_games();
+        let registered: Vec<_> = linked
             .iter()
-            .map(|game| {
-                game.metadata()
+            .map(|game| game.metadata())
+            .chain(planned.iter().map(|game| &game.metadata))
+            .map(|metadata| {
+                metadata
                     .id()
                     .as_str()
                     .rsplit('.')
