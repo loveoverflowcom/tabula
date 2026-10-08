@@ -110,3 +110,4 @@ retired Phase 0 prototype, see [`docs/legacy/tictactoe.md`](../legacy/tictactoe.
 | `caro.md` | yes | Phase 3 — design placeholder. Simple real product game, large fixed board, SDK-friction benchmark. Perfect information; no information model needed. |
 | `tiles.md` | yes | Phase 3 — **implemented.** Carcassonne-like: deterministic tile-bag RNG, dynamic spatial state, incremental scoring. Bag order secret, count public. |
 | `werewolf.md` | yes | Phase 3 (rules/headless) → Phase 7 (social) — **the important one.** Roles, night actions, and event *non-existence*. |
+| [`age-war.md`](age-war.md) | yes | D01 **design-only / owner review pending**: original six-age rules, unbalanced catalog and schema/math scaffold; no gameplay module or production availability. |
