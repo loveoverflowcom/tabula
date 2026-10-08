@@ -72,17 +72,26 @@ own space at 200% text. The gameplay toolbar retains its labelled Back action.
 Rail width grows with measured localized navigation labels and the current text
 scale, bounded to one third of the viewport. Navigation labels remain centered
 and wrap between whole words when needed.
-Bottom navigation shares width according to the measured longest word in each
-label. When the labels cannot jointly fit in `labelMd`, they use the generated
-`labelSm` role at the same OS text scale. Both phone and rail labels retain
-complete words and the generated minimum target size.
+Bottom navigation keeps Home, Library and Account in three equal-width slots,
+independent of localized label length or selection. Each phone slot owns one
+full action/focus target, at least 64dp high. Its 20dp icon sits in a 48×32dp
+indicator; only the selected icon receives the tonal fill. A 4dp gap separates
+the icon from its regular `bodySm` label (12sp/16sp). When the longest word cannot
+fit an equal slot, labels use generated `labelSm` at the same OS text scale.
+Phone targets reserve the focus-ring width without an additional interior gap,
+and above 130% text the bar releases its outer horizontal inset, so large-text
+labels retain their reading width. Both phone and rail labels
+retain complete words and the generated minimum target size. A subtle 1dp top
+divider separates the phone bar from content; high-contrast schemes retain a
+full-contrast divider and selected indicator boundary. At normal text the bar
+is 73dp high before outer safe-area padding; at large text it grows naturally.
 
 The page uses `shellCanvas`; contained rows use `shellPaper`/`shellNote`; the Home hero uses
 `shellHero`/`shellOnHero`. Generated primary/on-primary roles own the principal action and
 selected navigation. No mobile palette is authored. The canonical T Portal brand and neutral
 human avatar preserve the web identity without claiming an authenticated profile.
 
-Compact Home/Library page and hero headings use the generated `shell-display` role
+Compact Home/Library page, Home catalog and hero headings use the generated `shell-display` role
 (serif, 28sp/36sp, regular weight). At default text size, the Home illustration is a
 96dp landscape thumbnail beside the hero heading; prose and the browse action keep the
 full reading width. Compact catalog cards put an 84dp landscape thumbnail beside the

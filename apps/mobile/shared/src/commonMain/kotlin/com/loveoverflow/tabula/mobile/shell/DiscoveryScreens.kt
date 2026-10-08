@@ -82,7 +82,7 @@ fun HomeScreen(
         },
     ) {
         DiscoveryHero(strings, onBrowse)
-        TabulaText(strings.discovery(DiscoveryCopy.CatalogHeading), TabulaType.titleLg, Modifier.semantics { heading() })
+        ShellDisplayHeading(strings.discovery(DiscoveryCopy.CatalogHeading))
         CatalogContent(catalog, strings, onRetry) { games ->
             // Preserve registry order and show every entry; no invented ranking or featured tag.
             GameCards(games, strings, onDetail)

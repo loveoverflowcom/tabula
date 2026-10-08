@@ -98,11 +98,30 @@ class ResponsiveShellTest {
                             val nextStart = layout.getLineStart(line + 1)
                             val betweenWords = label.substring(end, nextStart).any { it.isWhitespace() } ||
                                 label.getOrNull(end)?.isWhitespace() == true
-                            assertTrue(betweenWords, "navigation cannot split a word: $label, line=$line")
+                            assertTrue(betweenWords, "navigation cannot split a word: $label, line=$line, width=${layout.size.width}, style=${layout.layoutInput.style}")
                         }
                     }
                 }
             }
+        }
+    }
+
+    private fun DesktopComposeUiTest.assertBalancedBottomNavigation(width: Int, fontScale: Float) {
+        if (width >= 600) return
+        val targets = listOf("home", "games", "account").map { tag ->
+            val target = onNodeWithTag("shell-nav-$tag").assertIsDisplayed().getUnclippedBoundsInRoot()
+            val indicator = onNodeWithTag("shell-nav-indicator-$tag", useUnmergedTree = true).getUnclippedBoundsInRoot()
+            assertTrue(target.right - target.left >= 44.dp && target.bottom - target.top >= 44.dp,
+                "navigation retains full touch targets: $target")
+            assertTrue(indicator.right - indicator.left < target.right - target.left && indicator.bottom < target.bottom,
+                "the selected indicator is contained around the icon, leaving the label outside: $indicator, target=$target")
+            target
+        }
+        assertTrue(targets.maxOf { it.right - it.left } - targets.minOf { it.right - it.left } <= 2.dp,
+            "navigation slots stay equally balanced regardless of localized word length: $targets")
+        if (fontScale == 1f) {
+            val bar = onNodeWithTag("shell-bottom-navigation").getUnclippedBoundsInRoot()
+            assertTrue(bar.bottom - bar.top <= 80.dp, "normal-text bottom chrome stays compact: $bar")
         }
     }
 
@@ -154,6 +173,7 @@ class ResponsiveShellTest {
                             assertUsableContentSlot(width, height)
                             assertShellTextFitsHorizontally()
                             assertNavigationWordsRemainWhole()
+                            assertBalancedBottomNavigation(width, fontScale)
                             captureShell("responsive-account-top-$case")
                             assertWholeTarget("account-open-profile", width, height)
                             onNodeWithTag("account-open-profile").performClick()
@@ -169,6 +189,7 @@ class ResponsiveShellTest {
                             assertWholeTarget("account-browse-library", width, height)
                             assertLocalizedIconBack(language)
                             assertNavigationWordsRemainWhole()
+                            assertBalancedBottomNavigation(width, fontScale)
                             assertEquals(0, fixture.adapter.signOutCalls,
                                 "layout inspection and route navigation do not dispatch account mutations")
                         }

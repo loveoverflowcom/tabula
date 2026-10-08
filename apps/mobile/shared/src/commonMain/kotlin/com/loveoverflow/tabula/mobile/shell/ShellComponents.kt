@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -52,6 +53,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.loveoverflow.tabula.mobile.design.LocalTabulaColors
 import com.loveoverflow.tabula.mobile.design.TabulaAccessibility
@@ -129,6 +131,7 @@ private fun ShellInteractiveSurface(
     role: Role = Role.Button,
     horizontalInset: Float = TabulaSpace.md,
     verticalInset: Float = TabulaSpace.sm,
+    focusGap: Float = TabulaSpace.xxs,
     content: @Composable (Color) -> Unit,
 ) {
     val colors = LocalTabulaColors.current
@@ -145,7 +148,7 @@ private fun ShellInteractiveSurface(
     }
     val shape = RoundedCornerShape(TabulaShape.button.dp)
     // The ring and surface gap are reserved even when idle: focus never changes target bounds.
-    val ringSpace = (TabulaAccessibility.focusRingWidth + TabulaSpace.xxs).dp
+    val ringSpace = (TabulaAccessibility.focusRingWidth + focusGap).dp
     val surfaceMinimum = TabulaAccessibility.minTarget.dp - ringSpace * 2
     val ring = if (focused) Modifier.border(TabulaAccessibility.focusRingWidth.dp, colors.primary, shape) else Modifier
     Box(
@@ -323,11 +326,15 @@ fun ShellChrome(
                 ShellTopbar(destination, strings, onNavigate, onBack, accountIdentity, accountAvatar, accountDescription)
                 Box(Modifier.weight(1f).fillMaxWidth().imePadding()) { content() }
                 if (!wide) {
-                    Row(
-                        Modifier.fillMaxWidth().background(colors.shellCanvas)
-                            .padding(horizontal = TabulaSpace.xxs.dp, vertical = TabulaSpace.sm.dp).testTag("shell-bottom-navigation"),
-                        horizontalArrangement = Arrangement.spacedBy(TabulaSpace.xxs.dp),
-                    ) { ShellNavigation(destination, strings, onNavigate, vertical = false) }
+                    val divider = if (colors.shellPaper == colors.shellCanvas) colors.outline
+                        else colors.outline.copy(alpha = TabulaState.focus).compositeOver(colors.shellCanvas)
+                    Column(Modifier.fillMaxWidth().background(colors.shellCanvas).testTag("shell-bottom-navigation")) {
+                        Box(Modifier.fillMaxWidth().height((TabulaSpace.xxs / 2).dp).background(divider))
+                        val inset = if (LocalDensity.current.fontScale > 1.3f) TabulaSpace.none else TabulaSpace.sm
+                        Box(Modifier.fillMaxWidth().padding(horizontal = inset.dp, vertical = TabulaSpace.xs.dp)) {
+                            ShellNavigation(destination, strings, onNavigate, vertical = false)
+                        }
+                    }
                 }
             }
         }
@@ -398,17 +405,15 @@ private fun ShellNavigation(destination: Destination, strings: ShellStrings, onN
                 }
                 // Reserve the focus ring plus a small rounding gap without shrinking text.
                 maxOf(TabulaAccessibility.minTarget, with(density) { wordWidth.toDp().value } +
-                    2 * (TabulaAccessibility.focusRingWidth + TabulaSpace.xxs) + TabulaSpace.xxs)
+                    2 * TabulaAccessibility.focusRingWidth + TabulaSpace.xxs)
             }
-            val normalWidths = minimumWidths(TabulaType.labelMd)
-            val available = (maxWidth - TabulaSpace.xxs.dp * (entries.size - 1)).value
-            val style = if (normalWidths.sum() > available) TabulaType.labelSm else TabulaType.labelMd
-            val widths = if (style == TabulaType.labelMd) normalWidths else minimumWidths(style)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TabulaSpace.xxs.dp)) {
-                for ((index, entry) in entries.withIndex()) {
-                    val (target, copy, tag) = entry
-                    Box(Modifier.weight(widths[index])) {
-                        ShellNavigationItem(destination, strings, onNavigate, target, copy, tag, style)
+            val cellWidth = maxWidth.value / entries.size
+            val style = if (minimumWidths(TabulaType.bodySm).max() > cellWidth) TabulaType.labelSm else TabulaType.bodySm
+            // Equal slots keep icon centres balanced across locales and selection changes.
+            Row(Modifier.fillMaxWidth()) {
+                for ((target, copy, tag) in entries) {
+                    Box(Modifier.weight(1f)) {
+                        ShellNavigationItem(destination, strings, onNavigate, target, copy, tag, style, vertical = false)
                     }
                 }
             }
@@ -425,6 +430,7 @@ private fun ShellNavigationItem(
     copy: ShellCopy,
     tag: String,
     labelStyle: TabulaTextStyle = TabulaType.labelMd,
+    vertical: Boolean = true,
 ) {
     val selected = when (target) {
         Destination.Home -> destination == Destination.Home
@@ -433,17 +439,31 @@ private fun ShellNavigationItem(
         else -> false
     }
     val colors = LocalTabulaColors.current
+    val indicatorShape = RoundedCornerShape(TabulaShape.sm.dp)
+    val indicatorBoundary = if (selected && colors.shellPaper == colors.shellCanvas)
+        Modifier.border((TabulaSpace.xxs / 2).dp, colors.primary, indicatorShape) else Modifier
     ShellInteractiveSurface(
-        if (selected) colors.primary.copy(alpha = TabulaState.focus).compositeOver(colors.shellPaper) else colors.shellCanvas,
+        if (selected && vertical) colors.primary.copy(alpha = TabulaState.focus).compositeOver(colors.shellPaper) else colors.shellCanvas,
         if (selected) colors.primary else colors.onSurfaceVariant,
         onClick = { onNavigate(target) },
         isSelected = selected,
         // Leave room for whole words at 200% text with the host's fallback typeface.
         horizontalInset = TabulaSpace.none,
-        modifier = Modifier.fillMaxWidth().testTag("shell-nav-$tag"),
+        verticalInset = if (vertical) TabulaSpace.sm else TabulaSpace.none,
+        focusGap = if (vertical) TabulaSpace.xxs else TabulaSpace.none,
+        modifier = Modifier.fillMaxWidth()
+            .then(if (vertical) Modifier else Modifier.heightIn(min = TabulaSpace.xxxxxxl.dp))
+            .testTag("shell-nav-$tag"),
     ) { color ->
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(TabulaSpace.xs.dp)) {
-            NavigationIcon(tag, color)
+            if (vertical) NavigationIcon(tag, color)
+            else Box(
+                Modifier.width(TabulaSpace.xxxxxl.dp).height(TabulaSpace.xxxl.dp)
+                    .background(if (selected) colors.primary.copy(alpha = TabulaState.focus).compositeOver(colors.shellPaper)
+                        else colors.shellCanvas, indicatorShape).then(indicatorBoundary)
+                    .testTag("shell-nav-indicator-$tag"),
+                contentAlignment = Alignment.Center,
+            ) { NavigationIcon(tag, color, iconSize = TabulaSpace.xl.dp) }
             TabulaText(strings[copy], labelStyle, Modifier.fillMaxWidth(), color, TextAlign.Center)
         }
     }
@@ -456,8 +476,8 @@ fun ShellAnonymousAvatar(strings: ShellStrings, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun NavigationIcon(kind: String, color: Color) {
-    Canvas(Modifier.size(TabulaSpace.xxl.dp).clearAndSetSemantics { }) {
+private fun NavigationIcon(kind: String, color: Color, iconSize: Dp = TabulaSpace.xxl.dp) {
+    Canvas(Modifier.size(iconSize).clearAndSetSemantics { }) {
         val unit = size.width / 24f
         val stroke = Stroke(2f * unit)
         if (kind == "back") {
