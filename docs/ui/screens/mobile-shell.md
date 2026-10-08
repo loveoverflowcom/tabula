@@ -91,11 +91,22 @@ The page uses `shellCanvas`; contained rows use `shellPaper`/`shellNote`; the Ho
 selected navigation. No mobile palette is authored. The canonical T Portal brand and neutral
 human avatar preserve the web identity without claiming an authenticated profile.
 
+CMP navigation, Back, search, neutral Person avatar and radio indicators use
+official Material Symbols Outlined through Material3 `Icon`, with explicit
+generated tint/size and decorative child semantics. Their existing parent owns
+the localized action, selected state and full touch/focus target. Back keeps
+the upstream vector's RTL mirroring. The pinned seven-symbol subset and Apache-2.0
+attribution are recorded in [the mobile icon source](../../../apps/mobile/MATERIAL-SYMBOLS.md).
+Brand and game artwork retain their existing owners.
+
 Compact Home/Library page, Home catalog and hero headings use the generated `shell-display` role
 (serif, 28sp/36sp, regular weight). At default text size, the Home illustration is a
 96dp landscape thumbnail beside the hero heading; prose and the browse action keep the
-full reading width. Compact catalog cards put an 84dp landscape thumbnail beside the
-name/tagline, with complete metadata and the detail action below. At 390×844dp the first
+full reading width. Compact catalog cards put a landscape thumbnail beside the
+name/tagline: 84dp wide in cards below 340dp, otherwise 120dp. It preserves the
+declared source aspect ratio and has one 4dp corner clip; a full-card radius is
+not applied inside this short image. Complete metadata and the detail action
+remain below. At 390×844dp the first
 card is fully visible before scrolling. Above 130% text, copy and cards reflow vertically;
 the hero art remains secondary. Body text, control labels and the ≥44dp target floor are
 unchanged. Desktop preview PNG pixels must be assessed at their recorded logical viewport

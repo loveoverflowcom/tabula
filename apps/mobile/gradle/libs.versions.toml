@@ -3,6 +3,8 @@
 [versions]
 kotlin = "2.4.20"
 compose = "1.12.0"
+# Stable Material3 version paired with the installed Compose 1.12 plugin.
+compose-material3 = "1.9.0"
 compose-hot-reload = "1.2.0"
 agp = "9.3.1"
 activity = "1.13.0"
@@ -13,6 +15,7 @@ livekit = "2.29.0"
 [libraries]
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 compose-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
 compose-ui-backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "compose" }
 lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }

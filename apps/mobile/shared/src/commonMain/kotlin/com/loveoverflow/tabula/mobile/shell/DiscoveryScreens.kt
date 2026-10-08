@@ -29,7 +29,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.testTag
@@ -355,20 +354,25 @@ private fun GameCards(games: List<DiscoveryGame>, strings: ShellStrings, onDetai
 private fun GameCard(game: DiscoveryGame, strings: ShellStrings, onDetail: (DiscoveryGame) -> Unit, compact: Boolean) {
     val shape = RoundedCornerShape(TabulaShape.card.dp)
     val colors = LocalTabulaColors.current
-    Column(Modifier.fillMaxWidth().background(colors.shellPaper, shape)
-        .border(TabulaSpace.xxs.dp, if (colors.shellPaper == colors.shellCanvas) colors.outline else colors.shellPaper, shape).testTag("discovery-card-${game.id}")) {
-        if (!compact) DiscoveryGameCover(game.cover, Modifier.fillMaxWidth())
-        Column(Modifier.fillMaxWidth().padding(TabulaSpace.lg.dp), verticalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp)) {
-            if (compact) {
-                Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DiscoveryGameCover(game.cover, Modifier.width((TabulaSpace.xxxxxxl + TabulaSpace.xl).dp)
-                        .clip(RoundedCornerShape(TabulaShape.sm.dp)))
-                    GameCardHeading(game, strings, Modifier.weight(1f))
-                }
-            } else GameCardHeading(game, strings)
-            GameFacts(game, strings)
-            ShellActionButton(strings.details(game.displayName(strings.languageTag)), ShellAction.Text,
-                { onDetail(game) }, Modifier.fillMaxWidth().testTag("shell-details-${game.id}"))
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val thumbnailWidth = if (maxWidth < 340.dp) (TabulaSpace.xxxxxxl + TabulaSpace.xl).dp
+            else (TabulaSpace.xxxxl * 3).dp
+        Column(Modifier.fillMaxWidth().background(colors.shellPaper, shape)
+            .border(TabulaSpace.xxs.dp, if (colors.shellPaper == colors.shellCanvas) colors.outline else colors.shellPaper, shape).testTag("discovery-card-${game.id}")) {
+            if (!compact) DiscoveryGameCover(game.cover, Modifier.fillMaxWidth())
+            Column(Modifier.fillMaxWidth().padding(TabulaSpace.lg.dp), verticalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp)) {
+                if (compact) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.md.dp), verticalAlignment = Alignment.CenterVertically) {
+                        // The artwork owns one small clip; a full-card radius would remove much of a short thumbnail.
+                        DiscoveryGameCover(game.cover, Modifier.width(thumbnailWidth).testTag("discovery-card-cover-${game.id}"),
+                            shape = RoundedCornerShape(TabulaShape.xs.dp))
+                        GameCardHeading(game, strings, Modifier.weight(1f))
+                    }
+                } else GameCardHeading(game, strings)
+                GameFacts(game, strings)
+                ShellActionButton(strings.details(game.displayName(strings.languageTag)), ShellAction.Text,
+                    { onDetail(game) }, Modifier.fillMaxWidth().testTag("shell-details-${game.id}"))
+            }
         }
     }
 }
@@ -397,9 +401,12 @@ private fun SearchField(text: String, strings: ShellStrings, onChange: (String) 
                 .testTag("discovery-search").semantics { contentDescription = strings.discovery(DiscoveryCopy.Search) },
             textStyle = TabulaType.bodyLg.toTextStyle(colors.onSurface), singleLine = true, interactionSource = source,
             decorationBox = { input ->
-                Box {
-                    if (text.isEmpty()) TabulaText(strings.discovery(DiscoveryCopy.SearchHint), TabulaType.bodyLg, color = colors.onSurfaceVariant)
-                    input()
+                Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp), verticalAlignment = Alignment.CenterVertically) {
+                    ShellIcon(ShellSymbol.Search, colors.onSurfaceVariant, size = TabulaSpace.xl.dp)
+                    Box(Modifier.weight(1f)) {
+                        if (text.isEmpty()) TabulaText(strings.discovery(DiscoveryCopy.SearchHint), TabulaType.bodyLg, color = colors.onSurfaceVariant)
+                        input()
+                    }
                 }
             },
         )

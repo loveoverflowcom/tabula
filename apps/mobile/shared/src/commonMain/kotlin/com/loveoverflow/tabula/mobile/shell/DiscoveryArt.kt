@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
@@ -36,14 +37,18 @@ import org.jetbrains.compose.resources.painterResource
 
 /** Decorative game-owned cover only; this does not load a runtime asset or any match data (I-5). */
 @Composable
-fun DiscoveryGameCover(cover: DiscoveryCover?, modifier: Modifier = Modifier) {
+fun DiscoveryGameCover(
+    cover: DiscoveryCover?,
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(topStart = TabulaShape.card.dp, topEnd = TabulaShape.card.dp),
+) {
     val colors = LocalTabulaColors.current
     val drawing = remember(cover) {
         cover?.takeIf { it.width.isFinite() && it.height.isFinite() && it.width > 0f && it.height > 0f }
             ?.let { parseDiscoveryArt(it.svg) }
     }
     val ratio = cover?.let { it.width / it.height }?.takeIf { it.isFinite() && it > 0f } ?: (364f / 160f)
-    Canvas(modifier.aspectRatio(ratio).clip(RoundedCornerShape(topStart = TabulaShape.card.dp, topEnd = TabulaShape.card.dp))
+    Canvas(modifier.aspectRatio(ratio).clip(shape)
         .clearAndSetSemantics { }) {
         if (cover != null && drawing != null) {
             scale(size.width / cover.width, size.height / cover.height, pivot = Offset.Zero) {

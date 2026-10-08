@@ -1,6 +1,5 @@
 package com.loveoverflow.tabula.mobile.shell
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,18 +33,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -187,11 +182,8 @@ fun ShellPreferenceChoice(label: String, selected: Boolean, onClick: () -> Unit,
         role = Role.RadioButton,
     ) { color ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp), verticalAlignment = Alignment.CenterVertically) {
-            Canvas(Modifier.size(TabulaSpace.xl.dp).clearAndSetSemantics { }) {
-                val radius = size.minDimension / 2f - TabulaAccessibility.focusRingWidth.dp.toPx()
-                drawCircle(color, radius, style = Stroke(TabulaAccessibility.focusRingWidth.dp.toPx()))
-                if (selected) drawCircle(color, radius / 2f)
-            }
+            ShellIcon(if (selected) ShellSymbol.RadioChecked else ShellSymbol.RadioUnchecked,
+                color, size = TabulaSpace.xl.dp)
             TabulaText(label, TabulaType.labelLg, Modifier.weight(1f), color)
         }
     }
@@ -477,36 +469,11 @@ fun ShellAnonymousAvatar(strings: ShellStrings, modifier: Modifier = Modifier) {
 
 @Composable
 private fun NavigationIcon(kind: String, color: Color, iconSize: Dp = TabulaSpace.xxl.dp) {
-    Canvas(Modifier.size(iconSize).clearAndSetSemantics { }) {
-        val unit = size.width / 24f
-        val stroke = Stroke(2f * unit)
-        if (kind == "back") {
-            drawPath(Path().apply {
-                moveTo(12f * unit, 4f * unit)
-                lineTo(4f * unit, 12f * unit)
-                lineTo(12f * unit, 20f * unit)
-                moveTo(4f * unit, 12f * unit)
-                lineTo(21f * unit, 12f * unit)
-            }, color, style = stroke)
-        } else if (kind == "account") {
-            drawCircle(color, 3f * unit, Offset(12f * unit, 7f * unit), style = stroke)
-            drawPath(Path().apply {
-                moveTo(4f * unit, 21f * unit)
-                cubicTo(4f * unit, 8f * unit, 20f * unit, 8f * unit, 20f * unit, 21f * unit)
-            }, color, style = stroke)
-        } else if (kind == "home") {
-            drawPath(Path().apply {
-                moveTo(3f * unit, 10f * unit)
-                lineTo(12f * unit, 3f * unit)
-                lineTo(21f * unit, 10f * unit)
-                lineTo(21f * unit, 21f * unit)
-                lineTo(3f * unit, 21f * unit)
-                close()
-            }, color, style = stroke)
-        } else {
-            for (x in listOf(3f, 14f)) for (y in listOf(3f, 14f)) {
-                drawRect(color, Offset(x * unit, y * unit), androidx.compose.ui.geometry.Size(7f * unit, 7f * unit), style = stroke)
-            }
-        }
+    val symbol = when (kind) {
+        "back" -> ShellSymbol.Back
+        "account" -> ShellSymbol.Account
+        "home" -> ShellSymbol.Home
+        else -> ShellSymbol.Library
     }
+    ShellIcon(symbol, color, size = iconSize)
 }

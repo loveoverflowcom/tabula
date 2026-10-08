@@ -40,6 +40,7 @@ kotlin {
             implementation(libs.coroutines.core)
             api(libs.compose.runtime)
             api(libs.compose.foundation)
+            implementation(libs.compose.material3)
             implementation(libs.compose.resources)
             api(libs.compose.ui.backhandler)
             api(libs.lifecycle.runtime.compose)
