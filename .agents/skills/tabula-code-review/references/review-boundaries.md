@@ -95,16 +95,22 @@ ADR-011 separates Leptos from the Macroquad gameplay document. Inspect relevant
 state disposal and Fetch/DOM/event behavior. CSS/DOM checks cover neither gameplay
 pixels nor Kotlin semantics.
 
-For [mobile work](../../../../apps/mobile/README.md), trace `GameHost`, bridge codec,
-virtual origin, packaging, platform interception and lifecycle consumers. Kotlin/
-Swift own UI/navigation/device services, not rules/projection/protocol decisions.
+For [mobile work](../../../../apps/mobile/README.md), use
+[CMP engineering](../../tabula-cmp-engineering/SKILL.md) as criteria without entering
+its implementation/live-edit loop. Trace shared production components, state/port
+owners, `GameHost`, native lifecycle and artifact consumers. Kotlin/Swift own
+UI/navigation/device services, not rules/projection/protocol decisions.
+[ADR-0043](../../../../docs/adr/0043-native-mobile-gamehost.md) retires mobile WebView
+gameplay without fallback; the native model is not a delivered Macroquad backend.
 Review recomposition, Back, foreground/background, disposal, reload/retry and late
-callbacks through the shipping host. Capability-gated bridge input remains
-untrusted; credentials and native media stay outside the game bridge.
+callbacks through the actual host. Launch facts remain untrusted; credentials
+and native media stay outside the game host contract.
 
-Use the mobile README's environment matrix to distinguish shared host tests,
-simulated preview, staged phone-sized Chrome, APK/iOS Kotlin compilation and actual
-WebView/WKWebView/device execution. Native voice review selects its grant,
+Use the mobile README and agentic guide to distinguish controlled host/model tests,
+Desktop Compose assertions, live MCP interaction, inspected preview pixels,
+APK/iOS Kotlin compilation/linking and actual Android/iOS device execution.
+Public discovery and synthetic account/game ports grant no native readiness.
+Native voice review selects its grant,
 permission/media lifecycle and provider boundary; local mute does not prove
 game audience/SFU enforcement.
 

@@ -19,7 +19,12 @@ from urllib.parse import unquote, urlsplit
 import yaml
 
 
-ENTRYPOINTS = ("tabula-engineering", "tabula-game-audit", "tabula-code-review")
+ENTRYPOINTS = (
+    "tabula-engineering",
+    "tabula-game-audit",
+    "tabula-code-review",
+    "tabula-cmp-engineering",
+)
 NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 INLINE_LINK = re.compile(r"!?\[[^\]\n]*\]\(\s*(<[^>\n]+>|[^\s)]+)(?:\s+[\"'][^\n]*[\"'])?\s*\)")
 RESOURCE_PATH = re.compile(

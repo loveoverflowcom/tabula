@@ -127,6 +127,10 @@ class SkillDriftTests(unittest.TestCase):
         shutil.rmtree(self.canonical / "tabula-code-review")
         self.assert_error("tabula-code-review/SKILL.md: missing required entrypoint")
 
+    def test_missing_cmp_engineering_entrypoint_is_rejected(self):
+        shutil.rmtree(self.canonical / "tabula-cmp-engineering")
+        self.assert_error("tabula-cmp-engineering/SKILL.md: missing required entrypoint")
+
     def test_unregistered_top_level_skill_is_rejected(self):
         extra = self.canonical / "tabula-extra-review"
         shutil.copytree(self.canonical / "tabula-code-review", extra)

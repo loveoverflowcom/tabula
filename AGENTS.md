@@ -36,6 +36,11 @@ Load [`tabula-engineering`](.agents/skills/tabula-engineering/SKILL.md) for impl
 refactoring, testing, and engineering documentation. It owns the shared workflow and evidence
 vocabulary; load only the technique references relevant to the task.
 
+Compose [`tabula-cmp-engineering`](.agents/skills/tabula-cmp-engineering/SKILL.md) for mobile
+Compose UI, navigation, state/lifecycle and host seams. It applies the shared workflow to
+`apps/mobile` and the existing Desktop Preview/official Hot Reload MCP inspection loop;
+desktop evidence does not establish Android/iOS native gameplay or account readiness.
+
 Compose [`tabula-game-audit`](.agents/skills/tabula-game-audit/SKILL.md) when adding, changing,
 or reviewing a game, auditing a named game or the portfolio, or changing a shared contract that
 affects games. Select checks by the changed behavior and affected consumers. A presentation edit

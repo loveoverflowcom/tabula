@@ -1,18 +1,20 @@
 # Agent workflows
 
-Three canonical skills organize work by workflow. Architecture
+Four canonical skills organize work by workflow. Architecture
 [doc 00](../../docs/architecture/00-architecture-principles.md) and ADRs own the contract;
 skills apply it and never authorize work past a phase gate.
 
 | Workflow group | Entrypoint | Load on demand |
 |---|---|---|
 | Engineering: contract, design, implementation, evidence, handoff | [tabula-engineering](tabula-engineering/SKILL.md) | Design/prevention: types, boundary hardening, functional core, extraction. Verification: examples, properties, replay/differential, mutation, Kani, fuzzing. Documentation: AI contracts/schema/helper. |
+| CMP engineering: shared mobile UI, state/lifecycle, navigation, host seams and inspected preview | [tabula-cmp-engineering](tabula-cmp-engineering/SKILL.md), composing engineering | Ownership/conventions, native design/parity, existing official Hot Reload MCP interaction, targeted tests and evidence boundaries. |
 | Existing-change review: PR, range, patch or local tree; read-only findings and assurance gaps | [tabula-code-review](tabula-code-review/SKILL.md), composing engineering and relevant game criteria | [Changed-boundary lenses](tabula-code-review/references/review-boundaries.md), [report template](tabula-code-review/assets/review-report-template.md). |
 | Game review: rules, SDK, security, replay, bots, presentation, readiness | [tabula-game-audit](tabula-game-audit/SKILL.md), composing engineering | SDK, rules oracles, hidden information, replay/versioning, presentation and the selected game's rubric. |
 
 Choose the workflow first, then the smallest relevant reference set. The engineering skill
-owns evidence vocabulary and implementation order; the game audit applies those to separate
-claims. Code review owns pinned-diff scope, base-relative candidates, severity/confidence and its
+owns evidence vocabulary and implementation order; CMP engineering applies it to shared
+mobile presentation and the existing preview loop, while game audit applies it to separate
+game claims. Code review owns pinned-diff scope, base-relative candidates, severity/confidence and its
 report; it reads existing owners as criteria rather than starting their implementation loops.
 SDK conformance, correct rules, secrecy, deterministic replay and playable UI need
 their own evidence. A local game audit does not certify networking or future-phase features.

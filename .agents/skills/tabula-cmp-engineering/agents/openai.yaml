@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabula CMP Engineering"
+  short_description: "Build and inspect Tabula mobile Compose UI"
+  default_prompt: "Use $tabula-cmp-engineering to implement and inspect a shared mobile UI change with the existing preview MCP."
