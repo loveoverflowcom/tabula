@@ -69,6 +69,12 @@ recomposition and Back routing. They cannot measure Android/iOS touch latency,
 GPU frames, memory, surface loss or process death. A build or simulator result
 does not replace issue #81's real-device acceptance.
 
+For semantic inspection, interaction and live Kotlin edit/reload assertions with
+the existing Desktop Preview, see the [agentic coding guide](AGENTIC-CODING.md)
+and [mobile agent instructions](AGENTS.md). They use the official JetBrains
+Compose Hot Reload MCP and keep live MCP evidence separate from deterministic
+Desktop Compose tests and Android/iOS native acceptance.
+
 ## Design
 
 `tokens.toml` is the single authored source. `cargo xtask gen-tokens` generates

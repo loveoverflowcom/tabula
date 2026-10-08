@@ -1,7 +1,10 @@
+import org.jetbrains.compose.reload.gradle.ComposeHotRun
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.compose.hot.reload)
 }
 
 // Desktop preview and UI tests of the shared Compose shell (ADR-0033). Testing only: there is no
@@ -19,17 +22,24 @@ dependencies {
     testImplementation(compose.desktop.uiTestJUnit4)
 }
 
-tasks.register<JavaExec>("run") {
-    group = "application"
-    description = "Open the shell in a phone-sized desktop window with the simulated game page."
+fun JavaExec.configurePreview() {
     mainClass.set("com.loveoverflow.tabula.mobile.preview.DesktopPreviewKt")
-    classpath = sourceSets.main.get().runtimeClasspath
     maxHeapSize = "1g"
     systemProperty("compose.layers.type", "ON_SAME_CANVAS")
     for (option in listOf("width", "height", "dark", "language", "reducedMotion", "fontScale", "catalog", "smokeWindow",
         "account", "accountLongFields", "accountAvatar")) {
         providers.gradleProperty("preview.$option").orNull?.let { systemProperty("tabula.preview.$option", it) }
     }
+}
+
+// The existing entrypoint/fixtures serve both ordinary preview and official CHR; no second shell.
+tasks.withType<ComposeHotRun>().configureEach { configurePreview() }
+
+tasks.register<JavaExec>("run") {
+    group = "application"
+    description = "Open the shell in a phone-sized desktop window with the simulated game page."
+    classpath = sourceSets.main.get().runtimeClasspath
+    configurePreview()
 }
 
 tasks.test {
