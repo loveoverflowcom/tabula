@@ -72,6 +72,8 @@ class ShellToolsUiTest {
         runDesktopComposeUiTest(width = 390, height = 844) {
             fun canSave(value: Any?): Boolean = when (value) {
                 null, is String, is Int, is Long, is Float, is Double, is Boolean -> true
+                // Material3 saves a public presentation enum; Android Bundle supports enums.
+                is Enum<*> -> true
                 is List<*> -> value.all(::canSave)
                 is Map<*, *> -> value.all { (key, item) -> canSave(key) && canSave(item) }
                 is MutableState<*> -> canSave(value.value)

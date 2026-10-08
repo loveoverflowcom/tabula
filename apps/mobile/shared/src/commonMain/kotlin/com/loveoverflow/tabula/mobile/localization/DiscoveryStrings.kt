@@ -4,7 +4,7 @@ package com.loveoverflow.tabula.mobile.localization
 enum class DiscoveryCopy {
     HomeHeading, HeroEyebrow, HeroHeading, HeroBody, CatalogHeading, BrowseAll,
     Search, SearchHint, ClearSearch, Filters, HideFilters, All, Category, Players, Duration, Complexity,
-    ResetFilters, Results, EmptyTitle, EmptyBody, NoResultsTitle, NoResultsBody, CatalogErrorTitle,
+    ApplyFilters, CancelFilters, FilterHint, ListView, GridView, ComingSoon, PlannedUnavailable, BackToLibrary, DetailTitle, ResetFilters, Results, EmptyTitle, EmptyBody, NoResultsTitle, NoResultsBody, CatalogErrorTitle,
     CatalogErrorBody, CatalogUnavailableTitle, CatalogUnavailableBody, Overview, Modes, Rules,
     RulesUnavailable, NativeUnavailable, OnlineUnavailable, Version, Rating, HiddenInformation, Yes, No, Configuration, ConfigurationDefaults,
     ConfigurationUnavailable, ViewSetup, SetupUnavailable, Untimed, NoConfiguration, ArtUnavailable,
@@ -12,6 +12,15 @@ enum class DiscoveryCopy {
 
 /** Both maintained languages are exhaustive; game-owned labels are resolved separately. */
 fun ShellStrings.discovery(copy: DiscoveryCopy): String = if (vietnamese) when (copy) {
+    DiscoveryCopy.ApplyFilters -> "Áp dụng"
+    DiscoveryCopy.CancelFilters -> "Đóng bộ lọc"
+    DiscoveryCopy.FilterHint -> "Lọc thời lượng theo thời gian dự kiến tối đa của game."
+    DiscoveryCopy.ListView -> "Danh sách"
+    DiscoveryCopy.GridView -> "Lưới"
+    DiscoveryCopy.ComingSoon -> "Sắp có"
+    DiscoveryCopy.PlannedUnavailable -> "Trò chơi đang được chuẩn bị. Bạn vẫn có thể đọc thông tin, nhưng chưa thể thiết lập hoặc bắt đầu ván chơi."
+    DiscoveryCopy.BackToLibrary -> "Quay lại thư viện"
+    DiscoveryCopy.DetailTitle -> "Thông tin game"
     DiscoveryCopy.HomeHeading -> "Chơi một ván nhé?"
     DiscoveryCopy.HeroEyebrow -> "Góc khám phá mới"
     DiscoveryCopy.HeroHeading -> "Mỗi nước đi,\nmột điều để học."
@@ -21,7 +30,7 @@ fun ShellStrings.discovery(copy: DiscoveryCopy): String = if (vietnamese) when (
     DiscoveryCopy.Search -> "Tìm trò chơi"
     DiscoveryCopy.SearchHint -> "Tên trò chơi hoặc từ khóa"
     DiscoveryCopy.ClearSearch -> "Xóa tìm kiếm"
-    DiscoveryCopy.Filters -> "Thêm bộ lọc"
+    DiscoveryCopy.Filters -> "Lọc"
     DiscoveryCopy.HideFilters -> "Thu gọn bộ lọc"
     DiscoveryCopy.All -> "Tất cả"
     DiscoveryCopy.Category -> "Thể loại"
@@ -29,7 +38,7 @@ fun ShellStrings.discovery(copy: DiscoveryCopy): String = if (vietnamese) when (
     DiscoveryCopy.Duration -> "Thời gian dự kiến"
     DiscoveryCopy.Complexity -> "Độ phức tạp"
     DiscoveryCopy.ResetFilters -> "Đặt lại bộ lọc"
-    DiscoveryCopy.Results -> "Trò chơi trong thư viện"
+    DiscoveryCopy.Results -> "Tất cả game"
     DiscoveryCopy.EmptyTitle -> "Chưa có trò chơi"
     DiscoveryCopy.EmptyBody -> "Danh mục này chưa có trò chơi để khám phá."
     DiscoveryCopy.NoResultsTitle -> "Không có trò chơi phù hợp"
@@ -58,6 +67,15 @@ fun ShellStrings.discovery(copy: DiscoveryCopy): String = if (vietnamese) when (
     DiscoveryCopy.NoConfiguration -> "Trò chơi sử dụng thiết lập mặc định."
     DiscoveryCopy.ArtUnavailable -> "Ảnh minh họa chưa khả dụng; thông tin trò chơi vẫn đầy đủ."
 } else when (copy) {
+    DiscoveryCopy.ApplyFilters -> "Apply"
+    DiscoveryCopy.CancelFilters -> "Close filters"
+    DiscoveryCopy.FilterHint -> "Filter by the game’s maximum estimated duration."
+    DiscoveryCopy.ListView -> "List"
+    DiscoveryCopy.GridView -> "Grid"
+    DiscoveryCopy.ComingSoon -> "Coming soon"
+    DiscoveryCopy.PlannedUnavailable -> "This game is being prepared. You can read its information, but setup and gameplay are not available yet."
+    DiscoveryCopy.BackToLibrary -> "Back to library"
+    DiscoveryCopy.DetailTitle -> "Game information"
     DiscoveryCopy.HomeHeading -> "Shall we play?"
     DiscoveryCopy.HeroEyebrow -> "A little discovery"
     DiscoveryCopy.HeroHeading -> "Every move,\na little discovery."
@@ -67,7 +85,7 @@ fun ShellStrings.discovery(copy: DiscoveryCopy): String = if (vietnamese) when (
     DiscoveryCopy.Search -> "Search games"
     DiscoveryCopy.SearchHint -> "Game name or keyword"
     DiscoveryCopy.ClearSearch -> "Clear search"
-    DiscoveryCopy.Filters -> "More filters"
+    DiscoveryCopy.Filters -> "Filters"
     DiscoveryCopy.HideFilters -> "Fewer filters"
     DiscoveryCopy.All -> "All"
     DiscoveryCopy.Category -> "Category"
@@ -75,7 +93,7 @@ fun ShellStrings.discovery(copy: DiscoveryCopy): String = if (vietnamese) when (
     DiscoveryCopy.Duration -> "Estimated duration"
     DiscoveryCopy.Complexity -> "Complexity"
     DiscoveryCopy.ResetFilters -> "Reset filters"
-    DiscoveryCopy.Results -> "Games in the library"
+    DiscoveryCopy.Results -> "All games"
     DiscoveryCopy.EmptyTitle -> "No games yet"
     DiscoveryCopy.EmptyBody -> "There are no games to explore in this catalog yet."
     DiscoveryCopy.NoResultsTitle -> "No games match"

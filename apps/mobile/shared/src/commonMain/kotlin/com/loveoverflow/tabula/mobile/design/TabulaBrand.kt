@@ -21,25 +21,27 @@ import androidx.compose.ui.unit.dp
  * Geometry and lockup placement are generated from the approved SVGs; color comes only from
  * the generated semantic tokens (doc 04 §8.1). The mark is decorative beside the wordmark:
  * this single canvas exposes one accessible name, without duplicate text or a font fallback.
+ * [markOnly] keeps the same canonical mark in compact contextual toolbars.
  * This is shell identity, never a game asset or an occupant avatar.
  */
 @Composable
-fun TabulaBrand(modifier: Modifier = Modifier, height: Dp = TabulaSpace.xxxxxxl.dp) {
+fun TabulaBrand(modifier: Modifier = Modifier, height: Dp = TabulaSpace.xxxxxxl.dp, markOnly: Boolean = false) {
     val colors = LocalTabulaColors.current
     val mark = remember { PathParser().parsePathString(TabulaBrandPaths.Mark).toPath() }
     val wordmark = remember { PathParser().parsePathString(TabulaBrandPaths.Wordmark).toPath() }
     Canvas(
         modifier = modifier
-            .size(width = height * (TabulaBrandPaths.LockupWidth / TabulaBrandPaths.LockupHeight), height = height)
+            .size(width = if (markOnly) height else height * (TabulaBrandPaths.LockupWidth / TabulaBrandPaths.LockupHeight), height = height)
             .clearAndSetSemantics {
                 contentDescription = "Tabula"
                 heading()
             },
     ) {
-        val factor = minOf(size.width / TabulaBrandPaths.LockupWidth, size.height / TabulaBrandPaths.LockupHeight)
+        val width = if (markOnly) TabulaBrandPaths.MarkViewport else TabulaBrandPaths.LockupWidth
+        val factor = minOf(size.width / width, size.height / TabulaBrandPaths.LockupHeight)
         scale(factor, factor, pivot = Offset.Zero) {
             drawPath(mark, colors.brandMark)
-            translate(TabulaBrandPaths.WordmarkX, TabulaBrandPaths.WordmarkY) {
+            if (!markOnly) translate(TabulaBrandPaths.WordmarkX, TabulaBrandPaths.WordmarkY) {
                 drawPath(wordmark, colors.brandWordmark)
             }
         }

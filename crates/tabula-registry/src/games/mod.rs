@@ -9,3 +9,4 @@
 pub mod chess; // xtask-allow-game-id: the registry is the catalog's only game-naming boundary.
 #[cfg(feature = "game-tiles")]
 pub mod tiles; // xtask-allow-game-id: the registry is the catalog's only game-naming boundary.
+pub mod werewolf; // xtask-allow-game-id: inert planned information, never runtime registration.

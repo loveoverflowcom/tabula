@@ -361,7 +361,12 @@ private fun ShellTopbar(
                     verticalInset = TabulaSpace.xxs,
                 ) { color -> NavigationIcon("back", color) }
             }
-            Box(Modifier.weight(1f)) { TabulaBrand(height = TabulaSpace.xxxl.dp) }
+            Box(Modifier.weight(1f)) {
+                if (destination == Destination.Games) Row(horizontalArrangement = Arrangement.spacedBy(TabulaSpace.sm.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TabulaBrand(height = TabulaSpace.xxxl.dp, markOnly = true)
+                    TabulaText(strings[ShellCopy.Games], TabulaType.shellDisplay, Modifier.weight(1f).semantics { heading() })
+                } else TabulaBrand(height = TabulaSpace.xxxl.dp)
+            }
             ShellInteractiveSurface(
                 colors.shellPaper.copy(alpha = 0f), colors.primary,
                 onClick = { onNavigate(Destination.Account) },

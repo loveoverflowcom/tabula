@@ -101,6 +101,14 @@ remains unavailable. The shell top bar uses the canonical T Portal
 identity from the generated brand paths, with one accessible Tabula heading.
 Android/iOS launcher assets remain exports of the approved brand artwork. No decorative oversized border or second palette is introduced.
 
+The 2026-10-08 Library continuation follows the owner-supplied
+`tabula-cmp-mobile-design` pack, whose handoff pins metadata/token provenance to
+[`develop @ 6d31cef51f9f186e6bd43213c6ecb0d0d7a47162`](https://github.com/loveoverflowcom/tabula/tree/6d31cef51f9f186e6bd43213c6ecb0d0d7a47162).
+Its list/grid, filter and detail references inform the existing shared CMP
+components; Home and Account retain their existing design. Game-owned square
+discovery logos are lightweight catalog resources, separate from gameplay packs.
+The pack's HTML browser QA is design evidence and proves no CMP/native execution.
+
 ## Shell navigation and copy
 
 Issue #101 adds the [adaptive shell foundation](../../docs/ui/screens/mobile-shell.md):
@@ -117,6 +125,27 @@ scale. Account text uses compact generated roles and stacks identity details
 when a row would leave too little reading width; 200% text remains supported.
 The Account entry uses a neutral human silhouette; native account and full catalog
 services have visible unavailable states.
+
+Library now defaults to a list and offers a list/grid choice. Both use 72 dp
+square game logos; grid reduces from two columns at 390 dp to one at 320 dp or
+200% text. Its title sits beside the T Portal mark in the compact top bar, with
+search at the start of page content and no Library hero/banner. Filters are
+labeled dropdowns in a modal bottom sheet with draft/Reset/Apply behavior:
+dismissing leaves applied results unchanged. The detail sheet uses an 88 dp
+square logo and preserves the caller's query, view choice and scroll on return.
+Registered entries retain read-only setup review; production native launch
+remains unavailable. Material dialog owns sheet insets; outer shell owns page insets.
+Registered mode declarations are available through the Ways to play disclosure toggle.
+
+The generated Library inventory contains the linked public games and a separate
+metadata-only planned Werewolf descriptor. Its Coming soon/Sắp có label permits
+information browsing only, with no setup, modes/configuration or launch action.
+The manifest's disabled/staff rollout remains unchanged, no playable registry
+module or runtime pack is added, and Home excludes planned information. See
+[the mobile shell contract](../../docs/ui/screens/mobile-shell.md) for the current
+Library behavior and evidence boundary.
+A restored setup route for a planned entry shows information-only unavailability,
+with no configuration fields or start action.
 
 Issue #103 adds the [bounded account task slice](../../docs/ui/screens/mobile-account.md):
 Account, Sign in, Create account, read-only self Profile and Friends. The account port has explicit

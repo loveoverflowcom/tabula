@@ -15,9 +15,10 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
@@ -29,6 +30,7 @@ import com.loveoverflow.tabula.mobile.bridge.ThemePreference
 import com.loveoverflow.tabula.mobile.design.TabulaAccessibility
 import com.loveoverflow.tabula.mobile.design.TabulaScheme
 import com.loveoverflow.tabula.mobile.host.BundledGame
+import com.loveoverflow.tabula.mobile.catalog.RegistryDiscoveryCatalog
 import com.loveoverflow.tabula.mobile.localization.ShellCopy
 import com.loveoverflow.tabula.mobile.localization.ShellStrings
 import com.loveoverflow.tabula.mobile.shell.DeviceFacts
@@ -46,7 +48,27 @@ import kotlin.test.assertTrue
 internal fun DesktopComposeUiTest.captureShell(name: String) {
     val path = System.getProperty("tabula.preview.screenshots") ?: return
     val directory = File(path).also { it.mkdirs() }
-    ImageIO.write(onRoot().captureToImage().toAwtImage(), "png", File(directory, "$name.png"))
+    // Local PNG decoding is asynchronous. A known registry icon still showing its fallback is
+    // unfinished capture setup; missing packaged artwork must fail instead of looking complete.
+    val mountedIcons = RegistryDiscoveryCatalog.games.filter { game ->
+        game.catalogIcon != null && onAllNodesWithTag("discovery-icon-fallback-${game.id}", useUnmergedTree = true)
+            .fetchSemanticsNodes().isNotEmpty()
+    }
+    if (mountedIcons.isNotEmpty()) {
+        waitUntil(timeoutMillis = 5_000) {
+            mountedIcons.all { game ->
+                onAllNodesWithTag("discovery-icon-fallback-${game.id}", useUnmergedTree = true)
+                    .fetchSemanticsNodes().isEmpty()
+            }
+        }
+        waitForIdle()
+    }
+    // A native Compose sheet/menu owns an additional root. Capture the topmost current root,
+    // including the modal, rather than asking for a unique root or recording only background UI.
+    val roots = onAllNodes(isRoot(), useUnmergedTree = true)
+    val count = roots.fetchSemanticsNodes().size
+    assertTrue(count > 0, "a screenshot requires a mounted Compose root")
+    ImageIO.write(roots[count - 1].captureToImage().toAwtImage(), "png", File(directory, "$name.png"))
 }
 
 /**
@@ -241,6 +263,8 @@ class ShellNavigationTest {
             // Exercise actual Compose registry save/dispose/restore with its standard saver values.
             fun shellValueCanBeSaved(value: Any?): Boolean = when (value) {
                 null, is String, is Int, is Long, is Float, is Double, is Boolean -> true
+                // Material3 saves this public presentation enum; Android Bundle supports enums.
+                is Enum<*> -> true
                 is List<*> -> value.all(::shellValueCanBeSaved)
                 is Map<*, *> -> value.all { (key, item) -> shellValueCanBeSaved(key) && shellValueCanBeSaved(item) }
                 is MutableState<*> -> shellValueCanBeSaved(value.value)

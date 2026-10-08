@@ -2,17 +2,24 @@ package com.loveoverflow.tabula.mobile.shell
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
@@ -23,9 +30,12 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.loveoverflow.tabula.mobile.catalog.DiscoveryCover
+import com.loveoverflow.tabula.mobile.catalog.DiscoveryGame
 import com.loveoverflow.tabula.mobile.design.LocalTabulaColors
 import com.loveoverflow.tabula.mobile.design.TabulaColors
 import com.loveoverflow.tabula.mobile.design.TabulaShape
@@ -33,7 +43,57 @@ import com.loveoverflow.tabula.mobile.design.TabulaSpace
 import com.loveoverflow.tabula.mobile.resources.Res
 import com.loveoverflow.tabula.mobile.resources.tabula_discovery_hero
 import kotlin.math.tan
+import kotlinx.coroutines.CancellationException
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.painterResource
+
+/** Square game-owned discovery icon; optional art never controls a card's metadata/action (I-9). */
+@Composable
+fun DiscoveryGameIcon(
+    game: DiscoveryGame,
+    modifier: Modifier = Modifier,
+    size: Dp = 72.dp,
+) {
+    val colors = LocalTabulaColors.current
+    val density = LocalDensity.current
+    val pixels = if (with(density) { size.toPx() } > 256f) 512 else 256
+    // Only generated local file stems are accepted; previews and future callers
+    // cannot use a malformed name to traverse resources or start network loading.
+    val resource = game.catalogIcon?.takeIf { name ->
+        name.isNotEmpty() && name.all { it in 'a'..'z' || it in '0'..'9' || it == '_' }
+    }
+    val loaded by produceState<DiscoveryIconBitmap?>(null, resource, pixels) {
+        value = null
+        if (resource != null) {
+            try {
+                value = DiscoveryIconBitmap(resource, pixels,
+                    Res.readBytes("files/$resource-$pixels.png").decodeToImageBitmap())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Keep the supplied game name and detail action usable when art is absent.
+            }
+        }
+    }
+    // A newly bound game never briefly displays the preceding card's artwork
+    // while its keyed resource effect starts or fails.
+    val bitmap = loaded?.takeIf { it.resource == resource && it.pixels == pixels }?.image
+    val shape = RoundedCornerShape(TabulaShape.card.dp)
+    val artTag = if (bitmap != null) "discovery-icon-loaded-$resource" else "discovery-icon-fallback-${game.id}"
+    Box(modifier.size(size).clip(shape), contentAlignment = Alignment.Center) {
+        if (bitmap != null) {
+            Image(bitmap = bitmap, contentDescription = null, contentScale = ContentScale.Fit,
+                modifier = Modifier.size(size).testTag(artTag).clearAndSetSemantics { })
+        } else {
+            Box(Modifier.size(size).background(colors.shellNote, shape).testTag(artTag).clearAndSetSemantics { },
+                contentAlignment = Alignment.Center) {
+                ShellIcon(ShellSymbol.Library, colors.onSurfaceVariant, size = size / 2)
+            }
+        }
+    }
+}
+
+private data class DiscoveryIconBitmap(val resource: String, val pixels: Int, val image: ImageBitmap)
 
 /** Decorative game-owned cover only; this does not load a runtime asset or any match data (I-5). */
 @Composable

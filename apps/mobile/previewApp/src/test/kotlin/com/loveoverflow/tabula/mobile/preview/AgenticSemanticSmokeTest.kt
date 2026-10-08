@@ -10,9 +10,9 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -72,7 +72,7 @@ class AgenticSemanticSmokeTest {
         unique("shell-detail").assertIsDisplayed()
         unique("discovery-native-unavailable").performScrollTo().assertIsDisplayed()
         unique("shell-setup-action").performScrollTo().assertIsDisplayed()
-        assertScrolled()
+        assertScrolled("discovery-detail-scroll")
         snapshot(language, "detail")
 
         click("shell-setup-action")
@@ -118,8 +118,8 @@ class AgenticSemanticSmokeTest {
         waitForIdle()
     }
 
-    private fun DesktopComposeUiTest.assertScrolled() {
-        val node = unique("shell-content-scroll").assert(SemanticsMatcher.keyIsDefined(SemanticsActions.ScrollBy))
+    private fun DesktopComposeUiTest.assertScrolled(tag: String = "shell-content-scroll") {
+        val node = unique(tag).assert(SemanticsMatcher.keyIsDefined(SemanticsActions.ScrollBy))
         val range = node.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
         assertTrue(range.maxValue() > 0f && range.value() > 0f, "a semantic scroll must reach content beyond the viewport")
     }
@@ -127,7 +127,12 @@ class AgenticSemanticSmokeTest {
     private fun DesktopComposeUiTest.snapshot(language: String, stage: String) {
         System.getProperty("tabula.preview.screenshots")?.let { output ->
             val directory = File(output, "agentic-semantics").also { it.mkdirs() }
-            File(directory, "$language-$stage.txt").writeText(onRoot(useUnmergedTree = true).printToString())
+            val roots = onAllNodes(isRoot(), useUnmergedTree = true)
+            val count = roots.fetchSemanticsNodes().size
+            assertTrue(count > 0, "a semantic snapshot requires mounted Compose roots")
+            File(directory, "$language-$stage.txt").writeText((0 until count).joinToString("\n\n") { index ->
+                "Root $index\n${roots[index].printToString()}"
+            })
         }
         captureShell("agentic-$language-$stage")
     }

@@ -23,6 +23,10 @@ data class DiscoveryGame(
     val contentRating: String = "everyone",
     val contentRatingNames: Map<String, String> = emptyMap(),
     val hiddenInformation: Boolean = false,
+    /** Opaque generated discovery-file stem; not a gameplay pack or game-specific dispatch key. */
+    val catalogIcon: String? = null,
+    /** Explicit public planned information has no setup or native launch authority. */
+    val planned: Boolean = false,
 ) {
     fun displayName(languageTag: String): String = localized(names, languageTag, id)
     fun tagline(languageTag: String): String = localized(taglines, languageTag)

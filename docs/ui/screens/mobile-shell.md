@@ -25,8 +25,8 @@ it does not interpret their rule meaning or reimplement rules (I-9/I-10).
 | Destination | Public identity | Available behavior |
 |---|---|---|
 | Home | `/` | Branded discovery hero and real public catalog cards; no fabricated saved-match region |
-| Games | `/games` | Localized search and AND-combined category, exact seat-count, maximum estimated duration and complexity filters |
-| Detail | `/games/:id` | Registry artwork, description, metadata, mode declarations and rules-resource availability; unknown IDs never select another game |
+| Games | `/games` | Localized search, list/grid display and an AND-combined category, exact seat-count, maximum estimated duration and complexity filter sheet |
+| Detail | `/games/:id` | Modal information sheet over its caller; registry artwork, description, metadata, mode declarations and rules-resource availability; unknown IDs never select another game |
 | Setup | `/games/:id?setup=1` | Read-only module defaults; explicit launch through a supplied packaged host, otherwise disabled native start and explanation |
 | Account | `/account` | Typed account state, current read-only adapter identity or visible native-adapter unavailability |
 | Account tasks | `/login`, `/register`, `/me`, `/friends` | ADR-0046 task navigation; read-only self Profile; native provider/enrollment/social unavailable |
@@ -40,8 +40,9 @@ action pop shell history. In gameplay, Back first reaches `GameBackPort`, preser
 leave confirmation. Exiting releases the game and native voice session through the existing
 owners. Navigation cannot carry canonical state, credentials or match grants (I-5/I-10).
 
-Saved navigation contains bounded public shell paths. Search/filter preferences and
-screen scroll/expanded-filter state are public presentation state retained across Back.
+Saved navigation contains bounded public shell paths. Applied search/filter preferences,
+list/grid choice and Library scroll position are public presentation state retained across Back.
+Filter edits stay in a local draft until Apply; dismissing the sheet discards that draft.
 An active local game restores to setup, requiring a fresh explicit launch. Launch
 preferences, capabilities and runtime state are not saved.
 No local continuation is promised after process death.
@@ -49,8 +50,38 @@ No local continuation is promised after process death.
 The owner-requested [2026-10-07 prototype adaptation](../../research/main-recovery-20261007/README.md)
 uses the prototype as design input for this existing CMP tree. Home packages its decorative
 board-game illustration through Compose resources; catalog categories remain generated public
-facts and are directly selectable before the advanced filters. Rooms and History contain no
+facts. Rooms and History contain no
 fabricated room, result, rating or replay data and open no native service or phase gate.
+
+The owner's 2026-10-08 Library continuation uses the supplied
+`tabula-cmp-mobile-design` pack (`docs/handoff.md`, `cmp-design-spec.mjs` and its
+Library/filter/detail PNGs). Its source snapshot is
+[`develop @ 6d31cef51f9f186e6bd43213c6ecb0d0d7a47162`](https://github.com/loveoverflowcom/tabula/tree/6d31cef51f9f186e6bd43213c6ecb0d0d7a47162).
+This reference supersedes the compact Library card and inline filter presentation;
+Home and Account retain their existing design. The pack's HTML browser results are
+design provenance, separate from execution of the shared CMP components.
+
+Library defaults to a list, with a labeled list/grid choice and a 72 dp square
+game logo in both layouts. Grid uses two columns at 390 dp when the content fits,
+and one at 320 dp or 200% text; card height follows text rather than clipping it.
+The Library contains no hero or banner. A modal bottom sheet owns labeled category,
+player-count, duration and complexity dropdowns. Opening it copies the applied
+constraints; Reset changes only the draft, Apply commits all axes together, and
+Close/Back discards unapplied edits. Search stays independent and accent-insensitive.
+The settled result count and applied filter summary remain on the Library.
+
+Selecting a row/card opens a scrollable detail sheet with an 88 dp square logo;
+it does not launch a game. Closing detail restores the caller's query, display
+choice and scroll. Registered mode declarations are available through the
+Ways to play disclosure toggle. Registered entries retain the explicit setup
+review handoff and visible native-unavailability explanation. Planned information has no setup
+or launch action. The registry's separate mobile metadata-only planned descriptor
+adds Werewolf with `planned=true` and a localized Coming soon/Sắp có badge; its
+`rollout.enabled=false` and staff audience remain unchanged. This descriptor is
+not a registered playable module, adds no modes/configuration/runtime authority,
+and is excluded from Home's featured inventory.
+A restored setup route for a planned entry shows information-only unavailability,
+without configuration fields or a start action.
 
 Settings stores only three allow-listed presentation choices with saved shell state: appearance
 (System/Light/Dark), language (System/English/Vietnamese) and motion (System/Reduced).
@@ -66,6 +97,9 @@ Phone layouts at 320 and 390 dp use a compact brand/context bar, neutral account
 scrollable page and labeled bottom navigation. Wider layouts use a navigation rail. Safe-area
 padding belongs to the outer chrome; navigation consumes its own layout slot so content is
 not placed underneath it. Large text can increase component heights and scroll content.
+Library puts its title beside the canonical T Portal mark in the compact top bar,
+without a duplicate page heading. Home and Account retain the full wordmark.
+Modal sheet insets belong to the Material dialog; page insets remain at the outer shell.
 Compact pages and cards use 16 dp insets. Nested shell tasks use a 48 dp Back icon
 target with the localized accessible name; the brand and account entry retain their
 own space at 200% text. The gameplay toolbar retains its labelled Back action.
@@ -95,14 +129,14 @@ CMP navigation, Back, search, neutral Person avatar and radio indicators use
 official Material Symbols Outlined through Material3 `Icon`, with explicit
 generated tint/size and decorative child semantics. Their existing parent owns
 the localized action, selected state and full touch/focus target. Back keeps
-the upstream vector's RTL mirroring. The pinned seven-symbol subset and Apache-2.0
+the upstream vector's RTL mirroring. The pinned fifteen-symbol subset and Apache-2.0
 attribution are recorded in [the mobile icon source](../../../apps/mobile/MATERIAL-SYMBOLS.md).
 Brand and game artwork retain their existing owners.
 
-Compact Home/Library page, Home catalog and hero headings use the generated `shell-display` role
+Compact Home page, Home catalog and hero headings use the generated `shell-display` role
 (serif, 28sp/36sp, regular weight). At default text size, the Home illustration is a
 96dp landscape thumbnail beside the hero heading; prose and the browse action keep the
-full reading width. Compact catalog cards put a landscape thumbnail beside the
+full reading width. Compact Home catalog cards put a landscape thumbnail beside the
 name/tagline: 84dp wide in cards below 340dp, otherwise 120dp. It preserves the
 declared source aspect ratio and has one 4dp corner clip; a full-card radius is
 not applied inside this short image. Complete metadata and the detail action
