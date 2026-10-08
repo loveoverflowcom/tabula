@@ -18,8 +18,24 @@ android {
     }
 }
 
-// ADR-0043: no web gameplay bundle is a mobile input. Native packaging will be added only with
-// an executable platform adapter; meanwhile the empty launch catalog fails closed.
+// ADR-0043: no web gameplay bundle is a mobile input. The explicit native task below is a
+// blocked source seam; assembleDebug continues to build only the unavailable CMP shell.
+
+tasks.register("prepareNativeGameRuntime") {
+    group = "build"
+    description = "Native GameHost skeleton gate; fails until approved Android backend/ABI/packaging exist."
+    doLast {
+        // TODO(phase 6): approved safe ABI + pinned stoppable Miniquad/Macroquad embedding, then
+        // build the selected registry/local-game composition for the requested device ABI with
+        // the pinned Rust/NDK tools. Verify .so identity, contract version and bounded hashed
+        // game/font/license packs; generate the exact runtime inventory before enabling Play.
+        // Do not attach this task to shell assemble or copy stale/standalone/web artifacts.
+        throw GradleException(
+            "native-game-runtime-not-implemented: approved Android backend/ABI and deterministic " +
+                "native-library/verified-asset packaging are required; no runtime artifacts were produced.",
+        )
+    }
+}
 
 // AGP 9 supplies built-in Kotlin. The Compose compiler and all UI code live in :shared.
 dependencies {

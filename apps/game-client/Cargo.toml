@@ -2,14 +2,14 @@
 name        = "tabula-game-client"
 default-run = "tabula-game-client"
 version     = "0.0.0"
-description = "The Macroquad gameplay client: desktop and web-at-/play/:match_id (the wasm build is also what the mobile WebView loads, ADR-0032)."
+description = "The Macroquad gameplay client: desktop and web-at-/play/:match_id; native mobile embedding remains unavailable (ADR-0043)."
 edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
 publish.workspace      = true
 
-# PHASE 2 (hot-seat) → PHASE 4 (online) → PHASE 6 (mobile WebView host, ADR-0032).
+# PHASE 2 (hot-seat) → PHASE 4 (online) → PHASE 6 (native mobile host, ADR-0043).
 #
 # I-15: `leptos` must NEVER appear in this crate's dependency graph, native or
 # wasm. Gameplay does not live in a DOM runtime (ADR-011, ADR-019).
@@ -17,8 +17,8 @@ publish.workspace      = true
 
 [lib]
 name       = "tabula_game_client"
-# Mobile no longer links this crate as a cdylib/staticlib: ADR-0032 hosts the wasm build in a
-# WebView instead, so only `rlib` is needed (doc 01 §7).
+# Native mobile ABI/artifact packaging is not implemented or approved (ADR-0043).
+# Keep the existing Rust library only; a source skeleton does not create a cdylib/staticlib.
 crate-type = ["rlib"]
 
 [dependencies]
