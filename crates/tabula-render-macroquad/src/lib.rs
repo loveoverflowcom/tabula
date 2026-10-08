@@ -9,6 +9,7 @@
 pub mod assets;
 mod audio;
 mod draw;
+pub mod embedded;
 mod input;
 mod renderer;
 mod state;

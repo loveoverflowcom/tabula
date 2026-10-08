@@ -9,6 +9,7 @@
 pub mod brand;
 pub mod fixture_assets;
 pub mod host_resources;
+pub mod native_host;
 #[cfg(feature = "online")]
 pub mod online;
 mod replay_capture;

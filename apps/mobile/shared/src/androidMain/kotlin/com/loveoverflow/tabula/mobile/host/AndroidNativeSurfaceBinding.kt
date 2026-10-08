@@ -20,8 +20,8 @@ fun assertAndroidNativeOwnerThread() {
 
 /**
  * Real Android callbacks for a dedicated game SurfaceView, with an injected native control port.
- * This is NOT a Macroquad backend/production selector and never reports Ready itself. A future
- * Android GameHost may embed this view through AndroidView in the existing CMP screen.
+ * This is NOT a Macroquad backend and never reports Ready itself. The gated AndroidNativeGameHost
+ * consumer has an AndroidView seam inside the existing CMP screen; preflight remains unavailable.
  *
  * Coordinates/dimensions are local physical pixels. CMP owns safe insets. Render scheduling,
  * context, decoding/upload and first usable frame stay in Rust; there is no Kotlin frame ticker.

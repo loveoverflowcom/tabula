@@ -143,8 +143,9 @@ sealed interface NativeRuntimeEvent {
 }
 
 /**
- * Adapter port only. No shipping implementation exists yet. Pinned Miniquad start/quit alone
- * cannot satisfy this contract. No credentials, audio/voice, state, RenderList or executable
+ * Adapter port only. Android has a fail-closed source skeleton, not a shipping native backend.
+ * Pinned Miniquad start/quit alone cannot satisfy this contract. No credentials, audio/voice,
+ * state, RenderList or executable
  * downloads cross it. An FFI shim must contain panics and needs its own reviewed policy boundary.
  */
 interface NativeRuntimePort {

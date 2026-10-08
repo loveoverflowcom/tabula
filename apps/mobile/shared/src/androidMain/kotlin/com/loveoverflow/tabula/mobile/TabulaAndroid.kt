@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.loveoverflow.tabula.mobile.host.AndroidNativeGameHost
 import com.loveoverflow.tabula.mobile.voice.AndroidLiveKitVoiceClient
 import com.loveoverflow.tabula.mobile.voice.AndroidMicrophonePermission
 import com.loveoverflow.tabula.mobile.voice.DevVoiceGrantSource
@@ -30,9 +31,9 @@ fun ComponentActivity.installTabulaContent() {
             owner.lifecycle.removeObserver(this)
         }
     })
-    // ADR-0043: the native adapter is not implemented. The default host and empty catalog
-    // expose the unavailable state; no web document or alternate runtime is launched.
-    setContent { TabulaApp(voice = voice, voiceScope = DevVoiceGrantSource.SCOPE) }
+    // ADR-0043: the source skeleton has a failed native packaging/backend preflight and an empty
+    // runtime inventory. It cannot mount its surface seam or advertise a playable game.
+    setContent { TabulaApp(gameHost = AndroidNativeGameHost, voice = voice, voiceScope = DevVoiceGrantSource.SCOPE) }
 }
 
 /** Production has no grant issuer. Only debuggable builds can read the native-only local fixture. */
