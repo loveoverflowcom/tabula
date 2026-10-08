@@ -16,6 +16,10 @@ The later [2026-10-07 adapter-contract prototype](adapter-prototype.md) has its 
 fresh-develop source and local-check scope. The rows below retain this original
 2026-10-06 implementation/evidence and do not claim current native device execution.
 
+The later [Android source skeleton](android-skeleton.md) is explicitly skeleton-only,
+with typed unavailable operations and an empty runtime inventory. Its fresh-source,
+unit/compile, packaging and native-device statuses are separate from both older ledgers.
+
 ## Observable change and ownership
 
 Both mobile entrypoints now provide the unavailable default host and an empty launch

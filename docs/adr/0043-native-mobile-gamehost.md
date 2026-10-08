@@ -58,6 +58,14 @@ adapter: no shipping port, native artifact/assets package or iOS child-controlle
 is delivered. Both production entrypoints remain unavailable with empty runtime
 inventory. The existing unsafe-code prohibition and all unrelated gates stand.
 
+The owner-requested [Android source skeleton](../verification/mobile-native-host/android-skeleton.md)
+extends those seams with a fail-closed Android port/factory and embedded-view
+consumer, plus safe Rust proposal contracts and an explicitly blocked packaging
+task. It does not grant an unsafe/export exception or supply a native backend.
+Android selects that gated consumer with no packaged games; iOS remains unavailable.
+The playable/device acceptance below is a future implementation gate, not a claim
+that this skeleton delivers frames, a Chess move, successful fencing or stop/join.
+
 ## Contract for the native backend
 
 The existing `GameHost` seam remains launch/preferences/capabilities in and

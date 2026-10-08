@@ -5,8 +5,9 @@ requires the existing Rust/Macroquad gameplay runtime to run natively in the sam
 application. It supersedes the gameplay WebView/WKWebView choice and packaging of
 ADR-0032/0033. Web gameplay keeps its Rust/WASM document and verified loader.
 
-**Current build: shell only, gameplay unavailable.** Both production entrypoints
-use the unavailable default host and an empty packaged-game list. The independent
+**Current build: shell only, gameplay unavailable.** Android selects a gated native
+GameHost source skeleton; iOS keeps the unavailable default. Both have an empty
+packaged-game list. The independent
 public discovery catalog is generated from `tabula-registry` under
 [ADR-0045](../../docs/adr/0045-mobile-discovery-parity.md). No native game
 adapter/library/assets pipeline has been delivered; no hidden web fallback is
@@ -18,6 +19,13 @@ now provides a typed native port, pure lifecycle coordinator, joined-worker admi
 gate and Android SurfaceView callback binding. Its controlled test port is not a
 Macroquad backend. Production gameplay remains unavailable; actual Android/iOS
 embedding, native libraries/assets and target/device checks are still required.
+
+The [Android source skeleton](../../docs/verification/mobile-native-host/android-skeleton.md)
+adds exhaustive command/error dispatch, a preflight before worker admission, an
+embedded AndroidView/SurfaceView consumer seam and safe Rust backend/composition
+contracts. Every missing operation has a named TODO or typed unavailable error.
+It implements no JNI exports, upstream patch, native worker or playable game.
+Readiness, successful fencing, frame presentation and stop/join are never fabricated.
 
 ```text
 apps/mobile/shared/      CMP UI/navigation, generated tokens, GameHost seam, native voice policy
@@ -62,6 +70,12 @@ explicitly. Mobile builds do not build/copy HTML/JavaScript/WASM gameplay bundle
 Native artifact/assets packaging is a required follow-up after the adapter spike,
 not a rename of the old web-bundle task. CI is configured to inspect source/configuration and built
 APK/app contents against the native-only policy; this establishes no native frame.
+
+`:android:prepareNativeGameRuntime` is an explicit source-skeleton gate that fails
+with `native-game-runtime-not-implemented`. It produces no library/assets/inventory
+and is deliberately separate from shell-only `assembleDebug`. Implement the
+approved backend/ABI and selected-game packaging before wiring it into gameplay
+builds. An APK built by the current shell task cannot establish runtime availability.
 
 Desktop CMP tests render actual shared shell pixels and exercise the host seam
 with a simulated page. They can inspect 320/390 dp layout, wrapping, scrolling,

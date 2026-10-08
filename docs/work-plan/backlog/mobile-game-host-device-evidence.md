@@ -12,6 +12,12 @@ now supplies common admission/lifecycle decisions and an Android surface callbac
 binding. Its controlled port tests do not establish a native context or thread.
 Keep the next engine/ABI decision distinct from this reviewable groundwork.
 
+The [Android source skeleton](../../verification/mobile-native-host/android-skeleton.md)
+now names the owning Kotlin port/factory/view and Rust backend/composition seams.
+Every unavailable operation is explicit; production inventory is still empty.
+The packaging task intentionally fails and no playable/device acceptance is closed.
+Implement the slices below rather than treating TODOs or compilation as native readiness.
+
 ## Next small review boundaries
 
 1. Review/pin a bounded Miniquad embedding API/patch: iOS attach to the existing CMP
