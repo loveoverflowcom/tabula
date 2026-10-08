@@ -127,6 +127,7 @@ jobs:
 
   # ADR-0043: compile the CMP shell and inspect its APK for retired web gameplay payloads.
   # Desktop preview uses test doubles; neither a native game adapter nor device execution is proved.
+  # The headless semantic regression suite is distinct from the local interactive MCP/reload smoke.
   mobile:
     runs-on: ubuntu-latest
     steps:
@@ -134,10 +135,30 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
+      - name: Verify official desktop Hot Reload and MCP task wiring
+        working-directory: apps/mobile
+        run: |
+          mkdir -p previewApp/build/reports/agentic
+          ./gradlew --console=plain help --task :previewApp:hotRun > previewApp/build/reports/agentic/hot-run-task.txt
+          ./gradlew --console=plain help --task :previewApp:hotMcpServer > previewApp/build/reports/agentic/hot-mcp-task.txt
       - working-directory: apps/mobile
         run: ./gradlew --console=plain :shared:testAndroidHostTest :previewApp:test :android:assembleDebug
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - name: Assert nonempty deterministic agent semantic regression results
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          path = Path("apps/mobile/previewApp/build/test-results/test/TEST-com.loveoverflow.tabula.mobile.preview.AgenticSemanticSmokeTest.xml")
+          suite = ET.parse(path).getroot()
+          cases = suite.findall("testcase")
+          assert cases, "agent semantic suite selected no tests"
+          assert int(suite.get("tests", "0")) == len(cases), "incomplete agent semantic test report"
+          assert not any(case.find(result) is not None for case in cases for result in ("failure", "error", "skipped")), "agent semantic regression did not pass every selected case"
+          print(f"PASS: {len(cases)} deterministic shared-shell semantic tests; interactive MCP/reload is a separate local check")
+          PY
       - run: python3 tools/check-mobile-native-policy.py --apk apps/mobile/android/build/outputs/apk/debug/android-debug.apk
       - working-directory: apps/mobile
         run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
@@ -147,6 +168,8 @@ jobs:
           name: mobile-shell-doubles-evidence
           path: |
             apps/mobile/previewApp/build/reports/shell-screenshots
+            apps/mobile/previewApp/build/reports/agentic
+            apps/mobile/previewApp/build/reports/tests/test
             apps/mobile/previewApp/build/test-results/test
             apps/mobile/shared/build/test-results
           if-no-files-found: warn

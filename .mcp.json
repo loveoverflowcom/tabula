@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tabula-compose": {
+      "command": "bash",
+      "args": ["./tools/mobile-preview.sh", "mcp"]
+    }
+  }
+}
