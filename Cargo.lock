@@ -3215,6 +3215,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tabula-game-age-war"
+version = "0.0.0"
+dependencies = [
+ "tabula-assets",
+ "tabula-design",
+ "tabula-presentation",
+ "tabula-testkit",
+]
+
+[[package]]
 name = "tabula-game-api"
 version = "0.1.0"
 dependencies = [

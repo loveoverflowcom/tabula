@@ -47,6 +47,16 @@ are preserved in [`docs/legacy/tictactoe.md`](../docs/legacy/tictactoe.md)).
 is either a declarative capability the platform reads, or a behaviour the game
 implements behind the same five functions.
 
+## Design-only additions outside the reference portfolio
+
+[`age-war`](age-war) is [D01 #119](https://github.com/loveoverflowcom/tabula/issues/119):
+original unbalanced typed descriptors, validation and arithmetic oracles. It has
+no `GameRules`/`GameModule`, manifest, registry entry, bot/presentation/runtime,
+assets or discovery availability. The feature names are scaffold shape only;
+conformance has no reachable game fixture yet. Its [design entry](../docs/games/age-war.md)
+keeps D02–D06/owner approval and the board-runtime compatibility gate closed.
+It is not a fifth reference game or a shipping game.
+
 ## New-game checklist (doc 02 §14)
 
 ```text
