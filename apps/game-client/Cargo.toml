@@ -77,6 +77,8 @@ online = ["dep:tabula-protocol", "dep:tabula-net-client", "dep:tabula-match-http
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tabula-game-chess = { workspace = true, features = ["rules", "presentation"] }
 tabula-game-tiles = { workspace = true, features = ["rules", "presentation", "bots"] }
+# D05 presentation-pilot example only: the compiled D01 catalog is its timing oracle.
+tabula-game-age-war = { workspace = true, features = ["rules"] }
 
 [lints]
 workspace = true

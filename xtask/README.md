@@ -47,6 +47,7 @@ xtask = "run --package xtask --"
 | `stage-mobile-game` | retired (ADR-0043) | Explicit error: mobile web gameplay is retired; native adapter/artifact packaging remains blocked. Web staging commands remain available. |
 | `stage-wasm-game` | 2 | Stages the checked-in HTML host, pinned JS bootstrap, and wasm-release binary into `target/tabula-web-game/` |
 | `pack-assets <game>` | 3 | Reads games/<game>/assets/pack.source.toml, builds deterministic full-BLAKE3 content-addressed files, validates and verifies a staged pack, then publishes it under target/asset-packs/ |
+| `pack-assets --external <dir> --game-id com.tabula.<game> --pack <pack@version> [--out <dir>]` | 3 | Same plan/publication/verification over an explicit (for example private) source directory; the id must match exactly one existing `games/<dir>` with `-`/`_` removed; registers nothing |
 | `gen-protocol-vectors --bump minor\|major` | 4 | Regenerates golden wire vectors, bumps `PROTOCOL_VERSION`, appends to `protocol-changelog.md` (planned Phase 4) |
 | `check-protocol` | 4 | Golden vectors round-trip; the I-13 version gate (planned Phase 4) |
 | `db reset` / `db migrate` | 4 | Local Postgres lifecycle (planned Phase 4) |

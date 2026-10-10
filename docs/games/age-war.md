@@ -1,7 +1,8 @@
 # Age War — D01 design entry
 
 **Status: DRAFT / OWNER REVIEW PENDING.** Internal slug `age-war` is a working
-identifier, not an approved commercial name. Design version `0.1.0-d01`.
+identifier, not an approved commercial name. Rules design version `0.1.0-d01`;
+D05 presentation packs `0.5.0` and D06 HUD review remain private design evidence.
 
 This entry answers [D01 #119](https://github.com/loveoverflowcom/tabula/issues/119)
 within [roadmap #118](https://github.com/loveoverflowcom/tabula/issues/118).
@@ -18,6 +19,8 @@ arithmetic oracles and explicit unsupported seams**, not production gameplay.
 | [Compatibility / draft ADR](age-war/COMPATIBILITY.md) | Board-runtime conflict, clock/authority alternatives and decision gate |
 | [QA plan](age-war/QA-PLAN.md) | Fair AI, benchmark policies, independent oracles and planned experiments |
 | [D01 verification](../verification/age-war-d01/README.md) | Only checks actually executed on this scaffold |
+| [D05 runtime set](../verification/age-war-d05/README.md) | Private D05 delivery verified into per-age runtime packs; D01 timing oracle; presentation pilot evidence |
+| [D06 HUD/UX contract](age-war/D06-HUD-UX.md) | Screens/states, intent/event/asset map, input/memory/clock decisions and the owner code gate |
 | [Design-only crate](../../games/age-war/README.md) | Compilable schemas/catalog/validation/math; no runnable game |
 
 ## Rules and information model
@@ -40,7 +43,8 @@ Spectators use the public projection; an Audit viewer is never a player session.
 This is an information-model **proposal**, not a tested `project`/`view_event`
 implementation. There is no `GameRules`, `GameModule`, `GameBot` or
 `GamePresentation` implementation, game manifest, registry registration,
-discovery availability, asset pack or gameplay entrypoint in this PR.
+discovery availability or gameplay entrypoint. D05 tooling seals private review
+packs only; it does not make them available to a production host.
 `conformance!` therefore has no reachable game fixture yet and is
 NOT_APPLICABLE to the D01 schema-only slice, required before C01 acceptance.
 

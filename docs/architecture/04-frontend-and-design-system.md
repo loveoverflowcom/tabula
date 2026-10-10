@@ -1212,6 +1212,7 @@ The current implementation includes the pure identity, binding, resolution, and 
 Implemented now:
 
 - deterministic xtask pack-assets <game> source inspection, full-digest paths, runtime manifest generation, staged publication, and post-build integrity verification.
+- the same builder over an explicit source directory (`pack-assets --external <dir> --game-id com.tabula.<game> --pack <pack@version>`), so rights-pending or private art can be sealed without entering `games/<game>/assets`; it registers nothing and reads no `game.toml`.
 
 - manifest TOML parsing with unknown-field rejection;
 - validated pack/file identity, canonical relative paths, hashes, sizes, priorities, and densities;

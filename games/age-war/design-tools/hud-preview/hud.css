@@ -1,0 +1,58 @@
+/* D06 review chrome uses the generated Tabula adapter (doc 04 §8.1).
+   Authored battlefield colours remain in the private D03/D05 artwork. */
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--sys-color-surface); color: var(--sys-color-on-surface); font-family: var(--sys-type-family-text); }
+button, select, input { font: inherit; }
+button, select { color: var(--sys-color-on-surface); background: var(--sys-color-container-high); border: 1px solid var(--sys-color-outline); border-radius: var(--sys-shape-button); min-height: 44px; padding: 8px 12px; cursor: pointer; }
+button:hover { background: color-mix(in srgb, var(--sys-color-primary) 18%, var(--sys-color-container-high)); }
+button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-visible { outline: 3px solid var(--sys-color-selected); outline-offset: 2px; }
+button[aria-disabled=true] { opacity: .65; cursor: help; }
+.primary { background: var(--sys-color-primary); color: var(--sys-color-on-primary); }
+.review-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--sys-color-outline); }
+.review-tools label { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.review-tools strong { color: var(--sys-color-primary); margin-right: 12px; }
+.review-tools strong img { vertical-align: middle; margin-right: 6px; }
+.viewport-scroll { overflow: auto; padding: 16px; }
+.battle { position: relative; overflow: hidden; isolation: isolate; background: var(--sys-color-container); border-radius: var(--sys-shape-board); font-size: calc(12px * var(--review-font, 1)); }
+.stage { position: absolute; left: 0; width: 100%; object-fit: fill; }
+canvas.stage { touch-action: none; }
+.hud { position: absolute; }
+.panel { background: var(--sys-color-surface); color: var(--sys-color-on-surface); border: 1px solid var(--sys-color-outline); }
+.topbar { border-radius: 0 0 var(--sys-shape-lg) var(--sys-shape-lg); }
+.dock { border-radius: var(--sys-shape-xl) var(--sys-shape-xl) 0 0; }
+.control { position: absolute; padding: 2px; min-height: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; overflow: hidden; }
+.control img { display: block; width: 100%; height: calc(100% - 19px); object-fit: contain; }
+.control .price { font-size: calc(11px * var(--review-font, 1)); line-height: 1; font-variant-numeric: tabular-nums; }
+.control .short-name { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+.control small { font-size: 10px; }
+.control.spell { border-radius: var(--sys-shape-full); background: var(--sys-color-primary); color: var(--sys-color-on-primary); }
+.control.socket { border-radius: var(--sys-shape-xs); border-style: dashed; }
+.control.queue-entry { border-radius: var(--sys-shape-sm); background: var(--sys-color-container-high); }
+.economy { display: flex; flex-direction: column; justify-content: center; gap: 4px; line-height: 1.25; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hp { display: flex; align-items: center; padding: 0 6px; gap: 6px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hp progress { flex: 1; min-width: 12px; max-width: 120px; accent-color: var(--sys-color-team-1); }
+.hp.enemy progress { accent-color: var(--sys-color-team-2); }
+.hp.critical { color: var(--sys-color-danger); }
+.minimap { border-radius: var(--sys-shape-full); background: var(--sys-color-container-high); border: 1px solid var(--sys-color-outline); }
+.minimap::after { content: ''; position: absolute; left: 35%; width: 30%; height: 100%; border: 1px solid var(--sys-color-primary); border-radius: inherit; }
+.clock { display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.lane-note { position: absolute; left: 8px; pointer-events: none; font-size: 10px; background: var(--sys-color-surface); border-radius: var(--sys-shape-xs); padding: 2px 6px; }
+.notice { position: absolute; left: 50%; transform: translateX(-50%); top: 22%; max-width: 70%; text-align: center; padding: 8px 16px; border-radius: var(--sys-shape-full); background: var(--sys-color-primary); color: var(--sys-color-on-primary); pointer-events: none; }
+.aim { position: absolute; pointer-events: none; border: 2px dashed var(--sys-color-legal-target); border-radius: var(--sys-shape-full); }
+.aim-actions { position: absolute; display: flex; gap: 8px; }
+.preview-label, .evidence-note { margin: 8px 16px; color: var(--sys-color-on-surface-variant); font-size: 12px; }
+.review-info { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
+.review-info pre { white-space: pre-wrap; font-size: 12px; max-height: 200px; overflow: auto; }
+.review-info details { padding: 12px; border: 1px solid var(--sys-color-outline); border-radius: var(--sys-shape-lg); }
+.review-info summary { cursor: pointer; }
+dialog { color: var(--sys-color-on-surface); background: var(--sys-color-surface); border: 1px solid var(--sys-color-outline); border-radius: var(--sys-shape-sheet); max-width: min(640px, 92vw); max-height: 84vh; padding: 24px; font-size: calc(14px * var(--review-font, 1)); }
+dialog::backdrop { background: color-mix(in srgb, var(--sys-color-surface) 80%, transparent); }
+dialog h2 { font-family: var(--sys-type-family-display); font-size: 1.6em; margin: 0 0 12px; }
+dialog p { line-height: 1.5; }
+.dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.codex { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.codex button { text-align: left; }
+.codex img { width: 48px; height: 48px; object-fit: contain; float: left; margin-right: 8px; }
+.boot-error { margin: 24px; padding: 24px; border: 1px solid var(--sys-color-danger); border-radius: var(--sys-shape-lg); }
+@media (max-width: 700px) { .review-info { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

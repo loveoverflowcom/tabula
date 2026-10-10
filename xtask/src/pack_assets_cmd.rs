@@ -16,8 +16,9 @@ use std::{
 use serde::{Deserialize, Serialize};
 use tabula_assets::{
     AssetFileName, AssetFileNameError, AssetIntegrityError, AssetPackManifest, AssetPackRef,
-    AssetPath, AssetPathError, ManifestBindingError,
+    AssetPackRefError, AssetPath, AssetPathError, ManifestBindingError,
 };
+use tabula_core::GameId;
 
 use crate::manifest_policy::{
     self, GameAssetBinding, GameAssetBindingError, ManifestParseError, ManifestViolation,
@@ -513,18 +514,72 @@ pub(crate) enum PackBuildError {
 // Imperative shell
 // ---------------------------------------------------------------------------
 
+/// Parsed command line. The external form exists for game-owned sources that
+/// must not be committed (for example art whose rights review is pending); it
+/// reuses the same plan, publication and runtime-parser checks as `<game>`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum PackAssetsArgs {
+    Game(String),
+    External {
+        source: PathBuf,
+        game_id: String,
+        pack: String,
+        out: Option<PathBuf>,
+    },
+}
+
+fn parse_args(args: &[String]) -> Result<PackAssetsArgs, PackAssetsError> {
+    match args {
+        [game] if !game.starts_with("--") => return Ok(PackAssetsArgs::Game(game.clone())),
+        [first, ..] if first == "--external" => {}
+        _ => return Err(PackAssetsError::Usage),
+    }
+    let (mut source, mut game_id, mut pack, mut out) = (None, None, None, None);
+    let mut rest = args.iter();
+    while let Some(flag) = rest.next() {
+        let slot = match flag.as_str() {
+            "--external" => &mut source,
+            "--game-id" => &mut game_id,
+            "--pack" => &mut pack,
+            "--out" => &mut out,
+            _ => return Err(PackAssetsError::Usage),
+        };
+        let value = rest.next().ok_or(PackAssetsError::Usage)?;
+        if value.is_empty() || slot.replace(value.clone()).is_some() {
+            return Err(PackAssetsError::Usage);
+        }
+    }
+    match (source, game_id, pack) {
+        (Some(source), Some(game_id), Some(pack)) => Ok(PackAssetsArgs::External {
+            source: PathBuf::from(source),
+            game_id,
+            pack,
+            out: out.map(PathBuf::from),
+        }),
+        _ => Err(PackAssetsError::Usage),
+    }
+}
+
 /// Runs the command using the current repository as its input root.
 pub(crate) fn run() -> Result<(), PackAssetsError> {
-    let mut args = env::args().skip(2);
-    let Some(game) = args.next() else {
-        return Err(PackAssetsError::Usage);
-    };
-    if args.next().is_some() {
-        return Err(PackAssetsError::Usage);
-    }
+    let args: Vec<String> = env::args().skip(2).collect();
     let repository_root = crate::workspace::root().map_err(PackAssetsError::WorkspaceMetadata)?;
-    let output_root = repository_root.join("target").join("asset-packs");
-    let summary = build_pack(&repository_root, &output_root, &game)?;
+    let default_output = repository_root.join("target").join("asset-packs");
+    let summary = match parse_args(&args)? {
+        PackAssetsArgs::Game(game) => build_pack(&repository_root, &default_output, &game)?,
+        PackAssetsArgs::External {
+            source,
+            game_id,
+            pack,
+            out,
+        } => build_external_pack(
+            &repository_root,
+            &source,
+            out.as_deref().unwrap_or(&default_output),
+            &game_id,
+            &pack,
+        )?,
+    };
     println!(
         "pack-assets: published {}@{} ({} file(s)) to {}",
         summary.pack,
@@ -580,10 +635,79 @@ fn build_pack(
         });
     }
     let binding = game_manifest.asset_binding()?;
+    build_from_source_root(&pack_root, output_root, &binding)
+}
 
+/// Builds one pack from an explicitly supplied source directory, bound to an
+/// explicitly supplied existing game and pack identity.
+///
+/// The source directory may live outside the repository, so private or
+/// rights-pending art is never copied into `games/<game>/assets`. The game id
+/// must be `com.tabula.<segment>` for exactly one existing `games/<dir>` crate
+/// whose name equals the segment after removing `-` and `_` (the `GameId`
+/// grammar has no separators, so `games/two-words` binds `com.tabula.twowords`).
+/// This makes no game discoverable and reads no `game.toml`. Source traversal,
+/// planning, staging, runtime-parser binding and per-file integrity checks are
+/// identical to [`build_pack`].
+///
+/// @ai.role build-orchestrator
+/// @ai.domain assets.pack-build
+/// @ai.pure false
+/// @ai.requires deterministic-pack-plan
+/// @ai.evidence tests::external_build_matches_the_game_manifest_build
+fn build_external_pack(
+    repository_root: &Path,
+    source_root: &Path,
+    output_root: &Path,
+    game_id: &str,
+    pack: &str,
+) -> Result<BuildSummary, PackAssetsError> {
+    let invalid_game = || PackAssetsError::InvalidExternalGame(game_id.to_string());
+    let game = GameId::new(game_id).map_err(|_| invalid_game())?;
+    let segment = game_id
+        .strip_prefix("com.tabula.")
+        .filter(|segment| !segment.contains('.'))
+        .ok_or_else(invalid_game)?;
+    let games = repository_root.join("games");
+    let entries = fs::read_dir(&games).map_err(|_| invalid_game())?;
+    let mut owners = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|_| invalid_game())?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let file_type = entry.file_type().map_err(|_| invalid_game())?;
+        if file_type.is_dir() && !file_type.is_symlink() && name.replace(['-', '_'], "") == segment
+        {
+            owners.push(GameDirectoryName::new(&name).map_err(|_| invalid_game())?);
+        }
+    }
+    if owners.len() != 1 {
+        return Err(invalid_game());
+    }
+    let pack = AssetPackRef::parse(pack)
+        .map_err(|source| PackAssetsError::InvalidExternalPack(pack.to_string(), source))?;
+    let metadata =
+        fs::symlink_metadata(source_root).map_err(|source| PackAssetsError::SourceIo {
+            path: source_root.to_path_buf(),
+            source,
+        })?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err(PackAssetsError::SourceRootNotDirectory(
+            source_root.to_path_buf(),
+        ));
+    }
+    build_from_source_root(source_root, output_root, &GameAssetBinding { game, pack })
+}
+
+/// Shared tail of both build forms: read `pack.source.toml`, inspect exact
+/// source bytes, then plan and publish only after every runtime check succeeds.
+fn build_from_source_root(
+    pack_root: &Path,
+    output_root: &Path,
+    binding: &GameAssetBinding,
+) -> Result<BuildSummary, PackAssetsError> {
     let source_manifest_path = pack_root.join("pack.source.toml");
     let source_manifest_bytes = read_regular_source_file(
-        &pack_root,
+        pack_root,
         &PackSourcePath::new("pack.source.toml").expect("constant source path is safe"),
     )?;
     let source_manifest_source =
@@ -599,9 +723,9 @@ fn build_pack(
             }
         })?;
 
-    let inspected = inspect_source_files(&pack_root, &source_manifest)?;
-    let plan = plan_pack(&binding, &source_manifest, inspected).map_err(PackAssetsError::Plan)?;
-    publish_staged_pack(output_root, &binding, &plan)
+    let inspected = inspect_source_files(pack_root, &source_manifest)?;
+    let plan = plan_pack(binding, &source_manifest, inspected).map_err(PackAssetsError::Plan)?;
+    publish_staged_pack(output_root, binding, &plan)
 }
 
 /// Resolve only the owning game's source directory. There is no legacy global
@@ -853,8 +977,16 @@ impl GameDirectoryName {
 /// and final publication.
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum PackAssetsError {
-    #[error("usage: cargo xtask pack-assets <game>")]
+    #[error(
+        "usage: cargo xtask pack-assets <game>\n       cargo xtask pack-assets --external <source-dir> --game-id com.tabula.<game> --pack <pack@version> [--out <dir>]"
+    )]
     Usage,
+    #[error(
+        "external game id {0:?} must be com.tabula.<one existing games/ directory without - or _>"
+    )]
+    InvalidExternalGame(String),
+    #[error("invalid external pack reference {0:?}: {1}")]
+    InvalidExternalPack(String, #[source] AssetPackRefError),
     #[error("invalid game directory {0:?}")]
     InvalidGameDirectory(String),
     #[error("could not determine the Cargo workspace directory: {0}")]
@@ -1361,6 +1493,188 @@ mod tests {
         let result = publish_staged_pack(&output, &binding(), &corrupted_plan);
         assert!(matches!(result, Err(PackAssetsError::Integrity { .. })));
         assert!(!output.join("sample/1.0.0").exists());
+    }
+
+    fn strings(args: &[&str]) -> Vec<String> {
+        args.iter().map(ToString::to_string).collect()
+    }
+
+    #[test]
+    fn command_line_partitions_game_and_external_forms() {
+        assert_eq!(
+            parse_args(&strings(&["sample"])).unwrap(),
+            PackAssetsArgs::Game("sample".into())
+        );
+        assert_eq!(
+            parse_args(&strings(&[
+                "--external",
+                "/private/src",
+                "--pack",
+                "p@1.0.0",
+                "--game-id",
+                "com.tabula.sample",
+            ]))
+            .unwrap(),
+            PackAssetsArgs::External {
+                source: PathBuf::from("/private/src"),
+                game_id: "com.tabula.sample".into(),
+                pack: "p@1.0.0".into(),
+                out: None,
+            }
+        );
+        for invalid in [
+            &[][..],
+            &["sample", "extra"][..],
+            &["--game-id", "com.tabula.sample"][..],
+            &["--external", "src", "--game-id", "com.tabula.sample"][..],
+            &[
+                "--external",
+                "src",
+                "--game-id",
+                "g",
+                "--pack",
+                "p@1.0.0",
+                "--out",
+            ][..],
+            &[
+                "--external",
+                "a",
+                "--external",
+                "b",
+                "--game-id",
+                "g",
+                "--pack",
+                "p@1.0.0",
+            ][..],
+            &[
+                "--external",
+                "src",
+                "--game-id",
+                "g",
+                "--pack",
+                "p@1.0.0",
+                "--x",
+                "y",
+            ][..],
+            &["--external", "", "--game-id", "g", "--pack", "p@1.0.0"][..],
+        ] {
+            assert!(
+                matches!(parse_args(&strings(invalid)), Err(PackAssetsError::Usage)),
+                "{invalid:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn external_build_matches_the_game_manifest_build() {
+        let root = tempfile::tempdir().unwrap();
+        write_repository_fixture(root.path(), valid_source_manifest(), Some(b"private"));
+        let external = tempfile::tempdir().unwrap();
+        fs::copy(
+            root.path().join("games/sample/assets/pack.source.toml"),
+            external.path().join("pack.source.toml"),
+        )
+        .unwrap();
+        fs::copy(
+            root.path().join("games/sample/assets/fixture.bin"),
+            external.path().join("fixture.bin"),
+        )
+        .unwrap();
+        let owned = build_pack(root.path(), &root.path().join("owned"), "sample").unwrap();
+        let outside = build_external_pack(
+            root.path(),
+            external.path(),
+            &root.path().join("outside"),
+            "com.tabula.sample",
+            "sample@1.0.0",
+        )
+        .unwrap();
+        assert_eq!(read_tree(&owned.output), read_tree(&outside.output));
+        assert_eq!(outside.file_count, 1);
+    }
+
+    #[test]
+    fn external_build_requires_an_existing_game_directory_and_valid_pack() {
+        let root = tempfile::tempdir().unwrap();
+        write_repository_fixture(root.path(), valid_source_manifest(), Some(b"private"));
+        let source = root.path().join("games/sample/assets");
+        let output = root.path().join("outside");
+        for game in [
+            "com.tabula.missing",
+            "sample",
+            "com.tabula.",
+            "com.tabula.Sample",
+            "com.tabula.sam.ple",
+            "org.example.sample",
+        ] {
+            assert!(
+                matches!(
+                    build_external_pack(root.path(), &source, &output, game, "sample@1.0.0"),
+                    Err(PackAssetsError::InvalidExternalGame(_))
+                ),
+                "{game}"
+            );
+        }
+        assert!(matches!(
+            build_external_pack(root.path(), &source, &output, "com.tabula.sample", "sample"),
+            Err(PackAssetsError::InvalidExternalPack(..))
+        ));
+        assert!(!output.exists());
+    }
+
+    #[test]
+    fn external_game_id_drops_directory_separators_and_must_be_unambiguous() {
+        let root = tempfile::tempdir().unwrap();
+        write_repository_fixture(root.path(), valid_source_manifest(), Some(b"private"));
+        let source = root.path().join("games/sample/assets");
+        fs::create_dir_all(root.path().join("games/two-words")).unwrap();
+        let output = root.path().join("outside");
+        let summary = build_external_pack(
+            root.path(),
+            &source,
+            &output,
+            "com.tabula.twowords",
+            "two-words@1.0.0",
+        )
+        .unwrap();
+        let manifest = AssetPackManifest::from_toml(
+            &fs::read_to_string(summary.output.join("pack.toml")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(manifest.game().as_str(), "com.tabula.twowords");
+        fs::create_dir_all(root.path().join("games/two_words")).unwrap();
+        assert!(matches!(
+            build_external_pack(
+                root.path(),
+                &source,
+                &output,
+                "com.tabula.twowords",
+                "two-words@1.0.0"
+            ),
+            Err(PackAssetsError::InvalidExternalGame(_))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_symlinked_source_root_is_rejected_without_publication() {
+        use std::os::unix::fs::symlink;
+        let root = tempfile::tempdir().unwrap();
+        write_repository_fixture(root.path(), valid_source_manifest(), Some(b"private"));
+        let link = root.path().join("linked-source");
+        symlink(root.path().join("games/sample/assets"), &link).unwrap();
+        let output = root.path().join("outside");
+        assert!(matches!(
+            build_external_pack(
+                root.path(),
+                &link,
+                &output,
+                "com.tabula.sample",
+                "sample@1.0.0"
+            ),
+            Err(PackAssetsError::SourceRootNotDirectory(_))
+        ));
+        assert!(!output.exists());
     }
 
     fn read_tree(root: &Path) -> BTreeMap<String, Vec<u8>> {

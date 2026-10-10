@@ -243,7 +243,7 @@ fn print_usage_and_exit(other: Option<&str>) -> ! {
          phase 2:  gen-tokens  check-no-raw-colors  stage-wasm-game  stage-local-play\n\
          mobile:   gen-mobile-catalog  check-mobile-catalog\n\
          retired:  stage-mobile-game (ADR-0043: native mobile adapter pending)\n\
-         phase 3:  pack-assets <game>\n\
+         phase 3:  pack-assets <game>  pack-assets --external <dir> --game-id <id> --pack <pack@ver>\n\
          phase 4:  gen-protocol-vectors  check-protocol  db  load\n\n\
          See xtask/README.md and docs/architecture/01-stack-and-repository-plan.md §6.3."
     );

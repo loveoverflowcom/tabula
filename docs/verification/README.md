@@ -27,6 +27,8 @@ shared evidence/status vocabulary.
 | [Trusted HTTPS Origin](issue-74-trusted-origin/README.md) | #74 F1 fail-fast configuration, constructor/property/wire regressions and remaining session-review gates |
 | [Offline match actor](isolated-match-actor/README.md) | ADR-0039 historical isolated ordering/authority/privacy/wire evidence; no SQL durability inferred |
 | [Durable match PostgreSQL](durable-match-postgres/README.md) | ADR-0040 atomic canonical/snapshot/ledger commit, durable scopes/fencing and exact bounded recovery; actual statuses distinguish DB/process/local/CI evidence |
+| [Age War D06](age-war-d06/README.md) | HUD/intent/asset contract, private six-age preview/ZIP and geometry evidence; owner/authority/browser gates remain open |
+| [Age War D05](age-war-d05/README.md) | Private D05 delivery verification, per-age runtime packs, D01 timing oracle and Xvfb presentation pilot; no gameplay, device or listening acceptance |
 | [Issue #110 PR01](issue-110-pr01/README.md) | Local/dev service composition, checked schema readiness, shared session authority, bounded drain and exact restart evidence; browser/continuity limits recorded separately |
 | [Age War D01](age-war-d01/README.md) | Design-only schemas/catalog/math and scoped review; inherited BASE I-9 blocker, planned gameplay/AI/balance/art/native gates explicitly unexecuted |
 
